@@ -268,6 +268,15 @@ sub process_request {
         }
         return;
     } elsif ($req->{command}->[0] eq 'findme') {
+        # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
+        if (!($req->{cacheonly}) or !($req->{cacheonly}->[0])) {
+            return;
+        }
+        if (defined($req->{discoverymethod}) and defined($req->{discoverymethod}->[0]))  {
+            # The findme request had been processed by other module, just return
+            return;
+        }
+        xCAT::MsgUtils->message("S", __PACKAGE__.": Processing findme request");
 	my $ip = $req->{'_xcat_clientip'};
 	if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
 	    #Don't attempt switch discovery of a  VM Guest
@@ -317,22 +326,23 @@ sub process_request {
         }
 	 
 	if ($node) {
-	    my $mactab = xCAT::Table->new('mac',-create=>1);
-	    $mactab->setNodeAttribs($node,{mac=>$mac});
-	    $mactab->close();
+            xCAT::MsgUtils->message("S", __PACKAGE__.": Find a node for the findme request");
+            # No need to write mac table here, 'discovered' command will write
+	    # my $mactab = xCAT::Table->new('mac',-create=>1);
+	    # $mactab->setNodeAttribs($node,{mac=>$mac});
+	    # $mactab->close();
 	    #my %request = (
 	    #  command => ['makedhcp'],
 	    #  node => [$node]
 	    #);
 	    #$doreq->(\%request);
-	    $req->{command}=['discovered'];
-	    $req->{noderange} = [$node];
-            if ($pbmc_node) {
-                $req->{pbmc_node} = [$pbmc_node];
-            }
-	    $req->{discoverymethod} = ['switch'];
-	    $doreq->($req); 
-	    %{$req}=();#Clear req structure, it's done..
+	    $req->{discoverymethod}->[0] = 'switch';
+            my $request = {%$req};
+	    $request->{command}=['discovered'];
+	    $request->{noderange} = [$node];
+            $request->{pbmc_node} = [$pbmc_node];
+	    $doreq->($request); 
+	    %{$request}=();#Clear req structure, it's done..
 	    undef $mactab;
 	} else { 
 	    #Shouldn't complain, might be blade, but how to log total failures?

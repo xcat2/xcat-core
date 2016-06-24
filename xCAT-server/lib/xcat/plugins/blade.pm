@@ -4359,6 +4359,15 @@ sub process_request {
     }
   }
   if ($request->{command}->[0] eq "findme") {
+    # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
+    if (!($request->{cacheonly}) or !($request->{cacheonly}->[0])) {
+        return;
+    }
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
+
     my $mptab = xCAT::Table->new("mp");
     unless ($mptab) { return 2; }
     my @bladents = $mptab->getAllNodeAttribs([qw(node)]);

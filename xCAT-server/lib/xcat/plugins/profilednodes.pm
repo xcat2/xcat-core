@@ -1816,6 +1816,14 @@ Usage:
 
 #-------------------------------------------------------
 sub findme{
+    # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
+    if (!($request->{cacheonly}) or !($request->{cacheonly}->[0])) {
+        return;
+    }
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
     # re-initalize the global variable
     %args_dict = ();
     # Read DB to confirm the discover is started. 

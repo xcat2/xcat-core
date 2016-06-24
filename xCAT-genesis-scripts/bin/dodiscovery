@@ -91,7 +91,9 @@ elif [ -r /proc/device-tree/model ]; then #POWER
         done
         CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
         SERIAL=`cat /proc/device-tree/system-id -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
-        UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /proc/sys/kernel/random/uuid`
+        # For POWER servers, the /proc/sys/kernel/random/uuid is changing for each query, so use mtms + mac of first up nic as the UUID 
+        #UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /proc/sys/kernel/random/uuid`
+        UUID=unknown
 
 fi
 #CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
@@ -115,6 +117,7 @@ DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n
 logger -t $log_label -p local4.info "Beginning echo infomation to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
+echo "<sequential>1</sequential>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
 if [ "$IAMAVM" = 1 ]; then
 	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
@@ -166,6 +169,7 @@ if [ -f "/usr/sbin/dmidecode" ]; then
 	fi
     done
 fi
+MAC_OF_FIRST_UP_NIC=unknown
 #TODO: downed nics, also examine /sys/bus/pci/*/ for more network class devices that might not have driver suppert
 for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v usb0`; do
 	FIRMDESC=""
@@ -174,6 +178,9 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
 	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
+        if [ "$MAC_OF_FIRST_UP_NIC" == "unknown" ]; then
+            MAC_OF_FIRST_UP_NIC=`echo $MAC | sed -e s/://g`
+        fi
 	if [[ ! -z "$PCI_SLOT" && -f "/usr/sbin/dmidecode" ]]; then
 	SLOTNAME=`dmidecode -t 9|egrep '(Designation|Address)'|grep -B1 $PCI_SLOT|grep Designation|sed -e 's/.*Designation:[ 	]*//'`
 	if [ -z "$SLOTNAME" ]; then #check for on board device
@@ -234,6 +241,10 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
         	
         echo "</nic>" >> /tmp/discopacket
 done
+if [ "$UUID" == "unknown" ]; then
+    UUID=`echo $MTM-$SERIAL-$MAC_OF_FIRST_UP_NIC | tr /A-Z/ /a-z/`
+    echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+fi
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
 echo "<sha512sig>" >> /tmp/discopacket
 echo "</sha512sig>" >> /tmp/discopacket

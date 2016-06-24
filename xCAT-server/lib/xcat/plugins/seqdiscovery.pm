@@ -50,17 +50,27 @@ sub findme {
     my $request = shift;
     my $callback = shift;
     my $subreq = shift;
-
+    
     my @SEQdiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
+    
+    # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
+    if (!($request->{cacheonly}) or !($request->{cacheonly}->[0])) {
+        return;
+    }
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
     unless ($SEQdiscover[0]) {
-        if ($PCMdiscover[0]) {
+        #if ($PCMdiscover[0]) {
             #profile disocvery is running, then just return to make profile discovery to handle it
-            return;
-        }
+            #return;
+        #}
+        # The request data have been write into discoverydata table within aaadiscover.pm, just return here
         # update the discoverydata table to have an undefined node
-        $request->{discoverymethod}->[0] = 'undef';
-        xCAT::DiscoveryUtils->update_discovery_data($request);
+        #$request->{discoverymethod}->[0] = 'undef';
+        #xCAT::DiscoveryUtils->update_discovery_data($request);
         return;
     }
 
@@ -375,16 +385,18 @@ sub findme {
 
         # call the discovered command to update the discovery request to a node
          
-        $request->{command}=['discovered'];
-        $request->{noderange} = [$node];
+        xCAT::MsgUtils->message("S", __PACKAGE__.": Find a node for the findme request");
+        $request->{discoverymethod} = ['sequential'];
+        my $req = {%$request};
+        $req->{command}=['discovered'];
+        $req->{noderange} = [$node];
         if ($pbmc_node) {
             $request->{pbmc_node} = [$pbmc_node];
         }
 
-        $request->{discoverymethod} = ['sequential'];
-        $request->{updateswitch} = ['yes'];
-        $subreq->($request); 
-        %{$request}=();#Clear req structure, it's done..
+        $req->{updateswitch} = ['yes'];
+        $subreq->($req); 
+        %{$req}=();#Clear req structure, it's done..
         undef $mactab;
     } else {
         nodediscoverstop($callback, undef, "node names");
