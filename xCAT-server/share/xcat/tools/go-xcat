@@ -940,9 +940,12 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
-	"fedora2"?) distro="rh7" ;;
-	"rhel"*)    distro="rh${distro#rhel}" ;;
-	"sles"*)    ;;
+	"centos"*)             distro="rh${distro#centos}" ;;
+	"fedora10"|"fedora11") distro="fedora9" ;;
+	"fedora1"[678])        distro="rh6" ;;
+	"fedora19"|"fedora2"?) distro="rh7" ;;
+	"rhel"*)               distro="rh${distro#rhel}" ;;
+	"sles"*)               ;;
 	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
 	esac
 	[[ -z "${url}" ]] &&
@@ -1368,7 +1371,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"fedora"|"rhel"|"sles"|"ubuntu")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
