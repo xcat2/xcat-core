@@ -275,7 +275,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
-runcmdinstaller
+runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
