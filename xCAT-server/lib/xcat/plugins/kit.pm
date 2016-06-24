@@ -1636,12 +1636,6 @@ sub rmkit
 
                             # Remove this component from osimage.kitcomponents. Mark here.
                             my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
-                            if ( $::RUNCMD_RC ) {
-                                my %rsp;
-                                push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent from $entry->{imagename}";
-                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                                return 1;
-                            }
                         }
                     }
                 }
