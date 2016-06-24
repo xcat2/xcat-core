@@ -4,11 +4,11 @@ B<liteimg> - Modify statelite image by creating a series of links.
 
 =head1 SYNOPSIS
 
-I<liteimg [-h| --help]>
+B<liteimg [-h| --help]>
 
-I<liteimg  [-v| --version]>
+B<liteimg  [-v| --version]>
 
-I<liteimg imagename>
+B<liteimg> I<imagename>
 
 =head1 DESCRIPTION
 
@@ -39,7 +39,7 @@ I<$imgroot/.default/etc/ntp.conf>
 
 Note: If you make any changes to your litefile table after running liteimg then you will need to rerun liteimg again.
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
 
@@ -47,9 +47,9 @@ I<imagename> specifies the name of a os image definition to be used. The specifi
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
-B<-v>          Command Version.
+B<-v|--version>          Command Version.
 
 =head1 RETURN VALUE
 
@@ -61,12 +61,12 @@ B<-v>          Command Version.
 
 1. To lite a RHEL 6.6 statelite image for a compute node architecture x86_64 enter:
 
-I<liteimg rhels6.6-x86_64-statelite-compute>
+ liteimg rhels6.6-x86_64-statelite-compute
 
 
 =head1 FILES
 
-/opt/xcat/bin/
+/opt/xcat/bin/liteimg
 
 
 =head1 NOTES

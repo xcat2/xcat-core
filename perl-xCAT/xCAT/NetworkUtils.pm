@@ -1088,17 +1088,23 @@ sub my_if_netmap
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing
-         Returns my ip address  
+         Returns my ip address in the same network with the specified node
          Linux only
     Arguments:
         nodename 
     Returns:
+	result and error message or my ip address
+	1. If node can not be resolved, the return info will be like this:
+	[1, "The $node can not be resolved"].
+	2. If no IP found that matching the giving node, the return info will be:
+	[2, "The IP address of node $node is in an undefined subnet"].
+	3. If IP found:
+	[0,ip1,ip2,...] 
     Globals:
         none
     Error:
         none
     Example:
-        my $ip = xCAT::NetworkUtils->my_ip_facing($peerip)
         my @ip = xCAT::NetworkUtils->my_ip_facing($peerip)  # return multiple
     Comments:
         none
@@ -1112,10 +1118,15 @@ sub my_ip_facing
     {
         $peer = shift;
     }
+    
     return my_ip_facing_aix( $peer) if ( $^O eq 'aix');
+    my @rst;
     my $peernumber = inet_aton($peer); #TODO: IPv6 support
-    unless ($peernumber) { return undef; }
-    my $noden = unpack("N", inet_aton($peer));
+    unless ($peernumber) { 
+        $rst[0] = 1;
+        $rst[1] = "The $peer can not be resolved";
+        return @rst; }
+    my $noden = unpack("N", $peernumber);
     my @nets = split /\n/, `/sbin/ip addr`;
 
     my @ips;
@@ -1126,7 +1137,7 @@ sub my_ip_facing
         {
             next;
         }
-        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        (my $curnet, my $maskbits) = split /\//, $elems[2];  
         my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
         my $curn = unpack("N", inet_aton($curnet));
         if (($noden & $curmask) == ($curn & $curmask))
@@ -1136,14 +1147,13 @@ sub my_ip_facing
     }
 
     if (@ips) {
-        if (wantarray) {
-            return @ips;
-        } else {
-            return $ips[0];
-        }
+        $rst[0] = 0;
+        push @rst, @ips;
     } else {
-        return undef;
+        $rst[0] = 2;
+        $rst[1] = "The IP address of node $peer is in an undefined subnet";
     }
+    return @rst;
 }
 
 #-------------------------------------------------------------------------------
@@ -1169,6 +1179,8 @@ sub my_ip_facing_aix
     my $peer = shift;
     my @nets = `ifconfig -a`;
     chomp @nets;
+    my @ips;
+    my @rst;
     foreach my $net (@nets)
     {
         my ($curnet,$netmask);
@@ -1186,10 +1198,20 @@ sub my_ip_facing_aix
         }
         if (isInSameSubnet($peer, $curnet, $netmask, 2))
         {
-            return $curnet;
+            push @ips, $curnet;
         }
     }
-    return undef;
+    if (@ips)
+    {
+        $rst[0] = 0;
+        push @rst, @ips;
+    }
+    else 
+    {
+        $rst[0] = 2;
+        $rst[1] = "The IP address of node $peer is in an undefined subnet";
+    }
+    return @rst;
 }
 
 #-------------------------------------------------------------------------------
@@ -2079,8 +2101,70 @@ sub getNodeNetworkCfg
  
     return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,0,0));
 }
+#-------------------------------------------------------------------------------
 
+=head3   getNodesNetworkCfg
+    Description:
+        Get network configuration (ip,netmask,gateway) for a group of nodes
 
+    Arguments:
+        nodes: the group of nodes
+    Returns:
+        If failed: (1, error_msg)
+        If success: (0, the hash variable store network configuration info for nodes that get matching network entry)
+    Error:
+        none
+    Example:
+        my ($ret, $hash) = xCAT::NetworkUtils::getNodesNetworkCfg($noderange);
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getNodesNetworkCfg 
+{
+    my $nodes = shift;
+    if ($nodes =~ /xCAT::NetworkUtils/) {
+        $nodes = shift;
+    }
+    my @nets = ();
+    my $nettab = xCAT::Table->new("networks");
+    if($nettab) {
+        my @error_net = ();
+        my @all_nets = $nettab->getAllAttribs('net','mask','gateway');
+        foreach my $net (@all_nets) {
+            my $gateway = $net->{gateway};
+            if (defined($gateway) and ($gateway eq '<xcatmaster>')) {
+                my @gatewayd = xCAT::NetworkUtils->my_ip_facing($net->{'net'});
+                unless ($gatewayd[0]) {
+                    $gateway = $gatewayd[1];
+                }
+            }
+            push @nets, {net=>$net->{net}, mask=>$net->{mask}, gateway=>$gateway};
+        }
+        $nettab->close;
+    }
+    else {
+        return (1, "Open \"networks\" table failed");
+    }
+    if (!scalar(@nets)) {
+        return (1, "No entry find in \"networks\" table");
+    }
+    my %rethash = ();
+    foreach my $node (@$nodes) {
+        my $ip = xCAT::NetworkUtils->getipaddr($node);
+        foreach my $net (@nets) {
+            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                $rethash{$node}->{ip} = $ip;
+                $rethash{$node}->{mask} = $net->{'mask'};
+                $rethash{$node}->{gateway} = $net->{'gateway'};
+                last;
+            }
+        }
+    }
+    return (0, \%rethash);
+}
 
 #-------------------------------------------------------------------------------
 
@@ -2495,7 +2579,12 @@ sub gen_net_boot_params
     # just use the installnic to generate the nic related kernel parameters
     my $mac;
     my $nicname;
-    
+
+    # set the default nicname to nodebootif from image definition
+    if ($nodebootif) {
+        $nicname = $nodebootif;
+    }
+
     if ((! defined ($installnic)) || ($installnic eq "") || ($installnic =~ /^mac$/i)) {
         $mac = $macmac;
         $net_params->{mac} = $mac;
@@ -2509,20 +2598,19 @@ sub gen_net_boot_params
         $net_params->{nicname} = $nicname;
         $net_params->{mac} = $mac;
     }
-    if ($nicname) {
+
+    # if nicname is set and mac.mac is NOT set to <mac address>, use nicname in the boot parameters
+    if ($nicname && ! defined ($net_params->{setmac})) {
         $net_params->{ksdevice} = "ksdevice=$nicname";
         $net_params->{ip} = "ip=$nicname:dhcp";
         $net_params->{netdev} = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
-        $net_params->{ifname} = "ifname=$nicname:$mac";
+        $net_params->{ifname} = "ifname=$nicname:$mac"; # todo: may not use mac arbitrary
     } elsif ($mac) {
         $net_params->{ksdevice} = "ksdevice=$mac";
         $net_params->{BOOTIF} = "BOOTIF=$mac";
         $net_params->{bootdev} = "bootdev=$mac";
         $net_params->{ip} = "ip=dhcp";
-        if ($nodebootif) {
-            $net_params->{ifname} = "ifname=$nodebootif:$mac";
-        }
         $net_params->{netdevice} = "netdevice=$mac";
     }
 

@@ -6,3 +6,5 @@ postscripts/* install/postscripts/
 prescripts/* install/prescripts/
 templates/* opt/xcat/share/xcat/templates/
 xCATMN etc/
+etc/logrotate.d/* etc/logrotate.d/
+etc/rsyslog.d/* etc/rsyslog.d/

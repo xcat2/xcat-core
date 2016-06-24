@@ -62,12 +62,11 @@ Display output as nodenames instead of groupnames.
 
 =over 3
 
-=item *
-
+=item 1.
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
-B<psh> I<node1,node2,node3 cat /etc/passwd> | B<xcoll>
+ psh node1,node2,node3 cat /etc/passwd | xcoll
 
 =back
 

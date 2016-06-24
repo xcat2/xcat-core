@@ -355,7 +355,10 @@ sub process_request {
         if ($net and $net->{nameservers})
         {
             my $valid = 0;
-            my @myips = xCAT::NetworkUtils->my_ip_facing($net->{net});
+            my @myips;
+            my @myipsd = xCAT::NetworkUtils->my_ip_facing($net->{net});
+            my $myipsd_l = @myipsd;
+            unless ($myipsd[0]) { @myips = @myipsd[1..($myipsd_l-1)];}
             foreach (split /,/, $net->{nameservers})
             {
                 chomp $_;
@@ -1057,35 +1060,35 @@ sub update_namedconf {
                 my $skip=0;
                 do {
                     #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
-                    if ($ctx->{forwarders} and $line =~ /forwarders {/) {
+                    if ($ctx->{forwarders} and $line =~ /forwarders \{/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
                         foreach (@{$ctx->{forwarders}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";
-                    } elsif ($ctx->{slaves} and $line =~ /allow-transfer {/) {
+                    } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
                         push @newnamed,"\tallow-transfer \{\n";
                         $skip=1;
                         foreach (@{$ctx->{slaves}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";
-                    } elsif ($ctx->{slaves} and $line =~ /also-notify {/) {
+                    } elsif ($ctx->{slaves} and $line =~ /also-notify \{/) {
                         push @newnamed,"\talso-notify \{\n";
                         $skip=1;
                         foreach (@{$ctx->{slaves}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";                    
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on {/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on \{/) {
                         push @newnamed,"\tlisten-on \{\n";
                         $skip=1;
                         foreach (@{$ctx->{dnslistenonifs}->{ipv4}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";                    
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 {/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 \{/) {
                         push @newnamed,"\tlisten-on-v6 \{\n";
                         $skip=1;
                         foreach (@{$ctx->{dnslistenonifs}->{ipv6}}) {
@@ -1436,38 +1439,45 @@ sub add_or_delete_records {
                 }
                 $numreqs -= 1;
                 if ($numreqs == 0) {
-                    $update->sign_tsig("xcat_key",$ctx->{privkey});
-                    $numreqs=300;
-                    my $reply = $resolver->send($update);
-                    if ($reply)
-                    {
-                        if ($reply->header->rcode ne 'NOERROR')
-                        {
-                            xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                    # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                    for (1..3) {
+                        $update->sign_tsig("xcat_key",$ctx->{privkey});
+                        $numreqs=300;
+                        my $reply = $resolver->send($update);
+                        if ($reply) {
+                            if ($reply->header->rcode eq 'NOTAUTH' ) {
+                                next;
+                            }
+                            if ($reply->header->rcode ne 'NOERROR') {
+                                xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                            }
                         }
+                        else {
+                            xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                        }
+                        last;
                     }
-                    else
-                    {
-                        xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
-                    }
-                    
                     $update =  Net::DNS::Update->new($zone); #new empty request
                 }
             }
             if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-                $update->sign_tsig("xcat_key",$ctx->{privkey});
-                my $reply = $resolver->send($update);
-                    if ($reply)
-                    {
-                        if ($reply->header->rcode ne 'NOERROR')
-                        {
+                # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                for (1..3) {
+                    $update->sign_tsig("xcat_key",$ctx->{privkey});
+                    my $reply = $resolver->send($update);
+                    if ($reply) {
+                        if ($reply->header->rcode eq 'NOTAUTH' ) {
+                            next;
+                        }
+                        if ($reply->header->rcode ne 'NOERROR') {
                             xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
                         }
                     }
-                    else
-                    {
+                    else {
                         xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
                     }
+                    last;
+                }
                 
                 # sometimes resolver does not work if the update zone request sent so quick
                 sleep 1;

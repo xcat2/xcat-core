@@ -236,6 +236,109 @@ sub scan_qbridge_vlans {
 #TODO: try to scan
     }
 }
+
+#--------------------------------------------------------------------------------
+
+=head3   dump_mac_info
+    Descriptions:
+        Retrieve information (switchport and the mac addresses got for that port) for the specified switch or all switches if no specified.
+    Arguments:
+        $req: the xcat request hash 
+        $callback: the function to output information
+    Returns:
+        The hash variable store retrieved inforamtions
+    Usage example:
+        my $macmap = xCAT::MacMap->new();
+        my $switch_data = $macmap->dump_mac_info($req, $callback);
+        foreach my $switch (keys %$switch_data) {...}
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub dump_mac_info {
+    my $self = shift;
+    my $req = shift;
+    my $callback = shift;
+    my $noderange = undef;
+    if (defined($req->{node})) {
+        $noderange = $req->{node};
+    }
+    my %ret = ();
+    $self->{collect_mac_info} = 1;
+    if (defined($req->{opt}->{verbose})) {
+        $self->{show_verbose_info} = 1;
+        $self->{callback} = $callback;
+    }
+    my $community = "public";
+    my $dump_all_switches = 0;
+    my %switches_to_dump = ();
+    if (!defined($noderange)) {
+        $dump_all_switches = 1;
+    }
+    else {
+        foreach (@$noderange) {
+            $switches_to_dump{$_} = 1;
+        }
+    }
+    my $switchestab = xCAT::Table->new('switches', -create=>0);
+    my @switchesents = $switchestab->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
+    $self->fill_switchparms(community=>$community,switchesents=>\@switchesents);
+    my $switchtab = xCAT::Table->new('switch', -create=>0);
+    my @entries = ();
+    if ($switchtab) {
+        @entries = $switchtab->getAllNodeAttribs(['node','switch','port']);
+    }
+    #Build hash of switch port names per switch
+    $self->{switches} = {};
+    foreach my $entry (@entries) {
+        if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
+    	    if ( !$self->{switches}->{$entry->{switch}}->{$entry->{port}}) {
+                $self->{switches}->{$entry->{switch}}->{$entry->{port}} = $entry->{node};
+            }
+            else {
+                $self->{switches}->{$entry->{switch}}->{$entry->{port}} .= ",$entry->{node}";
+            }
+        } 
+        else {
+            xCAT::MsgUtils->message("S","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
+        }
+    }
+    foreach my $switch (keys %{$self->{switchparmhash}}) {
+        if ($dump_all_switches or defined($switches_to_dump{$switch})) {
+            if ($self->{show_verbose_info}) {
+                xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: Start to get information"]}, $self->{callback});
+            }
+            $self->refresh_switch(undef,$community,$switch);
+            if ($self->{show_verbose_info}) {
+                xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: Finish to get information"]}, $self->{callback});
+            }
+            if (!defined($self->{macinfo}->{$switch})) { 
+                $ret{$switch}->{ErrorStr} = "No information get";
+                foreach my $defportname (keys %{$self->{switches}->{$switch}}) {
+                    $ret{$switch}->{$defportname}->{Node} = $self->{switches}->{$switch}->{$defportname};
+                }
+            }   
+            elsif (defined($self->{macinfo}->{$switch}->{ErrorStr})) {
+                    $ret{$switch}->{ErrorStr} = $self->{macinfo}->{$switch}->{ErrorStr};
+                    # To show the error message that the username/password related error is for SNMP only
+                    if ($ret{$switch}->{ErrorStr} =~ /username|password/i) {
+                        $ret{$switch}->{ErrorStr} .= " through SNMP";
+                    }
+            } else {
+                foreach my $snmpportname (keys %{$self->{macinfo}->{$switch}}) {
+                    foreach my $defportname (keys %{$self->{switches}->{$switch}}) {
+                        if (namesmatch($defportname, $snmpportname)) {
+                            $ret{$switch}->{$snmpportname}->{Node} = $self->{switches}->{$switch}->{$defportname};
+                        }
+                    }
+                    @{$ret{$switch}->{$snmpportname}->{MACaddress}} = @{$self->{macinfo}->{$switch}->{$snmpportname}};
+                }
+            }
+        }
+    }
+    return \%ret;
+}
+
 sub find_mac {
 # This function is given a mac address, checks for given mac address
 # and returns undef if unable to find the node, and the nodename otherwise
@@ -410,6 +513,15 @@ sub walkoid {
   my $oid = shift;
   my %namedargs = @_;
   my $retmap = undef; 
+  my $switch = undef;
+  my $callback = undef;
+  if (defined($namedargs{verbose})) {
+      $switch = $namedargs{switch};
+      $callback = $namedargs{callback};
+  }
+  if ($switch) {
+      xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: SNMP Session query OID:\"$oid\""]}, $callback);
+  }
   my $varbind = new SNMP::Varbind([$oid,'']);
   $session->getnext($varbind);
   if ($session->{ErrorStr}) {
@@ -420,18 +532,27 @@ sub walkoid {
             xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
         }
     }
+    if ($switch) {
+        xCAT::MsgUtils->message("I",{data=>["<ERROR>$switch: SNMP Session query OID:\"$oid\" Failed"]}, $callback);
+    }
     return undef;
   }
   my $count=0;
+  my $data_string;
   while ($varbind->[0] =~ /^$oid\.?(.*)/) {
     $count++;
     if ($1) { 
       $retmap->{$1.".".$varbind->[1]}=$varbind->[2]; #If $1 is set, means key should 
+      $data_string .= "\t\t '".$1.".".$varbind->[1]."' => '$varbind->[2]'\n";
     } else {
       $retmap->{$varbind->[1]}=$varbind->[2]; #If $1 is set, means key should 
+      $data_string .= "\t\t '$varbind->[1]' => '$varbind->[2]'\n";
     }
-
     $session->getnext($varbind);
+  }
+  if ($switch) {
+      chomp ($data_string);
+      xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: SNMP Session get data for OID:\"$oid\":\n$data_string"]}, $callback);
   }
   return $retmap;
 }
@@ -460,6 +581,10 @@ sub getsnmpsession {
                       Community => $community,
                       UseNumeric => 1
                  );
+      if ($self->{show_verbose_info}) {
+          xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: Generate SNMP session with parameter: \n\t\t'Version' => '$snmpver'\n\t\t'Community' => '$community'"]}, $self->{callback});
+      }
+
   } else { #we have snmp3
        my %args= (
                       DestHost => $switch,
@@ -476,6 +601,15 @@ sub getsnmpsession {
           $args{PrivProto} = uc($swent->{privacy});
           $args{PrivPass} = $community;
       }
+      if ($self->{show_verbose_info}) {
+          my $parameter_string = '';
+          foreach (keys %args) {
+              $parameter_string .= "\t\t'$_' => '$args{$_}'\n";
+          }
+          chomp($parameter_string);
+          xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: Generate SNMP session with parameter: \n$parameter_string"]}, $self->{callback});
+      }
+
       $session = new SNMP::Session(%args);
   }
   return $session;
@@ -486,11 +620,19 @@ sub refresh_switch {
   my $output = shift;
   my $community = shift;
   my $switch = shift;
-
   #if ($error) { die $error; }
   my $session = $self->getsnmpsession('community'=>$community,'switch'=>$switch);
-  unless ($session) { xCAT::MsgUtils->message("S","Failed to communicate with $switch"); return; }
-  my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
+  unless ($session) { 
+      xCAT::MsgUtils->message("S","Failed to communicate with $switch"); 
+      if ($self->{collect_mac_info}) {
+          $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to communicate with $switch through SNMP";
+      }
+      return; 
+  }
+  elsif ($session->{ErrorStr} and $self->{collect_mac_info}) {
+      $self->{macinfo}->{$switch}->{ErrorStr} = $session->{ErrorStr};
+  }
+  my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1', verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback});
     #namemap is the mapping of ifIndex->(human readable name)
   if ($namemap) {
      my $ifnamesupport=0; #Assume broken ifnamesupport until proven good... (Nortel switch)
@@ -505,15 +647,17 @@ sub refresh_switch {
      }
   }
   unless ($namemap) { #Failback to ifDescr.  ifDescr is close, but not perfect on some switches
-     $namemap = walkoid($session,'.1.3.6.1.2.1.2.2.1.2');
+      $namemap = walkoid($session,'.1.3.6.1.2.1.2.2.1.2', verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback});
   }
   unless ($namemap) {
+    if ($session->{ErrorStr} and $self->{collect_mac_info}) {
+        $self->{macinfo}->{$switch}->{ErrorStr} = $session->{ErrorStr};
+    }
     return;
   }
   #Above is valid without community string indexing, on cisco, we need it on the next one and onward
-  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1); #use cisco vlan membership mib to ascertain vlan
-  my $trunktovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.46.1.6.1.1.5',silentfail=>1); #for trunk ports, we are interested in the native vlan
-                                                                                        #so we need cisco vtp mib too
+  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1,verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback}); #use cisco vlan membership mib to ascertain vlan
+  my $trunktovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.46.1.6.1.1.5', silentfail=>1, verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback}); #for trunk ports, we are interested in the native vlan, so we need cisco vtp mib too
   my %vlans_to_check;
   if (defined($iftovlanmap) or defined($trunktovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
       $self->{switchinfo}->{$switch}->{vlanidtoindex}="NA";#mark this switch to ignore for qbridge scans
@@ -551,22 +695,44 @@ sub refresh_switch {
         $session = $self->getsnmpsession('switch'=>$switch,'community'=>$community,'vlanid'=>$vlan);
     }
     unless ($session) { return; } 
-    my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2',ciscowarn=>$iscisco); # Good for all switches
+    my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2', ciscowarn=>$iscisco, verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback}); # Good for all switches
     if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) { 
-            xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": failed to get a valid response to BRIDGE-MIB request");
-	    return;
+        xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": failed to get a valid response to BRIDGE-MIB request");
+        return;
     }
 
     # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2'); 
-    my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2',silentfail=>1);
+    my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2',silentfail=>1, verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback});
     unless (defined($mactoindexmap)) { #if no qbridge defined, try bridge mib, probably cisco
       #$mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2');
-      $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2',ciscowarn=>$iscisco); 
+      $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2',ciscowarn=>$iscisco, verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback}); 
     } #Ok, time to process the data
     if (not ref $mactoindexmap or !keys %{$mactoindexmap}) { 
             xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
 	   return;
     }
+    if (defined($self->{collect_mac_info})) {
+        my %index_to_mac = ();
+        foreach (keys %$mactoindexmap) {
+            my $index = $mactoindexmap->{$_};
+            my @tmp = split /\./, $_;
+            my @mac = @tmp[-6 .. -1];
+            my $macstring=sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@mac);
+            push @{$index_to_mac{$index}}, $macstring;
+        }
+        foreach my $boid (keys %$bridgetoifmap) {
+            my $port_index = $boid;
+            my $port_name = $namemap->{$bridgetoifmap->{$port_index}};
+            if (defined($index_to_mac{$port_index})) {
+                push @{$self->{macinfo}->{$switch}->{$port_name}}, @{$index_to_mac{$port_index}};
+            }
+            else {
+                $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
+            }
+        }
+        return;
+    }
+
     foreach my $oid (keys %$namemap) {
     #$oid =~ m/1.3.6.1.2.1.31.1.1.1.1.(.*)/;
       my $ifindex = $oid;

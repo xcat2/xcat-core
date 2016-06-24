@@ -2193,10 +2193,7 @@ sub process_request {
     # Deal with findme request
     ####################################
     if ($req->{command}->[0] eq 'findme') {
-        # The arch of the node shall be check first to makesure it is a power machine
-        if (!defined $req->{'arch'} or $req->{'arch'}->[0] ne 'ppc64') {
-            return;
-        }
+        # Need to support both ppc64 and ppc64le, maybe also x86_64. Will be move out later.
         &findme($req, $callback, $subreq);
         return;
     }

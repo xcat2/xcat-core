@@ -4,19 +4,17 @@ B<xcatconfig> - Sets up the  Management Node during the xCAT install.
 
 =head1 SYNOPSIS
 
-B<xcatconfig> 
+B<xcatconfig> [B<-h>|B<--help>]
 
-B<xcatconfig> {B<-h>|B<--help>}
+B<xcatconfig> [B<-v>|B<--version>]
 
-B<xcatconfig> {B<-v>|B<--version>}
+B<xcatconfig> [B<-i>|B<--initinstall>] [B<-V>|B<--verbose>]
 
-B<xcatconfig> {B<-i>|B<--initinstall>}  [B<-V>|B<--verbose>]
-
-B<xcatconfig> {B<-u>|B<--updateinstall>}  [B<-V>|B<--verbose>]
+B<xcatconfig> [B<-u>|B<--updateinstall>] [B<-V>|B<--verbose>]
 
 B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-m>|B<--mgtnode>] [B<-t>|B<--tunables>] [B<-V>|B<--verbose>]
 
-B<xcatconfig> {B<-f>|B<--force>} [B<-V>|B<--verbose>]
+B<xcatconfig> [B<-f>|B<--force>] [B<-V>|B<--verbose>]
 
 =head1 DESCRIPTION
 
@@ -66,7 +64,7 @@ This option will reinitialize the basic xCAT database table setup.  It will not 
 =item B<-f|--force>
 
 The force option may  be used after the install to reinitialize the Management Node. This option will  regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
-Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 
+Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stopped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 
 A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes. If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the management node before using ssh, xdsh, xdcp. 
 Redistribute credentials and ssh keys to the service nodes and ssh keys to the nodes by using the updatenode -k command.   
 
@@ -84,34 +82,30 @@ This option will set tunable parameters on the Management and Service nodes reco
 
 =over 2
 
-=item *
-
+=item 1.
 To force regeneration of keys and credentials and reinitialize the site table:
 
-B<xcatconfig> I<-f>
+ xcatconfig -f
 
-=item *
-
+=item 2.
 To regenerate root's ssh keys:
 
-B<xcatconfig> I<-k>
+ xcatconfig -k
 
-=item *
-
+=item 3.
 To regenerate node host ssh keys:
 
-B<xcatconfig> I<-s>
+ xcatconfig -s
 
-=item *
-
+=item 4.
 To regenerate node host ssh keys and credentials:
 
-B<xcatconfig> I<-s> I<-c>
+ xcatconfig -s -c
 
-=item *
-
+=item 5.
 To add the Management Node to the DB:
 
-B<xcatconfig> I<-m> 
+ xcatconfig -m 
 
 =back
+

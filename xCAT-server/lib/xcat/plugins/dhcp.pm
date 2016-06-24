@@ -509,21 +509,23 @@ sub addnode
                     $node_server = $nrent->{servicenode};
                 }
                 unless($node_server) {
-                    $nxtsrv = xCAT::NetworkUtils->my_ip_facing($node);
-                    unless($nxtsrv) {
-                        $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
+                    unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1];}
+                    elsif ($nxtsrvd[0] eq 1) {$callback->({ error=> [$nxtsrvd[1]]});}
+                    else {
+                        $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1]});
                         return;
                     }
                 } else {
                     my $tmp_server = inet_aton($node_server);
                     unless($tmp_server) {
-                        $callback->({ error => ["Unable to resolve the tftpserver for node"], errorcode => [1]});
+                        $callback->({ error => ["Unable to resolve the tftpserver for $node"], errorcode => [1]});
                         return;
                     }
                     $nxtsrv = inet_ntoa($tmp_server);
                 }
                 unless ($nxtsrv) {
-                    $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                    $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1]});
                     return;
                 }
                 $guess_next_server = 0;
@@ -771,8 +773,9 @@ sub addrangedetection {
     my $begin;
     my $end;
     my $myip;
-    $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
-    
+    my @myipd = xCAT::NetworkUtils->my_ip_facing($net->{net});
+    unless ($myipd[0]) { $myip = $myipd[1];}
+
     # convert <xcatmaster> to nameserver IP
     if ($net->{nameservers} eq '<xcatmaster>')
     {
@@ -1020,7 +1023,9 @@ sub preprocess_request
     my $callback = shift;
     my $rc       = 0;
    
-
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose_on_off=0;
+	
     Getopt::Long::Configure("bundling");
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("no_pass_through");
@@ -1042,7 +1047,8 @@ sub preprocess_request
                      'n'  => \$opt{n},
                      'r'  => \$opt{r},
                      's=s'  => \$statements,  # $statements is declared globally
-                     'q'  => \$opt{q}
+                     'q'  => \$opt{q},
+                     'V'  => \$opt{V}     #>>>>>>>used for trace log>>>>>>>
                    ))
     {
         # If the arguements do not pass GetOptions then issue error message and return
@@ -1052,9 +1058,13 @@ sub preprocess_request
         return 1;
     }
 
+    #>>>>>>>used for trace log>>>>>>>
+    if($opt{V}){ $verbose_on_off=1;}
+	
     # check the syntax
     $rc = check_options($req, \%opt,$callback);
     if ( $rc ) {
+        xCAT::MsgUtils->trace($verbose_on_off,"e","dhcp: command syntax error");
         return [];
     }
     
@@ -1064,6 +1074,7 @@ sub preprocess_request
     if (defined($t_entry)) {
 	$snonly=$t_entry;
     }
+    xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: disjointdhcps=$t_entry");
     my @requests=();
     my $hasHierarchy=0;
 
@@ -1132,7 +1143,11 @@ sub preprocess_request
 			xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
 	}
-	}
+    }
+
+    #>>>>>>>used for trace log>>>>>>>
+    my $str_node=join(" ",@nodes);
+    xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: nodes are $str_node");
 
     # If service node and not -n option
     if (($snonly == 1) && (!$opt{n})) {
@@ -1193,6 +1208,8 @@ sub preprocess_request
 	}
     }
 
+    xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: hasHierarchy=$hasHierarchy");
+	
     if ( $hasHierarchy)
     {  
         #hierarchy detected, enforce more rigorous sanity
@@ -1228,6 +1245,9 @@ sub process_request
     my $rsp;
     #print Dumper($req);
 
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose_on_off=0;
+	
     Getopt::Long::Configure("bundling");
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("no_pass_through");
@@ -1247,7 +1267,8 @@ sub process_request
                      'n'  => \$opt{n},
                      'r'  => \$opt{r},
                      's=s'  => \$statements,  # $statements is declared globally
-                     'q'  => \$opt{q}
+                     'q'  => \$opt{q},
+                     'V'  => \$opt{V}     #>>>>>>>used for trace log>>>>>>>
                    ))
     {
         # If the arguements do not pass GetOptions then issue error message and return
@@ -1257,12 +1278,15 @@ sub process_request
         return 1;
      }
 
-
+    #>>>>>>>used for trace log>>>>>>>
+    if($opt{V}){ $verbose_on_off=1;}
+	
     # Check options again in case we are called from plugin and options have not been processed
     my $rc       = 0;
     $rc = check_options($req, \%opt,$callback);
 
     if ( $rc ) {
+        xCAT::MsgUtils->trace($verbose_on_off,"e","dhcp: there is invalid option in command");
         return [];
     }
 
@@ -1293,6 +1317,7 @@ sub process_request
     }
     
     if($isok == 0) { #do nothing if it is a service node, but not dhcpserver
+	xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: it is a service node, but not dhcpserver. Do nothing");
 	print "Do nothing\n";
 	return;  
     }
@@ -1386,7 +1411,9 @@ sub process_request
         #    return;
         } else {
 			$site_domain = $t_entry;
-		}
+	}
+		
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: sitelogservers=$sitelogservers sitentpservers=$sitentpservers sitenameservers=$sitenameservers site_domain=$site_domain");
     }
 
     @dhcpconf = ();
@@ -1397,6 +1424,7 @@ sub process_request
     flock($dhcplockfd,LOCK_EX);
     if ($::XCATSITEVALS{externaldhcpservers}) { 
         # do nothing if remote dhcpservers at this point
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: remote dhcpservers at this point, do nothing");
     } elsif ($opt{n}) {
         if (-e $dhcpconffile) {
             if ($^O eq 'aix') {
@@ -1426,10 +1454,12 @@ sub process_request
 
             my $bakname = "$dhcpconffile.xcatbak";
             rename("$dhcpconffile", $bakname);
+            xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: Renamed existing dhcp configuration file to  $dhcpconffile.xcatbak");
         }
     }
     else
     {
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: load dhcp config file $dhcpconffile");
         my $rconf;
         open($rconf, $dhcpconffile);    # Read file into memory
         if ($rconf)
@@ -1463,9 +1493,9 @@ sub process_request
     #       - include the site domain - if any
     my $nettab = xCAT::Table->new("networks");
     my @doms = $nettab->getAllAttribs('domain');
-    foreach(@doms){
-        if ($_->{domain}) {
-            push (@alldomains, $_->{domain});
+    foreach my $netdom (@doms){
+        if ($netdom->{domain}) {
+            push (@alldomains, $netdom->{domain}) unless grep(/^$netdom->{domain}$/, @alldomains);
         }
     }
     $nettab->close;
@@ -1574,10 +1604,15 @@ sub process_request
                 my $generatedpath = "$syspath/$dhcpver";
                 my $dhcpd_key = "DHCPDARGS";
 
-                if ($os =~ /sles/i) {
+                # For SLES11+ and RHEL7+ Operating system releases, the 
+                # dhcpd/dhcpd6 configuration is stored in the same file
+                my $os_ver = $os;
+                $os_ver =~ s/[^0-9.^0-9]//g;
+                if (($os =~ /sles/i && $os_ver >= 11) || 
+                    ($os =~ /rhels/i && $os_ver >= 7)) {
+
                     $dhcpd_key = "DHCPD_INTERFACE";
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
-                        # For SLES, the dhcpd6 "dhcpver" is going to modify the dhcpd conf file with key=DHCPD6_INTERFACE
                         $dhcpd_key = "DHCPD6_INTERFACE";
                         $generatedpath = "$syspath/dhcpd";
                     }
@@ -1637,8 +1672,8 @@ sub process_request
         }
 
         if ($usingipv6) {
-            # sles had dhcpd and dhcpd6 config in the dhcp file
-            if ($os =~ /sles/i) {
+            # sles11.3 and rhels7 has dhcpd and dhcpd6 config in the dhcp file
+            if ($os =~ /sles/i || $os =~ /rhels7/i) {
                 if ($missingfiles{dhcpd}) {
                     $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
                 }
@@ -1920,6 +1955,7 @@ sub process_request
     }
     writeout();
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: restart dhcp service");       
         if ( $^O eq 'aix')
         {
             restart_dhcpd_aix();
@@ -2255,7 +2291,8 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
-        $myip = xCAT::NetworkUtils->my_ip_facing($net);
+        my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
+        unless ($myipd[0]) {$myip = $myipd[1];}
         if ($nettab)
         {
             my $mask_formated = $mask;

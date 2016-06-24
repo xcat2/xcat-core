@@ -4,11 +4,13 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> [I<noderange>] [I<boot>|I<stat>|I<iscsiboot>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]|I<shell>|I<shutdown>]
+B<nodeset> I<noderange> [B<boot> | B<stat> | B<iscsiboot> | B<offline> | B<runcmd=bmcsetup> | B<osimage>[=I<imagename>] | B<shell> | B<shutdown>]
 
-B<nodeset> I<noderange> I<osimage=<imagename>> [I<--noupdateinitrd>] [I<--ignorekernelchk>]
+B<nodeset> I<noderange> B<osimage>[=I<imagename>] [B<--noupdateinitrd>] [B<--ignorekernelchk>]
 
-B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>]
+B<nodeset> I<noderange> B<runimage=>I<task>
+
+B<nodeset> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 B<Description>
 
@@ -32,7 +34,7 @@ B<nodeset> only sets the next boot state, but does not reboot.
 B<nodeset>  is  called  by rinstall and winstall and is also called by the
 installation process remotely to set the boot state back to "boot".
 
-A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of I<prescripts> table. You can run 'tabdump prescripts -d' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
+A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of I<prescripts> table. You can run 'tabdump -d prescripts' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
 
 
 =head1 B<Options>
@@ -47,7 +49,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 
 Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
-=item B<osimage>|B<osimage=<imagename>>
+=item B<osimage>|B<osimage=>I<imagename>
 
 Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
 
@@ -60,7 +62,7 @@ should be run to rebuild the initrd for new drivers injecting. This is used to i
 
 Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
 
-=item B<runimage>=<task>>
+=item B<runimage>=I<task>
 
 If you would like to run a task after deployment, you can define that task with this attribute.    
 
@@ -112,19 +114,17 @@ root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
 
 =head1 B<Examples>
 
-=over 3
+=over 2
 
-=item *
-
+=item 1.
 To setup to install mycomputeimage on the compute node group.
 
-nodeset compute osimage=mycomputeimage
+ nodeset compute osimage=mycomputeimage
 
-=item *
-
+=item 2.
 To run http://$master/image.tgz  after deployment:
 
-nodeset $node runimage=http://$MASTER/image.tgznodeset
+ nodeset $node runimage=http://$MASTER/image.tgz
 
 =back
 

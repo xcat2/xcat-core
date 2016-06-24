@@ -4,9 +4,9 @@ B<nodestat> - display the running status of each node in a noderange
 
 =head1 B<Synopsis>
 
-B<nodestat> [I<noderange>] [I<-m>|I<--usemon>] [I<-p>|I<--powerstat>] [I<-f>] [I<-u>|I<--updatedb>]
+B<nodestat> [I<noderange>] [B<-m>|B<--usemon>] [B<-p>|B<--powerstat>] [B<-f>] [B<-u>|B<--updatedb>]
 
-B<nodestat> [I<-h>|I<--help>|I<-v>|I<--version>]
+B<nodestat> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 B<Description>
 
@@ -37,7 +37,7 @@ The following is an example of the settings in the B<monsetting> table:
 
 Keywords to use:
 
-    apps -- a list of comma separated application names whose status will be queried. For how to get the status of each app, look for app name in the key filed in a different row.
+    apps -- a list of comma separated application names whose status will be queried. For how to get the status of each app, look for app name in the key field in a different row.
     port -- the application daemon port number, if not specified, use internal list, then /etc/services. 
     group -- the name of a node group that needs to get the application status from. If not specified, assume all the nodes in the nodelist table. To specify more than one groups, use group=a,group=b format.
     cmd -- the command that will be run locally on mn or sn.
@@ -86,7 +86,13 @@ Print help.
 
 =head1 B<Examples>
 
-1.  nodestat compute
+=over 2
+
+=item 1.  
+
+ nodestat compute
+
+Output is similar to:
 
  node1   sshd
  node2   sshd
@@ -94,7 +100,11 @@ Print help.
  node4   pbs
  node5   noping
 
-2.  nodestat compute -p
+=item 2.  
+
+ nodestat compute -p
+
+Output is similar to:
 
  node1   sshd
  node2   sshd
@@ -103,7 +113,12 @@ Print help.
  node5   noping(Shutting down)
 
 
-3. nodestat compute -u
+=item 3. 
+
+ nodestat compute -u
+
+Output is similar to:
+ 
  node1   sshd
  node2   sshd
  node3   ping
@@ -111,12 +126,18 @@ Print help.
  node5   noping
 
 
-4. nodestat compute -m
+=item 4. 
+
+ nodestat compute -m
+
+Output is similar to:
+
  node1   ping,sshd,ll,gpfs=ok
  node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
  node3   netboot
  node4   noping
 
+=back
 
 =head1 B<See> B<Also>
 

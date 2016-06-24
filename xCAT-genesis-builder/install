@@ -588,8 +588,6 @@ inst "$moddir/restart" "/bin/restart"
 inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
 inst "$moddir/dhclient-script" "/sbin/dhclient-script"
 inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
-inst "$moddir/98-mlx.rules" "/etc/udev/rules.d/98-mlx.rules"
-inst "$moddir/loadmlxeth" "/sbin/loadmlxeth"
 dracut_install /sbin/rpc.statd /usr/sbin/sm-notify /etc/netconfig rpcbind /etc/host.conf /usr/sbin/rpc.idmapd
 dracut_install ps free find #debug 
 inst_dir /var/lib/nfs 
@@ -623,4 +621,8 @@ dracut_install /lib/udev/rules.d/11-dm-lvm.rules
 dracut_install /lib/udev/rules.d/13-dm-disk.rules
 dracut_install /lib/udev/rules.d/69-dm-lvm-metad.rules
 dracut_install /lib/udev/rules.d/95-dm-notify.rules
+# The DB files for lspci
+dracut_install /usr/share/hwdata/pci.ids
+# The DB files for udevadm
+dracut_install /etc/udev/hwdb.bin
 dracut_install /lib64/libform.so.5 /lib64/libpanel.so.5 /lib64/libmenu.so.5 /lib64/libsysfs.so.2 /usr/sbin/iprconfig # iprconfig for IBM Power RAID configuration

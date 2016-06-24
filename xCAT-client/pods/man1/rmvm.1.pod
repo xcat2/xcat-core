@@ -1,22 +1,22 @@
 =head1 NAME
 
-B<rmvm> - Removes HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
+B<rmvm> - Removes HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 
-I<rmvm [-h| --help]>
+B<rmvm [-h| --help]>
 
-I<rmvm [-v| --version]>
+B<rmvm [-v| --version]>
 
-I<rmvm [-V| --verbose] noderange [-r] [--service]>
+B<rmvm [-V| --verbose]> I<noderange> B<[-r] [--service]>
 
-=head2 For KVM and Vmware:
+=head2 For KVM and VMware:
 
-I<rmvm [-p] [-f]>
+B<rmvm [-p] [-f]> I<noderange>
 
 =head2 PPC (using Direct FSP Management) specific:
 
-I<rmvm noderange>
+B<rmvm [-p]> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -27,19 +27,17 @@ For DFM-managed (short For Direct FSP Management mode) normal power machines, on
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
-B<-v>          Command Version.
+B<-v|--version>       Command Version.
 
-B<-V>          Verbose output.
+B<-V|--verbose>       Verbose output.
 
 B<-r>          Retain the data object definitions of the nodes.
 
 B<--service>   Remove the service partitions of the specified CECs.
 
-B<-p>          Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.  
-
-B<-p|--part>   Remove the specified partiton on normal power machine.
+B<-p>          KVM: Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. PPC: Remove the specified partiton on normal power machine.
 
 B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested. 
 
@@ -53,15 +51,15 @@ B<-f>          Force remove the VM, even if the VM appears to be online.  This w
 
 1. To remove the HMC-managed partition lpar3, enter:
 
-I<rmvm lpar3>
+ rmvm lpar3
 
 Output is similar to:
 
-lpar3: Success
+ lpar3: Success
 
 2. To remove all the HMC-managed partitions associated with CEC cec01, enter:
 
-I<rmvm cec01>
+ rmvm cec01
 
 Output is similar to:
 
@@ -71,7 +69,7 @@ Output is similar to:
 
 3. To remove the HMC-managed service partitions of the specified CEC cec01 and cec02, enter:
 
-I<rmvm cec01,cec02 --service>
+ rmvm cec01,cec02 --service
 
 Output is similar to:
 
@@ -80,15 +78,15 @@ Output is similar to:
 
 4. To remove the HMC-managed partition lpar1, but retain its definition, enter:
 
-I<rmvm lpar1 -r>
+ rmvm lpar1 -r
 
 Output is similar to:
 
-lpar1: Success
+ lpar1: Success
 
 5. To remove a zVM virtual machine:
 
-I<rmvm gpok4>
+ rmvm gpok4
 
 Output is similar to:
 
@@ -97,7 +95,7 @@ Output is similar to:
 
 6. To remove a DFM-managed partition on normal power machine:
 
-I<rmvm lpar1>
+ rmvm lpar1
 
 Output is similar to:
 

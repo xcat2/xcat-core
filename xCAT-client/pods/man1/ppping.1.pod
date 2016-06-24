@@ -64,7 +64,9 @@ Display the installed version of xCAT.
 
 =item 1.
 
-ppping all -q
+ ppping all -q
+
+Output is similar to:
 
  blade7: node2: noping
  blade8: node2: noping
@@ -74,7 +76,9 @@ ppping all -q
 
 =item 2.
 
-ppping node1,node2 -i ib0,ib1,ib2,ib3
+ ppping node1,node2 -i ib0,ib1,ib2,ib3
+
+Output is similar to:
 
  node1: pinged all nodes successfully on interface ib0
  node1: pinged all nodes successfully on interface ib1

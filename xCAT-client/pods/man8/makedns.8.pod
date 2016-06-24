@@ -4,11 +4,11 @@ B<makedns> - sets up domain name services (DNS).
 
 =head1 SYNOPSIS
 
-B<makedns> [I<-h>|I<--help>]
+B<makedns> [B<-h>|B<--help>]
 
-B<makedns> [-V|--verbose] [-e|--external] [I<-n>|I<--new>] [I<noderange>]
+B<makedns> [B<-V>|B<--verbose>] [B<-e>|B<--external>] [B<-n>|B<--new>] [I<noderange>]
 
-B<makedns> [-V|--verbose] [-e|--external] [I<-d>|I<--delete> I<noderange>]
+B<makedns> [B<-V>|B<--verbose>] [B<-e>|B<--external>] [B<-d>|B<--delete> I<noderange>]
 
 =head1 DESCRIPTION
 
@@ -63,31 +63,27 @@ A set of comma delimited node names and/or group names. See the "noderange" man 
 
 =head1 Examples
 
-=over 6
+=over 2
 
-=item 1
-
+=item 1.
 To set up DNS for all the hosts in /etc/hosts file.
 
-B<makedns>
+ makedns
 
-=item 2
-
+=item 2.
 To set up DNS for I<node1>.
 
-B<makedns> I<node1>
+ makedns node1
 
-=item 3
-
+=item 3.
 To create a new named configuration and db files for all hosts in /etc/hosts.
 
-B<makedns> B<-n>
+ makedns -n
 
-=item 4
-
+=item 4.
 To delete the DNS records for I<node1>.
 
-B<makedns> B<-d> I<node1>
+ makedns -d node1
 
 =back
 

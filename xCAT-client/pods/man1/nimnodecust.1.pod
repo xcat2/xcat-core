@@ -6,7 +6,7 @@ B<nimnodecust> - Use this xCAT command to customize AIX/NIM standalone machines.
 
 B<nimnodecust [-h|--help ]>
 
-B<nimnodecust [-V] -s lpp_source_name [-p packages] [-b installp_bundles] noderange [attr=val [attr=val ...]]>
+B<nimnodecust [-V] -s> I<lpp_source_name> [B<-p> I<packages>] [B<-b> I<installp_bundles>] I<noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -28,11 +28,7 @@ A bundle file contains a list of package names.  The RPMs must have a prefix of 
 
 To create a NIM installp_bundle definition you can use the "nim -o define" operation.  For example, to create a definition called "mypackages" for a bundle file located at "/install/nim/mypkgs.bnd" you could issue the following command. 
 
-=over 5
-
-"nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages".
-
-=back
+ nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages
 
 See the AIX documantation for more information on using installp_bundle files.
 
@@ -42,24 +38,24 @@ The xCAT nimnodecust command will automatically handle the distribution of the p
 
 =over 10
 
-=item B<attr=val [attr=val ...]>
+=item I<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify
 additional values that can be passed to the underlying NIM commands, ("nim -o cust..."). See the NIM documentation for valid "nim" command line options. 
 
-=item B<-b installp_bundle_names>
+=item B<-b> I<installp_bundle_names>
 
-	A comma separated list of NIM installp_bundle names.
+A comma separated list of NIM installp_bundle names.
 
 =item B<-h |--help>
 
 Display usage message.
 
-=item B<-p package_names>
+=item B<-p> I<package_names>
 
 A comma-separated list of software packages to install.  Packages may be RPM or installp.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -74,11 +70,9 @@ Verbose mode.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -87,19 +81,13 @@ An error has occurred.
 
 1) Install the installp package "openssh.base.server" on an xCAT node named "node01".  Assume that the package has been copied to the NIM lpp_source resource called "61lppsource".  
 
-=over 5
+ nimnodecust -s 61lppsource -p openssh.base.server node01
 
-B<nimnodecust -s 61lppsource -p openssh.base.server node01>
-
-=back
 
 2) Install the product software contained in the two bundles called "llbnd" and "pebnd" on all AIX nodes contained in the xCAT node group called "aixnodes".  Assume that all the software packages have been copied to the NIM lpp_source resource called "61lppsource".
 
-=over 5
+ nimnodecust -s 61lppsource -b llbnd,pebnd  aixnodes
 
-B<nimnodecust -s 61lppsource -b llbnd,pebnd  aixnodes>
-
-=back
 
 =head1 FILES
 

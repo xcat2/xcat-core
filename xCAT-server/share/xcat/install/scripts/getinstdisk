@@ -1,0 +1,216 @@
+#!/bin/sh
+
+#-----------------------------------------------------------
+#
+# Get proper disk to install OS
+#
+# 1. Check all partitions list in /proc/partitions, whether 
+#    there is disk had OS installed. If there is, add it to
+#    the disk array.
+# 2. If there is disk had OS installed, check disks list 
+#    generated in Step 1. Else, check all disks get from 
+#    /proc/partitions file. Sort them by WWN/PATH and driver 
+#    type, select the first one.
+# 3. Select the default one: /dev/sda.   
+#
+# Output: /tmp/xcat.install_disk
+#
+#-----------------------------------------------------------
+
+install_disk=""
+install_disk_file="/tmp/xcat.install_disk"
+
+tmpdir="/tmp/xcat.getinstalldisk"
+mkdir -p $tmpdir
+
+has_awk=$(find /usr/* -name "awk")
+
+utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
+
+tmpfile="$tmpdir/getinstalldisk_"
+
+if [ -z "$install_disk" ]; then
+
+    echo "[get_install_disk]Information from /proc/partitions:"
+    cat /proc/partitions
+    echo ""
+
+    # Get all partitions and disks from /proc/partitions file
+    if [ -z "$has_awk" ]; then
+        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h|v]d.*$")
+    else
+        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h|v]d.*$")
+    fi    
+
+    # Classify entries by DEVTYPE
+    for entry in $entries; do
+        if [ -z "$has_awk" ]; then
+            dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | cut -d "=" -f2 | $utolcmd)
+        else
+            dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | awk -F = '{print $2}' | $utolcmd)
+        fi        
+ 
+        if [ "$dev_type" == "disk" ]; then
+            disks=$disks"$entry "
+        elif [ "$dev_type" == "partition" ]; then
+            partitions=$partitions"$entry "
+        fi
+    done
+
+    mount_dir=$tmpdir"/xcat.getinstalldisk.mount"
+    mkdir -p $mount_dir;
+
+    disk_array=""
+
+    for partition in $partitions; do
+        echo "[get_install_disk]Check the partition $partition."
+
+        if [ -e "$tmpfile${partition%%[0-9]*}" ]; then
+            echo "[get_install_disk]    The disk ${partition%%[0-9]*} had OS installed, check next partition."
+            continue
+        fi
+
+        # Get partition's fs_type
+        if [ -z "$has_awk" ]; then
+            fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | cut -d "=" -f2)
+        else
+            fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | awk -F = '{print $2}')
+        fi
+
+        rc=255
+
+        # Mount partition based on fs type, if fs_type is "swap", do not mount it, jump to next partition.
+        if [ -z "$fs_type" ]; then
+            mount /dev/$partition $mount_dir
+            rc=$?
+        elif [ "$fs_type" != "swap" ]; then
+            mount -t $fs_type /dev/$partition $mount_dir
+            rc=$?
+        fi
+
+        # Check whether mount successfully
+        if [ $rc -eq 0 ]; then
+            echo "[get_install_disk]    Partition $partition mount success."
+
+            ker_dir=$mount_dir            
+            if [ -d "$mount_dir/boot" ]; then
+                ker_dir="$mount_dir/boot"
+            fi
+
+            # If there is kernel file, add partition's disk into disk_array
+            # It seems the kernel file in ubuntu and sles are named like vmlinux, but in RH it is called vmlinuz
+            # To check both vmlinux and vmlinuz, use regular expression "vmlinu*" to match them
+            for i in $ker_dir/vmlinu*; do
+                disk_part=${partition%%[0-9]*}
+                touch "$tmpfile$disk_part"
+                disk_array=$disk_array"$disk_part "
+                echo "[get_install_disk]    The partition $partition has kernel file."
+                break
+            done
+             
+            umount -l $mount_dir || echo "[get_install_disk]    $partition umount failed."
+        else
+            echo "[get_install_disk]    Partition $partition mount failed or the partition is swap."
+        fi
+    done
+
+    # If disk_array is not empty, make disks equal disk_array for next step to sort
+    if [ "$disk_array" ]; then
+        disks=$disk_array    
+        echo "[get_install_disk]The disks which have kernel:"
+        echo "[get_install_disk]    $disks"
+        echo ""
+    fi
+
+    rmdir $mount_dir;
+    
+    for file in $tmpfile*; do
+        rm $file;
+    done
+    
+    has_wwn=0
+    has_path=0
+    file_pre=""
+    disk_data=""
+
+    # Check disks which had installed OS, or check all disks in /proc/partitions
+    for disk in $disks; do
+        # Get disk's information: WWN, PATH and DRIVER
+        disk_info=$(udevadm info --query=property --name=$disk)
+        output_for_wwn=$(IFS= ;echo $disk_info | grep '\<ID_WWN\>' | cut -d "=" -f2)
+        disk_wwn=$(echo $output_for_wwn | $utolcmd)
+        output_for_path=$(IFS= ;echo $disk_info | grep DEVPATH | cut -d "=" -f2)
+        disk_path=$(echo $output_for_path | $utolcmd)
+        disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
+                    \head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | $utolcmd)
+
+        echo "[get_install_disk]The disk $disk information: "
+        echo "[get_install_disk]    disk_wwn=$disk_wwn"
+        echo "[get_install_disk]    disk_path=$disk_path"
+        echo "[get_install_disk]    disk_driver=$disk_driver"
+
+        # Check whether there is WWN, PATH information
+        if [ "$disk_wwn" ]; then
+            has_wwn=1
+            file_pre="wwn"
+            disk_data=$disk_wwn
+        elif [ $has_wwn -eq 1 ]; then
+            echo "[get_install_disk]    The disk $disk has no wwn info."
+            echo "[get_install_disk]    There is other disk has wwn info, so don't record this disk."
+            continue;
+        elif [ "$disk_path" ]; then
+            has_path=1
+            file_pre="path"
+            disk_data=$disk_path
+        elif [ $has_path -eq 1 ]; then        
+            echo "[get_install_disk]    The disk $disk has no wwn or path info."
+            echo "[get_install_disk]    There is other disk has path info, so don't record this disk."
+            continue;
+        else
+           file_pre="other"
+           disk_data=""
+        fi
+
+        # Sort disks by DRIVER type
+        case "$disk_driver" in
+        "ata_piix"*|"PMC MaxRAID"|"ahci"|"megaraid_sas")
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""firstchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre firstchoicedisks"
+            ;;
+        "mptsas"|"mpt2sas"|"mpt3sas")
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""secondchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre secondchoicedisks"
+            ;;
+        *)
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""thirdchoicedisks"
+            echo "[get_install_disk]    Add disk: $disk $disk_data into $file_pre thirdchoicedisks"
+            ;;
+        esac
+    done
+
+    for seq in first second third; do
+        if [ -s $tmpfile$file_pre${seq}choicedisks ]; then
+            install_file="$tmpfile$file_pre${seq}choicedisks"
+            break
+        fi
+    done
+
+    if [ "$install_file" ] && [ -s $install_file ]; then
+        install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -k 2 -b | cut -d " " -f1 | head -n 1)
+        echo "[get_install_disk]The install_disk is $install_disk by sorting $file_pre and DRIVER."
+    fi
+    
+    for file in $tmpfile*; do
+        rm $file;
+    done
+fi
+rm -rf $tmpdir;
+
+# Cannot find proper disk for OS install, select the default one "/dev/sda"
+if [ -z "$install_disk" ]; then
+    install_disk="/dev/sda"
+    echo "[get_install_disk]The default install_disk is $install_disk."
+fi
+
+# Output the result to $install_disk_file
+echo $install_disk > $install_disk_file

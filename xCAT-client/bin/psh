@@ -12,6 +12,7 @@ use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 #use Data::Dumper;
+use xCAT::Utils;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
@@ -30,9 +31,13 @@ if (!GetOptions(
   'f|fanout=s' => \$fanout,
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   'h|help' => \$help,
-  ) || $help || scalar(@ARGV)<2 ) {
-  print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] [--nonodecheck] [-t <timeout value in seconds>] <noderange> <command>\n";
-  exit;
+  "v|version"  => \$::VERSION,
+  ) || scalar(@ARGV)<2 ) {
+  if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+  if ($help) {
+    print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] [--nonodecheck] [-t <timeout value in seconds>] <noderange> <command>\n";
+    exit;
+  }
 }
 my %nodehdl;
 my $xcathost='localhost:3001';
@@ -55,13 +60,20 @@ if ($::NONODECHECK) {
 else {
   my @user = getpwuid($>);
   my $homedir=$user[7];
+  my %sslargs;
+  if (defined($ENV{'XCATSSLVER'})) {
+      $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+  }
+
   my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
-                SSL_verify_mode => SSL_VERIFY_MODE,
+                SSL_verify_mode => SSL_VERIFY_PEER,
+                SSL_verifycn_scheme => "none",
+                %sslargs,
              );
   die "Connection failure: $!\n" unless ($client);
   my %cmdref = (command => 'noderange', noderange => $noderange);

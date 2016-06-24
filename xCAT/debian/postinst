@@ -20,12 +20,12 @@ set -e
 
 case "$1" in
     configure)
-         #make dir for the current pid
-         mkdir -p /var/run/xcat
-	 cp -f /opt/xcat/share/xcat/scripts/xHRM /install/postscripts/
-	. /etc/profile.d/xcat.sh
-	if [ -f /tmp/xCAT_upgrade.tmp ]
-	then
+        # Make dir for the current pid
+        mkdir -p /var/run/xcat
+        cp -f /opt/xcat/share/xcat/scripts/xHRM /install/postscripts/
+        . /etc/profile.d/xcat.sh
+        if [ -f /tmp/xCAT_upgrade.tmp ]
+        then
             if [ -r "/tmp/xcat/installservice.pid" ]; then
                 mv /tmp/xcat/installservice.pid /var/run/xcat/installservice.pid
             fi
@@ -35,16 +35,22 @@ case "$1" in
             if [ -r "/tmp/xcat/mainservice.pid" ]; then
                 mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
             fi
-	    xcatconfig -u
-	    rm /tmp/xCAT_upgrade.tmp
-	else
-	    xcatconfig -i -d -s
-	fi
+            xcatconfig -u
+            rm /tmp/xCAT_upgrade.tmp
+        else
+            xcatconfig -i -d -s
+        fi
 
-#        [ -e /etc/apache2/conf-enabled/xcat.conf ] && rm /etc/apache2/conf-enabled/xcat.conf
-         ln -s -f /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
+        ln -s -f /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
 
-	/etc/init.d/apache2 restart
+        /etc/init.d/apache2 restart
+
+        # Let rsyslogd perform close of any open files
+        if [ -e /var/run/rsyslogd.pid ]; then
+            kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
+        elif [ -e /var/run/syslogd.pid ]; then
+            kill -HUP $(</var/run/syslogd.pid) >/dev/null 2>&1 || :
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

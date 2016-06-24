@@ -200,3 +200,11 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
+xcatd_start
+xcatd_stop
+xcatd_restart
+run_command_with_XCATBYPASS
+disable_root_permission_in_policy_table
+assign_certain_command_permission
+sles_migration1
+sles_migration2

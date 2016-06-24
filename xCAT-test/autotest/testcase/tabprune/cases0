@@ -39,15 +39,25 @@ end
 
 start:tabprune_i_auditlog
 description:remove the records whose recid is less than the input recid number
+cmd:chtab key=auditskipcmds site.value=
+check:rc=0
+cmd:lsdef -t site
+cmd:lsdef -t site
+cmd:lsdef -t site
+cmd:sleep 3
 cmd:n1=`lsdef -t auditlog|sed -n 2p|awk '{print $1}'`;tabprune auditlog -i $n1;n1=$(($n1-1));lsdef -t auditlog -l $n1
 check:rc=0
 check:output=~tabprune of auditlog complete
 check:output=~Could not get xCAT object definitions
+cmd:chtab key=auditskipcmds site.value=ALL
+check:rc=0
 end
 
 start:tabprune_V_n_auditlog
 description:remove 3 records from the auditlog table and display the remove records
 description:tabprune auditlog -V -n 3
+cmd:chtab key=auditskipcmds site.value=
+check:rc=0
 cmd:lsdef -t site
 cmd:lsdef -t site
 cmd:lsdef -t site
@@ -57,5 +67,7 @@ check:output=~4
 cmd:cat /tmp/result.tmp
 check:output=~recid,audittime
 cmd:rm /tmp/result.tmp
+cmd:chtab key=auditskipcmds site.value=ALL
+check:rc=0
 end
 

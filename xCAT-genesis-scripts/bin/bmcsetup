@@ -12,412 +12,578 @@
 #     0x08 0x00 0x49 0x4e 0x54 0x45 0x4c
 #     0x08 0x04
 #
+log_label="xcat.genesis.bmcsetup"
+
+TIMEOUT=15
+
+#
+# Function: cold_reset_bmc
+#
+# Cold reset the BMC for certain servers
+#    Product ID: 309   - x3755 M4 (8722)
+#    Product ID: 43707 - IBM Power S822LC and S812LC
+#
+# Otherwise the BMC will not respond to ping after running the ipmitool commands in this script
+#
+function cold_reset_bmc() { 
+    if [ -z $XPROD ]; then 
+        logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        exit 1
+    fi
+
+    if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
+        if [ "$XPROD" = "43707" ]; then
+            # OpenPower SPECIFIC, the OpenPower machines with AMI BMC should NOT need a 
+            # reset after applying ipmitool commands.  However, it seems there is a problem with 
+            # the BMC where after 15 seconds, it stops responding.  To work around, sleep 30
+            # seconds before issuing the reset of the BMC.
+            sleep 30
+        fi
+        logger -s -t $log_label -p local4.info "Resetting BMC ..."
+        ipmitool mc reset cold
+
+        logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
+        if [ "$XPROD" = "43707" ]; then
+            # OpenPower SPECIFIC, check the BMC with the following raw command to
+            # make sure that the bmc is really in a "ready" state before continuing 
+            SLEEP_INTERVAL=3
+            MAX_ITERATION=100
+            tries=0
+            while [ $tries -lt ${MAX_ITERATION} ] ; do
+                sleep ${SLEEP_INTERVAL}
+                ret=`ipmitool raw 0x3a 0x0a 2> /dev/null`
+                if [ "$ret" == " 00" ]; then
+                    return
+                fi
+                tries=$(($tries+1))
+            done
+            TOTAL_SEC=$((${SLEEP_INTERVAL} * ${MAX_ITERATION}))
+            logger -s -t $log_label -p local4.error "ERROR, After waiting ${TOTAL_SEC} seconds, the BMC is not in a ready state."
+        else
+            # for Non OpenPower servers, just sleep for some set time.
+            sleep 15 
+
+            TRIES=0
+            # Get the LAN information
+            while ! ipmitool lan print $LANCHAN > /dev/null; do
+                sleep 3
+                let TRIES=TRIES+1
+                if [ $TRIES -gt $TIMEOUT ]; then break; fi
+            done
+        fi 
+    fi
+}
+
+#
+# Function snooze()
+#
+# The purpose of this is to work around the issue with OpenPower BMCs after 
+# making a change to network configuration, sleep 30 to be sure the changes apply.
+#
+function snooze() { 
+    if [ -z $XPROD ]; then 
+        logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        exit 1
+    fi
+
+    if [ "$XPROD" = "43707" ]; then
+        # For OpenPower Machines 
+        logger -s -t $log_label -p local4.debug "OpenPower, snooze for 30 seconds..."
+        sleep 30
+    else
+        logger -s -t $log_label -p local4.debug "snooze for 1 second..."
+        sleep 1
+    fi
+}
+
 allowcred.awk &
 CREDPID=$!
 sleep 5
-modprobe ipmi_si
-modprobe ipmi_devintf
 IPCFGMETHOD=static
 while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
     while ! getipmi
     do
-        echo "Retrying retrieval of IPMI settings from server"
+        logger -s -t $log_label -p local4.info "Retrying retrieval of IPMI settings from server"
     done
-    TIMEOUT=15
     BMCIP=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCVLAN=`grep taggedvlan /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    if [ -z "$BMCVLAN" ]; then BMCVLAN=off; fi
+    if [ -z "$BMCVLAN" ]; then 
+        BMCVLAN=off;
+    fi
     BMCGW=`grep gateway /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCNM=`grep netmask /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCUS=`grep username /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCPW=`grep password /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     IPCFGMETHOD=`grep ipcfgmethod /tmp/ipmicfg.xml|awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     if [ -z "$IPCFGMETHOD" ]; then
-	IPCFGMETHOD="static"
+        IPCFGMETHOD="static"
     fi
     if [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; then
-        echo "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
+        logger -s -t $log_label -p local4.err "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
         sleep 15
     fi
 done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
+logger -s -t $log_label -p local4.debug "BMC IP=$BMCIP, NETMASK=$BMCNM, GATEWAY=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW" 
+logger -s -t $log_label -p local4.info "NUMBMCS=$NUMBMCS"
+#
+# Get the BMC Version and Manufacturer ID
+#
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
+logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG"
+
+# Get the BMC Product ID
+XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+logger -s -t $log_label -p local4.info "XPROD=$XPROD"
+
+#
+# IPMIMFG=2 = IBM
+# IPMIMFG=0 = OpenPower 
+#
 if [ "$IPMIMFG" == 2 ]; then #IBM
-    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+        logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
         if [ ! -z "$BMCPORT" ]; then
-	    let idev=0
-	    IFS=','
-	    for p in $BMCPORT; do
-            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-            	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
+            let idev=0
+            IFS=','
+            for p in $BMCPORT; do
+                # Set the LAN Configuration Parameters (OEM)
+                ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                # Set the PEF Configuration Parameters (Platform Event Filtering)
+                ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                 while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                     sleep 1
+                    # Get the LAN Configuration Parameters (OEM)
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
-	    	let idev=idev+1
-	    done
-	    unset IFS
+                let idev=idev+1
+            done
+            unset IFS
         fi
     elif [ "$XPROD" == "291" ]; then
         LOCKEDUSERS=1
     else
+        # Get a ID for the server
         IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
+        logger -s -t $log_label -p local4.info "IBMFAM is $IBMFAM"
         if [ "$IBMFAM" == "59554f4f" ]; then
             BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
-		    IFS=','
-		    for p in $BMCPORT; do
-	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                let idev=0
+                IFS=','
+                for p in $BMCPORT; do
+                    ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                    logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                     while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
-		    	    let idev=idev+1
-		    done
-		    unset IFS
+                    let idev=idev+1
+                done
+                unset IFS
             fi
         fi
     fi
-elif [ "$IPMIMFG" == 20301 ] ; then
-    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
+    logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
     if [ $IBMVPDV -eq 2 ]; then
-	ISITE=1;
+        ISITE=1;
     fi
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+        logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
         if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
-		    IFS=','
-		    for p in $BMCPORT; do
-	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-                    # after this change, we need to watch and wait to see that it
-                    # actually takes effect.  On port change, the service processor
-                    # does not migrate the network configuration over
-                    # so we might be halfway through setting up when the net config 
-                    # reverts to dhcp then static, which setting a static ip for is
-                    # considered invalid
+            let idev=0
+            IFS=','
+            for p in $BMCPORT; do
+                unset IFS
+                ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                IFS=','
+                # after this change, we need to watch and wait to see that it
+                # actually takes effect.  On port change, the service processor
+                # does not migrate the network configuration over
+                # so we might be halfway through setting up when the net config 
+                # reverts to dhcp then static, which setting a static ip for is
+                # considered invalid
+                CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
+                while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
+                    sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
-                        sleep 1
-                        CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    done
-
-		    	let idev=idev+1
-		    done
-		    unset IFS
+                done
+                let idev=idev+1
+            done
+            unset IFS
         fi
 elif [ "$IPMIMFG" == "47488" ]; then
-        LOCKEDUSERS=1
+    LOCKEDUSERS=1
+elif [ "$IPMIMFG" == "674" ]; then # DELL
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "0" ]; then # dedicated
+        ipmitool delloem lan set dedicated &>/dev/null
+    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4"]; then # shared
+        ipmitool delloem lan set shared &>/dev/null
+        ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
+        ipmitool delloem lan set shared with failover all loms &>dev/null
+    fi
 fi
-echo -n "Auto detecting LAN channel..."
 
 while [ -z "$LANCHAN" ]; do 
-	for TLANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
-	   if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; 
-	   then 
-		LANCHAN=$TLANCHAN
-	        break; 
-	    fi; 
-	    echo -n "."
-	done
-	if [ -z "$LANCHAN" ]; then
-		echo "Unable to detect lan channel, retrying in 10 seconds";
-		sleep 10
-	fi
+    logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
+    for TLANCHAN in {1..16}; do
+        # Try to get the channel information; then get the MAC which is used for the channel
+        if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
+            LANCHAN=$TLANCHAN
+            break; 
+        fi; 
+        echo -n "."
+    done
+    if [ -z "$LANCHAN" ]; then
+        logger -s -t $log_label -p local4.info "Unable to detect lan channel, retrying in 10 seconds"
+        sleep 10
+    fi
 done
-echo "Detected LAN channel $LANCHAN"
+logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
         
 let idev=NUMBMCS
 if [ $IPCFGMETHOD="static" ]; then
-	while [ $idev -gt 0 ]; do
-		let idev=idev-1
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-	done
-	let idev=0
-	for b in $BMCIP; do
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-		let idev=idev+1
-	done
-	let idev=0
-	for m in $BMCNM; do
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-		let idev=idev+1
-	done
-	TRIES=0
-	if [ ! -z "$BMCGW" ]; then
-	    let idev=0
-	    for g in $BMCGW; do
-	    	TRIES=0
-		    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
-		        sleep 1
-		        let TRIES=TRIES+1
-		        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		    done
-	            let idev=idev+1
-	    done
-	    TRIES=0
-	fi
-else
-	 let idev=NUMBMCS
-	 while [ $idev -gt 0 ]; do
-                let idev=idev-1
-                TRIES=0
-                while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
-                    sleep 1
-                    let TRIES=TRIES+1
-                    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-                done
+    while [ $idev -gt 0 ]; do
+        let idev=idev-1
+        TRIES=0
+        # Set the channel to use STATIC IP address 
+        while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+            snooze
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
         done
+    done
+    let idev=0
+    for b in $BMCIP; do
+        TRIES=0
+        # Set the IP for the current channel
+        while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+            snooze
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
+        done
+        let idev=idev+1
+    done
+    let idev=0
+    for m in $BMCNM; do
+        TRIES=0
+        # Set the NETMASK for the current channel 
+        while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+            snooze
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
+        done
+        let idev=idev+1
+    done
+
+    if [ ! -z "$BMCGW" ]; then
+        let idev=0
+        for g in $BMCGW; do
+            TRIES=0
+            # Set the GATEWAY for the current channel 
+            while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+                snooze
+                let TRIES=TRIES+1
+                if [ $TRIES -gt $TIMEOUT ]; then
+                    break;
+                fi
+            done
+            let idev=idev+1
+        done
+    fi
+else
+    let idev=NUMBMCS
+    while [ $idev -gt 0 ]; do
+        let idev=idev-1
+        TRIES=0
+        # Set the method to get IP for the current channel, if required.
+        while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
+            snooze
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then 
+                break;
+            fi
+        done
+    done
 fi
 
 let idev=0
 for b in $BMCVLAN; do
-	TRIES=0
-	while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
-	    sleep 1
-	    let TRIES=TRIES+1
-	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-	done
-	let idev=idev+1
+    TRIES=0
+    # Set VLAN for the current channel 
+    while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+        snooze
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then 
+            break;
+        fi
+    done
+    let idev=idev+1
+done
+
+# After network commands are issued, pause to allow the BMC to apply (OpenPower)
+snooze 
+
+let idev=NUMBMCS-1
+for user in $BMCUS; do
+    if [ "$user" = "" ]; then 
+        continue
+    fi
+    DISABLEUSERS="1 2 3 4"
+    if [ ! -z "$LOCKEDUSERS" ]; then
+        # Get the User Slots
+        USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
+        if [ -z "$USERSLOT" ]; then
+            USERSLOT=4
+        fi
+    else
+        USERSLOT=2
+    fi
+    if [ "$ISITE" = 1 ]; then
+        allowcred.awk &
+        CREDPID=$!
+        while ! remoteimmsetup
+        do
+            logger -s -t $log_label -p local4.info "Waiting for xCAT remote configuration of service processor via CMM.."
+        done
+        kill $CREDPID
+    fi
+
+    # Get the specified user
+    CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
+    DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
+    logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
+    for userid in $DISABLEUSERS; do
+        TRIES=0
+        # Disable the non-specified user 
+        while ! ipmitool -d $idev user disable $userid; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+    done
+
+    TRIES=0
+    # Enable the specified user
+    while ! ipmitool -d $idev user enable $USERSLOT; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+
+    TRIES=0
+    # Last param in ipmitool user priv is the channel to set it on.
+    # Penguin boxes are all channel 2
+    #
+    # Get privilege for the specified user
+    #
+    CURRPRIV=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $6}'`
+    logger -s -t $log_label -p local4.info "CURRPRIV=$CURRPRIV"
+    if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
+        # Set the ADMIN privilege for the specified user
+        while ! ipmitool -d $idev user priv $USERSLOT 4 $LANCHAN; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+    fi
+
+    TRIES=0
+    # Enable the channel link for the specified user
+    while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+
+    TRIES=0
+    if [ "$CURRENTUSER" != "$user" ]; then
+        # Change the user name, if necessary
+        while ! ipmitool -d $idev user set name $USERSLOT $user; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+    fi
+    let idev=idev-1
 done
 
 let idev=NUMBMCS-1
-for bmcu in $BMCUS; do
-    if [ "$bmcu" = "" ]; then continue; fi
-DISABLEUSERS="1 2 3 4"
-if [ ! -z "$LOCKEDUSERS" ]; then
-    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
-    if [ -z "$USERSLOT" ]; then
-        USERSLOT=4
-    fi
-else
-    USERSLOT=2
-fi
-if [ "$ISITE" = 1 ]; then
-    allowcred.awk &
-    CREDPID=$!
-    while ! remoteimmsetup
-    do
-        echo "Waiting for xCAT remote configuration of service processor via CMM.."
-    done
-    kill $CREDPID
-fi
-CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
-DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
-for user in $DISABLEUSERS; do
-    while ! ipmitool -d $idev user disable $user; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    TRIES=0
-done
-TRIES=0
-while ! ipmitool -d $idev user enable $USERSLOT; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-# Last param in ipmitool user priv is the channel to set it on.
-# Penguin boxes are all channel 2
-CURRPRIV=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $6}'`
-if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
-    while ! ipmitool -d $idev user priv $USERSLOT 4 $LANCHAN; do
-        sleep 1
-        let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    TRIES=0
-fi
-TRIES=0
-while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-if [ "$CURRENTUSER" != "$bmcu" ]; then
-    while ! ipmitool -d $idev user set name $USERSLOT $bmcu; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-fi
-let idev=idev-1
-done
-let idev=NUMBMCS-1
 for bmcp in $BMCPW; do
     if [ "$bmcp" = "" ]; then continue; fi
-TRIES=0
-while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-echo "Set up following user table: "
-ipmitool -d $idev user list $LANCHAN
-let idev=idev-1
+
+    TRIES=0
+    # Set the password for the specified user 
+    while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+
+    logger -s -t $log_label -p local4.info "Set up following user table: "
+    TRIES=0
+    # Display the user list 
+    ipmitool -d $idev user list $LANCHAN
+    let idev=idev-1
 done
 
 let idev=NUMBMCS
 while [ $idev -gt 0 ]; do
-let idev=idev-1
+    let idev=idev-1
 
-
-echo -n "Enabling Channel $LANCHAN: "
-while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-TRIES=0
-
-echo -n "Enabling ARP responses: "
-while ! ipmitool -d $idev lan set $LANCHAN arp respond on > /dev/null; do
-    sleep 1
-    let TRIES=TRIES+1
-    echo -n .
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-TRIES=0
-
-echo -n "Enabling IPMI v 1.5 MD5 LAN access:"
-while ! ipmitool -d $idev lan set $LANCHAN auth admin md5 > /dev/null; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-TRIES=0
-if [ ! "$IPMIVER" == "1.5"  ]; then 
-    echo -n "Enabling IPMI v 2.0 LAN access: "
-    #the following goals:
-    #disable cipher suite 0 (if present, avoid password bypass)
-    #disable cipher suite 1 (if present, to avoid weaking Kg if used)
-    #enable cipher suite 2 (scenarios without perl Rijndael)
-    #enable cipher suite 3
-    #ignore the rest
-    ZEROIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '%0$'|sed -e 's/:.*//')
-    ONEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^1$'|sed -e 's/:.*//')
-    TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
-    THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
-    ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
-    NEWACCESS=""
-    i=1
-    for elem in $ACCESS; do
-        if [ $i = "$ZEROIDX" -o $i = "$ONEIDX" ]; then
-            NEWACCESS="$NEWACCESS"X
-        elif [ $i = "$TWOIDX" -o $i = "$THREEIDX" ]; then
-            #do not *downgrade* from OEM priv
-            if [ "$elem" != "O" ]; then NEWACCESS="$NEWACCESS"a; else NEWACCESS="$NEWACCESS"$elem; fi
-        else
-            NEWACCESS="$NEWACCESS"$elem
-        fi
-	    i=$((i+1))
+    MSG="Enabling the non-volatile channel access ($LANCHAN)"
+    logger -s -t $log_label -p local4.info "$MSG"
+    TRIES=0
+    # Set the non-volatile channel access: enable and privilege
+    while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    if ipmitool lan set $LANCHAN cipher_privs $NEWACCESS > /dev/null; then
-		echo OK
-    else
-		echo ERROR
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
+
+    MSG="Enabling the volatile channel access ($LANCHAN)"
+    logger -s -t $log_label -p local4.info "$MSG"
+    TRIES=0
+    # Set the volatile channel access: enable and privilege
+    while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
+
+    MSG="Enabling ARP responses"
+    logger -s -t $log_label -p local4.info "$MSG"
+    TRIES=0
+    # enable the ARP response on the channel
+    while ! ipmitool -d $idev lan set $LANCHAN arp respond on > /dev/null; do
+        sleep 1
+        let TRIES=TRIES+1
+        echo -n .
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
+    
+    MSG="Enabling IPMI v 1.5 MD5 LAN access"
+    logger -s -t $log_label -p local4.info "$MSG"
+    TRIES=0
+    # Set the auth level to md5 for the channel
+    while ! ipmitool -d $idev lan set $LANCHAN auth admin md5 > /dev/null; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
+
+    if [ ! "$IPMIVER" == "1.5"  ]; then 
+        MSG="Enabling IPMI v 2.0 LAN access"
+        logger -s -t $log_label -p local4.info "$MSG"
+        # the following goals:
+        #   - disable cipher suite 0 (if present, avoid password bypass)
+        #   - disable cipher suite 1 (if present, to avoid weaking Kg if used)
+        #   - enable cipher suite 2 (scenarios without perl Rijndael)
+        #   - enable cipher suite 3
+        #   - ignore the rest
+        #
+        # Read the LAN info
+        #
+        ZEROIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '%0$'|sed -e 's/:.*//')
+        ONEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^1$'|sed -e 's/:.*//')
+        TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
+        THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
+        ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
+        logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
+        NEWACCESS=""
+        i=1
+        for elem in $ACCESS; do
+            if [ $i = "$ZEROIDX" -o $i = "$ONEIDX" ]; then
+                NEWACCESS="$NEWACCESS"X
+            elif [ $i = "$TWOIDX" -o $i = "$THREEIDX" ]; then
+                #do not *downgrade* from OEM priv
+                if [ "$elem" != "O" ]; then NEWACCESS="$NEWACCESS"a; else NEWACCESS="$NEWACCESS"$elem; fi
+            else
+                NEWACCESS="$NEWACCESS"$elem
+            fi
+            i=$((i+1))
+        done
+
+        MSG="Set the cipher_privileges for the channel"
+        logger -s -t $log_label -p local4.info "$MSG"
+        # Set the cipher_privileges for the channel
+        if ipmitool lan set $LANCHAN cipher_privs $NEWACCESS > /dev/null; then
+            logger -s -t $log_label -p local4.info "$MSG: OK"
+        else
+            logger -s -t $log_label -p local4.info "$MSG: ERROR"
+        fi
+
+        MSG="Enabling SOL for channel $LANCHAN"
+        logger -s -t $log_label -p local4.info "$MSG"
+        TRIES=0
+        # Enable the SOL for the channel 
+        while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+        if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
+
+        MSG="Enabling SOL for $BMCUS"
+        logger -s -t $log_label -p local4.info "$MSG"
+        TRIES=0
+        # Enable the SOL for the USER and set the payload 1
+        while ! ipmitool -d $idev raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+        if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
     fi
 
+    # Cold reset the BMC
+    cold_reset_bmc
 
-    TRIES=0
-
-    echo -n "Enabling SOL for channel $LANCHAN:"
-    while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-    TRIES=0
-    
-    echo -n "Enabling SOL for $BMCUS:"
-    while ! ipmitool -d $idev raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-    echo -n "Putting SOL on channel $LANCHAN:"
-    while ! OUTPUT=`ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN 2>&1 > /dev/null`; do
-	if echo $OUTPUT|grep "Unknown (0x80)" > /dev/null; then
-		echo "Not Needed"
-		break
+    # update the node status to 'bmcready'
+    for parm in `cat /proc/cmdline`; do
+        key=`echo $parm|awk -F= '{print $1}'`
+        if [ "$key" = "xcatd" ]; then
+            XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
         fi
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-fi
+    if [ ! -z "$XCATMASTER" ]; then
+        updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
+    fi
 
-# Reset the BMC for the x3755 M4 (8722), otherwise the BMC will not be pingable after running of bmcsetup
-XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-if [ "$XPROD" = "309" ] ; then
-    echo "Resetting BMC ..."
-    ipmitool mc reset cold
-    echo "Waiting for the BMC to appear ..."
-    sleep 15
-    TRIES=0
-    while ! ipmitool lan print $LANCHAN > /dev/null; do
-        sleep 3
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-fi
-
-# update the node status to 'bmcready'
-for parm in `cat /proc/cmdline`; do
-	key=`echo $parm|awk -F= '{print $1}'`
-	if [ "$key" = "xcatd" ]; then
-		XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
-	fi
-done
-if [ ! -z "$XCATMASTER" ]; then
-    updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
-fi
-#frume.awk
-
-echo "Lighting Identify Light"
-while :
-    do ipmitool -d $idev raw 0 4 10 > /dev/null
-    sleep 7
-done &
+    logger -s -t $log_label -p local4.info "Lighting Identify Light"
+    if [ "$XPROD" = "43707" ]; then
+        # OpenPower BMC specific, turn on the LED beacon for 5 minutes 
+        ipmitool chassis identify 300
+    else
+        # All other BMCs
+        while :
+            # Identify the server by turning on the LED light
+            do ipmitool -d $idev raw 0 4 10 > /dev/null
+            sleep 7
+        done &
+    fi
 done
 

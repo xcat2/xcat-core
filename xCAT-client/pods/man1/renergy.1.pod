@@ -4,22 +4,17 @@ B<renergy> - remote energy management tool
 
 =head1 B<SYNOPSIS>
 
-B<renergy> [-h | --help] 
+B<renergy> [B<-h> | B<--help>] 
 
-B<renergy> [-v | --version] 
+B<renergy> [B<-v> | B<--version>] 
 
 B<Power 6 server specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] { all | [savingstatus] [cappingstatus] 
-[cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] 
-[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
-[syssbpower] [sysIPLtime]}
+B<renergy> I<noderange> [B<-V>] {B<all | [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime]>}
 
-B<renergy> I<noderange> [-V] { savingstatus={on | off} 
-| cappingstatus={on | off} | cappingwatt=watt 
-| cappingperc=percentage } 
+B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage>} 
 
 =back
 
@@ -27,17 +22,9 @@ B<Power 7 server specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus]
-[cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin]
-[averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed]
-[syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin]
-[ffoTurbo] [ffoNorm] [ffovalue]}
+B<renergy> I<noderange> [B<-V>] {B<all | [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue]>}
 
-B<renergy> I<noderange> [-V] { savingstatus={on | off}
-| dsavingstatus={on-norm | on-maxp | off}
-| fsavingstatus={on | off} | ffovalue=MHZ
-| cappingstatus={on | off} | cappingwatt=watt
-| cappingperc=percentage }
+B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} | fsavingstatus={on | off} | ffovalue=MHZ | cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage>}
 
 =back
 
@@ -45,16 +32,9 @@ B<Power 8 server specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus] 
-[averageAC] [averageAChistory] [averageDC] [averageDChistory] 
-[ambienttemp] [ambienttemphistory] [exhausttemp] [exhausttemphistory] 
-[fanspeed] [fanspeedhistory] [CPUspeed] [CPUspeedhistory]
-[syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] 
-[ffoTurbo] [ffoNorm] [ffovalue]}
+B<renergy> I<noderange> [B<-V>] {B<all | [savingstatus] [dsavingstatus] [averageAC] [averageAChistory] [averageDC] [averageDChistory] [ambienttemp] [ambienttemphistory] [exhausttemp] [exhausttemphistory] [fanspeed] [fanspeedhistory] [CPUspeed] [CPUspeedhistory] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue]>}
 
-B<renergy> I<noderange> [-V] { savingstatus={on | off} 
-| dsavingstatus={on-norm | on-maxp | off}
-| fsavingstatus={on | off} | ffovalue=MHZ }
+B<renergy> I<noderange> B<[-V] {savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} | fsavingstatus={on | off} | ffovalue=MHZ }>
 
 I<NOTE:> The setting operation for B<Power 8> server is only supported 
 for the server which is running in PowerVM mode. Do NOT run the setting 
@@ -70,13 +50,7 @@ B<For Management Modules:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | pd1all | pd2all | [pd1status] 
-[pd2status] [pd1policy] [pd2policy] [pd1powermodule1] 
-[pd1powermodule2] [pd2powermodule1] [pd2powermodule2] 
-[pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] 
-[pd2reservedpower] [pd1remainpower] [pd2remainpower] 
-[pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] 
-[thermaloutput] [ambienttemp] [mmtemp] } 
+B<renergy> I<noderange> [B<-V>] {B<all | pd1all | pd2all | [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp]>} 
 
 =back
 
@@ -84,12 +58,9 @@ B<For a blade server nodes:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | [averageDC]  
-[capability] [cappingvalue] [CPUspeed] [maxCPUspeed] 
-[savingstatus] [dsavingstatus] }
+B<renergy> I<noderange> [B<-V>] {B<all | [averageDC] [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus]>}
 
-B<renergy> I<noderange> [-V] { savingstatus={on | off} 
-| dsavingstatus={on-norm | on-maxp | off} }
+B<renergy> I<noderange> [B<-V>] {B<savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off}>} 
 
 =back
 
@@ -103,10 +74,7 @@ B<For Flex Management Modules:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | [powerstatus]
-[powerpolicy] [powermodule] [avaiablepower] [reservedpower]
-[remainpower] [inusedpower] [availableDC] [averageAC]
-[thermaloutput] [ambienttemp] [mmtemp] }
+B<renergy> I<noderange> [B<-V>] {B<all | [powerstatus] [powerpolicy] [powermodule] [avaiablepower] [reservedpower] [remainpower] [inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp]>}
 
 =back
 
@@ -114,14 +82,9 @@ B<For Flex node (power and x86):>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | [averageDC]
-[capability] [cappingvalue] [cappingmaxmin] [cappingmax] 
-[cappingmin] [cappingGmin] [CPUspeed] [maxCPUspeed]
-[savingstatus] [dsavingstatus] }
+B<renergy> I<noderange> [B<-V>] {B<all | [averageDC] [capability] [cappingvalue] [cappingmaxmin] [cappingmax] [cappingmin] [cappingGmin] [CPUspeed] [maxCPUspeed] [savingstatus] [dsavingstatus]>}
 
-B<renergy> I<noderange> [-V] { cappingstatus={on | off}
-| cappingwatt=watt | cappingperc=percentage 
-| savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} }
+B<renergy> I<noderange> [B<-V>] {B<cappingstatus={on | off} | cappingwatt=watt | cappingperc=percentage | savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off}>}
 
 =back
 
@@ -132,11 +95,17 @@ B<iDataPlex specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] [ { cappingmaxmin | cappingmax | cappingmin } ]
-[cappingstatus] [cappingvalue] [relhistogram]
+B<renergy> I<noderange> [B<-V>] [{B<cappingmaxmin | cappingmax | cappingmin}] [cappingstatus] [cappingvalue] [relhistogram]>}
 
-B<renergy> I<noderange> [-V] { cappingstatus={on | enable | off | disable}
-| {cappingwatt|cappingvalue}=watt }
+B<renergy> I<noderange> [B<-V>] {B<cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt>}
+
+=back
+
+B<OpenPOWER server specific :>
+
+=over 2
+
+B<renergy> I<noderange> {B<powerusage | temperature>}
 
 =back
 
@@ -168,6 +137,8 @@ The attributes listed in the B<SYNOPSIS> section are which ones can be handled b
 B<renergy> command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
+
+B<Note>: the options I<powerusage> and I<temperature> are only supported for B<OpenPOWER servers>.
 
 The supported attributes for each specific system p hardware type is listed as follows:
 
@@ -325,7 +296,7 @@ averageAC is the aggregate for all of the servers in a rack.
 
 Note: For Blade Center, the value of attribute 
 averageAC is the total AC power being consumed by all modules
- in the chassis. It also includes power consumed by the Chassis 
+in the chassis. It also includes power consumed by the Chassis 
 Cooling Devices for BCH chassis.
 
 =item B<averageAChistory>
@@ -638,6 +609,15 @@ Query the system power consumed prior to power on.
 Query the thermal output (load) in BTUs per hour for the blade 
 center chassis.
 
+=item B<powerusage>
+
+Query System Power Statistics with DCMI (Data Center Manageability Interface).
+
+=item B<temperature>
+
+Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor. 
+Currently, only CPU temperature and baseboard temperature sensor available for OpenPOWER servers.
+
 =back
 
 =head1 B<RETURN VALUE>
@@ -650,11 +630,10 @@ center chassis.
 
 =over 3
 
-=item 1
-
+=item 1.
 Query all attributes which CEC1,CEC2 supported.
 
-B<renergy> CEC1,CEC2 all
+ renergy CEC1,CEC2 all
 
 The output of the query operation:
 
@@ -684,11 +663,10 @@ The output of the query operation:
     CEC2: exhausttemp: 40 C
     CEC2: CPUspeed: 4695 MHz
 
-=item 2
-
+=item 2.
 Query the B<fanspeed> attribute for Power8 CEC.
 
-B<renergy> CEC1 fanspeed
+ renergy CEC1 fanspeed
 
 The output of the query operation:
 
@@ -701,8 +679,7 @@ The output of the query operation:
     CEC1: fanspeed (Fan U78CB.001.WZS00MA-E1 0000210C): 4992 RPM
     CEC1: fanspeed (Fan U78CB.001.WZS00MA-E2 0000210D): 5016 RPM
 
-=item 3
-
+=item 3.
 Query the historical records for the B<CPUspeed> attribute. (Power8 CEC)
 
 B<renergy> CEC1 CPUspeedhistory
@@ -725,7 +702,7 @@ The output of the query operation:
 
 Query all the attirbutes for management module node MM1. (For chassis)
 
-B<renergy> MM1 all
+ renergy MM1 all
 
 The output of the query operation:
 
@@ -748,15 +725,13 @@ The output of the query operation:
     mm1: pd2powermodule2: Bay 4: 2940W
     mm1: pd2remainpower: 51W
     mm1: pd2reservedpower: 2889W
-    mm1: pd2status: 2 - Warning: Power redundancy does not exist 
-in this power domain.
+    mm1: pd2status: 2 - Warning: Power redundancy does not exist in this power domain.
     mm1: thermaloutput: 9717.376000 BTU/hour
 
-=item 5
-
+=item 5.
 Query all the attirbutes for blade server node blade1.
 
-B<renergy> blade1 all
+ renergy blade1 all
 
 The output of the query operation:
 
@@ -768,12 +743,11 @@ The output of the query operation:
     blade1: maxCPUspeed: 4204MHZ
     blade1: savingstatus: off
 
-=item 6
-
+=item 6.
 Query the attributes savingstatus, cappingstatus 
 and CPUspeed for server CEC1.
 
-B<renergy> CEC1 savingstatus cappingstatus CPUspeed
+ renergy CEC1 savingstatus cappingstatus CPUspeed
 
 The output of the query operation:
 
@@ -781,23 +755,21 @@ The output of the query operation:
     CEC1: cappingstatus: on
     CEC1: CPUspeed: 3621 MHz
 
-=item 7
-
+=item 7.
 Turn on the power saving function of CEC1.
 
-B<renergy> CEC1 savingstatus=on
+ renergy CEC1 savingstatus=on
 
 The output of the setting operation:
 
     CEC1: Set savingstatus succeeded.         
     CEC1: This setting may need some minutes to take effect.   
 
-=item 8
-
+=item 8.
 Set the power capping value base on the percentage of the 
 max-min capping value. Here, set it to 50%.
 
-B<renergy> CEC1 cappingperc=50
+ renergy CEC1 cappingperc=50
 
 If the maximum capping value of the CEC1 is 850w, and the 
 minimum capping value of the CEC1 is 782w, the Power Capping 
@@ -808,30 +780,43 @@ The output of the setting operation:
     CEC1: Set cappingperc succeeded.
     CEC1: cappingvalue: 816     
 
-=back
+=item 9.
+Query powerusage and temperature for OpenPOWER servers.
 
+ renergy ops01 powerusage temperature
+
+The output will be like this:
+
+    ops01: Current Power                        : 591W
+    ops01: Minimum Power over sampling duration : 558W
+    ops01: Maximum Power over sampling duration : 607W
+    ops01: Average Power over sampling duration : 572W
+    ops01: Time Stamp                           : 11/18/2015 - 1:4:1
+    ops01: Statistics reporting time period     : 10000 milliseconds
+    ops01: Power Measurement                    : Active
+    ops01: CPU Temperature Instance 0           : +39 Centigrade
+    ops01: Baseboard temperature Instance 0     : +28 Centigrade
+
+=back
 
 =head1 B<REFERENCES>
 
 =over 3
 
-=item 1
-
+=item 1.
 For more information on 'Power System Energy Management':
 
-    http://www-03.ibm.com/systems/power/software/energy/index.html
+http://www-03.ibm.com/systems/power/software/energy/index.html
 
-=item 2
-
+=item 2.
 EnergyScale white paper for Power6:
 
-    http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale.html
+http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale.html
 
-=item 3
-
+=item 3.
 EnergyScale white paper for Power7:
 
-    http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale7.html
+http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale7.html
 
 =back
 

@@ -1,0 +1,57 @@
+=head1 NAME
+
+B<lsdocker> - List docker instance.
+
+=head1 SYNOPSIS
+
+B<lsdocker> I<noderange> [B<-l>|B<--logs>]
+
+B<lsdocker> I<dockerhost>
+
+B<lsdocker> [B<-h>|B<--help>]
+
+B<lsdocker> {B<-v>|B<--version>}
+
+
+=head1 DESCRIPTION
+
+B<lsdocker> To list docker instance info or all the running docker instance info if dockerhost is specified. 
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<-l|--logs>
+
+=back
+
+To return the logs of docker instance. Only works for docker instance.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+To get info for docker instance "host01c01"
+
+ lsdocker host01c01
+
+Output is similar to:
+
+ host01c01: 50800dfd8b5f	ubuntu	/bin/bash	2016-01-13T06:32:59	running	/host01c01
+
+=item 2.
+To get info for running docker instance on dockerhost "host01"
+
+ lsdocker host01
+
+Output is similar to:
+
+ host01: 50800dfd8b5f	ubuntu	/bin/bash	2016-1-13 - 1:32:59	Up 12 minutes	/host01c01
+ host01: 875ce11d5987	ubuntu	/bin/bash	2016-1-21 - 1:12:37	Up 5 seconds	/host01c02
+
+=back
+
+=head1 SEE ALSO
+
+L<mkdocker(1)|mkdocker.1>, L<rmdocker(1)|rmdocker.1>

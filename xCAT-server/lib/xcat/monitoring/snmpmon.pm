@@ -123,7 +123,7 @@ sub start {
 =head3    stop
       This function gets called by the monitorctrl module when monstop command gets called. 
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 
@@ -226,7 +226,7 @@ sub startNodeStatusMon {
     This function is called by the monitorctrl module when monstop command is issued.
     It stops feeding the node status info back to xCAT. 
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means local host only. 
                 2 means both local host and nodes, 

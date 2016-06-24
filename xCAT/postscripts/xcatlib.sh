@@ -278,11 +278,11 @@ function servicemap {
    local svcmgrtype=$2
    local svclistname=   
 
-  # if there are more than 1 possible service names for a service among 
-  # different os distributions and os releases, the service should be 
-  # specified with structure 
-  # INIT_(general service name) = "list of possible service names"
-  #  
+   # if there are more than 1 possible service names for a service among 
+   # different os distributions and os releases, the service should be 
+   # specified with structure 
+   # INIT_(general service name) = "list of possible service names"
+   #  
    INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
 
    INIT_nfs="nfsserver nfs-server nfs nfs-kernel-server";
@@ -303,19 +303,37 @@ function servicemap {
 
    local path=
    local postfix=""
+   local svcmgrcmd=
    local retdefault=$svcname
    local svcvar=${svcname//[-.]/_}
    if [ "$svcmgrtype" = "0"  ];then
+      #for sysvinit
       path="/etc/init.d/"
+      svcmgrcmd="service"
    elif [ "$svcmgrtype" = "1"  ];then
+      #for systemd
       #retdefault=$svcname.service
-      path="/usr/lib/systemd/system/"
+      #ubuntu 16.04 replace upstart with systemd, 
+      #all the service unit files are placed under /lib/systemd/system/ on ubuntu
+      #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
+      #path should be delimited with space
+      path="/usr/lib/systemd/system/ /lib/systemd/system/"
       postfix=".service"
+      svcmgrcmd="systemctl"
    elif [ "$svcmgrtype" = "2"  ];then
+      #for upstart
       path="/etc/init/"
       postfix=".conf"
+      svcmgrcmd="initctl"
    fi
-   
+
+   #check whether the service management command exists
+   type $svcmgrcmd >/dev/null 2>&1
+   if [ $? -ne 0 ];then
+       echo ""
+       return
+   fi
+ 
    svclistname=INIT_$svcvar
    local svclist=$(eval echo \$$svclistname)      
 
@@ -325,12 +343,15 @@ function servicemap {
 
    for name in `echo $svclist`
    do
-      if [ -e "$path$name$postfix"  ];then
-         echo $name
-         break
-      fi
+       for ipath in `echo $path`;do
+           if [ -e "$ipath$name$postfix"  ];then
+              echo "$name"
+              return
+           fi
+       done
    done
-   
+  
+   echo ""
 }
 
 #some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
@@ -402,7 +423,15 @@ function startservice {
       return 127
    fi
    
-   eval $cmd
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario 
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1)   && retval=1
+
+   return $retval   
 }
 
 
@@ -440,8 +469,16 @@ function stopservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
-   eval $cmd
+
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+
+   return $retval
 }
 
 
@@ -466,7 +503,7 @@ function restartservice {
    elif [ -n "$svcjob"  ];then
       initctl status $svcjob | grep stop
       if [ "$?" = "0" ];then 
-         cmd= "initctl start $svcjob"
+         cmd="initctl start $svcjob"
       else
          cmd="initctl restart $svcjob"
       fi 
@@ -478,7 +515,15 @@ function restartservice {
       return 127
    fi
    
-   eval $cmd
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+
+   return $retval
 }
 
 
@@ -568,7 +613,7 @@ function enableservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    eval $cmd
 }
 
@@ -607,7 +652,7 @@ function disableservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    eval $cmd
 }
 
@@ -718,7 +763,7 @@ function msgutil_r {
    if [ -n "$logserver" ];then
       logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
       if [ "$?" != "0" ];then
-         exec 3<>/dev/udp/$logserver/514 >/dev/null 2>&1;logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1
+         exec 3<>/dev/udp/$logserver/514 && logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1 && exec 3>&-
          if [ "$?" != "0" ];then
             logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
             if [ "$?" != "0" ];then
@@ -759,3 +804,4 @@ function msgutil_r {
 function msgutil {
    msgutil_r "" "$@"
 }
+

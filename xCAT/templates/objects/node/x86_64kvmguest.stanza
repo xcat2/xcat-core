@@ -1,0 +1,19 @@
+# <the system X kvm node definition>
+
+x86_64kvmguest:
+    objtype=node
+    arch=x86_64
+    groups=all
+    ip="OPTIONAL:the ip address of the kvm guest"
+    mac="OPTIONAL:the mac of the kvm guest"
+    mgt=kvm
+    netboot=xnba
+    serialport=0
+    serialspeed=115200
+    vmcpus=2
+    vmhost="MANDATORY:the hostname or ip address of the KVM hypervisor"
+    vmmemory=4096
+    vmnicnicmodel=virtio
+    vmnics="MANDATORY:the hypervisor nics used to create the kvm guest network"
+    vmstorage=dir:///var/lib/libvirt/images
+    usercomment="the system X kvm node definition"

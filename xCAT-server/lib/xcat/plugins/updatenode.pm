@@ -209,7 +209,7 @@ sub preprocess_updatenode
     }
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -222,15 +222,16 @@ sub preprocess_updatenode
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
                     'g|genmypost'   => \$GENMYPOST,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
+                    'n|noverify'    => \$NOVERIFY, 
 
         )
       )
@@ -251,6 +252,11 @@ sub preprocess_updatenode
        $::timeout=$timeout;
     } else {
        undef $::timeout;
+    }
+    if (defined($NOVERIFY)) {
+       $::NOVERIFY=$NOVERIFY;
+    } else {
+       undef $::NOVERIFY;
     }
     if (defined($fanout)) {
        $::fanout=$fanout;
@@ -276,6 +282,11 @@ sub preprocess_updatenode
        $::SETSERVER=$SETSERVER;
     } else {
        undef $::SETSERVER;
+    }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
     }
 
     # display the usage if -h or --help is specified
@@ -376,6 +387,7 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] = "You can not specify both the -f and -F flags.";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     }
@@ -384,8 +396,8 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you specify the -f flag you must not specify either the -S or -k or -P or -F
- flags";
+          "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     } 
@@ -396,7 +408,8 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you use the -k flag, you cannot specify the -S,-P,-f  or -F flags.";
+          "If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     }
@@ -1078,7 +1091,7 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -1091,15 +1104,16 @@ sub updatenode
                     'v|version'     => \$VERSION,
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
+                    'n|noverify'    => \$NOVERIFY,
         )
       )
     {
@@ -1116,6 +1130,11 @@ sub updatenode
        $::timeout=$timeout;
     } else {
        undef $::timeout;
+    }
+    if (defined($NOVERIFY)) {
+       $::NOVERIFY=$NOVERIFY;
+    } else {
+       undef $::NOVERIFY;
     }
     if (defined($fanout)) {
        $::fanout=$fanout;
@@ -1141,6 +1160,11 @@ sub updatenode
        $::SETSERVER=$SETSERVER;
     } else {
        undef $::SETSERVER;
+    }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
     }
 
     #
@@ -1206,7 +1230,22 @@ sub updatenode
     my $notmpfiles=1;
     my $nofiles=0;
     #my $nofiles=1;
-    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+    my @exclude_nodes = xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+
+    # exclude_nodes list contains nodes which have some attributes missing from node definition, like arch or os.
+    # remove those nodes from the request node list so that updatenode will not be executes on those nodes
+    foreach my $exclude_node (@exclude_nodes) {
+       my $index = 0;
+       $index++ until @{$request->{node}}[$index] eq $exclude_node;
+       splice(@{$request->{node}}, $index, 1);
+    }
+    if (@exclude_nodes > 0) {
+       my $rsp = {};
+       $rsp->{error}->[0] =
+       "Following nodes will be ignored bacause they are missing some attribute definitions: @exclude_nodes";
+       $rsp->{errorcode}->[0] =1;
+       $callback->($rsp);
+    }
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
@@ -1358,24 +1397,30 @@ sub updatenode
     # if immediate return of status not requested (PCM), then update the DB here
     # in one transaction, otherwise it is updated in getdata callback and buildnodestatus
     if (!(defined($request->{status})) || ($request->{status} ne "yes")) {
-      # update the node status, this is done when -F -S -P are run
-      # make sure the nodes only appear in one array good or bad 
-      &cleanstatusarrays;  
+         # update the node status, this is done when -F -S -P are run
+         # make sure the nodes only appear in one array good or bad 
+           &cleanstatusarrays;  
 	   if(@::SUCCESSFULLNODES)
 	   {
-	     
-            my $stat="synced";
-            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
+                my $stat="synced";
+                xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
                       
 	   }
 	   if(@::FAILEDNODES)
 	   {
-	     
-            my $stat="failed";
-            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
+                my $stat="failed";
+                xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	   }
-	 }
+           # -P -S are not run
+           # -F is run, but there is no syncfiles
+           if(!(@::SUCCESSFULLNODES || @::FAILEDNODES) && $::NOSYNCFILE)
+           {
+                my $stat="synced";
+                xCAT::TableUtils->setUpdateStatus(\@$nodes,$stat);
+           }
+    }
+
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
     # node files in the noderange in  /tftpboot/mypostscripts
@@ -1515,20 +1560,22 @@ sub updatenoderunps
 
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
-             push @$args1,"-f" ;
-             push @$args1,$::fanout;
+               push @$args1,"-f" ;
+               push @$args1,$::fanout;
             }
             if (defined($::timeout))  {  # timeout 
-             push @$args1,"-t" ;
-             push @$args1,$::timeout;
+               push @$args1,"-t" ;
+               push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
-             push @$args1,"--sudo" ;
-             push @$args1,"-l" ;
-             push @$args1,"$::USER" ;
+               push @$args1,"--sudo" ;
+               push @$args1,"-l" ;
+               push @$args1,"$::USER" ;
             }
             push @$args1,"-s";  # streaming
-            push @$args1,"-v";  # streaming
+            if (!defined($::NOVERIFY))  {  # NOVERIFY
+               push @$args1,"-v";  # streaming
+            }
             push @$args1,"-e";  # execute 
             push @$args1,"$runpscmd"; # the command 
 
@@ -1607,6 +1654,10 @@ sub updatenodesyncfiles
     my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
+    
+    # $::NOSYNCFILE default value is 0
+    # if there is no syncfiles, set $::NOSYNCFILE=1
+    $::NOSYNCFILE=0;
     # if running -P or -S do not report  or no status requested
     if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested 
       if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||  
@@ -1722,13 +1773,12 @@ sub updatenodesyncfiles
        }
     }
     else
-    {    # no syncfiles defined
+    {   # no syncfiles defined
         my $rsp = {};
         $rsp->{data}->[0] =
           "There were no syncfiles defined to process. File synchronization has completed.";
         $callback->($rsp);
-        my $stat="synced";
-        xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        $::NOSYNCFILE=1;
 
     }
     # report final status PCM
@@ -1937,20 +1987,22 @@ sub updatenodesoftware
             # build xdsh command
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
-             push @$args1,"-f" ;
-             push @$args1,$::fanout;
+               push @$args1,"-f" ;
+               push @$args1,$::fanout;
             }
             if (defined($::timeout))  {  # timeout 
-             push @$args1,"-t" ;
-             push @$args1,$::timeout;
+               push @$args1,"-t" ;
+               push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
-             push @$args1,"--sudo" ;
-             push @$args1,"-l" ;
-             push @$args1,"$::USER" ;
+               push @$args1,"--sudo" ;
+               push @$args1,"-l" ;
+               push @$args1,"$::USER" ;
             }
             push @$args1,"-s";  # streaming
-            push @$args1,"-v";  # streaming
+            if (!defined($::NOVERIFY))  {  # NOVERIFY
+               push @$args1,"-v";  # streaming
+            }
             push @$args1,"-e";  # execute 
             push @$args1,"$cmd"; # the command 
 
@@ -2957,11 +3009,13 @@ sub updateAIXsoftware
 			my $args1;
 			push @$args1,"--nodestatus";
 			push @$args1,"-s";
-			push @$args1,"-v";
+			if (!defined($::NOVERIFY))  {  # NOVERIFY
+			    push @$args1,"-v";
+			}
 			push @$args1,"-e";
 			if (defined($::fanout))  {  # fanout input
-				push @$args1,"-f" ;
-				push @$args1,$::fanout;
+			    push @$args1,"-f" ;
+			    push @$args1,$::fanout;
 			}
          if (defined($::timeout))  {  # timeout 
             push @$args1,"-t" ;
@@ -3087,7 +3141,9 @@ sub updateOS
     my $installDIR = xCAT::TableUtils->getInstallDir();
 
     # Get HTTP server
-    my $http = xCAT::NetworkUtils->my_ip_facing($node);
+    my $http;
+    my @httpd = xCAT::NetworkUtils->my_ip_facing($node);
+    unless ($httpd[0]) { $http = $httpd[1];}
     if (!$http)
     {
         push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
@@ -3098,7 +3154,7 @@ sub updateOS
     # Get OS to update to
     my $update2os = $os;
 
-    push @{$rsp->{data}}, "$node: Upgrading $node to $os";
+    push @{$rsp->{data}}, "$node: Upgrading $node to $os. Please wait may take a while";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     # Get the OS that is installed on the node
@@ -3143,7 +3199,7 @@ sub updateOS
     if (!($update2os =~ m/$installOS/i))
     {
         push @{$rsp->{data}},
-          "$node: (Error) Cannot not update $installOS$version to $os.  Linux distribution does not match";
+          "$node: (Error) Cannot not update $installOS.$version to $os.  Linux distribution does not match";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3218,14 +3274,28 @@ sub updateOS
     elsif ("$installOS$version" =~ m/rh/i)
     {
 
-        # Red Hat repository path - http://10.0.0.1/install/rhel5.4/s390x/Server/
-        $path = "http://$http$installDIR/$os/$arch/Server/";
-        if (!(-e "$installDIR/$os/$arch/Server/"))
+        my $verifyOS = $os;
+        $verifyOS =~ s/^\D+([\d.]+)$/$1/; 
+        if(xCAT::Utils->version_cmp($verifyOS,"7.0") < 0){
+            $path = "http://$http$installDIR/$os/$arch/Server/";
+            if (!(-e "$installDIR/$os/$arch/Server/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
+        }	
+        else
         {
-            push @{$rsp->{data}},
-              "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-            return;
+            $path = "http://$http$installDIR/$os/$arch/";
+            if (!(-e "$installDIR/$os/$arch/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
         }
 
         # Create a yum repository file

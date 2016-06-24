@@ -1,0 +1,23 @@
+start:clean_up_env
+description:power off service node and compute node for next test usage 
+cmd:rpower $$CN stat >> /tmp/cnstat
+cmd:if [[ ! `cat /tmp/cnstat |grep -i "Not Activated"` ]]; then rpower $$CN off;fi
+check:rc==0
+cmd:rm -rf /tmp/cnstat
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" =~ "ipmi" ]]; then sleep 1800;else sleep 180;fi
+cmd:rpower $$CN stat >> /tmp/cnstat
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then cat /tmp/cnstat |grep "Not Activated";else cat /tmp/cnstat|grep off;fi
+check:rc==0
+cmd:rm -rf /tmp/cnstat
+cmd:rpower $$SN stat >> /tmp/snstat
+cmd:if [[ ! `cat /tmp/snstat |grep -i "Not Activated"` ]]; then rpower $$SN off;fi
+check:rc==0
+cmd:rm -rf /tmp/snstat
+cmd:if [[ "__GETNODEATTR($$SN,mgt)__" =~ "ipmi" ]]; then sleep 1800;else sleep 180;fi
+cmd:rpower $$SN stat >> /tmp/snstat
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then cat /tmp/snstat |grep -i "Not Activated";else cat /tmp/snstat|grep off;fi
+check:rc==0
+cmd:rm -rf /tmp/snstat
+end

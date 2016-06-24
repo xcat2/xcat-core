@@ -20,6 +20,7 @@ require xCAT::DSHCore;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::NodeRange;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
@@ -211,11 +212,6 @@ sub execute_dcp
                     $::DCP_API_MESSAGE .=
                         join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-                        print STDOUT @{$output_buffers{$user_target}};
-                        print STDERR @{$error_buffers{$user_target}};
-                    }
                 }
                 else
                 {
@@ -580,21 +576,6 @@ sub _execute_dsh
                         $::DSH_API_MESSAGE
                       . join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-
-                        # print STDOUT @{$output_buffers{$user_target}};
-                        # print STDERR @{$error_buffers{$user_target}};
-                        chomp(@{$output_buffers{$user_target}});
-                        chomp(@{$error_buffers{$user_target}});
-                        my $rsp = {};
-                        push @{$rsp->{data}}, @{$output_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
-                        $rsp = {};
-                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
-                        $rsp->{NoErrorPrefix} = 1;
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
-                    }
                 }
                 else
                 {
@@ -3844,7 +3825,7 @@ sub usage_dsh
 ## usage message
     my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
     my $usagemsg1a = "xdsh  <noderange> [-K] [-l logonuserid]\n";
-    my $usagemsg2  = "      [-B bypass ] [-c] [-e] [-E environment_file]
+    my $usagemsg2  = "      [-B | --bypass ] [-c] [-e] [-E environment_file]
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
@@ -4295,7 +4276,7 @@ sub usage_dcp
 {
     ### usage message
     my $usagemsg1 = " xdcp -h \n xdcp -q\n xdcp -V \n xdcp <noderange>\n";
-    my $usagemsg2 = "      [-B bypass] [-c] [-f fanout] [-l user_ID] [--sudo]\n";
+    my $usagemsg2 = "      [-B | --bypass] [-c] [-f fanout] [-l user_ID] [--sudo]\n";
     my $usagemsg3 =
       "      [-m] [-o options] [-p] [-P] [-q] [-Q] [-r node_remote_copy]\n";
     my $usagemsg4 =
@@ -5088,12 +5069,29 @@ sub parse_rsync_input_file_on_MN
            }
          } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
           # otherwise it is just the synclist
-          if ($line =~ /(.+) -> (.+)/)
-          {
-
+          # xCAT supports the syncfile format:
+          #   file -> file
+          #   file -> (noderange for permitted nodes) file
+          if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) {
             $::process_line = 1;
-            my $src_file  = $1;
-            my $dest_file = $2;
+            my $src_file;
+            my $dest_file;
+            my $dest_node;
+            my @dest_nodes;
+            if ($line =~ /(.+) -> +\((.+)\) +(.+)/) {
+                $src_file  = $1;
+                $dest_node = $2;
+                $dest_file = $3;
+            } elsif ($line =~ /(.+) -> (.+)/) {
+                $src_file  = $1;
+                $dest_file = $2;
+            }
+
+            # get all the permitted nodes for the line
+            $dest_node =~ s/\s//g;
+            if ($dest_node) {
+                @dest_nodes = noderange($dest_node);
+            }
             $dest_file =~ s/[\s;]//g;
             my @srcfiles = (split ' ', $src_file);
             my $arraysize = scalar @srcfiles;    # of source files on the line
@@ -5122,6 +5120,10 @@ sub parse_rsync_input_file_on_MN
 
             foreach my $target_node (@dest_host)
             {
+                # skip the node if it's NOT in the permitted list
+                if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
+                    next;
+                }
                 $$options{'destDir_srcFile'}{$target_node} ||= {};
 
                 # for each file on the line
@@ -5694,39 +5696,35 @@ sub run_rsync_postscripts
     my $dshparms; 
     my $firstpass=1;
     foreach my $postsfile (@::postscripts) {
-       my $tmppostfile = $postsfile ;
- 
-       # if service node need to add the SNsyncfiledir to the path
-       if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $tmppostfile;
-         $tmppostfile = $tmpp;
-       }
-       # remove  first character for the compare, we have to do this because the
-       # return from rsync is tmp/file1  not /tmp/file1
-       substr($tmppostfile,0,1)=""; 
+        my $tmppostfile = $postsfile ;
 
-       # now remove .post from the postscript file for the compare
-       # with the returned file name
-       my($tp,$post) = split(/\.post/,$tmppostfile);
-       $tmppostfile = $tp;
-       foreach my $line (@rsync_output) {
-         my($hostname,$ps) = split(/: /, $line);
-         chomp $ps;
-         chomp $hostname;
-         if ($ps eq "rsync") {  # this is a line that is not an update 
-             # save output , if firstpass through output
-             if ($firstpass == 1) {
-               push @newoutput, $line;
-               $firstpass = 0;
-             }
-             next;
-         }
-         if ($tmppostfile eq $ps) { 
-           # build xdsh queue 
-           # build host and all scripts to execute
-           push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
-         }
-       }
+        # if service node need to add the SNsyncfiledir to the path
+        if (xCAT::Utils->isServiceNode()) {
+            my $tmpp=$syncdir . $tmppostfile;
+            $tmppostfile = $tmpp;
+        }
+        # remove  first character for the compare, we have to do this because the
+        # return from rsync is tmp/file1  not /tmp/file1
+        substr($tmppostfile,0,1)=""; 
+
+        foreach my $line (@rsync_output) {
+            my($hostname,$ps) = split(/: /, $line);
+            chomp $ps;
+            chomp $hostname;
+            if ($ps eq "rsync") {  # this is a line that is not an update 
+                # save output , if firstpass through output
+                if ($firstpass == 1) {
+                    push @newoutput, $line;
+                    $firstpass = 0;
+                }
+                next;
+            }
+            if ($tmppostfile eq $ps) { 
+                # build xdsh queue 
+                # build host and all scripts to execute
+                push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
+            }
+        }
     }
     # now if we have postscripts to run, run xdsh
     my $out;
@@ -5738,25 +5736,24 @@ sub run_rsync_postscripts
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
         my @args=();
         if ($$options{'nodestatus'}) {
-          push @args,"--nodestatus" ;
+            push @args,"--nodestatus" ;
         }
         push @args,"-e";
-        # if on the service node need to add the $syncdir directory 
-        # to the path
+        #
+        # if on the service node need to add the $syncdir directory to the path
+        #
         if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $ps;
-         $ps=$tmpp;
+            my $tmpp=$syncdir . $ps;
+            $ps=$tmpp;
         }
         push @args,$ps;
         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
-                                    arg     => \@args, 
-                             }, $::SUBREQ, 0,1);
-        foreach my $r (@$out){
-                push(@newoutput, $r);
-
+                                     node    => \@nodes,
+                                     arg     => \@args, 
+                                   }, $::SUBREQ, 0,1);
+        foreach my $r (@$out) {
+            push(@newoutput, $r);
         }
-        #     $ranaps=1;
     }
     return @newoutput;
 }

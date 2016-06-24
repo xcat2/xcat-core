@@ -12,7 +12,7 @@ B<addkitcomp> [B<-V>|B<--verbose>] [B<-a>|B<--adddeps>] [B<-f>|B<--force>] [B<-n
 
 The B<addkitcomp> command will assign kit components to an xCAT osimage. The kit component meta rpm, package rpm and deploy parameters will be added to osimage's otherpkg.pkglist and postbootscripts will be added to osimages's postbootscripts attribute.
 
-Note: The xCAT support for Kits is only available for Linux operating systems.
+B<Note:> xCAT Kit support is ONLY available for Linux operating systems.
 
 =head1 OPTIONS
 
@@ -44,13 +44,15 @@ The osimage name that the kit component is assigning to.
 
 =item B<-n|--noupgrade>
 
-Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade
+1. Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade.
+
+2. Kit components added by addkitcomp -n will be installed separately behind all other ones which have been added.
 
 =item B<--noscripts>
 
 Do not add kitcomponent's postbootscripts to osimage
 
-=item B<kitcompname_list>
+=item I<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be added to the osimage.
 
@@ -64,48 +66,21 @@ A comma-delimited list of valid full kit component names or kit component basena
 
 =head1 EXAMPLES
 
-1. To assign a kit component to osimage
+1. To add a single kit component to osimage "rhels6.2-ppc64-netboot-compute":
 
-addkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+ addkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
+2. To add a kit component to osimage with dependencies, use the -a (addeps) option:
 
-Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+ addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
 
-2. To assign a kit component to osimage with its dependency.
+3. To add a kit component to osimage with incompatable osarch, osversion or ostype, use the -f (force) option: 
 
-addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+ addkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
+4. To add a new version of kit component to osimage without upgrade, use the -n (noupgrade) option:
 
-Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.0-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
-
-3. To assign a kit component to osimage with incompatable osarch, osversion or ostype.
-
-addkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
-
-Output is similar to:
-
-Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
-
-4. To assign a new version of kit component to osimage without upgrade.
-
-addkitcomp -n -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
-
-Output is similar to:
-
-Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
-
-The result will be:
-lsdef -t osimage rhels6.2-ppc64-netboot-compute -i kitcomponents
-Object name: rhels6.2-ppc64-netboot-compute
-kitcomponents=comp-test2-1.0-0-rhels-6.2-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64
+ addkitcomp -n -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
 
 
 =head1 SEE ALSO

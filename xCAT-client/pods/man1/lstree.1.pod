@@ -4,9 +4,9 @@ B<lstree> - Display the tree of service node hierarchy, hardware hierarchy, or V
 
 =head1 SYNOPSIS
 
-B<lstree> [-h | --help]
+B<lstree> [B<-h> | B<--help>]
 
-B<lstree> [-s | --servicenode] [-H | --hardwaremgmt] [-v | --virtualmachine] [noderange]
+B<lstree> [B<-s> | B<--servicenode>] [B<-H> | B<--hardwaremgmt>] [B<-v> | B<--virtualmachine>] [I<noderange>]
 
 =head1 DESCRIPTION
 
@@ -32,7 +32,7 @@ Show the tree of hardware hierarchy.
 
 Show the tree of VM hierarchy.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -49,19 +49,18 @@ A set of comma delimited node names and/or group names. See the "noderange" man 
 =over 3
 
 =item 1.
-
 To display the tree of service node hierarchy for all the nodes.
 
-B<lstree -s>
+ lstree -s
 
 Output is similar to:
 
-Service Node: mysn01
+ Service Node: mysn01
  |__mycn01
  |__mycn02
  |__mycn03
 
-Service Node: mysn02
+ Service Node: mysn02
  |__mycn11
  |__mycn12
  |__mycn13
@@ -71,11 +70,11 @@ Service Node: mysn02
 
 To display the tree of service node hierarchy for service node "mysn01".
 
-B<lstree -s mysn01>
+ lstree -s mysn01
 
 Output is similar to:
 
-Service Node: mysn01
+ Service Node: mysn01
  |__mycn01
  |__mycn02
  |__mycn03
@@ -84,82 +83,78 @@ Service Node: mysn01
 
 To display the tree of hardware hierarchy for all the nodes.
 
-B<lstree -H>
+ lstree -H
 
 Output is similar to:
 
-HMC: myhmc01
+ HMC: myhmc01
  |__Frame: myframe01
     |__CEC: mycec01
     |__CEC: mycec02
     ......
 
-Service Focal Point: myhmc02
+ Service Focal Point: myhmc02
  |__Frame: myframe01
     |__CEC: mycec01
     |__CEC: mycec02
     |__CEC: mycec03
     ......
 
-Management Module: mymm01
+ Management Module: mymm01
  |__Blade 1: js22n01
  |__Blade 2: js22n02
  |__Blade 3: js22n03
  ......
 
-BMC: 192.168.0.1
+ BMC: 192.168.0.1
  |__Server: x3650n01
 
 =item 4.
-
 To display the tree of hardware hierarchy for HMC "myhmc01".
 
-B<lstree -H myhmc01>
+ lstree -H myhmc01
 
 Output is similar to:
 
-HMC: myhmc01
+ HMC: myhmc01
  |__Frame: myframe01
     |__CEC: mycec01
     |__CEC: mycec02
     ......
 
 =item 5.
-
 To display the tree of VM hierarchy for all the nodes.
 
-B<lstree -v>
+ lstree -v
 
 Output is similar to:
 
-Server: hs22n01
+ Server: hs22n01
  |__ hs22vm1
 
-Server: x3650n01
+ Server: x3650n01
  |__ x3650n01kvm1
  |__ x3650n01kvm2
 
 =item 6.
-
 To display the tree of VM hierarchy for the node "x3650n01".
 
-B<lstree -v x3650n01>
+ lstree -v x3650n01
 
 Output is similar to:
 
-Server: x3650n01
+ Server: x3650n01
  |__ x3650n01kvm1
  |__ x3650n01kvm2
 
 =item 7.
-
 To display both the hardware tree and VM tree for all nodes.
 
-B<lstree>
+ lstree
 
 Output is similar to:
 
-HMC: myhmc01
+ HMC: myhmc01
  |__Frame: myframe01
     |__CEC: mycec01
        |__LPAR 1: node01
@@ -172,7 +167,7 @@ HMC: myhmc01
        |__LPAR 3: node13
        ......
 
-Service Focal Point: myhmc02
+ Service Focal Point: myhmc02
  |__Frame: myframe01
     |__CEC: mycec01
        |__LPAR 1: node01
@@ -186,7 +181,7 @@ Service Focal Point: myhmc02
        |__LPAR 3: node23
        ......
 
-Management Module: mymm01
+ Management Module: mymm01
  |__Blade 1: hs22n01
     |__hs22n01vm1
     |__hs22n01vm2
@@ -195,7 +190,7 @@ Management Module: mymm01
     |__hs22n02vm2
  ......
 
-BMC: 192.168.0.1
+ BMC: 192.168.0.1
  |__Server: x3650n01
     |__ x3650n01kvm1
     |__ x3650n01kvm2

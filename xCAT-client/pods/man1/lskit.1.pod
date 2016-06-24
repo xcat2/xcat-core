@@ -5,13 +5,7 @@ B<lskit> - Lists information for one or more Kits.
 
 =head1 SYNOPSIS
 
-B<lskit> [B<-V> | B<--verbose>] 
-      [B<-F> | B<--framework> I<kitattr_names>]
-      [B<-x> | B<--xml> | B<--XML>]
-      [B<-K> | B<--kitattr> I<kitattr_names>]
-      [B<-R> | B<--repoattr> I<repoattr_names>]
-      [B<-C> | B<--compattr> I<compattr_names>]
-      [kit_names]
+B<lskit> [B<-V> | B<--verbose>] [B<-F> | B<--framework> I<kitattr_names>] [B<-x> | B<--xml> | B<--XML>] [B<-K> | B<--kitattr> I<kitattr_names>] [B<-R> | B<--repoattr> I<repoattr_names>] [B<-C> | B<--compattr> I<compattr_names>] [I<kit_names>]
 
 B<lskit> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -60,6 +54,7 @@ is a comma-delimited list of kit names. The B<lskit> command will only display t
 
 Need XCATXMLTRACE=1 env when using -x|--xml|--XML, for example: XCATXMLTRACE=1  lskit -x testkit-1.0.0
 Return the output with XML tags.  The data is returned as:
+
   <data>
     <kitinfo>
        ...
@@ -73,11 +68,13 @@ Return the output with XML tags.  The data is returned as:
   </data>
 
 Each <kitinfo> tag contains info for one kit.  The info inside <kitinfo> is structured as follows:
+
   The <kit> sub-tag contains the kit's basic info.
   The <kitrepo> sub-tags store info about the kit's repositories.
   The <kitcomponent> sub-tags store info about the kit's components.
 
 The data inside <kitinfo> is returned as:
+
   <kitinfo>
      <kit>
        ...
@@ -114,11 +111,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -129,28 +124,26 @@ An error has occurred.
 =over 3
 
 =item 1.
-
 To list all kits, enter:
 
   lskit
 
 =item 2.
-
 To list the kit "kit-test1-1.0-Linux", enter:
 
   lskit kit-test1-1.0-Linux
 
 =item 3.
-
 To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
 
   lskit -K basename,description -R kitreponame -C kitcompname kit-test1-1.0-Linux
 
 =item 4.
-
 To list the framework value of a Kit tarfile.
 
   lskit -F /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2
+
+Output is similar to:
 
   Extracting the kit.conf file from /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2. Please wait.
   
@@ -158,7 +151,6 @@ To list the framework value of a Kit tarfile.
         compatible_kitframeworks=0,1,2
 
 =item 5.
-
 To list kit "testkit-1.0-1" with XML tags, enter:
 
   XCATXMLTRACE=1 lskit -x testkit-1.0-1

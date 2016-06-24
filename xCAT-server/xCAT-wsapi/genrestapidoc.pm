@@ -70,10 +70,133 @@ my %formathdl = (
     text => \&outtext,
     wiki => \&outwiki,
     mediawiki => \&outmediawiki,
+    rst => \&make_rst_format,
 );
 
 
 my @errmsg;
+
+#--------------------------------------------------------------------------------
+
+=head3   make_rst_format
+
+    Descriptions:
+        This subroutine is used to generate restapi doc in rst format
+    Arguments:
+        param1: The first parameter
+        param2: The second parameter
+        param3: The third parameter
+    Returns:
+        0 - success
+        0 - fail
+=cut
+
+#--------------------------------------------------------------------------------
+sub make_rst_format {
+    my $def = shift;
+    my $opt = shift;
+    my $res = shift;
+
+    if ($res) {
+        if (defined ($res->{'desc'})) {
+            # add \ for [ and ]
+            #$res->{'desc'} =~ s/\[/\\\[/;
+            #$res->{'desc'} =~ s/\]/\\\]/;
+            print "$res->{'desc'}\n";
+            print "-" x length($res->{'desc'}) . "\n\n";
+        }
+        foreach (1..10) {
+            if (defined ($res->{'desc'.$_})) {
+                print $res->{'desc'.$_}."\n\n";
+            }
+        }
+    }
+
+    my $postfix = "?userName=root&userPW=cluster&pretty=1";
+
+    if (defined ($def->{desc})) {
+        print "$opt - $def->{desc}\n";
+        print "`" x length("$opt - $def->{desc}") . "\n\n";
+    }
+    foreach (1..10) {
+        if (defined ($def->{'desc'.$_})) {
+            print $def->{'desc'.$_}."\n\n";
+        }
+    }
+
+    if (defined ($def->{cmd})) {
+        my $manpath = search_manpage($def->{cmd});
+
+        if ($manpath) {
+            print "Refer to the man page: :doc:`$def->{cmd} <$manpath>`\n\n";
+        } else {
+            print "Refer to the man page of ".$def->{cmd}." command.\n\n";
+        }
+
+    }
+
+    if (defined ($def->{usage})) {
+        #$def->{usage} =~ s/\[/\\\[/;
+        #$def->{usage} =~ s/\]/\\\]/;
+        my @parts = split ('\|', $def->{usage});
+        if ($parts[1]) {
+            print "**Parameters:**\n\n* $parts[1]\n\n";
+        }
+        if ($parts[2]) {
+            print "**Returns:**\n\n* $parts[2]\n\n";
+        }
+    }
+
+    my @example_array = ();
+    if (defined($def->{example})) {
+        push @example_array, $def->{example};
+    }
+    foreach (1..10) {
+        if (defined($def->{'example'.$_})) {
+            push @example_array, $def->{'example'.$_};
+        }
+    }
+
+    if (@example_array) {
+        my $exampleno = "";
+        if ($#example_array > 0) {
+            $exampleno = 1;
+        }
+        foreach my $line (@example_array) {
+            my @parts = split ('\|', $line);
+            print "**Example$exampleno:** \n\n";
+            if ($#example_array > 0) {
+                $exampleno++;
+            }
+
+            if ($parts[1]) {
+                print "$parts[1] :: \n\n";
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
+
+            if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
+                my ($uri, $data);
+                if ($parts[3] =~ /\s+/) {
+                    ($uri, $data) = split(/ /, $parts[3]);
+                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                } else {
+                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                }
+
+                if ($parts[4]) {
+                    $parts[4] =~ s/\n/\n    /g;
+                    print "    $parts[4]\n\n";
+                }
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
+        }
+    } else {
+        push @errmsg, "Error format for:[".$def->{desc}."]\n";
+    }
+}
+
 
 sub outtext {
     my $def = shift;
@@ -188,7 +311,7 @@ sub outwiki {
         $manpath =~ s/\.gz//;
 
         if ($manpath) {
-            print "Refer to the man page:[$def->{cmd}](http://xcat.sourceforge.net".$manpath.".html).\n\n";
+            print "Refer to the man page:[$def->{cmd}](http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/references/index.html#xcat-man-pages).\n\n";
         } else {
             print "Refer to the man page of ".$def->{cmd}." command.\n\n";
         }
@@ -260,7 +383,7 @@ sub outwiki {
 }
 
 
-# outmediawiki is the backup subroutine to generate restapi doc for mediawiki which has been obsoleted from sourceforge
+# outmediawiki is the backup subroutine to generate restapi doc for mediawiki 
 sub outmediawiki {
     my $def = shift;
     my $opt = shift;
@@ -292,7 +415,7 @@ sub outmediawiki {
         my $manpath = search_manpage($def->{cmd});
 
         if ($manpath) {
-            print "Refer to the man page:[http://xcat.sourceforge.net".$manpath.".html ".$def->{cmd}."]\n\n";
+            print "Refer to the man page:[http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/references/index.html#xcat-man-pages ".$def->{cmd}."]\n\n";
         } else {
             print "Refer to the man page of ".$def->{cmd}." command.\n\n";
         }
@@ -354,11 +477,12 @@ sub outmediawiki {
 sub search_manpage {
     my $cmd = shift;
 
-    if (-d "/opt/xcat/share/man") {
-        my $run = "cd /opt/xcat/share/man; find . | grep \'$cmd\\.\'";
+    if (-d "../../docs/source/guides/admin-guides/references/") {
+        my $run = "find ../../docs/source/guides/admin-guides/references/ | grep \'$cmd\\.\'";
         my @output = `$run`;
         if (@output) {
-            $output[0] =~ s/^\.//;
+            $output[0] =~ s/..\/..\/docs\/source//;
+            $output[0] =~ s/\.rst$//;
             chomp($output[0]);
             return $output[0];
         }
@@ -376,7 +500,7 @@ sub gendoc {
     }
 
     if ($format eq "wiki") {
-        print "![](http://sourceforge.net/p/xcat/wiki/XCAT_Documentation/attachment/Official-xcat-doc.png)\n\n";
+        print "![](http://xcat.org/images/Official-xcat-doc.png)\n\n";
         print "\n[TOC]\n";
     }
 
@@ -396,6 +520,10 @@ sub gendoc {
             } elsif ($format eq "mediawiki") {
                 print "==".$group->{'header'}."==\n";
                 print $group->{'desc'}."\n";
+            } elsif ($format eq "rst") {
+                print $group->{'header'} . "\n";
+                print "=" x length($group->{'header'}) . "\n\n";
+                print $group->{'desc'}."\n\n";
             }
             foreach my $res (@{$group->{'resources'}}) {
                 if (defined ($URIdef->{$groupname}->{$res})) {

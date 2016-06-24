@@ -2,11 +2,16 @@
         <script>
           <filename>xcat.sh</filename>
           <interpreter>shell</interpreter>
+          <debug config:type="boolean">false</debug>
           <source>
 
 <![CDATA[
+mkdir -p /var/log/xcat/
+{
+echo "Running AutoYaST Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sles.common#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+} >>/var/log/xcat/xcat.log 2>&1
 
 ]]>
 

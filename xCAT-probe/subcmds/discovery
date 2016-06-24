@@ -1,0 +1,275 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Getopt::Long qw(:config no_ignore_case);
+
+my $program_name = basename("$0");
+my $help;
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name -t
+    $program_name [-V]
+    $program_name -s
+
+Description:
+    Check discovery files or process. 
+
+Options:
+    -h : Get usage information of $program_name
+    -t : To verify if $program_name can work, reserve option for probe framework
+    -V : Output more information for debug
+    -s : Discovery static check, check whether genesis files are ready
+";
+
+sub check_genesis_file {
+    my $arch  = shift;
+    if (($arch ne "ppc64") and ($arch ne "x86_64")) {
+        probe_utils->send_msg("$output", "f", "Please input correct arch type");
+        return 1;
+    }
+ 
+    my $rst_f = 0;
+    probe_utils->send_msg("$output", "d", "Start to check genesis files for $arch...") if ($verbose);
+
+    my $os = probe_utils->get_os();
+    my $genesis_base;
+    my $genesis_scripts;
+
+    if ($arch eq "x86_64") {
+        $arch_tmp = "amd64";
+    } else {
+        $arch_tmp = $arch;
+    }
+
+    if ($os =~ "unknown") {
+        probe_utils->send_msg("$output", "d", "The OS is not supported.") if ($verbose);
+        return 1;
+    } elsif ($os =~ "ubuntu") {
+        $genesis_base = `dpkg -l | grep -i "xcat-genesis-base" | grep -i "$arch_tmp"`;
+        $genesis_scripts = `dpkg -l | grep -i "xcat-genesis-scripts" | grep -i "$arch_tmp"`;
+    } else {
+        $genesis_base = `rpm -qa | grep -i "xcat-genesis-base" | grep -i "$arch"`;
+        $genesis_scripts = `rpm -qa | grep -i "xcat-genesis-scripts" | grep -i "$arch"`;
+    }
+    unless ($genesis_base and $genesis_scripts) {
+        probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch did not be installed.") if ($verbose);
+        return 1;
+    }
+
+    probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch installed, start to check files...") if ($verbose);
+
+    my $tftpdir = `tabdump site | grep "tftpdir" | awk -F "," '{print \$2}'`;
+    chomp($tftpdir);
+    $tftpdir =~ s/"//g;
+    my $genesis_folder;
+    my @genesis_files;
+    my $genesis_line;
+    my $wget_rst;
+
+    if ($arch eq "ppc64") {
+        $genesis_folder = "$tftpdir/pxelinux.cfg/p";
+        unless (-d "$genesis_folder") {
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Please run 'mknb ppc64' if you use ppc64/ppc64le machine.") if ($verbose);
+            return 1;
+        }
+
+        @genesis_files = glob("$genesis_folder/*");
+
+        foreach (@genesis_files) {
+            unless (open(FILE, $_)) {
+                probe_utils->send_msg("$output", "d", "Cannot open file $_.") if ($verbose);
+                $rst_f = 1;
+                next;
+            }
+
+            while ($genesis_line = <FILE>) {
+                chomp($genesis_line);
+                $genesis_line =~ s/^\s+|\s+$//g;
+
+                if ($genesis_line =~ /^initrd/) {
+                    @initrd_info = split(' ', $genesis_line);
+                    $initrd_path = $initrd_info[1];
+                    $wget_rst = system("wget -q --spider $initrd_path -T 0.5 -t 3");
+                    if ($wget_rst) {
+                        probe_utils->send_msg("$output", "d", "initrd cannot be downloaded from $initrd_path.") if ($verbose);
+                        $rst_f = 1;
+                    } else {
+                        probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_path PASS.") if ($verbose);
+                    }
+                }
+
+                if ($genesis_line =~ /^kernel/) {
+                    @kernel_info = split(' ', $genesis_line);
+                    $kernel_path = $kernel_info[1];
+                    $wget_rst = system("wget -q --spider $kernel_path -T 0.5 -t 3");
+                    if ($wget_rst) {
+                        probe_utils->send_msg("$output", "d", "kernel cannot be downloaded from $kernel_path.") if ($verbose);
+                        $rst_f = 1;
+                    } else {
+                        probe_utils->send_msg("$output", "d", "Check kernel file: $kernel_path PASS.") if ($verbose);
+                    }
+                }
+            }
+        }
+    } else {
+        $genesis_folder = "$tftpdir/xcat/xnba/nets";
+        unless (-d "$genesis_folder") {
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Please run 'mknb x86_64' if you use x86_64 machine.") if ($verbose);
+            return 1;
+        }
+
+        my @host_ip_arr = `ifconfig -a |awk -F" " '/inet / {gsub(/\w+:/,"",\$2);print \$2}'`;
+        my @netmask_arr = `ifconfig -a |awk -F" " '/inet / {gsub(/\w+:/,"",\$4);print \$4}'`;
+
+        @genesis_files = glob("$genesis_folder/*");
+        foreach (@genesis_files) {
+            if ($_ =~ /uefi$/) {
+                my $file_name = basename($_);
+                my @tmp_ip    = split('_', $file_name);
+                my $ip_range  = shift(@tmp_ip);
+                my $host_ip;
+                my $netmask_num = 0;
+                foreach (@host_ip_arr) {
+                    chomp($_);
+                    if (probe_utils->is_ip_belong_to_net($ip_range, $netmask_arr[$netmask_num], $_)) {
+                        $host_ip = $_;
+                    }
+                    $netmask_num++;
+                }
+
+                unless ($host_ip) {
+                    probe_utils->send_msg("$output", "d", "There is no ip for range $ip_range") if ($verbose);
+                    $rst_f = 1;
+                    next;
+                }
+
+                unless (open(FILE, $_)) {
+                    probe_utils->send_msg("$output", "d", "Can not open file $_.");
+                    $rst_f = 1;
+                    next;
+                }
+
+                $host_ip .= ":80";
+                while ($genesis_line = <FILE>) {
+                    chomp($genesis_line);
+                    $genesis_line =~ s/^\s+|\s+$//g;
+                    if ($genesis_line =~ /^chain/) {
+                        my @file_path  = split(' ', $genesis_line);
+                        my $elilo_efi  = $file_path[1];
+                        my $elilo_path = $file_path[3];
+                        $elilo_efi =~ s/\${next-server}/$host_ip/i;
+
+                        $wget_rst = system("wget -q --spider $elilo_efi -T 0.5 -t 3");
+                        if ($wget_rst) {
+                            probe_utils->send_msg("$output", "d", "elilo-x64.efi cannot be downloaded from $elilo_efi.") if ($verbose);
+                            $rst_f = 1;
+                        } else {
+                            probe_utils->send_msg("$output", "d", "Check elilo-x64.efi file: $elilo_efi PASS.") if ($verbose);
+                        }
+
+                        my $elilo_http = "http://$host_ip/$elilo_path";
+                        $wget_rst = system("wget -q --spider $elilo_http -T 0.5 -t 3");
+                        if ($wget_rst) {
+                            probe_utils->send_msg("$output", "d", "elilo file cannot be downloaded from $elilo_http.") if ($verbose);
+                            $rst_f = 1;
+                        } else {
+                            probe_utils->send_msg("$output", "d", "Check elilo file: $elilo_http PASS.") if ($verbose);
+                            unless (open(FILE_ELILO, $elilo_path)) {
+                                probe_utils->send_msg("$output", "d", "Can not open file $_.") if ($verbose);
+                                $rst_f = 1;
+                                next;
+                            }
+
+                            while ($line_elilo = <FILE_ELILO>) {
+                                chomp($line_elilo);
+                                $line_elilo =~ s/^\s+|\s+$//g;
+                                if ($line_elilo =~ /^image/) {
+                                    my @image_info = split('=', $line_elilo);
+                                    my $image_path = pop(@image_info);
+                                    my $image_http = "http://$host_ip/$image_path";
+
+                                    $wget_rst = system("wget -q --spider $image_http -T 0.5 -t 3");
+                                    if ($wget_rst) {
+                                        probe_utils->send_msg("$output", "d", "image cannot be downloaded from $image_http.") if ($verbose);
+                                        $rst_f = 1;
+                                    } else {
+                                        probe_utils->send_msg("$output", "d", "Check image file: $image_http PASS.") if ($verbose);
+                                    }
+                                }
+                                if ($line_elilo =~ /^initrd/) {
+                                    my @initrd_info = split('=', $line_elilo);
+                                    my $initrd_path = pop(@initrd_info);
+                                    my $initrd_http = "http://$host_ip/$initrd_path";
+
+                                    $wget_rst = system("wget -q --spider $initrd_http -T 0.5 -t 3");
+                                    if ($wget_rst) {
+                                        probe_utils->send_msg("$output", "d", "initrd cannot be downloaded from $initrd_http.") if ($verbose);
+                                        $rst_f = 1;
+                                    } else {
+                                        probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_http PASS.") if ($verbose);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return $rst_f;
+}
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h|?" => \$help,
+        "t" => \$test,
+        "V" => \$verbose,
+        "s" => \$static))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Discovery Check.");
+    exit 0;
+}
+
+if ($static) {
+    $rst = check_genesis_file("ppc64");
+    if ($rst) {
+        probe_utils->send_msg("$output", "f", "Genesis files for ppc64/ppc64le failed.");
+    } else {
+        probe_utils->send_msg("$output", "o", "Genesis files for ppc64/ppc64le success.");
+    }
+    $rst = check_genesis_file("x86_64");
+    if ($rst) {
+        probe_utils->send_msg("$output", "f", "Genesis files for x86_64 failed.");
+    } else {
+        probe_utils->send_msg("$output", "o", "Genesis files for x86_64 success.");
+    }
+}
+
+exit $rst;

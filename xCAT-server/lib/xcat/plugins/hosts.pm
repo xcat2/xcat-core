@@ -87,6 +87,7 @@ sub addnode
                     # we're processing the nics table and we found an
                     #   existing entry for this ip so just add this
                     # ode name as an alias for the existing entry
+                    chomp($hosts[$idx]);
                     my ($hip, $hnode, $hdom, $hother)= split(/ /, $hosts[$idx]);
                     
                     # at this point "othernames", if any is just a space
@@ -394,13 +395,14 @@ sub process_request
        return;
     }
 
+    # get site FQDNfirst(Fully Qualified Domian Name)
+    my @FQDNfirst = xCAT::TableUtils->get_site_attribute("FQDNfirst");
+    if ( (defined($FQDNfirst[0])) && ( $FQDNfirst[0] =~ /^(1|yes|enable)$/i)) { $LONGNAME = "1"; }
+
     # get site domain for backward compatibility
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab) {
-        my $dom = $sitetab->getAttribs({key=>'domain'},'value');
-        if ($dom and $dom->{value}) {
-            $::sitedomain=$dom->{value};
-        }
+    my @domain = xCAT::TableUtils->get_site_attribute("domain");
+    if ($domain[0]) {
+        $::sitedomain=$domain[0];
     }
 
     my $hoststab = xCAT::Table->new('hosts');

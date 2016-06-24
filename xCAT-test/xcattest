@@ -59,6 +59,7 @@ if($needshow){
 }
 
 my $resultdir = "$rootdir/result";
+my $stop_to_keep_env = 0;
 #Create result directory
 mkdir $resultdir unless -d $resultdir;
 
@@ -93,6 +94,7 @@ if($ret != 0){
     goto EXIT;
 }
 #run case
+&reordercases if(defined($bundle_list) || defined($case_list));
 &runcase;
 
 EXIT:
@@ -106,7 +108,11 @@ close(LOG_ERR);
 my $reportfile="$resultdir/performance.report.$timestamp";
 my $tmpreport="$resultdir/xcattest.log.$timestamp";
 &getreport($tmpreport,$reportfile);
-exit 0;
+if($stop_to_keep_env){
+    exit 1;
+}else{
+    exit 0;
+}
 
 # end main
 
@@ -192,7 +198,7 @@ sub getConfig
             }
         }elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-               if($line =~ /(\w+)\s*=\s*([:\w\.\-]+)/) {
+               if($line =~ /(\w+)\s*=\s*([:\w\.\-\/]+)/) {
                $attr = $1;
                $value = $2;
                if($attr eq "Name"){
@@ -217,7 +223,7 @@ sub getConfig
             }
         } elsif ($type eq "Varible") {
             ##NODE_BLOCK##
-            if($line =~ /(\w+)\s*=\s*([\w\.\-\+\/]+)/) {
+            if($line =~ /(\w+)\s*=\s*([\w\.\-\+\/:]+)/) {
                 $config{var}{$1} = $2;
             }
         }
@@ -584,7 +590,10 @@ sub loadcase
                     pop(@rightcase);
                     $skip = 1;
                 }
-            }elsif($line =~ /^cmd\s*:\s*([\$\w].+)/){
+            }elsif($line =~ /^stop\s*:\s*(\w[\w\,]+)/){
+                next if $skip;
+                $cases[$i]->{stop}=$1;
+            }elsif($line =~ /^cmd\s*:\s*([\/\$\w].+)/){
                 next if $skip;
                 $j = $j + 1;
                 $z = 0;
@@ -732,7 +741,7 @@ sub runcase
         $j = 0;
         $total = $total + 1;
         my $now1=timelocal(localtime());
-        my $time1=gmtime $now1;
+        my $time1=scalar(localtime());
         log_this("------START:$$case{name}::Time:$time1------");
         push @record, "------START:$$case{name}::Time:$time1------";
         push @record, "FILENAME:$$case{filename}";
@@ -847,7 +856,7 @@ sub runcase
             $j = $j + 1;
         }
         my $now2=timelocal(localtime());
-        my $time2=gmtime $now2;
+        my $time2 = scalar(localtime());
         my $diff=$now2-$now1;
         if($failed){
             log_this("------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
@@ -859,6 +868,10 @@ sub runcase
         if($failed){
             $failnum = $failnum + 1;
             log_error(@record);
+            if(defined ($$case{stop}) && ($$case{stop} =~ /^yes$/)){
+                $stop_to_keep_env=1;
+                last;
+            }
         }
     }
     log_this("\n\n");
@@ -913,4 +926,43 @@ close(FD);
 close(STDOUT);
 }
 
+
+sub reordercases{
+    my @caserange = ();
+    my $line;
+    if($bundle_list){
+        my @bundles = split /,/, $bundle_list;
+        foreach my $bundle (@bundles){
+            if(!open(FILE, "<$rootdir/bundle/$bundle")){
+                log_this("can't open $rootdir/bundle/$bundle");
+                return 1;
+            }
+            while($line=<FILE>){
+                $line = trim($line);
+                next if(length($line) == 0);
+                push(@caserange, $line);
+            }
+            close(FILE);
+        }
+    }
+    if($case_list){
+       @caserange = split /,/, $case_list;
+    }
+
+    my @tmpcases=();
+    foreach my $case (@caserange){
+        my $i=0;
+        my $hit=0;
+        foreach my $runcase (@cases){
+            if($runcase->{name} eq $case){
+                $hit=1;
+                last;
+             }
+             $i++;
+             next;
+       }
+        push(@tmpcases, $cases[$i]) if($hit);
+    }
+    @cases=@tmpcases;
+}
 

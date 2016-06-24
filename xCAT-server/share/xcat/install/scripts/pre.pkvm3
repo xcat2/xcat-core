@@ -1,0 +1,29 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
+if [ "$XCATDEBUGMODE" = "2" ]; then
+    echo 'root:cluster' | chpasswd
+fi
+
+#find first available block device (sda or vda likely)
+#TODO: pick a likely non-SAN target if possible
+
+shopt -s nullglob
+
+#
+# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu. 
+# It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
+#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
+if [ -e "/tmp/xcat.install_disk" ]; then
+    instdisk=`cat /tmp/xcat.install_disk`
+fi
+
+echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitioning
+echo "volgroup ibmpkvm_rootvg PV.01" >> /tmp/partitioning	
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi

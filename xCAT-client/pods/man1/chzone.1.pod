@@ -4,7 +4,7 @@ B<chzone> - Changes a zone defined  in the cluster.
 
 =head1 B<SYNOPSIS>
 
-B<chzone> <zonename>  [B<--defaultzone>] [-K] [B<-k> I<full path to the ssh RSA private key>] [B<-a> I<noderange> | B<-r> I<noderange>] [B<-g>] [B<-f>] [B<-s> I<yes|no>] [-V] 
+B<chzone> I<zonename>  [B<--defaultzone>] B<[-K]> [B<-k> I<full path to the ssh RSA private key>] [B<-a> I<noderange> | B<-r> I<noderange>] [B<-g>] [B<-f>] [B<-s> B<{yes|no}>] [B<-V>] 
 
 B<chzone> [B<-h> | B<-v>]
 
@@ -37,12 +37,12 @@ This is the path to the id_rsa key that will be used to build new root's ssh key
 Using this flag, will  generate new ssh RSA private and public keys for the zone into the /etc/xcat/sshkeys/<zonename>/.ssh directory.
 The nodes are not automatically updated with the new root ssh keys by chzone. You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.
 
-=item B<--default>
+=item B<--defaultzone>
 
-if --defaultzone is input, then it will set the zone defaultzone attribute to yes.
-if --defaultzone is input and another zone is currently the default,
-then the -f flag must be used to force a change to the new defaultzone.
-If -f flag is not use an error will be returned and no change made. 
+if B<--defaultzone> is input, then it will set the zone defaultzone attribute to yes.
+if B<--defaultzone> is input and another zone is currently the default,
+then the B<-f> flag must be used to force a change to the new defaultzone.
+If B<-f> flag is not use an error will be returned and no change made. 
 Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
 
 =item B<-a | --addnoderange> I<noderange>
@@ -65,11 +65,11 @@ If -s entered, the zone sshbetweennodes attribute will be set to yes or no based
 
 =item B<-f | --force> 
 
-Used with the (--defaultzone) flag to override the current default zone.
+Used with the B<--defaultzone> flag to override the current default zone.
 
 =item B<-g | --assigngroup> 
 
-Used with the (-a or -r ) flag to add or remove the group zonename for all nodes in the input noderange.
+Used with the B<-a> or B<-r> flag to add or remove the group zonename for all nodes in the input noderange.
 
 =item B<-V>|B<--Verbose>
 
@@ -79,57 +79,52 @@ Verbose mode.
 =back
 
 
-=head1 B<Examples>
+=head1 B<EXAMPLES>
 
 =over 3
 
-=item *
-
+=item 1.
 To chzone zone1 to the default zone, enter:
 
-B<chzone> I<zone1> --default -f
+ chzone> zone1 --default -f
 
-=item *
-
+=item 2.
 To generate new root ssh keys for zone2A using the ssh id_rsa private key in /root/.ssh:
 
-B<chzone> I<zone2A> -k /root/.ssh
+ chzone zone2A -k /root/.ssh
 
 Note: you must use xdsh -K or updatenode -k to update the nodes with the new keys 
 
-=item *
-
+=item 3.
 To generate new root ssh keys for zone2A, enter :
 
-B<chzone> I<zone2A> -K  
+ chzone zone2A -K  
 
 Note: you must use xdsh -K or updatenode -k to update the nodes with the new keys 
 
-=item *
-
+=item 4.
 To add a new group of nodes (compute3) to zone3 and add zone3 group to the nodes,  enter:
 
-B<chzone> I<zone3>  -a compute3 -g
+ chzone zone3 -a compute3 -g
 
-=item *
+=item 5.
 
 To remove a group of nodes (compute4) from zone4 and remove zone4 group from the nodes,  enter:
 
-B<chzone> I<zone4>  -r compute4 -g
+ chzone> zone4 -r compute4 -g
 
-=item *
-
+=item 6.
 To change the sshbetweennodes setting on the zone to not allow passwordless ssh between nodes,  enter:
 
-B<chzone> I<zone5> -s no 
+ chzone zone5 -s no 
 
-Note: you must use xdsh -K or updatenode -k to update the nodes with this new setting.
+Note: you must use B<xdsh -K> or B<updatenode -k> to update the nodes with this new setting.
 
 =back
 
-B<Files>
+=head1 B<FILES>
 
-B</opt/xcat/bin/chzone/>
+/opt/xcat/bin/chzone/
 
 Location of the chzone command.
 

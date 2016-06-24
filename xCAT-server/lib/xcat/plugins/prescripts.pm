@@ -43,6 +43,20 @@ sub preprocess_request
     my $req = shift;
     my $cb  = shift;
 
+    #>>>>>>>used for trace log start>>>>>>>
+    my @args=();
+    my %opt;
+    my $verbose_on_off=0;
+    if (ref($req->{arg})) {
+        @args=@{$req->{arg}};
+    } else {
+        @args=($req->{arg});
+    }
+    @ARGV = @args;
+    GetOptions('V'  => \$opt{V});
+    if($opt{V}){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
+	
     #if already preprocessed, go straight to request
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
@@ -78,10 +92,13 @@ sub preprocess_request
     }
     
     # if no nodes left to process, we are done
-    if (! @nodes) { return; }
+    if (! @nodes) { 
+        xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts->preprocess_request: no nodes left to process, we are done");
+        return; 
+    }
 
     my $service = "xcat";
-    my @args=();
+    @args=();
     if (ref($req->{arg})) {
 	@args=@{$req->{arg}};
     } else {
@@ -91,6 +108,11 @@ sub preprocess_request
 
     #print "prepscripts: preprocess_request get called, args=@args, nodes=@$nodes\n";
     
+    #>>>>>>>used for trace log>>>>>>
+    my $str_node=join(" ",@nodes);
+    my $str_args=join(" ",@args);
+    xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts->preprocess_request: get called, args='$str_args', nodes='$str_node'");
+	
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
@@ -117,6 +139,7 @@ sub preprocess_request
 	    $reqcopy->{'_xcatdest'} = $hostinfo[0];
 	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
 	    push @requests, $reqcopy;
+            xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts: handle request in $hostinfo[0]");
 	    return \@requests;
 	}
     } else { #run on mn and need to dispatch the requests to the service nodes
@@ -130,6 +153,7 @@ sub preprocess_request
 	    $reqcopy->{node} = $sn->{$snkey};
 	    $reqcopy->{'_xcatdest'} = $snkey;
 	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts: handle request in $snkey");
 	    push @requests, $reqcopy;
 	    
 	}   # end foreach

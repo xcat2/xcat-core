@@ -31,7 +31,7 @@ then
 fi
 
 #get lsf main version,
-LSF_VERSION=`find /$LSF_TOP -name hostsetup|head -1|awk '{print $5}'`
+LSF_VERSION="$(find /$LSF_TOP -path "*/install/hostsetup" | grep -o "/[^/]\+/install/hostsetup" | cut -d/ -f2)"
 
 if [[ x${LSF_ADD_SERVERS} != x ]]; then
      ALL_LSF_NODES=${LSF_MASTER_LIST}' '${LSF_ADD_SERVERS}
@@ -59,7 +59,19 @@ for lsfnode in $ALL_LSF_NODES
 do
     if [[ x${lsfnode} == x$NODE ]]
     then
-        echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+        if [[ -f /root/.bash_profile ]] 
+        then
+            if ! grep -q -i "#Added by lsf_startup" /root/.bash_profile ; then 
+                echo "#Added by lsf_startup." >> /root/.bash_profile
+                echo ". $LSF_TOP/conf/profile.lsf" >> /root/.bash_profile
+            fi
+        else
+            if ! grep -q -i "#Added by lsf_startup" /root/.profile ; then
+                echo "#Added by lsf_startup." >> /root/.profile
+                echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+            fi
+            
+        fi
     fi
 done
 

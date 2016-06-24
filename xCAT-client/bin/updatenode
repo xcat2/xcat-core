@@ -79,70 +79,83 @@ if (!($tmp =~ / (--help|-h|-v|--version)/)) {
 
 push (@{$cmdref->{arg}}, @ARGV);
 # check the syntax
+my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY);
 if (
     !GetOptions(
-				'A|updateallsw'    => \$::ALLSW,
-                'c|cmdlineonly'    => \$::CMDLINE,
-				'd=s'              => \$::ALTSRC,
-                'h|help'           => \$::HELP,
-                'v|version'        => \$::VERSION,
-                'V|verbose'        => \$::VERBOSE,
-                'F|sync'           => \$::FILESYNC,
-                'g|genmypost'      => \$::GENMYPOST,
-                'f|snsync'         => \$::SNFILESYNC,
-                'l|user:s'         => \$::USER,
-                'S|sw'             => \$::SWMAINTENANCE,
-                's|sn'             => \$::SETSERVER,
-                'P|scripts:s'      => \$::RERUNPS,
-                'k|security'       => \$::SECURITY,
-                'o|os:s'      	   => \$::OS,
-                'fanout=i'         => \$::fanout,
-                't|timetout=i'     => \$::timeout,
+                'A|updateallsw'    => \$ALLSW,
+                'c|cmdlineonly'    => \$CMDLINE,
+                'd=s'              => \$ALTSRC,
+                'h|help'           => \$HELP,
+                'v|version'        => \$VERSION,
+                'V|verbose'        => \$VERBOSE,
+                'F|sync'           => \$FILESYNC,
+                'g|genmypost'      => \$GENMYPOST,
+                'f|snsync'         => \$SNFILESYNC,
+                'l|user=s'         => \$USER,
+                'S|sw'             => \$SWMAINTENANCE,
+                's|sn'             => \$SETSERVER,
+                'P|scripts:s'      => \$RERUNPS,
+                'k|security'       => \$SECURITY,
+                'o|os=s'      	   => \$OS,
+                'fanout=i'         => \$fanout,
+                't|timetout=i'     => \$timeout,
+                'n|noverify'       => \$NOVERIFY,
     )
   ) {
     &updatenode_usage();
     exit 1;
 }
 
-if ($::HELP)
+if ($HELP)
 {
-  &updatenode_usage();
-  exit 0;
+    &updatenode_usage();
+    exit 0;
 }
-if (($::USER) && ($::SECURITY))
+if (($USER) && ($SECURITY))
 {
-     my $msg = "-l option is not allowed with -k option.";
-     xCAT::MsgUtils->message("E", $msg);
-     exit 1;
+    my $msg = "-l option is not allowed with -k option.";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
 }
-if (($::USER) && ($::SNFILESYNC))
+if (($USER) && ($SNFILESYNC))
 {
-     my $msg = "-l option is not allowed with -f options.";
-     xCAT::MsgUtils->message("E", $msg);
-     exit 1;
+    my $msg = "-l option is not allowed with -f options.";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
 }
 
 # display the version statement if -v or --verison is specified
-if ($::VERSION)
+if ($VERSION)
 {
-  my $version = xCAT::Utils->Version();
-  print "$version\n";
-  exit 0;
+    my $version = xCAT::Utils->Version();
+    print "$version\n";
+    exit 0;
 }
-if (($::FILESYNC) && ($::SNFILESYNC)){  # only one
-     my $msg = "Choose either -f to sync the service nodes, or -F  to sync the nodes not both.";
-     xCAT::MsgUtils->message("E", $msg);
-     exit 1;
+if (($FILESYNC) && ($SNFILESYNC)){  # only one
+    my $msg = "Choose either -f to sync the service nodes, or -F  to sync the nodes not both.";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
 } 
+if (($SECURITY) && (($SWMAINTENANCE) || defined($RERUNPS) || ($FILESYNC) || ($SNFILESYNC))){
+    my $msg = "If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
+}
+
+if ($SNFILESYNC && ($SWMAINTENANCE || defined($RERUNPS) || $SECURITY || $FILESYNC)){
+    my $msg = "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
+}
 
 # determine who is running the command on the client and who we will run as 
 # on the node
 my $current_userid = getpwuid($>);
 $ENV{DSH_FROM_USERID} = $current_userid;
 my $to_userid;
-if ($::USER)   # entered -l
+if ($USER)   # entered -l
 {
-    $to_userid = $::USER;
+    $to_userid = $USER;
 }
 else
 {
@@ -151,14 +164,14 @@ else
 $ENV{DSH_TO_USERID} = $to_userid;
 
 # if -k then we have to get the password
-if ($::SECURITY) {
+if ($SECURITY) {
     my $msg;
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
     {                         # if not already set
         # prompt for the password for the userid on the node that will be setup
         my $userpw;
         $msg =
-          "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
+          "The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
         xCAT::MsgUtils->message("I", $msg);
         system("stty -echo");    # turn off keyboard
         chop($userpw = <STDIN>);

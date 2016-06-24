@@ -4,23 +4,23 @@ B<tabdump> - display an xCAT database table in CSV format.
 
 =head1 SYNOPSIS
 
-B<tabdump> [I<-d>] [I<table>]
+B<tabdump> 
+
+B<tabdump> [B<-d>] [I<table>]
 
 B<tabdump> [I<table>]
 
-B<tabdump> [I<-f> I<filename>] [I<table>]
+B<tabdump> [B<-f> I<filename>] [I<table>]
 
-B<tabdump> [I<-n> I<# of records>] [I<auditlog | eventlog>]
+B<tabdump> [B<-n> I<# of records>] [B<auditlog> | B<eventlog>]
 
-B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<table>]
+B<tabdump> [B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<table>]
 
-B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<-f> I<filename>] [I<table>]
+B<tabdump> [B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [B<-f> I<filename>] [I<table>]
 
-B<tabdump> [I<-v> | I<--version>]
+B<tabdump> [B<-v> | B<--version>]
 
-B<tabdump> [I<-?> | I<-h> | I<--help>]
-
-B<tabdump> 
+B<tabdump> [B<-?> | B<-h> | B<--help>]
 
 =head1 DESCRIPTION
 
@@ -71,12 +71,10 @@ Operator descriptions:
 
 =over 3
 
-=item 0
-
+=item 0. 
 The command completed successfully.
 
-=item 1
-
+=item 1. 
 An error has occurred.
 
 =back
@@ -85,67 +83,57 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To display the contents of the site table:
 
-B<tabdump> B<site>
+ tabdump site
 
-=item *
-
+=item 2.
 To display the contents of the nodelist table where the groups attribute is compute :
 
-B<tabdump>  B<-w 'groups==compute'> B<nodelist>
+ tabdump -w 'groups==compute' nodelist
 
-=item *
-
+=item 3.
 To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
 
-B<tabdump>  B<-w 'groups=~comput%'> B<-w 'status==booted'> B<nodelist>
+ tabdump -w 'groups=~comput%' -w 'status==booted' nodelist
 
-=item *
-
+=item 4.
 To display the records of the auditlog on date  2011-04-18 11:30:00 :
 
-B<tabdump>   B<-w 'audittime==2011-04-18 11:30:00'> B<auditlog>
+ tabdump -w 'audittime==2011-04-18 11:30:00' auditlog
 
-=item *
-
+=item 5.
 To display the records of the auditlog starting on 2011-04-18:
 
-tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
+ tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
 
-=item *
-
+=item 6.
 To display the 10 most recent entries in the auditlog:
 
-tabdump -n 10 auditlog
+ tabdump -n 10 auditlog
 
-=item *
-
+=item 7.
 To see what tables exist in the xCAT database:
 
-B<tabdump>
+ tabdump
 
-=item *
-
+=item 8.
 To back up all the xCAT database tables, instead of running B<tabdump> multiple times, you can use the B<dumpxCATdb> command as follows:
 
-B<dumpxCATdb -p /tmp/xcatbak >
+ dumpxCATdb -p /tmp/xcatbak
 
 See the B<dumpxCATdb> man page for details.
 
-=item *
-
+=item 9.
 To display a summary description of each table:
 
-B<tabdump> B<-d>
+ tabdump -d
 
-=item *
-
+=item 10.
 To display a description of each column in the nodehm table:
 
-B<tabdump> B<-d nodehm>
+ tabdump -d nodehm
 
 =back
 

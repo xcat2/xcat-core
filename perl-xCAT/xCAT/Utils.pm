@@ -3512,13 +3512,20 @@ sub filter_nodes{
         @{$fspnodes} = ();
         push @{$fspnodes}, @p6p7;
 
-        # for rnergy command, only the non-ppcle nodes get to the general ipmi.pm
+        # for renergy command, only the non-ppcle nodes get to the general ipmi.pm
         # ppcle of P8 and higher will get in the energy.pm
+        # But for option powerusage and temperature of renergy, they are only implementated in ipmi.pm
+        # So, all bmc node shall go to ipmi.pm. 
+
         @{$bmcnodes} = ();
         push @{$bmcnodes}, @nonppcle;
 
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
+        }elsif (grep /^(powerusage|temperature)/, @args) {
+            # Clear the bmc nodes to avoid duplication for non ppc64* nodes.
+            @{$bmcnodes} = ();
+            push @{$bmcnodes}, @commonbmc;
         } else {
             push @{$mpnodes}, @ngpbmc;
         }
@@ -3889,30 +3896,55 @@ sub servicemap{
   my $path=undef;
   my $postfix="";
   my $retdefault=$svcname;
+  my $svcmgrcmd;
   if($svcmgrtype == 0){
+     #for sysvinit
      $path="/etc/init.d/";
+     $svcmgrcmd="service";
   }elsif ($svcmgrtype == 1){
-     $path="/usr/lib/systemd/system/";
+     #for systemd
+     #ubuntu 16.04 replace upstart with systemd, 
+     #all the service unit files are placed under /lib/systemd/system/ on ubuntu
+     #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
+     #$path delimited with space
+     $path="/usr/lib/systemd/system/ /lib/systemd/system/";
      $postfix=".service";
+     $svcmgrcmd="systemctl";
 #     $retdefault=$svcname.".service";
   }elsif ($svcmgrtype == 2){
      $path="/etc/init/";
      $postfix=".conf";
+     $svcmgrcmd="initctl";
+  }
+  
+  #check whether service management command is available
+  system "type $svcmgrcmd >/dev/null 2>&1";
+  if($? != 0){
+    return undef;
   }
 
-  
+  my @paths=split(" ",$path);
   my $ret=undef;
   if($svchash{$svcname}){
-    foreach my $file (@{$svchash{$svcname}}){
-       if(-e $path.$file.$postfix ){
-             $ret=$file;
-             last;
+      foreach my $file (@{$svchash{$svcname}}){
+          foreach my $ipath (@paths){
+              if(-e $ipath.$file.$postfix ){
+                  $ret=$file;
+                  last;
+              }
           }
-    }      
+ 
+          if(defined $ret){
+              last; 
+          }
+      }      
   }else{
-    if(-e $path.$retdefault.$postfix){
-        $ret=$retdefault;
-    } 
+      foreach my $ipath (@paths){
+          if(-e $ipath.$retdefault.$postfix){
+              $ret=$retdefault;
+              last;
+          } 
+      }
  }
  
  return $ret;  
@@ -4432,7 +4464,14 @@ sub cleanup_for_powerLE_hardware_discovery {
         }
         xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
         if (defined($new_bmc_username) and $new_bmc_username ne '') {
-            `rspconfig $pbmc_node username=$new_bmc_username password=$new_bmc_password`;
+            if ($new_bmc_username eq "ADMIN" or $new_bmc_username eq 'USERID') {
+                # ADMIN is username for OpenPOWER server, it is not allowed to modify at present
+                # USERID is username for IBM system x server, just modify password
+                `rspconfig $pbmc_node userid=2 password=$new_bmc_password`;
+            } else {
+                # For other username, we'd better create new user for them
+                `rspconfig $pbmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
+            }
         } else {
             `rspconfig $pbmc_node password=$new_bmc_password`;
         }
@@ -4604,6 +4643,72 @@ sub lookupNetboot{
        }
     } 
     return $ret;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  is_process_exists
+    Check whether a process is exist.
+    Arguments:
+      process id
+    Returns:
+      1 process is exist
+      0 process is not exist
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->is_process_exists($pid);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub is_process_exists{
+    my $pid = shift;
+    return 1 if $pid == 0;
+    # NOTE: Add eval and require to process dependency missing of perl-Error
+    # package before sles 12 system.
+    my $miss = undef;
+    eval {
+        require Error;
+    };
+    if ($@) {
+        $miss = 1;
+    }
+    my $ret = kill(0, $pid);
+
+    if (!$miss) {
+        return 0 if ($!{ESRCH});
+        return 1 if ($!{EPERM});
+    }
+
+    if ($ret != 0 ) {
+        return 1;
+    }
+    return 0;
+}
+
+#--------------------------------------------------------------------------------
+=head3  get_nmapversion
+      for nmap version 5.10 above, the sP option changed to sn.
+      the output of some commands also have differents.
+      example:  for snmp_scan option,
+        version 4.75 has output "Host 10.4.25.1 appears to be up ... good."  but
+        for version 6.40, it has output "Discovered open port 161/udp on 10.4.25.1"
+    Returns:
+      result: version of nmap on the system
+=cut
+#--------------------------------------------------------------------------------
+
+sub get_nmapversion {
+    my $nmap_version;
+    my $ccmd = "nmap -V | grep version";
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    my @version_array = split / /, $result;
+    $nmap_version = $version_array[2];
+    return $nmap_version;
 }
 
 1;

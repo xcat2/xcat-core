@@ -16,7 +16,7 @@ B<lsvlan> [B<-v>|B<--version>]
 
 The B<lsvlan> command lists all the vlans for the cluster. If I<vlanid> is specifined it will list more details about this vlan including the nodes in the vlan.  
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<vlanid> is a unique vlan number. If it is omitted, all vlans will be listed.
 
@@ -42,12 +42,12 @@ I<vlanid> is a unique vlan number. If it is omitted, all vlans will be listed.
 =over 3
 
 =item 1.
-
 To list all the vlans in the cluster
 
   lsvlan
 
 Output is similar to:
+
   vlan 3:
       subnet 10.3.0.0
       netmask 255.255.0.0
@@ -58,12 +58,12 @@ Output is similar to:
 
 
 =item 2.
-
-TO list the details for vlan3
+To list the details for vlan3
 
   lsvlan 3
 
 Output is similar to:
+
   vlan 3
       subnet 10.3.0.0
       netmask 255.255.0.0

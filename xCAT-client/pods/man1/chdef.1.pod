@@ -10,8 +10,7 @@ B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<
 
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
-[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
-      [B<-u> [I<provmethod>=<I<install>|I<netboot>|I<statelite>>] [I<profile>=<xxx>] [I<osvers>=I<value>] [I<osarch>=I<value>]]
+[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr=val> [I<attr=val...>]] [B<-u> [B<provmethod=> {B<install> | B<netboot> | B<statelite>}] [B<profile=>I<xxx>] [B<osvers>=I<value>] [B<osarch>=I<value>]]
 
 =head1 DESCRIPTION
 
@@ -42,7 +41,7 @@ If the value of the attribute is a list then this option may be used to remove o
 =item B<-n> I<new-name>
 
 Change the current object name to the new-name which is specified by the -n option.
-Objects of type site and monitoring cannot be renamed with the -n option.
+Objects of type site, group and monitoring cannot be renamed with the -n option.
 Note: For the B<-n> option, only one node can be specified. For some special nodes such as fsp, bpa, frame, cec etc., their name is referenced in their own hcp attribute, or the hcp attribute of other nodes. If you use B<-n> option, you must manually change all hcp attributes that refer to this name.
 
 =item I<noderange>

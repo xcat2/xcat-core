@@ -4,7 +4,7 @@ B<reventlog> - retrieve or clear remote hardware event logs
 
 =head1 B<Synopsis>
 
-B<reventlog> I<noderange> {I<number-of-entries [-s]>|B<all [-s]>|B<clear>}
+B<reventlog> I<noderange> {I<number-of-entries> [B<-s>]|B<all [-s]>|B<clear>}
 
 B<reventlog> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -47,9 +47,15 @@ Print version.
 
 =head1 B<Examples>
 
-B<reventlog> I<node4,node5> I<5>
+=over 2
 
- node4: SERVPROC  I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
+=item 1.
+
+ reventlog node4,node5 5
+
+Output is similar to:
+
+ node4: SERVPROC I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
  node4: SERVPROC I 09/06/00 15:23:32 System spn1 started a RS485 connection with us[00]
  node4: SERVPROC I 09/06/00 15:22:35 RS485 connection to system spn1 has ended[00]
  node4: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
@@ -57,13 +63,19 @@ B<reventlog> I<node4,node5> I<5>
  node5: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
  node5: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
  node5: SERVPROC I 09/06/00 15:21:34 RS485 connection to system spn1 has ended[00]
- node5:  SERVPROC  I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
+ node5: SERVPROC I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
  node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
 
-B<reventlog> I<node4,node5> I<clear>
+=item 2.
+
+ reventlog node4,node5 clear
+
+Output is similar to:
 
  node4: clear
  node5: clear
+
+=back 
 
 =head1 SEE ALSO
 

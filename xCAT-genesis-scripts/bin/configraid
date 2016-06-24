@@ -1,0 +1,283 @@
+#!/bin/bash 
+#
+#  This script is used to configure raid.
+#
+#
+##############################################
+# source raidutils
+##############################################
+# prepare tmp log file for configraid
+touch="touch"
+timestamp=`date +"%Y%m%d%H%M%S"`
+log_file="/tmp/configraid.log.$timestamp"
+$touch $log_file
+
+str_dir_name=`dirname $0`
+. $str_dir_name/raidutils $log_file
+
+
+###################################################################################
+#
+# Usage
+#
+#################################################################################
+function usagesc {
+    echo 'Usage: configraid delete_raid=[all|"<raid_array_list>"|null]          '
+    echo '                  stripe_size=[16|64|256]                                    '
+    echo '                  create_raid="rl!<raidlevel>|[pci_id#<num>|pci_slot_name#<pci_slot_name>|disk_names#<sg0>#..#<sgn>]|disk_num#<number>" ... '
+    echo '       1. delete_raid:          '
+    echo '          List raid arrays which should be removed. If its value is all, all raid arrays detected should be deleted.'
+    echo '          If its value is a list of raid array names, these raid arrays will be deleted. Raid array names should be seperated by "#".'
+    echo '          If its value is null, no raid array will be deleted.'
+    echo '          If there is no delete_raid, the default value is null.'
+    echo '          The format is : delete_raid = [all|"<array1>#...#<arrayn>"|null]'
+    echo '          For example:'
+    echo '                delete_raid="sda#sdd" '
+    echo '                                              '
+    echo '       2. stripe_size: '
+    echo '          Currently  supported  stripe  sizes  in  kb  include 16, 64, and 256.'
+    echo '          If  stripe size is not specified, it will default to the recommended stripe size for the selected RAID level.'
+    echo '          For example:'
+    echo '                stripe_size=256 '
+    echo '                                                 '
+    echo '       3. create_raid: '
+    echo '          To create a raid array, add a line begginning with create_raid.'
+    echo '          The format is : '
+    echo '                create_raid="rl#[0,10,5,6]|[PCI_ID#<num>|PCI_SLOT_name#<pci_slot_name>]|disk_num#<number of disks for one raid>"'
+    echo '                rl means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6;'
+    echo '                rl is a must for every create_raid. '
+    echo '                pci_id is PCI vender and device ID; refer to http://pci-ids.ucw.cz/read/PC/1014/034a;'
+    echo '                disk_num is the number of disk this RAID will contain, default value is all unused disks in its pci slot; '
+    echo '                pci_slot_name is the specified PCI location. If specify pci_slot_name, this raid will be created using disks from this pci_slot;'
+    echo '                disk_names is a list of advanced format disk names. If specify disk_names, this raid will be created using these disks;'
+    echo '          Example 1, create 2 raid0 arrays, one is using 3 disks, the other is using 2 disks, the disks PCI_ID is 1014:034a:'
+    echo '                     create_raid="rl#0|pci_id#1014:034a|disk_num#1" create_raid="rl#0|pci_id#1014:034a|disk_num#2"'
+    echo '          Example 2, pci_slot_name is 0001:08:00.0, create raid10 array, using 2 disks '
+    echo '                     create_raid="rl#10|pci_slot_name#0001:08:00.0|disk_num#2"'
+    echo '          Example 3, create 1 raid0 array using advanced format disk sg1'
+    echo '                     create_raid="rl#0|disk_names#sg1|disk_num#1"'
+
+}
+
+###############################################################################
+#
+# handle each create raid
+#
+# input format: stripe_size=16 create_raid=rl#1|pci_id#1014:034a|disk_num#1 
+#
+###############################################################################
+function handle_each_create_raid {
+     
+    local create_raid_list=$1 
+    local striple_pair=$2
+      
+    # cut striple_size from striple_pair      
+    # if striple_size is null, it will default to the recommended stripe size
+    local striple_size=""
+    if [ x$striple_pair != x ]; then
+         striple_size=`echo $striple_pair | $awk -F= '{print $2}'` 
+    else
+         striple_size="default"
+    fi
+
+    # cut create_raid_list into raid_level pci_id|pci_slot_name|disk_names disk_num
+    local create_raid_value=""
+    local raidlevel=""
+    local disknum=""
+    local pciid=""
+    local pcislot_name=""
+    local disk_names=""
+
+    create_raid_value=`echo $create_raid_list| $awk -F= '{print $2}' \
+                                               | $sed -e 's/|/ /g'`
+    # make sure create_raid_value is not null
+    firstpara=`echo $create_raid_value|awk '{print $1}'`
+    if [ x$firstpara != x ]; then
+         for item in $create_raid_value
+         do
+             key=`echo $item | $awk -F# '{print $1}'`
+             vla=`echo $item | $awk -F# '{if($1=="disk_names"){$1="";print $0} else { print $2}}' \
+                             | $sed -e 's/^\s*//g' -e 's/ /#/g'`
+             case $key in 
+                 rl )
+                     raidlevel=$vla
+                     ;;
+                 pci_id )
+                     pciid=$vla
+                     ;;
+                 pci_slot_name )
+                     pcislot_name=$vla
+                     ;;
+                 disk_num )
+                     disknum=$vla
+                     ;;
+                 disk_names )
+                     disk_names="$vla"
+                     ;;
+             esac                  
+         done          
+    fi      
+
+    if [ x$raidlevel == x ]; then
+         log_error "Can not create RAID for $create_raid_list. There is no raid level enter."
+         return 1            
+    fi
+
+    # if disk_num is null, will pick up all the disks
+    if [ x$disknum == x ]; then
+         disknum=all
+    fi
+
+      
+    log_info "handle create raid: $create_raid_value"
+
+    local pcilocs=""
+    local slocs_grps=""
+
+    # If there is disk_names, using them
+    if [ x$disk_names != x ]; then
+        handle_create_raid_array "$striple_size" "$raidlevel" "$disknum" "null" "$disk_names"
+    else
+        # If there is pci_slot_name, use it.
+        # If there is no pci_slot_name, there is pci_id, use pci_id.
+        if [ x$pciid != x -a x$pcislot_name == x ]; then
+            pcilocs=`get_pciloc_by_id $pciid`
+        elif [  x$pcislot_name != x ]; then
+            pcilocs=$pcislot_name
+        else
+            log_error "pci_id or pci_slot_name or pci_disk_names can not be empty."
+            return 1
+        fi
+
+        if [ -n "$pcilocs" ]; then
+            handle_create_raid_array "$striple_size" "$raidlevel" "$disknum" "$pcilocs" "null" 
+        else
+            log_error "PCI adapter $pcilocs does not exists!" >&2
+            return 1
+
+        fi
+    fi
+
+}
+
+##############################################################################
+#
+# main section to handle delete raid 
+# 
+# input format : delete_raid=[all|dev1#dev2...|null]
+#
+##############################################################################
+function handle_delete_raid {
+    local input=$*
+    local raid_arrays=""
+    local valid_arrays=""
+
+    del_value=`echo "$input"|awk -F= '{print $2}'`
+    # if delete_raid=all
+    if [ "x$del_value" == "xall" -o "x$del_value" == "xALL" ]; then
+       
+        raid_arrays=`get_all_raid_arrays`
+
+    # if delete_raid=null or nothing
+    elif [ "x$del_value" == "xnull" -o "x$del_value" == "x" ]; then
+
+        log_info "There is no need to delete RAID arrays."
+        return 1
+    # if delete_raid=devlist 
+    else
+        # delete # between raid names        
+        raid_arrays=`echo ${del_value}|sed 's/#/ /g'`
+    fi
+
+    for r_a in $raid_arrays
+    do
+        res=`is_array $r_a`
+        if [ $res -eq 0 ]; then
+            if [ "x$valid_arrays" != "x" ]; then
+                valid_arrays=$valid_arrays" "$r_a 
+            else
+                valid_arrays=$r_a
+            fi 
+        fi
+    done    
+    if [ "x$valid_arrays" != "x" ]; then
+        # delete raid arrays
+        delete_ipr_array enforce=1 tryCnt=360 tryInt=60 -- $valid_arrays
+    else
+        log_info "There is no valid raid arrays."
+        return 1
+    fi
+}
+
+
+#############################################################################################
+#
+# Main section : 
+#        delete raid
+#        create raid
+#
+############################################################################################
+
+input=$*
+
+# If input parameter number is less than 1, print usage
+if [ $# -lt 1 ]; then
+    usagesc
+    exit 1
+fi
+
+# If "-h|--help", print usage
+if [ "x$input" == "x--help" -o "x$input" == "x-h" ]; then
+    usagesc
+    exit 0
+fi
+
+# clear up delete_raid stripe_size and create_raid
+del_raid_valid=""
+cre_raid_list=""
+stripe_pair=""
+for args in "$@"
+do
+    del_raid=`echo "$args" | grep "^delete_raid="`
+    cre_raid=`echo "$args" | grep "^create_raid="`
+    str_size=`echo "$args" | grep "^stripe_size="`
+
+    if [ x$del_raid != x ]; then 
+        del_raid_valid=$del_raid
+    fi
+   
+    if [ x$str_size != x ]; then
+        stripe_pair=$str_size
+    fi   
+
+    # This is for the first create_raid
+    if [ x$cre_raid_list == x -a x$cre_raid != x ]; then
+
+        cre_raid_list=$cre_raid
+
+    # if there are many create_raid
+    elif [ x$cre_raid_list != x -a x$cre_raid != x ]; then
+
+        cre_raid_list=$cre_raid_list" "$cre_raid
+    fi
+done
+
+# main process for deleting raid
+if [ x$del_raid_valid != x ]; then
+    handle_delete_raid "$del_raid_valid"
+fi
+
+# main process for creating raid
+create_r1=`echo $cre_raid_list|awk '{print $1}'`
+if [ "x${create_r1}" != "x" ]; then
+
+    for cr in $cre_raid_list
+    do
+        # handle every create_raid
+        handle_each_create_raid $cr $stripe_pair $lable_num
+    done
+else
+    log_info "Can not create RAID. There is no create_raid."
+fi
+
+

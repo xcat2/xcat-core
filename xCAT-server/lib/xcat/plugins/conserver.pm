@@ -191,7 +191,7 @@ sub docfheaders {
   my $idx = 0;
   my $skip = 0;
   my @meat = grep(!/^#/,@$content);
-  unless (grep(/^config \* {/,@meat)) {
+  unless (grep(/^config \* \{/,@meat)) {
     # do not add the ssl configurations 
     # if conserver is not compiled with ssl support
     my $cmd = "console -h 2>&1";
@@ -264,7 +264,7 @@ sub docfheaders {
 
   push @newheaders,"default * {\n";
   push @newheaders,"  logfile /var/log/consoles/&;\n";
-  push @newheaders,"  timestamp 1hab;\n";
+  push @newheaders,"  timestamp 1lab;\n";
   push @newheaders,"  rw *;\n";
   push @newheaders,"  master localhost;\n";
 
@@ -541,7 +541,14 @@ foreach my $node (sort keys %$cfgenthash) {
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     } else { # handle it here
       my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
-      push @$content,"  exec $locerror".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
+
+      # add XCATSSLVER environment variable when it's set on sles11.x mn 
+      # for cons script to communicate with xcatd through tls
+      my $env;
+      if (defined($ENV{'XCATSSLVER'})) {
+        $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
+      }
+      push @$content,"  exec $locerror$env".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
     }
   }
   if (defined($cfgent->{consoleondemand})) {

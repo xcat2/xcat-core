@@ -1088,6 +1088,15 @@ sub mkinitrd_dracut {
         $additional_options .= " -N";
     }
 
+    #if "pigz" is available in the rootimg, use "pigz" instead of "gzip"
+    my $compress=qx(chroot $rootimg_dir bash -c "type -p pigz"|tr -d "\n");
+    if ($compress){
+        #take the online cpu numerber as the pigz processes number
+        my $processnum=qx(lscpu -p=cpu --online|grep -v '#'|wc -l|tr -d "\n");
+        $additional_options .= " --compress \"$compress -p $processnum \"";
+    }
+
+    print "\nchroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver\n";
     !system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver")
         or die("Error: failed to generate the initial ramdisk for $mode.\n");
     print "the initial ramdisk for $mode is generated successfully.\n";

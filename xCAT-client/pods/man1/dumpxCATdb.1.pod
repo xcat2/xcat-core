@@ -45,27 +45,27 @@ B<-p>          Path to the directory to dump the database. It will be created, i
 
 1. To dump the xCAT database into the /tmp/db directory, enter:
 
-B<dumpxCATdb -p /tmp/db>
+ dumpxCATdb -p /tmp/db
 
 2. To dump the xCAT database into the /tmp/db directory, including the auditlog and eventlog enter:
 
-B<dumpxCATdb -a -p /tmp/db>
+ dumpxCATdb -a -p /tmp/db
 
 3. To have dumpxCATdb not backup the hosts or passwd table:
 
-B<chtab key=skiptables site.value="hosts,passwd">
+ chtab key=skiptables site.value="hosts,passwd"
 
-B<dumpxCATdb  -p /tmp/db>
+ dumpxCATdb  -p /tmp/db
 
 4. To have dumpxCATdb not backup the hosts or passwd table:
 
-B<export XCAT_SKIPTABLES="hosts,passwd">
+ export XCAT_SKIPTABLES="hosts,passwd"
 
-B<dumpxCATdb  -p /tmp/db>
+ dumpxCATdb  -p /tmp/db
 
 5. To have dumpxCATdb use DB2 utilities to backup the DB2 database:
 
-B<dumpxCATdb -b -p /install/db2backup>
+ dumpxCATdb -b -p /install/db2backup
 
 
 =head1 FILES

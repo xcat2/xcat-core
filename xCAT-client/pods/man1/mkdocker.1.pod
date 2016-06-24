@@ -1,0 +1,100 @@
+=head1 NAME
+
+B<mkdocker> - Create docker instance.
+
+=head1 SYNOPSIS
+
+B<mkdocker> I<noderange> [B<image>=I<image_name> [B<command>=I<command>]] [B<dockerflag>=I<flags_to_create_instance>]
+
+B<mkdocker> [B<-h>|B<--help>]
+
+B<mkdocker> {B<-v>|B<--version>}
+
+
+=head1 DESCRIPTION
+
+B<mkdocker> To create docker instances with the specified image, command and/or dockerflags.
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<image>
+
+The docker image name that the instance will use.
+
+=item B<command>
+
+The command that the instance will run based on the B<image> specified. The B<image> option must be specified in order to use this option.
+
+=item B<dockerflag>
+
+A JSON string which will be used as parameters to create a docker. Please reference https://docs.docker.com/engine/reference/api/docker_remote_api_v1.22/ for more information about which parameters can be specified.
+
+Some useful flags are:
+
+=over 3
+
+=item B<AttachStdin>=B<true>|B<false>
+
+Whether attaches to stdin.
+
+=item B<AttachStdout>=B<true>|B<false>
+
+Whether attaches to stdout.
+
+=item B<AttachStderr>=B<true>|B<false>
+
+Whether attaches to stderr.
+
+=item B<OpenStdin>=B<true>|B<false>
+
+Whether opens stdin.
+
+=item B<Tty>=B<true>|B<false>
+
+Attach standard streams to a tty, including stdin if it is not closed.
+
+=item B<ExposedPorts>
+
+An object mapping ports to an empty object in the form of: 
+
+ "ExposedPorts": { "<port>/\<tcp|udp>: {}" }
+
+=item B<HostConfig: {"Binds"}>
+
+A list of volume bindings for this docker instance, the form will be: 
+
+ "HostConfig": {"Binds":["<dir_on_dockerhost>:<dir_in_instance>"]}
+
+=back
+
+=back
+
+=head1 EXAMPLES
+
+1. To create a basic docker instance with stdin opened
+
+    mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true}"
+
+Output is similar to:
+
+    host01c01: Pull image ubuntu start
+    host01c01: Pull image ubuntu done
+    host01c01: Remove default network connection
+    host01c01: Connecting customzied network 'mynet0'
+    host01c01: success
+
+2. To create a docker instance which have dir "destdir" in docker instance bind from "srcdir" on dockerhost, and have "Tty" opened with which the docker instance can be attached after started to check the files under "destdir".
+
+    mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true,\"HostConfig\":{\"Binds\":[\"/srcdir:/destdir\"]}}"
+
+Output is similar to:
+
+    host01c01: Remove default network connection
+    host01c01: Connecting customzied network 'mynet0'
+    host01c01: success
+
+=head1 SEE ALSO
+
+L<rmdocker(1)|rmdocker.1>, L<lsdocker(1)|lsdocker.1>

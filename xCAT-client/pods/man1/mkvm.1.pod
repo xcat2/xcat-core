@@ -22,13 +22,11 @@ B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
 B<mkvm> I<noderange> [B<--full>]
 
-B<mkvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
-               [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
-               [B<vmnics=vlan1[,vlan2..]]> [B<vmstorage=<N|viosnode:slotid>>] [B<--vios>]
+B<mkvm> I<noderange> [B<vmcpus=> I<min/req/max>] [B<vmmemory=> I<min/req/max>] [B<vmphyslots=> I<drc_index1,drc_index2...>] [B<vmothersetting=> I<hugepage:N,bsr:N>] [B<vmnics=> I<vlan1[,vlan2..]>] [B<vmstorage=> I<N|viosnode:slotid>] [B<--vios>]
 
 =head2 For KVM:
 
-B<mkvm> I<noderange> [B<-m|--master> I<mastername>] [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
+B<mkvm> I<noderange> [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
 
 =head2 For Vmware:
 
@@ -90,7 +88,7 @@ The cpu count which will be created for the kvm/vmware virtual machine.
 
 Request to create a new full system partition for each CEC.
 
-=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value> B<vmnics=value> B<vmstorage=value> [B<--vios>]
+=item B<vmcpus=> I<value> B<vmmemory=> I<value> B<vmphyslots=> I<value> B<vmothersetting=> I<value> B<vmnics=> I<value> B<vmstorage=> I<value> [B<--vios>]
 
 To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.  
 

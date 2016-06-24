@@ -6,13 +6,13 @@ B<makeroutes> - add or delete routes to/from the os route table on nodes.
 
 B<makeroutes> [B<-r>|B<--routename> I<r1>[I<,r2...>]] 
 
-B<makeroutes> B<-d>|B<--delete> [B<-r>|B<--routenames> I<r1>[I<,r2...>]]
+B<makeroutes> [B<-d>|B<--delete>] [B<-r>|B<--routenames> I<r1>[I<,r2...>]]
 
 B<makeroutes> I<noderange> [B<-r>|B<--routename> I<r1>[I<,r2...>]] 
 
-B<makeroutes> I<noderange> B<-d>|B<--delete> [B<-r>|B<--routenames> I<r1>[I<,r2...>]]
+B<makeroutes> I<noderange> [B<-d>|B<--delete>] [B<-r>|B<--routenames> I<r1>[I<,r2...>]]
 
-B<makeroutes> [B<-h> B<--help>|B<-v>|B<--version>]
+B<makeroutes> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
@@ -51,32 +51,27 @@ Command Version.
 
 =head1 EXAMPLES
 
-=over 3
+=over 2
 
 =item 1.
-
 To add all routes from the B<site.mnroutenames> to the os route table for the management node.
 
  makeroutes
 
 =item 2.
-
 To add all the routes from B<noderes.routenames> to the os route table for node1.
 
  makeroutes node1
 
 =item 3.
-
 To add route rr1 and rr2 to the os route table for the management node.
 
  makeroutes -r rr1,rr2
 
 =item 4.
-
 To delete route rr1 and rr2 from the os route table on node1 and node1.
 
  makeroutes node1,node2 -d -r rr1,rr2
-
 
 =back
 

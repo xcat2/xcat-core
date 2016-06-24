@@ -4,20 +4,21 @@ B<xpbsnodes> - PBS pbsnodes front-end for a noderange.
 
 =head1 SYNOPSIS
 
-B<xpbsnodes> [{B<noderange>}] [{B<offline>|B<clear>|B<stat>|B<state>}]
+B<xpbsnodes> [{I<noderange>}] [{B<offline>|B<clear>|B<stat>|B<state>}]
 
 B<xpbsnodes> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 
 =head1 DESCRIPTION
+
 B<xpbsnodes> is a front-end to PBS pbsnode but uses xCAT's noderange to specify nodes.
 
 =head1 OPTIONS
 
 
-B<-h>               Display usage message.
+B<-h|--help>               Display usage message.
 
-B<-v>               Command Version.
+B<-v|--version>               Command Version.
 
 B<offline|off>      Take nodes offline.
 
@@ -37,8 +38,6 @@ B<stat|state>       Display PBS node state.
 1. To display status of all PBS nodes, enter:
 
  xpbsnodes all stat
-
-
 
 =head1 FILES
 

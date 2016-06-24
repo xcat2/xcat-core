@@ -1,0 +1,68 @@
+2016-03-01 - OpenSSL Vulnerabilities (DROWN)
+============================================
+
+*March 1, 2016* OpenSSL announced the following security advisories:  https://www.openssl.org/news/secadv/20160301.txt
+
+Advisory CVEs
+-------------
+
+* CVE-2016-0800 - **Cross-protocol attack on TLS using SSLv2 (DROWN)**  (Severity:High)
+
+  This issue affects OpenSSL versions 1.0.1 and 1.0.2.  
+  
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+* CVE-2016-0705 - **Double-free in DSA code** (Severity:Low)
+
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+* CVE-2016-0798  - **Memory leak in SRP database lookups** (Severity:Low)
+ 
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+* CVE-2016-0797  - **BN_hex2bn/BN_dec2bn NULL pointer deref/heap corruption** (Severity:Low)
+ 
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+
+* CVE-2016-0797  - **Fix memory issues in BIO_*printf functions** (Severity:Low)
+ 
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+
+* CVE-2016-0702  - **Side channel attack on modular exponentiation** (Severity:Low)
+ 
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2g  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1s
+
+* CVE-2016-0703  - **Divide-and-conquer session key recovery in SSLv2** (Severity:High)
+ 
+  This issue affected OpenSSL versions 1.0.2, 1.0.1l, 1.0.0q, 0.9.8ze and all earlier versions.  It was fixed in OpenSSL 1.0.2a, 1.0.1m, 1.0.0r and 0.9.8zf
+
+* CVE-2016-0704  - **Bleichenbacher oracle in SSLv2** (Severity:Moderate)
+ 
+  This issue affected OpenSSL versions 1.0.2, 1.0.1l, 1.0.0q, 0.9.8ze and all earlier versions.  It was fixed in OpenSSL 1.0.2a, 1.0.1m, 1.0.0r and 0.9.8zf
+
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  Regarding CVE-2016-0800, xCAT also does not use SSLv2 layer but uses the newer TLS transport layer security.  
+
+It is recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. 
+

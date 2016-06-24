@@ -32,7 +32,12 @@ cmd:switchdiscover --range $$range -r
 check:rc==0
 check:output=~Discovering switches using nmap
 check:output=~xml
-check:output=~/usr/bin/nmap -sP -oX - $$range
+cmd:rm -rf switchdiscover_range_r.log
+cmd:switchdiscover --range $$range -r > switchdiscover_range_r.log
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles11.4" ]; then cat switchdiscover_range_r.log | grep "/usr/bin/nmap -sn -oX - $$range"; else cat switchdiscover_range_r.log | grep "/usr/bin/nmap -sP -oX - $$range";fi
+check:output=~/usr/bin/nmap -s(n|P) -oX - $$range
+cmd:rm -rf switchdiscover_range_r.log
 end
 start:switchdiscover_range_x
 cmd:switchdiscover --range $$range -x
@@ -48,14 +53,22 @@ check:output=~Discovering switches using nmap
 check:output=~nodetype=switch
 check:output=~groups=switch
 end
+
 start:switchdiscover_range_z_V
 cmd:switchdiscover --range $$range -z -V
 check:rc==0
 check:output=~Discovering switches using nmap
 check:output=~xml
-check:output=~Process command: /usr/bin/nmap -sP -oX - $$range
 check:output=~nodetype=switch
 check:output=~groups=switch
+cmd:rm -rf switchdiscover_range_z_V.log
+cmd:switchdiscover --range $$range -z -V > switchdiscover_range_z_V.log
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles11.4" ]; then cat switchdiscover_range_z_V.log | grep "Process command: /usr/bin/nmap -sn -oX - $$range"; else cat switchdiscover_range_z_V.log | grep "Process command: /usr/bin/nmap -sP -oX - $$range";fi
+check:output=~Process command: /usr/bin/nmap -s(n|P) -oX - $$range
+cmd:rm -rf switchdiscover_range_z_V.log
 end
+
+
 
 

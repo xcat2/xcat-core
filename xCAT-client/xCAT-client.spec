@@ -153,6 +153,9 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/chvm
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkdocker
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmdocker
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsdocker
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/tabgrep
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/renergy
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
@@ -162,6 +165,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lstree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsflexnode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmflexnode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkflexnode
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/getadapter
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsslp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/switchdiscover
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/bmcdiscover

@@ -309,21 +309,15 @@ sub gettoken {
         return undef;
     }
     my $tokens = $tokentb->getAllEntries;
-    my $expiretime = time() + $tokentimeout;
     foreach my $token (@{$tokens}) {
-        if ($token->{username} eq $user) {
-            #delete old token
-            $tokentb->delEntries({'tokenid'=>$token->{tokenid}});
-        } else {
             #clean the expired token
-            if ($token->{expire} > $expiretime) {
+            if ($token->{'expire'} < time()) {
                 $tokentb->delEntries({'tokenid'=>$token->{tokenid}});
             }
-        }
     }
-    
     # create a new token for this request
     my $uuid = xCAT::Utils->genUUID();
+    my $expiretime = time() + $tokentimeout;
     $tokentb->setAttribs({tokenid=>$uuid, username => $user}, {expire => $expiretime});
     $tokentb->close();
    

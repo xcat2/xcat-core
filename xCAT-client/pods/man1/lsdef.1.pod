@@ -11,11 +11,13 @@ B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--al
 [B<-c>|B<--compress>] [B<--osimage>] [B<--nics>] [[B<-w> I<attr>==I<val>]
 [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
+B<lsdef> [B<-l>|B<--long>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-z>|B<--stanza>] 
+[B<-i> I<attr-list>] [B<--template> [I<template-object-name>]]
 
 =head1 DESCRIPTION
 
 This command is used to display xCAT object definitions which are stored
-in the xCAT database.
+in the xCAT database and xCAT object definition templates shipped in xCAT.
 
 
 =head1 OPTIONS
@@ -62,6 +64,10 @@ See the "noderange" man page for details on supported formats.
 =item B<-o> I<object-names>
 
 A set of comma delimited object names.
+
+=item B<--template> [I<template-object-name>]
+
+Show the object definition templates I<template-object-name>  shipped in xCAT. If no I<template-object-name> is specified, all the object definition templates of the specified type B<-t> I<object-types> will be listed. Use B<-a|--all> option to list all the object definition templates.
 
 =item B<--osimage>
 
@@ -221,6 +227,24 @@ when defining an xCAT node.
 To display the nics configuration information for node cn1.
 
  lsdef cn1 --nics
+
+=item 18.
+
+To list all the object definition templates shipped in xCAT.
+
+ lsdef --template -a
+
+=item 19.
+
+To display the details of "node" object definition template "powerLEnv" shipped in xCAT.
+  
+ lsdef -t node --template powerLEnv
+
+=item 20.
+
+To list all the "node" object definition templates shipped in xCAT.
+
+ lsdef -t node --template
 
 =back
 

@@ -17,7 +17,7 @@ fi
 IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
 if [ -z $IP ]
 then
-	dhclient eth0
+	dhclient $PRINIC
 	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
 fi
 echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf

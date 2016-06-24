@@ -9,6 +9,7 @@
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
 
 
@@ -19,22 +20,36 @@ fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
+
 MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g`
 INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
+
 #the nics have not been configured when running the PBS sometimes, need to make sure... 
 RETRY=0
-until ip -4 --oneline addr show dev $INSTALLNIC|grep inet >/dev/null
-do
-    sleep 2
+NETUP=0
+while true; do
+    #scan the nics with the specified mac address
+    #there will be multiple nic names for a mac address when the network bridge exists
+    for nic in $INSTALLNIC ;do
+        #check whether the nic is configured and linkup
+        ip -4 --oneline addr show dev $nic |grep inet >/dev/null && NETUP=1 && break
+    done
+    
+    #nic is configured,terminate scan...
+    [ $NETUP -ne 0 ] && break;    
+
     RETRY=$[ $RETRY + 1 ]
-    if [ $RETRY -eq 90  ];then
-          msgutil_r "$MASTER_IP" "err" `date`" xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
-          exit 1
+
+    if [ $RETRY -eq 90 ];then
+       #timeout, complain and exit
+       msgutil_r "$MASTER_IP" "err" `date`" xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
+       exit 1
     fi
-
+    
+    #sleep sometime before the next scan  
+    sleep 2
 done
-
 
 
 cd /xcatpost; 
@@ -60,7 +75,13 @@ DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript.post
 echo "$DHCP_TMP" > /xcatpost/mypostscript.post
 
 #mark that the first reboot after installation is finished
-echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
+grep 'REBOOT' /opt/xcat/xcatinfo > /dev/null 2>&1 
+if [ $? -eq 0 ]; then
+    sed -i "s/REBOOT=.*/REBOOT=TRUE/" /opt/xcat/xcatinfo
+else
+    echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
+fi
+
 
 CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}'`
 if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
@@ -71,12 +92,12 @@ if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" 
 echo "
 
 if [ \"\$return_value\" -eq \"0\" ]; then
-   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
       msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
    fi
    updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
-   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
       msgutil_r \"\$MASTER_IP\" \"info\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\"
    fi
    updateflag.awk \$MASTER 3002 \"installstatus failed\"
@@ -84,13 +105,6 @@ fi
 " >> /xcatpost/mypostscript.post
 fi
 
-stopservice NetworkManager
-stopservice NetworkManager-dispatcher
-stopservice NetworkManager-wait-online
-
-disableservice NetworkManager
-disableservice NetworkManager-dispatcher 
-disableservice NetworkManager-wait-online
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
    msgutil_r "$MASTER_IP" "info" "running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log"

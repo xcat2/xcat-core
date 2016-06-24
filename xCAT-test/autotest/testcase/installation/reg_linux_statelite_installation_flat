@@ -19,6 +19,9 @@ check:rc==0
 cmd:copycds $$ISO
 check:rc==0
 
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+check:rc==0
+
 cmd:if cat /etc/*release |grep SUSE >/dev/null; then  cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
 check:rc==0
 cmd:tabdump litefile
@@ -116,8 +119,13 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~rootfs on / type tmpfs
+cmd:sleep 120
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
 
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
-
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
 end

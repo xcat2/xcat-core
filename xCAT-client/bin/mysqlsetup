@@ -147,6 +147,28 @@ if ( -e "/etc/debian_version" ){
 # determine whether redhat or sles
 $::linuxos = xCAT::Utils->osver();
 
+# SLES SP 1
+my $sp1flag;
+# if linuxos==sles12
+if ( $::linuxos == "sles12" ){
+    # open /etc/os-release
+    my @lines;
+    my $relfile;
+    $sp1flag = 0;
+    open($relfile,"<","/etc/os-release");
+    # parse lines
+    @lines = <$relfile>;
+    close($relfile);
+    chomp(@lines);
+    # if == 12.1
+    if (grep /VERSION_ID="12.1"/, @lines){
+        #$::linuxos == "sles12.1";
+        $sp1flag = 1;
+    }
+}
+# set flag
+# SLES SP 1
+
 # is this MariaDB or MySQL
 $::MariaDB=0;
 my $cmd;
@@ -202,7 +224,7 @@ if (grep(/$mysqlcheck/, @output))
 
 #for ubuntu 14,  after install mysql/maria server, the mysql will running
 #need to stop mysql in order to setup init xcat mysql
-if ( $::debianflag ){
+if ( $::debianflag or $sp1flag ){
     $cmd = "pidof mysqld";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC == 0)
@@ -852,12 +874,20 @@ sub initmysqldb
     }    # end AIX only
 
     #on debian/ubuntu should comment the bind-adress line in my.cnf
+    #on Ubuntu16.04, the bind-address line is in the mariadb.conf.d/50-server.cnf
     if ( $::debianflag ){
-        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' /etc/mysql/my.cnf > /tmp/my.cnf; mv -f /tmp/my.cnf /etc/mysql/my.cnf;chmod 644 /etc/mysql/my.cnf";
+        my $bind_file;
+        if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
+        {
+            $bind_file = "/etc/mysql/mariadb.conf.d/50-server.cnf";
+        } else {
+            $bind_file = "/etc/mysql/my.cnf";
+        }
+        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' $bind_file > /tmp/my.cnf; mv -f /tmp/my.cnf $bind_file;chmod 644 $bind_file";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message("E", " comment the bind-address line in /etc/mysql/my.cfg failed: $cmd.");
+            xCAT::MsgUtils->message("E", " comment the bind-address line in $bind_file failed: $cmd.");
             exit(1);
         }
     }
@@ -950,7 +980,7 @@ sub mysqlstart
     {
         my @output = xCAT::Utils->runcmd($cmd, 0);
         my $mysqlcheck = "--datadir";    # see if really running
-        if ( $::debianflag ){
+        if ( $::debianflag or $sp1flag ){
             $mysqlcheck = "mysqld";
         }
         if (grep(/$mysqlcheck/, @output))

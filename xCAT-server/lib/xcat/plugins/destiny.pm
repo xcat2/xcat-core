@@ -93,9 +93,17 @@ sub setdestiny {
     @ARGV = @{$req->{arg}};
     my $noupdateinitrd;
     my $ignorekernelchk;
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose; 
     GetOptions('noupdateinitrd' => \$noupdateinitrd,
-               'ignorekernelchk' => \$ignorekernelchk,);
-    
+               'ignorekernelchk' => \$ignorekernelchk,
+               'V'  => \$verbose);      #>>>>>>>used for trace log>>>>>>>
+   
+    #>>>>>>>used for trace log start>>>>>>>
+    my $verbose_on_off=0;
+    if($verbose){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
+   
     my $state = $ARGV[0];
     my $reststates;
 
@@ -360,6 +368,7 @@ sub setdestiny {
 	foreach my $tempstate (keys %state_hash1) {
 	    my $samestatenodes=$state_hash1{$tempstate};
 	    #print "state=$tempstate nodes=@$samestatenodes\n";	
+		 xCAT::MsgUtils->trace($verbose_on_off,"d","destiny->process_request: issue mk$tempstate request");	
 	    $errored=0;
 	    $subreq->({command=>["mk$tempstate"],
 		       node=>$samestatenodes, 
@@ -767,7 +776,8 @@ sub getdestiny {
     } elsif (defined( $master_value )) {
         $response{imgserver}=$master_value;
     } else {
-       $response{imgserver} = xCAT::NetworkUtils->my_ip_facing($node);
+        my @resd = xCAT::NetworkUtils->my_ip_facing($node);
+        unless ($resd[0]) { $response{imgserver} = $resd[1];}
     }
     
     #collect node status for certain states

@@ -12,10 +12,10 @@ d-i keyboard-configuration/layoutcode string en
 # Use the following settings if you wish to make use of the network-console
 # component for remote installation over SSH. This only makes sense if you
 # intend to perform the remainder of the installation manually.
-#UNCOMMENONXCATDEBUGMODE#  d-i anna/choose_modules string network-console
+#UNCOMMENTOENABLESSH#  d-i anna/choose_modules string network-console
 #d-i network-console/authorized_keys_url string http://10.0.0.1/openssh-key
-#UNCOMMENONXCATDEBUGMODE# d-i network-console/password password cluster
-#UNCOMMENONXCATDEBUGMODE# d-i network-console/password-again password cluster
+#UNCOMMENTOENABLESSH# d-i network-console/password password cluster
+#UNCOMMENTOENABLESSH# d-i network-console/password-again password cluster
 
 
 
@@ -51,42 +51,10 @@ d-i partman-md/device_remove_md boolean true
 
 #create the /tmp/partitionfile based on the uefi or legacy bios 
 d-i partman/early_command string \
-    set -x; \
-    if [ -f /tmp/boot_disk ]; then \
-       debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"; \
-       exit; \
-    fi; \
-    rm /tmp/devs-with-boot 2>/dev/null || true; \
-    for d in $(list-devices partition); do \
-        mkdir -p /tmp/mymount; \
-        rc=0; \
-        mount $d /tmp/mymount || rc=$?; \
-        if [[ $rc -eq 0 ]]; then \
-            [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot; \
-            for i in /tmp/mymount/vmlinuz* ; do \
-                if [ -e $i ]; then \
-                    echo $d >>/tmp/devs-with-boot; break; \
-                fi; \
-            done; \
-            umount /tmp/mymount; \
-        fi \
-    done; \
-    if [[ -e /tmp/devs-with-boot ]]; then \
-        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
-        rm /tmp/devs-with-boot 2>/dev/null || true; \
-    else \
-        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; \
-        if [[ "$DEV" == "" ]]; then \
-            for line in $(list-devices disk); do \
-                DEV=$line; DEV=${DEV##/dev/}; break; \
-            done; \
-            if [[ "$DEV" == "" ]]; then \
-                DEV="sda"; \
-            fi \
-        fi; \
-        echo "/dev/$DEV" > /tmp/boot_disk; \
-    fi; \
-    debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
+{ \
+#INCLUDE_GET_INSTALL_DISK_SCRIPT#  \
+    debconf-set partman-auto/disk "$(cat /tmp/xcat.install_disk)"; \
+} >>/tmp/pre-install.log 2>&1
 d-i partman-auto/expert_recipe_file string /tmp/partitionfile
 
 # This makes partman automatically partition without confirmation, provided
@@ -153,12 +121,21 @@ xserver-xorg xserver-xorg/config/monitor/mode-list \
 
 # To workaround the "Unmount partitions that are in use?" question,
 # run the "umount /media" after the preseed is read in
-d-i preseed/early_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.pre; \
+d-i preseed/early_command string \
+     { \
+     echo "Running preseeding early_command Installation script..."; \
+     wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.pre; \
      chmod u+x #HOSTNAME#.pre; \
      ./#HOSTNAME#.pre; \
-     umount /media || true
+     umount /media || true; \
+     } >>/tmp/pre-install.log 2>&1
 
-d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
+d-i preseed/late_command string \
+     mkdir -p /target/var/log/xcat/; \
+     { \
+     cat /tmp/pre-install.log >> /target/var/log/xcat/xcat.log; \
+     echo "Running preseeding late_command Installation script..."; \
+     wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
      chmod u+x #HOSTNAME#.post; \
      cp ./#HOSTNAME#.post /target/root/post.script; \
      mount -o bind /proc /target/proc -t proc; \
@@ -166,5 +143,6 @@ d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoin
      mount -o bind /dev/pts /target/dev/pts -t devpts; \
      mount -o bind /sys /target/sys; \
      chroot /target /root/post.script; \
-     cp /target/etc/network/interfaces /etc/network/interfaces
+     cp /target/etc/network/interfaces /etc/network/interfaces; \
+     } >>/target/var/log/xcat/xcat.log 2>&1
 

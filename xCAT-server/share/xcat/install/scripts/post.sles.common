@@ -1,9 +1,12 @@
 #!/bin/sh
 
-
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
 
 export MANAGEDADDRESSMODE=#MANAGEDADDRESSMODE#
 
@@ -58,8 +61,11 @@ echo "Slept $jsi seconds before hostname made sense."
 HOSTNAME=$(hostname -s)
 echo $HOSTNAME
 
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC,HOSTNAME=$HOSTNAME" "/var/log/xcat/xcat.log"
 fi
 /sbin/portmap
 
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi

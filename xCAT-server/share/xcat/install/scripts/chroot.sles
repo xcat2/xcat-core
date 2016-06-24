@@ -2,10 +2,23 @@
         <script>
           <filename>boot.sh</filename>
           <interpreter>shell</interpreter>
+          <debug config:type="boolean">false</debug>
           <source>
 
 <![CDATA[
 #!/bin/sh
+
+mkdir -p /mnt/var/log/xcat/
+{
+
+cat /tmp/pre-install.log >> /mnt/var/log/xcat/xcat.log
+
+echo "Running AutoYaST Chroot-Installation script..."
+
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
 
 AWK=`find / -name awk | head -1`
 #old awk /mounts/instsys/bin/awk -f
@@ -69,6 +82,11 @@ elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-F
     export PRINIC=`ip -o link|grep -i "$PRINIC"|awk  '{print $2}'|sed s/://`
 fi
 echo 'export PRINIC='"$PRINIC" > /mnt/tmp/prinicsetting
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi
+} >>/mnt/var/log/xcat/xcat.log 2>&1
 ]]>
 
           </source>

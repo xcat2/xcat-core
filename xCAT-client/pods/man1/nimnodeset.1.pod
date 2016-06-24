@@ -6,7 +6,7 @@ B<nimnodeset> - Use this xCAT command to initialize AIX/NIM standalone machines.
 
 B<nimnodeset [-h|--help ]>
 
-B<nimnodeset [-V|--verbose] [-f|--force] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]>
+B<nimnodeset [-V|--verbose] [-f|--force] [-i> I<osimage_name>] [B<-l> I<location>] [B<-p|--primarySN>] [B<-b>|B<--backupSN>] I<noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -28,11 +28,7 @@ The "nameservers" value can either be set to a specific IP address or the "<xcat
 
 You can set the "domain" and "nameservers" attributes by using the B<chdef> command.  For example:
 
-=over 3
-
-chdef -t network -o clstr_net domain=cluster.com nameservers=<xcatmaster>
-
-=back
+ chdef -t network -o clstr_net domain=cluster.com nameservers=<xcatmaster>
 
 If the "domain" and "nameservers" attributes are not set in either the nodes "network" definition or the "site" definition then no new NIM resolv_conf resource
 will be created.
@@ -51,7 +47,7 @@ You can supply your own scripts to be run on the management node  or on the serv
 
 =over 10
 
-=item B<attr=val [attr=val ...]>
+=item I<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
 val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma seperated list. (ex. "script=ascript,bscript").
@@ -68,7 +64,7 @@ Use the force option to reinitialize the NIM machines.
 
 Display usage message.
 
-=item B<-i image_name>
+=item B<-i> I<image_name>
 
 The name of an existing xCAT osimage definition.
 
@@ -81,7 +77,7 @@ efault location is /install/nim.
 
 When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -96,11 +92,9 @@ Verbose mode.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -109,28 +103,19 @@ An error has occurred.
 
 1) Initialize an xCAT node named "node01".  Use the xCAT osimage named "61gold" to install the node.
 
-=over 5
+ nimnodeset -i 61gold node01
 
-B<nimnodeset -i 61gold node01>
-
-=back
 
 2) Initialize all AIX nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
 
-=over 5
+ nimnodeset aixnodes
 
-B<nimnodeset aixnodes>
-
-=back
 
 
 3) Initialize an xCAT node called "node02".  Include installp_bundle resources that are not included in the osimage definition. This assumes the NIM installp_bundle resources have already been created.
 
-=over 5
+ nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle
 
-B<nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle>
-
-=back
 
 =head1 FILES
 

@@ -1,0 +1,28 @@
+2016-01-28 - OpenSSL Vulnerabilities
+====================================
+
+*Jan 28, 2016* OpenSSL announced the following security advisories:  https://mta.openssl.org/pipermail/openssl-announce/2016-January/000061.html
+
+Advisory CVEs
+-------------
+
+* CVE-2016-0701 - **DH small subgroups**  (Severity:High)
+
+  This issue affects OpenSSL version 1.0.2.  
+  OpenSSL 1.0.2 users should upgrade to 1.0.2f
+
+* CVE-2015-3197 - **SSLv2 doesn't block disabled ciphers**   (Severity:Low)
+
+  This issue affects OpenSSL versions 1.0.2 and 1.0.1.  
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2f  
+  OpenSSL 1.0.1 users should upgrade to 1.0.1r
+
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.
+
+It is recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. 
+

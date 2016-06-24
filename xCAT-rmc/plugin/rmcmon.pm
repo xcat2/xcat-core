@@ -144,7 +144,7 @@ sub start {
 	      }
             } elsif ($assocHash{"$cond:_:$resp"}==1) { 
               $result=`/usr/bin/stopcondresp $cond $resp  2>&1`;
-              if (($?) && ($result !~ /2618-264/)) { #stoped
+              if (($?) && ($result !~ /2618-264/)) { #stopped
                 my $rsp={};
                 $rsp->{data}->[0]="$localhostname: $result";
                 $callback->($rsp);
@@ -219,7 +219,7 @@ sub start {
       This function gets called when monstop command is issued by the user. 
       It stops the monitoring on all nodes, stops the RMC daemons.
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 
@@ -265,7 +265,7 @@ sub stop {
         if (@tmp1 < 4) { next; }
         if ($tmp1[3] !~ /Not|not/) {
 	  my $result=`/usr/bin/stopcondresp $tmp1[0] $tmp1[1]  2>&1`;
-          if (($?) && ($result !~ /2618-264/)) { #stoped
+          if (($?) && ($result !~ /2618-264/)) { #stopped
 	    if ($callback) {
               my $rsp={};
               $rsp->{data}->[0]="$localhostname: $result";
@@ -805,7 +805,7 @@ sub stopNodeStatusMon {
   }
   if ($batch) {
       my $result=`stopcondresp NodeReachability_Batch UpdatexCATNodeStatus_Batch 2>&1`;
-      if (($?) && ($result !~ /2618-264/)) { #stoped
+      if (($?) && ($result !~ /2618-264/)) { #stopped
 	  $retcode=$?;
 	  $retmsg="Error stop node status monitoring: $result";
 	  reportError($retmsg, $callback);
@@ -816,14 +816,14 @@ sub stopNodeStatusMon {
 
       #stop monitoring the status of mn's immediate children
       my $result=`stopcondresp NodeReachability UpdatexCATNodeStatus 2>&1`;
-      if (($?) && ($result !~ /2618-264/)) { #stoped
+      if (($?) && ($result !~ /2618-264/)) { #stopped
 	  $retcode=$?;
 	  $retmsg="Error stop node status monitoring: $result";
 	  reportError($retmsg, $callback);
       }
       #stop monitoring the status of mn's grandchildren via their service nodes
       $result=`stopcondresp NodeReachability_H UpdatexCATNodeStatus 2>&1`;
-      if (($?) && ($result !~ /2618-264/)) { #stoped
+      if (($?) && ($result !~ /2618-264/)) { #stopped
 	  $retcode=$?;
 	  $retmsg="Error stop node status monitoring: $result";
 	  reportError($retmsg, $callback);

@@ -75,7 +75,12 @@ clearpart --all --initlabel
 # --useLilo
 # --md5pass <crypted MD5 password for GRUB>
 #
-#KICKSTARTBOOTLOADER#
+#The bootloader config here is commented out
+#For user customized partition file or partition script, 
+#the bootloader configuration should be specified in the user customized partition file/script
+#For the xCAT default partition scheme, the bootloader configuration is in /tmp/partitioning
+#which is generated in %pre section
+##KICKSTARTBOOTLOADER#
 
 
 #
@@ -147,9 +152,19 @@ reboot
 #INCLUDE_DEFAULT_PKGLIST#
 %end
 %pre
+{
+echo "Running Kickstart Pre-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh.rhels7#
+} >>/tmp/pre-install.log 2>&1
 %end
 %post
+mkdir -p /var/log/xcat/
+{
+cat >> /var/log/xcat/xcat.log << "EOF"
+%include /tmp/pre-install.log
+EOF
+echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
+} >>/var/log/xcat/xcat.log 2>&1
 %end

@@ -614,11 +614,11 @@ sub sendnodeskeys
       my $spawncopyfiles;
       if ($ENV{'DSH_ENABLE_SSH'}) { # we will enable node to node ssh 
          $spawncopyfiles=
-        "$remotecopy $home/.ssh/id_rsa $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
+        "$remotecopy $home/.ssh/id_rsa $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh"; 
           
       } else {    # no node to node ssh ( don't send private key)
          $spawncopyfiles=
-        "$remotecopy $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
+        "$remotecopy $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh"; 
       }
       # send copy command 
       unless ($sendkeys->spawn($spawncopyfiles))
@@ -839,7 +839,7 @@ sub senddeviceskeys
       # command to send key to the device
       # sshKey add "key" 
       my $spawnaddkey=
-      "$remoteshell $node -l $to_userid $setupcmd ";  
+      "$remoteshell $node -l $to_userid $setupcmd";  
     
       # send mkdir command 
       unless ($sendkeys->spawn($spawnaddkey))

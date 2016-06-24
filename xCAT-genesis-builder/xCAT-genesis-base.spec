@@ -1,11 +1,11 @@
-%define version	2.10
+%define version	2.12
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
 %ifarch x86_64
 %define tarch x86_64
 %endif
-%ifarch ppc ppc64
+%ifarch ppc ppc64 ppc64le
 %define tarch ppc64
 %endif
 BuildArch: noarch
@@ -13,6 +13,8 @@ BuildArch: noarch
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}
+# To fix the issue error: Arch dependent binaries in noarch package, the following line is needed on Fedora 23 ppc64
+%define _binaries_in_noarch_packages_terminate_build   0
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 1
 AutoReq: false

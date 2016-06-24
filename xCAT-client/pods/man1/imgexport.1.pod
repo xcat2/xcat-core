@@ -6,14 +6,14 @@ B<imgexport> - Exports an xCAT image.
 
 B<imgexport [-h| --help]>
 
-B<imgexport image_name [destination] [[-e|--extra file:dir] ... ] [-p|--postscripts node_name] [-v|--verbose]>
+B<imgexport> I<image_name> [I<destination>] [[B<-e>|B<--extra> I<file:dir>] ... ] [B<-p>|B<--postscripts> I<node_name>] [B<-v>|B<--verbose>]
 
 
 =head1 DESCRIPTION
 
-The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the I<osimage> table. All the columns in the I<osimage> and I<linuximage> tables will be exported. If kits are used in statefull or stateless images, I<kit>, I<kitcomponent> and I<kitrepo> tables will be exported. In addition, the following files will also be exported.
+The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the I<osimage> table. All the columns in the I<osimage> and I<linuximage> tables will be exported. If kits are used in stateful or stateless images, I<kit>, I<kitcomponent> and I<kitrepo> tables will be exported. In addition, the following files will also be exported.
 
-For statefull:
+For stateful:
   x.pkglist
   x.otherpkgs.pkglist
   x.tmpl
@@ -75,19 +75,19 @@ I<destination>                       The output bundle file name.
 
 1. Simplest way to export an image.  If there is an image in the osimage table named 'foo', then run:
 
-B<imgexport foo>
+ imgexport foo
 
 foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport if you have a big image to tar up.
 
 2. To include extra files with your image:
 
-B<imgexport Default_Stateless_1265981465 foo.tgz -e /install/postscripts/myscript1  -e /tmp/mydir:/usr/mydir>
+ imgexport Default_Stateless_1265981465 foo.tgz -e /install/postscripts/myscript1 -e /tmp/mydir:/usr/mydir
 
 In addition to all the default files, this will export I</install/postscripts/myscript1> and the whole directory I</tmp/dir> into the file called foo.tgz.  And when imgimport is called  I</install/postscripts/myscript1> will be copied into the same directory and I</tmp/mydir> will be copied to I</usr/mydir>. 
 
 3. To include postscript with your image:
 
-B<imgexport Default_Stateless_1265981465 foo.tgz -p node1 -e /install/postscripts/myscript1>
+ imgexport Default_Stateless_1265981465 foo.tgz -p node1 -e /install/postscripts/myscript1
 
 The I<postscripts> and the I<postbootscripts> names specified in the I<postscripts> table for node1 will be exported into the image. The postscript I<myscript1> will also be exported.
 

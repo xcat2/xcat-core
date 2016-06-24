@@ -24,7 +24,7 @@ that management node, but in a hierarchical cluster will usually be the service 
 
 =over 10
 
-=item I<bps>]
+=item I<bps>
 
 The display rate to use to play back the console output.  Default is 19200.
 
@@ -48,11 +48,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back

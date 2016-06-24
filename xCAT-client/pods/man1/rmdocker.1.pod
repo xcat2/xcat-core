@@ -1,0 +1,37 @@
+
+=head1 NAME
+
+B<rmdocker> - Remove docker instance.
+
+=head1 SYNOPSIS
+
+B<rmdocker> I<noderange> [B<-f>|B<--force>]
+
+B<rmdocker> [B<-h>|B<--help>]
+
+B<rmdocker> {B<-v>|B<--version>}
+
+
+=head1 DESCRIPTION
+
+B<rmdocker> To remove docker instances with the specified node name
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<-f|--force>
+
+=back
+
+Force to removal of a running container or failed to disconnect customized network
+
+=head1 EXAMPLES
+
+    rmdocker host01c01
+    host01c01: Disconnect customzied network 'mynet0' done
+    host01c01: success
+
+=head1 SEE ALSO
+
+L<mkdocker(1)|mkdocker.1>, L<lsdocker(1)|lsdocker.1>

@@ -4,13 +4,13 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<--fanout>] [B<-t timeout>} [B<attr=val> [B<attr=val...>]]
+B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d> I<alt_source_dir>] [B<--fanout>=I<fanout_value>] [B<-t> I<timeout>} [I<attr=val> [I<attr=val...>]] [B<-n>|B<--noverify>]
 
-B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t timeout>]
+B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t> I<timeout>]
 
 B<updatenode> B<noderange> [B<-g>|B<--genmypost>] 
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-t timeout>] [B<script1,script2...>]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-t> I<timeout>] [I<script1,script2...>]
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
 
@@ -23,40 +23,34 @@ to perform the following node updates:
 
 =over 3
 
-=item 1
-
+=item 1.
 Distribute and synchronize files.  
 
-=item 2
+=item 2.
+Install or update software on diskful nodes.
 
-Install or update software on diskfull nodes.
-
-=item 3
-
+=item 3.
 Run postscripts.
 
-=item 4
-
+=item 4.
 Update the ssh keys and host keys for the service nodes and compute nodes;
 Update the ca and credentials for the service nodes.
 
 =back
 
 The default behavior when no options are input to updatenode will be to run  
-the following options "-S", "-P" and "-F" options in this order.
+the following options B<-S>, B<-P> and B<-F> options in this order.
 If you wish to limit updatenode to specific 
-actions you can use combinations of the "-S", "-P", and "-F" flags.
+actions you can use combinations of the B<-S>, B<-P>, and B<-F> flags.
 
 For example, If you just want to synchronize configuration file you could
-specify the "-F" flag.   If you want to synchronize files and update 
-software you would specify the "-F" and "-S" flags. See the descriptions 
+specify the B<-F> flag.   If you want to synchronize files and update 
+software you would specify the B<-F> and B<-S> flags. See the descriptions 
 of these flags and examples below.
 
-The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F"
-flags.
+The flag B<-k> (B<--security>) can NOT be used together with B<-S>, B<-P>, and B<-F> flags.
 
-The flag "-f" (--snsync) can NOT be used together with "-S", "-P", and "-F"
-flags.
+The flag B<-f> (B<--snsync>) can NOT be used together with B<-S>, B<-P>, and B<-F> flags.
 
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
@@ -72,24 +66,20 @@ The basic process for distributing and synchronizing nodes is:
 =over 3
 
 =item *
-
 Create a synclist file.
 
 =item *
-
 Indicate the location of the synclist file.
 
 =item *
-
 Run the updatenode command to update the nodes.
 
 =back
 
 Files may be distributed and synchronized for both diskless and 
-diskfull nodes.  Syncing files to NFS-based statelite nodes is not supported. 
+diskful nodes.  Syncing files to NFS-based statelite nodes is not supported. 
 
-More information on using the  synchronization file function is in  
- the following doc: Using_Updatenode.
+More information on using the  synchronization file function is in the following doc: Using_Updatenode.
 
 =head3 Create the synclist file
 
@@ -129,14 +119,14 @@ file. ospkgs postscript will normally remove all the existing rpm
 repositories before adding server:/install/<os>/<arch/ as the new repository. 
 To preserve the existing repositories, you can run the following command instead:
 
-updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
+  updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
 
 B<For AIX systems:>
 
-Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
+Note: The updatenode command is used to update AIX diskful nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
 For information on updating software on AIX cluster:
 For diskful installs, read:
-XCAT_AIX_RTE_Diskfull_Nodes
+XCAT_AIX_RTE_Diskful_Nodes
 For diskless installs, read:
 XCAT_AIX_Diskless_Nodes
 
@@ -161,7 +151,7 @@ executed on the nodes. The order of the scripts in the list
 determines the order in which they will be run.  You can use the 
 lsdef command to check the postscript order. 
 
-Scripts can  be run on both diskless and diskfull nodes.
+Scripts can  be run on both diskless and diskful nodes.
 
 To run all the customization scripts that have been designated 
 for the nodes, (in the "postscripts and postbootscripts" attributes), type:
@@ -193,22 +183,18 @@ The basic functions of update security for nodes:
 =over 3
 
 =item *
-
 Setup the ssh keys for the target nodes. It enables the management
 node and service nodes to ssh to the target nodes without password.
 
 =item *
-
 Redeliver the host keys to the target nodes.
 
 =item *
-
 Redeliver the ca and certificates files to the service node.
 These files are used to authenticate the ssl connection between
 xcatd's of management node and service node.
 
 =item *
-
 Remove the entries of target nodes from known_hosts file.
 
 =back
@@ -242,21 +228,22 @@ Since the certificates have the validity time, the ntp service is recommended
 to be set up between management node and service node.
 
 Simply running following command to update the security keys:
-	 B<updatenode> I<noderange> -k
+
+ updatenode <noderange> -k
 
 
 =head1 PARAMETERS
 
 =over 10
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited xCAT node names
 and/or group names. See the xCAT "noderange"
 man page for details on additional supported 
 formats.
 
-=item B<script1,script2...>
+=item I<script1,script2...>
 
 A comma-separated list of script names. 
 The scripts must be executable and copied 
@@ -265,9 +252,9 @@ Each script can take zero or more parameters.
 If parameters are spcified, the whole list needs to be quoted by double quotes. 
 For example:
 
-B<"script1 p1 p2,script2">
+ "script1 p1 p2,script2"
 
-=item [B<attr=val> [B<attr=val...>]]
+=item [I<attr=val> [I<attr=val...>]]
 
 Specifies one or more "attribute equals value" pairs, separated by spaces.
 Attr=val pairs must be specified last on the command line.  The currently
@@ -285,8 +272,7 @@ maintenance support.
 
 Specifies a fanout value for the maximum number of  concur-
 rently  executing  remote shell processes. Serial execution
-can be specified by indicating a fanout value of B<1>.  If  B<--fanout>
-is not specified, a default fanout value of B<64> is used.
+can be specified by indicating a fanout value of B<1>.  If B<--fanout> is not specified, a default fanout value of B<64> is used.
 
 =item B<-A|--updateallsw>
 
@@ -298,7 +284,7 @@ Specifies that the updatenode command should only use software maintenance
 information provided on the command line.  This flag is only valid when
 using AIX software maintenance support.
 
-=item B<-d alt_source_dir>
+=item B<-d> I<alt_source_dir>
 
 Used to specify a source directory other than the standard lpp_source directory specified in the xCAT osimage definition.  (AIX only)
 
@@ -368,11 +354,15 @@ be run during install.  You should use updatenode <noderange> -F instead.
 
 Specifies that node software should be updated.  In Sysclone environment, specifies pushing the delta changes to target nodes.
 
+=item B<-n|--noverify>
+
+Specifies that node network availability verification will be skipped.
+
 =item B<-s|--sn>
 
 Set the server information stored on the nodes in /opt/xcat/xcatinfo on Linux.
 
-=item B<-t timeout>
+=item B<-t> I<timeout>
 
 Specifies a timeout in seconds the command will wait for the remote targets to complete. If timeout is not specified
 it will wait indefinitely. updatenode -k is the exception that has a timeout of 10 seconds, unless overridden by this flag.  
@@ -398,12 +388,10 @@ Verbose mode.
 
 =over 3
 
-=item 1
+=item 1.
+To perform all updatenode features for the Linux nodes in the group "compute":
 
-To perform all updatenode features for the Linux nodes in the group
-"compute":
-
-B<updatenode compute>
+ updatenode compute
 
 The command will: run any scripts listed in the nodes "postscripts and postbootscripts" 
 attribute, install or update any software indicated in the 
@@ -411,171 +399,148 @@ attribute, install or update any software indicated in the
 B<To install or update software part>), synchronize any files indicated by 
 the synclist files specified in the osimage "synclists" attribute.
 
-=item 2
+=item 2.
+To run postscripts,postbootscripts and file synchronization only on the node "clstrn01":
 
-To run postscripts,postbootscripts and file synchronization only on the node
-"clstrn01":
+ updatenode clstrn01 -F -P
 
-B<updatenode clstrn01 -F -P>
-
-=item 3
-
+=item 3.
 Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead. 
 
 Do not run:
 
-B<updatenode clstrno1 -P syncfiles>
+ updatenode clstrno1 -P syncfiles
 
 Run:
 
-B<updatenode clstrn01 -F>
+ updatenode clstrn01 -F
 
-=item 4
+=item 4.
+To run the postscripts and postbootscripts  indicated in the postscripts and postbootscripts attributes on the node "clstrn01":
 
-To run the postscripts and postbootscripts  indicated in the postscripts and postbootscripts attributes on 
-the node "clstrn01":
+ updatenode clstrn01 -P
 
-B<updatenode clstrn01 -P>
-
-=item 5
-
+=item 5.
 To run the postscripts script1 and script2 on the node "clstrn01":
 
-B<cp script1,script2 /install/postscripts>
+ cp script1,script2 /install/postscripts
 
-B<updatenode clstrn01 -P "script1 p1 p2,script2">
+ updatenode clstrn01 -P "script1 p1 p2,script2"
 
 Since flag '-P' can be omitted when only script names are specified, 
 the following command is equivalent:
 
-B<updatenode clstrn01 "script1 p1 p2,script2">
+ updatenode clstrn01 "script1 p1 p2,script2"
 
 p1 p2 are parameters for script1. 
  
 
-=item 6
-
+=item 6.
 To synchronize the files on the node "clstrn01":  Prepare the synclist file. 
 For AIX, set the full path of synclist in the osimage table synclists 
 attribute. For Linux, put the synclist file into the location: 
 /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
 Then:
 
-B<updatenode clstrn01 -F>
+ updatenode clstrn01 -F
 
-=item 7
-
+=item 7.
 To perform the software update on the Linux node "clstrn01":  Copy the extra 
 rpm into the /install/post/otherpkgs/<os>/<arch>/* and add the rpm names into 
 the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
 
-B<updatenode clstrn01 -S>
+ updatenode clstrn01 -S
 
-=item 8
-
+=item 8.
 To update the AIX node named "xcatn11" using the "installp_bundle" and/or
 "otherpkgs" attribute values stored in the xCAT database.  Use the default installp, rpm and emgr flags.
 
-B<updatenode xcatn11 -V -S>
+ updatenode xcatn11 -V -S
 
 Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition 
 which contains the "installp_bundle" and "otherpkgs" attributes as well as
 the name of the NIM lpp_source resource.
 
-=item 9
-
+=item 9.
 To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
 the "-agQXY" installp flags.  Also display the output of the installp command.
 
-B<updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-agQXY">
+ updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-agQXY"
 
 Note:  The 'I:' prefix is optional but recommended for installp packages.
 
-=item 10 
-
+=item 10.
 To uninstall the "bos.cpr" fileset that was installed in the previous example.
 
-B<updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-u">
+ updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-u"
 
-=item 11
-
+=item 11.
 To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
 and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
 
-B<updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps">
+ updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps"
 
 Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
 
-=item 12
-
+=item 12.
 To uninstall the rsync rpm that was installed in the previous example.
 
-B<updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e">
+ updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e"
 
-=item 13
-
+=item 13.
 Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
 
-B<updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY">
+ updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY"
 
-=item 14
-
+=item 14.
 To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
 
-B<updatenode node42 -V -S otherpkgs="I:rsct.base" installp_flags="-apXY">
+ updatenode node42 -V -S otherpkgs="I:rsct.base" installp_flags="-apXY"
 
-=item 15
-
+=item 15.
 To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
 
-B<updatenode node09 -V -c -S rpm_flags="-qa">
+ updatenode node09 -V -c -S rpm_flags="-qa"
 
-=item 16
-
+=item 16.
 To install all software updates contained in the /images directory.
 
-B<updatenode node27 -V -S -A -d /images>
+ updatenode node27 -V -S -A -d /images
 
 Note:  Make sure the directory is exportable and that the permissions are set
 correctly for all the files.  (Including the .toc file in the case of
 installp filesets.)
 
-=item 17
-
+=item 17.
 Install the interim fix package located in the /efixes directory.
 
-B<updatenode node29 -V -S -d /efixes otherpkgs=E:IZ38930TL0.120304.epkg.Z>
+ updatenode node29 -V -S -d /efixes otherpkgs=E:IZ38930TL0.120304.epkg.Z
 
-=item 18
-
+=item 18.
 To uninstall the interim fix that was installed in the previous example.
 
-B<updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0">
+ updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0"
 
-=item 19
-
+=item 19.
 To update the security keys for the node "node01"
 
-B<updatenode node01 -k>
+ updatenode node01 -k
 
-=item 20
-
+=item 20.
 To update the service nodes with the files to be synchronized to node group compute: 
 
-B<updatenode compute -f>
+ updatenode compute -f
 
-=item 21 
-
+=item 21.
 To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid  with sudo on node1  to run as root, do the following:
 See  Granting_Users_xCAT_privileges for required sudo setup.
 
-B<updatenode node1 -l user1 -P syslog>
+ updatenode node1 -l user1 -P syslog
 
-=item 22
-
+=item 22.
 In Sysclone environment, after capturing the delta changes from golden client to management node, to run updatenode to push these delta changes to target nodes.
 
-B<updatenode target-node -S>
+ updatenode target-node -S
 
 
 =back

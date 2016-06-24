@@ -6,7 +6,7 @@ B<nodediscoverls> -  List the discovered nodes
 
 B<nodediscoverls> [B<-t seq>|B<profile>|B<switch>|B<blade>|B<manual>|B<undef>|B<all>] [B<-l>] 
 
-B<nodediscoverls> [B<-u uuid>] [B<-l>]
+B<nodediscoverls> [B<-u> I<uuid>] [B<-l>]
 
 B<nodediscoverls> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -32,31 +32,24 @@ Display the nodes that have been discovered by the specified discovery method:
 =over 3
 
 =item *
-
 B<seq> - Sequential discovery (started via nodediscoverstart noderange=<noderange> ...).
 
 =item *
-
 B<profile> - Profile discovery (started via nodediscoverstart networkprofile=<network-profile> ...).
 
 =item *
-
 B<switch> - Switch-based discovery (used when the switch and switches tables are filled in).
 
 =item *
-
 B<blade> - Blade discovery (used for IBM Flex blades).
 
 =item *
-
 B<manual> - Manually discovery (used when defining node by nodediscoverdef command).
 
 =item *
-
 B<undef> - Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request.
 
 =item *
-
 B<all> - All discovered nodes.
 
 =back
@@ -65,7 +58,7 @@ B<all> - All discovered nodes.
 
 Display more detailed information about the discovered nodes.
 
-=item B<-u uuid>
+=item B<-u> I<uuid>
 
 Display the discovered node that has this uuid.
 
@@ -89,31 +82,34 @@ Command version.
 
 =over 3
 
-=item 1
-
+=item 1.
 Display the discovered nodes when sequential discovery is running:
 
-B<nodediscoverls>
+ nodediscoverls
+
+Output is similar to:
 
  UUID                                    NODE                METHOD         MTM       SERIAL
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2    distest1            sequential     786310X   1052EF2
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB3    distest2            sequential     786310X   1052EF3
 
-=item 2
-
+=item 2.
 Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request:
 
-B<nodediscoverls> -t undef
+ nodediscoverls -t undef
+
+Output is similar to:
 
  UUID                                    NODE                METHOD         MTM       SERIAL
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB0    undef               undef          786310X   1052EF0
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB1    undef               undef          786310X   1052EF1
 
-=item 3
-
+=item 3.
 Display all the discovered nodes:
 
-B<nodediscoverls> -t all
+ nodediscoverls -t all
+
+Output is similar to:
 
  UUID                                    NODE                METHOD         MTM       SERIAL
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB0    undef               undef          786310X   1052EF0
@@ -121,11 +117,12 @@ B<nodediscoverls> -t all
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2    distest1            sequential     786310X   1052EF2
  51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB3    distest2            sequential     786310X   1052EF3
 
-=item 4
-
+=item 4.
 Display the discovered node whose uuid is B<51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2>, with detailed information:
 
-B<nodediscoverls> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
+ nodediscoverls -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2 -l
+
+Output is similar to:
 
  Object uuid: 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB2
     node=distest1

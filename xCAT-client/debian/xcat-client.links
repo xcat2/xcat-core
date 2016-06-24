@@ -25,6 +25,9 @@ opt/xcat/bin/xcatclient opt/xcat/bin/mkvm
 opt/xcat/bin/xcatclient opt/xcat/bin/rmvm
 opt/xcat/bin/xcatclient opt/xcat/bin/lsvm
 opt/xcat/bin/xcatclient opt/xcat/bin/chvm
+opt/xcat/bin/xcatclient opt/xcat/bin/mkdocker
+opt/xcat/bin/xcatclient opt/xcat/bin/rmdocker
+opt/xcat/bin/xcatclient opt/xcat/bin/lsdocker
 opt/xcat/bin/xcatclient opt/xcat/bin/tabgrep
 opt/xcat/bin/xcatclient opt/xcat/bin/renergy
 opt/xcat/bin/xcatclient opt/xcat/bin/litetree
@@ -34,6 +37,7 @@ opt/xcat/bin/xcatclient opt/xcat/bin/lstree
 opt/xcat/bin/xcatclient opt/xcat/bin/lsflexnode
 opt/xcat/bin/xcatclient opt/xcat/bin/rmflexnode
 opt/xcat/bin/xcatclient opt/xcat/bin/mkflexnode
+opt/xcat/bin/xcatclient opt/xcat/bin/getadapter
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/lsslp
 opt/xcat/bin/xcatclient opt/xcat/bin/imgcapture
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/swapnodes
@@ -124,4 +128,5 @@ opt/xcat/bin/xcatclient    opt/xcat/bin/xCATWorld
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/switchdiscover
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/bmcdiscover
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/makentp
+opt/xcat/bin/xcatclientnnr opt/xcat/sbin/rescanplugins
 

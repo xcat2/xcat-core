@@ -623,7 +623,10 @@ sub rflash {
     # (otherwise, will need to move this call into loop above for each host
     #  and build separate miccfg calls for each unique returned value from
     #  my_ip_facing)
-    my $ipfn = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    
+    my $ipfn;
+    my @ipfnd = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
     if ($ipfn) {
         $master = $ipfn;
     } else { 
@@ -945,7 +948,9 @@ sub nodeset {
     # (otherwise, will need to move this call into loop above for each host
     #  and build separate miccfg calls for each unique returned value from
     #  my_ip_facing)
-    my $ipfn = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    my $ipfn;
+    my @ipfnd = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
     if ($ipfn) {
         $master = $ipfn;
     } else {

@@ -46,6 +46,8 @@ my %usage = (
        rpower noderange [on|off|reset|stat|softoff]
      MIC specific:
        rpower noderange [stat|state|on|off|reset|boot]
+     docker specific:
+       rpower noderange [start|stop|restart|pause|unpause|state]
 ",
     "rbeacon" => 
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
@@ -94,7 +96,7 @@ my %usage = (
     MIC specific:
        rinv noderange [system|ver|board|core|gddr|all]",
     "rsetboot" => 
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" => 
 "Usage: 
@@ -213,7 +215,7 @@ my %usage = (
                       [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
                       [vmnics=vlan1,vlan2] [vmstorage=<N|viosnode:slotid>] [--vios]
     For KVM
-       mkvm noderange -m|--master mastername -s|--size disksize -f|--force
+       mkvm noderange [-s|--size disksize] [--mem memsize] [--cpus cpucount] [-f|--force]
     For zVM
        mkvm noderange directory_entry_file_path
        mkvm noderange source_virtual_machine pool=disk_pool pw=multi_password",
@@ -250,6 +252,11 @@ my %usage = (
                         [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
+   KVM specific:
+       chvm <noderange> [--cpupin hostcpuset]
+       chvm <noderange> [--membind numanodeset]
+       chvm <noderange> [--devpassthru pcidevice1,pcidevice2... ]
+       chvm <noderange> [--devdetach pcidevice1,pcidevice2... ]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:
@@ -283,6 +290,13 @@ my %usage = (
        rmvm [-p] [-f]
        PPC (using Direct FSP Management) specific:
        rmvm <noderange>",
+    "mkdocker" =>
+"Usage: mkdocker <noderange> [image=<image_name> [command=<command>]] [dockerflag=<docker_flags>]",
+    "lsdocker" =>
+"Usage: lsdocker <noderange>
+       lsdocker <noderange> [-l|--logs]",
+    "rmdocker" =>
+"Usage: rmdocker <noderage>",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
@@ -290,6 +304,8 @@ my %usage = (
     "switchdiscover" =>
 "Usage: switchdiscover [-h|--help|-v|--version]
        switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
+    "switchprobe" => 
+"Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>
 "Usage: makentp [-h|--help|-v|--version]
        makentp [-a|--all] [-V|--verbose]",
@@ -302,7 +318,9 @@ my %usage = (
     PPC (using Direct FSP Management) specific:
 	rflash <noderange> -p <rpm_directory> --activate <disruptive|deferred> [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
-        rflash <noderange> [--bpa_acdl]",
+        rflash <noderange> [--bpa_acdl]
+    PPC64LE (using BMC Management) specific:
+        rflash <noderange> [-c | --check] <hpm_file>",
     "mkhwconn" =>
 "Usage:
     mkhwconn [-h|--help]
@@ -368,7 +386,11 @@ my %usage = (
  
     iDataPlex specific :
       renergy noderange [-V] [ { cappingmaxmin | cappingmax | cappingmin } ] [cappingstatus] [cappingvalue] [relhistogram]
-      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
+      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }
+
+    OpenPOWER server specific :
+      renergy noderange [ powerusage | temperature]
+",
   "updatenode" =>
 "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]
@@ -439,7 +461,7 @@ Options:
 "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline|shutdown|stat]",
   "rmflexnode" =>
 "Usage:
     rmflexnode [-h|--help|-v|--version]

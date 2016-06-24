@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+#  There are functions to handle iprconfig commands.
+#
+iprconfig="iprconfig"
+
+########################################
+#
+#  iprconfig show-config 
+# 
+########################################
+function cmd_show_config {
+    local lines=""
+    lines=`$iprconfig -c show-config`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig show-ioas
+#
+########################################
+function cmd_show_ioas {
+    local lines=""
+    lines=`$iprconfig -c show-ioas`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c show-details
+#
+########################################
+function cmd_show_details {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c show-details $dev`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c show-arrays
+#
+########################################
+function cmd_show_arrays {
+    local lines=""
+    lines=`$iprconfig -c show-arrays`
+    echo "$lines"
+}
+
+###################################################################
+#
+#  dev is raid array or not
+#  input : dev
+#  return : 1 ----- not raid array
+#           0 ----- raid array
+#
+###################################################################
+function is_array {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c show-details $dev | grep -sq "RAID Level"`
+    echo "$?"
+}
+
+########################################
+#
+#  iprconfig -c alt-status <dev>
+#
+########################################
+function cmd_alt_status {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c alt-status $dev`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c show-status <dev>
+#
+########################################
+function cmd_show_status {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c status $dev`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c  show-alt-config
+#
+########################################
+function cmd_show_alt_config {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c  show-alt-config`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c  query-raid-delete <ioa>
+#
+########################################
+function cmd_query_raid_delete {
+    local lines=""
+    local ioa=$*
+    lines=`$iprconfig -c  query-raid-delete $ioa`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c  raid-delete <array>
+#
+########################################
+function cmd__raid_delete {
+    local lines=""
+    local array=$*
+    lines=`$iprconfig -c  raid-delete "$array"`
+}
+
+##################################################################
+#
+#  iprconfig -c raid-create $iprconfig_args $member_sgs
+#
+###################################################################
+function cmd_raid_create {
+    local iprconfig_args=$1
+    local member_sgs=$2
+    lines=`$iprconfig -c raid-create $iprconfig_args $member_sgs`
+}
+

@@ -6,7 +6,7 @@ B<makeknownhosts> - Make a known_hosts file under $ROOTHOME/.ssh for input noder
 
 B<makeknownhosts> I<noderange> [B<-r>|B<--remove>] [B<-V>|B<--verbose>]
 
-B<makeknownhosts> {B<-h>|B<--help>}
+B<makeknownhosts> [B<-h>|B<--help>]
 
 =head1 DESCRIPTION
 
@@ -43,17 +43,20 @@ Verbose mode.
 
 =over 2
 
-=item *
+=item 1.
+To build the known_hosts entry for the nodes in the compute group
 
-makeknownhosts compute
+ makeknownhosts compute
 
-=item *
+=item 2.
+To build the known_hosts entry for the nodes in the lpars and service groups
 
-makeknownhosts lpars,service 
+ makeknownhosts lpars,service 
 
-=item *
+=item 3.
+To remove the known_hosts entry for node02
 
-makeknownhosts node02 -r
+ makeknownhosts node02 -r
 
 =back
 

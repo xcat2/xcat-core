@@ -6,9 +6,9 @@ B<rescanplugins> - Notifies xcatd to rescan the plugin directory
 
 B<rescanplugins> 
 
-B<rescanplugins> {B<-h>|B<--help>}
+B<rescanplugins> [B<-h>|B<--help>]
 
-B<rescanplugins> {B<-v>|B<--version>}
+B<rescanplugins> [B<-v>|B<--version>]
 
 B<rescanplugins> [B<-s>|B<--servicenodes>]
 
@@ -41,16 +41,14 @@ Process the rescanplugins on the management node and on all service nodes.  The 
 
 =over 2
 
-=item *
-
+=item 1.
 To rescan the plugins only on the xCAT Management Node:
 
-B<rescanplugins> 
+ rescanplugins 
 
-=item *
-
+=item 2.
 To rescan the plugins on the xCAT Management Node and on all service nodes:
 
-B<rescanplugins -s> 
+ rescanplugins -s 
 
 =back

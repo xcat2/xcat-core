@@ -47,6 +47,8 @@ This program module file is a set of utilities to support xCAT post scripts.
 
      xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);
 
+     Return: list of nodes that have some attributes missing from node definition
+
 
 =cut
 
@@ -102,7 +104,8 @@ sub create_mypostscript_or_not {
        } 
     }
 
-
+  # Return the list of nodes that had missing attributes
+  return @::exclude_nodes;
 }
 
 
@@ -270,10 +273,9 @@ sub makescript {
   #
   #
   #%::GLOBAL_TAB_HASH = ();
-  my $rc = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
-  if($rc == -1) {
-     #return;
-  }
+
+  # Collect all node attributes and save a list of nodes which have some missing node definition attributes
+  @::exclude_nodes = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
 
   #print Dumper(\%::GLOBAL_TAB_HASH);
 
@@ -1395,6 +1397,7 @@ sub  collect_all_attribs_for_tables_in_template
   my $nodes = shift;
   my $callback = shift;
   my $blankok;
+  my @exclude_nodes = ();
   if(defined($table) ) {
        foreach my $tabname (keys %$table) {
             my $key_hash = $table->{$tabname};
@@ -1429,12 +1432,10 @@ sub  collect_all_attribs_for_tables_in_template
                                      ( ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
                                        $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} eq ""        ) )
                                   {
-                                      my $value;
-                                      $value = xCAT::NetworkUtils->my_ip_facing($node);
-                                      if ($value eq "0")
-                                      {
-                                         undef($value);
-                                      }
+                                      my $value = undef;
+                                      my @valued = xCAT::NetworkUtils->my_ip_facing($node);
+                                      unless ($valued[0]) { $value = $valued[1];}
+
                                       $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $value;
                                   }
 
@@ -1447,7 +1448,9 @@ sub  collect_all_attribs_for_tables_in_template
                                             push @{$rsp->{data}},
                                                              "No os or arch setting in nodetype table for $node.\n";
                                             xCAT::MsgUtils->message("E", $rsp, $callback);
-                                            return -1;
+                                            # Save this node in the list of nodes that have missing attributes
+                                            push(@exclude_nodes, $node);
+                                            last; # Continue to the next node
                                        }
                                    }
 
@@ -1483,7 +1486,7 @@ sub  collect_all_attribs_for_tables_in_template
     }
    
   }
-
+  return @exclude_nodes;
 
 }
 
@@ -1585,6 +1588,10 @@ sub get_envlist
 sub get_pkglist_tex
 {
     my $allfiles_pkglist   = shift;
+    if($allfiles_pkglist =~ "xCAT::"){
+       $allfiles_pkglist   = shift;
+    }
+
     my $allfiles_pkgtext;
     foreach my $pkglist (split(/,/, $allfiles_pkglist))
     {
@@ -1654,7 +1661,7 @@ sub includefile
         $file = $idir . "/" . $file;
     }
 
-    open(INCLUDE, $file) || \return "#INCLUDEBAD:cannot open $file#";
+    open(INCLUDE, $file) || return "#INCLUDEBAD:cannot open pkglist file $file#";
 
     while (<INCLUDE>)
     {
@@ -2132,7 +2139,5 @@ sub includetmpl
 
     return join(',', @text);
 }
-
-
 
 1;

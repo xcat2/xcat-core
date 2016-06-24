@@ -1,0 +1,279 @@
+start:rpower_stop
+description:stop a created docker instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN stop
+check:rc==0
+check:ouptut=~container already stopped
+cmd:rpower $$DOCKERCN restart
+check:ouptut=~success
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~running
+cmd:rpower $$DOCKERCN stop 
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~exited
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:rpower_start
+description:start a created docker instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~created
+cmd:rpower $$DOCKERCN start
+check:rc==0
+check:output=~success
+cmd:rpower  $$DOCKERCN state
+check:rc==0
+check:output=~running 
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_state
+description:get state of the instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~created
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~running
+cmd:rpower $$DOCKERCN stop
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~exited
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_restart
+description:restart a created docker instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~created
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:sleep 6
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:sleep 6
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_pause
+decription:pause all processes in the instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:rc!=0
+check:output=~$$DOCKERCN: Error: Container
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~paused
+cmd:rpower $$DOCKERCN unpause
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_unpause
+description:unpause all processes in the instance
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:ouptut=~paused
+cmd:rpower $$DOCKERCN unpause
+check:rc==0
+check:output=~success
+cmd:sleep 6
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:sleep 6
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:mkdocker_h
+description:output usage for mkdocker
+cmd:mkdocker -h
+check:rc==0
+check:output=~Usage: mkdocker
+end
+start:mkdocker_command
+description:create docker instance image should be ubuntu and command should be bash here 
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0 
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN 
+check:rc==0
+check:output=~$$DOCKERIMAGE
+check:output=~$$DOCKERCOMMAND
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~$$DOCKERCN: created
+cmd:rpower $$DOCKERCN start
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:xdsh $$DOCKERHOST "docker ps -l"
+check:output=~$$DOCKERCN
+check:rc==0
+cmd:ping $$DOCKERCN -c 3
+check:output=~64 bytes from $$DOCKERCN
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:rmdocker_h
+description:output usage for rmdocker
+cmd:rmdocker -h 
+check:rc==0
+check:output=~Usage: rmdocker <noderage>
+end
+start:rmdocker_command
+description:remove docker instance 
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN
+check:rc==0
+cmd:lsdocker -l $$DOCKERCN
+check:rc!=0
+check:output=~ Error: No such container
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:rmdocker_f_command
+description:force to remove docker instance 
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN
+check:rc==0
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rmdocker $$DOCKERCN
+chec:rc!=0
+check:output=~Stop the container before attempting removal or use -f
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:lsdocker_h_command
+description:output usage for lsdocker
+cmd:lsdocker -h
+check:rc==0
+check:output=~Usage: lsdocker <noderange>
+end
+start:lsdocker_l_command
+description:list docker instance info
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:lsdocker -l $$DOCKERCN
+check:rc==0
+check:output=~$$DOCKERCN
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end

@@ -1,5 +1,6 @@
 start:reg_linux_diskfull_installation_hierarchy
 os:Linux
+stop:yes
 
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
@@ -42,7 +43,7 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GE
 #check:rc==0
 #check:output!~booted
 
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0

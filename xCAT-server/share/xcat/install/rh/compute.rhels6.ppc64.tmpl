@@ -146,6 +146,16 @@ reboot
 %packages
 #INCLUDE_DEFAULT_PKGLIST#
 %pre
+{
+echo "Running Kickstart Pre-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
+} >>/tmp/pre-install.log 2>&1
 %post
+mkdir -p /var/log/xcat/
+{
+cat >> /var/log/xcat/xcat.log << "EOF"
+%include /tmp/pre-install.log
+EOF
+echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#
+} >>/var/log/xcat/xcat.log 2>&1

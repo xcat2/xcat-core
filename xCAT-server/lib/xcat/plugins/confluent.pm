@@ -1,4 +1,5 @@
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+# Lenovo(c) 2016
 #TODO: delete entries not being refreshed if no noderange
 package xCAT_plugin::confluent;
 use strict;
@@ -218,9 +219,16 @@ sub makeconfluentcfg {
 
   # Get db info for the nodes related to console
   my $hmtab = xCAT::Table->new('nodehm');
+  my $nodepostab = xCAT::Table->new('nodepos');
   my @cfgents1;# = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
+  my @cfgents2;
+  my @cfgents3;
+  my $explicitnodes = 0;
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
-      @cfgents1 = $hmtab->getNodesAttribs($nodes,['node','cons','serialport','mgt','conserver','termserver','termport','consoleondemand']);
+      $explicitnodes = 1;
+      @cfgents1 = $hmtab->getNodesAttribs($nodes,['node','cons', 'mgt','conserver','termserver','termport','consoleondemand']);
+      @cfgents2 = $nodepostab->getNodesAttribs($nodes,['node', 'rack', 'u', 'chassis', 'slot' , 'room']);
+      @cfgents3 = $nodepostab->getNodesAttribs($nodes,['node', 'mpa', 'id']);
       # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
       my @tmpcfgents1;
       foreach my $ent (@cfgents1)
@@ -230,23 +238,56 @@ sub makeconfluentcfg {
               push @tmpcfgents1, $ent->{$nodeent}->[0] ;
           }
       }
-      @cfgents1 = @tmpcfgents1
-
+      @cfgents1 = @tmpcfgents1;
+      @tmpcfgents1 = ();
+      foreach my $ent (@cfgents2)
+      {
+          foreach my $nodeent ( keys %$ent)
+          {
+              push @tmpcfgents1, $ent->{$nodeent}->[0] ;
+          }
+      }
+      @cfgents2 = @tmpcfgents1;
+      @tmpcfgents1 = ();
+      foreach my $ent (@cfgents3)
+      {
+          foreach my $nodeent ( keys %$ent)
+          {
+              push @tmpcfgents1, $ent->{$nodeent}->[0] ;
+          }
+      }
+      @cfgents3 = @tmpcfgents1;
   } else {
     @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport','consoleondemand']);
+    @cfgents2 = $nodepostab->getAllNodeAttribs(['rack', 'u', 'chassis', 'slot' , 'room']);
+    @cfgents3 = $nodepostab->getAllNodeAttribs(['mpa', 'id']);
   }
 
 
   #cfgents1 should now have all the nodes, so we can fill in the cfgents array and cfgenthash one at a time.
   # skip the nodes that do not have 'cons' defined, unless a serialport setting suggests otherwise
-  my @cfgents=();
   my %cfgenthash;
   foreach (@cfgents1) {
     if ($_->{cons} or defined($_->{'serialport'})) {
       unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
-      push @cfgents, $_;
+      $cfgenthash{$_->{node}} = $_;     # also put the ref to the entry in a hash for quick look up
+    } elsif ($explicitnodes) {
       $cfgenthash{$_->{node}} = $_;     # also put the ref to the entry in a hash for quick look up
     }
+  }
+  foreach my $nent (@cfgents2) {
+    foreach (keys %$nent) {
+        $cfgenthash{$nent->{node}}->{$_} = $nent->{$_};
+    }
+  }
+  foreach my $nent (@cfgents3) {
+    foreach (keys %$nent) {
+        $cfgenthash{$nent->{node}}->{$_} = $nent->{$_};
+    }
+  }
+  my @cfgents=();
+  foreach (values %cfgenthash) {
+      push @cfgents, $_;
   }
 
   if ($::DEBUG) {
@@ -362,7 +403,7 @@ sub donodeent {
   }
   my @cfgroups;
   foreach (keys %$groupdata) {
-      push @cfgroups, split /,/,$groupdata->{$_}->[0]->{groups};
+      push @cfgroups, grep {defined && length} split /,/,$groupdata->{$_}->[0]->{groups};
   }
   $confluent->read('/nodegroups/');
   my $currgroup = $confluent->next_result();
@@ -381,7 +422,7 @@ sub donodeent {
         my $rsp = $confluent->next_result();
         while ($rsp) {
             if (exists $rsp->{error}) {
-                xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb);
+                xCAT::SvrUtils::sendmsg([1,":Confluent error: " . $rsp->{error}],$cb);
             }
             $rsp = $confluent->next_result();
         }
@@ -392,15 +433,12 @@ sub donodeent {
 foreach my $node (sort keys %$cfgenthash) {
   my $cfgent = $cfgenthash->{$node};
   my $cmeth=$cfgent->{cons};
-  if (not $cmeth) {
-      return $node;
-  }
-  if ($cmeth ne 'ipmi') {
+  if ($cmeth and $cmeth ne 'ipmi') {
     $cmeth = 'xcat' . $cmeth;
   }
   my %parameters;
-  $parameters{'console.method'} = $cmeth;
-  if ($cmeth eq 'ipmi') {
+  if ($cmeth) { $parameters{'console.method'} = $cmeth; }
+  if ($cmeth eq 'ipmi' or not $cmeth) {
     $parameters{'secret.hardwaremanagementuser'} =
             $ipmiauthdata->{$node}->{username};
       $parameters{'secret.hardwaremanagementpassword'} =
@@ -419,13 +457,33 @@ foreach my $node (sort keys %$cfgenthash) {
   } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
     $parameters{'console.logging'} = 'none';
   }
-  $parameters{'groups'} = [split /,/,$groupdata->{$node}->[0]->{'groups'}];
+  # ok, now for nodepos...
+  if (defined $cfgent->{u}) {
+          $parameters{'location.u'} = $cfgent->{u};
+  }
+  if (defined $cfgent->{rack}) {
+          $parameters{'location.rack'} = $cfgent->{rack};
+  }
+  if (defined $cfgent->{room}) {
+          $parameters{'location.room'} = $cfgent->{room};
+  }
+  if (defined $cfgent->{chassis}) {
+          $parameters{'enclosure.manager'} = $cfgent->{chassis};
+  } elsif (defined $cfgent->{mpa}) {
+          $parameters{'enclosure.manager'} = $cfgent->{mpa};
+  }
+  if (defined $cfgent->{slot}) {
+          $parameters{'enclosure.bay'} = $cfgent->{slot};
+  } elsif (defined $cfgent->{id}) {
+          $parameters{'enclosure.bay'} = $cfgent->{id};
+  }
+  $parameters{'groups'} = [grep {defined && length} split /,/,$groupdata->{$node}->[0]->{'groups'}];
   if (exists $currnodes{$node}) {
     $confluent->update('/nodes/'.$node.'/attributes/current', parameters=>\%parameters);
     my $rsp = $confluent->next_result();
     while ($rsp) {
         if (exists $rsp->{error}) {
-            xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb,$node);
+            xCAT::SvrUtils::sendmsg([1,":Confluent error: " . $rsp->{error}],$cb,$node);
         }
         $rsp = $confluent->next_result();
     }
@@ -435,7 +493,7 @@ foreach my $node (sort keys %$cfgenthash) {
     my $rsp = $confluent->next_result();
     while ($rsp) {
         if (exists $rsp->{error}) {
-            xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb,$node);
+            xCAT::SvrUtils::sendmsg([1,":Confluent error: " . $rsp->{error}],$cb,$node);
         }
         $rsp = $confluent->next_result();
     }

@@ -1,0 +1,1460 @@
+#!/bin/bash
+#
+# go-xcat - Install xCAT automatically.
+#
+# Copyright (C) 2016 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2016-06-16 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - created
+# 2016-06-20 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - released to the field
+#
+
+function usage()
+{
+	local script="${0##*/}"
+
+	while read ; do echo "${REPLY}" ; done <<-EOF
+	Usage: ${script} [OPTION]... [ACTION]
+	Install xCAT automatically
+
+	Options:
+	Mandatory arguments to long options are mandatory for short options too.
+	  -h, --help                    display this help and exit
+	  --xcat-core=[URL]             use a different URL or path for the xcat-core
+	                                repository
+	  --xcat-dep=[URL]              use a different URL or path for the xcat-dep
+	                                repository
+	  -x, --xcat-version=[VERSION]  specify the version of xCAT; cannot use with
+	                                --xcat-core
+	  -y, --yes                     answer yes for all questions
+
+	Actions:
+	  install                       installs all the latest versions of xcat-core
+	                                and xcat-dep packages from the repository
+	  update                        updates installed xcat-core packages to the
+	                                latest version from the repository
+
+	Examples:
+	  ${script}
+	  ${script} install
+	  ${script} update
+	  ${script} --yes install
+	  ${script} -x 2.12 -y install
+	  ${script} --xcat-version=devel install
+	  ${script} --xcat-core=/path/to/xcat-core.repo install
+	  ${script} --xcat-core=/path/to/xcat-core install
+	  ${script} --xcat-core=/path/to/xcat-core.tar install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.repo \\\\
+	          --xcat-dep=/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=/path/to/xcat-core \\\\
+	          --xcat-dep=/path/to/xcat-dep install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\\\
+	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+
+	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
+	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
+	EOF
+}
+
+GO_XCAT_DEFAULT_BASE_URL="http://xcat.org/files/xcat/repos"
+GO_XCAT_DEFAULT_INSTALL_PATH="/install/xcat"
+
+# The package list of xcat-core
+GO_XCAT_CORE_PACKAGE_LIST=(perl-xCAT xCAT xCAT-SoftLayer xCAT-buildkit
+	xCAT-client xCAT-confluent xCAT-genesis-scripts-ppc64
+	xCAT-genesis-scripts-x86_64 xCAT-server xCAT-test xCAT-vlan xCATsn)
+# For Debian/Ubuntu, it will need a sight different package list
+type dpkg >/dev/null 2>&1 &&
+GO_XCAT_CORE_PACKAGE_LIST=(perl-xcat xcat xcat-buildkit xcat-client
+	xcat-confluent xcat-genesis-scripts xcat-server xcat-test xcat-vlan
+	xcatsn)
+GO_XCAT_DEP_PACKAGE_LIST=()
+
+# The package list of all the packages should be installed
+GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
+	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
+	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
+# For Debian/Ubuntu, it will need a sight different package list
+type dpkg >/dev/null 2>&1 &&
+GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
+	xcat-genesis-scripts xcat-server
+	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
+	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+
+#
+# warn_if_bad		Put out warning message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#	Incoming $1 is returned unless it is 0
+#
+function warn_if_bad()
+{
+	local -i rc="$1"
+	local script="${0##*/}"
+
+	# Ignore if no problems
+	[ "${rc}" -eq "0" ] && return 0
+
+	# Broken
+	shift
+	echo "${script}: $@" >&2
+	return "${rc}"
+}
+
+#
+# exit_if_bad		Put out error message(s) if $1 has bad RC.
+#
+#	$1	0 (pass) or non-zero (fail).
+#	$2+	Remaining arguments printed only if the $1 is non-zero.
+#
+#               Exits with 1 unless $1 is 0
+#
+function exit_if_bad()
+{
+	warn_if_bad "$@" || exit 1
+	return 0
+}
+
+#
+# check_root_or_exit
+#
+#	Breaks the script if not running as root.
+#
+#	If this returns 1, the invoker MUST abort the script.
+#
+#	Returns 0 if running as root
+#	Returns 1 if not (and breaks the script)
+#
+function check_root_or_exit()
+{
+	[ "${UID}" -eq "0" ]
+	exit_if_bad "$?" "Must be run by UID=0. Actual UID=${UID}."
+	return 0
+}
+
+#
+# check_executes	Check for executable(s)
+#
+#	Returns 0 if true.
+#	Returns 1 if not.
+#
+function check_executes()
+{
+	local cmd
+	local all_ok="yes"
+	for cmd in "$@"
+	do
+		if ! type "${cmd}" &>/dev/null
+		then
+			echo "Command \"${cmd}\" not found." >&2
+			all_ok="no"
+		fi
+	done
+	[ "${all_ok}" = "yes" ]
+}
+
+#
+# check_exec_or_exit	Check for required executables.
+#
+#	Exits (not returns) if commands listed on command line do not exist.
+#
+#	Returns 0 if true.
+#	Exits with 1 if not.
+#
+function check_exec_or_exit()
+{
+	check_executes "$@"
+	exit_if_bad "$?" "Above listed required command(s) not found."
+	return 0
+}
+
+TMP_DIR=""
+
+#
+# internal_setup	Script setup
+#
+#	Returns 0 on success.
+#	Exits (not returns) with 1 on failure.
+#
+function internal_setup()
+{
+	shopt -s extglob
+
+	# Trap exit for internal_cleanup function.
+	trap "internal_cleanup" EXIT
+
+	check_exec_or_exit mktemp rm
+
+	umask 0077
+
+	TMP_DIR="$(mktemp -d "/tmp/${0##*/}.XXXXXXXX" 2>/dev/null)"
+	[ -d "${TMP_DIR}" ]
+	exit_if_bad "$?" "Make temporary directory failed."
+
+	custom_setup
+}
+
+#
+# internal_cleanup	Script cleanup (reached via trap 0)
+#
+#	Destory any temporarily facility created by internal_setup.
+#
+function internal_cleanup()
+{
+	custom_cleanup
+
+	[ -d "${TMP_DIR}" ] && rm -rf "${TMP_DIR}"
+}
+
+#
+# custom_setup
+#
+function custom_setup()
+{
+	check_exec_or_exit awk cat printf sort sleep tee
+	check_root_or_exit
+}
+
+#
+# custom_cleanup
+#
+function custom_cleanup()
+{
+	:
+}
+
+#
+# cleanup_n_exec	Do the cleanup, then execute the command
+#
+#	$1+	The command to execute
+#
+function cleanup_n_exec()
+{
+	internal_cleanup
+
+	exec "$@"
+}
+
+internal_setup
+
+# Check operating system
+function check_os()
+{
+	case "${OSTYPE}" in
+	"aix"*)     # AIX
+		echo "aix"
+		;;
+	"darwin"*)  # OS X
+		echo "darwin"
+		;;
+	"linux"*)   # Linux
+		echo "linux"
+		;;
+	*)
+		# Unknown
+		echo "${OSTYPE}"
+		;;
+	esac
+}
+
+# Check instruction set architecture
+function check_arch()
+{
+	case "${HOSTTYPE}" in
+	"powerpc64")
+		echo "ppc64"
+		;;
+	"powerpc64le")
+		echo "ppc64le"
+		;;
+	"mipsel")
+		echo "mips"
+		;;
+	"i"?"86")
+		echo "i386"
+		;;
+	*)
+		echo "${HOSTTYPE}"
+		;;
+	esac
+}
+
+function check_linux_distro()
+{
+	local distro="$(source /etc/os-release >/dev/null 2>&1 &&
+		echo "${ID}")"
+	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
+	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
+	echo "${distro}"
+}
+
+function check_linux_version()
+{
+	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
+		echo "${VERSION_ID}")"
+	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
+		ver="$(awk '{ print $(NF - 1) }' /etc/redhat-release)"
+	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
+		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
+	echo "${ver}"
+}
+
+function function_dispatch()
+{
+	local base="$1"
+	local cmd=""
+	local ret=""
+	shift
+	for cmd in $(compgen -A function "${base}_")
+	do
+		"${cmd}" "$@"
+		ret="$?"
+		[[ "${ret}" -ne "255" ]] && break
+	done
+	[[ "${ret}" -ne "255" ]]
+	exit_if_bad "$?" "${base}: unsupported function"
+	return "${ret}"
+}
+
+#       $@      package names
+function check_package_version_rpm()
+{
+	type rpm >/dev/null 2>&1 || return 255
+	local ver=""
+	while read ver
+	do
+		if [[ -z "${ver}" || "${ver}" =~ not\ installed ]]
+		then
+			echo "(not installed)"
+		else
+			echo "${ver}"
+		fi
+	done < <(rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
+	return 0
+}
+
+#       $@      package names
+function check_package_version_deb()
+{
+	type dpkg-query >/dev/null 2>&1 || return 255
+	local name=""
+	local ver=""
+	while read name ver
+	do
+		name+=("${name}")
+		ver+=("${ver}")
+	done < <(dpkg-query --show '--showformat=${Package} ${Version}\n' \
+		"$@" 2>/dev/null)
+	local -i i
+	while [[ -n "$1" ]]
+	do
+		for i in "${!name[@]}"
+		do
+			if [[ "$1" = "${name[i]}" ]]
+			then
+				echo "${ver[i]}"
+				unset "name[${i}]" "ver[${i}]"
+				shift && continue 2
+			fi
+		done
+		echo "(not installed)"
+		shift
+	done
+	return 0
+}
+
+function check_package_version()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $@      package names
+function check_repo_version_yum()
+{
+	type repoquery >/dev/null 2>&1 || return 255
+	local -a name=()
+	local -a ver=()
+	while read name ver
+	do
+		name+=("${name}")
+		ver+=("${ver}")
+	done < <(repoquery --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	local -i i
+	while [[ -n "$1" ]]
+	do
+		for i in "${!name[@]}"
+		do
+			if [[ "$1" = "${name[i]}" ]]
+			then
+				echo "${ver[i]}"
+				unset "name[${i}]" "ver[${i}]"
+				shift && continue 2
+			fi
+		done
+		echo "(not found)"
+		shift
+	done
+	return 0
+}
+
+#       $@      package names
+function check_repo_version_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local -a name=()
+	local -a ver=()
+	while read name ver
+	do
+		name+=("${name}")
+		ver+=("${ver}")
+	done < <(zypper --no-gpg-checks -n search -s --match-exact "$@" \
+		2>/dev/null | awk -F ' *\\| *' '/ package / { print $2, $4 }')
+	local -i i
+	while [[ -n "$1" ]]
+	do
+		for i in "${!name[@]}"
+		do
+			if [[ "$1" = "${name[i]}" ]]
+			then
+				echo "${ver[i]}"
+				unset "name[${i}]" "ver[${i}]"
+				shift && continue 2
+			fi
+		done
+		echo "(not found)"
+		shift
+	done
+	return 0
+}
+
+#       $@      package names
+function check_repo_version_apt()
+{
+	type apt-cache >/dev/null 2>&1 || return 255
+	local name=""
+	local ver=""
+	while read name ver
+	do
+		if [[ "${name}" =~ ^[a-z] ]]
+		then
+			while [[ -n "$1" ]]
+			do
+				[[ "${name}" = "${1}:" ]] && break
+				echo "(not found)"
+				shift
+			done
+		fi
+		if [[ "${name}" = "Candidate:" ]]
+		then
+			echo "$ver"
+			shift
+		fi
+	done < <(apt-cache policy "$@" 2>/dev/null)
+	while [[ -n "$1" ]]
+	do
+		echo "(not found)"
+		shift
+	done
+	return 0
+}
+
+function check_repo_version()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      repo id
+function get_package_list_yum()
+{
+	type repoquery >/dev/null 2>&1 || return 255
+	local repo_id="$1"
+	[[ -z "${repo_id}" ]] && return 1
+	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
+}
+
+#       $1      repo id
+function get_package_list_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local repo_id="$1"
+	[[ -z "${repo_id}" ]] && return 1
+	zypper --no-gpg-checks -n search -r "${repo_id}" 2>/dev/null |
+		awk -F ' *\\| *' '/ package$/ { print $2 }'
+}
+
+#       $1      repo id
+function get_package_list_apt()
+{
+	[[ -d /var/lib/apt/lists ]] || return 255
+	local repo_id="$1"
+	[[ -z "${repo_id}" ]] && return 1
+	awk '/^Package: / { print $2 }' \
+		<"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
+		2>/dev/null
+}
+
+#       $1      repo id
+function get_package_list()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function download_file()
+{
+	type wget >/dev/null 2>&1 || return 255
+	local url="$1"
+	local local_file="$2"
+	wget -q "${url}" -O "${local_file}"
+}
+
+#       $1      repo file
+#       $2      repo id
+function add_repo_by_file_yum()
+{
+	type yum-config-manager >/dev/null 2>&1 || return 255
+	local repo_file="$1"
+	local repo_id="$2"
+	[[ -f "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: no such file"
+	[[ -r "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: permission denied"
+	[[ -n "${repo_id}" ]]
+	exit_if_bad "$?" "empty repo id"
+	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
+	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
+	{
+		echo "[${repo_id}]"
+		grep -v '^\[' "${repo_file}"
+	} >"${tmp_repo_file}"
+	remove_repo_yum "${repo_id}"
+	yum-config-manager "--add-repo=${tmp_repo_file}" >/dev/null 2>&1
+}
+
+#       $1      repo file
+#       $2      repo id
+function add_repo_by_file_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local repo_file="$1"
+	local repo_id="$2"
+	[[ -f "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: no such file"
+	[[ -r "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: permission denied"
+	[[ -n "${repo_id}" ]]
+	exit_if_bad "$?" "empty repo id"
+	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
+	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
+	{
+		echo "[${repo_id}]"
+		grep -v '^\[' "${repo_file}"
+	} >"${tmp_repo_file}"
+	remove_repo_zypper "${repo_id}"
+	zypper addrepo "${tmp_repo_file}" >/dev/null 2>&1
+}
+
+#       $1      repo file
+#       $2      repo id
+function add_repo_by_file_apt()
+{
+	[[ -d /etc/apt/sources.list.d/ ]] || return 255
+	local repo_file="$1"
+	local repo_id="$2"
+	[[ -f "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: no such file"
+	[[ -r "${repo_file}" ]]
+	exit_if_bad "$?" "${repo_file}: permission denied"
+	[[ -n "${repo_id}" ]]
+	exit_if_bad "$?" "empty repo id"
+	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
+	cp "${repo_file}" "/etc/apt/sources.list.d/${repo_id}.list"
+}
+
+function add_repo_by_file()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      archive
+#       $2      repo id
+#       $3      install path
+function extract_archive()
+{
+	local archive="$1"
+	local repo_id="$2"
+	local install_path="$3"
+	[[ -f "${archive}" ]]
+	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
+	mkdir -p "${install_path}" 2>/dev/null
+	warn_if_bad "$?" "create directory \`${install_path}\' failed" ||
+		return 1
+	case "${archive##*.}" in
+	"Z")
+		check_executes uncompress tar grep || return 1
+		uncompress -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad compressed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tz"|"tgz"|"gz")
+		check_executes gzip tar grep || return 1
+		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		rm -rf "${install_path}/${repo_id}"
+		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tbz"|"tbz2"|"bz"|"bz2")
+		check_executes bzip2 tar grep || return 1
+		bzip2 -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad bzipped tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"txz"|"xz")
+		check_executes xz tar grep || return 1
+		xz -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad xzed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tar")
+		check_executes tar grep || return 1
+		tar -t -f "${archive}" | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		( cd "${install_path}" && tar -x -f - ) <"${archive}"
+		;;
+	*)
+		warn_if_bad "1" "${archive}: unknown archive file"
+		return 1
+		;;
+	esac
+	[[ -d "${install_path}/${repo_id}" ]]
+	warn_if_bad "$?" "${install_path}/${repo_id}: no such directory"
+}
+
+#       $1      URL
+#       $2      repo id
+function add_repo_by_url_yum_or_zypper()
+{
+	local url="$1"
+	local repo_id="$2"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
+	case "${url%%://*}" in
+	"ftp"|"http"|"https")
+		case "${url##*.}" in
+		"repo"|"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online repo or tarball
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" \
+				"download ${repo_id} resource failed" ||
+				return 1
+			url="${tmp}"
+			;;
+		*) # assume it is the base url of the repo
+			tmp="${TMP_DIR}/tmp_repo.repo"
+			while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+			[${repo_id}]
+			name=${repo_id}
+			baseurl=${url}
+			enabled=1
+			gpgcheck=0
+			EOF
+			url="${tmp}"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		case "${url##*.}" in
+		"repo") # local repo file
+			add_repo_by_file "${url}" "${repo_id}"
+			return "$?"
+			;;
+		esac
+		extract_archive "${url}" "${repo_id}" "${install_path}"
+		warn_if_bad "$?" "extract ${repo_id} archive file failed" ||
+			return 1
+		url="${install_path}/${repo_id}"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		# directory
+		tmp="${TMP_DIR}/tmp_repo.repo"
+		while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+		[${repo_id}]
+		name=${repo_id}
+		baseurl=file://${url}
+		enabled=1
+		gpgcheck=0
+		EOF
+		add_repo_by_file "${tmp}" "${repo_id}"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid ${repo_id} URL"
+}
+
+#       $1      URL
+#       $2      repo id
+function add_repo_by_url_apt()
+{
+	[[ -d /etc/apt/sources.list.d/ ]] || return 255
+	local url="$1"
+	local repo_id="$2"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
+	local codename="$(source /etc/lsb-release >/dev/null 2>&1 &&
+		echo "${DISTRIB_CODENAME}")"
+	[[ -n "${codename}" ]]
+	warn_if_bad "$?" "unknown debian/ubuntu codename" || return 1
+	case "${url%%://*}" in
+	"ftp"|"http"|"https"|"ssh")
+		case "${url##*.}" in
+		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online tarball
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" \
+				"download ${repo_id} resource failed" ||
+				return 1
+			url="${tmp}"
+			;;
+		*) # assume it is the base url of the repo
+			tmp="${TMP_DIR}/tmp_repo.list"
+			echo "deb [arch=$(dpkg --print-architecture)] ${url} ${codename} main" >"${tmp}"
+			url="${tmp}"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		case "${url##*.}" in
+		"list") # local repo file
+			add_repo_by_file_apt "${url}" "${repo_id}"
+			return "$?"
+			;;
+		esac
+		extract_archive "${url}" "${repo_id}" "${install_path}"
+		warn_if_bad "$?" "extract ${repo_id} archive file failed" ||
+			return 1
+		url="${install_path}/${repo_id}"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		# directory
+		tmp="${TMP_DIR}/tmp_repo.list"
+		echo "deb [arch=$(dpkg --print-architechure)] file://${url} ${codename} main" >"${tmp}"
+		add_repo_by_file_apt "${tmp}" "${repo_id}"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid ${repo_id} URL"
+}
+
+function add_repo_by_url()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      repo id
+function remove_repo_yum()
+{
+	[[ -d "/etc/yum.repos.d" ]] || return 255
+	local repo_id="$1"
+	[[ -f "/etc/yum.repos.d/${repo_id}.repo" ]] &&
+		rm -f "/etc/yum.repos.d/${repo_id}.repo" &&
+		yum clean metadata >/dev/null 2>&1
+}
+
+#       $1      repo id
+function remove_repo_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local repo_id="$1"
+	zypper removerepo "${repo_id}"
+}
+
+#       $1      repo id
+function remove_repo_apt()
+{
+	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local repo_id="$1"
+	rm -f "/etc/apt/sources.list.d/${repo_id}.list"
+}
+
+function remove_repo()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      URL
+#       $2      version
+#               can be "2.10", "2.11", "2.12", "latest" or "devel"
+function add_xcat_core_repo_yum_or_zypper()
+{
+	type yum-config-manager >/dev/null 2>&1 ||
+		type zypper >/dev/null 2>&1 || return 255
+	local url="$1"
+	local ver="$2"
+	local tmp=""
+	[[ -z "${ver}" ]] && ver="latest"
+	if [[ -z "${url}" ]]
+	then
+		case "${ver}" in
+		"devel")
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap/xCAT-core.repo"
+			;;
+		*)
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core/xCAT-core.repo"
+			;;
+		esac
+	fi
+	add_repo_by_url_yum_or_zypper "${url}" "xcat-core"
+}
+
+#       $1      URL
+#       $2      version
+#               can be "2.10", "2.11", "2.12", "latest" or "devel"
+function add_xcat_core_repo_apt()
+{
+	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local url="$1"
+	local ver="$2"
+	local tmp=""
+	[[ -z "${ver}" ]] && ver="latest"
+	if [[ -z "${url}" ]]
+	then
+		# get the apt.key
+		local url="${GO_XCAT_DEFAULT_BASE_URL}/apt/apt.key"
+		local tmp="${TMP_DIR}/tmp_xcat.key"
+		download_file "${url}" "${tmp}"
+		warn_if_bad "$?" "download xcat apt key failed" || return 1
+		apt-key add "${tmp}" >/dev/null 2>&1
+		warn_if_bad "$?" "import xcat apt key failed" || return 1
+		case "${ver}" in
+		"devel")
+			url="${GO_XCAT_DEFAULT_BASE_URL}/apt/devel/core-snap"
+			;;
+		*)
+			url="${GO_XCAT_DEFAULT_BASE_URL}/apt/${ver}/xcat-core"
+			;;
+		esac
+	fi
+	add_repo_by_url_apt "${url}" "xcat-core"
+}
+
+function add_xcat_core_repo()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function add_xcat_dep_repo_yum_or_zypper()
+{
+	type yum-config-manager >/dev/null 2>&1 ||
+		type zypper >/dev/null 2>&1 || return 255
+	local url="$1"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
+	local distro="${GO_XCAT_LINUX_DISTRO}"
+	case "${distro}" in
+	"fedora") ;;
+	"rhel") distro="rh" ;;
+	"sles") ;;
+	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
+	esac
+	[[ -z "${url}" ]] &&
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+	case "${url##*.}" in
+	"repo") # local repo file
+		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+		return "$?"
+		;;
+	esac
+	case "${url%%://*}" in
+	"ftp"|"http"|"https")
+		case "${url##*.}" in
+		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online archive file
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" "download xcat-dep archive file failed" \
+				|| return 1
+			url="${tmp}"
+			;;
+		*)
+			url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+			return "$?"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		extract_archive "${url}" "xcat-dep" "${install_path}"
+		warn_if_bad "$?" "extract xcat-dep archive file failed" ||
+			return 1
+		url="${install_path}/xcat-dep"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}"
+		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid xcat-dep URL"
+}
+
+function add_xcat_dep_repo_apt()
+{
+	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local url="$1"
+	[[ -z "${url}" ]] &&
+		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/xcat-dep"
+	add_repo_by_url_apt "${url}" "xcat-dep"
+}
+
+function add_xcat_dep_repo()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function update_repo_yum()
+{
+	type yum >/dev/null 2>&1 || return 255
+	yum --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
+}
+
+function update_repo_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	zypper --gpg-auto-import-keys refresh </dev/null >/dev/null 2>&1
+}
+
+function update_repo_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	apt-get update </dev/null >/dev/null 2>&1
+}
+
+function update_repo()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function install_packages_yum()
+{
+	type yum >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	yum --nogpgcheck "${args[@]}" install "$@"
+}
+
+function install_packages_zypper()
+{
+	type zypper >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-n") && shift
+	zypper --no-gpg-checks "${args[@]}" install "$@"
+}
+
+function install_packages_apt()
+{
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	apt-get install "${args[@]}" "$@"
+}
+
+function install_packages()
+{
+	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      -y
+function install_xcat()
+{
+	install_packages "$@" "${GO_XCAT_INSTALL_LIST[@]}"
+}
+
+#       $1      -y
+function update_xcat()
+{
+	local -i i=0
+	local ver=""
+	local -a install_list=($(
+	for p in "${GO_XCAT_INSTALL_LIST[@]}" \
+		$(get_package_list xcat-core)
+	do
+		echo "${p}"
+	done | sort -u
+	))
+	for i in "${!install_list[@]}"
+	do
+		read ver
+		[[ "${ver}" = "(not installed)" ]] &&
+			unset "install_list[${i}]"
+	done < <(check_package_version "${install_list[@]}")
+	install_packages "$@" "${install_list[@]}"
+}
+
+function list_xcat_packages()
+{
+	GO_XCAT_CORE_PACKAGE_LIST=($(
+	for p in "${GO_XCAT_CORE_PACKAGE_LIST[@]}" \
+		$(get_package_list xcat-core)
+	do
+		echo "${p}"
+	done | sort -u
+	))
+	GO_XCAT_DEP_PACKAGE_LIST=($(get_package_list xcat-dep))
+
+	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
+	[[ "${cols}" -lt 80 ]] && cols=80
+	[[ "${cols}" -gt 90 ]] && cols=90
+	[[ -t 1 ]] || cols=90
+	local -i first_col=27
+	local -i second_col=$(( ( cols - 30 ) / 2 ))
+	local -i third_col=${second_col}
+	local pkg=""
+
+	echo
+	echo "xCAT Core Packages"
+	echo "=================="
+	echo
+
+	printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+		"Package Name" "Installed" "In Repository"
+	printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+		"------------" "---------" "-------------"
+	for pkg in "${GO_XCAT_CORE_PACKAGE_LIST[@]}"
+	do
+		read i_ver && read -u 42 r_ver
+		printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+			"${pkg:0:${first_col}}" \
+			"${i_ver:0:${second_col}}" \
+			"${r_ver:0:${third_col}}"
+	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}") \
+		42< <(check_repo_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
+
+	echo
+	echo "xCAT Dependency Packages"
+	echo "========================"
+	echo
+
+	printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+		"Package Name" "Installed" "In Repository"
+	printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+		"------------" "---------" "-------------"
+
+	for pkg in "${GO_XCAT_DEP_PACKAGE_LIST[@]}"
+	do
+		read i_ver
+		read -u 42 r_ver
+		printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
+			"${pkg:0:${first_col}}" \
+			"${i_ver:0:${second_col}}" \
+			"${r_ver:0:${third_col}}"
+	done < <(check_package_version "${GO_XCAT_DEP_PACKAGE_LIST[@]}") \
+		42< <(check_repo_version "${GO_XCAT_DEP_PACKAGE_LIST[@]}")
+}
+
+# Test case 000
+# Check if all the xcat-core packages are on the same version
+function test_case_000_version()
+{
+	local ver=""
+	local -i ret=0
+	while read
+	do
+		[[ "${REPLY}" = "(not installed)" ]] && continue
+		[[ -z "${ver}" ]] && ver="${REPLY%%-*}"
+		[[ "${ver}" = "${REPLY%%-*}" ]]
+		(( ret += $? ))
+	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
+	return "${ret}"
+}
+
+# Test case 001
+# Check if xcatd is running
+function test_case_001_xcatd()
+{
+	local f=""
+	local -i ret=0
+	for f in /var/run/xcat/{main,install,udp}service.pid
+	do
+		kill -0 "$(<"${f}")"
+		(( ret += $? ))
+	done
+	for f in /var/run/xcat/cmdlogservice.pid
+	do
+		[[ -f "${f}" ]] || continue
+		kill -0 "$(<"${f}")"
+		(( ret += $? ))
+	done
+	return "${ret}"
+}
+
+# Test case 002
+# Check if command lsdef can be run
+function test_case_002_lsdef()
+{
+	(source /etc/profile.d/xcat.sh && lsdef)
+}
+
+# Perform basic smoke test
+function perform_smoke_test()
+{
+	local test_case=""
+	local -i ret=0
+	for test_case in $(compgen -A function "test_case_")
+	do
+		"${test_case}" >"${TMP_DIR}/${test_case}.stdout" \
+			2>"${TMP_DIR}/${test_case}.stderr"
+		ret="$?"
+		if [[ "${ret}" -ne "0" || -s "${TMP_DIR}/${test_case}.stderr" ]]
+		then
+			# Something went wrong
+			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
+			echo "==== ${test_case} failed with exit code ${ret} ===="
+			echo "-- 8< ${test_case} stdout -- --"
+			while read ; do echo "${REPLY}" ; done \
+				<"${TMP_DIR}/${test_case}.stdout"
+			echo "-- 8< ${test_case} stderr -- --"
+			while read ; do echo "${REPLY}" ; done \
+				<"${TMP_DIR}/${test_case}.stderr"
+			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
+			# skip all the remain test cases
+			return "${ret}"
+		fi >&2
+	done
+	echo "It seems everything went well. :)"
+	return 0
+}
+
+GO_XCAT_METERS=""
+
+function show_progress_meters()
+{
+	[[ -t 2 ]] || return 0
+	# Show the progress meters
+	(
+		declare -i length=0
+		while :
+		do
+			for bar in \
+				"...... " \
+				".o..o. " \
+				"oOooOo " \
+				"OoUUoO " \
+				"ooUUoo " \
+				"oOooOo " \
+				"Oo..oO " \
+				"o....o "
+				#12345678901234567890123456789012345678901
+			do
+				msg="${bar}"
+				for (( i = 0; i < length; ++i ))
+				do
+					echo -ne "\b"
+				done
+				length=${#msg}
+				echo -n "${msg}"
+
+				sleep 0.1 2>/dev/null || sleep 1
+				kill -0 "$$" >/dev/null 2>&1 || break 2
+			done
+		done
+	) >&2 &
+	GO_XCAT_METERS="$!"
+	disown "${GO_XCAT_METERS}"
+}
+
+function stop_progress_meters()
+{
+	if [[ -t 2 ]]
+	then
+		kill "${GO_XCAT_METERS}" >/dev/null 2>&1
+		echo -ne "\b\b\b\b\b\b\b" >&2
+	fi
+	echo -n "...... "
+}
+
+#
+# |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
+# |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
+#              |       _|            _|
+#
+# Main program goes here.
+
+declare -a GO_XCAT_YES=()
+GO_XCAT_ACTION=""
+GO_XCAT_CORE_URL=""
+GO_XCAT_DEP_URL=""
+GO_XCAT_VERSION="latest"
+
+while [ "$#" -gt "0" ]
+do
+	case "$1" in
+	"-h"|"--help")
+		usage
+		exit 0
+		;;
+	"--xcat-core="*)
+		GO_XCAT_CORE_URL="${1##--xcat-core=}"
+		;;
+	"--xcat-dep="*)
+		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
+		;;
+	"--xcat-version="*)
+		GO_XCAT_VERSION="${1##--xcat-version=}"
+		;;
+	"-x")
+		shift
+		GO_XCAT_VERSION="$1"
+		;;
+	"-y"|"--yes")
+		GO_XCAT_YES=("-y")
+		;;
+	*)
+		[ "$1" == "--" ] && shift
+		GO_XCAT_ACTION="$1"
+		;;
+	esac
+	shift
+done
+
+case "${GO_XCAT_ACTION}" in
+"smoke-test")
+	perform_smoke_test
+	exit "$?"
+	;;
+esac
+
+GO_XCAT_OS="$(check_os)"
+GO_XCAT_ARCH="$(check_arch)"
+
+while read ; do echo "${REPLY}" ; echo "${REPLY}" >&2
+	done 2>"${TMP_DIR}/go-xcat.log.000" <<EOF
+Operating system:   ${GO_XCAT_OS}
+Architecture:       ${GO_XCAT_ARCH}
+EOF
+
+case "${GO_XCAT_OS}" in
+"linux")
+	;;
+*)
+	exit_if_bad 1 "${GO_XCAT_OS}: unsupported operating system"
+	;;
+esac
+
+case "${GO_XCAT_ARCH}" in
+"ppc64"|"ppc64le"|"x86_64")
+	;;
+*)
+	exit_if_bad 1 "${GO_XCAT_ARCH}: unsupported instruction set architecture"
+	;;
+esac
+
+GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
+GO_XCAT_LINUX_VERSION="$(check_linux_version)"
+
+while read ; do echo "${REPLY}" ; echo "${REPLY}" >&2
+	done 2>"${TMP_DIR}/go-xcat.log.001" <<EOF
+Linux Distribution: ${GO_XCAT_LINUX_DISTRO}
+Version:            ${GO_XCAT_LINUX_VERSION}
+EOF
+
+case "${GO_XCAT_LINUX_DISTRO}" in
+"rhel"|"sles"|"ubuntu")
+	;;
+*)
+	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
+	;;
+esac
+
+echo
+echo -n "Reading repositories "
+show_progress_meters
+ERR_MSG="$({
+	if add_xcat_core_repo "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+	then
+		if add_xcat_dep_repo "${GO_XCAT_DEP_URL}"
+		then
+			update_repo && exit 0
+			remove_repo "xcat-dep"
+		fi
+		remove_repo "xcat-core"
+	fi
+	exit 1
+} 2>&1)"
+RET="$?"
+stop_progress_meters
+if [[ "${RET}" -ne 0 ]]
+then
+	echo "failed"
+	echo "${ERR_MSG}" >&2
+	exit "${RET}"
+fi
+echo "done"
+
+case "${GO_XCAT_ACTION}" in
+"install"|"update")
+	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
+	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
+	then
+		echo
+		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
+		read -p "Continue? [y/n] "
+		case "${REPLY}" in
+		"Y"*|"y"*)
+			;;
+		*)
+			echo "Aborting ..."
+			exit 0
+		esac
+	fi
+	(
+		"${GO_XCAT_INSTALLER}" -y 2>&1 1>&42 |
+			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
+		exit "${PIPESTATUS[0]}"
+	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
+	RET="${PIPESTATUS[0]}"
+	{
+		# Creating logs
+		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
+		echo "==== ${GO_XCAT_INSTALLER} exited with exit code ${RET} ===="
+		echo "-- 8< ${GO_XCAT_INSTALLER} stdout -- --"
+		while read ; do echo "${REPLY}" ; done \
+			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
+		echo "-- 8< ${GO_XCAT_INSTALLER} stderr -- --"
+		while read ; do echo "${REPLY}" ; done \
+			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr"
+		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
+	} >"${TMP_DIR}/go-xcat.log.005"
+	if [[ "${RET}" -eq "0" && ! -s "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" ]]
+	then
+		# xCAT has been installed and so far so good
+		perform_smoke_test >"${TMP_DIR}/perform_smoke_test.stdout" \
+			2>"${TMP_DIR}/perform_smoke_test.stderr"
+		RET="$?"
+		if [[ "${RET}" -ne "0" || -s "${TMP_DIR}/perform_smoke_test.stderr" ]]
+		then
+			# Smoke test failed
+			echo "-- 8< -- -- -- -- vv -- -- -- vv -- -- -- -- 8< --"
+			echo "==== perform_smoke_test failed with exit code ${RET} ===="
+			echo "-- 8< perform_smoke_test stdout -- --"
+			while read ; do echo "${REPLY}" ; done \
+				<"${TMP_DIR}/perform_smoke_test.stdout"
+			echo "-- 8< perform_smoke_test stderr -- --"
+			while read ; do echo "${REPLY}" ; done \
+				<"${TMP_DIR}/perform_smoke_test.stderr"
+			echo "-- 8< -- -- -- -- ^^ -- -- -- ^^ -- -- -- -- 8< --"
+		fi
+	fi >"${TMP_DIR}/go-xcat.log.008"
+
+	list_xcat_packages | tee "${TMP_DIR}/go-xcat.log.099"
+
+	if [[ "${RET}" -ne "0" ]]
+	then
+		GO_XCAT_LOG="/tmp/go-xcat.log"
+		cat "${TMP_DIR}/go-xcat.log."* >"${GO_XCAT_LOG}" 2>/dev/null
+		while read ; do echo "${REPLY}" ; done >&2 <<-EOF
+
+
+		Boo-boo
+		=======
+
+		Something went wrong. :(
+
+		Please check log file \`${GO_XCAT_LOG}' for more details.
+		EOF
+
+		exit "${RET}"
+	fi
+
+	while read ; do echo "${REPLY}" ; done <<-EOF
+
+
+	Congratulations
+	===============
+
+	The fact that you got this far is a strong indication that xCAT bas been
+	installed correctly.
+
+	Please notice if this is the first time you install xCAT. You need to do one
+	of the following.
+
+	1. Log out and then log in again, or
+	2. run the following command to set the environment variables.
+
+	    for sh,
+	        \`source /etc/profile.d/xcat.sh\`
+	    or csh,
+	        \`source /etc/profile.d/xcat.csh\`
+	EOF
+	;;
+*)
+	list_xcat_packages
+	;;
+esac # case "${GO_XCAT_ACTION}" in
+
+exit 0
+
+# vim: set filetype=bash
+# vim: set noautoindent
+# vim: set tabstop=4 shiftwidth=4 softtabstop=4
+
+# End of file

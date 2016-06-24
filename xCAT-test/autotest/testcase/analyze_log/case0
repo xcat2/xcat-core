@@ -1,0 +1,10 @@
+start:check_mn_cluster_log_file
+os:Linux
+description:check known error message in /var/log/xcat/cluster.log file. Only for redhat and sles.
+cmd:cat /var/log/xcat/cluster.log | grep "xcatd: Error happened when receiving data from DB access"
+check:output!~xcatd: Error happened when receiving data from DB access
+cmd:cat /var/log/xcat/cluster.log | grep "Undefined subroutine &main"
+check:output!~ "Undefined subroutine &main"
+cmd:cat /var/log/xcat/cluster.log | grep "xcatd: possible BUG encountered by xCAT UDP service"
+check:output!~"xcatd: possible BUG encountered by xCAT UDP service"
+end

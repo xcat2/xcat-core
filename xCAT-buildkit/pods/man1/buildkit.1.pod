@@ -8,7 +8,7 @@ B<buildkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
 To build a new Kit
 
-B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name>|B<all>] [B<-l>|B<--kitloc> I<kit_location>] 
+B<buildkit> [B<-V>|B<--verbose]> I<subcommand> [I<kit_name>] [I<repo_name> | B<all>] [B<-l>|B<--kitloc> I<kit_location>] 
 
 To add packages to an existing Kit.
 
@@ -240,7 +240,7 @@ B<buildkit chkconfig>
 
 B<buildkit listrepo>
 
-B<buildkit buildrepo all >
+B<buildkit buildrepo all>
 
 B<buildkit buildtar>
 

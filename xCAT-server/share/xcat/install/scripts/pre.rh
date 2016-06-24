@@ -1,3 +1,8 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
 if grep n8r /proc/cmdline > /dev/null 2>&1;
 then
   stty crtscts
@@ -138,13 +143,13 @@ try:
 					line = "installing prep"
 				newSocket.send(line)
 				break
-#UNCOMMENONXCATDEBUGMODE#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
-#UNCOMMENONXCATDEBUGMODE#				newcommand = ""
-#UNCOMMENONXCATDEBUGMODE#				for i in command[1:]:
-#UNCOMMENONXCATDEBUGMODE#					newcommand = newcommand + i + " "
-#UNCOMMENONXCATDEBUGMODE#				output = os.popen(newcommand).read()
-#UNCOMMENONXCATDEBUGMODE#				newSocket.send(output)
-#UNCOMMENONXCATDEBUGMODE#				break
+#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
+#UNCOMMENTOENABLEDEBUGPORT#				newcommand = ""
+#UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
+#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + " "
+#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand).read()
+#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
+#UNCOMMENTOENABLEDEBUGPORT#				break
 			if(command[0] == "screendump"):
 				newcommand = "cat /dev/vcs"
 				for i in command[1:]:
@@ -178,53 +183,16 @@ fi
 #also, find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
 shopt -s nullglob
-for disk in /dev/vd*[^0-9];do
-	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-	eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
-	if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
-		instdisk=$disk
-		break
-	fi
-done
 
-if [ -z "$instdisk" ]; then
-	for disk in /dev/sd*[^0-9]; do
-		eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
-		if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
-			instdisk=$disk
-			break
-		fi
-		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
-		case "$currdriver" in 
-		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
-			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		"mptsas"|"mpt2sas"|"mpt3sas") #*PROBABLY* not SAN, but SAS SAN is possible
-			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		*)
-			if [ -z "$firstdisk" ]; then firstdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		esac
-	done
+#
+# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu.
+# It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
+#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
+if [ -e "/tmp/xcat.install_disk" ]; then
+    instdisk=`cat /tmp/xcat.install_disk`
 fi
 
-if [ -z "$instdisk" ]; then
-	if [ ! -z "$firstdirectdisk" ]; then 
-		instdisk=$firstdirectdisk 
-	elif [ ! -z "$probablyfirstdirectdisk" ]; then
-		instdisk=$probablyfirstdirectdisk 
-	elif [ ! -z "$firstdisk" ]; then
-		instdisk=$firstdisk 
-	fi
-fi
-
-# Could not determine the install disk for whatever reason,
-# try the default /dev/sda
-if [ -z "$instdisk" ]; then
-    instdisk="/dev/sda"
-fi
-		
 
 modprobe ext4 >& /dev/null
 modprobe ext4dev >& /dev/null
@@ -237,11 +205,6 @@ else
 fi
 BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
-if uname -r|grep ^3.*el7 > /dev/null; then
-    FSTYPE=xfs
-    BOOTFSTYPE=xfs
-    EFIFSTYPE=efi
-fi
 
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
@@ -271,4 +234,6 @@ NEXTSERVER=${NEXTSERVER%%:*}
 export nextserver=$NEXTSERVER
 #INSTALL_SOURCES_IN_PRE#
 
-
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi

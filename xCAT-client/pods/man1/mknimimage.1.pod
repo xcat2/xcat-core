@@ -6,9 +6,9 @@ B<mknimimage> - Use this xCAT command to create xCAT osimage definitions and rel
 
 B<mknimimage [-h | --help ]>
 
-B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] -u> I<osimage_name [attr=val [attr=val ...]>]
 
-B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-c|--completeosimage] [-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l> I<location>] [B<-c>|B<--completeosimage>] [B<-s> I<image_source>] [B<-i> I<current_image>] [B<-p>|B<--cplpp>] [B<-t> I<nimtype>] [B<-m> I<nimmethod>] [B<-n> I<mksysbnode>] [B<-b> I<mksysbfile>] I<osimage_name> [I<attr=val [attr=val ...]>]
 
 =head1 DESCRIPTION
 
@@ -73,7 +73,7 @@ To remove specific NIM resource definitons use the AIX B<nim> command. ("nim -o 
 
 =over 10
 
-=item B<attr=val [attr=val ...]>
+=item I<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. 
 
@@ -189,7 +189,7 @@ Value Specifies the security method required for NFS access.
 
 Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" using the 'E:' prefix. (ex. "otherpkgs=E:IZ38930TL0.120304.epkg.Z").
 
-=item B<-b mksysbfile>
+=item B<-b> I<mksysbfile>
 
 Used to specify the path name of a mksysb file to use when defining a NIM mksysb resource.
 
@@ -205,7 +205,7 @@ Use the force option to re-create xCAT osimage definition. This option removes t
 
 Display usage message.
 
-=item B<osimage_name>
+=item I<osimage_name>
 
 The name of the xCAT osimage definition.  This will be used as the name of the xCAT osimage definition as well as the name of the NIM SPOT resource.
 
@@ -213,19 +213,19 @@ The name of the xCAT osimage definition.  This will be used as the name of the x
 
 Create a diskless dump resource.
 
-=item B<-i current_image>
+=item B<-i> I<current_image>
 
 The name of an existing xCAT osimage that should be copied to make a new xCAT osimage definition. Only valid when defining a "diskless" or "dataless" type image.
 
-=item B<-l location>
+=item B<-l> I<location>
 
 The directory location to use when creating new NIM resources. The default location is /install/nim.
 
-=item B<-m nimmethod>
+=item B<-m> I<nimmethod>
 
 Used to specify the NIM installation method to use. The possible values are "rte" and "mksysb". The default is "rte".
 
-=item B<-n mksysbnode>
+=item B<-n> I<mksysbnode>
 
 The xCAT node to use to create a mksysb image.  The node must be a defined as a NIM client machine.
 
@@ -237,7 +237,7 @@ Use this option when copying existing diskless osimages to indicate that you als
 
 Use this option to specify that a NIM "shared_root" resource be created for the AIX diskless nodes.  The default is to create a NIM "root" resource.  This feature is only available when using AIX version 6.1.4 or beyond. See the AIX/NIM documentation for a description of the "root" and "shared_root" resources.
 
-=item B<-s image_source>
+=item B<-s> I<image_source>
 
 The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name. 
 
@@ -259,12 +259,10 @@ Verbose mode.
 
 =over 3
 
-=item 0
-
+=item 0.
 The command completed successfully.
 
-=item 1
-
+=item 1.
 An error has occurred.
 
 =back
@@ -273,73 +271,73 @@ An error has occurred.
 
 1) Create an osimage definition and the basic NIM resources needed to do a NIM "standalone" "rte" installation of node "node01".  Assume the software contained on the AIX product media has been copied to the /AIX/instimages directory.
 
-B<mknimimage -s /AIX/instimages  61image>
+ mknimimage -s /AIX/instimages  61image
 
 2) Create an osimage definition that includes some additional NIM resources.
 
-B<mknimimage -s /AIX/instimages 61image installp_bundle=mybndlres,addswbnd>
+ mknimimage -s /AIX/instimages 61image installp_bundle=mybndlres,addswbnd
 
 This command will create lpp_source, spot, and bosinst_data resources using the source specified by the "-s" option.  The installp_bundle information will also be included in the osimage definition.  The mybndlres and addswbnd resources must be created before using this osimage definition to install a node.
 
 3) Create an osimage definition that includes a mksysb image and related resources.
 
-B<mknimimage -m mksysb -n node27 newsysb spot=myspot bosinst_data=mybdata>
+ mknimimage -m mksysb -n node27 newsysb spot=myspot bosinst_data=mybdata
 
 This command will use node27 to create a mksysb backup image and use that to define a NIM mksysb resource. The osimage definition will contain the name of the mksysb resource as well as the spot and bosinst_data resource.
 
 4) Create an osimage definition using a mksysb image provided on the command line.
 
-B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb spot=myspot bosinst_data=mybdata>
+ mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb spot=myspot bosinst_data=mybdata
 
 This command defines a NIM mksysb resource using mysysbimage.
 
 5) Create an osimage definition and create the required spot definition using the mksysb backup file provided on the command line.
 
-B<mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb bosinst_data=mybdata>
+ mknimimage -m mksysb -b /tmp/backups/mysysbimage newsysb bosinst_data=mybdata
 
 This command defines a NIM mksysb resource and a spot definition using mysysbimage.
 
 6) Create a diskless image called 61dskls using the AIX source files provided in the /AIX/instimages directory.
 
-B<mknimimage -t diskless -s /AIX/instimages 61dskls>
+ mknimimage -t diskless -s /AIX/instimages 61dskls
 
 7) Create a diskless image called "614dskls" that includes a NIM "shared_root" and a "dump" resource.  Use the existing NIM lpp_resource called "614_lpp_source". Also specify verbose output.
 
-B<mknimimage -V -r -D -t diskless -s 614_lpp_source 614dskls snapcollect=yes>
+ mknimimage -V -r -D -t diskless -s 614_lpp_source 614dskls snapcollect=yes
 
 The "snapcollect" attribute specifies that AIX "snap" data should be include when a system dump is initiated.
 
 8) Create a new diskless image by copying an existing image.
 
-B<mknimimage -t diskless -i 61cosi 61cosi_updt1>
+ mknimimage -t diskless -i 61cosi 61cosi_updt1
 
 Note:  If you also wish to have the original lpp_source copied and defined use the -p option.
 
-B<mknimimage -t diskless -i 61cosi -p 61cosi_updt1>
+ mknimimage -t diskless -i 61cosi -p 61cosi_updt1
 
 9) Create a diskless image using an existing lpp_source resource named "61cosi_lpp_source" and include NIM tmp and home resources.  This assumes that the "mytmp" and "myhome" NIM resources have already been created by using NIM commands.
 
-B<mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome>
+ mknimimage -t diskless -s 61cosi_lpp_source 611cosi tmp=mytmp home=myhome
 
 10) Create a diskless image and update it with additional software using rpm flags and configuration files. 
 
-B<mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=I:fset1,R:foo.rpm,E:IZ38930TL0.120304.epkg.Z synclists=/install/mysyncfile rpm_flags="-i --nodeps">
+ mknimimage -t diskless -s 61cosi_lpp_source 61dskls otherpkgs=I:fset1,R:foo.rpm,E:IZ38930TL0.120304.epkg.Z synclists=/install/mysyncfile rpm_flags="-i --nodeps"
 
 The xCAT osimage definition created by this command will include the "otherpkgs" and "synclists" values.  The NIM SPOT resource associated with this osimage will be updated with the additional software using rpm flags "-i --nodeps" and configuration files.
 
 11) Update an existing diskless image (AIX/NIM SPOT) using the information saved in the xCAT "61dskls" osimage definition. Also specify verbose messages.  
 
-B<mknimimage -V -u 61dskls>
+ mknimimage -V -u 61dskls
 
 12) Update an existing diskless image called "61dskls".  Install the additional software specified in the NIM "bndres1" and "bndres2" installp_bundle resources using the installp flags "-agcQX".  (The NIM "bndres1" and "bndres2" definitions must be created before using them in this command.)
 
-B<mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags="-agcQX">
+ mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags="-agcQX"
 
 Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definiton is not used or updated.
 
 13) Update an existing image to support NFSv4. Also specify verbose messages.  
 
-B<mknimimage -V -u 61dskls nfs_vers=4>
+ mknimimage -V -u 61dskls nfs_vers=4
 
 =head1 FILES
 

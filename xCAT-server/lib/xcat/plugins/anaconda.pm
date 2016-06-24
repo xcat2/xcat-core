@@ -745,24 +745,24 @@ sub mknetboot
            $kcmdline .= " nonodestatus ";
         }
 
-        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
 
-           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
-           if($ipaddr){
-              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-              $kcmdline .=" LOGSERVER=$ipaddr ";
-             
-              #for use in syslog dracut module in the initrd 
-              $kcmdline .=" syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
-           }else{
-              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-              $kcmdline .=" LOGSERVER=$xcatmaster ";
+            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+            if ($ipaddr) {
+                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
+                $kcmdline .=" LOGSERVER=$ipaddr ";
 
-              #for use in syslog dracut module in the initrd 
-              $kcmdline .=" syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
-           }
+                #for use in syslog dracut module in the initrd
+                $kcmdline .=" syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
+            }
+            else {
+                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
+                $kcmdline .=" LOGSERVER=$xcatmaster ";
 
-           $kcmdline .= " xcatdebugmode=1 ";
+                #for use in syslog dracut module in the initrd
+                $kcmdline .=" syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
+            }
+            $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
 
         # Add kernel parameters to specify the boot network interface
@@ -798,7 +798,7 @@ sub mknetboot
             $kcmdline .= "rdloaddriver=hf_if ";
         }
 
-        
+
         if (defined $sent->{serialport})
         {
 
@@ -816,6 +816,7 @@ sub mknetboot
                 next;
             }
             if ( $arch =~ /ppc64/i ) {
+
                 # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
                 # both the physical serial port or virtual serial port appeared
                 # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
@@ -952,6 +953,20 @@ sub mkinstall
     $installroot = "/install";
     $globaltftpdir = "/tftpboot";
 
+    #>>>>>>>used for trace log start>>>>>>>
+    my @args=();
+    my %opt;
+    if (ref($request->{arg})) {
+        @args=@{$request->{arg}};
+    } else {
+        @args=($request->{arg});
+    }
+    @ARGV = @args;
+    GetOptions('V'  => \$opt{V});
+    my $verbose_on_off=0;
+    if($opt{V}){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
+	
     #if ($sitetab)
     #{
     #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
@@ -961,6 +976,7 @@ sub mkinstall
     {
         $installroot = $site_ent;
     }
+		
     #( $ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
     $site_ent = $ents[0];
@@ -968,6 +984,7 @@ sub mkinstall
     {
         $globaltftpdir = $site_ent;
     }
+    xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: installroot=$installroot globaltftpdir=$globaltftpdir");
     #}
 
     my $node;
@@ -1034,7 +1051,7 @@ sub mkinstall
         } else {
             $xcatmaster = '!myipfn!';
         }
-
+		
         my $osinst;
         if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
 		$tftpdir = $rents{$node}->[0]->{tftpdir};
@@ -1042,6 +1059,10 @@ sub mkinstall
 		$tftpdir = $globaltftpdir;
         }
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
+        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: xcatmaster=$xcatmaster tftpdir=$tftpdir provmethod=$ent->{provmethod}");
+		
+		
+		
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    $imagename=$ent->{provmethod};
 	    #print "imagename=$imagename\n";
@@ -1152,9 +1173,11 @@ sub mkinstall
 	    }
 	    $pkglistfile=$ph->{pkglist};
 
-	    $netdrivers = $ph->{netdrivers};
-	    $driverupdatesrc = $ph->{driverupdatesrc};
-	    $osupdir = $ph->{'osupdir'};
+            $netdrivers = $ph->{netdrivers};
+            $driverupdatesrc = $ph->{driverupdatesrc};
+            $osupdir = $ph->{'osupdir'};
+
+            xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile partfile=$partfile");
 	}
 	else {
 	    $os = $ent->{os};
@@ -1184,6 +1207,8 @@ sub mkinstall
         #get the partition file from the linuximage table
         my $imgname = "$os-$arch-install-$profile";
 
+        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename=$imgname pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
+		
         if ( ! $linuximagetab ) {
             $linuximagetab = xCAT::Table->new('linuximage');
         }
@@ -1192,6 +1217,7 @@ sub mkinstall
             (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
             if ( $ref1 and $ref1->{'partitionfile'}){
                 $partfile = $ref1->{'partitionfile'};
+                xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: partfile = $partfile");
             }
         }
         #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
@@ -1366,6 +1392,7 @@ sub mkinstall
                         &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
+                xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: copy initrd.img and vmlinuz to $tftppath");
             }
 
             #We have a shot...
@@ -1395,7 +1422,6 @@ sub mkinstall
             my $kversion=$os;
             $kversion =~ s/^\D*([\.0-9]+)/$1/;
             $kversion =~ s/\.$//;
-            print "xxx $kversion\n";
             if ($pkvm) {
                    $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
             } else {
@@ -1452,7 +1478,8 @@ sub mkinstall
                }         
 
                if($gateway eq '<xcatmaster>'){
-                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                }
                
                if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
@@ -1477,7 +1504,8 @@ sub mkinstall
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1500,15 +1528,17 @@ sub mkinstall
                 }
            }
               
-           if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+           if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
                  unless($instserver eq '!myipfn!'){
                     my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver=$ip;
                  } 
  
                  if (xCAT::Utils->version_cmp($kversion,"7.0") >= 0){
-                    #enable ssh access during installation
-                    $kcmdline .= " inst.sshd";  
+                    if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+                       #enable ssh access during installation
+                       $kcmdline .= " inst.sshd";  
+                    }
                            
                     #set minimum level of messages to be logged on the console
                     #to be "debug"
@@ -1517,7 +1547,9 @@ sub mkinstall
                     #all the logs during installation will be forwarded to xcatmster
                     $kcmdline .=" inst.syslog=$instserver";
                  }else{
-                    $kcmdline .= " sshd=1";
+                    if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+                       $kcmdline .= " sshd=1";
+                    }
                     $kcmdline .=" syslog=$instserver";
                  }
                      
@@ -1546,10 +1578,17 @@ sub mkinstall
                    $kcmdline .=" inst.cmdline ";
                 }
 
-                $kcmdline .=
-                    " console=tty0 console=ttyS"
-                  . $sent->{serialport} . ","
-                  . $sent->{serialspeed};
+                if ( $arch =~ /ppc64/i ) {
+
+                     # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
+                     # both the physical serial port or virtual serial port appeared
+                     # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
+                     # /dev/hvc1 instead of /dev/ttyS0 or /dev/ttyS1
+                     $kcmdline .= " console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+                } else {
+                     $kcmdline .= " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+                }
+
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
                 {
                     $kcmdline .= "n8r";
@@ -1581,7 +1620,9 @@ sub mkinstall
                     $k = "$rtftppath/vmlinuz";
                     $i = "$rtftppath/initrd.img";
             }
-
+			
+            xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: kcmdline=$kcmdline kernal=$k initrd=$i");
+			
             $bptab->setNodeAttribs(
                 $node,
                 {
@@ -2143,7 +2184,16 @@ sub copycd
 
     unless ($distname)
     {
-        return;    #Do nothing, not ours..
+        if ($desc =~ /IBM_PowerKVM/)
+        {
+            # check for PowerKVM support
+            my @pkvm_version = split / /, $desc;
+            $distname = "pkvm" . $pkvm_version[1];
+        }
+        else
+        {
+            return;    #Do nothing, not ours..
+        }
     }
     if ($darch)
     {

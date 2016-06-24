@@ -164,7 +164,7 @@ if ($::RUNCMD_RC != 0)
 #
 # check to see if postgresql is installed
 #
-my $cmd = "rpm -qa | grep postgresql";
+my $cmd = "rpm -qa | grep postgresql | grep server";
 if ($debianflag){
     $cmd = "dpkg -l | grep postgresql | awk '{print \$2}'";
 }
@@ -179,6 +179,8 @@ if ($::RUNCMD_RC != 0)
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
+
+
 # check if 9.X release not built by us is installed,  setup different
 # SLES used default dir
 if  ( (grep(/postgresql9/, @output)) && ($::linuxos !~ /sles/) ){  # postgresql 9.x

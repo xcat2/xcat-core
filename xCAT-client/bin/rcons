@@ -28,28 +28,35 @@ if [ "$1" = "-v" -o "$1" = "--version" ]; then
     exit 0
 fi
 
-if [ -n "$3" ] && [ "$3" = "-f" ]; then
-    FORCE=-f
-    CONSERVER=$2
-fi
+param_n=0
+for parameter in $@; do
+    ((param_n++))
 
-#console spy mode
-if [ -n "$3" ] && [ "$3" = "-s" ]; then
-    FORCE=-s
-    CONSERVER=$2
-fi
-
-if [ -n "$2" ]; then
-    if [ "$2" = "-f" ]; then
-	FORCE=-f
-    else
-	if [ "$2" = "-s" ]; then
-	    FORCE=-s
-	else
-	    CONSERVER=$2
-	fi
+    # check the second parameter to be conserver
+    if [ $param_n -eq 2 ]; then
+        if [ "$parameter" != "-f" ] && [ "$parameter" != "-s" ]; then
+            CONSERVER=$parameter
+        fi
     fi
-fi
+
+    if [ $param_n -ge 2 ]; then
+        if [ "$parameter" = "-f" ] || [ "$parameter" = "-s" ]; then
+            if [ -z "$FORCE" ]; then
+                FORCE=$parameter
+            elif [ "$FORCE" != "$parameter" ]; then
+                echo "Error: cannot use option -s and -f together."
+                exit 1
+            fi
+        fi
+    fi
+
+    if [ $param_n -ge 3 ]; then
+        if [ "$parameter" != "-f" ] && [ "$parameter" != "-s" ]; then
+            echo "Error: cannot recognize parameter \"$parameter\"."
+            exit 1
+        fi
+    fi
+done
 
 # xCAT 2.9.1 allows for an option to use confluent as a rcons replacement and only use
 # confluent if this keyword is defined in the site table.  This allows for confluent to 

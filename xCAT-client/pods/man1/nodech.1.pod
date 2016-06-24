@@ -59,11 +59,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -73,35 +71,30 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To update nodes in noderange  node1-node4 to be in only group all:
 
-B<nodech> I<node1-node4 groups=all>
+ nodech node1-node4 groups=all
 
-=item *
-
+=item 2.
 To put all nodes with nodepos.rack value of 2 into a group called rack2:
 
-B<nodech> I<all> nodepos.rack==2 groups,=rack2
+ nodech all nodepos.rack==2 groups,=rack2
 
-=item *
-
+=item 3.
 To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
 
-B<nodech> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
+ nodech node1-node4 groups=all,rhel5 nodetype.os=rhel5
 
-=item *
-
+=item 4.
 To add node1-node4 to group1 in addition to the groups they are already in:
 
-B<nodech> I<node1-node4 groups,=group1>
+ nodech node1-node4 groups,=group1
 
-=item *
-
+=item 5.
 To put node1-node4 in group2, instead of group1:
 
-B<nodech> I<node1-node4 groups^=group1 groups,=group2>
+ nodech node1-node4 groups^=group1 groups,=group2
 
 =back
 

@@ -12,14 +12,13 @@ The heart of the xCAT architecture is the xCAT daemon B<xcatd> on the management
 
 Errors and information are reported through syslog to the /var/log/messages file.   You can search for xCAT in those messages.
 
-For further information:  See https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_2_Architecture.
+See http://xcat-docs.readthedocs.org/en/latest/overview/index.html#xcat-architecture for more information.
 
 =head1 EXAMPLES
 
-=over 3
+=over 2
 
 =item 1.
-
 To start/stop/restart  xcatd on Linux, enter:
 
  service xcatd start 
@@ -29,7 +28,6 @@ To start/stop/restart  xcatd on Linux, enter:
  service xcatd restart 
 
 =item 2.
-
 To start/stop/restart  xcatd on AIX, enter:
 
  restartxcatd

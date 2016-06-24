@@ -1,8 +1,10 @@
 start:Ubuntu_diskless_installation_flat_x86_vm
 os:Linux
+
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 15G; fi
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+check:rc=0
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
@@ -22,6 +24,7 @@ check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 200 
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date

@@ -68,28 +68,31 @@ Display usage message.
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0. 
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-=over 3
+=over 2
 
 =item 1.
-
 To create conserver configuration for all the nodes.
 
  makeconservercf
 
 =item 2.
-
 To create conserver configuration for nodes node01-node10.
 
  makeconservercf node01-node10
 
 =item 3.
-
 To remove conserver configuration for node01.
 
  makeconservercf -d node01

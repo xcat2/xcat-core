@@ -1,0 +1,383 @@
+#!/usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use IO::Socket::INET;
+use Time::HiRes qw(gettimeofday sleep);
+use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $program_name = basename("$0");
+my $output       = "stdout";
+my $duration     = 10;
+my $test         = 0;
+my $dumpfile     = "/tmp/dhcpdumpfile.log";
+my $nic;
+
+$::USAGE = "Usage: 
+    $program_name  -i interface [-m macaddress] [-d duration] [-V]
+
+Description:
+    This command can be used to detect the dhcp server in a network for a specific mac address.
+
+Options:
+    -i interface:  Required. The interface which facing the target network.
+    -m macaddress: The mac that will be used to detect dhcp server. Recommend to use the real mac of the node that will be netboot. If no specified, the mac of interface which specified by -i will be used.
+    -d duration:   The time to wait to detect the dhcp messages. The default value is 10s.
+    -t         :   To verify if $program_name can work, reserve option for probe framework.
+";
+
+#---------------------------
+# main
+#---------------------------
+
+if (!GetOptions(
+        'i=s'       => \$::IF,
+        'm=s'       => \$::MACADD,
+        'd=s'       => \$::DURATION,
+        't'         => \$::TEST,
+        'V|verbose' => \$::VERBOSE,
+        'h|help'    => \$::HELP,))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($::HELP) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($::TEST) {
+    probe_utils->send_msg("$output", "o", "$program_name can be used to detect the dhcp server in a network for a specific mac address. Before using this command, please install tcpdump command ahead. The operating system supported are redhat, sles, ubuntu and debian.");
+    exit 0;
+}
+
+unless (-x "/usr/sbin/tcpdump") {
+    probe_utils->send_msg("$output", "f", "Tool 'tcpdump' is installed on current server");
+    probe_utils->send_msg("$output", "d", "$program_name needs to leverage 'tcpdump', please install 'tcpdump' first");
+    exit 1;
+}
+
+if ($::IF) {
+    $nic = $::IF;
+} else {
+    probe_utils->send_msg("$output", "f", "Option '-i' needs to be assigned value for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+my $msg = "Find right IP/MAC to do dhcp discover";
+my $IP = `ip addr show dev $nic | awk -F" " '/inet / {print \$2}' | head -n 1 |awk -F"/" '{print \$1}'`;
+chomp($IP);
+my $MAC;
+if ($::MACADD) {
+    $MAC = $::MACADD;
+} else {
+    $MAC = `ip link show $nic | awk -F" " '/ether/ {print \$2}'`;
+}
+chomp($MAC);
+
+probe_utils->send_msg("$output", "d", "Send out dhcp discover from: NIC = $nic, IP = $IP, MAC = $MAC") if ($::VERBOSE);
+
+if (!$IP || !$MAC) {
+    probe_utils->send_msg("$output", "f", $msg);
+    exit 1;
+}
+
+# check the distro
+$msg = "The operating system on current server is supported";
+my $os;
+if (-f "/etc/redhat-release") {
+    $os = "rh";
+} elsif (-f "/etc/SuSE-release") {
+    $os = "sles";
+} elsif (-f "/etc/lsb-release") {
+    $os = "ubuntu";
+} elsif (-f "/etc/debian_version") {
+    $os = "debian";
+} else {
+    probe_utils->send_msg("$output", "f", $msg);
+    probe_utils->send_msg("$output", "d", "Only support the redhat, sles, ubuntu and debian OS");
+    exit 1;
+}
+probe_utils->send_msg("$output", "d", "Current operating system is $os") if ($::VERBOSE);
+
+
+if ($::DURATION) {
+    $duration = $::DURATION;
+}
+
+probe_utils->send_msg("$output", "d", "The duration of capturing DHCP package is $duration second") if ($::VERBOSE);
+
+# send out the package
+$msg = "Build the socket to send out DHCP request";
+my $sock = IO::Socket::INET->new(Proto => 'udp',
+    Broadcast => 1,
+    PeerPort  => '67',
+    LocalAddr => $IP,
+    LocalPort => '68',
+    PeerAddr  => inet_ntoa(INADDR_BROADCAST));
+
+# try the any port if localport 68 has been used
+unless ($sock) {
+    $sock = IO::Socket::INET->new(Proto => 'udp',
+        Broadcast => 1,
+        PeerPort  => '67',
+        LocalAddr => $IP,
+        PeerAddr  => inet_ntoa(INADDR_BROADCAST));
+}
+
+unless ($sock) {
+    probe_utils->send_msg("$output", "d", "Create socket error: $@") if ($::VERBOSE);
+    probe_utils->send_msg("$output", "f", $msg);
+    exit 1;
+}
+
+my $package = packdhcppkg($MAC);
+
+probe_utils->send_msg("$output", "i", "Start to detect DHCP, please wait $duration seconds");
+
+$msg = "fork a process to capture the packet by tcpdump";
+my $pid = fork;
+if (!defined $pid) {
+    probe_utils->send_msg("$output", "f", $msg);
+    exit 1;
+} elsif ($pid == 0) {
+
+    # Child process
+    my $cmd = "tcpdump -i $nic port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
+    `$cmd`;
+    exit 0;
+}
+probe_utils->send_msg("$output", "d", "The id of process which is used to capture the packet by tcpdump is $pid") if ($::VERBOSE);
+
+my $start = Time::HiRes::gettimeofday();
+$start =~ s/(\d.*)\.(\d.*)/$1/;
+my $end = $start;
+while ($end - $start <= $duration) {
+    $sock->send($package);
+    probe_utils->send_msg("$output", "d", "Send DHCP rquest result: $@") if ($::VERBOSE && $@);
+    sleep 2;
+    $end = Time::HiRes::gettimeofday();
+    $end =~ s/(\d.*)\.(\d.*)/$1/;
+}
+
+$msg = "Kill the process which is used to capture the packet by tcpdump";
+kill_child();
+waitpid($pid, 0);
+sleep 1;
+`ps aux|grep -v grep |grep $pid > /dev/null 2>&1`;
+if (!$?) {
+    probe_utils->send_msg("$output", "f", $msg);
+}
+
+$msg = "Dump test result";
+unless (open(FILE, "<$dumpfile")) {
+    probe_utils->send_msg("$output", "d", "Open dump file $dumpfile failed") if ($::VERBOSE);
+    probe_utils->send_msg("$output", "f", $msg);
+    `rm -f $dumpfile` if (-e "$dumpfile");
+    exit 1;
+}
+my %output;
+my @snack      = ();
+my @siaddr     = ();
+my $newsection = 0;
+my $offer      = 0;
+$chaddr = ();
+$ciaddr = ();
+$siaddr = ();
+
+probe_utils->send_msg("$output", "d", "Dump all the information captured during last $duration seconds") if ($::VERBOSE);
+while (<FILE>) {
+    $line = $_;
+    if ($line =~ /^\d\d:\d\d:\d\d/) {
+
+        # A new packet was captured. Parse the last one.
+        probe_utils->send_msg("$output", "d", "The server I found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer") if ($::VERBOSE);
+        if ($os eq "sles") { $offer = 1; }
+        if ($chaddr =~ /$MAC/i && $offer && $ciaddr && $siaddr && $rsiaddr) {
+            $output{$rsiaddr}{'client'} = $ciaddr;
+            $output{$rsiaddr}{'nextsv'} = $siaddr;
+        } elsif ($nack && $siaddr && !grep(/^$siaddr$/, @snack)) {
+            push @snack, $siaddr;
+        } elsif ($siaddr && !grep(/^$siaddr$/, @server)) {
+            push @server, $siaddr;
+        }
+        $offer   = 0;
+        $nack    = 0;
+        $chaddr  = ();
+        $ciaddr  = ();
+        $siaddr  = ();
+        $rsiaddr = ();    # the server which responsing the dhcp request
+    }
+    if ($line =~ /(\d+\.\d+\.\d+\.\d+)\.[\d\w]+ > \d+\./) {
+        $rsiaddr = $1;
+    }
+    if ($line =~ /\s*DHCP-Message.*: Offer/) {
+        $offer = 1;
+    } elsif ($line =~ /\s*DHCP-Message.*: NACK/) {
+        $nack = 1;
+    }
+    if ($line =~ /\s*Client-Ethernet-Address (..:..:..:..:..:..)/) {
+        $chaddr = $1;
+    }
+    if ($line =~ /\s*Your-IP (\d+\.\d+\.\d+.\d+)/) {
+        $ciaddr = $1;
+    }
+    if ($line =~ /\s*Server-IP (\d+\.\d+\.\d+.\d+)/) {
+        $siaddr = $1;
+    }
+}
+
+close(FILE);
+
+my $sn = scalar(keys %output);
+probe_utils->send_msg("$output", "i", "++++++++++++++++++++++++++++++++++");
+
+probe_utils->send_msg("$output", "i", "There are $sn servers reply the dhcp discover.");
+foreach my $server (keys %output) {
+    probe_utils->send_msg("$output", "i", "    Server:$server assign IP [$output{$server}{'client'}] to you. The next server is [$output{$server}{'nextsv'}]!");
+}
+probe_utils->send_msg("$output", "i", "++++++++++++++++++++++++++++++++++");
+
+if (scalar(@snack)) {
+    probe_utils->send_msg("$output", "i", "===================================");
+    probe_utils->send_msg("$output", "i", "The dhcp servers which sending out NACK in present network:");
+    foreach my $nack (@snack) {
+        probe_utils->send_msg("$output", "i", "    $nack");
+    }
+}
+
+if (scalar(@server)) {
+    probe_utils->send_msg("$output", "i", "===================================");
+    probe_utils->send_msg("$output", "i", "The dhcp servers in present network:");
+    foreach my $s (@server) {
+        probe_utils->send_msg("$output", "i", "    $s");
+    }
+}
+
+`rm -f $dumpfile` if (-e "$dumpfile");
+exit 0;
+
+
+sub packdhcppkg {
+    my $mymac = shift;
+    my $package;
+
+    # add the operation type. 1 - request
+    $package .= pack("C*", 1);
+
+    # add the hardware type. 1 - ethernet
+    $package .= pack("C*", 1);
+
+    # add the length of hardware add
+    $package .= pack("C*", 6);
+
+    # add the hops
+    $package .= pack("C*", 0);
+
+    # add the transaction id
+    $package .= pack("C*", 60, 61, 62, 63);
+
+    # add the elapsed time
+    $package .= pack("C*", 0, 0);
+
+    # add the flag 00 - broadcast
+    $package .= pack("C*", 128, 0);
+
+    # add the IP of client
+    $package .= pack("C*", 0, 0, 0, 0);
+
+    # add the your IP
+    $package .= pack("C*", 0, 0, 0, 0);
+
+    # add the next server IP
+    $package .= pack("C*", 0, 0, 0, 0);
+
+    # add the relay agent IP
+    $package .= pack("C*", 0, 0, 0, 0);
+
+    # add the mac address of the client
+    my @macval;
+    if ($mymac) {
+        my @strmac = split(/:/, $mymac);
+        foreach (@strmac) {
+            push @macval, hex($_);
+        }
+        $package .= pack("C*", @macval);
+    } else {
+        @macval = ('0', '0', '50', '51', '52', '53');
+        $package .= pack("C*", @macval);
+    }
+
+    # add 10 padding for mac
+    my @macpad;
+    foreach (1 .. 10) {
+        push @macpad, "0";
+    }
+    $package .= pack("C*", @macpad);
+
+    # add the hostname of server
+    my @hs;
+    foreach (1 .. 64) {
+        push @hs, "0";
+    }
+    $package .= pack("C*", @hs);
+
+    # add the file name
+    my @fn;
+    foreach (1 .. 128) {
+        push @fn, "0";
+    }
+    $package .= pack("C*", @fn);
+
+    # add the magic cookie
+    $package .= pack("C*", 99, 130, 83, 99);
+
+    # add the dhcp message type. The last num: 1 - dhcp discover
+    $package .= pack("C*", 53, 1, 1);
+
+    # add the client identifier
+    $package .= pack("C*", 61, 7, 1);    #type, length, hwtype
+    $package .= pack("C*", @macval);
+
+    # add the parameter request list
+    $package .= pack("C*", 55, 10);                                #type, length
+    $package .= pack("C*", 1, 3, 6, 12, 15, 28, 40, 41, 42, 119);
+
+    # add the end option
+    $package .= pack("C*", 255);
+
+    # pad the package to 300
+    @strpack = unpack("W*", $package);
+    my $curleng = length($strpack);
+
+    my @padding;
+    foreach (1 .. 35) {
+        push @padding, '0';
+    }
+
+    $package .= pack("C*", @padding);
+
+    return $package;
+}
+
+sub kill_child {
+    kill 15, $pid;
+    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $nic" | awk -F' ' '{print \$2}'`;
+    foreach my $cpid (@pidoftcpdump) {
+        kill 15, $cpid;
+    }
+    probe_utils->send_msg("$output", "d", "Kill process $pid which is used to capture the packet by tcpdump") if ($::VERBOSE);
+}

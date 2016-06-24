@@ -225,6 +225,12 @@ authorityKeyIdentifier=keyid,issuer
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 
+[ san_env ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+#XCATCASAN#
+
 [ v3_ca ]
 
 

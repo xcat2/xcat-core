@@ -20,7 +20,11 @@ B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 =head2 NeXtScale FPC specific:
 
-B<rflash> I<noderange> I<http directory> 
+B<rflash> I<noderange> I<http directory>
+
+=head2 OpenPOWER BMC specific:
+
+B<rflash> I<noderange> I<hpm file path> [B<-c>|B<--check>]
 
 =head1 B<Description>
 
@@ -60,24 +64,23 @@ If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the
 
 In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and supports B<disruptive> and B<deferred>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
 
-The B<deferred> option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details:
-  XCAT_Power_775_Hardware_Management
+The B<deferred> option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details: XCAT_Power_775_Hardware_Management
 
 In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute: 
 
-For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 
-  1.5*gfw_rpmsize + 1.5*power_rpmsize
+For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 1.5*gfw_rpmsize + 1.5*power_rpmsize
 
 For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
 
-For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
-  XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
+For more details about the Firmware Update using Direct FSP/BPA Management, refer to: XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
 
 =head2 NeXtScale FPC specific:
 
-The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details:
- XCAT_NeXtScale_Clusters 
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters 
 
+=head2 OpenPOWER specific:
+
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
 
 =head1 B<Options>
 
@@ -87,11 +90,15 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 
 Writes the command's usage statement to standard output.
 
-=item B<-p directory>
+=item B<-c|--check>
+
+Chech the firmware version of BMC and HPM file.
+
+=item B<-p> I<directory>
 
 Specifies the directory where the packages are located.
 
-=item B<-d data_directory>
+=item B<-d> I<data_directory>
 
 Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management. 
 
@@ -127,29 +134,30 @@ Verbose output.
 
 =over 4
 
-=item 1
-
+=item 1.
 To  update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
  rflash cec_name -p /tmp/fw --activate disruptive
 
-=item 2
-
+=item 2.
 To  update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
  rflash bpa_name -p /tmp/fw --activate disruptive
 
-=item 3
-
+=item 3.
 To commit a firmware update to permanent flash for both managed system and the related power subsystems, enter:
 
  rflash cec_name --commit
 
-=item 4
-
+=item 4.
 To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address  and the directory on the xCAT MN containing the firmware as follows:
 
  rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
+
+=item 5.
+To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
+
+ rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
 
 =back
 

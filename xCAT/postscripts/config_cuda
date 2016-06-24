@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# set the paths required for cuda7.5
+CUDA_VER="cuda-7.5"
+FILENAME="/etc/profile.d/xcat-${CUDA_VER}.sh"
+
+echo "export PATH=/usr/local/${CUDA_VER}/bin:\$PATH" > ${FILENAME}
+echo "export LD_LIBRARY_PATH=/usr/local/${CUDA_VER}/lib64:\$LD_LIBRARY_PATH" >> ${FILENAME}

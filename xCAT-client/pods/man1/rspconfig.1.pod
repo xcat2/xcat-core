@@ -14,13 +14,13 @@ B<rspconfig> I<noderange> B<alert>={B<on>|B<enable>|B<off>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpdest>=I<snmpmanager-IP>
 
-B<rspconfig> I<noderange> B<community>={B<public>|I<string>}
+B<rspconfig> I<noderange> B<community>={B<public> | I<string>}
 
 =head2 BMC specific:
 
 B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
 
-B<rspconfig> I<noderange> B<garp>={I<time>}
+B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 MPA specific:
 
@@ -38,15 +38,15 @@ B<rspconfig> I<noderange> B<pd1>={B<nonred>|B<redwoperf>|B<redwperf>}
 
 B<rspconfig> I<noderange> B<pd2>={B<nonred>|B<redwoperf>|B<redwperf>}
 
-B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+B<rspconfig> I<noderange> B<network>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
-B<rspconfig> I<noderange> B<initnetwork>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+B<rspconfig> I<noderange> B<initnetwork>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
-B<rspconfig> I<noderange> B<textid>={B<*|textid>}
+B<rspconfig> I<noderange> B<textid>={* | I<textid>}
 
-B<rspconfig> I<singlenode> B<frame>={B<frame_number>}
+B<rspconfig> I<singlenode> B<frame>={I<frame_number>}
 
-B<rspconfig> I<noderange> B<frame>={B<*>}
+B<rspconfig> I<noderange> B<frame>={*}
 
 B<rspconfig> I<noderange> B<swnet>={[B<ip>],[B<gateway>],[B<netmask>]}
 
@@ -64,33 +64,33 @@ B<rspconfig> I<noderange> B<dev>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<celogin1>={B<enable>|B<disable>}
 
-B<rspconfig> I<noderange> B<time>={B<hh:mm:ss>}
+B<rspconfig> I<noderange> B<time>=I<hh:mm:ss>
 
-B<rspconfig> I<noderange> B<date>={B<mm:dd:yyyy>}
+B<rspconfig> I<noderange> B<date>=I<mm:dd:yyyy>
 
-B<rspconfig> I<noderange> B<decfg>={B<enable|disable>:B<policyname,...>}
+B<rspconfig> I<noderange> B<decfg>={B<enable|disable>:I<policyname,...>}
 
-B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:B<processingunit>:B<id,...>}
+B<rspconfig> I<noderange> B<procdecfg>={B<configure|deconfigure>:I<processingunit>:I<id,...>}
 
-B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:B<processingunit>:B<unit|bank>:B<id,...>>}
+B<rspconfig> I<noderange> B<memdecfg>={B<configure|deconfigure>:I<processingunit>:B<unit|bank>:I<id,...>>}
 
-B<rspconfig> I<noderange> B<network>={B<nic,*>}
+B<rspconfig> I<noderange> B<network>={B<nic,>*}
 
 B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>}
 
 B<rspconfig> I<noderange> B<network>={B<nic,0.0.0.0>}
 
-B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> {B<hostname>}
+B<rspconfig> I<noderange> {I<hostname>}
 
-B<rspconfig> I<noderange> B<hostname>={B<*|name>}
+B<rspconfig> I<noderange> B<hostname>={* | I<name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
@@ -100,11 +100,11 @@ B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<snmpcfg>={B<enable>|B<disable>}
 
-B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>]|B<*>}
+B<rspconfig> I<noderange> B<network>={[B<ip>],[B<host>],[B<gateway>],[B<netmask>] | *}
 
 B<rspconfig> I<noderange> B<solcfg>={B<enable>|B<disable>}
 
-B<rspconfig> I<noderange> B<textid>={B<*|textid>}
+B<rspconfig> I<noderange> B<textid>={* | I<textid>}
 
 
 B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
@@ -113,7 +113,7 @@ B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 B<rspconfig> I<noderange> {B<network>|B<dev>|B<celogin1>}
 
-B<rspconfig> I<noderange> B<network>={B<nic,*>}
+B<rspconfig> I<noderange> B<network>={B<nic,>*}
 
 B<rspconfig> I<noderange> B<network>={B<nic,[IP,][hostname,][gateway,][netmask]>}
 
@@ -123,33 +123,33 @@ B<rspconfig> I<noderange> B<dev>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<celogin1>={B<enable>|B<disable>}
 
-B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {B<hostname>}
 
-B<rspconfig> I<noderange> B<hostname>={B<*|name>}
+B<rspconfig> I<noderange> B<hostname>={* | I<name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 FSP/CEC (using Direct FSP Management) Specific:
 
-B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {B<sysname>}
 
-B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
+B<rspconfig> I<noderange> B<sysname>={* | I<name>}
 
 B<rspconfig> I<noderange> {B<pending_power_on_side>}
 
@@ -163,7 +163,7 @@ B<rspconfig> I<noderange> {B<BSR>}
 
 B<rspconfig> I<noderange> {B<huge_page>}
 
-B<rspconfig> I<noderange> B<huge_page>={B<NUM>}
+B<rspconfig> I<noderange> B<huge_page>={I<NUM>}
 
 B<rspconfig> I<noderange> {B<setup_failover>}
 
@@ -175,21 +175,21 @@ B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
 
-B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> B<admin_passwd>={I<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+B<rspconfig> I<noderange> *B<_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> {B<frame>}
 
-B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
+B<rspconfig> I<noderange> B<frame>={* | I<frame_number>}
 
 B<rspconfig> I<noderange> {B<sysname>}
 
-B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
+B<rspconfig> I<noderange> B<sysname>={* | I<name>}
 
 B<rspconfig> I<noderange> {B<pending_power_on_side>}
 
@@ -217,11 +217,11 @@ For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<proc
 
 =over 4
 
-=item B<alert>={I<on>|I<enable>|I<off>|I<disable>}
+=item B<alert={on | enable | off | disable}>
 
 Turn on or off SNMP alerts.
 
-=item B<autopower>={I<enable>|I<disable>}
+=item B<autopower>={I<enable> | I<disable>}
 
 Select the policy for auto power restart. If enabled, the system will boot automatically once power is restored after a power disturbance.
 
@@ -229,19 +229,19 @@ Select the policy for auto power restart. If enabled, the system will boot autom
 
 Get the BMC backup gateway ip address.
 
-=item B<community>={B<public>|I<string>}
+=item B<community>={B<public> | I<string>}
 
-Get or set the SNMP commmunity value. The default is I<public>.
+Get or set the SNMP commmunity value. The default is B<public>.
 
-=item B<date>={I<mm:dd:yyy>}
+=item B<date>=I<mm:dd:yyy>
 
 Enter the current date.
 
-=item B<decfg>={I<enable|disable>:I<policyname,...>}
+=item B<decfg>={B<enable | disable>:I<policyname,...>}
 
 Enables or disables deconfiguration policies.
 
-=item B<frame>={B<framenumber>|I<*>}
+=item B<frame>={I<framenumber> | *}
 
 Set or get frame number.  If no framenumber and * specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only supports single node and the framenumber will be set for that frame.  If * is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. Setting the frame number is a disruptive command which requires all CECs to be powered off prior to issuing the command.
 
@@ -249,19 +249,19 @@ Set or get frame number.  If no framenumber and * specified, framenumber for the
 
 Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.  
 
-=item B<HMC_passwd>={B<currentpasswd,newpasswd>}
+=item B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
 Change the password of the userid B<HMC> for CEC/Frame. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<HMC> for the CEC/Frame.
 
-=item B<admin_passwd>={B<currentpasswd,newpasswd>}
+=item B<admin_passwd>={I<currentpasswd,newpasswd>}
 
 Change the password of the userid B<admin> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<admin> for the CEC/Frame.
 
-=item B<general_passwd>={B<currentpasswd,newpasswd>}
+=item B<general_passwd>={I<currentpasswd,newpasswd>}
 
 Change the password of the userid B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<general> for the CEC/Frame.
 
-=item B< *_passwd>={B<currentpasswd,newpasswd>}
+=item *B<_passwd>={I<currentpasswd,newpasswd>}
 
 Change the passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, if the current passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame are the same one, the currentpasswd should be specified to the current password, and then the password will be changed to the newpasswd. If the CEC/Frame is NOT the factory default, and the current passwords of the userids B<HMC>, B<admin> and B<general> for CEC/Frame are NOT the same one, this option could NOT be used, and we should change the password one by one.
 
@@ -289,7 +289,7 @@ Get Barrier Synchronization Register (BSR) allocation for a CEC.
 
 Query huge page information or request NUM of huge pages for CEC. If no value specified, it means query huge page information for the specified CECs, if a CEC is specified, the specified huge_page value NUM will be used as the requested number of huge pages for the CEC, if CECs are specified, it means to request the same NUM huge pages for all the specified CECs.
 
-=item B<setup_failover>={I<enable>|I<disable>}
+=item B<setup_failover>={B<enable> | B<disable>}
 
 Enable or disable the service processor failover function of a CEC or display status of this function. 
 
@@ -297,19 +297,19 @@ Enable or disable the service processor failover function of a CEC or display st
 
 Force a service processor failover from the primary service processor to the secondary service processor.
 
-=item B<hostname>={I<*|name>}
+=item B<hostname>={* | I<name>}
 
 Set CEC/BPA system names to the names in xCAT DB or the input name.
 
-=item B<iocap>={I<enable>|I<disable>}
+=item B<iocap>={B<enable> | B<disable>}
 
 Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
 
-=item B<dev>={I<enable>|I<disable>}
+=item B<dev>={B<enable> | B<disable>}
 
 Enable or disable the CEC|Frame 'dev' account or display account status if no value specified. 
 
-=item B<celogin1>={I<enable>|I<disable>}
+=item B<celogin1>={B<enable> | B<disable>}
 
 Enable or disable the CEC|Frame 'celogin1' account or display account status if no value specified. 
 
@@ -317,7 +317,7 @@ Enable or disable the CEC|Frame 'celogin1' account or display account status if 
 
 The ip address.
 
-=item B<memdecfg>={I<configure|deconfigure>:I<processingunit>:I<unit|bank>:I<id,...>}
+=item B<memdecfg>={B<configure | deconfigure>:I<processingunit>:I<unit|bank>:I<id,...>}
 
 Select whether each memory bank should be enabled or disabled. State changes take effect on the next platform boot.
 
@@ -366,7 +366,7 @@ Power Domain 1 - determines how an MPA responds to a loss of redundant power.
 
 Power Domain 2 - determines how an MPA responds to a loss of redundant power.
 
-=item B<procdecfg>={I<configure|deconfigure>:I<processingunit>:I<id,...>}
+=item B<procdecfg>={B<configure|deconfigure>:I<processingunit>:I<id,...>}
 
 Selects whether each processor should be enabled or disabled. State changes take effect on the next platform boot.
 
@@ -378,7 +378,7 @@ Prevents components from turning on that will cause loss of power redundancy.
 
 Power throttles components to maintain power redundancy and prevents components from turning on that will cause loss of power redundancy.
 
-=item B<snmpcfg>={I<enable>|I<disable>}
+=item B<snmpcfg>={B<enable>|B<disable>}
 
 Enable or disable SNMP on MPA.
 
@@ -386,7 +386,7 @@ Enable or disable SNMP on MPA.
 
 Get or set where the SNMP alerts should be sent to.
 
-=item B<solcfg>={I<enable>|I<disable>}
+=item B<solcfg>={B<enable>|B<disable>}
 
 Enable or disable the sol on MPA (or CMM) and blade servers belongs to it.
 
@@ -394,7 +394,7 @@ Enable or disable the sol on MPA (or CMM) and blade servers belongs to it.
 
 Performs a service processor dump.
 
-=item B<sshcfg>={I<enable>|I<disable>}
+=item B<sshcfg>={B<enable>|B<disable>}
 
 Enable or disable SSH on MPA.
 
@@ -410,11 +410,11 @@ Performs a system dump.
 
 Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT datebase. If a string is specified, it means to use the string as sysname value to set for the specified node.
 
-=item B<pending_power_on_side>={I<temp|perm>}
+=item B<pending_power_on_side>={B<temp|perm>}
 
 List or set pending power on side for CEC or Frame. If no pending_power_on_side value specified, the pending power on side for the CECs or frames will be displayed. If specified, the pending_power_on_side value will be set to CEC's FSPs or Frame's BPAs. The value 'temp' means T-side or temporary side. The value 'perm' means P-side or permanent side. 
 
-=item B<time>={I<hh:mm:ss>}
+=item B<time>=I<hh:mm:ss>
 
 Enter the current time in UTC (Coordinated Universal Time) format.
 
@@ -422,11 +422,11 @@ Enter the current time in UTC (Coordinated Universal Time) format.
 
 Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
 
-=item B<USERID>={I<newpasswd>} B<updateBMC>={I<y|n>}
+=item B<USERID>={I<newpasswd>} B<updateBMC>={B<y|n>}
 
 Change the password of the userid B<USERID> for CMM in Flex system cluster. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
 
-If value B<*> is specified for USERID and the object node is I<Flex System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
+If value "*" is specified for USERID and the object node is I<Flex System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
 
 =item B<--resetnet>
 
@@ -440,7 +440,7 @@ Enable or disable v3 authentication (enable|disable).
 
 Prints out a brief usage message.
 
-=item B<-v>, B<--version>
+=item B<-v> | B<--version>
 
 Display the version number.
 
@@ -451,88 +451,97 @@ Display the version number.
 
 =over 3
 
-=item *
-
+=item 1.
 To setup new ssh keys on the Management Module mm:
 
- B<rspconfig> mm snmpcfg=enable sshcfg=enable  
+ rspconfig mm snmpcfg=enable sshcfg=enable  
 
-=item *
-
+=item 2.
 To turn on SNMP alerts for node5:
 
-B<rspconfig> I<node5> B<alert>=B<on>
+ rspconfig node5 alert=on
+
+Output is similar to:
 
  node5: Alerts: enabled
 
-=item *
-
+=item 3.
 To display the destination setting for SNMP alerts for node4:
 
-B<rspconfig> I<node4 snmpdest>
+ rspconfig node4 snmpdest
+
+Output is similar to:
 
  node4: BMC SNMP Destination 1: 9.114.47.227
 
-=item *
+=item 4.
 
 To display the frame number for frame 9A00-10000001
 
-B<rspconfig> I<9A00-10000001 frame>
+ rspconfig> 9A00-10000001 frame
+
+Output is similar to:
 
  9A00-10000001: 1
 
-=item *
-
+=item 5.
 To set the frame number for frame 9A00-10000001
 
-B<rspconfig> I<9A00-10000001 frame=2>
+ rspconfig 9A00-10000001 frame=2
+
+Output is similar to:
 
  9A00-10000001: SUCCESS
 
-=item *
-
+=item 6.
 To set the frame numbers for frame 9A00-10000001 and 9A00-10000002
 
-B<rspconfig> I<9A00-10000001,9A00-10000002 frame=*>
+ rspconfig 9A00-10000001,9A00-10000002 frame=*
+
+Output is similar to:
 
  9A00-10000001: SUCCESS
  9A00-10000002: SUCCESS
 
-=item *
-
+=item 7.
 To display the MPA network parameters for mm01:
 
-B<rspconfig> I<mm01 network>
+ rspconfig mm01 network
+
+Output is similar to:
 
  mm01: MM IP: 192.168.1.47
  mm01: MM Hostname: MM001125C31F28
  mm01: Gateway: 192.168.1.254
  mm01: Subnet Mask: 255.255.255.224
 
-=item *
-
+=item 8.
 To change the MPA network parameters with the values in the xCAT database for mm01:
 
-B<rspconfig> I<mm01 network=*>
+ rspconfig mm01 network=*
+
+Output is similar to:
 
  mm01: MM IP: 192.168.1.47
  mm01: MM Hostname: mm01
  mm01: Gateway: 192.168.1.254
  mm01: Subnet Mask: 255.255.255.224
 
-=item *
-
+=item 9.
 To change only the gateway parameter for the MPA network mm01:
 
-B<rspconfig> I<mm01 network=,,192.168.1.1,>
+ rspconfig mm01 network=,,192.168.1.1,
+
+Output is similar to:
 
  mm01: Gateway: 192.168.1.1
 
-=item *
-
+=item 10.
 To display the FSP network parameters for fsp01:
 
-B<rspconfig> I<fsp01 network>
+ rspconfig> fsp01 network
+
+Output is similar to:
 
  fsp01:
         eth0:
@@ -549,120 +558,128 @@ B<rspconfig> I<fsp01 network>
                 Gateway:
                 Netmask: 255.255.255.0
 
-=item *
-
+=item 11.
 To change the FSP network parameters with the values in command line for eth0 on fsp01:
 
-B<rspconfig> I<fsp01 network=eth0,192.168.1.200,fsp01,,255.255.255.0>
+ rspconfig fsp01 network=eth0,192.168.1.200,fsp01,,255.255.255.0
+
+Output is similar to:
 
  fsp01: Success to set IP address,hostname,netmask
 
-=item *
-
+=item 12.
 To change the FSP network parameters with the values in the xCAT database for eth0 on fsp01:
 
-B<rspconfig> I<fsp01 network=eth0,*>
+ rspconfig fsp01 network=eth0,*
+
+Output is similar to:
 
  fsp01: Success to set IP address,hostname,gateway,netmask
 
-=item *
-
+=item 13.
 To configure eth0 on fsp01 to get dynamic IP address from DHCP server: 
 
-B<rspconfig> I<fsp01 network=eth0,0.0.0.0>
+ rspconfig fsp01 network=eth0,0.0.0.0
+
+Output is similar to:
 
  fsp01: Success to set IP type to dynamic.
 
-=item *
-
+=item 14.
 To get the current power redundancy mode for power domain 1 on mm01:
 
-B<rspconfig> I<mm01 pd1>
+ rspconfig mm01 pd1
+
+Output is similar to:
 
  mm01: Redundant without performance impact
 
-=item *
-
+=item 15.
 To change the current power redundancy mode for power domain 1 on mm01 to non-redundant:
 
-B<rspconfig> I<mm01 pd1=nonred>
+ rspconfig mm01 pd1=nonred
+
+Output is similar to:
 
  mm01: nonred
 
-=item *
-
+=item 16.
 To enable NTP with an NTP server address of 192.168.1.1, an update frequency of 90 minutes, and with v3 authentication enabled on mm01:
 
-B<rspconfig> I<mm01 ntp=enable,192.168.1.1,90,enable>
+ rspconfig mm01 ntp=enable,192.168.1.1,90,enable
+
+Output is similar to:
 
  mm01: NTP: disabled
  mm01: NTP Server: 192.168.1.1
  mm01: NTP: 90 (minutes)
  mm01: NTP: enabled
 
-=item *
-
+=item 17.
 To disable NTP v3 authentication only on mm01:
 
-B<rspconfig> I<mm01 ntp=,,,disable>
+ rspconfig mm01 ntp=,,,disable
+
+Output is similar to:
 
  mm01: NTP v3: disabled
 
-=item *
-
+=item 18.
 To disable Predictive Failure and L2 Failure deconfiguration policies on mm01:
 
-B<rspconfig> I<mm01 decfg=disable:predictive,L3>
+ rspconfig mm01 decfg=disable:predictive,L3
+
+Output is similar to:
 
  mm01: Success
 
-=item *
-
+=item 19.
 To deconfigure processors 4 and 5 of Processing Unit 0 on mm01:
 
-B<rspconfig> I<mm01 procedecfg=deconfigure:0:4,5>
+ rspconfig mm01 procedecfg=deconfigure:0:4,5
+
+Output is similar to:
 
  mm01: Success
 
-=item *
-
+=item 20.
 To check if CEC sysname set correct on mm01:
 
-B<rspconfig> I<mm01 sysname>
+ rspconfig mm01 sysname
 
  mm01: mm01
 
-B<rspconfig> I<mm01 sysname=cec01>
+ rspconfig mm01 sysname=cec01
 
  mm01: Success
 
-B<rspconfig> I<mm01 sysname>
+ rspconfig mm01 sysname
 
  mm01: cec01
 
-=item *
-
+=item 21.
 To check and change the pending_power_on_side value of cec01's fsps:
 
-B<rspconfig> I<cec01 pending_power_on_side>
+ rspconfig cec01 pending_power_on_side
 
  cec01: Pending Power On Side Primary: temp
  cec01: Pending Power On Side Secondary: temp
 
-B<rspconfig> I<cec01 pending_power_on_side=perm>
+ rspconfig cec01 pending_power_on_side=perm
 
  cec01: Success
 
-B<rspconfig> I<cec01 pending_power_on_side>
+ rspconfig cec01 pending_power_on_side
 
  cec01: Pending Power On Side Primary: perm
  cec01: Pending Power On Side Secondary: perm
 
-=item * 
-
+=item 22.
 To show the BSR allocation for cec01:
 
-B<rspconfig> I<cec01 BSR>
+ rspconfig cec01 BSR
+
+Output is similar to:
 
  cec01: Barrier Synchronization Register (BSR)
  cec01: Number of BSR arrays: 256
@@ -678,11 +695,12 @@ B<rspconfig> I<cec01 BSR>
  cec01: lpar07        : 32
  cec01: lpar08        : 32
 
-=item *
-
+=item 23.
 To query the huge page information for CEC1, enter:
 
-B<rspconfig> I<CEC1 huge_page>
+ rspconfig CEC1 huge_page
+
+Output is similar to:
 
  CEC1: Huge Page Memory
  CEC1: Available huge page memory(in pages):    0
@@ -700,67 +718,68 @@ B<rspconfig> I<CEC1 huge_page>
  CEC1: lpar25        : 0
  CEC1: lpar29        : 0
 
-=item *
-
+=item 24.
 To request 10 huge pages for CEC1, enter:
 
-B<rspconfig> I<CEC1 huge_page=10>
+ rspconfig CEC1 huge_page=10
+
+Output is similar to:
 
  CEC1: Success
 
-=item *
-
+=item 25.
 To disable service processor failover for cec01, in order to complete this command, the user should power off cec01 first:
 
-B<rspconfig> I<cec01 setup_failover>
+ rspconfig cec01 setup_failover
 
  cec01: Failover status: Enabled
 
-B<rpower> I<cec01 off>
+ rpower cec01 off
 
-B<rspconfig> I<cec01 setup_failover=disable>
+ rspconfig cec01 setup_failover=disable
 
  cec01: Success
 
-B<rspconfig> I<cec01 setup_failover>
+ rspconfig cec01 setup_failover
 
  cec01: Failover status: Disabled
 
-=item *
-
+=item 26.
 To force service processor failover for cec01:
 
-B<lshwconn> I<cec01>
+ lshwconn cec01
 
  cec01: 192.168.1.1: LINE DOWN
  cec01: 192.168.2.1: sp=primary,ipadd=192.168.2.1,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.1.2: sp=secondary,ipadd=192.168.1.2,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.2.2: LINE DOWN
  
-B<rspconfig> I<cec01 force_failover>
+ rspconfig cec01 force_failover
 
  cec01: Success.
  
-B<lshwconn> I<cec01>                
+ lshwconn> cec01                
 
  cec01: 192.168.1.1: sp=secondary,ipadd=192.168.1.1,alt_ipadd=unavailable,state=LINE UP
  cec01: 192.168.2.1: LINE DOWN
  cec01: 192.168.1.2: LINE DOWN
  cec01: 192.168.2.2: sp=primary,ipadd=192.168.2.2,alt_ipadd=unavailable,state=LINE UP
 
-=item *
+=item 27.
 
 To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
 
-B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
+ rspconfig mm01 memdecfg=deconfigure:bank:0:9,10
+
+Output is similar to:
 
  mm01: Success
 
-=item *
+=item 28.
 
 To reset the network interface of the specified nodes:
 
-B<rspconfig> I<--resetnet>
+ rspconfig --resetnet
 
 Output is similar to:
 
@@ -773,19 +792,21 @@ Output is similar to:
 
  Reset network finished.
 
-=item *
-
+=item 29.
 To update the existing admin password on fsp:
 
-B<rspconfig> I<fsp admin_passwd=admin,abc123>
+ rspconfig fsp admin_passwd=admin,abc123
+
+Output is similar to:
 
  fsp: Success
 
-=item *
-
+=item 30.
 To set the initial password for user HMC on fsp:
 
-B<rspconfig> I<fsp HMC_passwd=,abc123>
+ rspconfig fsp HMC_passwd=,abc123
+
+Output is similar to:
 
  fsp: Success
 
@@ -794,6 +815,3 @@ B<rspconfig> I<fsp HMC_passwd=,abc123>
 =head1 SEE ALSO
 
 L<noderange(3)|noderange.3>, L<rpower(1)|rpower.1>, L<rcons(1)|rcons.1>, L<rinv(1)|rinv.1>, L<rvitals(1)|rvitals.1>, L<rscan(1)|rscan.1>, L<rflash(1)|rflash.1>
-
-
-

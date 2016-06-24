@@ -6,7 +6,7 @@ prsync - parallel rsync
 
 B<prsync> I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
-B<prsync>  [I<-o rsync options>] [B<-f> I<fanout>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
+B<prsync>  [B<-o> I<rsync options>] [B<-f> I<fanout>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
 I<noderange:destinationdirectory>
 
 B<prsync> {B<-h>|B<--help>|B<-v>|B<--version>}
@@ -25,7 +25,7 @@ B<prsync> is NOT multicast, but is parallel unicasts.
 
 =over 7
 
-=item B<rsyncopts>
+=item I<rsyncopts>
 
 rsync options.  See B<rsync(1)>.
 
@@ -34,15 +34,15 @@ rsync options.  See B<rsync(1)>.
 Specifies a fanout value for the maximum number of  concur-
 rently  executing  remote shell processes.
 
-=item B<filename>
+=item I<filename>
 
 A space delimited list of files to rsync.
 
-=item B<directory>
+=item I<directory>
 
 A space delimited list of directories to rsync.
 
-=item B<noderange:destination>
+=item I<noderange:destination>
 
 A L<noderange(3)|noderange.3> and destination directory.  The : is required.
 
@@ -70,13 +70,13 @@ the B<-f> flag.  Default is 64.
 
 =over 3
 
-=item *
+=item 1.
 
-B<cd> I</install;> B<prsync> B<-o "crz"> I<post> I<stage:/install>
+ cd /install; prsync -o "crz" post stage:/install
 
-=item *
+=item 2.
 
-B<prsync> I<passwd> I<group> I<rack01:/etc>
+ prsync passwd group rack01:/etc
 
 =back
 

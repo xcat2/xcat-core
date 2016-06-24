@@ -3,7 +3,7 @@ os:Linux
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$SN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$SN -f -p &&  mkvm $$SN -s 25G; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f -p  && mkvm $$SN -s 40G; fi
 
 cmd:makedns -n
 check:rc==0
@@ -67,8 +67,8 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then rnetboot $$SN;elif [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rpower $$SN boot; fi
 check:rc==0
 
-cmd:sleep 1800
-cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 400 ];then break;fi done
+cmd:sleep 600
+cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 70 ];then break;fi done
 
 cmd:ping $$SN -c 3
 check:rc==0

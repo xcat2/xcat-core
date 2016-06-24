@@ -1,72 +1,80 @@
-# The shell is commented out so that it will run in bash on linux and ksh on aix
-#  !/bin/sh
-# Package up all the xCAT open source dependencies, setting up yum repos and
-# also tar it all up.  This assumes that individual rpms have already been built for
-# all relevant architectures from the src & spec files in svn.
+#!/bin/sh
 
-# When running this script to package xcat-dep:
-#  - You need to install gsa-client on the build machine.
-#  - You probably want to put root's pub key from the build machine onto sourceforge for
-#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://sourceforge.net/account/ssh
-#  - Also make sure createrepo is installed on the build machine
-
+#
+# Package up all the xCAT open source dependencies
+# - creating the yum repos
+# - tar up the deps package 
+#
+# This script assumes that the individual rpms have already been compiled
+# for the relevant architectures from the src & spec files in git.
+#
+# Dependencies:
+# - createrepo command needs to be present on the build machine 
+#
 # Usage:  builddep.sh [attr=value attr=value ...]
-#		DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, relative
-#					to where this script is located.
-# 		UP=0 or UP=1 - override the default upload behavior 
-#       FRSYUM=0 - put the directory of individual rpms in the project web area instead of the FRS area.
-#		VERBOSE=1 - to see lots of verbose output
+#       DESTDIR=<dir> - the dir to place the dep tarball in.  The default is ../../../xcat-dep, 
+#                       relative to where this script is located.
+#       UP=0 or UP=1  - override the default upload behavior 
+#       FRSYUM=0      - put the directory of individual rpms in the project web area instead 
+#                       of the FRS area.
+#       VERBOSE=1     - Set to 1 to see more VERBOSE output 
 
 # you can change this if you need to
-UPLOADUSER=litingt
+USER=xcat
+TARGET_MACHINE=xcat.org
 
-FRS=/home/frs/project/x/xc/xcat
+FRS=/var/www/xcat.org/files/xcat
 OSNAME=$(uname)
 
+UP=0
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
 	# upper case the variable name
 	varstring=`echo "$i"|cut -d '=' -f 1|tr [a-z] [A-Z]`=`echo "$i"|cut -d '=' -f 2`
 	export $varstring
 done
-if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
-	set -x
-	VERBOSEMODE=1
-fi
 
 if [ "$OSNAME" == "AIX" ]; then
+	DFNAME=dep-aix-`date +%Y%m%d%H%M`.tar.gz
 	GSA=/gsa/pokgsa/projects/x/xcat/build/aix/xcat-dep
 else
+	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
 	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
+if [ ! -d $GSA ]; then
+	echo "ERROR: This script is intended to be used by xCAT development..."
+	echo "ERROR: The GSA directory ($GSA) directory does not appear to be mounted, cannot continue!" 
+	exit 1
+fi
+
+# set grep to quiet by default
+GREP="grep -q"
+if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
+	set -x
+	VERBOSEMODE=1
+	GREP="grep"
+fi
+
 # this is needed only when we are transitioning the yum over to frs
-YUMREPOURL1="http://xcat.sourceforge.net/yum"
-YUMREPOURL2="https://sourceforge.net/projects/xcat/files/yum"
+# YUMREPOURL1="http://xcat.org/yum"
+# YUMREPOURL2="http://xcat.org/files/yum"
 if [ "$FRSYUM" != 0 ]; then
-	YUMDIR=$FRS
-	YUMREPOURL="$YUMREPOURL2"
+	YUMDIR="$FRS/repos"
+	# YUMREPOURL="$YUMREPOURL2"
 else
 	YUMDIR=htdocs
-	YUMREPOURL="$YUMREPOURL1"
+	# YUMREPOURL="$YUMREPOURL1"
 fi
 
-if [ -n "$VERBOSEMODE" ]; then
-	GREP=grep
-else
-	GREP="grep -q"
-fi
-
-if [ ! -d $GSA ]; then
-	echo "builddep:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
-	exit 1;
-fi
 cd `dirname $0`
 XCATCOREDIR=`/bin/pwd`
 if [ -z "$DESTDIR" ]; then
-	DESTDIR=../../../xcat-dep
+	# This is really a hack here because it depends on the build
+	# environment structure.  However, it's not expected that
+	# users are building the xcat-dep packages 
+	DESTDIR=../../xcat-dep
 fi
 
 # Sync from the GSA master copy of the dep rpms
@@ -74,6 +82,9 @@ mkdir -p $DESTDIR/xcat-dep
 echo "Syncing RPMs from $GSA/ to $DESTDIR/xcat-dep ..."
 rsync -ilrtpu --delete $GSA/ $DESTDIR/xcat-dep
 cd $DESTDIR/xcat-dep
+
+# add a comment to indicate the latest xcat-dep tar ball name
+sed -i -e "s#REPLACE_LATEST_SNAP_LINE#The latest xcat-dep tar ball is ${DFNAME}#g" README
 
 if [ "$OSNAME" != "AIX" ]; then
 	# Get gpg keys in place
@@ -96,11 +107,11 @@ if [ "$OSNAME" != "AIX" ]; then
 	fi
 
 	# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
-	echo "Signing RPMs..."
+	echo "===> Signing RPMs..."
 	$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 
 	# Create the repodata dirs
-	echo "Creating repodata directories..."
+	echo "===> Creating repodata directories..."
 	for i in `find -mindepth 2 -maxdepth 2 -type d `; do
 		if [ -n "$VERBOSEMODE" ]; then
 			createrepo --checksum sha $i            # specifying checksum so the repo will work on rhel5
@@ -115,14 +126,19 @@ if [ "$OSNAME" != "AIX" ]; then
 	done
 
 	# Modify xCAT-dep.repo files to point to the correct place
-	if [ "$FRSYUM" != 0 ]; then
-		newurl="$YUMREPOURL2"
-		oldurl="$YUMREPOURL1"
-	else
-		newurl="$YUMREPOURL1"
-		oldurl="$YUMREPOURL2"
-	fi
-	sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xCAT-dep.repo" `
+	echo "===> Modifying the xCAT-dep.repo files to point to the correct location..."
+	# 10/01/2015 - vkhu
+	# The URLs have been updated in GSA, this section is not needed at the moment
+	# 
+	#if [ "$FRSYUM" != 0 ]; then
+	#	newurl="$YUMREPOURL2"
+	#	oldurl="$YUMREPOURL1"
+	#else
+	#	newurl="$YUMREPOURL1"
+	#	oldurl="$YUMREPOURL2"
+	#fi
+	#
+	#sed -i -e "s|=$oldurl|=$newurl|g" `find . -name "xCAT-dep.repo" `
 fi
 
 if [ "$OSNAME" == "AIX" ]; then
@@ -202,72 +218,74 @@ fi
 
 # Get the permissions and group correct
 if [ "$OSNAME" == "AIX" ]; then
+	# AIX 
 	SYSGRP=system
+	YUM=aix
+	FRSDIR='2.x_AIX'
 else
+	# Linux 
 	SYSGRP=root
+	YUM=yum
+	FRSDIR='2.x_Linux'
 fi
 chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
-# Build the tarball
-#VER=`cat $XCATCOREDIR/Version`
+echo "===> Building the tarball..."
+# 
+# Want to stay above xcat-dep so we can rsync the whole directory
+# DO NOT CHANGE DIRECTORY AFTER THIS POINT!! 
+#
 cd ..
+pwd
+
+verbosetar=""
 if [ -n "$VERBOSEMODE" ]; then
 	verbosetar="-v"
-else
-	verbosetar=""
 fi
+
+echo "===> Creating $DFNAME ..."
 if [ "$OSNAME" == "AIX" ]; then
-	DFNAME=dep-aix-`date +%Y%m%d%H%M`.tar.gz
-	echo "Creating $DFNAME ..."
 	tar $verbosetar -cf ${DFNAME%.gz} xcat-dep
 	rm -f $DFNAME
 	gzip ${DFNAME%.gz}
 else
-	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
-	echo "Creating $DFNAME ..."
+	# Linux
 	tar $verbosetar -jcf $DFNAME xcat-dep
 fi
 
-#cd xcat-dep  <-- now we want to stay above xcat-dep, so we can rsync the whole dir
-
-if [ "$UP" == 0 ]; then
- exit 0;
+if [[ ${UP} -eq 0 ]]; then 
+	echo "Upload not being done, set UP=1 to upload to xcat.org"
+	exit 0;
 fi
 
-if [ "$OSNAME" == "AIX" ]; then
-	YUM=aix
-	FRSDIR='2.x_AIX'
-else
-	YUM=yum
-	FRSDIR='2.x_Linux'
-fi
-
-# Upload the dir structure to SF yum area.  Currently we do not have it preserving permissions
-# because that gives errors when different users try to do it.
-i=0
+# Upload the directory structure to xcat.org yum area (xcat/repos/yum). 
 if [ "$FRSYUM" != 0 ]; then
-	links="-L"		# FRS does not support rsyncing sym links
+	links="-L"	# FRS does not support rsyncing sym links
 else
 	links="-l"
 fi
-echo "Uploading RPMs from xcat-dep to $YUMDIR/$YUM/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
+
+i=0
+echo "Uploading the xcat-deps RPMs from xcat-dep to RPMs from xcat-dep to $YUMDIR/$YUM/ ..."
+while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $USER@$TARGET_MACHINE:$YUMDIR/$YUM/
 do : ; done
 
-# Upload the tarball to the SF FRS Area
+# Upload the tarball to the xcat.org FRS Area
 i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME  $USER@$TARGET_MACHINE:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
-# Upload the README to the SF FRS Area
-cd xcat-dep
-# add a comment to indicate the latest xcat-dep tar ball name
-sed "6 iThe latest xcat-dep tar ball is ${DFNAME}" -i README
-
+# Upload the README to the xcat.org FRS Area
 i=0
+cd xcat-dep
 echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v README  $USER@$TARGET_MACHINE:$FRS/xcat-dep/$FRSDIR/
+do : ; done
+
+# For some reason the README is not updated 
+echo "Uploading README to $YUMDIR/$YUM/ ..."
+while [ $((i+=1)) -le 5 ] && ! rsync -v README  $USER@$TARGET_MACHINE:$YUMDIR/$YUM/
 do : ; done
 

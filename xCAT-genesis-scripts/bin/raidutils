@@ -1,0 +1,1551 @@
+#!/bin/bash
+#
+# Usage:
+#
+# There are utils for diskdiscover and configraid.
+#
+
+log_file=$1
+
+##############################
+# declare all commands
+##############################
+awk="awk"
+sed="sed"
+cut="cut"
+sleep="sleep"
+sort="sort"
+ps="ps"
+head="head"
+readlink="readlink"
+basename="basename"
+udevadm="udevadm"
+touch="touch"
+tail="tail"
+dmesg="dmesg"
+grep="grep"
+lspci="lspci"
+
+############################################
+#
+# source raidcmd
+#
+###########################################
+str_dir_name=`dirname $0`
+. $str_dir_name/raidcmd
+
+################################################################
+#
+#  Input PCI_ID to get PCI location
+#
+#  input: pci_id
+#
+#  output: pci locations 
+#
+################################################################
+function get_pciloc_by_id {
+    local __in_pciid=$1
+    if echo "$__in_pciid" | $grep -sq "_"; then
+        __in_pciid=`echo "$__in_pciid" | $sed -e 's/_/:/'`
+    fi
+    local sysdevdir=/sys/bus/pci/devices
+    local pcilocs=`cd $sysdevdir 2>/dev/null && for dev in *
+    do
+        lines=$($udevadm info --query=property --path=$sysdevdir/$dev)
+        if echo "$lines" | $grep -i -sq -E "^PCI_ID=$__in_pciid$|^PCI_SUBSYS_ID=$__in_pciid$"; then
+            echo $dev
+        fi
+    done `
+    [ -z "$pcilocs" ] && return 1
+    echo "$pcilocs"
+    return 0
+}
+
+######################################################
+#
+# get pci_slot scsi device
+#
+# input: slocs, for example, 0:0:0:0 0:0:1:0
+#
+# output: <sloc>=<device_name> ... 
+#         <sloc>=<device_name>
+#
+######################################################
+function convert_sloc_to_sg {
+    local __slocs="$*"
+    for __sloc in $__slocs
+    do
+        if echo "$__sloc" | grep -sq "[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+"; then
+            __sg=`$readlink /sys/class/scsi_device/$__sloc/device/generic`
+            if [ "$__sg" ]; then
+                __sg=`$basename $__sg`
+            fi
+        elif echo "$__sloc" | grep -sq -E '^sg[0-9]+|^sd[a-z]+'; then
+            __sg="$__sloc"
+            __sloc=`convert_sg_to_sloc $__sg | $awk -F= '{print $2}'`
+        fi
+        echo "$__sloc=$__sg"
+    done
+    return 0
+}
+
+#################################################################
+#
+#  Through PCI/SCSI device to find PCI/SCSI location
+#
+#  input: device names, 
+#         sg0 ...sgn
+#
+#  output: <dev>=<sloc>... <dev>=<sloc>
+#
+################################################################
+function convert_sg_to_sloc {
+    local __sgs="$*"
+    local __sloc=""
+    for __sg in $__sgs
+    do
+        if echo "$__sg" | grep -sq "^sg[0-9]\+"; then
+            __sloc=`$readlink /sys/class/scsi_generic/$__sg/device`
+            if [ "$__sloc" ]; then
+                __sloc=`$basename $__sloc`
+            fi
+        elif echo "$__sg" | grep -sq "^sd[a-z]\+"; then
+            __sloc=`$readlink /sys/block/$__sg/device`
+            if [ "$__sloc" ]; then
+                __sloc=`$basename $__sloc`
+            fi
+        elif echo "$__sg" | grep -sq "[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+"; then
+            __sloc="$__sg"
+            __sg=`convert_sloc_to_sg $__sloc | $awk -F= '{print $2}'`
+        fi
+        echo "$__sg=$__sloc"
+    done
+    return 0
+}
+
+############################################################################
+#
+# get devices which are qualified to be used to create raid
+# it should equals to "query-raid-create" after all array had
+# been deleted.
+# Note: output format of this command is multilines
+# <pciloc_of_ioa1>=<sloc_of_disk1>,<sloc_of_disk2>,...
+# <pciloc_of_ioa2>=<sloc_of_disk1>,<sloc_of_disk2>,...
+# ...
+###########################################################################
+function get_raid_create_devices_by_pciloc {
+    local lines=""
+    local pcilocs="$*"
+    [ -z "$pcilocs" ] && return 1
+
+    # reorder ipr ioa pcilocs by its Primary and Secondary state
+    local ioas=`get_ipr_ioas_by_pciloc $pcilocs`
+    pcilocs=`get_sg_pciloc $ioas | $awk -F= '{print $2}' `
+    lines=`cmd_show_config`
+    local slocs=""
+    local line=""
+    for pciloc in $pcilocs
+    do
+        # exclude:
+        # 1) scsi adapter(ioa);
+        # 2) scsi enclosure;
+        # 3) disk array;
+        slocs=`echo "$lines" \
+        | grep '^.*[ ]\+'$pciloc'\/[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+.*$' \
+        | grep -v -E "Adapter|Enclosure|Disk Array" \
+        | cut_sloc_from_iprconfig_line \
+        | $sort -V \
+        | $sed -e 's/ /,/g' \
+        | awk '{printf (NR>1)?","$0:$0}'`
+        if [ -n "$slocs" ]; then
+            line="$pciloc=$slocs"
+            echo "$line"
+        fi
+    done
+    return 0
+}
+
+########################################################################################
+#
+# return list of ioas on target pciloc with order of Primary --> Secondary --> Others
+#
+# input: pci locations
+# 
+# output: sorted raid adapters location list
+#
+#########################################################################################
+function get_ipr_ioas_by_pciloc {
+    local pcilocs="$*"
+    [ -z "$pcilocs" ] && return 1
+
+    # find out all ioas and its current adapter state
+    local ioas_all=`cmd_show_ioas | grep "^sg[0-9]\+.*Operational" | $awk '{print $1}'`
+    # group them into "Primary" and "Secondary" groups
+    local lines=`for ioa in $ioas_all
+    do
+        state=$(cmd_show_details $ioa | grep "Current Dual Adapter State" | $sed -e 's/^.* : \+\(.*\)$/\1/')
+        echo "$state=$ioa"
+    done`
+    local ioa_primary=`echo "$lines" | $awk -F= '($1 == "Primary") {print $2}'`
+    local ioa_secondary=`echo "$lines" | $awk -F= '($1 == "Secondary") {print $2}'`
+    local ioa_others=`echo "$lines" | $awk -F= '($1 != "Primary") && ($1 != "Secondary") {print $2}'`
+    ioas_all="$ioa_primary $ioa_secondary $ioa_others"
+
+    # pick up ioa on target pciloc
+    lines=`echo "$pcilocs" | $sed -e 's/[, ]/\n/g'`
+    local ioas_in=""
+    if [ "$lines" = "all" ]; then
+        ioas_in="$ioas_all"
+    else
+        ioas_in=`for ioa in $ioas_all
+        do
+            ioa_pciloc=$(get_sg_pciloc $ioa | awk -F= '{print $2}')
+            if echo "$lines" | grep -sq -i "^${ioa_pciloc}$"; then
+                echo $ioa
+            fi
+        done `
+    fi
+    [ -z "$ioas_in" ] && return 1
+    echo "$ioas_in"
+    return 0
+}
+
+###############################################
+#
+# use udev to determine pciloc of sg device
+#
+# input: disk name list
+#
+# output: <dev>=<sloc>...<dev>=<sloc>
+#
+###############################################
+function get_sg_pciloc {
+    local sgs="$*"
+    [ -z "$sgs" ] && return 1
+
+    local sg=""
+    local pciloc=""
+    for item in $sgs
+    do
+        sg=`convert_sloc_to_sg $item | $awk -F= '{print $2}'`
+        [ -z "$sg" ] && continue
+        pciloc=`cmd_show_details $sg \
+                | grep "^PCI Address" \
+                | $sed -e 's/.*:[ ]\+\([0-9]\+:[0-9]\+:[0-9]\+\.[0-9]\+\).*$/\1/'`
+
+        if [ -n "$pciloc" ]; then
+            echo "$sg=$pciloc"
+        fi
+    done
+    return 0
+}
+
+######################################################
+#
+# cut resouce_path
+#
+#####################################################
+function cut_sloc_from_iprconfig_line {
+    $sed -e 's/^.*[ ]\+\(.*\)\/\([0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+\).*$/\2/g'
+}
+
+#####################################################################
+#
+# find descriptions and status for device
+#
+# input: pci locations
+#
+# output:  descriptions and status from "iprconfig -c show-config" 
+#
+###################################################################
+function find_desc_status_sg {
+    local lines=""
+    local pciscsilocs="$*"
+    [ -z "$pciscsilocs" ] && return 1
+
+    lines=`cmd_show_config`
+    local slocs=""
+    local line=""
+    for pciscsiloc in $pciscsilocs
+    do
+        slocs=`echo "$lines" \
+        | $grep "${pciscsilocs}" \
+        | awk '{for(i=3;i<=NF;++i) printf $i "\t";printf "\n"}'`
+        echo $slocs
+    done
+    return 0
+    
+}
+
+#######################################################
+#
+#  get disk devices through pci_id
+#
+#  input: pci id
+#
+#######################################################
+function get_devices_by_pciid {
+
+    local pciid="$*"
+    [ -z "$pciid" ] && return 1
+
+    pcilocs=`get_pciloc_by_id $pciid`
+
+
+    if [ -z "$pcilocs" ]; then
+        echo "There is no PCI_SLOT_NAME for PCI_ID:$pciid."
+        return 1
+    fi
+    slocs_grps=`get_raid_create_devices_by_pciloc $pcilocs`
+    if [ -z "$slocs_grps" ]; then
+        echo "Could not find any disk on target pciloc ${pcilocs}!"
+        return 1
+    fi
+    arrage_output $pciid "$slocs_grps"
+
+}
+
+######################################################################
+#
+# get ipr raid arrays by PCI location
+#
+# input: pci locations
+#
+# output: raid arrays
+#
+#####################################################################
+function get_ipr_arrays_by_pciloc {
+    local pcilocs="$*"
+    [ -z "$pcilocs" ] && return 1
+
+    # reorder ipr ioa pcilocs by its Primary and Secondary state
+    local ioas=`get_ipr_ioas_by_pciloc $pcilocs`
+    pcilocs=`get_sg_pciloc $ioas | $awk -F= '{print $2}' `
+
+    local lines=$(cmd_show_arrays)
+    local slocs=`for pciloc in $pcilocs
+    do
+        echo "$lines" 
+    done `
+    [ -n "$slocs" ] && echo "$slocs"
+    return 0
+}
+
+#####################################################################
+#
+# get all af and jbod disks 
+#
+# input: no
+#
+# output: all devices table
+#
+####################################################################
+function get_all_devices_for_raid {
+
+    local showlines=`cmd_show_config`
+
+    pcilocs=`echo "$showlines" \
+             | $grep -v -E "Adapter|Enclosure|Disk Array" \
+             | $grep '^.*[ ]\+\(.*\)\/\([0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+\).*$'|$sed 's/ /,/g'|cut -c 8-19`
+
+    [ -z "$pcilocs" ] && return 1
+    slocs_grps=`get_raid_create_devices_by_pciloc $pcilocs`
+    if [ -z "$slocs_grps" ]; then
+        echo "Could not find any disk on target pciloc ${pcilocs}!"
+    fi
+    arrage_output "null" "$slocs_grps"
+}
+
+#####################################################################
+#
+# output of disks and arrays
+#
+# input: pci_id sloc_grps
+#
+# output: all devices table
+#
+####################################################################
+function arrage_output {
+    pciid=$1
+    shift
+    slocs_grps=$*
+
+    # find the required member disks
+    echo "--------------------------------------------------------------------------"
+    echo "PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status"
+    echo "------     -------------  -------------  ------  -----------   ----------------"
+    slocs=""
+    for item in $slocs_grps
+    do
+         pciloc=`echo "$item" | $awk -F= '{print $1}'`
+         slocs_grp=`echo "$item" | $awk -F= '{print $2;}'i \
+                                 | $sed 's/,/ /g'`
+
+         if [ x$pciid == "xnull" ]; then
+             pciid=`get_PCI_ID $pciloc`
+         fi
+         for sloc in $slocs_grp
+         do
+              pciscsiloc="$pciloc/$sloc"
+              desc=`find_desc_status_sg $pciscsiloc`
+              disk=`convert_sloc_to_sg $sloc | $awk -F= '{print $2}'`
+              echo "$pciid  $pciloc   $sloc        $disk     $desc "
+         done
+         echo "-------------------------------------------------------------------"
+         echo "Get ipr RAID arrays by PCI_SLOT_NAME: $pciloc"
+         echo "-------------------------------------------------------------------"
+         get_ipr_arrays_by_pciloc $pciloc
+    done
+
+}
+
+
+###############################################################
+#
+# get PCI_ID through lspci
+#
+# input: pci location
+#
+# output: pci id
+#
+###############################################################
+function get_PCI_ID {
+    pcislot=$1
+    pciid=`$lspci | $grep ${pcislot} | $awk '{print $5}'`
+    echo $pciid
+}
+
+###########################################
+#
+# Identify if sloc is exist or not
+#
+# input: dev sloc
+#
+# output: 0  exist
+#         1  not
+# 
+##########################################
+function sloc_exist {
+    local __sloc="$1"
+    __sloc=`convert_sg_to_sloc $__sloc | $awk -F= '{print $2}'`
+    rc=1
+    [ -n "$__sloc" ] && [ -d /sys/class/scsi_device/$__sloc/device ] && rc=0
+    return $rc
+}
+
+###########################################
+#
+# get all raid arrays
+#
+# output : array1#array2..
+#
+##########################################
+function get_all_raid_arrays {
+    local arrays=`cmd_show_arrays \
+                  | $awk '{print $1}'\
+                  | $sed -n '3,$p'`
+    echo $arrays
+}
+
+#################################################
+#
+# Identify if sloc is raid or not
+#
+# input : dev sloc
+#
+# return : 1  ------not raid
+#          0  ------is raid
+#
+##################################################
+function is_ipr_array {
+    local __sloc="$1"
+    local __sg=`convert_sloc_to_sg $__sloc | $awk -F= '{print $2}'`
+    [ -n "$__sg" ] && is_array $__sg
+}
+
+#################################################
+#
+# get all ioas
+#
+##################################################
+function get_ipr_ioas {
+    get_ipr_ioas_by_pciloc all
+}
+
+#################################################
+#
+# cut pci location from iprconfig line
+#
+##################################################
+function cut_pciloc_from_iprconfig_line {
+    $sed -e 's/^.*[ ]\+\(.*\)\/\([0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+\).*$/\1/g'
+}
+
+##############################################
+#
+# get member disk for ipr array
+#
+# input : array name
+#
+# output : member sloc list
+#          "member_sloc1 member_sloc2 ...." 
+#
+#############################################
+function get_ipr_array_members {
+    local array="$1"
+    local array_sloc=`convert_sg_to_sloc $array | $awk -F= '{print $2}'`
+    # array does not exist, error with rc=1
+    [ -z "$array_sloc" ] && return 1
+
+    local lines=`cmd_show_config`
+    # get scsi locations of disk array members
+    local member_slocs=`echo "$lines" \
+    | $awk '
+    BEGIN { hit=0; members=""; }
+    /^.*\/'$array_sloc'[ ]+.*Disk Array.*$/ { hit=1; next; }
+    {
+        if (hit==1) {
+            if ($0 ~ /RAID .* Member/) {
+                # ignore "Remote" array members
+                if ($0 !~ / *Remote *$/) {
+                    print $0
+                }
+            } else {
+                hit=0
+            }
+        }
+    }' \
+    | cut_sloc_from_iprconfig_line `
+    # array does not have any member which should not, error with rc=1
+    [ -z "$member_slocs" ] && return 1
+
+    echo "$member_slocs"
+    log_details "array[$array] has member disks[$member_slocs]" >&2
+    return 0
+}
+
+#####################################################################
+#
+# get array by disk
+#
+# input : array disk member name
+#
+# output : array sloc
+#
+###################################################################
+function get_ipr_array_by_member {
+    local sg="$1"
+    local member_sloc=`convert_sg_to_sloc $sg | $awk -F= '{print $2}'`
+    # member does not exists, error with rc=1
+    [ -z "$member_sloc" ] && return 1
+
+    local lines=`cmd_show_config`
+    local array_sloc=`echo "$lines" \
+    | $awk '
+    BEGIN { hit=0; line="na"; }
+    /Disk Array/ { hit=1; line=$0; next; }
+    {
+        if (hit==1) {
+            if ($0 ~ /RAID .* Member/) {
+                if ($0 ~ /\/'$member_sloc'[ ]+.*/) {
+                    print line
+                    exit 0
+                }
+            } else {
+              hit=0; line="na"
+            }
+        }
+    }' \
+    | cut_sloc_from_iprconfig_line`
+    # disk does not belongs to any array, error with rc=1
+    [ -z "$array_sloc" ] && return 1
+
+    echo "$array_sloc"
+    log_details "array[$array_sloc] owns disk[$sg]" >&2
+    return 0
+}
+
+#################################################
+#
+# get process
+# input : pids
+# output : child_pids pids
+#
+##################################################
+function getpstree {
+    local pids="$*"
+
+    local pslines=`$ps -e -o pid,ppid`
+    while true
+    do
+        local has_expand=0
+        local lines=`echo "$pids" | $sed -e 's/ /\n/g'`
+        for pid in $pids
+        do
+            local child_pids=`echo "$pslines" | $awk -v pid=$pid '$2 == pid{print $1}'`
+            child_pids=`for pid2 in $child_pids
+            do
+                echo "$lines" | grep -sq "^$pid2$" || echo "$pid2"
+            done `
+            if [ -n "$child_pids" ]; then
+                pids="$child_pids $pids"
+                has_expand=1
+            fi
+        done
+        if [ $has_expand -eq 0 ]; then
+            break
+        fi
+    done
+    echo "$pids"
+}
+
+#####################################################################
+#
+# delete used disks from slocs
+#
+# input : disk slocs
+#
+# output : unused disk slocs
+#
+###################################################################
+function delete_disks_belong_array_from_slocs {
+    local slocs=$*
+    validslocs=""
+    usedslocs=""
+    for sloc in $slocs
+    do
+        line=$(get_ipr_array_by_member $sloc)
+        if [ $? -eq 0 ]; then
+            if [ "x$usedslocs" != x ]; then
+                usedslocs=$usedslocs" "$sloc
+            else
+                usedslocs=$sloc
+            fi
+        fi
+    done
+    if [ -n "$usedslocs" ]; then
+        validslocs=`echo $slocs|sed "s/$usedslocs//g"`
+        if [ -n "$validslocs" ]; then
+            echo $validslocs
+        fi
+    else
+        echo $slocs
+    fi
+}
+
+####################################################################################
+#
+# create raid array
+#
+# input : $1 minutes,
+#            Times to wait for the raid creation finish, minutes
+#
+#         $2 seconds
+#            Interval of minitoring raid creation, status check
+#
+#         left: member disks , iprconfig_args
+#
+# output : 
+#
+################################################################################
+function create_ipr_array {
+    local global_rc=0
+    local lines=""
+    local monCnt=$1
+    shift
+    local monInt=$1
+    shift
+    local member_sgs=`echo "$1" | $sed -e 's/,/ /g'`
+    shift
+
+    local stage_1_timeout=1        # unit minutes
+    local stage_1_last_tick_count=`$awk -v monInt=$monInt -v timeout=$stage_1_timeout 'END{print timeout*60/monInt}' </dev/null`
+
+    [ -z "$member_sgs" ] && return 1
+    local member_slocs=`convert_sg_to_sloc $member_sgs | $awk -F= '{print $2}' `
+    local member_sgs=`convert_sloc_to_sg $member_sgs | $awk -F= '{print $2}' `
+    [ -z "$member_sgs" ] && return 1
+
+    local iprconfig_args="$*"
+    # log for details
+    {
+        echo "Attempt to create ipr array with command: iprconfig -c raid-create \"$iprconfig_args\" \"$member_sgs\""
+        for member_sg in $member_sgs
+        do
+            echo "-------------------------------------"
+            cmd_show_details $member_sg | $sed -e 's/^/details['$member_sg']: >> /g'
+        done
+        echo "-------------------------------------"
+        for member_sg in $member_sgs
+        do
+            cmd_show_status $member_sg | $sed -e 's/^/status['$member_sg']: >> /g'
+        done
+        echo "-------------------------------------"
+    } | log_lines details >&2
+
+    # prepare tmp log file for iprconfig worker process
+    local ftmp="/tmp/log_create.log.$$"
+    $touch $ftmp
+
+    # launch the iprconfig worker process
+    cmd_raid_create "$iprconfig_args" "$member_sgs" >$ftmp 2>&1 &
+    local pid_create=$!
+    # log for debug
+    local line=`$ps -f -p $pid_create | $awk -v pid=$pid_create '$2==pid{print $0}' | $head -n1`
+    log_details "ps1: $line"
+
+    # monitor the worker process and show status
+    # array_stage=0, monitor array member disk states only
+    # array_stage=1, wait for array showes up after array member disks are in termination states
+    # array_stage=2, monitor array state
+    local array_stage=0
+    local array_sloc=""
+    # is that possible sg names of member disks were changed after issued raid-create on top of them?
+    local slocs="$member_slocs"
+    local i=$monCnt
+    while [ $i -gt 0 -a $monCnt -gt 0 ];
+    do
+        # Get status of all sgs which might include array itself.
+        local status_lines=""
+        local rc=0
+        local sloc=""
+        [ $array_stage -ne 1 ] && \
+        for sloc in $slocs
+        do
+            local status=""
+            local sg=`convert_sloc_to_sg $sloc | $awk -F= '{print $2}'`
+            if [ -n "$sg" ]; then
+                status=`cmd_show_status $sg `
+            else
+                status="Missing-sg_name"
+            fi
+            [ -z "$status" ] && status="no_status"
+
+            local msg="status[$sloc/$sg]=\"$status\""
+            log_details "array create stage[$array_stage], $msg"
+
+            # list of "termination" status for member disks and target array
+            # Refer to "Disk array states" section in ipr doc.
+            local status_exp
+            if [ $array_stage -eq 0 -o $array_stage -eq 1 ]; then
+                # 1) If a physical disk fail to be formated as IPR AF, its status will be "Format Required" and be "Failed" later.
+                # Should we handle this?
+                status_exp="Active|Failed|Offline|Missing|R/W Protected|Format Required"
+
+                # I saw phy disk in following state which not in the doc.
+                status_exp+="|Optimized|Non-Optimized"
+
+                # my faked status for disk
+                status_exp+="|Missing-sg_name"
+            else
+                # Note:
+                # - Array state "Missing" is not a terminate state, exclude it by adding "#" as prefix
+                status_exp="Optimized|Active|Non-Optimized|Degraded|#Missing|Offline|Failed|R/W Protected|Rebuilding"
+            fi
+            # if not "termination" status, we record it and wait for next cycle.
+            if ! echo "$status" | grep -i -sq -E "$status_exp"; then
+                # aggregate status messages.
+                [ -n "$status_lines" ] && status_lines+=","
+                status_lines+="$msg"
+                rc=1
+            fi
+        done
+        # if all terminated, we fall back to check staus of array itself
+        if [ $rc -eq 0 ]; then
+            if [ $array_stage -eq 2 ]; then
+                log_info "Create array($array_sg=$array_sloc) successfully on top of disks: $member_slocs."
+                break
+            else # end if stage == 2
+                if [ $array_stage -eq 0 ]; then
+                    # since all disks were in termination states, let's move to stage 2
+                    # to wait for array to be created and start rebuild.
+                    #
+                    # It's possible that such array could not be created for some critical
+                    # error, such in-sufficient disks for required raid level.
+                    #
+                    # Though there was smart way to handle this, here I only use a simple way
+                    # by waiting for a fixed time(1 minute) before return error.
+                    log_details "array create stage[1], entered, after finished formatting member disks $slocs"
+                    lines=`{ cmd_show_config; cmd_show_alt_config; } | $sed -e 's/^/[0-->1] >> /g'`
+                    log_lines details "$lines"
+                    ((array_stage=1))
+                    ((stage_1_last_tick_count=i-stage_1_last_tick_count))
+                fi
+                # IPR might had problem if some disks failed to response.
+                # These disks will disapear in the system with sloc and sg were all gone.
+                # in these case, we drop these disks in the operation and abort the operation
+                # if all member disks were gone.
+                local slocs_new=""
+                local __tmp_item=""
+                for __tmp_item in $slocs
+                do
+                    if sloc_exist $__tmp_item; then
+                        [ -n "$slocs_new" ] && slocs_new+=" "
+                        slocs_new+="$__tmp_item"
+                    else
+                        log_error "$i: disk $__tmp_item disapear..."
+                    fi
+                done
+                if [ -n "$slocs_new" ]; then
+                    slocs="$slocs_new"
+                else
+                    global_rc=1
+                    log_error "All array member disks, $member_slocs, were gone, abort!"
+                    break
+                fi
+                # get array owner of each member sg
+                local array_slocs=`for __tmp_item in $slocs
+                do
+                    local sg_owner_sloc=$(get_ipr_array_by_member $__tmp_item)
+                    [ -n "$sg_owner_sloc" ] && echo "$sg_owner_sloc"
+                done \
+                | $sort -u -V `
+                # we only allow one unique array owns all member disks.
+                # or, we we need to break out?
+                local array_cnt=`echo "$array_slocs" | $awk 'END {print NF; exit 0;}'`
+                log_details "All \"$array_cnt\" array(es), \"$array_slocs\", contain target disks, \"$slocs\"." >&2
+                if [ $array_cnt -gt 0 ]; then
+
+                    array_sloc=`echo "$array_slocs" | $awk '{print $1}'`
+                    local array_sg=`convert_sloc_to_sg $array_sloc | $awk -F= '{print $2}'`
+                    if [ -n "$array_sg" ]; then
+                        log_details "array create stage[2], entered, after array show up with sg name $array_sg and sloc $array_sloc" >&2
+                        array_stage=2
+                        slocs="$array_sloc"
+                    else
+                        log_warn "$i: >> Why new array $array_sloc($array_slocs) does not have a valid sg name?" >&2
+                        log_warn "$i: >> Let wait for a while to see if it could show up or not until tick count equals to $stage_1_last_tick_count" >&2
+                    fi
+                elif [ $array_stage -eq 1 -a $i -lt $stage_1_last_tick_count ]; then
+                    log_error "Fail to wait array($array_slocs) showes up after its member disks, $member_slocs, were finished formatting." >&2
+                    # log for debug
+                    lines=`{
+                        echo "$i: Current IPR configuration";
+                        {
+                            cmd_show_config;
+                            cmd_show_alt_config;
+                        } | $sed -e 's/^/'$i': >> /g';
+                    }`
+                    log_lines details "$lines"
+
+                    global_rc=2
+                    break
+                else
+                    # see if we need to issue the raid-create again.
+                    # for some reason, previous raid-create might be terminated unexpectedly with disks
+                    # actually had been formated for raid and ready to be used. So, we try to issue
+                    # the raid-create command again to see if that would help. This usually happened when
+                    # some failures when formtting physical disks to ipr AF. In that situation, iprconfig
+                    # might abort without have array created after it had actually formatted those disks.
+                    local pid_create_still_alive=0
+                    local pid_create_cur=`getpstree $pid_create`
+                    local pid_cur
+                    for pid_cur in $pid_create_cur
+                    do
+                        if $kill -0 $pid_cur 2>/dev/null; then
+                            pid_create_still_alive=1
+                            break
+                        fi
+                    done
+                    if [ $pid_create_still_alive -eq 0 ]; then
+                        log_info "$i: disks $slocs had finished formatting, but array was not shown up, and iprconfig process($pid_create) had terminated."
+
+                        log_details "$i: Last several raid-create output:"
+                        lines=`$tail -n10 $ftmp | $sed -e 's/^/'$i': >> /g'`
+                        log_lines details "$lines"
+                        # launch the iprconfig worker process again
+                        member_sgs=`convert_sloc_to_sg $member_slocs | $awk -F= '{print $2}'`
+                        if [ -n "$member_sgs" ]; then
+                            $iprconfig -c raid-create $iprconfig_args $member_sgs >$ftmp 2>&1 &
+                            pid_create=$!
+
+                            log_info "$i: Restart \"iprconfig -c raid-create $iprconfig_args $member_sgs\" with new pid $pid_create." >&2
+
+                            # log for debug
+                            local line=`$ps -f -p $pid_create | $awk -v pid=$pid_create '$2==pid{print $0}' | $head -n1`
+                            if [ -n "$line" ]; then
+                                log_details "ps1.2: $line" >&2
+                            else
+                                log_error "ps1.2: new iprconfig($pid_create) was gone" >&2
+                            fi
+                        else
+                            log_warn "$i: Fail to restart iprconfig since $member_slocs could not be mapped to sg." >&2
+                            log_warn "$i: Let try again next loop until tick count equals to $stage_1_last_tick_count" >&2
+                        fi
+                    else
+                        log_warn "$i: Wait for array($array_slocs) showes up after disk format were finished on $slocs until tick count equals to $stage_1_last_tick_count" >&2
+                        log_details "$i: Last several raid-create output:" >&2
+                        lines=`$tail -n2 $ftmp | $sed -e 's/^/'$i': >> /g'`
+                        log_info debug "$lines" >&2
+                    fi
+                fi
+            fi # end else if stage == 2
+        fi # end if $rc eq 0
+
+        # log status for monitor
+        # log for debug
+        if [ -n "$status_lines" ]; then
+            log_status "Creating IPR array with last info at time \""`date "+%Y-%m-%d %H:%M:%S"`"\": $status_lines" >&2
+            lines=`echo "$status_lines" | $sed -e 's/,/\n/g' | $sed -e "s/^/$i: >> /g"`
+            log_lines details "$lines" >&2
+        fi
+
+        $sleep $monInt
+        [ $monCnt -gt 0 ] && ((i-=1))
+    done
+
+    # log for debug
+    line=`$ps -f -p $pid_create | $awk -v pid=$pid_create '$2==pid{print $0}' | $head -n1`
+    [ -n "$line" ] && log_details "ps2: $line"
+    if $kill -0 $pid_create 2>/dev/null; then
+        # If succ out, array status should in "rebuilding" state while iprconfig is still running
+        # until the rebuild had finished. But we do not need to wait for its termination since the
+        # block device is actually ready to use though performance might be downgrade.
+        # so, by default, we will just kill the "iprconfig" command(? not sure if that would affect
+        # the rebuild or not) and let raid controller do its job at backend.
+        # in order to wait for the whole rebuilding, set IPR_REBUILD_WAIT=true explicitly.
+        if [ "x$IPR_REBUILD_WAIT" = "xtrue" -a $i -gt 0 ]; then
+            log_info "Wait for ipr raid creation command to finish. pid=$pid_create" >&2
+            wait $pid_create
+        else
+            log_warn "Terminate ipr raid creation process enforcely. pid=$pid_create" >&2
+            $kill -TERM $pid_create 2>/dev/null
+            $sleep 1
+            $kill -0 $pid_create 2>/dev/null \
+            && $kill -KILL $pid_create 2>/dev/null
+        fi
+    fi
+    # log for debug
+    line=`$ps -f -p $pid_create | $awk -v pid=$pid_create '$2==pid{print $0}' | $head -n1`
+    [ -n "$line" ] && log_details "ps3: $line" >&2
+
+    log_details "Last several raid-create output:" >&2
+    lines=`$tail -n10 $ftmp | sed -e 's/^/[last]: >> /g'`
+    log_lines details "$lines" >&2
+    rm -f $ftmp
+    # Log "failed" status to PCM/xCAT with reason and instruction for future investigation.
+    if [ $global_rc -ne 0 ]; then
+        # set node "status" to "failed" to indicate that the installation was failed.
+        fstatus_app=/tmp/baz.py
+        if [ -x "$fstatus_app" ]; then
+            $fstatus_app "installstatus failed" >&2
+        fi
+
+        # set node state with brief reason why installation failed and future instructions.
+        # end user can get this message by running "nodestate" command to target nodes.
+        log_status "Fail to create IPR array with return code \"$global_rc\"! Refer to more details in syslog by checking \"rhPreDbg\" flag..." >&2
+    fi
+    return $global_rc
+}
+
+###########################################################################################
+#
+# main process to handle create raid array when using pci_id or pci_slot_name
+#
+##########################################################################################
+function handle_create_raid_array {
+    local striple_size=$1
+    local raidlevel=$2
+    local disknum=$3
+    local pcilocs=$4
+    local disknames=$5
+
+    if [ "x$pcilocs" != "xnull" ]; then
+
+        # Find out all member disks in target IOAs
+        # pciloc=sloc,sloc,sloc...
+        slocs_grps=`get_raid_create_devices_by_pciloc $pcilocs `
+        if [ -z "$slocs_grps" ]; then
+            log_error "Could not find any disk on target pciloc ${pcilocs}!" >&2
+            return 1
+        else
+            log_info "Disks in target IPR raid adapter: \"$slocs_grps\"" >&2
+        fi
+
+        # find the required member disks
+        slocs=""
+        validslocs=""
+        for item in $slocs_grps
+        do
+            pciloc=`echo "$item" | $awk -F= '{print $1}'`
+            slocs_grp=`echo "$item" | $awk -F= '{print $2;}'`
+            # order disks by its resource path
+            slocs_grp=`sort_devices_by_resource_path $slocs_grp`
+
+            slocs=`echo "$slocs_grp" | sed 's/,/ /g'`
+            if [ -n "$slocs" ]; then
+                break
+            else
+                log_warn "Could not find enough disk on target adapter $pciloc which only has following disks ${slocs_grp}!" >&2
+            fi
+        done
+        if [ -z "$slocs" ]; then
+            log_error "Could not find enough disk on target adapter ${pciloc}!" >&2
+            return 1
+        else
+            log_info "Find member disks $slocs on target IOA $pciloc" >&2
+            slocs=`echo "$slocs" | $sed -e 's/,/ /g'`
+            # if it is the first create_raid, do nothing, else:
+            # delete used disks belong to existed raid array
+            validslocs=`delete_disks_belong_array_from_slocs $slocs`
+            if [ -z "$validslocs" ]; then
+                log_error "Could not find enough unused disk on target adapter $pciloc."
+                return 1
+            else
+                slocs="$validslocs"
+                log_info "Find unused member disks $slocs on target IOA $pciloc" >&2
+            fi
+
+        fi
+        # handle disk_num
+        # if disknum is all, do nothing
+        # if disknum is a number, then it should be compared with actual_disknum
+        actual_disknum=`echo "$slocs"| $awk '{print NF}'`
+        slocs=`compare_disknum_actualnum $disknum $actual_disknum $slocs`
+
+    else
+        # find the slocs for disks in disknames
+        disklist=`echo $disknames|sed 's/#/ /g'`
+        slocs_grp=`convert_sg_to_sloc $disklist`
+        slocs=`echo "$slocs_grp"|awk -F= '{print $2}'`
+    fi
+    # check if target disks were already in a reusable array.
+    # if not, create one by calling block command "create_ipr_array".
+    # after than, check again to confirm if the target array was ready.
+    array_sloc=""
+    ((__i=0))
+    while [ $__i -lt 2 ];
+    do
+        # get disk --> array association
+        # format 0:0:0:0=sg0
+        declare array_slocs_lines=`for sloc in $slocs
+            do
+                line=$(get_ipr_array_by_member $sloc)
+                echo "$sloc=$line"
+            done`
+
+        # extract arrays from associations
+        # get sg0 sg1
+        declare array_slocs=`echo "$array_slocs_lines" \
+                             | $awk -F= '{print $2}' | $sort -u`
+
+        # count the number of arrays on target disks
+        # which might include "blank" array
+        declare n_arrays_lines=`echo "$array_slocs" | $awk 'END {print NR}'`
+        # count the number of arrays on target disks, again
+        # w/o "blank" array
+        declare n_arrays=`echo "$array_slocs" | grep -v "^ *$" | $awk 'END {print NR}'`
+        # get the sg names for owner arrays.
+        declare array_sgs=""
+        if [ $n_arrays -gt 0 ]; then
+             array_sgs=`convert_sloc_to_sg $array_slocs \
+                        | $awk -F= '{print $2}' `
+        fi
+        # (cond_1): if ALL target disks are in ONE array, reuse it.
+        if [ $n_arrays_lines -eq 1 -a $n_arrays -eq 1 ]; then
+            if [ $__i -eq 0 ]; then
+                log_info "Target disks, $slocs, were already in an array, $array_slocs." >&2
+            else
+                log_info "An array, $array_slocs, had been created to include target disks, $slocs" >&2
+            fi
+            lines=`{   cmd_show_details $array_sgs;
+                       cmd_show_status $array_sgs;
+                    } | $sed -e 's/^/>> /g'`
+            log_lines details "$lines"
+            array_sloc="$array_slocs"
+            break
+        fi
+        # (cond_2): delete arrays which owe target disks first before any future operations.
+        #           NOTE: we redo the loop after "delete" command was issued to ipr
+        if [ $n_arrays -gt 0 ]; then
+            log_info "Target disks, $slocs, were owned by multiple arrays, \"$array_slocs\"($array_sgs). Delete them first before creating a new array on top of them." >&2
+            delete_ipr_array enforce=1 tryCnt=360 tryInt=60 -- $array_sgs
+            continue
+        fi
+        # (cond_3): create an array to include all target disks
+        #           we assume all these disks are ready to be included into an array.
+        if [ $__i -eq 0 ]; then
+            declare sgs=`convert_sloc_to_sg $slocs \
+                         | $awk -F= '{print $2}' | $sed -e 's/ /,/g'`
+            # Times to wait for the raid creation finish
+            # The lager capacity of member disks, longer times to wait.
+            # :unit minutes
+            monTime=240
+            # Interval of minitoring raid creation, status check
+            # :unit seconds
+            monInt=30
+            monCnt=`$awk -v monInt=$monInt -v monTime=$monTime 'END{print 60*monTime/monInt}' </dev/null`
+            log_status "Creating RAID $raidlevel array on top of disks \""`echo "$slocs" | $sed -e 's/ /,/g'`"\"/\"$sgs\"..." >&2
+            # handle striple_size
+            if [ "x$striple_size" == "xdefault" ]; then
+                create_ipr_array $monCnt $monInt "$sgs" -r $raidlevel
+            elif [ -z $striple_size ]; then
+                create_ipr_array $monCnt $monInt "$sgs" -r $raidlevel
+            else
+                create_ipr_array $monCnt $monInt "$sgs" -r $raidlevel -s $striple_size
+            fi
+        fi
+    ((__i+=1))
+    done
+    lines=`cmd_show_config`
+    if [ $__i -lt 2 -a -n "$array_sloc" ]; then
+        array_sd=`echo "$lines" \
+                | grep '^sd[a-z]\+[ ]\+.*\/'$array_sloc'[ ]\+.*Disk Array' \
+                | $awk '{print $1}'`
+        if [ -n "$array_sd" ]; then
+            log_info "array_dev=$array_sd"
+            return 0
+        else
+            log_error "Fail to get scsi device name for new array $array_sloc" >&2
+            echo "$lines" | $sed -e 's/^/>> /g' | log_lines error >&2
+            return 1
+        fi
+    else
+        log_error "Fail to create array on top of disks $slocs" >&2
+        echo "$lines" | $sed -e 's/^/>> /g' | log_lines error >&2
+        return 1
+    fi
+
+}
+
+############################################################################
+#
+# handle disk_num
+# if disknum is all, do nothing
+# if disknum is a number, then it should be compared with actual_disknum
+# return <disknum> of slocs
+#
+##############################################################################
+function compare_disknum_actualnum {
+    local disknum=$1
+    local actualnum=$2
+    shift;
+    shift;
+    local slocs=$*
+    local actualslocs
+    if [ "x$disknum" != "xall" ]; then
+        if [ $actualnum -ge $disknum ]; then
+            actualslocs=`echo "$slocs"| \
+                         awk -v anum=$disknum '{ for ( i=1; i<=anum; i++ ){print $i}}'`
+            echo $actualslocs
+
+        else
+            log_error "Could not find enough disk on target adapter ${pciloc}!" >&2
+        fi
+    else
+        echo "$slocs"
+    fi
+
+}
+
+############################################################################
+#
+# Delete raid array
+#
+# input format : enforce=1 tryCnt=2 tryInt=60 -- arrays_name list
+#
+##########################################################################
+function delete_ipr_array {
+    # default to NO if enforcely wait for rebuilding array
+    local enforce=0
+    # default to wait 2 minutes for array rebuilding to finish
+    local tryCnt=2
+    # monitor rebuilding status every 60 seconds
+    local tryInt=60
+
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        local key=`echo "$1" | $cut -s -d= -f1`
+        if [ "$key" = "tryCnt" ] || \
+           [ "$key" = "tryInt" ] || \
+           [ "$key" = "enforce" ]; then
+            local val=`echo "$1" | $cut -s -d= -f2-`
+            eval "$key=\"$val\""
+        elif [ "$1" = "--" ]; then
+            shift
+            arrays="$*"
+            break
+        fi
+        shift
+    done
+    # should not with empty array list, if yes, error with rc=1
+    if [ -z "$arrays" ]; then
+        log_error "No array to delete, assume success!" >&2
+        return 0
+    fi
+    local array_slocs=`convert_sg_to_sloc $arrays | awk -F= '{print $2}'`
+    # if none of arrays were valid, error with rc=1
+    if [ -z "$array_slocs" ]; then
+        log_error "Fail to map arrayes, $arrays, to scsi location before deletion!"
+        return 1
+    fi
+    local ioas=`get_ipr_ioas`
+
+    local i=1
+    while [ $i -le $tryCnt ];
+    do
+        # verify if all target arrays are still exists
+        local tmp_array_slocs=`for _tmp_sloc in $array_slocs
+        do
+            is_ipr_array $_tmp_sloc && echo "$_tmp_sloc"
+        done `
+        if [ "$tmp_array_slocs" != "$array_slocs" ]; then
+            array_slocs="$tmp_array_slocs"
+            log_details "Renew available target arrays which will be deleting, \"$array_slocs\"" >&2
+        fi
+        if [ -z "$array_slocs" ]; then
+            log_details "Round $i: All target arrays were gone!" >&2
+            break
+        fi
+        # find out sg devs for all deletable arrays
+        local array_slocs_deletable=`for ioa in $ioas
+        do
+            # [root@dn01-dat ~]# iprconfig -c query-raid-delete sg5
+            # Name   PCI/SCSI Location         Description               Status
+            # ------ ------------------------- ------------------------- -----------------
+            # sdk    0003:70:00.0/0:2:0:0       RAID 0 Disk Array         Optimized
+            # sdl    0003:70:00.0/0:2:1:0       RAID 0 Disk Array         Optimized
+            cmd_query_raid_delete $ioa \
+            | grep "Disk Array" \
+            | cut_sloc_from_iprconfig_line
+        done`
+        if [ -z "$array_slocs_deletable" -a $enforce -eq 0 ]; then
+            log_details "Round $i: No deletable array, nothing to do and finish." >&2
+            break
+        fi
+        # log for debug
+        {
+            echo "$array_slocs_deletable" | $sed -e 's/^/Round '$i': Deletable array >> /g'
+            cmd_show_config | $sed -e 's/^/Round '$i': ipr info before delete >> /g'
+        } | log_lines details >&2
+        log_info "Round $i: delete_ipr_array, \"$array_slocs\"" >&2
+
+        # if requested array is a deletable array, mark it to be deleted in this round.
+        local array_slocs_verified=`for array_sloc in $array_slocs
+        do
+            if echo "$array_slocs_deletable" | grep -sq "^$array_sloc$"; then
+                echo $array_sloc
+            else
+                log_warn "Round $i: Array $array_sloc is un-deletable at present." >&2
+            fi
+        done`
+        if [ -n "$array_slocs_verified" ]; then
+            log_details "Round $i: Verified array slocs for deletion are \"$array_slocs_verified\"." >&2
+        else
+            log_info "Round $i: All remaining target arrayes are un-deletable now." >&2
+            if [ $enforce -eq 1 ]; then
+                log_info "Round $i: Wait for these un-deletable arrayes deletable with tryCnt=$tryCnt, tryInt=$tryInt." >&2
+                wait_for_ipr_device_status \
+                    tryCnt=$tryCnt tryInt=$tryInt cmd="grep -sq -E 'Optimized'" \
+                    -- \
+                    `echo "$array_slocs" | $sed -e "s/ /,/g"`
+                # if wait succ, let's try to delete again
+                if [ $? -eq 0 ]; then
+                    ((i+=1))
+                    continue
+                else
+                    break
+                fi
+            fi
+        fi
+
+        # issue delete command
+        local dcnt=0
+        for array_sloc in $array_slocs_verified
+        do
+            local array=`convert_sloc_to_sg $array_sloc | awk -F= '{print $2}'`
+            [ -z "$array" ] && continue
+
+            log_details "Round $i: Delete $dcnt array $array=$array_sloc" >&2
+            cmd__raid_delete $array
+            ((dcnt+=1))
+        done
+
+        # break out the loop forcely if nothing deleted.
+        [ $dcnt -eq 0 ] && break
+
+        # wait for next round
+        $sleep $tryInt
+        ((i+=1))
+    done
+    test $i -lt $tryCnt -a -z "$array_slocs"
+    return $?
+}
+
+#################################################
+#
+# sort devices by resource path,
+#
+# input: dev list, "sg0,..sgn"
+#
+##################################################
+function sort_devices_by_resource_path {
+    local sgs="$*"
+
+    local del=","
+    if [ $# -gt 1 ]; then
+        del=" "
+    else
+        sgs=`echo "$sgs" | $sed -e "s/,/ /g"`
+    fi
+
+    # [root@dn01-dat ~]# iprconfig -c show-alt-config
+    # Name   Resource Path/Address      Vendor   Product ID       Status
+    # ------ -------------------------- -------- ---------------- -----------------
+    # sg15   FE                         IBM      57D7001SISIOA    Operational
+    # sg10   00-0C                      IBM      HUC101212CSS600  Active
+    # sg11   00-0D                      IBM      HUC101212CSS600  Active
+    local lines=`$iprconfig -c show-alt-config | grep "^sg"`
+    local item
+    local lines_out=`for item in $sgs
+    do
+        local sg=$(convert_sloc_to_sg $item | $awk -F= '{print $2;}')
+        local rp=$(echo "$lines" | $awk -vsg=$sg '$1 == sg { print $2; }')
+        echo "$item $sg $rp"
+    done \
+    | $sort -t' ' -k3`
+    # log for debug
+    {
+        echo "sort devices \"$sgs\" by IPR resource path:"
+        echo "$lines_out" | $sed -e 's/^/sort by rp output: >> /g'
+    } | log_lines details >&2
+
+    # deliver ordered result
+    lines_out=`echo "$lines_out" | $awk '{print $1;}' `
+    if [ "$del" = "," ]; then
+        echo "$lines_out" | $sed -e "s/ /,/g"
+    fi
+    return 0
+}
+
+##########################################################################################################################
+#
+# wait to check ipr device status
+# usage: wait_for_ipr_device_status tryCnt=<minitutes> tryInt=<interval_seconds> cmd="check_cmd_line" -- "sg0,sg1,...,sgn"
+#
+#########################################################################################################################
+function wait_for_ipr_device_status {
+    local tryCnt=1
+    local tryInt=10
+    local cmd="true"
+
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        local key=`echo "$1" | $cut -s -d= -f1`
+        if [ "$key" = "tryCnt" ] || \
+           [ "$key" = "tryInt" ] || \
+           [ "$key" = "cmd" ]; then
+            local val=`echo "$1" | $cut -s -d= -f2-`
+            eval "$key=\"$val\""
+        elif [ "$1" = "--" ]; then
+            shift
+            sgs="$*"
+            break
+        fi
+        shift
+    done
+    sgs=`echo "$sgs" | $sed -e "s/,/ /g"`
+    local cnt=0
+    local lines
+    while [ $cnt -lt $tryCnt -o $tryCnt -le 0 ];
+    do
+        # sleep for specific interval for next cycle
+        [ $cnt -gt 0 ] && $sleep $tryInt
+
+        lines=`check_ipr_device_status $sgs`
+        local status_lines=""
+        local neg=0
+        local sg
+        for sg in $sgs
+        do
+            local _sg_status=`echo "$lines" | grep "^$sg=" | $cut -d= -f2- -s`
+            echo "$_sg_status" | eval $cmd >&2
+            if [ $? -ne 0 ]; then
+                neg=1
+                status_lines="${status_lines}${status_lines:+,}status[$sg]=\"$_sg_status\""
+            fi
+        done
+
+        # break out if NO negative matching
+        # or, try next loop
+        if [ $neg -eq 0 ]; then
+            break
+        else
+            log_status "Wait for device status at time \""`date "+%Y-%m-%d %H:%M:%S"`"\": $status_lines, expect: \"$cmd\"."
+        fi
+
+        ((cnt+=1))
+    done
+    test $cnt -lt $tryCnt -o $tryCnt -le 0
+    local rc=$?
+
+    # log for debug
+    if [ $rc -eq 0 ]; then
+        log_info "Wait for status on devices: \"$sgs\" succeed! (expected: \"$cmd\")"
+    else
+        log_warn "Wait for status on devices: \"$sgs\" failed! (expected: \"$cmd\")"
+        echo "$lines" | $sed -e 's/^/last device status: >> /g' | log_lines debug
+    fi
+
+    return $rc
+}
+
+##############################################################
+#
+# check status of ipr devices
+# input : slocs list, for example, 0:0:0:0 0:0:1:0
+# usage : check_ipr_device_status <sloc1> <sloc2> ... <slocn>
+#
+##############################################################
+function check_ipr_device_status {
+    local sgs="$*"
+    local lines=`convert_sloc_to_sg $sgs`
+
+    local item
+    for item in $sgs
+    do
+        declare sg=`echo "$lines" | $awk -F= -vkey=$item '$1 == key {print $2;}'`
+        declare _sg_status=`$iprconfig -c status $sg`
+        if [ "$_sg_status" = "Rebuilding" ]; then
+            declare _sg_status_alt=`cmd_alt_status $sg`
+            [ -n "$_sg_status_alt" ] && _sg_status="$_sg_status, $_sg_status_alt"
+        fi
+        echo "$item=$_sg_status"
+    done
+    return 0
+}
+
+
+######################################################
+#
+# log lines
+#
+# input : details or status or error
+#
+######################################################
+function log_lines {
+    local pcnt=$#
+    local __level=$1
+    shift
+    local cmd=log_${__level}
+
+    local hit=0
+    local OIFS=$IFS
+    local NIFS=$'\n'
+    IFS=$NIFS
+    local __msg
+    for __msg in $*
+    do
+        IFS=$OIFS
+        $cmd "$__msg"
+        hit=1
+        IFS=$NIFS
+    done
+    IFS=$OIFS
+
+    [ $hit -eq 0 -a $pcnt -le 1 ] && \
+    while read __msg;
+    do
+        $cmd "$__msg"
+    done
+}
+
+######################################################
+#
+# error information
+#
+######################################################
+function log_error {
+    local __msg="$*"
+    $log_print_cmd $log_print_arg "[E]: $__msg" >&2
+    return 0
+}
+
+######################################################
+#
+# warning information
+#
+# input : message
+#
+######################################################
+function log_warn {
+    local __msg="$*"
+    $log_print_cmd $log_print_arg "[W]: $__msg" >&2
+    return 0
+}
+
+######################################################
+#
+# log information
+#
+# input : message
+#
+######################################################
+function log_info {
+    local __msg="$*"
+    $log_print_cmd $log_print_arg "[I]: $__msg" >&2
+    return 0
+}
+
+######################################################
+#
+# more details information
+#
+######################################################
+function log_details {
+    local __msg="$*"
+    $log_print_cmd $log_print_arg "[I]: $__msg" >&2
+    return 0
+}
+
+####################################################
+#
+# print command status
+#
+###################################################
+__my_log_status=
+function log_status {
+    local __msg="$*"
+    $log_print_cmd $log_print_arg "[S]: $__msg" >&2
+
+    # call my_log_status hook to triger more processing for status messages.
+    if [ -n "$__my_log_status" ]; then
+        $__my_log_status "$__msg"
+    fi
+    return 0
+}
+
+####################################################
+#
+# print output and logfile
+#
+###################################################
+function log_print_default {
+    echo $*
+    echo $* >> $log_file
+}
+
+####################################################
+#
+# handle command
+#
+###################################################
+function set_log_print {
+    local cmd="$1"
+    if [ -z "$cmd" ]; then
+        return 1
+    fi
+    shift
+    local args="$*"
+
+    eval "log_print_cmd=\"$cmd\""
+    eval "log_print_arg=\"$args\""
+}
+
+# let log work
+[ -z "$log_print" ] && set_log_print "log_print_default"
+
+
+

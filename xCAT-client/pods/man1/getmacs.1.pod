@@ -18,7 +18,7 @@ B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D
 
 =head2 blade specific:
 
-B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>] [B<-i> I<ethN>|I<enN>]
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>] [B<-i> I<ethN> | I<enN>]
 
 =head1 DESCRIPTION
 
@@ -103,9 +103,9 @@ Specify the interface whose mac address will be collected and written into mac t
 
 =head1 RETURN VALUE
 
-  0 The command completed successfully.
+0 The command completed successfully.
 
-  1 An error has occurred.
+1 An error has occurred.
 
 
 =head1 EXAMPLES

@@ -13,6 +13,8 @@ if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 use IO::Handle;
+use MIME::Base64 qw(decode_base64);
+use IO::Socket::SSL;
 
 my $inet6support;
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
@@ -247,6 +249,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     SSL_cert_file => $certfile,
     SSL_ca_file => $cafile,
     SSL_verify_mode => SSL_VERIFY_PEER,
+    SSL_verifycn_scheme => "none",
     SSL_use_cert => 1,
     Timeout => 0,
     %sslargs,
@@ -1218,6 +1221,9 @@ sub handle_response {
         $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
             }
          }
+      }
+      if ($node->{base64_data})  {
+          $desc = $desc . ": " . decode_base64($node->{base64_data}->[0]);
       }
       if ($desc) {
 		if ($errflg == 1) {

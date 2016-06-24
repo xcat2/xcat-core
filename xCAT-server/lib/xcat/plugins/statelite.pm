@@ -522,15 +522,25 @@ sub process_request {
         my $oldmask;
         $callback->({data=>["$verb contents of $rootimg_dir"]});
         unlink("$destdir/rootimg-statelite.gz");
+
+        my $compress="gzip";
+        #use "pigz" as the compress tool instead of gzip if "pigz" exist
+        my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+        if($ispigz == 0){
+           $compress="pigz";
+        }
+
+        $callback->({info=>["compress method: $compress"]});  
+
         if ($exlistloc) {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile");
             if ( $includestr) {
                 system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
         } else {
-            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+            $excludestr = "find . |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
         }
         $oldmask = umask 0077;
         chdir("$rootimg_dir");
@@ -787,6 +797,18 @@ sub liteItem {
         # the /etc/mtab should be handled every time even the parent /etc/ has been handled.
         # if adding /etc/ to litefile, only tmpfs should be used. 
         if ($entry[1] eq "/etc/mtab") {
+            #
+            # In RHEL7 /etc/mtab is a symlink to /proc/self/mounts and not a regular file.
+            # If that's the case, then we skip forcing /etc/mtab into the .statelite path
+            # and symlink'ing /etc/mtab to that file.  Otherwise, since the OS isn't updating
+            # /etc/mtab commands like "df" will not be happy.
+            #
+            my $ret=`readlink $rootimg_dir/etc/mtab`;
+            chomp($ret);
+            if ($? == 0 and ($ret eq '/proc/self/mounts') ) {
+                $verbose && $callback->({info=>["skipping /etc/mtab (symlink to /proc/self/mounts)"]});
+                next;
+            }
             $isChild = 0;
         }
 

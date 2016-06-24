@@ -405,10 +405,10 @@ sub stopMonitoring {
       It stops the given plug-in for node status monitoring. 
       If no plug-in is specified, use the one in the monitoring table.
     Arguments:
-       name -- name of the monitoring plu-in module to be stoped for node status monitoring.
+       name -- name of the monitoring plu-in module to be stopped for node status monitoring.
         If none is specified, use the one in the monitoring table that has the
         "nodestatmon" column set to be "1", or "Yes".
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means local host only. 
                 2 means both local host and nodes, 

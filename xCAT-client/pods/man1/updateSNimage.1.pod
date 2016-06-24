@@ -4,11 +4,11 @@ B<updateSNimage> - Adds the needed Service Node configuration files to the insta
 
 =head1 SYNOPSIS
 
-I<updateSNimage [-h | --help ]>
+B<updateSNimage [-h | --help ]>
 
-I<updateSNimage [-v | --version]>
+B<updateSNimage [-v | --version]>
 
-I<updateSNimage {-n} [-p]>
+B<updateSNimage> [B<-n> I<node>] [B<-p> I<path>]
 
 =head1 DESCRIPTION
 
@@ -21,9 +21,7 @@ B<-h |--help>            Display usage message.
 
 B<-v |--version>         Display xCAT version.
 
-
-B<-n | --node>           A remote host name or ip address that contains the install image to be updated.
-
+B<-n |--node>            A remote host name or ip address that contains the install image to be updated.
 
 B<-p |--path>            Path to the install image.
 
@@ -38,11 +36,11 @@ B<-p |--path>            Path to the install image.
 
 1. To update the image on the local host.
 
-I<updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg>
+ updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg
 
 
 2. To update the image on a remote host.
 
-I<updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg>
+ updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg
 
 

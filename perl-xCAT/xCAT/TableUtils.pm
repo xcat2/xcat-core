@@ -1240,13 +1240,13 @@ sub get_site_attribute
             {
                 $values = $ref->{value};
             }
+            $sitetab->close;
         }
         else
         {
             xCAT::MsgUtils->message("E", " Could not read the site table\n");
 
         }
-        $sitetab->close;
     }
     return $values;
 }
@@ -1575,7 +1575,7 @@ sub checkCredFiles
     $dir = "$installdir/postscripts/hostkeys";
     if (-d $dir)
     {
-        my $file = "$dir/ssh_host_key.pub";
+        my $file = "$dir/ssh_host_rsa_key.pub";
         if (-e $file)
         {
             my $file2  = "$dir/*.pub";                     # all public keys
@@ -1606,7 +1606,7 @@ sub checkCredFiles
     $dir = "/etc/xcat/hostkeys";
     if (-d $dir)
     {
-        my $file = "$dir/ssh_host_key.pub";
+        my $file = "$dir/ssh_host_rsa_key.pub";
         if (-e $file)
         {
             my $file2  = "$dir/*.pub";                     # all public keys

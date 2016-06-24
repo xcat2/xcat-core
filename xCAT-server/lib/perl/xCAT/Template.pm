@@ -74,26 +74,43 @@ sub subvars {
     $inc.=$_;
   }
   close($inh);
+ 
+  #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
+  #the "xcatmaster" attribute of the node
+  #the site.master
+  #the ip address of the mn facing the compute node
   my $master;
-  #my $sitetab = xCAT::Table->new('site');
+
+  #the "xcatmaster" attribute of the node
   my $noderestab = xCAT::Table->new('noderes');
-  #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  my @masters = xCAT::TableUtils->get_site_attribute("master");
-  my $tmp = $masters[0];
-  if ( defined($tmp) ) {
-      $master = $tmp;
-  }
-  my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
-  if ($ipfn) {
-      $master = $ipfn;
-  }
   my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
     $master = $et->{'xcatmaster'};
   }
+  
+  unless ($master){
+      #the site.master
+      my @masters = xCAT::TableUtils->get_site_attribute("master");
+      my $tmp = $masters[0];
+      if ( defined($tmp) ) {
+          $master = $tmp;
+      }
+  }
+ 
+  unless ($master){
+      #the ip address of the mn facing the compute node
+      my $ipfn; 
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
+      if ($ipfn) {
+          $master = $ipfn;
+      }
+  }
+
   unless ($master) {
       die "Unable to identify master for $node";
   }
+
   $ENV{XCATMASTER}=$master;
 
   my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
@@ -108,11 +125,19 @@ sub subvars {
   }
   $ENV{PERSKCMDLINE}=getPersistentKcmdline($node);
 
+  my $installroot;
+  $installroot = xCAT::TableUtils->get_site_attribute("installdir");
+  if (!defined($installroot)) {
+      $installroot = "/install";
+  }
+  $ENV{INSTALLDIR} = $installroot;
+
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   my $res;
   if ($pkglistfile) {
+
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
             
@@ -125,51 +150,24 @@ sub subvars {
   }
 
   if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
-    # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
-    # must be included via simple string replacement instead of using includefile()
+      # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
+      # must be included via simple string replacement instead of using includefile()
 
-    # the first line of $pkglistfile is the space-delimited package list
-    # the additional lines are considered preseed directives and included as is
+      # the first line of $pkglistfile is the space-delimited package list
+      # the additional lines are considered preseed directives and included as is
 
-    if ($pkglistfile) {
-      # handle empty and non-empty $pkglistfile's
+      if ($pkglistfile) {
+          my $allpkglist=xCAT::Postage->get_pkglist_tex($pkglistfile);
+          if($allpkglist =~ /#INCLUDEBAD:(.*)#/){
+               return "$1";
+          }
+          $allpkglist =~ s/,/ /g;
+          $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$allpkglist/g;
 
-      my @tmp_array=();
-
-      if (open PKGLISTFILE, "<$pkglistfile") {
-        my $pkglist = '';
-        # append preseed directive lines
-        while (<PKGLISTFILE>) {
-          chomp $_;
-          s/\s+$//;   #remove trailing white spaces
-          next if /^\s*$/; #-- skip empty lines
-          next
-          if (   /^\s*#/
-              && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/
-              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-          push(@tmp_array,$_);
-        }
-        if ( @tmp_array > 0) {
-            $pkglist=join(' ',@tmp_array);
-            #handle the #INLCUDE# tag recursively
-            my $idir = dirname($pkglistfile);
-            my $doneincludes=0;
-            while (not $doneincludes) {
-                $doneincludes=1;
-                if ($pkglist =~ /#INCLUDE:[^#^\n]+#/) {
-                    $doneincludes=0;
-                    $pkglist =~ s/#INCLUDE:([^#^\n]+)#/debian_includefile($1,$idir)/eg;
-                }
-            }
-        }
-        $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$pkglist/g;
-        close PKGLISTFILE;
+      } else {
+          # handle no $pkglistfile
+          $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#//g;
       }
-    } else {
-      # handle no $pkglistfile
-      $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#//g;
-    }
   }
 
   #if user specify the partion file, replace the default partition strategy
@@ -342,8 +340,12 @@ sub subvars {
       $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
       $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
    
-      if($::XCATSITEVALS{xcatdebugmode} eq "1"){
-           $inc =~ s/#UNCOMMENONXCATDEBUGMODE#/ /g;
+      if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
+           $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#/ /g;
+      }
+
+      if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+           $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
       }
  
       my $nrtab = xCAT::Table->new("noderes");
@@ -424,7 +426,7 @@ sub subvars {
      
  
       if ($diskfile && $doneincludes) {
-          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/boot_disk
+          # The content of the specified file is the disknames to partition or a script which can write disk names into /tmp/xcat.install_disk
           # split the disk file out from the $inc
           ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
           ($diskcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONDISKFILEEND/, $diskcontent);
@@ -446,15 +448,22 @@ sub subvars {
                 $diskcontent .= "chmod 755 /tmp/diskscript\n";
                 $diskcontent .= "/tmp/diskscript\n";
              }else{
-                # Put the code to decode the preseed  disk file
-                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/boot_disk\n";
-                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/boot_disk\n";
+                # Put the code to decode the preseed disk file
+                $diskcontent .= "base64decode</tmp/diskscript.enc > /tmp/xcat.install_disk\n";
 
              }
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
              $inc =~ s/#XCA_PARTMAN_DISK_SCRIPT#/$diskcontent/;
            }
       }
+      elsif ("ubuntu" eq $platform) {
+          my $default_script = "    wget http://`cat /tmp/xcatserver`".$ENV{INSTALLDIR}."/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
+      }
+      else {
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/    /;
+      }
+
  
       if ($configfile && $doneincludes) {
           #the content of the specified file is the additional pressed config with 'd-i' or 
@@ -604,7 +613,8 @@ sub windows_net_cfg {
                             }
                             if ($gw) { $gateway = $gw; }
                             if ($gateway eq '<xcatmaster>') {
-                                $gateway = xCAT::NetworkUtils->my_ip_facing($ip);
+                                my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ip);
+                                unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                             }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="'.$num++.'">'.$ip."/$netmask".'</IpAddress>';
                         }
@@ -939,7 +949,9 @@ sub kickstartnetwork {
                 unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
             
                 if($gateway eq '<xcatmaster>'){
-                   $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+		   
+                   my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                   unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                 }
 
                 $line .="static  --device=$suffix --ip=$ipaddr --netmask=$netmask --gateway=$gateway --hostname=$hostname ";
@@ -951,7 +963,8 @@ sub kickstartnetwork {
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1051,7 +1064,8 @@ sub yast2network {
                 unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
 
                 if($gateway eq '<xcatmaster>'){
-                   $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                   my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                   unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                 }
 
                 my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
@@ -1063,7 +1077,8 @@ sub yast2network {
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      unless ($ipd[0]) {$ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1560,7 +1575,9 @@ sub tabdb
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
          if ($field eq "xcatmaster") {
-           my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
+           my $ipfn;
+           my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+           unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
            if ($ipfn) {
              return $ipfn;
            }
@@ -1574,11 +1591,18 @@ sub tabdb
          if ($rep) {
             return tabdb($rep->[0], $rep->[1], $rep->[2]);
          } else {
-            $tmplerr="Unable to find requested filed <$field> from table <$table>, with key <$key>"
+            $tmplerr="Unable to find requested field <$field> from table <$table>, with key <$key>"
          }
       }
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
+    } else {
+        # check for site.xcatdebugmode
+        if (($table =~ /site/) and ($key =~ /xcatdebugmode/)) {
+            if ((($ent->{$field}) ne "0") and (($ent->{$field}) ne "1") and (($ent->{$field}) ne "2")) {
+                $tmplerr="Unable to recognise field <$field> from table <$table>, with key <$key>. Please enter '0' '1' or '2'"
+            }
+        }
     }
     return $ent->{$field};
 
@@ -1680,35 +1704,6 @@ sub getNM_GW()
     }
 
     return (undef, undef);
-}
-
-sub debian_includefile
-{
-   my $file = shift;
-   my $idir = shift;
-   my @text = ();
-   unless ($file =~ /^\//) {
-       $file = $idir."/".$file;
-   }
-
-   open(INCLUDE,$file) ||
-       return "#INCLUDEBAD:cannot open $file#";
-
-   while(<INCLUDE>) {
-       chomp($_);
-       s/\s+$//;  #remove trailing spaces
-       next if /^\s*$/; #-- skip empty lines
-       next
-          if (   /^\s*#/
-              && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/
-              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-       push(@text, $_);
-   }
-
-   close(INCLUDE);
-
-   return join(' ', @text);
 }
 
 

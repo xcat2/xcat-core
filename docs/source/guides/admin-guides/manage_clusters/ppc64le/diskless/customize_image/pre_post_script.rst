@@ -1,0 +1,1 @@
+../../diskful/customize_image/pre_post_script.rst

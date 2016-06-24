@@ -4,15 +4,15 @@ B<tabch> - Add, delete or update rows in the database tables.
 
 =head1 SYNOPSIS
 
-I<tabch [-h| --help]>
+B<tabch> [B<-h> | B<--help>]
 
-I<tabch [-v| --version]>
+B<tabch> [B<-v> | B<--version>]
 
-I<tabch [keycolname=keyvalue] [tablename.colname=newvalue] >
+B<tabch> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
 
-I<tabch [keycolname=keyvalue] [tablename.colname+=newvalue] >
+B<tabch> [I<keycolname=keyvalue>] [I<tablename.colname+=newvalue>]
 
-I<tabch -d [keycolname=keyvalue] [tablename.colname=newvalue] >
+B<tabch -d> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
 
 =head1 DESCRIPTION
 
@@ -22,9 +22,9 @@ The tabch command adds, deletes or updates the attribute value in the specified 
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
-B<-v>          Command Version.
+B<-v|--version>          Command Version.
 
 B<-d>          Delete option.
 
@@ -32,38 +32,53 @@ B<-d>          Delete option.
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0. 
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-1. To add a node=node1 to the nodelist table with groups=all:
+=over 2
 
-I<tabch  node=node1 nodelist.groups=all >
+=item 1. 
+To add a node=node1 to the nodelist table with groups=all:
 
-2. To add a keyword (tftpdir) and value (/tftpboot) to the site table:
+ tabch  node=node1 nodelist.groups=all
 
-I<tabch  key=tftpdir site.value=/tftpboot >
+=item 2. 
+To add a keyword (tftpdir) and value (/tftpboot) to the site table:
 
-
-3. To add node1 to the  nodetype table with os=rhel5:
-
-I<tabch  node=node1 nodetype.os=rhel5>
+ tabch  key=tftpdir site.value=/tftpboot
 
 
-4. To change node1 in nodetype table setting os=sles:
+=item 3. 
+To add node1 to the  nodetype table with os=rhel5:
 
-I<tabch  node=node1 nodetype.os=sles>
+ tabch  node=node1 nodetype.os=rhel5
 
-5. To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
-I<tabch node=node1 postscripts.postbootscripts+=otherpkgs>
+=item 4. 
+To change node1 in nodetype table setting os=sles:
 
-6. To delete node1 from nodetype table:
+ tabch  node=node1 nodetype.os=sles
 
-I<tabch -d node=node1 nodetype>
+=item 5. 
+To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
+ tabch node=node1 postscripts.postbootscripts+=otherpkgs
+
+=item 6. 
+To delete node1 from nodetype table:
+
+ tabch -d node=node1 nodetype
+
+=back
 
 =head1 FILES
 

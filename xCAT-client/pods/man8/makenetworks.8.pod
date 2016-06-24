@@ -4,11 +4,11 @@ B<makenetworks> - Gather cluster network information and add it to the xCAT data
 
 =head1 SYNOPSIS
 
-I<makenetworks [-h|--help ]>
+B<makenetworks> [B<-h> | B<--help> ]
 
-I<makenetworks [-v| --version]>
+B<makenetworks> [B<-v> | B<--version>]
 
-I<makenetworks [-V|--verbose] [-d|--display]>
+B<makenetworks> [B<-V> | B<--verbose>] [B<-d>|B<--display>]
 
 =head1 DESCRIPTION
 
@@ -53,17 +53,27 @@ B<-V |--verbose>       Verbose mode.
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0. 
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-1.  Gather cluster network information and create xCAT network definitions.
+=over 2
+
+=item 1.
+Gather cluster network information and create xCAT network definitions.
 
 	makenetworks
 
-2.  Display cluster network information but do not write the network definitions to the xCAT database.
+=item 2.
+Display cluster network information but do not write the network definitions to the xCAT database.
 
 	makenetworks -d
 
@@ -74,6 +84,8 @@ The output would be one or more stanzas of information similar to the following.
     gateway=9.114.37.254
     mask=255.255.255.0
     net=9.114.37.0
+
+=back
 
 =head1 FILES
 

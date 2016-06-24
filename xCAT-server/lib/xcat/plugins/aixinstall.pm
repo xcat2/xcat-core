@@ -7738,7 +7738,7 @@ sub update_dd_boot
                         }
                         print DDBOOT $l;
                     }
-                    if ($l =~ /rmdev -l \${BASECUST_REMOVAL}/ && !$dontupdt5)
+                    if ($l =~ /rmdev -l \$\{BASECUST_REMOVAL\}/ && !$dontupdt5)
                     {
                         print DDBOOT "            #Remove ODM object definition\n";
                         print DDBOOT "            odmdelete -o CuDv -q name=\${BASECUST_REMOVAL}\n";

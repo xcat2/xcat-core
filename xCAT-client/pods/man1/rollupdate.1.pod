@@ -53,11 +53,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -81,10 +79,15 @@ enter:
 =head1 FILES
 
 /opt/xcat/bin/rollupdate
+
 /opt/xcat/share/xcat/rollupdate/rollupdate.input.sample
+
 /opt/xcat/share/xcat/rollupdate/ll.tmpl
+
 /opt/xcat/share/xcat/rollupdate/rollupdate_all.input.sample
+
 /opt/xcat/share/xcat/rollupdate/llall.tmpl
+
 /var/log/xcat/rollupdate.log
 
 

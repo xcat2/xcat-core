@@ -1,5 +1,6 @@
 start:Ubuntu_full_installation_flat_x86_vm
 os:Linux
+
 cmd:copycds $$ISO
 check:rc==0
 cmd:makedns -n
@@ -17,7 +18,8 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
-cmd:sleep 3000
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status

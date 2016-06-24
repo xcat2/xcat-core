@@ -154,6 +154,19 @@ sub process_request {
         }
     }
 
+    # if there is no bmc ip in ipmi table, save bmc ip into ipmi table
+    if (defined($request->{bmc}) && $request->{bmc}->[0]) {
+        my $ipmitab = xCAT::Table->new("ipmi", -create=>1);
+        if ($ipmitab) {
+            my $ipmient = $ipmitab->getNodeAttribs($node,['bmc']);
+            unless ($ipmient->{'bmc'}) {
+                $ipmitab->setNodeAttribs($node, {bmc=>$request->{bmc}->[0]});
+            }
+        } else {
+                $callback->({error=> ["Open ipmi table failed."], errorcode=>["1"]});
+        }
+    }
+
     # save inventory info into the hwinv table
     if (defined($request->{cpucount}) or defined($request->{cputype}) or defined($request->{memory}) or defined($request->{disksize})) {
 	my $basicdata;
@@ -358,9 +371,19 @@ sub process_request {
         $callback->({error=> ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode=>["1"]});
         return;
     }
-    if ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
+    if (defined($request->{bmcinband})) {
+        syslog("local4|info", "The attribute bmcinband is specified, just remove the temp BMC node if there is");
+        if (defined($request->{pbmc_node}) and defined($request->{pbmc_node}->[0]))  {
+            my $bmc_node = $request->{pbmc_node}->[0];
+            syslog("local4|info", "Find BMC $bmc_node, so remove it");
+            $doreq->({ command => ['rmdef'], arg => [$bmc_node]});
+        }
+    } else {
+        # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
+        syslog("local4|info", "No bmcinband specified, need to configure BMC out-of-band");
         xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
     }
+
     
     my $restartstring = "restart";
     if (scalar @forcenics > 0) {

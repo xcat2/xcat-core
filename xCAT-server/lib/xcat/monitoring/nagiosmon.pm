@@ -110,7 +110,7 @@ sub start {
       This function gets called when monstop command is issued by the user. 
       It stops the monitoring on all nodes, stops the Nagios daemons.
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 

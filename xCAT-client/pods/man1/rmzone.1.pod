@@ -4,7 +4,7 @@ B<rmzone> - Removes a zone from the cluster.
 
 =head1 B<SYNOPSIS>
 
-B<rmzone> <zonename>  [B<-g>] [B<-f>] 
+B<rmzone> I<zonename>  [B<-g>] [B<-f>] 
 
 B<rmzone> [B<-h> | B<-v>]
 
@@ -52,24 +52,22 @@ Verbose mode.
 
 =over 3
 
-=item *
-
+=item 1.
 To remove zone1 from the zone table and the zonename attribute on all it's assigned nodes , enter:
 
-B<rmzone> I<zone1>
+ rmzone zone1
 
-
-=item *
+=item 2.
 
 To remove zone2 from the zone table, the zone2 zonename attribute, and the zone2 group assigned to all nodes that were in zone2, enter:
 
-B<rmzone> I<zone2> -g 
+ rmzone zone2 -g 
 
-=item *
+=item 3.
 
 To remove zone3 from the zone table, all the node zone attributes and  override the fact it is the defaultzone,  enter:
 
-B<rmzone> I<zone3> -g -f
+ rmzone zone3 -g -f
 
 =back
 

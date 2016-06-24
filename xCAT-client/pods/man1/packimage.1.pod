@@ -4,11 +4,11 @@ B<packimage> - Packs the stateless image from the chroot file system.
 
 =head1 SYNOPSIS
 
-I<packimage [-h| --help]>
+B<packimage [-h| --help]>
 
-I<packimage  [-v| --version]>
+B<packimage  [-v| --version]>
 
-I<packimage imagename>
+B<packimage> I<imagename>
 
 =head1 DESCRIPTION
 
@@ -19,7 +19,7 @@ The nodetype table "profile" attribute for the node should reflect the profile o
 
 This command will get all the necessary os image definition files from the I<osimage> and I<linuximage> tables.
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is stored in the I<osimage> table and I<linuximage> table.
 
@@ -49,7 +49,7 @@ B<-m>          Method (default cpio)
 
 1. To pack the osimage rhels7.1-x86_64-netboot-compute:
 
-I<packimage rhels7.1-x86_64-netboot-compute>
+ packimage rhels7.1-x86_64-netboot-compute
 
 
 =head1 FILES

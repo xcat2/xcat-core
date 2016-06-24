@@ -1,0 +1,69 @@
+start:del_ospkg
+descreption:del ospkg
+cmd:if cat /etc/*-release | grep SUSE >/dev/null; then ver=`echo "$$os"  |awk -F "." '{print $1}'`; cp /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.bak;  `cat /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist |sed 's/ntp/-ntp/g' >> /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.1`;`yes | cp -f   /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.1  /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist` ;updatenode $$CN -S;elif  cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;cp /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.bak;`cat /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist |sed 's/ntp/-ntp/g'  >>/opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.1`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.1 /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist` ;updatenode $$CN -S;fi
+check:rc==0
+cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.1
+cmd:xdsh $$CN rpm -qa |grep ntp-4.2
+check:rc!=0
+cmd:if cat /etc/*-release | grep SUSE >/dev/null; then ver=`echo "$$os"  |awk -F "." '{print $1}'`; `yes| cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.bak /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist`;elif  cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.bak  /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist`;fi
+#cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.1
+cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.bak
+end
+start:add_ospkg
+descreption:add ospkg
+cmd:if cat /etc/*-release | grep SUSE >/dev/null; then ver=`echo "$$os"  |awk -F "." '{print $1}'`; cp /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.bak;  `cat /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist |sed 's/ntp/-ntp/g' >> /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.1`;`yes | cp -f   /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.1  /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist` ;updatenode $$CN -S;elif  cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;cp /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.bak;`cat /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist |sed 's/ntp/-ntp/g'  >>/opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.1`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.1 /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist` ;updatenode $$CN -S;fi
+cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.1
+check:rc==0
+cmd:xdsh $$CN rpm -qa |grep ntp-4.2
+check:rc!=0
+cmd:if cat /etc/*-release | grep SUSE >/dev/null; then ver=`echo "$$os"  |awk -F "." '{print $1}'`; `yes| cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist.bak /opt/xcat/share/xcat/install/sles/compute.$ver.pkglist`;elif  cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist.bak  /opt/xcat/share/xcat/install/rh/compute.$ver.pkglist`;fi
+#cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.1
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:xdsh $$CN rpm -qa |grep ntp-4.2
+check:output=~ntp-4.2
+cmd:rm -rf /opt/xcat/share/xcat/install/rh/compute.*.pkglist.bak
+end
+start:add_other_pkg
+descreption:add other pkg
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`mkdir -p /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core`;cp -r /xcat-core/build/* /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core ;`cp -r /xcat-dep /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat ` ;`cd /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat && createrepo .`;`echo "xcat/xcat-core/xCAT" >> /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/$ver/__GETNODEATTR($$CN,arch)__/conserver-xcat" >>  /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist `;`echo "xcat/xcat-dep/$ver/__GETNODEATTR($$CN,arch)__/perl-Net-Telnet" >>  /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/sles/__GETNODEATTR($$CN,arch)__/perl-Expect" >>  /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist` ;chdef -t osimage -o $ver-__GETNODEATTR($$CN,arch)__-install-compute otherpkglist=/opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist;elif  echo "$$os" |grep "rhels7" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`mkdir -p /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core`;cp -r /xcat-core/build/* /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core ;`cp -r /xcat-dep /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat ` ;`cd /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat && createrepo .`;`echo "xcat/xcat-core/xCAT" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/rh7/ppc64/conserver-xcat" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist `;`echo "xcat/xcat-dep/rh7/ppc64/perl-Net-Telnet" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/rh7/ppc64/perl-Expect" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;chdef -t osimage -o $ver-__GETNODEATTR($$CN,arch)__-install-compute otherpkglist=opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist;elif  echo "$$os" |grep "rhels6" >/dev/null;then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`mkdir -p /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core`;`cp -r /xcat-core/build/* /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat/xcat-core `;`cp -r /xcat-dep /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat ` ;`cd /install/post/otherpkgs/$$ver/__GETNODEATTR($$CN,arch)__/xcat && createrepo .`;`echo "xcat/xcat-core/xCAT" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/rh6/__GETNODEATTR($$CN,arch)__/conserver-xcat" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist `;`echo "xcat/xcat-dep/rh6/__GETNODEATTR($$CN,arch)__/perl-Net-Telnet" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;`echo "xcat/xcat-dep/rh6/__GETNODEATTR($$CN,arch)__/perl-Expect" >>  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;chdef -t osimage -o $ver-__GETNODEATTR($$CN,arch)__-install-compute otherpkglist=/opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist;fi
+check:rc==0
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:xdsh $$CN lsdef
+check:rc==0
+end
+start:del_other_pkg
+descreption:del other pkg
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`cp  /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.bak`;elif echo "$$os" |grep "rhels"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`cp  /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.bak`;fi
+
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`echo "xcat/xcat-core/xCAT-test" >> /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;elif echo "$$os" |grep "rhels";then  ver=`echo "$$os"  |awk -F "." '{print $1}'`;`echo "xcat/xcat-core/xCAT-test" >> /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;fi
+cmd:cd /install/post/otherpkgs/rhels7/__GETNODEATTR($$CN,arch)__/xcat && createrepo .
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:xdsh $$CN yum repolist all
+cmd:xdsh $$CN rpm -qa |grep xCAT-test
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.bak /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;elif echo "$$os" |grep "rhels"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.bak /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;fi
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;echo "-xCAT-test" >>/opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1;`yes | cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1 /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;elif echo "$$os" |grep "rhels"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;echo "-xCAT-test" >>/opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.1;`yes | cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.1 /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;fi
+check:rc==0
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:xdsh $$CN rpm -qa |grep xCAT-test
+check:rc!=0
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.bak /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;rm -rf /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.bak;rm -rf /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1;elif echo "$$os" |grep "rhels"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`yes |cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.bak /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;rm -rf /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.bak;rm -rf /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1;fi
+end
+start:add_other_pkg_afterinstall
+descreption:add other pkg after install
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;`echo "xcat/xcat-core/xCAT-test" >> /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;elif echo "$$os" |grep "rhels";then  ver=`echo "$$os"  |awk -F "." '{print $1}'`;`echo "xcat/xcat-core/xCAT-test" >> /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;fi
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:if echo "$$os" |grep "sles11"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;cat /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist |sed 's/xCAT-test/--xCAT-test/g' >>/opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1;`yes | cp -f /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist.1 /opt/xcat/share/xcat/install/sles/compute.$ver.otherpkg.pkglist`;elif echo "$$os" |grep "rhels"; then ver=`echo "$$os"  |awk -F "." '{print $1}'`;cat /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist |sed 's/xCAT-test/--xCAT-test/g' >>/opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.1;`yes | cp -f /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist.1 /opt/xcat/share/xcat/install/rh/compute.$ver.otherpkg.pkglist`;fi
+check:rc==0
+cmd:updatenode $$CN -S
+check:rc==0
+cmd:xdsh $$CN rpm -qa |grep xCAT-test
+check:rc==0
+cmd:xdsh $$CN lsdef
+check:rc==0
+end
+

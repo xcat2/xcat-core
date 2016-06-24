@@ -5,9 +5,9 @@ B<rmflexnode> - Delete a flexible node.
 
 =head1 SYNOPSIS
 
-B<rmflexnode> [-h | --help]
+B<rmflexnode> [B<-h> | B<--help>]
 
-B<rmflexnode> [-v | --version]
+B<rmflexnode> [B<-v> | B<--version>]
 
 B<rmflexnode> I<noderange>
 
@@ -44,7 +44,6 @@ Display the version information.
 =over 3
 
 =item 1
-
 Delete a flexible node base on the xCAT node blade1.
 
 The blade1 should belong to a complex, the I<id> attribute should be set correctly and all the slots should be in B<power off> state.

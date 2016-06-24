@@ -1284,7 +1284,7 @@ my $xmlinstalled;    # Global var to speicfy whether the xml modules have been l
 # This script also support to generate the rest api doc automatically.
 # Following part of code will not be run when this script is called by http server
 my $dbgdata;
-sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g [wiki] (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
+sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g rst > ../../docs/source/advanced/restapi/restapi_resource/restapi_reference.rst (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
@@ -1535,7 +1535,7 @@ sub defout {
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                my ($attr, $val) = $l =~ /^\s*(\S+.*?)=(.*)$/;
+                my ($attr, $val) = $l =~ /^\s*(\S+?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 $json->{$nodename}->{$attr} = $val;
             }
@@ -1763,7 +1763,8 @@ sub actionout {
                     push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } elsif ($param->{'resourcename'} =~ /(vitals|inventory)/) {
                     # handle output of rvital and rinv for ppc node
-                    push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
+                    #push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
+                    push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{Message}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } else {
                     $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 }
@@ -2356,10 +2357,15 @@ sub bmccheckhdl {
     
     if ($params->{'resourcename'} eq "checkbmcauth") {
         if (isGET()) {
+
             push @args, "-i";
             push @args, $bmc_ip;
-            push @args, "-u";
-            push @args, $bmc_user;
+            if ( defined($bmc_user) && $bmc_user ne "none")
+            {
+                push @args, "-u";
+                push @args, $bmc_user;
+
+            }
             push @args, "-p";
             push @args, $bmc_pw;
             push @args, "-c";
@@ -2370,11 +2376,14 @@ sub bmccheckhdl {
         if (isGET()) {
             push @args, "-i";
             push @args, $bmc_ip;
-            push @args, "-u";
-            push @args, $bmc_user;
+            if ( defined($bmc_user) && $bmc_user ne "none" )
+            {
+                push @args, "-u";
+                push @args, $bmc_user;
+            }
             push @args, "-p";
             push @args, $bmc_pw;
-            push @args, "-s";
+            push @args, "--ipsource";
         }
     }
 
@@ -2425,9 +2434,12 @@ sub bmclisthdl {
 
     if ($params->{'resourcename'} eq "bmcdiscover") {
         if (isGET()) {
-            push @args, "-m";
-            push @args, $m_value;
-            push @args, "-r";
+            if ( defined($m_value) )
+            {
+               push @args, "-s";
+               push @args, $m_value;
+            }
+            push @args, "--range";
             push @args, $ip_range;
         }
 
@@ -2979,6 +2991,8 @@ sub sendRequest {
             SSL_key_file  => $keyfile,
             SSL_cert_file => $certfile,
             SSL_ca_file   => $cafile,
+            SSL_verify_mode => SSL_VERIFY_PEER,
+            SSL_verifycn_scheme => "none",
             SSL_use_cert  => 1,
             Timeout       => 15,);
     }

@@ -522,91 +522,12 @@ if ($::INITIALINSTALL || $::FORCE)
           }
      }
 
-     # Configure static ip addresses on the network interfaces
-     # This does not make too much sense, comment it out,
-     # should be done manually or through DHCP
-     #if (-f "$::INSTALLDIR/postscripts/hardeths")
-     #{
-     #    my $cmd = "$::INSTALLDIR/postscripts/hardeths";
-     #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-     #    if ($::RUNCMD_RC != 0)
-     #    {
-     #        xCAT::MsgUtils->message('E', "Failed to configure static ip addresses");
-     #    }
-     #}
-
-    # Setup ntp server
-    if (-f "/etc/ntp.conf")
-    {
-        my $cmd = "echo 'driftfile /var/lib/ntp/drift' > /etc/ntp.conf; echo 'disable auth' >> /etc/ntp.conf; echo 'restrict 127.0.0.1' >> /etc/ntp.conf; echo 'server  127.127.1.0' >> /etc/ntp.conf; echo 'fudge   127.127.1.0 stratum 10' >> /etc/ntp.conf";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "Failed to update /etc/ntp.conf");
-        }
-
-        #my $ntpserv;
-        #if (-f "/etc/redhat-release")
-        #{
-        #    $ntpserv = "ntpd";
-        #}
-        #else
-        #{
-        #    $ntpserv = "ntp";
-        #}
-        #$cmd = "service $ntpserv restart";
-        #$outref = xCAT::Utils->runcmd("$cmd", 0);
-        #if ($::RUNCMD_RC != 0)
-        my $ret=xCAT::Utils->restartservice("ntpserver");
-        if($ret !=0)
-        {
-            xCAT::MsgUtils->message('E', "Failed to start ntp service");
-        }
-        #if (-f "/sbin/chkconfig")
-        #{
-        #    $cmd = "chkconfig $ntpserv on";
-        #    $outref = xCAT::Utils->runcmd("$cmd", 0);
-        $ret=xCAT::Utils->enableservice("ntpserver");
-        #    if ($::RUNCMD_RC != 0)
-        if($ret!=0)  
-            {
-                xCAT::MsgUtils->message('E', "Failed to enable ntp service on every boot");
-            }
-        #}
-    }
-
-    # Disable firewall
-    #my $fwserv;
-    #if(-f "/etc/SuSE-release")
-    #{
-    #   $fwserv = "SuSEfirewall2_setup";
-    #}
-    #elsif(-f "/etc/redhat-release")
-    #{
-    #    $fwserv = "iptables";
-    #    if( -f "/usr/sbin/firewalld" )
-    #    {
-    #       $fwserv = "firewalld";
-    #    }
-    #}
-    #else
-    #{
-    #    #Ubuntu: FIXME
-    #}
-
-    #if($fwserv)
-    #{
-    #    my $cmd = "service $fwserv stop";
-    #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    #    if ($::RUNCMD_RC != 0)
     my $ret=xCAT::Utils->stopservice("firewall");
     if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Failed to stop firewall");
         }
-    #    $cmd = "chkconfig $fwserv off";
-    #    $outref = xCAT::Utils->runcmd("$cmd", 0);
-    #    if ($::RUNCMD_RC != 0)
+
     $ret=xCAT::Utils->disableservice("firewall");
     if($ret!=0)
         {
@@ -1028,19 +949,10 @@ sub genSSHNodeHostKey
     # generate new hostkeys
     #
     xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
-    xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...");
-    my $cmd =
-          "/usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-            xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.");
-    }
-
     xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
-    $cmd =
+    my $cmd =
           "/usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''";
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
           xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
@@ -1139,7 +1051,7 @@ sub initDB
     xCAT::Utils->runcmd(
        "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'", -1);
     foreach my $ip (@tmpnames) {
-      if (!grep(/$ip/, @MNnodeipaddr))
+      if (!grep(/^$ip$/, @MNnodeipaddr))
       {     # if not the MN
          push @names,$ip;  # add it as a forwarder
       }
@@ -1251,6 +1163,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
 
         if ($::osname eq 'AIX')
@@ -1391,6 +1304,8 @@ sub initDB
               "$::XCATROOT/sbin/chtab priority=4.7 policy.commands=litefile policy.rule=allow;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.8 policy.commands=litetree policy.rule=allow;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=4.9 policy.commands=getadapter policy.rule=allow;";
         }
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
@@ -1505,16 +1420,17 @@ sub initDB
             }
         }
 
-        # add default value to site.xcatsslversion
-        $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
-        $outref = xCAT::Utils->runcmd("$cmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',"Could not add default value for site.xcatsslversion.");
+        # Set default value for site.xcatsslversion when update xcat
+        $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null |grep xcatsslversion";
+        xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC != 0) {
+            # if site.xcatsslversion was not set, then set the default value TLSv1
+            $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+            xCAT::Utils->runcmd("$cmds", 0);
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->message('E',"Could not add default value for site.xcatsslversion.");
+            }
         }
-
-
-
    } 
    # remove xcatserver,xcatclient
    # from the postscripts. They are now called by servicenode
@@ -1935,21 +1851,20 @@ sub mknb
         $::arch = "ppc64";
     }
     if ((($::arch eq "x86_64") ||($::arch =~ /ppc/)) && (-f '/etc/xcat/genesis-scripts-updated') ) {
-      unlink '/etc/xcat/genesis-scripts-updated';
-      # Do not print messages or run command twice
-      if (-f '/etc/xcat/genesis-base-updated') {
-          unlink '/etc/xcat/genesis-base-updated';
-      }
-      $cmd = "$::XCATROOT/sbin/mknb $::arch";
-      xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-$::arch ...");
+        unlink '/etc/xcat/genesis-scripts-updated';
+        # Do not print messages or run command twice
+        if (-f '/etc/xcat/genesis-base-updated') {
+            unlink '/etc/xcat/genesis-base-updated';
+        }
+        $cmd = "$::XCATROOT/sbin/mknb $::arch";
+        xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-$::arch ...");
     }
-
     if ((($::arch eq "x86_64") ||($::arch =~ /ppc/)) && (-f '/etc/xcat/genesis-base-updated')) {
         unlink '/etc/xcat/genesis-base-updated';
         $cmd = "$::XCATROOT/sbin/mknb $::arch";
         xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base-$::arch ...");
     }
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    # my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($cmd) {
         system($cmd);
         if ($? != 0) {
@@ -1957,7 +1872,7 @@ sub mknb
             xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
         }
         else {
-          xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
+            xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
         }
     }
 }

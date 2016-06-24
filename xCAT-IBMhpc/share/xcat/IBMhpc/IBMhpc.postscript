@@ -3,7 +3,7 @@
 # AIX:
 #    set network tunables
 #
-# Linux: for statefull (full-disk install) nodes
+# Linux: for stateful (full-disk install) nodes
 #     Make sure this runs before the node reboots after initial install
 #     for services to be activated
 #

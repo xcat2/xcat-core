@@ -3,12 +3,10 @@
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------------------------------
 #=head1  setupdockerhost
-#=head2  Used on Linux only. Configure docker host
+#=head2  Used on Linux only. Configure SSL connection and docker network object on docker host
 #
 #  You can run the following commands on MN:
-#       updatenode noderange setupdockerhost (To use the default bridge mydocker0 for docker services)
-#       updatenode noderange "setupdockerhost -b=dockerbr0" (To specify the bridge which will be used by docker services)
-#
+#       updatenode noderange -P "setupdockerhost netname=net/mask@gateway:nicname"
 #
 #=cut
 #-------------------------------------------------------------------------------
@@ -19,69 +17,85 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
 fi
 
 if [[ "$OSVER" != ubuntu* ]]; then 
-    echo "Sorry, only ubuntu is supported at present"
-    exit 1
-fi    
-
-# When running setupdockerhost, we suppose either the default bridge mydocker0 or the specified bridge had been configured, check it here before doing anything else
-
-dockerbr="mydocker0"
-for arg in "$@"
-do 
-    if [ "${arg:0:2}" = "-b" ];then
-        dockerbr=${arg#-b=}
-    fi
-done
-
-# To check whether the brctl have been installed
-if ! which brctl > /dev/null; then
-    echo "No bridge-utils installed, can not check bridge info"
+    echo "OS = $OSVER: Setup of Docker host is currently supported only on Ubuntu."
     exit 1
 fi
 
-old_ifs=$IFS
-IFS=$','
-dockerbrs=($dockerbr)
-IFS=$old_ifs
-for br in ${dockerbrs[@]}
-do 
-    if ! brctl showstp $br > /dev/null; then
-        echo "$br: doesn't configured properly"
+if [[ "$ARCH" == "x86_64" ]]; then
+    # Check if docker-engine is installed
+    dpkg -l docker-engine
+    if [ $? -ne 0 ]; then
+        echo "Error: can not detect docker-engine installation."
         exit 1
-    fi 
-done
-
-#After check the bridge, we need to replace or add bridge for docker options
-# 3 scenarios
-# 1. No DOCKER_OPTS ====> add DOCKER_OPTS="-b=$dockerbr" line
-# 2. Have DOCKER_OPTS but no "-b" parameter ====> append "-b=$dockerbr" to DOCKER_OPTS
-# 3. Have "-b" parameter in DOCKER_OPTS ====> replace "-b=xxx" with "-b=$dockerbr"
-docker_conf_file="/etc/default/docker"
-if [ ! -f "$docker_conf_file" ]; then
-    echo "Error: file $docker_conf_file not exist"
-    exit 1
-fi
-if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
-    echo "DOCKER_OPTS=\"-b=$dockerbr\"" >> $docker_conf_file
-else
-    sed -i "s/-b=[^ |^\"]*//g" $docker_conf_file
-    sed -i "s@\ \{2,\}@@g" $docker_conf_file
-    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -b=$dockerbr\"@" $docker_conf_file
-    sed -i "s/\"+$/\"/" $docker_conf_file
-    sed -i "s/\"\{2,\}/\"/" $docker_conf_file
+    fi
 fi
 
-#Restart docker service
-service docker restart
-if ! docker ps >/dev/null 2>&1; then 
-    echo "Docker service starting failed"
+if [[ "$ARCH" == "ppc64el" ]]; then
+    # Check if docker.io is installed
+    dpkg -l docker.io
+    if [ $? -ne 0 ]; then
+        echo "Error: can not detect docker.io installation."
+        exit 1
+    fi
+fi
+
+# Docker is installed, check that it is running
+docker info
+if [ $? -ne 0 ]; then
+    echo "Docker is not running, Trying to restart."
+    service docker start
+fi
+
+DOCKER_VERSION=`docker info 2>/dev/null | grep "Server Version:" | awk -F: '{print $2}'`
+if [ -z "$DOCKER_VERSION" ];then
+    echo "Error: failed to get docker server version"
     exit 1
 fi
+MAJOR_VERSION=`echo $DOCKER_VERSION | awk -F. '{print $1}'`
+MINOR_VERSION=`echo $DOCKER_VERSION | awk -F. '{print $2}'`
+if [ -z "$MAJOR_VERSION" -o -z "$MINOR_VERSION" ]; then
+    echo "The docker version $DOCKER_VERSION can not be recorgnized"
+    exit 1
+elif [  $MAJOR_VERSION -le 1 -a $MINOR_VERSION -lt 10 ]; then
+    echo "Only docker version 1.10.x and above is supported"
+    exit 1
+fi
+
+netname=""
+net=""
+mask=""
+gateway=""
+nicname=""
+
+if [ $# -ne 1 ]; then
+    echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
+    exit 1
+else 
+    NETINFO="$1"
+    netname=`echo $NETINFO | awk -F= '{print $1}'`
+    netinfo=`echo $NETINFO | awk -F= '{print $2}'`
+    net=${netinfo%%/*}
+    mask=`echo $netinfo | awk -F'@' '{print $1}' | awk -F/ '{print $2}'`
+    gateway=`echo $netinfo | awk -F'@' '{print $2}' | awk -F: '{print $1}'`
+    nicname=`echo $netinfo | awk -F: '{print $2}'`
+    if [ ! -z "$nicname" ]; then
+        if [ ! -x /sbin/brctl ]; then
+            echo "Error: /sbin/brctl command not found. Not able to configure $nicname"
+            exit 1;
+        fi
+    fi
+
+    if [ -z "$netname" -o -z "$net" -o -z "$mask" -o -z "$gateway" ]; then
+        echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
+        exit 1
+    fi
+fi
+
 
 #Setup TLS 
 master=$MASTER
 if ! ping $master -c 1 > /dev/null 2>&1 ; then  
-    echo "Host $master is not reachable"
+    echo "Error: Host $master is not reachable"
     exit 1
 fi 
 
@@ -105,24 +119,24 @@ if [ $? -ne 0 ]; then
     cat /tmp/xcat_dockerhost_cert |  
     cat /tmp/xcat_dockerhost_cert | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >$HOST_CERT_PEM
 else 
-    echo "Can not get dockerhost certificate files"
+    echo "Error: can not get dockerhost certificate files"
     exit 1
 fi
 
 cp /xcatpost/ca/ca-cert.pem $HOST_CA_PEM
 
 if [ ! -e $HOST_CA_PEM -o ! -e $HOST_CERT_PEM ];then
-    echo "Can not get dockerhost certificate files"
+    echo "Error: can not get dockerhost certificate files"
     exit 1
 fi
 
 docker_conf_file="/etc/default/docker"
 if [ ! -f "$docker_conf_file" ]; then
-    echo "Error: file $docker_conf_file not exist"
+    echo "Error: file $docker_conf_file does not exist"
     exit 1
 fi
 if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
-    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"" >> $docker_conf_file
+    echo "DOCKER_OPTS=\"-H unix:///var/run/docker.sock -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"" >> $docker_conf_file
 else
     if grep "^DOCKER_OPTS.*tlsverify" $docker_conf_file > /dev/null 2>&1; then
         sed -i "s@-H [^ |^\"]*@@g" $docker_conf_file
@@ -133,14 +147,45 @@ else
         sed -i "s@--tls@@g" $docker_conf_file
         sed -i "s@\ \{2,\}@@g" $docker_conf_file
     fi 
-    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
+    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H unix:///var/run/docker.sock -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
     sed -i 's/\"\{2,\}/\"/' $docker_conf_file
 fi
 
 #Restart docker service
-service docker restart
-if ! docker ps >/dev/null 2>&1; then 
-    echo "Docker service starting failed"
+service docker stop
+sleep 2
+systemctl daemon-reload
+service docker start
+# It is found that sometimes the docker ps will failed if run immediately after restart docker daemon
+sleep 2
+docker ps
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to start Docker service"
     exit 1
 fi
 
+echo "Will create network based on: $net/$mask@$gateway===$nicname:$netname====="
+
+ret=`docker network create --gateway=$gateway --subnet=$net/$mask -o "com.docker.network.bridge.host_binding_ipv4"="$gateway" -o "com.docker.network.bridge.name"="$netname" $netname 2>&1`
+if [ $? -ne 0 ]; then
+    echo "Error: Creation of network object \"$netname\" failed: $ret"
+    exit 1
+fi
+if [ ! -z "$nicname" ]; then
+    brctl addif $netname $nicname
+    default_info=`ip route | grep default | grep "dev $nicname" | grep via`
+    if [ ! -z "$default_info" ]; then
+        default_gw=`echo $default_info | awk '{print $3}'`
+        ip route replace default dev $netname via $default_gw
+    fi
+    nic_ip_info=`ip addr show dev $nicname scope global | grep inet | sed -e 's/inet.//'|awk '{print $1}'`
+    if [ ! -z "$nic_ip_info" ]; then
+        ip addr del $nic_ip_info dev $nicname
+    fi
+    bridge_ip_info=`ip addr show dev $netname scope global | grep inet | sed -e 's/inet.//'|awk '{print $1}'`
+    if [ -z "$bridge_ip_info" ]; then
+        ip addr add $gateway/$mask dev $netname
+    fi
+fi
+
+exit 0

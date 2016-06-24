@@ -207,5 +207,6 @@ cmd:updatenode $$CN  "confignics -s"
 check:rc==0
 check:output!~invalid
 cmd:if cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-eth0 |grep IPADDR=$$NODEIP";elif cat /etc/*release |grep SUSE >/dev/null; then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-eth0 |grep IPADDR=$$NODEIP";fi
+cmd:sleep 5
 check:rc==0
 end

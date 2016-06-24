@@ -3,11 +3,13 @@
 #egan@us.ibm.com
 #modified by jbjohnso@us.ibm.com
 #(C)IBM Corp
+# VIM: set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab
+#
 
 package xCAT_plugin::ipmi;
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -31,10 +33,15 @@ use xCAT::Usage;
 use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
+use Time::HiRes qw/time/;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
 my $global_sessdata;
+my %child_pids;
+
+my $IPMIXCAT = "/opt/xcat/bin/ipmitool-xcat";
+my $NON_BLOCK = 1;
 require xCAT::data::ibmhwtypes;
 
 eval {
@@ -51,7 +58,7 @@ our @EXPORT = qw(
 sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt', #done
-    renergy => 'nodehm:power,mgt',
+    renergy => 'nodehm:mgt', #support renergy for OperPOWER servers
     getipmicons => 'ipmi', #done
     rspconfig => 'nodehm:mgt', #done
     rspreset => 'nodehm:mgt', #done
@@ -68,8 +75,6 @@ sub handled_commands {
   }
 }
 
-    
-#use Data::Dumper;
 use POSIX "WNOHANG";
 use IO::Handle;
 use IO::Socket;
@@ -78,7 +83,6 @@ use Class::Struct;
 use Digest::MD5 qw(md5);
 use POSIX qw(WNOHANG mkfifo strftime);
 use Fcntl qw(:flock);
-
 
 #local to module
 my $callback;
@@ -104,6 +108,9 @@ my %sdr_caches; #store sdr cachecs in memory indexed such that identical nodes d
 
 #my $status_noop="XXXno-opXXX";
 
+# Firmware data hash
+
+my %hpm_data_hash = ();
 my %idpxthermprofiles = (
     '0z' => [0x37,0x41,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e],
     '1a' => [0x30,0x3c,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e], 
@@ -346,8 +353,8 @@ struct FRU => {
 
 sub decode_fru_locator { #Handle fru locator records
     my @locator = @_;
-	my $sdr = SDR->new();
-	$sdr->rec_type(0x11);
+    my $sdr = SDR->new();
+    $sdr->rec_type(0x11);
     $sdr->sensor_owner_id("FRU");
     $sdr->sensor_owner_lun("FRU");
     $sdr->sensor_number($locator[7]);
@@ -389,61 +396,61 @@ sub translate_sensor {
    my $per;
    $unitdesc = $units{$sdr->sensor_units_2};
    if ($sdr->rec_type == 1) {
-    $value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
+        $value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
    } else {
-    $value = $reading;
+        $value = $reading;
    }
    if($sdr->rec_type !=1 or $sdr->linearization == 0) {
-      $reading = $value;
-      if($value == int($value)) {
-         $lformat = "%-30s%8d%-20s";
-      } else {
-         $lformat = "%-30s%8.3f%-20s";
-      }
-   } elsif($sdr->linearization == 7) {
-      if($value > 0) {
-         $reading = 1/$value;
-      } else {
-         $reading = 0;
-      }
-      $lformat = "%-30s%8d %-20s";
-   } else {
-      $reading = "RAW($sdr->linearization) $reading";
-   }
-   if($sdr->sensor_units_1 & 1) {
-      $per = "% ";
-   } else {
-      $per = " ";
-   }
-   my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
-   if ($numformat) {
-     if ($numformat eq 0b11)  {
-        #Not sure what to do.. leave it alone for now
-     } else {
-        if ($reading & 0b10000000) {
-          if ($numformat eq 0b01) {
-             $reading = 0-((~($reading&0b01111111))&0b1111111);
-          } elsif ($numformat eq 0b10) {
-             $reading = 0-(((~($reading&0b01111111))&0b1111111)+1);
-          }
+        $reading = $value;
+        if($value == int($value)) {
+            $lformat = "%-30s%8d%-20s";
+        } else {
+        $lformat = "%-30s%8.3f%-20s";
         }
-     }
-   }
-   if($unitdesc eq "Watts") {
-      my $f = ($reading * 3.413);
-      $unitdesc = "Watts (" . int($f + .5) . " BTUs/hr)";
-      #$f = ($reading * 0.00134);
-      #$unitdesc .= " $f horsepower)";
-   }
-   if($unitdesc eq "C") {
-      my $f = ($reading * 9/5) + 32;
-      $unitdesc = "C (" . int($f + .5) . " F)";
-   }
-   if($unitdesc eq "F") {
-      my $c = ($reading - 32) * 5/9;
-      $unitdesc = "F (" . int($c + .5) . " C)";
-   }
-   return "$reading $unitdesc";
+    } elsif($sdr->linearization == 7) {
+        if($value > 0) {
+            $reading = 1/$value;
+        } else {
+            $reading = 0;
+        }
+        $lformat = "%-30s%8d %-20s";
+    } else {
+        $reading = "RAW($sdr->linearization) $reading";
+    }
+    if($sdr->sensor_units_1 & 1) {
+        $per = "% ";
+    } else {
+        $per = " ";
+    }
+    my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
+    if ($numformat) {
+        if ($numformat eq 0b11)  {
+            #Not sure what to do.. leave it alone for now
+        } else {
+            if ($reading & 0b10000000) {
+                if ($numformat eq 0b01) {
+                    $reading = 0-((~($reading&0b01111111))&0b1111111);
+                } elsif ($numformat eq 0b10) {
+                    $reading = 0-(((~($reading&0b01111111))&0b1111111)+1);
+                }
+            }
+        }
+    }
+    if($unitdesc eq "Watts") {
+        my $f = ($reading * 3.413);
+        $unitdesc = "Watts (" . int($f + .5) . " BTUs/hr)";
+        #$f = ($reading * 0.00134);
+        #$unitdesc .= " $f horsepower)";
+    }
+    if($unitdesc eq "C") {
+        my $f = ($reading * 9/5) + 32;
+        $unitdesc = "C (" . int($f + .5) . " F)";
+    }
+    if($unitdesc eq "F") {
+        my $c = ($reading - 32) * 5/9;
+        $unitdesc = "F (" . int($c + .5) . " C)";
+    }
+    return "$reading $unitdesc";
 }
 
 sub ipmicmd {
@@ -491,46 +498,47 @@ sub on_bmc_connect {
 	    return;
         }
     }
-	if($command eq "ping") {
-		xCAT::SvrUtils::sendmsg("ping",$callback,$sessdata->{node},%allerrornodes);
-		return;
-	}
-	if ($command eq "rpower") {
-        	unless (defined $sessdata->{device_id}) { #need get device id data initted for S3 support
-	            $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
-		    return;
-	        }
-		return power($sessdata);
-	} elsif ($command eq "ripmi") {
-		return ripmi($sessdata);
-	} elsif ($command eq "rspreset") {
+    if($command eq "ping") {
+        xCAT::SvrUtils::sendmsg("ping",$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    if ($command eq "rpower") {
+        unless (defined $sessdata->{device_id}) { #need get device id data initted for S3 support
+            $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+            return;
+        }
+        return power($sessdata);
+    } elsif ($command eq "ripmi") {
+        return ripmi($sessdata);
+    } elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
     } elsif($command eq "rbeacon") {
-		return beacon($sessdata);
-	} elsif($command eq "rsetboot") {
-		return setboot($sessdata);
-	} elsif($command eq "rspconfig") {
-            shift @{$sessdata->{extraargs}};
-
-            # set username or/and password for specified userid #
-            if ($sessdata->{subcommand} =~ /userid|username|password/) {
-                setpassword($sessdata);
+        return beacon($sessdata);
+    } elsif($command eq "rsetboot") {
+        return setboot($sessdata);
+    } elsif($command eq "rspconfig") {
+        shift @{$sessdata->{extraargs}};
+        # set username or/and password for specified userid #
+        if ($sessdata->{subcommand} =~ /userid|username|password/) {
+            setpassword($sessdata);
+        } else {
+            if ($sessdata->{subcommand} =~ /=/) {
+                setnetinfo($sessdata);
             } else {
-       if ($sessdata->{subcommand} =~ /=/) {
-           setnetinfo($sessdata);
-       } else {
-           getnetinfo($sessdata);
-       }
+                getnetinfo($sessdata);
             }
-
-
-	} elsif($command eq "rvitals") {
+        }
+    } elsif($command eq "rvitals") {
         vitals($sessdata);
-	} elsif($command eq "rinv") {
+    } elsif($command eq "rinv") {
         inv($sessdata);
     } elsif($command eq "reventlog") {
         eventlog($sessdata);
     } elsif($command eq "renergy") {
+        unless (defined $sessdata->{device_id}) {
+            $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+	    return;
+        }
         renergy($sessdata);
     }
     return;
@@ -540,98 +548,101 @@ sub on_bmc_connect {
     my $text;
     my $error;
     my $node;
-	my $subcommand = "";
-	if($command eq "rvitals") {
-		($rc,@output) = vitals($subcommand);
-	}
-	elsif($command eq "renergy") {
-		($rc,@output) = renergy($subcommand);
-	}
-	elsif($command eq "rspreset") {
-		($rc,@output) = resetbmc();
-		$noclose=1;
-	}
-	elsif($command eq "reventlog") {
-		if($subcommand eq "decodealert") {
-			($rc,$text) = decodealert(@_);
-		}
-		else {
-			($rc,@output) = eventlog($subcommand);
-		}
-	}
-	elsif($command eq "rinv") {
-		($rc,@output) = inv($subcommand);
-	}
-	elsif($command eq "fru") {
-		($rc,@output) = fru($subcommand);
-	}
-	elsif($command eq "rgetnetinfo") {
-      my @subcommands = ($subcommand);
-		if($subcommand eq "all") {
-			@subcommands = (
-				"ip",
-				"netmask",
-				"gateway",
-				"backupgateway",
-				"snmpdest1",
-				"snmpdest2",
-				"snmpdest3",
-				"snmpdest4",
-				"community",
-			);
+    my $subcommand = "";
+    if($command eq "rvitals") {
+        ($rc,@output) = vitals($subcommand);
+    }
+    elsif($command eq "renergy") {
+        ($rc,@output) = renergy($subcommand);
+    }
+    elsif($command eq "rspreset") {
+        ($rc,@output) = resetbmc();
+        $noclose=1;
+    }
+    elsif($command eq "reventlog") {
+        if($subcommand eq "decodealert") {
+            ($rc,$text) = decodealert(@_);
+        }
+        else {
+        ($rc,@output) = eventlog($subcommand);
+        }
+    }
+    elsif($command eq "rinv") {
+        ($rc,@output) = inv($subcommand);
+    }
+    elsif($command eq "fru") {
+        ($rc,@output) = fru($subcommand);
+    }
+    elsif($command eq "rgetnetinfo") {
+        my @subcommands = ($subcommand);
 
-			my @coutput;
+        if($subcommand eq "all") {
+            @subcommands = (
+                            "ip",
+                            "netmask",
+                            "gateway",
+                            "backupgateway",
+                            "snmpdest1",
+                            "snmpdest2",
+                            "snmpdest3",
+                            "snmpdest4",
+                            "community",
+                           );
 
-			foreach(@subcommands) {
-				$subcommand = $_;
-				($rc,@output) = getnetinfo($subcommand);
-				push(@coutput,@output);
-			}
+            my @coutput;
 
-			@output = @coutput;
-		}
-		else {
-			($rc,@output) = getnetinfo($subcommand);
-		}
-	}
-	elsif($command eq "generic") {
-		($rc,@output) = generic($subcommand);
-	}
-	elsif($command eq "rfrurewrite") {
-		($rc,@output) = writefru($subcommand,shift);
-	}
-	elsif($command eq "fru") {
-		($rc,@output) = fru($subcommand);
-	}
-	elsif($command eq "rsetboot") {
-        	($rc,@output) = setboot($subcommand);
-	}
+            foreach(@subcommands) {
+                $subcommand = $_;
+                ($rc,@output) = getnetinfo($subcommand);
+                push(@coutput,@output);
+            }
 
-	else {
-		$rc = 1;
-		$text = "unsupported command $command $subcommand";
-	}
-	if($debug) {
-		print "$node: command completed\n";
-	}
+            @output = @coutput;
+        }
+        else {
+            ($rc,@output) = getnetinfo($subcommand);
+        }
+    }
+    elsif($command eq "generic") {
+        ($rc,@output) = generic($subcommand);
+    }
+    elsif($command eq "rfrurewrite") {
+        ($rc,@output) = writefru($subcommand,shift);
+    }
+    elsif($command eq "fru") {
+        ($rc,@output) = fru($subcommand);
+    }
+    elsif($command eq "rsetboot") {
+        ($rc,@output) = setboot($subcommand);
+    }
+    else {
+        $rc = 1;
+        $text = "unsupported command $command $subcommand";
+    }
 
-	if($text) {
-		push(@output,$text);
-	}
+    if($debug) {
+        print "$node: command completed\n";
+    }
 
-	return($rc,@output);
+    if($text) {
+        push(@output,$text);
+    }
+    return($rc,@output);
 }
+
 
 sub resetbmc {
     my $sessdata = shift;
     $sessdata->{ipmisession}->subcmd(netfn=>6,command=>2,data=>[],callback=>\&resetedbmc,callback_args=>$sessdata);
 }
+
+
 sub resetedbmc {
     my $rsp = shift;
     my $sessdata = shift;
-	if ($rsp->{error}) {
+    if ($rsp->{error}) {
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
-	} else {
+    } else {
         if ($rsp->{code}) {
             if ($codes{$rsp->{code}}) {
                 xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
@@ -642,8 +653,9 @@ sub resetedbmc {
         } 
         xCAT::SvrUtils::sendmsg("BMC reset",$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession} = undef; #throw away now unusable session
-	}
+    }
 }
+
 
 sub setpassword {
     my $sessdata = shift;
@@ -653,7 +665,7 @@ sub setpassword {
     my ($subcommand, $argument) = split(/=/, $subcmd);
     if ($subcommand eq "userid") {
         if ($argument !~ /^\d+$/) {
-   	    return(1,"The value for $subcommand is invalid");
+            return(1,"The value for $subcommand is invalid");
         }
         $sessdata->{onuserid} = $argument;
         $sessdata->{subcommand} = shift @{$sessdata->{extraargs}}; 
@@ -669,7 +681,7 @@ sub setpassword {
                         $sessdata->{onuserid} = $1;
                         last;
                     } else {
-   	                return(1,"The value for $subcommand is invalid");
+                        return(1,"The value for $subcommand is invalid");
                     }
                 }
             } else {
@@ -703,15 +715,15 @@ sub setpassword {
                         $sessdata->{onuserid} = $1;
                         last;
                     } else {
-   	                return(1,"The value for $subcommand is invalid");
+                        return(1,"The value for $subcommand is invalid");
                     }
                 }
             } else {
                 # If have username specified, if has been dealt will be store in newusername, else need to check the args array. And the default userid must be 2.
                 if (exists($sessdata->{newusername}) or (grep /username/, @{$sessdata->{extraargs}})) {
                     $sessdata->{onuserid} = '2';
-                # If No username specified, the default userid will be 1.
                 } else {
+                    # If No username specified, the default userid will be 1.
                     $sessdata->{onuserid} = '1';
                 }
             }
@@ -815,116 +827,132 @@ sub setuseraccess {
     return;
 }
 
+sub next_setnetinfo {
+    my $rsp = shift;
+    my $sessdata = shift;
+    &setnetinfo($sessdata);
+}
+
 sub setnetinfo {
     my $sessdata = shift;
-	my $subcommand = $sessdata->{subcommand};
-   my $argument;
-   ($subcommand,$argument) = split(/=/,$subcommand);
-	my @input = @_;
+    my $subcommand = $sessdata->{subcommand};
+    my $argument;
+    ($subcommand,$argument) = split(/=/,$subcommand);
+    my @input = @_;
 
-	my $netfun = 0x0c;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
-	my $match;
+    my $netfun = 0x0c;
+    my @cmd;
+    my @returnd = ();
+    my $error;
+    my $rc = 0;
+    my $text;
+    my $code;
+    my $match;
     my $channel_number = $sessdata->{ipmisession}->{currentchannel};
 
-	if($subcommand eq "snmpdest") {
-		$subcommand = "snmpdest1";
-	}
-        
+    if($subcommand eq "snmpdest") {
+        $subcommand = "snmpdest1";
+    }
+            
+    unless(defined($argument)) { 
+        return 0;
+    }
+    if ($subcommand eq "thermprofile") {
+        return idpxthermprofile($argument);
+    }
+    if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
+        $netfun = 0x4;
+        @cmd = (0x12,0x9,0x1,0x18,0x11,0x00);
+    } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
+        $netfun = 0x4;
+        @cmd = (0x12,0x9,0x1,0x10,0x11,0x00);
+    }
+    elsif($subcommand eq "garp") {
+        my $halfsec = $argument * 2; #pop(@input) * 2;
 
-   unless(defined($argument)) { 
-      return 0;
-   }
-   if ($subcommand eq "thermprofile") {
-       return idpxthermprofile($argument);
-   }
-   if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
-      $netfun = 0x4;
-      @cmd = (0x12,0x9,0x1,0x18,0x11,0x00);
-   } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
-      $netfun = 0x4;
-      @cmd = (0x12,0x9,0x1,0x10,0x11,0x00);
-   }
-	elsif($subcommand eq "garp") {
-		my $halfsec = $argument * 2; #pop(@input) * 2;
+        if($halfsec > 255) {
+            $halfsec = 255;
+        }
+        if($halfsec < 4) {
+            $halfsec = 4;
+        }
 
-		if($halfsec > 255) {
-			$halfsec = 255;
-		}
-		if($halfsec < 4) {
-			$halfsec = 4;
-		}
-
-		@cmd = (0x01,$channel_number,0x0b,$halfsec);
-	}
-   elsif($subcommand =~ m/community/ ) {
-      my $cindex = 0;
-      my @clist;
-      foreach (0..17) {
-         push @clist,0;
-      }
-      foreach (split //,$argument)  {
-         $clist[$cindex++]=ord($_);
-      }
-      @cmd = (1,$channel_number,0x10,@clist);
-   }
-	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
-		my $dstip = $argument; #pop(@input);
+        @cmd = (0x01,$channel_number,0x0b,$halfsec);
+    }
+    elsif($subcommand =~ m/community/ ) {
+        my $cindex = 0;
+        my @clist;
+        foreach (0..17) {
+            push @clist,0;
+        }
+        foreach (split //,$argument)  {
+            $clist[$cindex++]=ord($_);
+        }
+        @cmd = (1,$channel_number,0x10,@clist);
+    }
+    elsif($subcommand =~ m/snmpdest(\d+)/ ) {
+        my $dstip = $argument; #pop(@input);
         $dstip = inet_ntoa(inet_aton($dstip));
-		my @dip = split /\./, $dstip;
-		@cmd = (0x01,$channel_number,0x13,$1,0x00,0x00,$dip[0],$dip[1],$dip[2],$dip[3],0,0,0,0,0,0);
-        } elsif ($subcommand =~ m/netmask/) {
-                if ($argument =~ /\./) {
-                        my @mask = split /\./, $argument;
-                        foreach (0..3) {
-                                $mask[$_] = $mask[$_] + 0;
-                        }
-                        @cmd = (0x01,$channel_number,0x6,@mask);
-                }
-        } elsif ($subcommand =~ m/gateway/) {
-                my $gw = inet_ntoa(inet_aton($argument));
-                my @mask = split /\./, $gw;
-                foreach (0..3) {
-                        $mask[$_] = $mask[$_] + 0;
-                }
-                @cmd = (0x01,$channel_number,12,@mask);
-        } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
-                @cmd = (0x01,$channel_number,0x4,0x2);
-        } elsif ($subcommand =~ m/ip/) {
-                my $mip = inet_ntoa(inet_aton($argument));
-                my @mask = split /\./, $mip;
-                foreach (0..3) {
-                    $mask[$_] = $mask[$_] + 0;
-                }
-                @cmd = (0x01,$channel_number,0x3,@mask);
-	}
-	#elsif($subcommand eq "alert" ) {
-	#    my $action=pop(@input);
-            #print "action=$action\n";
-        #    $netfun=0x28; #TODO: not right
+        my @dip = split /\./, $dstip;
+        @cmd = (0x01,$channel_number,0x13,$1,0x00,0x00,$dip[0],$dip[1],$dip[2],$dip[3],0,0,0,0,0,0);
+    } elsif ($subcommand =~ m/netmask/) {
+        if ($argument =~ /\./) {
+            my @mask = split /\./, $argument;
+            foreach (0..3) {
+                $mask[$_] = $mask[$_] + 0;
+            }
+            @cmd = (0x01,$channel_number,0x6,@mask);
+        }
+    } elsif ($subcommand =~ m/gateway/) {
+        my $gw = inet_ntoa(inet_aton($argument));
+        my @mask = split /\./, $gw;
+        foreach (0..3) {
+            $mask[$_] = $mask[$_] + 0;
+        }
+        @cmd = (0x01,$channel_number,12,@mask);
+    } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
+        @cmd = (0x01,$channel_number,0x4,0x2);
+    } elsif ($subcommand =~ m/ip/) {
+        # Need to set ipsrc to static for IBM POWER S822LC and S812LC
+        if (exists($sessdata->{netinfo_setinprogress})) {
+            unless($sessdata->{set_ipsrc_static}) {
+                $sessdata->{set_ipsrc_static} = 1;
+                $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x04,0x1], callback=>\&next_setnetinfo,callback_args=>$sessdata);
+                return;
+            }
+        }
+        my $mip = inet_ntoa(inet_aton($argument));
+        my @mask = split /\./, $mip;
+        foreach (0..3) {
+            $mask[$_] = $mask[$_] + 0;
+        }
+        @cmd = (0x01,$channel_number,0x3,@mask);
+    }
+    #elsif($subcommand eq "alert" ) {
+    #    my $action=pop(@input);
+    #    # print "action=$action\n";
+    #    $netfun=0x28; #TODO: not right
  
-            # mapping alert action to number
-        #    my $act_number=8;   
-        #    if ($action eq "on") {$act_number=8;}  
-        #    elsif ($action eq "off") { $act_number=0;}  
-        #    else { return(1,"unsupported alert action $action");}    
-	#    @cmd = (0x12, $channel_number,0x09, 0x01, $act_number+16, 0x11,0x00);
-	#}
-	else {
-		return(1,"configuration of $subcommand is not implemented currently");
-	}
+    #    # mapping alert action to number
+    #    my $act_number=8;   
+    #    if ($action eq "on") {$act_number=8;}  
+    #    elsif ($action eq "off") { $act_number=0;}  
+    #    else { return(1,"unsupported alert action $action");}    
+    #    @cmd = (0x12, $channel_number,0x09, 0x01, $act_number+16, 0x11,0x00);
+    #}
+    else {
+        return(1,"configuration of $subcommand is not implemented currently");
+    }
     unless ($sessdata->{netinfo_setinprogress}) {
         $sessdata->{netinfo_setinprogress} = '1';
-        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&setnetinfo,callback_args=>$sessdata);
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&next_setnetinfo,callback_args=>$sessdata);
+        return;
     }
     my $command = shift @cmd;
     $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
 }
+
+
 sub netinfo_set {
     my $rsp = shift;
     my $sessdata = shift;
@@ -961,80 +989,82 @@ sub netinfo_set {
 
 sub getnetinfo {
     my $sessdata = shift;
-	my $subcommand = $sessdata->{subcommand};
+    my $subcommand = $sessdata->{subcommand};
     my $channel_number = $sessdata->{ipmisession}->{currentchannel};
-   $subcommand =~ s/=.*//;
-   if ($subcommand eq "thermprofile") {
-       my $code;
-       my @returnd;
-       my $thermdata;
-       my $netfun=0x2e<<2; #currently combined netfun & lun, to be simplified later
-       my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xff,0x61,0x00);
-       my @bytes;
-       my $error = docmd($netfun,\@cmd,\@bytes);
-       @bytes=splice @bytes,16;
-       my $validprofiles="";
-       foreach (keys %idpxthermprofiles) {
-           if (sprintf("%02x %02x %02x %02x %02x %02x %02x",@bytes) eq sprintf("%02x %02x %02x %02x %02x %02x %02x",@{$idpxthermprofiles{$_}})) {
-               $validprofiles.="$_,";
-           }
-       }
-       if ($validprofiles) {
-           chop($validprofiles);
-           return (0,"The following thermal profiles are in effect: ".$validprofiles);
-       }
-       return (1,sprintf("Unable to identify current thermal profile: \"%02x %02x %02x %02x %02x %02x %02x\"",@bytes));
-   }
+    $subcommand =~ s/=.*//;
+    if ($subcommand eq "thermprofile") {
+        my $code;
+        my @returnd;
+        my $thermdata;
+        my $netfun=0x2e<<2; #currently combined netfun & lun, to be simplified later
+        my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xff,0x61,0x00);
+        my @bytes;
+        my $error = docmd($netfun,\@cmd,\@bytes);
+        @bytes=splice @bytes,16;
+        my $validprofiles="";
+        foreach (keys %idpxthermprofiles) {
+            if (sprintf("%02x %02x %02x %02x %02x %02x %02x",@bytes) eq sprintf("%02x %02x %02x %02x %02x %02x %02x",@{$idpxthermprofiles{$_}})) {
+                $validprofiles.="$_,";
+            }
+        }
+        if ($validprofiles) {
+            chop($validprofiles);
+            return (0,"The following thermal profiles are in effect: ".$validprofiles);
+        }
+        return (1,sprintf("Unable to identify current thermal profile: \"%02x %02x %02x %02x %02x %02x %02x\"",@bytes));
+    }
 
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
+    my @cmd;
+    my @returnd = ();
+    my $error;
+    my $rc = 0;
+    my $text;
+    my $code;
 
-	if ($subcommand eq "snmpdest") {
-		$subcommand = "snmpdest1";
-	}
+    if ($subcommand eq "snmpdest") {
+        $subcommand = "snmpdest1";
+    }
 
     my $netfun = 0x0c;
-   if ($subcommand eq "alert") {
-      $netfun = 0x4;
-      @cmd = (0x13,9,1,0);
-   }
-	elsif($subcommand eq "garp") {
-		@cmd = (0x02,$channel_number,0x0b,0x00,0x00);
-	}
-	elsif ($subcommand =~ m/^snmpdest(\d+)/ ) {
-		@cmd = (0x02,$channel_number,0x13,$1,0x00);
-	}
-	elsif ($subcommand eq "ip") {
-		@cmd = (0x02,$channel_number,0x03,0x00,0x00);
-	}
-	elsif ($subcommand eq "netmask") {
-		@cmd = (0x02,$channel_number,0x06,0x00,0x00);
-	}
-	elsif ($subcommand eq "gateway") {
-		@cmd = (0x02,$channel_number,0x0C,0x00,0x00);
-	}
-	elsif ($subcommand eq "backupgateway") {
-		@cmd = (0x02,$channel_number,0x0E,0x00,0x00);
-	}
-	elsif ($subcommand eq "community") {
-		@cmd = (0x02,$channel_number,0x10,0x00,0x00);
-	}
-	else {
-		return(1,"unsupported command getnetinfo $subcommand");
-	}
+    if ($subcommand eq "alert") {
+        $netfun = 0x4;
+        @cmd = (0x13,9,1,0);
+    }
+    elsif($subcommand eq "garp") {
+        @cmd = (0x02,$channel_number,0x0b,0x00,0x00);
+    }
+    elsif ($subcommand =~ m/^snmpdest(\d+)/ ) {
+        @cmd = (0x02,$channel_number,0x13,$1,0x00);
+    }
+    elsif ($subcommand eq "ip") {
+        @cmd = (0x02,$channel_number,0x03,0x00,0x00);
+    }
+    elsif ($subcommand eq "netmask") {
+        @cmd = (0x02,$channel_number,0x06,0x00,0x00);
+    }
+    elsif ($subcommand eq "gateway") {
+        @cmd = (0x02,$channel_number,0x0C,0x00,0x00);
+    }
+    elsif ($subcommand eq "backupgateway") {
+        @cmd = (0x02,$channel_number,0x0E,0x00,0x00);
+    }
+    elsif ($subcommand eq "community") {
+        @cmd = (0x02,$channel_number,0x10,0x00,0x00);
+    }
+    else {
+        return(1,"unsupported command getnetinfo $subcommand");
+    }
 
     my $command = shift @cmd;
     $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&getnetinfo_response,callback_args=>$sessdata);
 }
+
+
 sub getnetinfo_response {
     my $rsp = shift;
     my $sessdata = shift;
     my $subcommand = $sessdata->{subcommand};
-   $subcommand =~ s/=.*//;
+    $subcommand =~ s/=.*//;
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
     if ($rsp->{error}) { 
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
@@ -1066,55 +1096,55 @@ sub getnetinfo_response {
            xCAT::SvrUtils::sendmsg("SP Alerting: disabled".$bmcifo,$callback,$sessdata->{node},%allerrornodes);
         }
      }
-	elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
-				"SP SNMP Destination $1:",
-				$returnd[5],
-				$returnd[6],
-				$returnd[7],
-				$returnd[8]),$callback,$sessdata->{node},%allerrornodes);
-	} elsif($subcommand eq "ip") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
-				"BMC IP:",
-				$returnd[2],
-				$returnd[3],
-				$returnd[4],
-				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
-	} elsif($subcommand eq "netmask") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
-				"BMC Netmask:",
-				$returnd[2],
-				$returnd[3],
-				$returnd[4],
-				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
-	} elsif($subcommand eq "gateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
-				"BMC Gateway:",
-				$returnd[2],
-				$returnd[3],
-				$returnd[4],
-				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
-	} elsif($subcommand eq "backupgateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
-				"BMC Backup Gateway:",
-				$returnd[2],
-				$returnd[3],
-				$returnd[4],
-				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
-	} elsif ($subcommand eq "community") {
-			my $text = sprintf("$format ","SP SNMP Community:");
-			my $l = 2;
-			while ($returnd[$l] ne 0) {
-				$l = $l + 1;
-			}
-			my $i=2;
-			while ($i<$l) {
-				$text = $text . sprintf("%c",$returnd[$i]);
-				$i = $i + 1;
-			}
-			$text.=$bmcifo;
-            xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
-	}
+    elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
+        xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
+                "SP SNMP Destination $1:",
+                $returnd[5],
+                $returnd[6],
+                $returnd[7],
+                $returnd[8]),$callback,$sessdata->{node},%allerrornodes);
+    } elsif($subcommand eq "ip") {
+        xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
+                "BMC IP:",
+                $returnd[2],
+                $returnd[3],
+                $returnd[4],
+                $returnd[5]),$callback,$sessdata->{node},%allerrornodes);
+    } elsif($subcommand eq "netmask") {
+        xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
+                "BMC Netmask:",
+                $returnd[2],
+                $returnd[3],
+                $returnd[4],
+                $returnd[5]),$callback,$sessdata->{node},%allerrornodes);
+    } elsif($subcommand eq "gateway") {
+        xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
+                "BMC Gateway:",
+                $returnd[2],
+                $returnd[3],
+                $returnd[4],
+                $returnd[5]),$callback,$sessdata->{node},%allerrornodes);
+    } elsif($subcommand eq "backupgateway") {
+        xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
+                "BMC Backup Gateway:",
+                $returnd[2],
+                $returnd[3],
+                $returnd[4],
+                $returnd[5]),$callback,$sessdata->{node},%allerrornodes);
+    } elsif ($subcommand eq "community") {
+        my $text = sprintf("$format ","SP SNMP Community:");
+        my $l = 2;
+        while ($returnd[$l] ne 0) {
+            $l = $l + 1;
+        }
+        my $i=2;
+        while ($i<$l) {
+            $text = $text . sprintf("%c",$returnd[$i]);
+            $i = $i + 1;
+        }
+        $text.=$bmcifo;
+        xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
+    }
     if ($sessdata->{subcommand}) {
         if ($sessdata->{subcommand} =~ /=/) {
             setnetinfo($sessdata);
@@ -1310,7 +1340,7 @@ sub is_systemx {
 sub getrvidparms {
     my $sessdata = shift;
     unless ($sessdata) { die "not fixed yet" }
-#check devide id
+    #check devide id
     if ($sessdata->{mfg_id} == 20301 and $sessdata->{prod_id} == 220) {
         my $browser = LWP::UserAgent->new();
         my $message = "WEBVAR_USERNAME=".$sessdata->{ipmisession}->{userid}."&WEBVAR_PASSWORD=".$sessdata->{ipmisession}->{password};
@@ -1503,9 +1533,244 @@ sub isfpc {
     my $sessdata = shift;
     return 1
 }
+sub isfirestone {
+    my $sessdata = shift;
+    if ($sessdata->{prod_id} == 43707) {
+        return 1;
+    }
+}
+
+sub check_firmware_version {
+
+    sub _on_receive_version {
+        my $rsp = shift;
+        my $sessdata = shift;
+        shift @{$rsp->{data}};
+        my $c_id = $sessdata->{c_id};
+        $sessdata->{$c_id} = $rsp->{data};
+    }
+
+    sub _on_receive_component_name {
+        my $rsp = shift;
+        my $sessdata = shift;
+        shift @{$rsp->{data}};
+        my $c_id = $sessdata->{c_id};
+        # Convert ASCII to char
+        my $format_string = "";
+        my $ascii_data = $rsp->{data};
+        for my $i(@${ascii_data}) {
+            if ($i != 0) {
+                $format_string = $format_string.chr($i);
+            }
+        }
+        $sessdata->{$c_id} = $format_string; 
+    }
+
+    my $sessdata = shift;
+    my $firmware_version = shift;
+    my $component_string = shift;
+    foreach my $c_id (@{$sessdata->{component_ids}}) {
+        $sessdata->{c_id} = $c_id;
+        # Get component property 1 - Current firmware version
+        $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x2f,
+                                         data=>[0,$c_id/2,1],
+                                         callback=>\&_on_receive_version,
+                                         callback_args=>$sessdata);
+        while (xCAT::IPMI->waitforrsp()) { yield };
+        $firmware_version->{$c_id} = $sessdata->{$c_id};
+        # Get component property 2 - Component description string
+        $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x2f, 
+                                         data=>[0,$c_id/2,2], 
+                                         callback=>\&_on_receive_component_name, 
+                                         callback_args=>$sessdata);
+        while (xCAT::IPMI->waitforrsp()) { yield };
+        $component_string->{$c_id} = $sessdata->{$c_id};
+    }
+}
+
+sub get_ipmitool_version {
+    my $version_ptr = shift;
+    my $cmd = "$IPMIXCAT -V";
+    my $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        $callback->({error=>"Running ipmitool command failed. Error Code: $::RUNCMD_RC",
+                     errorcode=>1});
+        return -1;
+    }
+    $$version_ptr = (split(/ /, $output))[2];
+    return 0;
+}
+
+#----------------------------------------------------------------#
+# Calculate IPMItool Version format:
+# Example : 1.8.15 --> 1* 1 0000 0000 + 8 * 0000 0000 + 15
+#----------------------------------------------------------------#
+sub calc_ipmitool_version {
+    my $ver_str = shift;
+    my @vers = split(/\./, $ver_str);
+    return ord($vers[2]) + ord($vers[1])* 10000 + ord($vers[0]) * 100000000;
+}
+
+#----------------------------------------------------------------#
+# Check bmc status:
+#  Arguments:
+#        pre_cmd: A string prep cmd like ipmitool-xcat -H
+#                 <bmc_addr> -I lan -U <bmc_userid> -P
+#                 <bmc_password>
+#        inteval: inteval time to check
+#        retry: max retry time
+#    Returns:
+#        1 when bmc is up
+#        0 when no response from bmc
+#----------------------------------------------------------------#
+sub check_bmc_status_with_ipmitool {
+    my $pre_cmd = shift;
+    my $interval = shift;
+    my $retry = shift;
+    my $count = 0;
+    my $bmc_response = 0;
+    my $cmd = $pre_cmd." raw 0x3a 0x0a";
+    # BMC response of " c0" means BMC still running IPL
+    # BMC response of " 00" means ready to flash 
+    while ($count < $retry) {
+        $bmc_response = xCAT::Utils->runcmd($cmd, -1);
+        if ($bmc_response =~ /00/) {
+            return 1;
+        }
+        else {
+            sleep($interval);
+        }
+        $count++;
+    }
+    return 0;
+}
+
+sub do_firmware_update {
+    my $sessdata = shift;
+    my $ret;
+    my $ipmitool_ver;
+    $ret = get_ipmitool_version(\$ipmitool_ver);
+    return $ret if $ret <0;
+    # only 1.8.15 or above support hpm update for firestone machines.
+    if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
+        $callback->({error=>"IPMITool $ipmitool_ver do not support firmware update for ".
+                            "firestone mathines, please setup IPMITool 1.8.15 or above.",
+                     errorcode=>1});
+        return -1;
+    }
+
+    if(($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+            xCAT::SvrUtils::sendmsg ([1,"The image file doesn't match this machine"],
+            $callback,$sessdata->{node},%allerrornodes);
+            return -1;
+    }
+    my $output;
+    my $bmc_addr = $sessdata->{ipmisession}->{bmc};
+    my $bmc_userid = $sessdata->{ipmisession}->{userid};
+    my $bmc_password = undef;
+    if (defined($sessdata->{ipmisession}->{password})) {
+        $bmc_password = $sessdata->{ipmisession}->{password};
+    }
+    my $hpm_file = $sessdata->{extraargs}->[0];
+    if ($hpm_file !~ /^\//) {
+        $hpm_file = xCAT::Utils->full_path($hpm_file, $::cwd);
+    }
+    # NOTE (chenglch) lanplus should be used for the task of hpm update 
+    # which indicate the bmc support ipmi protocol version 2.0.
+    my $pre_cmd = "$IPMIXCAT -H $bmc_addr -I lanplus -U $bmc_userid";
+    if ($bmc_password) {
+        $pre_cmd = $pre_cmd." -P $bmc_password";
+    }
+    xCAT::SvrUtils::sendmsg ("rflash started, please wait.......",
+            $callback,$sessdata->{node},%allerrornodes);
+    # step 1 power off
+    my $cmd = $pre_cmd." chassis power off";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+            $callback,$sessdata->{node},%allerrornodes);
+            return -1;
+    }
+    # step 2 reset cold
+    $cmd = $pre_cmd." mc reset cold";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+            $callback,$sessdata->{node},%allerrornodes);
+            return -1;
+    }
+    #check reset status
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
+        xCAT::SvrUtils::sendmsg ([1,"Timeout to check the bmc status"],
+            $callback,$sessdata->{node},%allerrornodes);
+            return -1;
+    }
+    #step 3 protect network
+    $cmd = $pre_cmd. " raw 0x32 0xba 0x18 0x00";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+            $callback,$sessdata->{node},%allerrornodes);
+            return -1;
+    }
+    # step 4 upgrade firmware
+    $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed."],
+            $callback,$sessdata->{node},%allerrornodes);
+        # NOTE(chenglch) as the output message contains tty control text, just print
+        # the output message for debug.
+        print $output;
+        return -1;
+    }
+    xCAT::SvrUtils::sendmsg ("rflash completed.",$callback,$sessdata->{node},
+        %allerrornodes);
+    return 0;
+}
+
 sub rflash {
     my $sessdata = shift;
-    if (isfpc($sessdata)) {
+    if (isfirestone($sessdata)) {
+        # Do firmware update for firestone here.
+        @{$sessdata->{component_ids}} = qw/1 2 4/;
+        foreach my $opt (@{$sessdata->{extraargs}}) {
+            if ($opt =~ /^(-c|--check)$/i) {
+                $sessdata->{subcommand} = "check";
+            } elsif ($opt !~ /.*\.hpm$/i) {
+                $callback->({error=>"The option $opt is not supported",
+                             errorcode=>1});
+                return;
+            }
+        }
+        # Send firmware version information to clent.
+        if ($sessdata->{subcommand} eq 'check') {
+            my %firmware_version;
+            my %comp_string;
+            check_firmware_version($sessdata, \%firmware_version, \%comp_string);
+            my $msg="";
+            my $i;
+            for ($i = 0; $i < scalar(@{$sessdata->{component_ids}}); $i++) {
+                my $c_id = ${$sessdata->{component_ids}}[$i];
+                my $version = $firmware_version{$c_id};
+                my $format_string = $comp_string{$c_id};
+                my $format_ver = sprintf("%3d.%02x %02X%02X%02X%02X",
+                    $version->[0], $version->[1], $version->[2],
+                    $version->[3], $version->[4], $version->[5]);
+                $msg = $msg.$sessdata->{node}.": ".
+                        "Node firmware version for $format_string component: $format_ver";
+                if ( $i != scalar(@{$sessdata->{component_ids}}) -1 ) {
+                        $msg = $msg."\n";
+                    }
+            }
+            $callback->({data=>$msg});
+            return;
+        }
+        return do_firmware_update($sessdata);
+    } elsif (isfpc($sessdata)) {
         #first, start a fpc firmware transaction
         $sessdata->{firmpath} = $sessdata->{subcommand};
         $sessdata->{firmctx} = "init";
@@ -1515,6 +1780,76 @@ sub rflash {
                                             callback_args=>$sessdata);
     } else {
         die "Unimplemented";
+    }
+}
+
+#----------------------------------------------------------------#
+# Running rflash procedure in a child process
+# Note (chenglch) If the parent process abort unexpectedly, the
+# child process can not be terminated by xcat.
+#----------------------------------------------------------------#
+sub do_rflash_process {
+    my $node = shift;
+    my $pid = xCAT::Utils->xfork;
+    if ( !defined($pid) ) {
+        xCAT::SvrUtils::sendmsg ([1,"Fork rflash process Error."],
+            $callback,$node,%allerrornodes);
+        return;
+    }
+    # child
+    elsif ( $pid == 0 ) {
+        $SIG{CHLD} = $SIG{INT} = $SIG{TERM} = "DEFAULT";
+        # NOTE (chenglch): Actually if multiple client or rest api works on the same node,
+        # the bmc of the node may not be protected while rflash is running. As xcat may not
+        # support lock on node level, just require a lock for rflash command for specific node.
+        my $lock = xCAT::Utils->acquire_lock("rflash_$node", $NON_BLOCK);
+        if (! $lock){
+            xCAT::SvrUtils::sendmsg ([1,"rflash is running on $node, please retry after a while"],
+                $callback,$node,%allerrornodes);
+            exit(1);
+        }
+        donode($node, @_);
+        while (xCAT::IPMI->waitforrsp()) { yield };
+        xCAT::Utils->release_lock($lock, $NON_BLOCK);
+        exit(0);
+    }
+    # parent
+    else {
+        $child_pids{$pid} = $node;
+    }
+    return $pid;
+}
+
+sub start_rflash_processes {
+    my $donargs_ptr = shift;
+    my @donargs = @{$donargs_ptr};
+    my $ipmitimeout = shift;
+    my $ipmitrys = shift;
+    my $command = shift;
+    my %namedargs=@_;
+    my $extra=$namedargs{-args};
+    my @exargs=@$extra;
+
+    $SIG{INT} = $SIG{TERM} = sub {
+        foreach ( keys %child_pids ) {
+            kill 2, $_;
+        }
+        exit 0;
+    };
+    $SIG{CHLD} = sub {
+        my $cpid;
+        while ( ( $cpid = waitpid( -1, WNOHANG ) ) > 0 ) {
+            if ( $child_pids{$cpid} ) {
+                delete $child_pids{$cpid};
+            }
+        }
+    };
+    foreach (@donargs) {
+        do_rflash_process( $_->[0],$_->[1],$_->[2],$_->[3],$_->[4],
+            $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+    }
+    while ( ( scalar( keys %child_pids ) ) > 0 ) {
+        yield;
     }
 }
 
@@ -1977,66 +2312,66 @@ sub beacon_answer {
 
 sub inv {
     my $sessdata = shift;
-	my $subcommand = $sessdata->{subcommand};
+    my $subcommand = $sessdata->{subcommand};
 
-	my $rc = 0;
-	my $text;
-	my @output;
-	my @types;
+    my $rc = 0;
+    my $text;
+    my @output;
+    my @types;
 
 
     unless ($subcommand) {
         $subcommand = "all";
     }
-	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc hw asset firmware mac wwn);
-	}
-	elsif($subcommand eq "asset") {
+    if($subcommand eq "all") {
+        @types = qw(model serial deviceid mprom guid misc hw asset firmware mac wwn);
+    }
+    elsif($subcommand eq "asset") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(asset);
-	}
-	elsif($subcommand eq "firm" || $subcommand eq "firmware") {
+        @types = qw(asset);
+    }
+    elsif($subcommand eq "firm" || $subcommand eq "firmware") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(firmware);
-	}
-	elsif($subcommand eq "model") {
+        @types = qw(firmware);
+    }
+    elsif($subcommand eq "model") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(model);
-	}
-	elsif($subcommand eq "serial") {
+        @types = qw(model);
+    }
+    elsif($subcommand eq "serial") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(serial);
-	}
-	elsif($subcommand eq "vpd") {
+        @types = qw(serial);
+    }
+    elsif($subcommand eq "vpd") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(model serial deviceid mprom);
-	}
-	elsif($subcommand eq "mprom") {
+        @types = qw(model serial deviceid mprom);
+    }
+    elsif($subcommand eq "mprom") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(mprom);
-	}
-	elsif($subcommand eq "misc") {
+        @types = qw(mprom);
+    }
+    elsif($subcommand eq "misc") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(misc);
-	}
-	elsif($subcommand eq "deviceid") {
+        @types = qw(misc);
+    }
+    elsif($subcommand eq "deviceid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(deviceid);
-	}
-	elsif($subcommand eq "guid") {
+        @types = qw(deviceid);
+    }
+    elsif($subcommand eq "guid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(guid);
-	}
-	elsif($subcommand eq "uuid") {
+        @types = qw(guid);
+    }
+    elsif($subcommand eq "uuid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(guid);
-	}
-	else {
+        @types = qw(guid);
+    }
+    else {
         @types = ($subcommand);
-		#return(1,"unsupported BMC inv argument $subcommand");
-	}
+        #return(1,"unsupported BMC inv argument $subcommand");
+    }
     $sessdata->{invtypes} = \@types;
-	initfru($sessdata);
+    initfru($sessdata);
 }
 sub fru_initted {
     my $sessdata = shift;
@@ -2049,7 +2384,7 @@ sub fru_initted {
     my @types = @{$sessdata->{invtypes}};
 	my $format = "%-20s %s";
 
-	foreach $key (sort keys %{$sessdata->{fru_hash}}) {
+       foreach $key (sort {$a <=> $b} keys %{$sessdata->{fru_hash}}) {
 		my $fru = $sessdata->{fru_hash}->{$key};
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
@@ -2331,8 +2666,22 @@ sub got_backup_imm_builddate {
 	$fru->desc("Backup IMM Version");
 	$fru->value($sessdata->{backupimmversion}." (".$sessdata->{backupimmbuild}." ".$sessdata->{backupimmdate}.")");
 	$sessdata->{fru_hash}->{backupimm} = $fru;
-    }
+    	get_imm_property(property=>"/v2/ibmc/trusted_buildid",callback=>\&got_trusted_imm,sessdata=>$sessdata);
+    } else {
         initfru_with_mprom($sessdata);
+    }
+}
+sub got_trusted_imm {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+	my $fru = FRU->new();
+	$fru->rec_type("bios,uefi,firmware");
+	$fru->desc("Trusted IMM Build");
+	$fru->value($res{data});
+	$sessdata->{fru_hash}->{trustedimm} = $fru;
+    }
+    initfru_with_mprom($sessdata);
 }
 sub got_fpga_version {
    my %res = @_;
@@ -3061,8 +3410,15 @@ sub readcurrfrudevice {
         }
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
-            xCAT::SvrUtils::sendmsg([1,"Received incorrect data from BMC"],$callback,$sessdata->{node},%allerrornodes);
-            return;
+            # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
+            if ($data[0] gt 0) {
+                $sessdata->{currfrudone}=1;
+            } else {
+                my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
+                xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
+                add_fruhash($sessdata);
+                return;
+            }
         }
         shift @data;
         push @{$sessdata->{currfrudata}},@data;
@@ -3196,6 +3552,9 @@ sub parsefru {
     my @currarea;
     unless (ref $bytes) {
         return $bytes,undef;
+    }
+    if (!defined $bytes->[0]) {
+        return "clear",undef;
     }
     unless ($bytes->[0]==1) {
         if ($bytes->[0]==0 or $bytes->[0]==0xff) { #not in spec, but probably unitialized, xCAT probably will rewrite fresh
@@ -3453,20 +3812,27 @@ sub parseboard {
 	#time to process the mac field...
 	my $macdata = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
+	my $macprefix;
 	while ($macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
-		my @currmac = splice @$macdata,0,6;
-		unless ((scalar @currmac) == 6) {
-			last;
-		}
-		$macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@currmac);
-		if ($macstring !~ /00:00:00:00:00:00/) { 
-			push @{$boardinf{macaddrs}},$macstring;
-		}
-	}
+            my @currmac = splice @$macdata,0,6;
+            unless ((scalar @currmac) == 6) {
+                last;
+            }
+            $macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@currmac);
+	    unless ($macprefix) {
+	    	$macprefix = substr($macstring, 0, 8);
+	    }
+            if ($macstring !~ /00:00:00:00:00:00/ and $macstring =~/^$macprefix/) { 
+                push @{$boardinf{macaddrs}},$macstring;
+            }
+        }
 	delete $boardinf{extra};
-    } 
+    }
     return \%boardinf;
 }
+
+
+
 sub parsechassis {
     my @chassarea=@_;
     my %chassisinf;
@@ -3541,14 +3907,10 @@ sub extractfield { #idx is location of the type/length byte, returns something a
 }
 
 
-
-
-
-
 sub writefru {
     my $netfun = 0x28; # Storage (0x0A << 2)
     my @cmd=(0x10,0);
-	my @bytes;
+    my @bytes;
     my $error = docmd($netfun,\@cmd,\@bytes);
     pop @bytes;
     unless (defined $bytes[0] and $bytes[0] == 0) {
@@ -3578,10 +3940,10 @@ sub writefru {
         }
         $writeattempts++;
     }
-	if($rc) {
-		return($rc,$text);
-	}
-	return(0,"FRU Updated");
+    if($rc) {
+        return($rc,$text);
+    }
+    return(0,"FRU Updated");
 }
 
 sub fruwrite {
@@ -4468,8 +4830,8 @@ sub getaddsensorevent {
         $text = sprintf ("Memory module %d",$event_data_3);
     }
 
-	if($sensor_type == 0x0f) {
-		if($offset == 0x00) {
+    if($sensor_type == 0x0f) {
+        if($offset == 0x00) {
 			my %extra = (
 				0x00 => "Unspecified",
 				0x01 => "No system memory installed",
@@ -5174,10 +5536,170 @@ sub did_led {
         readsensor($sessdata); #next sensor
     }
 }
+
+sub done_powerusage {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1, "Get Power Reading failed"],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+        my $e_id = shift(@{$rsp->{data}});
+        if ($e_id ne 0xdc)  {
+            xCAT::SvrUtils::sendmsg([1, "The Power Reading response is incorrect"],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            my $curr_power = $rsp->{data}->[0] + $rsp->{data}->[1] * 0x100;
+            my $mini_power = $rsp->{data}->[2] + $rsp->{data}->[3] * 0x100;
+            my $max_power  = $rsp->{data}->[4] + $rsp->{data}->[5] * 0x100;
+            my $aver_power = $rsp->{data}->[6] + $rsp->{data}->[7] * 0x100;
+            my $time_stamp = $rsp->{data}->[8] + $rsp->{data}->[9] * 0x100+
+                              $rsp->{data}->[10] * 0x10000+ $rsp->{data}->[11] * 0x1000000;
+            my ($sec,$min,$hour,$day,$mon,$year) = localtime($time_stamp);
+            $mon += 1;
+            $year += 1900;
+            my $time_period = $rsp->{data}->[12] + $rsp->{data}->[13] * 0x100+
+                              $rsp->{data}->[14] * 0x10000 + $rsp->{data}->[15] * 0x1000000;
+            my $reading_state = (($rsp->{data}->[16] & 0x40) >> 6) ? "Active" : "Inactivate";
+            xCAT::SvrUtils::sendmsg("Current Power                        : $curr_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Minimum Power over sampling duration : $mini_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Maximum Power over sampling duration : $max_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Average Power over sampling duration : $aver_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Time Stamp                           : $mon/$day/$year - $hour:$min:$sec",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Statistics reporting time period     : $time_period milliseconds",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Power Measurement                    : $reading_state", $callback,$sessdata->{node},%allerrornodes); 
+        }
+    } 
+    do_dcmi_operating($sessdata);
+}
+
+my %dcmi_sensors = (
+    0x37 => "Inlet Temperature",
+    0x03 => "CPU Temperature",
+    0x07 => "Baseboard temperature",
+);
+
+sub do_temperature {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $cur_sensor = $sessdata->{dcmi_sensor}->{cur_sensor};
+    my $sensor_dis = "unknown sensor";
+    if (defined($cur_sensor) and exists($dcmi_sensors{$cur_sensor})) {
+        $sensor_dis = $dcmi_sensors{$cur_sensor};
+    }
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1, "Get Power Reading failed for $sensor_dis"],$callback,$sessdata->{node},%allerrornodes);
+    } elsif (exists($rsp->{data})) {
+        my $e_id = shift(@{$rsp->{data}});
+        if ($e_id ne 0xdc)  {
+            xCAT::SvrUtils::sendmsg([1, "The Power Reading response is incorrect for $sensor_dis"],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            my $num_of_instances = shift(@{$rsp->{data}}) ;
+            my $num_cur = shift(@{$rsp->{data}});
+            if ($num_cur) {
+                while (scalar(@{$rsp->{data}})) {
+                    my $temp = shift(@{$rsp->{data}});
+                    my $iid  = shift(@{$rsp->{data}});
+                    my $flag = ($temp & 0x80) >> 7;
+                    $temp &= 0x7f;
+                    if ($flag) {
+                        $sessdata->{dcmi_sensor_instances}->{$cur_sensor}->{$iid} = "-$temp Centigrade";
+                    } else {
+                        $sessdata->{dcmi_sensor_instances}->{$cur_sensor}->{$iid} = "+$temp Centigrade";
+                    }
+                }
+            }
+        }
+    }
+    {
+        my $sensor_eid = shift(@{$sessdata->{dcmi_sensor}->{sensors}});
+        if ($sensor_eid) {
+             $sessdata->{dcmi_sensor}->{cur_sensor} = $sensor_eid;
+             # The raw format for dcmi command Get Temperature Reading
+             #  ipmitool-xcat -I lanplus -H <bmc_ip> -U <bmc_username> -P <bmc_password> raw 0x2c 0x10 0xdc 0x01 <sensor entity_id> 0 0
+             $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x10,
+                        data=>[0xdc,0x01,$sensor_eid,0, 0],
+                        callback=>\&do_temperature,
+                        callback_args=>$sessdata);
+
+             return;
+        }
+    }
+    done_temperature($sessdata);
+}
+
+sub done_temperature {
+    my $sessdata = shift;
+    foreach my $sid (sort keys %{$sessdata->{dcmi_sensor_instances}}) {
+        my $sensor_dis = "unknown sensor";
+        if (exists($dcmi_sensors{$sid})) {
+            $sensor_dis = $dcmi_sensors{$sid};
+        }
+        foreach my $instance_id (sort keys %{$sessdata->{dcmi_sensor_instances}->{$sid}}) {
+            my $temp = $sessdata->{dcmi_sensor_instances}->{$sid}->{$instance_id};
+            my $string = sprintf("%-36s", "$sensor_dis Instance $instance_id");
+            xCAT::SvrUtils::sendmsg("$string : $temp",$callback,$sessdata->{node},%allerrornodes);
+        }
+    } 
+    do_dcmi_operating($sessdata);
+}
+
+sub do_dcmi_operating {
+    my $sessdata = shift;
+    unless (scalar(@{$sessdata->{energy_options}})) {
+        return;
+    } else {
+        my $cur_op = shift(@{$sessdata->{energy_options}});
+        if ($cur_op eq "powerusage") {
+            # The raw format for dcmi command Get Power Reading: 
+            #  ipmitool-xcat -I lanplus -H <bmc_ip> -U <bmc_username> -P <bmc_password> raw 0x2c 0x02 0xdc 1 0 0
+            $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x02,
+                        data=>[0xdc,1,0,0],
+                        callback=>\&done_powerusage,
+                        callback_args=>$sessdata);
+        } elsif ($cur_op eq "temperature") {
+            # DCMI Sensor Entity ID
+            # 0x37/0x40 55 for Inlet Temperature
+            # 0x03/0x41 for CPU Temperature
+            # 0x07/0x42 for Baseboard temperature
+            @{$sessdata->{dcmi_sensor}->{sensors}} = qw/55 3 7/;
+            &do_temperature({startpoint=>1}, $sessdata);
+        }
+    }
+}
 	
 sub renergy {
     my $sessdata = shift;
     my @subcommands = @{$sessdata->{extraargs}};
+    if (isfirestone($sessdata)) {
+        unless (@subcommands) {
+            @subcommands = qw/powerusage temperature/;
+        } 
+        foreach (@subcommands) {
+            if ($_ eq "powerusage") {
+                push @{$sessdata->{energy_options}}, 'powerusage';
+            } elsif ($_ eq "temperature") {
+                push @{$sessdata->{energy_options}}, 'temperature';
+            } else {
+                if ($_ =~ /=/) {
+                    xCAT::SvrUtils::sendmsg([1,"Only Query is supported"], $callback, $sessdata->{node},%allerrornodes);
+                } else { 
+                    xCAT::SvrUtils::sendmsg([1,"The option $_ is not supported"], $callback, $sessdata->{node},%allerrornodes);
+                }
+                return;
+            }
+        }
+        # DCMI -- Data Center Manageability Interface, for more info, pls reference http://www.intel.com/content/www/us/en/data-center/dcmi/data-center-manageability-interface.html
+        do_dcmi_operating($sessdata);
+        return;
+    } else {
+        if (grep /powerusage/, @subcommands) {
+            xCAT::SvrUtils::sendmsg([1,"The option 'powerusage' is only supported for OpenPOWER servers"], $callback, $sessdata->{node},%allerrornodes);
+            return;
+        } 
+        if (grep /temperature/, @subcommands) {
+            xCAT::SvrUtils::sendmsg([1,"The option 'temperatue' is only supported for OpenPOWER servers"], $callback, $sessdata->{node},%allerrornodes);
+            return;
+        }
+    }
     unless ($iem_support) {
         xCAT::SvrUtils::sendmsg(":Command unsupported without IBM::EnergyManager installed",$callback,$sessdata->{node});
         return;
@@ -5305,7 +5827,7 @@ sub vitals {
 		$sensor_filters{0x02}=1;
 	}
     if(grep /watt/,@textfilters) {
-        $sensor_filters{0x03}=1;
+        $sensor_filters{watt}=1;
     }
 	if(grep /fan/,@textfilters) {
 		$sensor_filters{0x04}=1;
@@ -5339,6 +5861,9 @@ sub vitals {
 			my $sdr = $sdr_hash{$key};
 			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
+                push @{$sessdata->{sensorstoread}},$sdr;
+                $usedkeys{$key}=1;
+            } elsif ($filter eq "watt" and $sdr->sensor_units_2 and $sdr->sensor_units_2==0x06) {
                 push @{$sessdata->{sensorstoread}},$sdr;
                 $usedkeys{$key}=1;
             }
@@ -5475,8 +6000,8 @@ sub sensor_was_read {
             $extext = "At or below lower non-recoverable threshold";
         }
     } elsif ($sdr->event_type_code == 0x6f) {
+	@exparts=();
         if ($sdr->sensor_type == 0x10) {
-	    @exparts=();
             if ($exdata1 & 1<<4) {
                 push @exparts,"SEL full";
             } elsif ($exdata1 & 1<<5) {
@@ -5489,9 +6014,6 @@ sub sensor_was_read {
 	       push @exparts,"All logging disabled";
 	    } elsif ($exdata1 & 1<<1) {
 	       push @exparts,"Some logging disabled";
-	    }
-	    if (@exparts) {
-	       $extext = join(",",@exparts);
 	    }
         } elsif ($sdr->sensor_type == 0x7) {
 	   @exparts=();
@@ -5528,6 +6050,12 @@ sub sensor_was_read {
 	   if ($exdata1 & 1<<10) {
 	      push @exparts,"Hardware throttled";
 	   }
+	   if ($exdata1 & 1<<11) {
+	      push @exparts,"Uncorrectable Machine Check Exception";
+	   }
+	   if ($exdata1 & 1<<12) {
+	      push @exparts,"Correctable Machine Check Error";
+	   }
         } elsif ($sdr->sensor_type == 0x8) {
 	   @exparts=();
 	   if ($exdata1 & 1) {
@@ -5550,6 +6078,9 @@ sub sensor_was_read {
 	   }
 	   if ($exdata1 & 1<<6) {
 	        push @exparts,"Configuration error";
+	   }
+	   if ($exdata1 & 1<<7) {
+	        push @exparts,"Power Supply Inactive";
 	   }
 	   if (@exparts) {
 	      $extext = join(",",@exparts);
@@ -5589,8 +6120,8 @@ sub sensor_was_read {
             if ($exdata1 & 1<<10) {
                 push @exparts,"Bus fatal error";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<11) {
+                push @exparts,"Bus Degraded";
             }
         } elsif ($sdr->sensor_type == 0xc) {
             @exparts=();
@@ -5620,6 +6151,12 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<8) {
                 push @exparts,"Spare";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Memory Automatically Throttled";
+            }
+            if ($exdata1 & 1<<10) {
+                push @exparts,"Critical Overtemperature";
             }
             if (@exparts) {
                 $extext = join(",",@exparts);
@@ -5667,16 +6204,13 @@ sub sensor_was_read {
             if ($exdata1 & 1<<2) {
                 push @exparts,"Firmware progress";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
-            }
         } elsif ($sdr->sensor_type == 0x9) {
 	   @exparts=();
 	   if ($exdata1 & 1) {
 	      push @exparts,"Power off";
 	   }
 	   if ($exdata1 & 1<<1) {
-	      push @exparts,"Power off";
+	      push @exparts,"Power Cycle";
 	   }
 	   if ($exdata1 & 1<<2) {
 	      push @exparts,"240VA Power Down";
@@ -5696,9 +6230,6 @@ sub sensor_was_read {
 	   if ($exdata1 & 1<<7) {
 	      push @exparts,"Power unit failure predicted";
 	   }
-	   if (@exparts) {
-	      $extext = join(",",@exparts);
-	   }
         } elsif ($sdr->sensor_type == 0x12) {
             @exparts=();
             if ($exdata1 & 1) {
@@ -5716,8 +6247,58 @@ sub sensor_was_read {
             if ($exdata1 & 1<<4) {
                 push @exparts,"PEF Action";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Timestamp Clock Synch";
+            }
+        } elsif ($sdr->sensor_type == 0x1e) {
+            if ($exdata1 & 1) {
+                push @exparts,"No bootable media";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Non-bootable diskette left in drive";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"PXE Server not found";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Invalid boot sector";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Timeout waiting for user selection";
+            }
+        } elsif ($sdr->sensor_type == 0x1f) {
+            if ($exdata1 & 1) {
+                push @exparts,"boot completed";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"boot completed";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"PXE boot completed";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Diagnostic boot completed";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"CD-ROM boot completed";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"ROM boot completed";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"boot completed-device not specified";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Base OS Installation started";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Base OS Installation completed";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Base OS Installation aborted";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Base OS Installation failed";
             }
         } elsif ($sdr->sensor_type == 0x25) {
             if ($exdata1 & 1) {
@@ -5728,9 +6309,6 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<2) {
                 push @exparts,"Disabled";
-            }
-            if (@exparts) {
-                $extext = join(",",@exparts);
             }
         } elsif ($sdr->sensor_type == 0x23) {
             if ($exdata1 & 1) {
@@ -5745,8 +6323,8 @@ sub sensor_was_read {
             if ($exdata1 & 1<<3) {
                 push @exparts,"Power Cycle";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Timer interrupt";
             }
         } elsif ($sdr->sensor_type == 0xd) {
             if ($exdata1 & 1) {
@@ -5776,8 +6354,67 @@ sub sensor_was_read {
             if ($exdata1 & 1<<8) {
                 push @exparts,"Rebuild aborted";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+        } elsif ($sdr->sensor_type == 0x20) {
+            if ($exdata1 & 1) {
+                push @exparts,"Critical stop during OS load";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Runtime Critical Stop";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"OS Graceful Stop";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"OS Graceful Shutdown";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Soft Shutdown";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Agent Not Responding";
+            }
+        } elsif ($sdr->sensor_type == 0x22) {
+            if ($exdata1 & 1) {
+                push @exparts,"working";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"sleeping";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"processor context lost";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"memory retained";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"non-volatile sleep";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"soft-off";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"soft-off";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Mechanical off";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Sleeping in as S1,S2, or S3 states";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"sleeping";
+            }
+            if ($exdata1 & 1<<10) {
+                push @exparts,"entered by override";
+            }
+            if ($exdata1 & 1<<11) {
+                push @exparts,"Legacy ON";
+            }
+            if ($exdata1 & 1<<12) {
+                push @exparts,"Legacy OFF";
+            }
+            if ($exdata1 & 1<<13) {
+                push @exparts,"Unknown";
             }
         } elsif ($sdr->sensor_type == 0x28) {
             if ($exdata1 & 1) {
@@ -5793,10 +6430,33 @@ sub sensor_was_read {
                 push @exparts,"Unavailable";
             }
             if ($exdata1 & 1<<4) {
-                push @exparts,"Failure";
+                push @exparts,"Sensor Failure";
             }
             if ($exdata1 & 1<<5) {
                 push @exparts,"FRU Failure";
+            }
+        } elsif ($sdr->sensor_type == 0x29) {
+            if ($exdata1 & 1) {
+                push @exparts,"battery low";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"battery failed";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"battery presence detected";
+            }
+        } elsif ($sdr->sensor_type == 0x2a) {
+            if ($exdata1 & 1) {
+                push @exparts,"Session Activated";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Session Deactivated";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Invalid username or password";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Invalid password disable";
             }
         } elsif ($sdr->sensor_type == 0x2b) {
             if ($exdata1 & 1) {
@@ -5830,9 +6490,39 @@ sub sensor_was_read {
             if ($exdata1 & 1<<1) {
                 push @exparts,"Incorrect cable connection";
             }
+    	} elsif ($sdr->sensor_type == 0x2c) {
+            if ($exdata1 & 1) {
+                push @exparts,"FRU Not Installed";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"FRU Inactive";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"FRU Activation Requested";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"FRU Activation In Progress";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"FRU Active";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"FRU Deactivation Requested";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"FRU Deactivation In Progress";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"FRU Communication Lost";
+            }
+        } elsif ($sdr->sensor_type >= 0xc0) {
+            $extext = "OEM Reserved ".$sdr->sensor_type;
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
         }
+	if (@exparts) {
+	    $extext = join(",",@exparts);
+	}
     }
 
 	return sensorformat($sessdata,0,$text,$extext);
@@ -6599,151 +7289,153 @@ sub randomizelist { #in place shuffle of list
 }
 
 sub preprocess_request { 
-  my $request = shift;
-  if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
-  #exit if preprocessed
-  my $callback=shift;
-  my @requests;
+    my $request = shift;
+    if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { 
+        # exit if preprocessed
+        return [$request];
+    }
+    my $callback=shift;
+    my @requests;
 
-  my $realnoderange = $request->{node}; #Should be arrayref
-  my $command = $request->{command}->[0];
-  my $extrargs = $request->{arg};
-  my @exargs=($request->{arg});
-  my $delay=0;
-  my $delayincrement=0;
-  my $chunksize=0;
-  if (ref($extrargs)) {
-    @exargs=@$extrargs;
-  }
+    my $realnoderange = $request->{node}; #Should be arrayref
+    my $command = $request->{command}->[0];
+    my $extrargs = $request->{arg};
+    my @exargs=($request->{arg});
+    my $delay=0;
+    my $delayincrement=0;
+    my $chunksize=0;
+    if (ref($extrargs)) {
+        @exargs=@$extrargs;
+    }
 
-  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-  if ($usage_string) {
-    $callback->({data=>$usage_string});
-    $request = {};
-    return;
-  }
+    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    if ($usage_string) {
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
+    }
 
-  if ($command eq "rpower") {
-      my $subcmd=$exargs[0];
-			if($subcmd eq ''){
-	  		#$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
-                        #Above statement will miss error code, so replaced by the below statement
-                        $callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
-	  		$request = {};
-				return 0;
+    if ($command eq "rpower") {
+        my $subcmd=$exargs[0];
+        if($subcmd eq ''){
+            #$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+            #Above statement will miss error code, so replaced by the below statement
+            $callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+            $request = {};
+            return 0;
+        }
 
-			}
-      if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
-	 #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
-          #Above statement will miss error code, so replaced by the below statement
-          $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
-	  $request = {};
-	  return;
-      }
-      if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
-		unless($::XCATSITEVALS{syspowermaxnodes}) {
-			$callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
-		        $request = {};
-			return 0;
-		}
-	$chunksize=$::XCATSITEVALS{syspowermaxnodes};
-        $delayincrement=$::XCATSITEVALS{syspowerinterval};
-      }
-  } elsif ($command eq "renergy") {
+        if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
+            #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+            #Above statement will miss error code, so replaced by the below statement
+            $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
+            $request = {};
+            return;
+        }
+        if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
+            unless($::XCATSITEVALS{syspowermaxnodes}) {
+                $callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
+                $request = {};
+                return 0;
+            }
+            $chunksize=$::XCATSITEVALS{syspowermaxnodes};
+            $delayincrement=$::XCATSITEVALS{syspowerinterval};
+        }
+    } elsif ($command eq "renergy") {
       # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
-  } elsif ($command eq "rspconfig") {
-      # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
-  } elsif ($command eq "rinv") {
-      if ($exargs[0] eq "-t" and $#exargs == 0) {
-          unshift @{$request->{arg}}, 'all';
-      } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
-          $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
-          $request = {};
-          return 0;
-      }
-  }
-  if (!$realnoderange) {
-    $usage_string=xCAT::Usage->getUsage($command);
-    $callback->({data=>$usage_string});
-    $request = {};
-    return;
-  }   
-  
-  #print "noderange=@$noderange\n";
+        my (@bmcnodes, @nohandle);
+        xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+        $realnoderange = \@bmcnodes;
+    } elsif ($command eq "rspconfig") {
+        # filter out the nodes which should be handled by ipmi.pm
+        my (@bmcnodes, @nohandle);
+        xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+        $realnoderange = \@bmcnodes;
+    } elsif ($command eq "rinv") {
+        if ($exargs[0] eq "-t" and $#exargs == 0) {
+            unshift @{$request->{arg}}, 'all';
+        } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
+            $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
+            $request = {};
+            return 0;
+        }
+    }
+    if (!$realnoderange) {
+        $usage_string=xCAT::Usage->getUsage($command);
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
+    }   
 
-  # find service nodes for requested nodes
-  # build an individual request for each service node
-  my @noderanges;
-  srand();
-  if ($chunksize) {
-     #first, we try to spread out the chunks so they don't happen to correlate to constrained service nodes or circuits
-     #for now, will get the sn map for all of them and interleave if dispatching
-     #if not dispatching, will randomize the noderange instead to lower likelihood of turning everything on a circuit at once
-     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
-	randomizelist($realnoderange);
-     } else { # sn is indicated
-	my $bigsnmap = xCAT::ServiceNodeUtils->get_ServiceNode($realnoderange, "xcat", "MN");
-     	foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
-		randomizelist($bigsnmap->{$servicenode})
-	}
-	#now merge the per-servicenode list into a big list again
-	$realnoderange=[];
-	while (keys %$bigsnmap) {
-		foreach my $servicenode (keys %$bigsnmap) {
-			if (@{$bigsnmap->{$servicenode}}) {
-				push(@$realnoderange,pop(@{$bigsnmap->{$servicenode}}));
-			} else {
-				delete $bigsnmap->{$servicenode};
-			}
-		}
-	}
-	
-     }
-     while (scalar(@$realnoderange)) {
-             my @tmpnoderange;
-	     while (scalar(@$realnoderange) and $chunksize) {
-		push @tmpnoderange,(shift @$realnoderange);
-		$chunksize--;
-	     }
-	     push @noderanges,\@tmpnoderange;
-	     $chunksize=$::XCATSITEVALS{syspowermaxnodes};
-      }	
-  } else {
-     @noderanges=($realnoderange);
-  }
-  foreach my $noderange (@noderanges) {  
-     my $sn;
-     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
-        $sn = { '!xcatlocal!' => $noderange };
-     } else {
-        $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
-     }
+    #print "noderange=@$noderange\n";
 
-     # build each request for each service node
- 
-     foreach my $snkey (keys %$sn)
-     {
-       #print "snkey=$snkey\n";
-       my $reqcopy = {%$request};
-       $reqcopy->{node} = $sn->{$snkey};
-       unless ($snkey eq '!xcatlocal!') {
-          $reqcopy->{'_xcatdest'} = $snkey;
-       }
-       $reqcopy->{_xcatpreprocessed}->[0] = 1;
-       if ($delay) { $reqcopy->{'_xcatdelay'} = $delay; }
-       push @requests, $reqcopy;
-     }
-     $delay += $delayincrement;
-  }
-  return \@requests;
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    my @noderanges;
+    srand();
+    if ($chunksize) {
+        #first, we try to spread out the chunks so they don't happen to correlate to constrained service nodes or circuits
+        #for now, will get the sn map for all of them and interleave if dispatching
+        #if not dispatching, will randomize the noderange instead to lower likelihood of turning everything on a circuit at once
+        if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
+            randomizelist($realnoderange);
+        } else { # sn is indicated
+            my $bigsnmap = xCAT::ServiceNodeUtils->get_ServiceNode($realnoderange, "xcat", "MN");
+            foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
+                randomizelist($bigsnmap->{$servicenode})
+            }
+            #now merge the per-servicenode list into a big list again
+            $realnoderange=[];
+            while (keys %$bigsnmap) {
+                foreach my $servicenode (keys %$bigsnmap) {
+                    if (@{$bigsnmap->{$servicenode}}) {
+                        push(@$realnoderange,pop(@{$bigsnmap->{$servicenode}}));
+                    } else {
+                    delete $bigsnmap->{$servicenode};
+                    }
+                }
+            }
+        }
+        while (scalar(@$realnoderange)) {
+            my @tmpnoderange;
+            while (scalar(@$realnoderange) and $chunksize) {
+                push @tmpnoderange,(shift @$realnoderange);
+                $chunksize--;
+            }
+            push @noderanges,\@tmpnoderange;
+            $chunksize=$::XCATSITEVALS{syspowermaxnodes};
+        }	
+    } else {
+        @noderanges=($realnoderange);
+    }
+    foreach my $noderange (@noderanges) {  
+        my $sn;
+        if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
+            $sn = { '!xcatlocal!' => $noderange };
+        } else {
+            $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
+        }
+
+        # build each request for each service node
+
+        foreach my $snkey (keys %$sn) {
+            #print "snkey=$snkey\n";
+            my $reqcopy = {%$request};
+            $reqcopy->{node} = $sn->{$snkey};
+            unless ($snkey eq '!xcatlocal!') {
+                $reqcopy->{'_xcatdest'} = $snkey;
+            }
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            if ($delay) { 
+                $reqcopy->{'_xcatdelay'} = $delay;
+            }
+            push @requests, $reqcopy;
+        }
+        $delay += $delayincrement;
+    }
+    return \@requests;
 }
-    
+
      
 sub getipmicons {
     my $argr=shift;
@@ -6901,7 +7593,174 @@ sub scan {
     }
 }
 
-   
+#----------------------------------------------------------------#
+# HPM file format:
+#     Upgrade image header:
+#         0:8  --> Upgrade Image signature
+#         8:1  --> Format Version
+#         9:1  --> Device ID
+#        10:3  --> Manufacture ID
+#        13:2  --> Product ID
+#        15:4  --> Img created Time
+#        19:1  --> Img capabilites
+#        20:1  --> Components. 
+#        21:1  --> Self-test timeout.
+#        22:1  --> Rollback timeout
+#        23:1  --> Inaccessibility timeout
+#        24:2  --> Earliest Compatible Revision.            0-6 Major, 8-15 Minor
+#        26:6  --> Firmware revision
+#        32:2  --> OEM data descriptor length.
+#        34:n  --> OEM data descriptor
+#                        0:1  --> Descriptor Type ID.
+#                        1:1  --> End of List or Version
+#                        2:2  --> Length (8+m)
+#                        4:3  --> Manufacutre ID
+#                        7:1  --> Descriptor checksum
+#                        8:m  --> Data.
+#      34+n:1  --> Header checksum
+#     Upgrade action 1
+#         0:1  --> Upgrade action type. 0: Backup component, 0x01: Prepare components, 0x02: Upload firmware image.
+#         1:1  --> Components. The selected component
+#         2:1  --> header checksum
+#              The following bytes 3:(34+m) are only present if action type is 0x02.
+#         3:6  --> Firmware version.
+#         9:21 --> Firmware description string.
+#        30:4  --> Firmware length.
+#        34:m  --> Firmware Image data.
+#     Upgrade action N
+#     Image checksum 0:16
+#
+#----------------------------------------------------------------#
+
+sub hpm_data_parse {
+
+    sub _read_hpm_file {
+        my($hpm_filefd, $size, $pos_ptr, $hpm_context_string_ptr) = @_;
+        my $tmp = undef;
+        my $rt = 0;
+        while ($rt = read($hpm_filefd, $tmp, $size)) {
+            $size -= $rt;
+            $$pos_ptr +=$rt;
+            $$hpm_context_string_ptr .= $tmp;
+            if ( $size == 0) {
+                last;
+            }
+        }
+        if ($size != 0 ) {
+            $callback->({error=>"Parse hpm file error.",
+                         errorcode=>1});
+            return -1;
+        }
+        return 0;
+    }
+
+    my $hpm_file_name = shift;
+    my $hpm_context_string="";
+    my $hpm_filefd;
+    #relative path
+    if ($hpm_file_name !~ /^\//) {
+        $hpm_file_name = xCAT::Utils->full_path($hpm_file_name, $::cwd);
+    }
+    unless ( -f $hpm_file_name) {
+        $callback->({error=>"File $hpm_file_name can not be found.",
+                     errorcode=>1});
+        return -1;
+    }
+    unless ( open($hpm_filefd, "<", $hpm_file_name)) {
+        $callback->({error=>"Open file $hpm_file_name failed.",
+                     errorcode=>1});
+        return -1;
+    }
+    binmode($hpm_filefd);
+
+    my $size = 34;
+    my $pos = 0;
+    my $ret = 0;
+
+    seek($hpm_filefd, 0, 2);
+    my $filesize = tell($hpm_filefd);
+    seek($hpm_filefd, 0, 0);
+    $ret = _read_hpm_file($hpm_filefd, $size, \$pos, \$hpm_context_string);
+    return $ret if $ret < 0;
+
+    # Parse hpm image header
+    my @hpm_context = unpack("C34", $hpm_context_string);
+    $hpm_data_hash{deviceID} = $hpm_context[9];
+    $hpm_data_hash{manufactureID} = $hpm_context[10] + $hpm_context[11]*0x100 +
+                                    $hpm_context[12]*0x10000;
+    $hpm_data_hash{productID} = $hpm_context[13] + $hpm_context[14]*0x100;
+    $hpm_data_hash{componentes} = $hpm_context[20];
+    $hpm_data_hash{compatible_rev_min} = $hpm_context[24];
+    $hpm_data_hash{compatible_rev_maj} = $hpm_context[25];
+    $hpm_data_hash{oem_des_len} = $hpm_context[32] + $hpm_context[33]*0x100;
+
+    seek($hpm_filefd, 34+$hpm_data_hash{oem_des_len}+1, 0);
+    # parse hpm action structure
+    $pos = 34+$hpm_data_hash{oem_des_len}+1;
+
+    while ($pos < $filesize -16) {
+        $size = 3;
+        $hpm_context_string = "";
+        $ret = _read_hpm_file($hpm_filefd, $size, \$pos, \$hpm_context_string);
+        return $ret if $ret <0;
+        @hpm_context = unpack("C3", $hpm_context_string);
+        my $action_type  = $hpm_context[0];
+        my $component_id = $hpm_context[1];
+        $hpm_data_hash{$component_id}{component_id} = $component_id;
+        $hpm_data_hash{$component_id}{action_type} = $action_type;
+        if ($action_type eq '2') {
+            $hpm_context_string = "";
+            $size = 31;
+            $ret = _read_hpm_file($hpm_filefd, $size, \$pos, \$hpm_context_string);
+            return $ret if $ret <0;
+ 
+            @hpm_context = unpack("C31", $hpm_context_string);
+            @{$hpm_data_hash{$component_id}{action_version}} = splice(@hpm_context, 0, 6);
+            @{$hpm_data_hash{$component_id}{action_des_str}} = splice(@hpm_context, 0, 21);
+            $hpm_data_hash{$component_id}{action_length} = $hpm_context[0] + $hpm_context[1]*0x100 +
+                                                           $hpm_context[2]*0x10000 +
+                                                           $hpm_context[3]*0x1000000;
+            seek($hpm_filefd, $hpm_data_hash{$component_id}{action_length}, 1);
+            $pos += $hpm_data_hash{$component_id}{action_length};
+        }
+    }
+    close($hpm_filefd);
+    # We suppose component 2 and component 4 must exists in the HPM file
+    if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
+        $callback->({error=>"Parse hpm file error, component 2 and component 4 do not exist",
+                     errorcode=>1});
+        return -1;
+    }
+    if(!exists($hpm_data_hash{deviceID}) || !exists($hpm_data_hash{manufactureID})
+       || !exists($hpm_data_hash{productID})) {
+        $callback->({error=>"Parse hpm file error",
+                     errorcode=>1});
+        return -1;
+    }
+    # The last 16 bytes are image checksum
+    @hpm_context = ();
+    return 0; 
+}
+
+sub hpm_action_version {
+    if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
+        return -1;
+    }
+    my $version = $hpm_data_hash{1}{action_version};
+    my $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
+                       $version->[3], $version->[4], $version->[5]);
+    $callback->({data=>"HPM firmware version for BOOT component:$ver"});
+    $version = $hpm_data_hash{2}{action_version};
+    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
+                       $version->[3], $version->[4], $version->[5]); 
+    $callback->({data=>"HPM firmware version for APP  component:$ver"});
+    $version = $hpm_data_hash{4}{action_version};
+    $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
+                       $version->[3], $version->[4], $version->[5]);
+    $callback->({data=>"HPM firmware version for BIOS component:$ver"});
+}
+
+
 sub process_request {
   my $request = shift;
   $callback = shift;
@@ -6910,6 +7769,7 @@ sub process_request {
   my $command = $request->{command}->[0];
   my $extrargs = $request->{arg};
   my @exargs=($request->{arg});
+  $::cwd = $request->{cwd}->[0];
   if (ref($extrargs)) {
     @exargs=@$extrargs;
   }
@@ -6989,6 +7849,41 @@ sub process_request {
         return;
     }
 
+    if ($request->{command}->[0] eq "rflash") {
+        my %args_hash;
+        if (!defined($extrargs)) {
+                $callback->({error=>"No option or hpm file is provided.",
+                             errorcode=>1});
+            return;
+        }
+        foreach my $opt (@$extrargs) {
+            if ($opt =~ /^(-c|--check)$/i) {
+                if (exists($args_hash{check})) {
+                    $callback->({error=>"Error command: Multiple opption $opt is given.",
+                                 errorcode=>1});
+                    return;
+                }
+                $args_hash{check} = 1;
+            } elsif ($opt =~ /.*\.hpm$/i) {
+                if (exists($args_hash{hpm})) {
+                    $callback->({error=>"Error command: Multiple hpm file is given.",
+                                 errorcode=>1});
+                    return;
+                }
+                $args_hash{hpm} = $opt;
+            }
+        }
+        if (exists($args_hash{hpm})){
+            if (hpm_data_parse($args_hash{hpm})<0) {
+                return;
+            }
+        }
+
+        if (exists($args_hash{check})) {
+            hpm_action_version();
+        }
+    }
+
   #get new node status
   my %oldnodestatus=(); #saves the old node status
   my $check=0;
@@ -7045,12 +7940,18 @@ sub process_request {
     }
   }
 
-    my $children = 0;
-    my $sub_fds = new IO::Select;
-    foreach (@donargs) {
-      donode($_->[0],$_->[1],$_->[2],$_->[3],$_->[4],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
-	}
-    while (xCAT::IPMI->waitforrsp()) { yield };
+    # NOTE (chenglch) rflash for one node need about 5-10 minutes. There is no need to rflash node
+    # one by one, fork a process for each node.
+    if ($command eq 'rflash') {
+        start_rflash_processes(\@donargs, $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+    }
+    else {
+        foreach (@donargs) {
+            donode($_->[0],$_->[1],$_->[2],$_->[3],$_->[4],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+        }
+        while (xCAT::IPMI->waitforrsp()) { yield };
+    }
+
     my $node;
     foreach $node (keys %sessiondata) {
         if ($sessiondata{$node}->{ipmisession}) {
@@ -7058,34 +7959,6 @@ sub process_request {
         }
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
-    if (keys %needbladeinv) {
-	#ok, we have some inventory data that, for now, suggests blade plugin to getdata from blade plugin
-#	my @bladenodes = keys %needbladeinv;
-#	$request->{arg}=['mac'];
-#        $request->{node}=\@bladenodes;
-#	require xCAT_plugin::blade;
-#	xCAT_plugin::blade::process_request($request,$callback);
-    }
-####return;
-####while ($sub_fds->count > 0 and $children > 0) {
-####  my $handlednodes={};
-####  forward_data($callback,$sub_fds,$handlednodes);
-####  #update the node status to the nodelist.status table
-####  if ($check) {
-####    updateNodeStatus($handlednodes, \@allerrornodes);
-####  }
-####}
-####
-#####Make sure they get drained, this probably is overkill but shouldn't hurt
-####my $rc=1;
-####while ( $rc>0 ) {
-####  my $handlednodes={};
-####  $rc=forward_data($callback,$sub_fds,$handlednodes);
-####  #update the node status to the nodelist.status table
-####  if ($check) {
-####    updateNodeStatus($handlednodes, \@allerrornodes);
-####  }
-####} 
 
     if ($check) {
         #print "allerrornodes=@allerrornodes\n";

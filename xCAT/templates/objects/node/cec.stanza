@@ -1,0 +1,12 @@
+# <the cec definition template>
+
+cec:
+    objtype=node
+    groups=cec,all
+    hcp="MANDATORY:The hardware control point(HMC) for the node"
+    hwtype=cec
+    mgt=hmc
+    mtm="MANDATORY:The machine type and model number of the node"
+    nodetype=ppc
+    serial="MANDATORY:The serial number of the node"
+    usercomment="the cec definition template"

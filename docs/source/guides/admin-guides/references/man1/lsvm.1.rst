@@ -1,0 +1,412 @@
+
+######
+lsvm.1
+######
+
+.. highlight:: perl
+
+
+****
+NAME
+****
+
+
+\ **lsvm**\  - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+
+
+********
+SYNOPSIS
+********
+
+
+\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\ 
+
+\ **lsvm**\  [\ **-v**\ | \ **-**\ **-version**\ ]
+
+\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
+
+\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\ 
+
+For PPC (using Direct FSP Management):
+======================================
+
+
+\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\ 
+
+\ **lsvm**\  \ *noderange*\ 
+
+
+For KVM and VMware
+==================
+
+
+\ **lsvm**\  \ *noderange*\ 
+
+
+For zVM:
+========
+
+
+\ **lsvm**\  \ *noderange*\ 
+
+
+
+***********
+DESCRIPTION
+***********
+
+
+The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
+
+For PPC (using Direct FSP Management):
+======================================
+
+
+For Power 775(use option \ *--p775*\  to specify), lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
+
+For DFM-managed (short for Direct FSP Management mode) normal power machine, lsvm lists the processor, memory, physical I/O slots, hugepage and BSR info for the specified partitions or CEC.
+
+The pump mode value has the valid options:
+  1 - Node Pump Mode
+  2 - Chip Pump Mode
+
+The Memory Interleaving Mode has 3 valid options: 
+  0 - not Applicable
+  1 - interleaved
+  2 - non-interleaved
+
+More information about this part, refer to the section Using the \*vm commands to define partitions in xCAT DFM  in the doc below. 
+  XCAT_Power_775_Hardware_Management
+
+
+For KVM and VMware
+==================
+
+
+The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  can only be hypervisor.
+
+Note: Only the virtual machine which is in power on state can be listed by lsvm command.
+
+
+For zVM:
+========
+
+
+Show the directory entry for a given virtual machine.
+
+
+
+*******
+OPTIONS
+*******
+
+
+\ **-h**\ 
+
+Display usage message.
+
+\ **-v**\ 
+
+Command Version.
+
+\ **-V**\ 
+
+Verbose output.
+
+\ **-a**\ 
+
+List all the profiles for one partition
+
+\ **-**\ **-p775**\ 
+
+Specify the operation is for Power 775 machines.
+
+\ **-l**\ 
+
+Show lparnames for lpars. It shall work with option \ **-**\ **-p775**\ .
+
+
+************
+RETURN VALUE
+************
+
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+
+********
+EXAMPLES
+********
+
+
+1. To list all partition profiles defined for HMC-managed partition lpar3, enter:
+
+
+.. code-block:: perl
+
+  lsvm lpar3
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  lpar3: name=lpar3,lpar_name=lpar3,lpar_id=4,lpar_env=aixlinux,all_resources=0,min_mem=512, desired_mem=2048, max_mem=3072,min_num_huge_pages=0,desired_num_huge_pages=0,max_num_huge_pages=0,proc_mode=shared, min_proc_units=0.5,desired_proc_units=0.5,max_proc_units=0.5,min_procs=1,desired_procs=1,max_procs=1, sharing_mode=uncap,uncap_weight=128,shared_proc_pool_id=0,shared_proc_pool_name=DefaultPool,io_slots=none, lpar_io_pool_ids=none,max_virtual_slots=10, "virtual_serial_adapters=1/server/1/any//any/1,0/server/1/any//any/1", virtual_scsi_adapters=2/client/1/p6vios/4/1,virtual_eth_adapters=3/0/1//0/1,hca_adapters=none,boot_mode=norm,conn_monitoring=0,auto_start=0,power_ctrl_lpar_ids=none,work_group_id=none,redundant_err_path_reporting=0, bsr_arrays=0,lhea_logical_ports=none,lhea_capabilities=none,lpar_proc_compat_mode=default,electronic_err_reporting=null
+
+
+2.To list all IVM-managed partitions associated with CEC cec01, enter:
+
+
+.. code-block:: perl
+
+  lsvm cec01
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  cec01: name=10-B7D1G,lpar_name=10-B7D1G,lpar_id=1,os_type=vioserver,all_resources=0,min_mem=512, desired_mem=2048,max_mem=2048,proc_mode=shared,min_proc_units=0.10,desired_proc_units=0.40, max_proc_units=4.00,min_procs=1,desired_procs=4,max_procs=4,sharing_mode=uncap,uncap_weight=128, "io_slots=21010002/none/0,21010003/none/0,21010004/none/0,21020003/none/0,21020004/none/0,21030003/none/0,21030004/none/0,21040003/none/0,21040004/none/0",lpar_io_pool_ids=none,max_virtual_slots=48, "virtual_serial_adapters=0/server/1/any//any/1,1/server/1/any//any/1,10/client/0/2/lp2/0/0,12/client/0/3/lp3/0/0,14/client/0/4/lp4/0/0","virtual_scsi_adapters=11/server/2/lp2/2/0,13/server/3/lp3/2/0,15/server/4/lp4/2/0","virtual_eth_adapters=3/0/1//1/0,4/0/2//1/0,5/0/3//1/0,6/0/4//1/0",boot_mode=norm,conn_monitoring=0,auto_start=0,power_ctrl_lpar_ids=none
+    name=lp2,lpar_name=lp2,lpar_id=2,os_type=aixlinux,all_resources=0,min_mem=128,desired_mem=1024,max_mem=1024,proc_mode=shared,min_proc_units=0.10,desired_proc_units=0.10,max_proc_units=4.00,min_procs=1,desired_procs=1,max_procs=4,sharing_mode=uncap,uncap_weight=128,io_slots=none,lpar_io_pool_ids=none,max_virtual_slots=6, "virtual_serial_adapters=0/server/1/any//any/1,1/server/1/any//any/1",virtual_scsi_adapters=2/client/1/10-7D1G/11/1,virtual_eth_adapters=4/0/1//0/0,boot_mode=norm,conn_monitoring=0,auto_start=0,power_ctrl_lpar_ids=none
+    name=lp3,lpar_name=lp3,lpar_id=3,os_type=aixlinux,all_resources=0,min_mem=128,desired_mem=128,max_mem=128,proc_mode=shared,min_proc_units=0.10,desired_proc_units=0.10,max_proc_units=4.00,min_procs=1,desired_procs=1,max_procs=4,sharing_mode=uncap,uncap_weight=128,io_slots=none,lpar_io_pool_ids=none,max_virtual_slots=6, "virtual_serial_adapters=0/server/1/any//any/1,1/server/1/any//any/1",virtual_scsi_adapters=2/client/1/10-B7D1G/13/1,virtual_eth_adapters=4/0/1//0/0,boot_mode=of,conn_monitoring=0,auto_start=1, power_ctrl_lpar_ids=none
+
+
+3. For Power 775, to list the I/O slot information of lpar1, enter:
+
+
+.. code-block:: perl
+
+  lsvm lpar1 --p775
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+  1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+  1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+
+
+4. To list the lparname of lpars, enter:
+
+
+.. code-block:: perl
+
+  lsvm lpar1 -l --p775
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+  lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+  lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+
+
+5. For Power 775, to list the I/O slot information and octant configuration of cec1, enter:
+
+
+.. code-block:: perl
+
+  lsvm cec1 --p775
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+  1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+  1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+  13: 537/U78A9.001.0123456-P1-C9/0x21010219/2/13
+  13: 536/U78A9.001.0123456-P1-C10/0x21010218/2/13
+  17: 545/U78A9.001.0123456-P1-C7/0x21010221/2/17
+  17: 544/U78A9.001.0123456-P1-C8/0x21010220/2/17
+  21: 553/U78A9.001.0123456-P1-C5/0x21010229/2/21
+  21: 552/U78A9.001.0123456-P1-C6/0x21010228/2/21
+  25: 569/U78A9.001.0123456-P1-C1/0x21010239/2/25
+  25: 561/U78A9.001.0123456-P1-C3/0x21010231/2/25
+  25: 560/U78A9.001.0123456-P1-C4/0x21010230/2/25
+  29: 568/U78A9.001.0123456-P1-C2/0x21010238/2/29
+  5: 521/U78A9.001.0123456-P1-C13/0x21010209/2/5
+  5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5
+  9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9
+  9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9
+  cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:
+  OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+
+
+6.To list the lparname of lpars, enter:
+
+
+.. code-block:: perl
+
+  lsvm cec1 -l --p775
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1: 32: 0/3/3
+  lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1: 32: 0/3/3
+  lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1: 32: 0/3/3
+  lpar13: 13: 537/U78A9.001.0123456-P1-C9/0x21010219/2/13: 32: 0/3/3
+  lpar13: 13: 536/U78A9.001.0123456-P1-C10/0x21010218/2/13: 32: 0/3/3
+  lpar17: 17: 545/U78A9.001.0123456-P1-C7/0x21010221/2/17: 32: 0/0/0
+  lpar17: 17: 544/U78A9.001.0123456-P1-C8/0x21010220/2/17: 32: 0/0/0
+  lpar21: 21: 553/U78A9.001.0123456-P1-C5/0x21010229/2/21: 32: 0/0/0
+  lpar21: 21: 552/U78A9.001.0123456-P1-C6/0x21010228/2/21: 32: 0/0/0
+  lpar24: 25: 569/U78A9.001.0123456-P1-C1/0x21010239/2/25: 32: 0/0/0
+  lpar25: 25: 561/U78A9.001.0123456-P1-C3/0x21010231/2/25: 32: 0/0/0
+  lpar25: 25: 560/U78A9.001.0123456-P1-C4/0x21010230/2/25: 32: 0/0/0
+  lpar29: 29: 568/U78A9.001.0123456-P1-C2/0x21010238/2/29: 32: 0/0/0
+  lpar5: 5: 521/U78A9.001.0123456-P1-C13/0x21010209/2/5: 32: 0/3/3
+  lpar5: 5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5: 32: 0/3/3
+  lpar9: 9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9: 32: 0/3/3
+  lpar9: 9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9: 32: 0/3/3
+  cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:
+  OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
+  Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
+  Available huge page memory(in pages):     0
+  Configurable huge page memory(in pages):  12
+  Page Size(in GB):                         16
+  Maximum huge page memory(in pages):       24
+  Requested huge page memory(in pages):     15
+  Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
+  Available huge page memory(in pages):     0
+  Configurable huge page memory(in pages):  12
+  Page Size(in GB):                         16
+  Maximum huge page memory(in pages):       24
+  Requested huge page memory(in pages):     15
+
+
+7. To list the virtual machine's directory entry:
+
+
+.. code-block:: perl
+
+  lsvm gpok3
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+  gpok3: USER LNX3 PWD 512M 1G G
+  gpok3: INCLUDE LNXDFLT
+  gpok3: COMMAND SET VSWITCH VSW2 GRANT LNX3
+
+
+8. For DFM-managed normal power machine, list out the detailed resource information:
+
+
+.. code-block:: perl
+
+  lsvm cec
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+   cec: HYP Configurable Processors: 16, Avail Processors: 16.
+   HYP Configurable Memory:32.00 GB(128 regions).
+   HYP Available Memory:   31.25 GB(125 regions).
+   HYP Memory Region Size: 0.25 GB(256 MB).
+   cec: All Physical I/O info:
+   65535,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0xffff(Empty Slot)
+   65535,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0xffff(Empty Slot)
+   65535,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0xffff(Empty Slot)
+   65535,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0xffff(Empty Slot)
+   65535,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+   65535,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+   65535,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+   cec: Huge Page Memory
+   Available huge page memory(in pages):     2
+   Configurable huge page memory(in pages):  2
+   Page Size(in GB):                         16
+   Maximum huge page memory(in pages):       4
+   Requested huge page memory(in pages):     2
+   cec: Barrier Synchronization Register(BSR)
+   Number of BSR arrays: 256
+   Bytes per BSR array:  4096
+   Available BSR array:  256
+
+
+Note: The lines list in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicate a physical I/O resource in normal power machine.
+
+9.For DFM-managed partition on normal power machine, list out the detailed information:
+
+
+.. code-block:: perl
+
+   lsvm lpar1
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+   lpar1: Lpar Processor Info:
+   Curr Processor Min: 1.
+   Curr Processor Req: 16.
+   Curr Processor Max: 16.
+   lpar1: Lpar Memory Info:
+   Curr Memory Min: 0.25 GB(1 regions).
+   Curr Memory Req: 30.75 GB(123 regions).
+   Curr Memory Max: 32.00 GB(128 regions).
+   lpar1: 1,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0xffff(Empty Slot)
+   lpar1: 1,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0xffff(Empty Slot)
+   lpar1: 1,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0xffff(Empty Slot)
+   lpar1: 1,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0xffff(Empty Slot)
+   lpar1: 1,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+   lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+   lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+   lpar1: 1/2/2
+   lpar1: 256.
+
+
+
+*****
+FILES
+*****
+
+
+/opt/xcat/bin/lsvm
+
+
+********
+SEE ALSO
+********
+
+
+mkvm(1)|mkvm.1, chvm(1)|chvm.1, rmvm(1)|rmvm.1
+

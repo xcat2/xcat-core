@@ -4,20 +4,21 @@ B<chtab> - Add, delete or update rows in the database tables.
 
 =head1 SYNOPSIS
 
-I<chtab [-h| --help]>
+B<chtab> [B<-h> | B<--help>]
 
-I<chtab [-v| --version]>
+B<chtab> [B<-v> | B<--version>]
 
-I<chtab [keycolname=keyvalue] [tablename.colname=newvalue] >
+B<chtab> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
 
-I<chtab [keycolname=keyvalue] [tablename.colname+=newvalue] >
+B<chtab> [I<keycolname=keyvalue>] [I<tablename.colname+=newvalue>]
 
-I<chtab -d [keycolname=keyvalue] [tablename.colname=newvalue] >
+B<chtab -d> [I<keycolname=keyvalue>] [I<tablename.colname=newvalue>]
 
 =head1 DESCRIPTION
 
 The chtab command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
 
+The chtab is designed to work without passing xcatd, so it's out of control of policy mechanism. 
 
 =head1 OPTIONS
 
@@ -32,38 +33,53 @@ B<-d>          Delete option.
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0. 
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-1. To add a node=node1 to the nodelist table with groups=all:
+=over 2
 
-I<chtab  node=node1 nodelist.groups=all >
+=item 1. 
+To add a node=node1 to the nodelist table with groups=all:
 
-2. To add a keyword (tftpdir) and value (/tftpboot) to the site table:
+ chtab  node=node1 nodelist.groups=all
 
-I<chtab  key=tftpdir site.value=/tftpboot >
+=item 2.
+To add a keyword (tftpdir) and value (/tftpboot) to the site table:
 
-
-3. To add node1 to the  nodetype table with os=rhel5:
-
-I<chtab  node=node1 nodetype.os=rhel5>
+ chtab  key=tftpdir site.value=/tftpboot
 
 
-4. To change node1 in nodetype table setting os=sles:
+=item 3. 
+To add node1 to the  nodetype table with os=rhel5:
 
-I<chtab  node=node1 nodetype.os=sles>
+ chtab  node=node1 nodetype.os=rhel5
 
-5. To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
-I<chtab node=node1 postscripts.postbootscripts+=otherpkgs>
+=item 4. 
+To change node1 in nodetype table setting os=sles:
 
-6. To delete node1 from nodetype table:
+ chtab  node=node1 nodetype.os=sles
 
-I<chtab -d node=node1 nodetype>
+=item 5.
+To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
+ chtab node=node1 postscripts.postbootscripts+=otherpkgs
+
+=item 6.
+To delete node1 from nodetype table:
+
+ chtab -d node=node1 nodetype
+
+=back
 
 =head1 FILES
 

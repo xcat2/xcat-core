@@ -49,5 +49,5 @@ chroot $installroot \
  locale-gen en_US.UTF-8 en_US
 chroot $installroot \
  update-locale
-chroot $installroot \
+DEBIAN_FRONTEND=noninteractive chroot $installroot \
  dpkg-reconfigure locales

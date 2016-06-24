@@ -1,0 +1,8 @@
+
+#For Cuda 7.5
+kernel-devel
+gcc
+pciutils
+dkms
+cuda
+

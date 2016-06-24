@@ -53,7 +53,7 @@ sub start {
 =head3    stop
       This function gets called by the monitorctrl module when monstop command gets called. 
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 
@@ -185,7 +185,7 @@ sub startNodeStatusMon
     This function is called by the monitorctrl module when monstop command is issued.
     It stops feeding the node status info back to xCAT. 
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 
@@ -418,7 +418,7 @@ sub getDescription {
     ping-interval:  the number of minutes between each nmap/fping operation. 
         The default value is 3.
     apps: a list of comma separated application names whose status will be queried. 
-        For how to get the status of each app, look for app name in the key filed 
+        For how to get the status of each app, look for app name in the key field 
         in a different row.
     port: the application daemon port number, if not specified, use internal list, 
         then /etc/services.

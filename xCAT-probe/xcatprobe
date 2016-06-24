@@ -1,0 +1,235 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+use File::Basename;
+use Data::Dumper;
+use File::Path;
+use POSIX qw(WNOHANG setsid :errno_h);
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
+
+$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+
+my $pro_name = basename($0);
+
+my $pro_dir="$::XCATROOT/probe/";
+my $plugin_dir = "$pro_dir/subcmds";
+my %cmds       = ();
+
+my $verbose = 0;
+my $nocolor = 0;
+my $help    = 0;
+my $list    = 0;
+
+$::USAGE = "Usage:
+xcatprobe -h
+xcatprobe -l
+xcatprobe [-n] [-V] <subcommand>  <attrbute_to_subcommand>
+
+Options:
+    -h : get usage information of $pro_name 
+    -l : list all valid sub commands
+    -V : print verbose information of $pro_name
+    -n : print output without colors 
+";
+
+#-----------------------------------
+
+=head3
+    Description:
+    Load sub commands from ~/subcmds directory
+    Using -t option of command to judge if it is valid.
+    If command in ~/subcmds has syntax error, or doesn't follow interface specification, this command will be skipped
+=cut
+
+#-----------------------------------
+sub loadsubcmds {
+    my @candidate = glob("$plugin_dir/*");
+    my @subcmds   = ();
+    my $output;
+
+    print "Starting to load sub command form ~/subcmds.............\n" if ($verbose);
+
+    foreach (@candidate) {
+        my $cmdname = basename("$_");
+        $output = `$_ -t 2>&1`;
+        chomp($output);
+
+        print "\n-->$_\n[OUTPUT]:\n$output\n" if ($verbose);
+        if ($output !~ /\[(\w+)\]\s*:\s*(.+)/) {
+            print "skip $_ for doing '$_ -t' failed, bad format\n" if ($verbose);
+            next;
+        } else {
+            my $desc = $2;
+            unless ($1 ~~ /^ok$/) {
+                print "skip $_ for doing '$_ -t' failed, invalid flag\n" if ($verbose);
+                next;
+            }
+            $cmds{$cmdname} = $desc;
+            print "load $_ \n" if ($verbose);
+        }
+    }
+    print "\nLoad sub command.........[done]\n" if ($verbose);
+}
+
+
+#-----------------------------------
+
+=head3
+    Description:
+    Format the output of sub command, make them colorfully.
+=cut
+
+#----------------------------------
+sub format_cmd_output {
+    my $line    = shift;
+    my $nocolor = shift;
+
+    if ($line =~ /\[(\w+)\]\s*:\s*(.+)/) {
+        my $flag = $1;
+        my $msg  = $2;
+        if ($flag =~ /failed/i) {
+            if ($nocolor) {
+                print "[FAIL] ";
+            } else {
+                print BOLD RED "[FAIL] ";
+            }
+        } elsif ($flag =~ /warning/i) {
+            if ($nocolor) {
+                print "[WARN] ";
+            } else {
+                print BOLD BLUE "[WARN] ";
+            }
+        } elsif ($flag =~ /ok/i) {
+            if ($nocolor) {
+                print "[ OK ] ";
+            } else {
+                print BOLD GREEN "[ OK ] ";
+            }
+        } elsif ($flag =~ /debug/i) {
+            print "       ";
+        } elsif ($flag =~ /info/i) {
+            print "[INFO] ";
+        }
+        print "$msg\n";
+    } else {
+        print "$line\n";
+    }
+    return 0;
+}
+
+#-----------------------------------
+
+=head3
+    Description:
+    List all valid sub command in ~/subcmds directory
+=cut
+
+#----------------------------------
+sub listvalidsubcmd {
+    my $maxlen = 0;
+    foreach my $key (keys %cmds) {
+        $maxlen = length($key) if (length($key) > $maxlen);
+    }
+    $maxlen += 4;
+    print "Supported sub commands are:\n";
+    foreach my $key (keys %cmds) {
+        my @desc       = split(" ", $cmds{$key});
+        my $str        = "";
+        my @formatdesc = ();
+        foreach my $word (@desc) {
+            $str .= $word . " ";
+            if (length($str) > 100) {
+                push @formatdesc, $str;
+                $str = "";
+            }
+        }
+        push @formatdesc, $str;
+        if ($nocolor) {
+            print "$key";
+        } else {
+            print BOLD GREEN "$key";
+        }
+        my $space = " " x ($maxlen - length($key));
+        print "$space $formatdesc[0]\n";
+        delete $formatdesc[0];
+        $space = " " x $maxlen;
+        foreach my $line (@formatdesc) {
+            print "$space $line\n" if (length($line));
+        }
+
+    }
+}
+
+#######################################
+# main
+#######################################
+my @tmpargv = @ARGV;
+my @supportopt = ("-V", "-h", "-l", "-n");
+my $pluginname;
+my $optnum = 0;
+foreach my $attr (@tmpargv) {
+    if ($attr =~ /^-/) {
+        unless (@supportopt ~~ /^$attr$/) {
+            print "Unsupported attribute: $attr\n";
+            print $::USAGE;
+            exit 1;
+        }
+        $optnum++;
+        $help    = 1 if ($attr eq "-h");
+        $verbose = 1 if ($attr eq "-V");
+        $list    = 1 if ($attr eq "-l");
+        $nocolor = 1 if ($attr eq "-n");
+    } else {
+        $pluginname = $attr;
+        last;
+    }
+}
+
+&loadsubcmds;
+if (defined($pluginname)) {
+    my $hit = 0;
+    foreach my $key (keys %cmds) {
+        $hit = 1 if ($pluginname eq $key);
+    }
+    unless ($hit) {
+        print "Unsupported sub command: $pluginname\n";
+        &listvalidsubcmd;
+        exit 1;
+    }
+}
+
+if ($help) {
+    print $::USAGE;
+    exit 0;
+}
+
+if ($ARGV[0] eq "-l") {
+    &listvalidsubcmd;
+    exit 0;
+}
+
+if (!defined($pluginname)) {
+    print "There isn't sub command input from command line\n";
+    exit 0;
+}
+
+for (my $i = 0 ; $i < $optnum + 1 ; $i++) {
+    shift @tmpargv;
+}
+my $pluginattrs = join(" ", @tmpargv);
+my $subcmd = "$plugin_dir/$pluginname $pluginattrs";
+
+print "\nsubcmd = $subcmd\n" if ($verbose);
+
+open(PIPE, "$subcmd |");
+while (<PIPE>) {
+    chomp;
+    format_cmd_output($_, $nocolor);
+}
+close(PIPE);    # This will set the $? properly
+
+my $ret = $? >> 8;
+
+exit $ret;
+

@@ -67,7 +67,7 @@ use Data::Dumper;
 #       and return values.
 #
 #       For details on how to write plugin code, refer to:
-#       http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Developer_Guide
+#       http://sourceforge.net/p/xcat/wiki/XCAT_Developer_Guide/
 #
 #    3) To test the plugin commands:
 #          a) Search this file for lines that start with "TEST:" and follow the 

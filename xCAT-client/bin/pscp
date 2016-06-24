@@ -5,6 +5,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
 use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -18,9 +19,12 @@ my $interface;
 GetOptions(
   "interface=s" => \$interface,
   "f|fanout=s" => \$fanout,
+  "h|help"     => \$usage,
+  "v|version" => \$::VERSION,
   );
 my %nodehdl;
 my $xcathost='localhost:3001';
+if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
 if ($ENV{XCATHOST}) {
           $xcathost=$ENV{XCATHOST};
 }
@@ -56,6 +60,10 @@ else { usage("No node range specified\n\n"); }
 
 my  @user = getpwuid($>);
 my $homedir=$user[7];
+my %sslargs;
+if (defined($ENV{'XCATSSLVER'})) {
+    $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+}
 
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
@@ -63,7 +71,9 @@ my $client = IO::Socket::SSL->new(
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
-                #SSL_verify_mode => 1,
+                SSL_verify_mode => SSL_VERIFY_PEER,
+                SSL_verifycn_scheme => "none",
+                %sslargs,
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);

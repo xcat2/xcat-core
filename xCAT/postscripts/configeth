@@ -428,7 +428,7 @@ elif [ "$1" = "-s" ];then
                     if [ ! -z "str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
                         if [ ! -z "inst_ip_pre" ];then
-                            str_inst_mask=`route |grep ${inst_ip_pre}|awk '{print $3}'|head -1`
+                            str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi
                 fi
@@ -450,7 +450,7 @@ elif [ "$1" = "-s" ];then
                     if [ ! -z "str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
                         if [ ! -z "inst_ip_pre" ];then
-                            str_inst_mask=`route |grep ${inst_ip_pre}|awk '{print $3}'|head -1`
+                            str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi
                 fi
@@ -473,7 +473,7 @@ elif [ "$1" = "-s" ];then
                     if [ ! -z "str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
                         if [ ! -z "inst_ip_pre" ];then
-                            str_inst_mask=`route |grep ${inst_ip_pre}|awk '{print $3}'|head -1`
+                            str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi
                 fi
@@ -501,6 +501,9 @@ elif [ "$1" = "-s" ];then
 		str_extra_params=${array_nic_params[0]}
 		parse_nic_extra_params "$str_extra_params"
 	fi 
+
+    # Bring the interface down before cofniguring the interface
+    ifdown $str_inst_nic
 
     if [ -f "/etc/debian_version" ];then
         str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
@@ -596,6 +599,7 @@ elif [ "$1" = "-s" ];then
             fi
         fi
     fi
+    ifup $str_inst_nic
     exit 0
 fi
 

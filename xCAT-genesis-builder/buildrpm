@@ -4,11 +4,19 @@
 # Option 2:  untar the root file system of the distro you want to use and then chroot into it and copy
 #            this whole dir into it somewhere (like /tmp).
 # Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
+
+# Currently, *Fedora 23* is the only OS supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
+
 HOSTOS="$1"
 DIR=`dirname $0`
 #DIR=`realpath $DIR`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
+
+#For Openpower
+if [ $BUILDARCH = "ppc64le" ]; then
+    BUILDARCH="ppc64"
+fi
 
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
@@ -30,6 +38,7 @@ if [ $BUILDARCH = "x86_64" ]; then
     sed -i 's/\/lib64\/libmenu.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
     sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+    sed -i '/hwdb.bin/ d' $DRACUTMODDIR/install
     sed -i 's/instmods ipr//' $DRACUTMODDIR/installkernel
 fi
 if [ "$HOSTOS" = "mcp" ]; then
@@ -39,6 +48,8 @@ if [ "$HOSTOS" = "mcp" ]; then
             sed -i 's/dracut_install dmidecode \/usr\/lib64\/libstdc++.so.5//' $DRACUTMODDIR/install
             sed -i 's/dmidecode//' $DRACUTMODDIR/install
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-2.17.so/' $DRACUTMODDIR/install
+            sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
+            sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
         else
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-linux-x86-64.so.2/' $DRACUTMODDIR/install
         fi
@@ -96,17 +107,23 @@ elif [ $BUILDARCH = "ppc64" ]; then
         sed -i 's/\/lib\/libgcc_s.so.1/\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
         # following changes are required on Fedora 20 ppc64
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        # sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 23 ppc64
+        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.22.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libc.so.6/\/lib64\/libc.so.6/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 23 ppc64
+        #sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.22.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libdl.so.2/\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libm.so.6/\/lib64\/libm.so.6/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libpthread.so.0/\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
         sed -i 's/\/lib64\/libncurses.so.5.7/\/lib64\/libncurses.so.5.9/' $DRACUTMODDIR/install
-        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 22 ppc64
+        #sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.21/' $DRACUTMODDIR/install
         sed -i 's/\/lib64\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.9/' $DRACUTMODDIR/install
         sed -i 's/\/usr\/lib64\/libsasl2.so.2/\/usr\/lib64\/libsasl2.so.3/' $DRACUTMODDIR/install
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        #sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #
@@ -58,7 +58,7 @@ echolog()
       if [ "$VERBOSE" = "1"  ]; then
          echo "$msgstr"
       fi
-      if [ "$XCATDEBUGMODE" = "1" ]; then
+      if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
             msgutil_r  "$MASTER_IP" "$msgtype" "$msgstr" "/var/log/xcat/xcat.log"
       fi
    else
@@ -112,8 +112,12 @@ download_postscripts()
     retry=0
     rc=1  # this is a fail return 
     while [ 0 -eq 0 ]; do
-	
-       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
+
+        if [ -e "\/$xcatpost" ]; then
+            rm -rf "\/$xcatpost"
+        fi
+
+        export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
          rc=$?
          if [ $rc -eq 0 ]; then   
            # return from wget was 0 but some OS do not return errors, so we
@@ -322,7 +326,12 @@ if [ "$MODE" = "4" ]; then # for statelite mode
         if [ "$KEY" =  "XCAT" ]; then
             TMP=`echo $i | awk -F= '{print $2}'`
             XCATSERVER=`echo $TMP | cut -d: -f1`
-            echo "XCATSERVER=$XCATSERVER" > /opt/xcat/xcatinfo
+            grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/XCATSERVER=.*/XCATSERVER=$XCATSERVER/" /opt/xcat/xcatinfo
+            else
+                echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
+            fi
             break
         fi
     done
@@ -360,7 +369,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
             break
         fi
      done
-     grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+     grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
      if [ $? -eq 0 ]; then
         sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
      else
@@ -627,14 +636,14 @@ fi
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
-    new_ms=`grep '^MASTER' /$xcatpost/mypostscript |cut -d= -f2`
+    new_ms=`grep '^MASTER' /$xcatpost/mypostscript |head -n 1 |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
     if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
     fi
-    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
@@ -658,7 +667,7 @@ if [ -n "$useflowcontrol" ]; then
     else 
        new_fc="NO"
     fi
-    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
     else
@@ -682,7 +691,7 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
   fi
-  grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+  grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
   if [ $? -eq 0 ]; then
 	sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
   else
@@ -822,16 +831,22 @@ return_value=0
 # subroutine used to run postscripts
 run_ps () {
  local ret_local=0
- logdir=\"/var/log/xcat\"
- mkdir -p \$logdir
- logfile=\"/var/log/xcat/xcat.log\"
- 
+ mkdir -p "\"/var/log/xcat\""
+ local logfile=\"/var/log/xcat/xcat.log\"
+
  if [ -f \$1 ]; then 
   echo \"\`date\` Running postscript: \$*\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Running postscript: \$*\" \"\$logfile\"
-  if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
-     bash -x ./\$@ 2>&1 | tee -a \$logfile
-     ret_local=\${PIPESTATUS[0]}
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
+  if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
+     local compt=\$(file \$1)
+     local reg=\"shell script\"
+     if [[ \"\$compt\" =~ \$reg ]]; then
+        bash -x ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
+        ret_local=\${PIPESTATUS[0]}
+     else
+        ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
+        ret_local=\${PIPESTATUS[0]}
+     fi
   else
      ./\$@ 2>&1 | tee -a \$logfile
      ret_local=\${PIPESTATUS[0]}
@@ -841,10 +856,10 @@ run_ps () {
      return_value=\$ret_local
   fi
   echo \"Postscript: \$* exited with code \$ret_local\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$* return with \$ret_local\"" \"\$logfile\"
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Postscript \$1 does NOT exist.\"" \"\$logfile\"
   return_value=-1
  fi
 

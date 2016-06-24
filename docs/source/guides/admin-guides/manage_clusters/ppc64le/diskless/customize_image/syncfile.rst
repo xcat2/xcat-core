@@ -1,0 +1,1 @@
+../../diskful/customize_image/syncfile.rst

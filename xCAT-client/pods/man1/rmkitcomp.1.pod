@@ -10,7 +10,7 @@ B<rmkitcomp> [B<-V>|B<--verbose>] [B<-u>|B<--uninstall>] [B<-f>|B<--force>] [B<-
 
 =head1 DESCRIPTION
 
-The B<rmkitcomp> command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|--uninstall> option.
+The B<rmkitcomp> command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by B<-u|--uninstall> option.
 
 Note: The xCAT support for Kits is only available for Linux operating systems.
 
@@ -46,7 +46,7 @@ Do not remove kitcomponent's postbootscripts from osimage
 
 osimage name that include this kit component.
 
-=item B<kitcompname_list>
+=item I<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage. If a basename is specified, all kitcomponents matching that basename will be removed from the osimage.
 
@@ -62,27 +62,27 @@ A comma-delimited list of valid full kit component names or kit component basena
 
 1. To remove a kit component from osimage
 
-rmkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+ rmkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+ kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
 
 2. To remove a kit component even it is still used as a dependency of other kit component.
 
-rmkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+ rmkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+ kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
 
-3. To remove a kit component from osimage and also remove the kit component meta RPM and package RPM.  So in next genimage for statelss image and updatenode for statefull nodes, the kit component meta RPM and package RPM will be uninstalled.
+3. To remove a kit component from osimage and also remove the kit component meta RPM and package RPM.  So in next genimage for statelss image and updatenode for stateful nodes, the kit component meta RPM and package RPM will be uninstalled.
 
-rmkitcomp -u -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+ rmkitcomp -u -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+ kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
 
 
 =head1 SEE ALSO

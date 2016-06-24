@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+# Setup hostname
+#
+
+echo "post scripts" >/root/post.log
+
+[ $XCATDEBUGMODE ] || export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+[ $MASTER_IP ] || export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
+if [ "$PRINIC" == "mac" ]
+then
+    export PRINIC='#GETPRINICMAC:THISNODE#'    
+fi
+if [ -z "$PRINIC" ]
+then
+    export PRINIC=eth0
+elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
+    #export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+    export PRINIC=`ip -o link|grep -i  "$PRINIC" |awk  '{print $2}'|sed s/://`
+fi
+#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
+if [ -z $IP ]
+then
+	dhclient $PRINIC
+	#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+        IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
+fi
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+   msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC,IP=$IP" "/var/log/xcat/xcat.log"
+fi
+
+
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+   msgutil_r "$MASTER_IP" "debug" "generating /etc/resolv.conf" "/var/log/xcat/xcat.log"
+fi
+
+echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
+for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
+do
+	echo "nameserver $i"
+done >>/etc/resolv.conf

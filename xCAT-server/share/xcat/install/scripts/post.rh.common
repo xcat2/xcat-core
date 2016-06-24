@@ -49,7 +49,7 @@ fi
 
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
 
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC, IP=$IP,HOSTNAME=$HOSTNAME" "/var/log/xcat/xcat.log"
 fi
 
