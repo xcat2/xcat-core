@@ -23,7 +23,7 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
 
 my %usage = (
-"nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline|shutdown|stat]",
+"nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat]",
 );
 
 sub handled_commands {
@@ -78,7 +78,8 @@ sub getstate {
             chomp($headline);
             return $headline;
         } else {
-            return "boot";
+            # There is no boot configuration file, node must be offline
+            return "offline";
         }
     } else {
         return "discover";
@@ -181,18 +182,20 @@ sub setstate {
     my $nodemac;
     my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
 
-    open($pcfg, '>', $tftpdir . "/boot/grub2/" . $node);
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
-    if ($cref->{currstate}) {
+
+    # remove the old boot configuration file and create a new one, but only if not offline directive
+    unlink($tftpdir . "/boot/grub2/" . $node);
+    if ($cref and $cref->{currstate} ne "offline") {
+        open($pcfg, '>', $tftpdir . "/boot/grub2/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
+
+        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
+            print $pcfg "set debug=all\n";
+        }
+
+        print $pcfg "set timeout=5\n";
     }
-
-
-    if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-        print $pcfg "set debug=all\n";
-    }
-
-    print $pcfg "set timeout=5\n";
 
     $normalnodes{$node} = 1;   #Assume a normal netboot (well, normal dhcp,
                                #which is normally with a valid 'filename' field,
@@ -247,32 +250,34 @@ sub setstate {
             return;
         }
 
+	# write entries to boot config file, but only if not offline directive
+        if ($cref and $cref->{currstate} ne "offline") {
+            print $pcfg "set default=\"xCAT OS Deployment\"\n";
+            print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
+            print $pcfg "    insmod http\n";
+            print $pcfg "    insmod tftp\n";
+            print $pcfg "    set root=$grub2protocol,$serverip\n";
+            print $pcfg "    echo Loading Install kernel ...\n";
 
-        print $pcfg "set default=\"xCAT OS Deployment\"\n";
-        print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
-        print $pcfg "    insmod http\n";
-        print $pcfg "    insmod tftp\n";
-        print $pcfg "    set root=$grub2protocol,$serverip\n";
-        print $pcfg "    echo Loading Install kernel ...\n";
+            my $protocolrootdir = "";
+            if ($grub2protocol =~ /^http$/)
+            {
+                $protocolrootdir = $tftpdir;
+            }
 
-        my $protocolrootdir = "";
-        if ($grub2protocol =~ /^http$/)
-        {
-            $protocolrootdir = $tftpdir;
+            if ($kern and $kern->{kcmdline}) {
+                print $pcfg "    linux $protocolrootdir/$kern->{kernel} $kern->{kcmdline}\n";
+            } else {
+                print $pcfg "    linux $protocolrootdir/$kern->{kernel}\n";
+            }
+            print $pcfg "    echo Loading initial ramdisk ...\n";
+            if ($kern and $kern->{initrd}) {
+                print $pcfg "    initrd $protocolrootdir/$kern->{initrd}\n";
+            }
+
+            print $pcfg "}";
+            close($pcfg);
         }
-
-        if ($kern and $kern->{kcmdline}) {
-            print $pcfg "    linux $protocolrootdir/$kern->{kernel} $kern->{kcmdline}\n";
-        } else {
-            print $pcfg "    linux $protocolrootdir/$kern->{kernel}\n";
-        }
-        print $pcfg "    echo Loading initial ramdisk ...\n";
-        if ($kern and $kern->{initrd}) {
-            print $pcfg "    initrd $protocolrootdir/$kern->{initrd}\n";
-        }
-
-        print $pcfg "}";
-        close($pcfg);
         my $inetn = xCAT::NetworkUtils->getipaddr($node);
         unless ($inetn) {
             syslog("local1|err", "xCAT unable to resolve IP for $node in grub2 plugin");
@@ -312,8 +317,11 @@ sub setstate {
     foreach $ip (keys %ipaddrs) {
         my @ipa = split(/\./, $ip);
         my $pname = "grub.cfg-" . sprintf("%02x%02x%02x%02x", @ipa);
+        # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink($tftpdir . "/boot/grub2/" . $pname);
-        link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+        if ($cref and $cref->{currstate} ne "offline") {
+            link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+        }
     }
     if ($macstring) {
         $nodemac = xCAT::Utils->parseMacTabEntry($macstring, $node);
@@ -323,8 +331,11 @@ sub setstate {
         my $tmp = lc($nodemac);
         $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
         my $pname = "grub.cfg-01-" . $tmp;
+        # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink($tftpdir . "/boot/grub2/" . $pname);
-        link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+        if ($cref and $cref->{currstate} ne "offline") {
+            link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
+        }
     }
     return;
 }
@@ -712,6 +723,17 @@ sub process_request {
             }
         }
     }
+
+    if ($args[0] eq 'offline') {
+        # If nodeset directive was offline we need to remove the architecture file link and remove dhcp entries
+        foreach my $osimage (keys %osimagenodehash) {
+            foreach my $tmp_node (@{ $osimagenodehash{$osimage} }) {
+                unlink( "$tftpdir/boot/grub2/grub2-$tmp_node");
+                $sub_req->({ command => ['makedhcp'],arg=>['-d'],
+                           node => \@{ $osimagenodehash{$osimage} } }, $callback);
+            }
+        }
+    } 
 
     #now run the end part of the prescripts
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')
