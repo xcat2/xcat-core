@@ -391,6 +391,35 @@ function check_package_version()
 }
 
 #       $@      package names
+function check_repo_version_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a name=()
+	local -a ver=()
+	while read name ver
+	do
+		name+=("${name}")
+		ver+=("${ver}")
+	done < <(dnf repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	local -i i
+	while [[ -n "$1" ]]
+	do
+		for i in "${!name[@]}"
+		do
+			if [[ "$1" = "${name[i]}" ]]
+			then
+				echo "${ver[i]}"
+				unset "name[${i}]" "ver[${i}]"
+				shift && continue 2
+			fi
+		done
+		echo "(not found)"
+		shift
+	done
+	return 0
+}
+
+#       $@      package names
 function check_repo_version_yum()
 {
 	type repoquery >/dev/null 2>&1 || return 255
@@ -486,6 +515,15 @@ function check_repo_version()
 }
 
 #       $1      repo id
+function get_package_list_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local repo_id="$1"
+	[[ -z "${repo_id}" ]] && return 1
+	dnf repoquery -q "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
+}
+
+#       $1      repo id
 function get_package_list_yum()
 {
 	type repoquery >/dev/null 2>&1 || return 255
@@ -533,7 +571,7 @@ function download_file()
 #       $2      repo id
 function add_repo_by_file_yum()
 {
-	type yum-config-manager >/dev/null 2>&1 || return 255
+	[[ -d /etc/yum.repos.d ]] || return 255
 	local repo_file="$1"
 	local repo_id="$2"
 	[[ -f "${repo_file}" ]]
@@ -544,13 +582,11 @@ function add_repo_by_file_yum()
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
 	exit_if_bad "$?" "${repo_id} illegal character in repo id"
-	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
+	remove_repo_yum "${repo_id}"
 	{
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
-	} >"${tmp_repo_file}"
-	remove_repo_yum "${repo_id}"
-	yum-config-manager "--add-repo=${tmp_repo_file}" >/dev/null 2>&1
+	} >"/etc/yum.repos.d/${repo_id}.repo"
 }
 
 #       $1      repo file
@@ -806,11 +842,13 @@ function add_repo_by_url()
 #       $1      repo id
 function remove_repo_yum()
 {
-	[[ -d "/etc/yum.repos.d" ]] || return 255
+	type yum >/dev/null 2>&1 || return 255
 	local repo_id="$1"
-	[[ -f "/etc/yum.repos.d/${repo_id}.repo" ]] &&
-		rm -f "/etc/yum.repos.d/${repo_id}.repo" &&
-		yum clean metadata >/dev/null 2>&1
+	# This deleting method is not good enough. Since there could be more
+	# than one repostory definitions in a single repo file.
+	# This is a quick and dirty method.
+	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo")
+	yum clean metadata >/dev/null 2>&1
 }
 
 #       $1      repo id
@@ -839,8 +877,7 @@ function remove_repo()
 #               can be "2.10", "2.11", "2.12", "latest" or "devel"
 function add_xcat_core_repo_yum_or_zypper()
 {
-	type yum-config-manager >/dev/null 2>&1 ||
-		type zypper >/dev/null 2>&1 || return 255
+	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local url="$1"
 	local ver="$2"
 	local tmp=""
@@ -897,20 +934,19 @@ function add_xcat_core_repo()
 
 function add_xcat_dep_repo_yum_or_zypper()
 {
-	type yum-config-manager >/dev/null 2>&1 ||
-		type zypper >/dev/null 2>&1 || return 255
+	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local url="$1"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
-	local distro="${GO_XCAT_LINUX_DISTRO}"
+	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
-	"fedora") ;;
-	"rhel") distro="rh" ;;
-	"sles") ;;
+	"fedora2"?) distro="rh7" ;;
+	"rhel"*)    distro="rh${distro#rhel}" ;;
+	"sles"*)    ;;
 	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
 	esac
 	[[ -z "${url}" ]] &&
-		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
 	case "${url##*.}" in
 	"repo") # local repo file
 		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
@@ -929,7 +965,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 			url="${tmp}"
 			;;
 		*)
-			url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+			url="${url}/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
 			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
 			return "$?"
 			;;
@@ -950,7 +986,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	then
 		# make sure it is an absolute pathname.
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
-		url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}"
+		url="${url}/${distro}/${GO_XCAT_ARCH}"
 		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
 		return "$?"
 	fi
@@ -969,6 +1005,12 @@ function add_xcat_dep_repo_apt()
 function add_xcat_dep_repo()
 {
 	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function update_repo_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	dnf --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
 }
 
 function update_repo_yum()
@@ -992,6 +1034,14 @@ function update_repo_apt()
 function update_repo()
 {
 	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function install_packages_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	dnf --nogpgcheck "${args[@]}" install "$@"
 }
 
 function install_packages_yum()
@@ -1318,7 +1368,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"rhel"|"sles"|"ubuntu")
+"fedora"|"rhel"|"sles"|"ubuntu")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
