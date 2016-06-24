@@ -48,12 +48,12 @@ sub send_msg {
     }
 
     if ($output eq "stdout") {
-        print "$flag $msg\n";
+        print "$flag$msg\n";
     } else {
         if (!open(LOGFILE, ">> $output")) {
             return 1;
         }
-        print LOGFILE "$flag $msg\n";
+        print LOGFILE "$flag$msg\n";
         close LOGFILE;
     }
     return 0;
@@ -389,12 +389,8 @@ sub get_network{
     return $net if (!is_ip_addr($ip));
     return $net if ($mask !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
 
-    my $bin_mask = 0;
-    $bin_mask = (($1 + 0) << 24) + (($2 + 0) << 16) + (($3 + 0) << 8) + ($4 + 0) if ($mask =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-
-    my $bin_ip = 0;
-    $bin_ip = (($1 + 0) << 24) + (($2 + 0) << 16) + (($3 + 0) << 8) + ($4 + 0) if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-
+    my $bin_mask = unpack("N", inet_aton($mask));
+    my $bin_ip = unpack("N", inet_aton($ip));;
     my $net_int32 = $bin_mask & $bin_ip;
     $net = ($net_int32 >> 24) . "." . (($net_int32 >> 16) & 0xff) . "." . (($net_int32 >> 8) & 0xff) . "." . ($net_int32 & 0xff);
     return "$net/$mask";

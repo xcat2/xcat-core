@@ -5,6 +5,7 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_utils;
+use xCAT::NetworkUtils;
 use File::Basename;
 use IO::Select;
 use Getopt::Long qw(:config no_ignore_case);
@@ -13,16 +14,15 @@ use Data::Dumper;
 my $program_name = basename("$0");
 my $help;
 my $test;
-my $output    = "stdout";
-my $verbose   = 0;
-my $rst       = 0;
-my $pre_check = 0;
-my $monitor   = 0;
+my $output       = "stdout";
+my $verbose      = 0;
+my $rst          = 0;
+my $no_pre_check = 0;
 my $discovery_type;
 my @valid_discovery_type = ("mtms", "switch");
 my $valid_discovery_type_str = join(",", @valid_discovery_type);
 my $noderange;
-my $nics;
+my $nics;    #reservation attribute, format : xxx|xxx|xxx
 
 #used for discovery monitor
 my %rawdata;
@@ -32,23 +32,20 @@ my %monitor_nodes;
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -t
-    $program_name -p [-V] [-T <discovery_type>] [-n <node_range>]  
-    $program_name -m 
-    $program_name [-V] [-T <discovery_type>] [-n <node_range>]
+    $program_name -T
+    $program_name [-V] [-m <discovery_type> -n <node_range>] [--noprecheck] 
 
 Description:
-    Do probe for discovery process, including pro-check for required configuration and realtime monitor of discovery process. 
-    If without any option, $program_name will do pro-check first, if all checking point pass, then goes to monitor directly.
+    Do probe for discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
+    If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name exit for error.  
 
 Options:
     -h : Get usage information of $program_name.
-    -t : To verify if $program_name can work, reserve option for probe framework.
+    -T : To verify if $program_name can work, reserve option for probe framework.
     -V : Output more information for debug.
-    -p : Do pre-check for disvoery, check whether required configuration have been done ahead.
-    -T : The type of discovery, the valid values are $valid_discovery_type_str.
+    -m : The method of discovery, the valid values are $valid_discovery_type_str.
     -n : The range of predefined node, must used with option -m.
-    -m : Do realtime monitor for discovery process. 
+    --noprecheck : skip pre-checking discovery to validate correct configuration. 
 ";
 
 #------------------------------------------
@@ -161,8 +158,15 @@ sub check_genesis_file {
             return 1;
         }
 
-        my @host_ip_arr = `ifconfig -a |awk -F" " '/inet / {gsub(/\w+:/,"",\$2);print \$2}'`;
-        my @netmask_arr = `ifconfig -a |awk -F" " '/inet / {gsub(/\w+:/,"",\$4);print \$4}'`;
+        my @host_ip_arr;
+        my @netmask_arr;
+        my @output = `ip addr show|awk -F" " '/inet / {print \$2}'`;
+        foreach (@output) {
+            my ($ip, $mask) = split("/", $_);
+            my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+            push(@host_ip_arr, $ip);
+            push(@netmask_arr, $strmask);
+        }
 
         @genesis_files = glob("$genesis_folder/*");
         foreach (@genesis_files) {
@@ -174,7 +178,7 @@ sub check_genesis_file {
                 my $netmask_num = 0;
                 foreach (@host_ip_arr) {
                     chomp($_);
-                    if (probe_utils->is_ip_belong_to_net($ip_range, $netmask_arr[$netmask_num], $_)) {
+                    if (xCAT::NetworkUtils->ishostinsubnet($_, $netmask_arr[$netmask_num], $ip_range)) {
                         $host_ip = $_;
                     }
                     $netmask_num++;
@@ -280,7 +284,6 @@ sub check_genesis_file {
 sub dhcp_dynamic_range_check {
     my $nets = shift;
     my $rst  = 0;
-
     return $rst;
 }
 
@@ -305,8 +308,6 @@ sub handle_tftp_msg {
         my $record = "Via TFTP $ip download $file";
         probe_utils->send_msg("$output", "d", "$record");
         if (exists($rawdata{"$ipmacmap{$ip}"})) {
-
-            #push(@{$rawdata{$ipmacmap{$ip}}{"history"}}, $record) unless (/^$record$/ ~~ @{$rawdata{$ipmacmap{$ip}}{"history"}});
             push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
         }
     }
@@ -355,33 +356,22 @@ sub handle_http_msg {
 
 #------------------------------------------
 sub handle_dhcp_msg {
-    my $msg      = shift;
-    my $nics     = shift;
-    my @nicarray = split(",", $nics);
-    if ($msg =~ /.+DHCPDISCOVER\s+from\s+(.+)\s+via\s+(.+)/i) {
-        my @tmpmsg = split(" ", $msg);
-        my $mac    = $tmpmsg[7];
-        my $nic    = $tmpmsg[9];
-        $nic =~ s/(.+):/$1/g if ($nic =~ /:$/);
-        return 0 unless (@nicarray ~~ /^$nic$/);
-        if ($msg =~ /no free leases/) {
+    my $msg = shift;
+
+    if ($msg =~ /.+DHCPDISCOVER\s+from\s+(.+)\s+via\s+([^:]+)(.*)/i) {
+        my $mac = $1;
+        my $nic = $2;
+        if ($3 =~ /no free leases/) {
             probe_utils->send_msg("$output", "d", "Receive DHCPDISCOVER from $mac via $nic, no free leases");
             return 0;
         }
         my $record = "Receive DHCPDISCOVER from $mac via $nic";
         probe_utils->send_msg("$output", "d", "$record");
-        if (!exists($rawdata{$mac})) {
-            my @history;
-            push(@history, $record);
-            $rawdata{$mac}{"history"} = \@history;
-        } else {
-            push(@{ $rawdata{$mac}{"history"} }, $record);
-        }
+        push(@{ $rawdata{$mac}{"history"} }, $record);
     } elsif ($msg =~ /.+DHCPOFFER\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/i) {
-        my $ip  = $1;
-        my $mac = $2;
-        my $nic = $3;
-        return 0 unless (@nicarray ~~ /^$nic$/);
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
         my $record = "Send DHCPOFFER on $ip back to $mac via $nic";
         probe_utils->send_msg("$output", "d", "$record");
         if (exists($rawdata{$mac})) {
@@ -392,17 +382,15 @@ sub handle_dhcp_msg {
         my $server = $2;
         my $mac    = $3;
         my $nic    = $4;
-        return 0 unless (@nicarray ~~ /^$nic$/);
         my $record = "Receive DHCPREQUEST from $mac for $ip via $nic";
         probe_utils->send_msg("$output", "d", "$record");
         if (exists($rawdata{$mac})) {
             push(@{ $rawdata{$mac}{"history"} }, $record);
         }
     } elsif ($msg =~ /.+DHCPACK\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/) {
-        my $ip  = $1;
-        my $mac = $2;
-        my $nic = $3;
-        return 0 unless (@nicarray ~~ /^$nic$/);
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
         my $record = "Send DHCPACK on $ip back to $mac via $nic";
         probe_utils->send_msg("$output", "d", "$record");
         if (exists($rawdata{$mac})) {
@@ -410,30 +398,20 @@ sub handle_dhcp_msg {
             push(@{ $rawdata{$mac}{"history"} }, $record);
             $ipmacmap{$ip} = $mac;
         }
-    } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+(.+)/) {
-        my @tmpmsg = split(" ", $msg);
-        my $mac    = $tmpmsg[7];
-        my $nic    = $tmpmsg[9];
-        $nic =~ s/(.+):/$1/g if ($nic =~ /:$/);
-        return 0 unless (@nicarray ~~ /^$nic$/);
-        if ($msg =~ /no dynamic leases/) {
+    } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
+        my $mac = $1;
+        my $nic = $2;
+        if ($3 =~ /no dynamic leases/) {
             probe_utils->send_msg("$output", "d", "Receive DHCPDISCOVER from $mac via $nic, no dynamic leases");
             return 0;
         }
         my $record = "Receive BOOTREQUEST from $mac via $nic";
         probe_utils->send_msg("$output", "d", "$record");
-        if (!exists($rawdata{$mac})) {
-            my @history;
-            push(@history, $record);
-            $rawdata{$mac}{"history"} = \@history;
-        } else {
-            push(@{ $rawdata{$mac}{"history"} }, $record);
-        }
+        push(@{ $rawdata{$mac}{"history"} }, $record);
     } elsif ($msg =~ /.+BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
-        my $ip  = $1;
-        my $mac = $2;
-        my $nic = $3;
-        return 0 unless (@nicarray ~~ /^$nic$/);
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
         my $record = "Send BOOTREPLY on $ip back to $mac via $nic";
         probe_utils->send_msg("$output", "d", "$record");
         if (exists($rawdata{$mac})) {
@@ -468,19 +446,29 @@ sub handle_compute_msg {
     my @splitline = split(" ", $line);
     if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
         $sender = $splitline[3];
-        for (my $i = 0 ; $i < 5 ; $i++) {
-            shift(@splitline);
-        }
+        splice(@splitline, 0, 5);
         $msg = join(" ", @splitline);
-        if (!probe_utils->is_ip_addr("$sender")) {
-            $ip = probe_utils->get_ip_from_hostname("$sender");
+
+        if (!xCAT::NetworkUtils->isIpaddr($sender)) {
+            $ip = xCAT::NetworkUtils->getipaddr($sender);
         } else {
             $ip = $sender;
         }
-        if ($ip ne "" && exists($ipmacmap{$ip})) {
-            my $record = "Recv from $ipmacmap{$ip}($ip) : $msg";
+
+        if ($ip ne "" && defined($ipmacmap{$ip})) {
+            my $record = "Recv from $ip : $msg";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
+        }
+
+        # There is a node finish discovry process
+        if ($msg =~ /xcat.genesis.dodiscovery: Restart/) {
+            my $node = `lsdef -i mac -c 2>&1 | awk -F: '/$ipmacmap{$ip}/ {print \$1}'`;
+            chomp($node);
+            $monitor_nodes{$node} = 1 if (defined($monitor_nodes{$node}));
+            probe_utils->send_msg("$output", "o", "Node $node has finished it's discovery process");
+            my $output = `lsdef $node 2>&1`;
+            print "-------------------\n$output-------------------\n";
         }
     }
     return 0;
@@ -508,13 +496,14 @@ sub handle_cluster_msg {
     if ($line =~ /.+\d+:\d+:\d+\s+(.+)\s+(xcat.+)/i) {
         $sender = $1;
         $msg    = $2;
-        if (!probe_utils->is_ip_addr("$sender")) {
-            $ip = probe_utils->get_ip_from_hostname("$sender");
+
+        if (!xCAT::NetworkUtils->isIpaddr($sender)) {
+            $ip = xCAT::NetworkUtils->getipaddr($sender);
         } else {
             $ip = $sender;
         }
-        if ($ip ne "" && exists($ipmacmap{$ip})) {
-            my $record = "Recv from $ipmacmap{$ip}($ip) : $msg";
+        if ($ip ne "" && defined($ipmacmap{$ip})) {
+            my $record = "Recv from $ip : $msg";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
         }
@@ -534,22 +523,26 @@ sub handle_cluster_msg {
 
 #------------------------------------------
 sub dump_history {
-    probe_utils->send_msg("$output", "d", "=======================================");
-    probe_utils->send_msg("$output", "d", "=  The summary of discovery:");
-    probe_utils->send_msg("$output", "d", "=======================================");
 
-    my $masterip = `tabdump site 2>&1 | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
-    chomp($masterip);
+    my $title = "
+=============================================================
+=  The summary of discovery:
+=============================================================
+";
+    print "$title\n";
+
     foreach $mac (keys %rawdata) {
-        my $nodehostname = probe_utils->get_hostname_from_ip($rawdata{$mac}{"ip"}, $masterip);
+        my $nodehostname = `lsdef -i mac -c 2>&1 | awk -F: '/$mac/ {print \$1}'`;
+        chomp($nodehostname);
         if ($nodehostname ne "") {
             probe_utils->send_msg("$output", "d", "[$mac ($nodehostname)]");
         } else {
             probe_utils->send_msg("$output", "d", "[$mac]:");
         }
         foreach my $line (@{ $rawdata{$mac}{"history"} }) {
-            probe_utils->send_msg("$output", "d", "|    $line");
+            probe_utils->send_msg("$output", "d", "\t$line");
         }
+        print "\n";
     }
 }
 
@@ -584,6 +577,7 @@ sub check_pre_defined_node {
             $rst = 1;
         } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
             $currentnode = $1;
+            $monitor_nodes{$1} = 0;
         } elsif ($_ =~ /^\s+(\w+)\s*=\s*(\w+)/) {
             $nodecheckrst{$currentnode}{$1} = $2;
         }
@@ -594,54 +588,50 @@ sub check_pre_defined_node {
     foreach my $node (keys %nodecheckrst) {
         if (!exists($nodecheckrst{$node}{error})) {
             if ($discovery_type eq "mtms") {
-                if (exists($nodecheckrst{$node}{"mtm"}) && exists($nodecheckrst{$node}{"serial"})) {
-                    $nodecheckrst{$node}{"error"} = "node definition is good for '$discovery_type' type discovery";
-                } else {
+                if (!(exists($nodecheckrst{$node}{"mtm"}) && exists($nodecheckrst{$node}{"serial"}))) {
                     $nodecheckrst{$node}{"error"} = "node definition is wrong for '$discovery_type' type discovery";
                     $rst = 1;
                 }
-            }
+            } elsif ($discovery_type eq "switch") {
+                {    #important to hold a block
+                    if (!(exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"}))) {
+                        $nodecheckrst{$node}{"error"} = "Atrribute 'switch' or 'switchport' isn't defined for '$discovery_type' type discovery";
+                        $rst = 1;
+                        last;
+                    }
 
-            if ($discovery_type eq "switch") {
-                if (exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"})) {
-                    $nodecheckrst{$node}{"error"} = "node definition is good for '$discovery_type' type discovery";
-                } else {
-                    $nodecheckrst{$node}{"error"} = "node definition is wrong for '$discovery_type' type discovery";
-                    $rst = 1;
+                    my $tmpoutput = `lsdef $nodecheckrst{$node}{"switch"} 2>&1`;
+                    if ($?) {
+                        $nodecheckrst{$node}{"error"} = "Miss definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+
+                    if ($tmpoutput !~ /snmpversion=/) {
+                        $nodecheckrst{$node}{"error"} = "Miss attribute 'snmpversion' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+                    if ($tmpoutput !~ /username=/) {
+                        $nodecheckrst{$node}{"error"} = "Miss attribute 'username' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+                    if ($tmpoutput !~ /password=/) {
+                        $nodecheckrst{$node}{"error"} = "Miss attribute 'password' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
                 }
             }
         }
     }
 
-    if ($verbose) {
-        foreach my $node (keys %nodecheckrst) {
-            probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}");
-        }
+    foreach my $node (keys %nodecheckrst) {
+        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
     }
 
     return $rst;
-}
-
-#------------------------------------------
-
-=head3
-    Description:
-       Get monitor nodes list 
-    Arguments:
-       One golble attribute %monitor_nodes;
-    Returns:
-=cut
-
-#------------------------------------------
-sub get_monitor_nodes_list {
-    my @cmdoutput = `lsdef $noderange 2>&1`;
-    foreach (@cmdoutput) {
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
-            $monitor_nodes{$1} = 0;
-        } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
-            $monitor_nodes{$1} = 0;
-        }
-    }
 }
 
 #------------------------------------------
@@ -658,7 +648,10 @@ sub get_monitor_nodes_list {
 sub all_monitor_node_done {
     my $done = 1;
     foreach my $node (keys %monitor_nodes) {
-        $done = 0 if ($monitor_nodes{$node} == 0);
+        if ($monitor_nodes{$node} == 0) {
+            $done = 0;
+            last;
+        }
     }
     return $done;
 }
@@ -684,7 +677,7 @@ sub do_pre_check {
     my $msg;
 
     if (defined($noderange) && defined($discovery_type)) {
-        $msg = "All pre_defined nodes are valid";
+        $msg = "All pre_defined nodes '$noderange' are valid";
         my $rc = check_pre_defined_node($discovery_type, $noderange);
         if ($rc) {
             probe_utils->send_msg("$output", "f", $msg);
@@ -694,9 +687,9 @@ sub do_pre_check {
         }
     }
 
-
+    #The block of $nics is ture is a reservation part, this part don't show up in usage
     if ($nics) {
-        if ($nics =~ /[^\w,]/) {
+        if ($nics =~ /[^\w|]/) {
             probe_utils->send_msg("$output", "f", "Invalid NIC list");
             probe_utils->send_msg("$output", "d", "$::USAGE");
             exit 1;
@@ -711,14 +704,15 @@ sub do_pre_check {
                 probe_utils->send_msg("$output", "d", "Network interface $nic doesn't exist on current server") if ($verbose);
                 $miss = 1;
             } else {
-                my $tmp = `ifconfig $nic|awk -F" " '/inet / {print \$2,\$4}'`;
+                my $tmp = `echo $tmp_nic |awk -F" " '/inet / {print \$2}'`;
                 chomp($tmp);
-                if (!$tmp) {
+                if (!length($tmp)) {
                     probe_utils->send_msg("$output", "d", "Network interface $nic isn't set IP address") if ($verbose);
                     $miss = 1;
                 } else {
-                    my ($ip, $mask) = split(" ", $tmp);
-                    push(@nets, probe_utils->get_network($ip, $mask));
+                    my ($ip, $mask) = split("/", $tmp);
+                    my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+                    push(@nets, probe_utils->get_network($ip, $strmask));
                 }
             }
         }
@@ -737,22 +731,26 @@ sub do_pre_check {
             probe_utils->send_msg("$output", "f", $msg);
             exit 1;
         }
-        if (!probe_utils->is_ip_addr("$masteripinsite")) {
+
+        if (!xCAT::NetworkUtils->isIpaddr("$masteripinsite")) {
             probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table isn't a IP address") if ($verbose);
             probe_utils->send_msg("$output", "f", $msg);
             exit 1;
         }
-        `ifconfig -a 2>&1 |grep  $masteripinsite`;
+        my $tmpoutput = `ip addr 2>&1 |grep  $masteripinsite`;
         if ($?) {
             probe_utils->send_msg("$output", "d", "The IP $masteripinsite of 'master' in 'site' table dosen't belong to any network on current server") if ($verbose);
             probe_utils->send_msg("$output", "f", $msg);
             exit 1;
         }
         probe_utils->send_msg("$output", "o", $msg);
-        my $tmp = `ifconfig -a|awk -F" " '/$masteripinsite/ {print \$2,\$4}'`;
+
+        chomp($tmpoutput);
+        my $tmp = `echo $tmpoutput | awk -F" " '{print \$2}'`;
         chomp($tmp);
-        my ($ip, $mask) = split(" ", $tmp);
-        push(@nets, probe_utils->get_network($ip, $mask));
+        my ($ip, $mask) = split("/", $tmp);
+        my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+        push(@nets, probe_utils->get_network($ip, $strmask));
     }
 
     my $arch = `uname -i`;
@@ -812,22 +810,21 @@ sub do_pre_check {
 
 #------------------------------------------
 sub do_monitor {
+
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;
     };
 
-    if ($monitor && !$pre_check && defined($noderange) && defined($discovery_type)) {
+    if ($no_pre_check && defined($noderange) && defined($discovery_type)) {
         $msg = "All pre_defined nodes are valid";
         my $rc = check_pre_defined_node($discovery_type, $noderange);
         if ($rc) {
             probe_utils->send_msg("$output", "f", $msg);
-            exit 1;
+            return 1;
         } else {
             probe_utils->send_msg("$output", "o", $msg);
         }
     }
-
-    &get_monitor_nodes_list if (defined($noderange) && defined($discovery_type));
 
     if (!$nics) {
         my $masteripinsite = `tabdump site | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
@@ -836,95 +833,147 @@ sub do_monitor {
         chomp($nics);
         if (!$nics) {
             probe_utils->send_msg("$output", "f", "The value of master in site table is $masteripinsite, can't get corresponding network interface");
-            exit 1;
+            return 1;
         }
     }
 
-    probe_utils->send_msg("$output", "d", "Start to capture every message during discovery process......");
+    my $startline = "
+-------------------------------------------------------------
+                               ___
+        ____    _  _____   _.-|   |          |\\__/,|   (`\\
+ __  __/ ___|  / \\|_   _| {   |   |          |x x  |__ _) )
+ \\ \\/ / |     / _ \\ | |    \"-.|___|        _.( T   )  `  /
+  >  <| |___ / ___ \\| |    .--'-`-.     _((_ `^--' /_<  \\
+ /_/\\_\\\\____/_/   \\_\\_|  .+|______|__.-||__)`-'(((/  (((/
+-------------------------------------------------------------
+";
+    print "$startline\nStart to capture every message during discovery process......\n";
 
     my $varlogmsg  = "/var/log/messages";
     my $clusterlog = "/var/log/xcat/cluster.log";
     my $computelog = "/var/log/xcat/computes.log";
 
+    #http logs are saved in different file in different distro
     my $httplog;
-    my $os = probe_utils->get_os();
-    if ($os eq "redhat") {
+    if (-e "/var/log/httpd/access_log") {
         $httplog = "/var/log/httpd/access_log";
-    } elsif ($os eq "sles") {
-        $httplog = "/var/log/apache2access_log";
-    } elsif ($os eq "ubuntu") {
+    } elsif (-e "/var/log/apache2/access_log") {
+        $httplog = "/var/log/apache2/access_log";
+    } elsif (-e "/var/log/apache2/access.log") {
         $httplog = "/var/log/apache2/access.log";
     }
 
-    open(VARLOGMSGFILE,  "tail -f $varlogmsg 2>&1 |");
-    open(CLUSTERLOGFILE, "tail -f $clusterlog 2>&1 |");
-    open(HTTPLOGFILE,    "tail -f $httplog 2>&1 |");
-    open(COMPUTERFILE,   "tail -f $computelog 2>&1 |");
+    my $clusterpid;
+    my $httppid;
+    my $computerpid;
+    my $varlogpid;
+    my $rst = 0;
+    {    #important to hold a block
+            # start ot obtain logs from every log file
+        if (!($varlogpid = open(VARLOGMSGFILE, "tail -f $varlogmsg 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $varlogmsg to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f $clusterlog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $clusterlog to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($httppid = open(HTTPLOGFILE, "tail -f $httplog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $httplog to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($computerpid = open(COMPUTERFILE, "tail -f $computelog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $computelog to get logs");
+            $rst = 1;
+            last;
+        }
 
-    my $select = new IO::Select;
-    $select->add(\*VARLOGMSGFILE);
-    $select->add(\*CLUSTERLOGFILE);
-    $select->add(\*HTTPLOGFILE);
-    $select->add(\*COMPUTERFILE);
-    $| = 1;
+        my $select = new IO::Select;
+        $select->add(\*VARLOGMSGFILE);
+        $select->add(\*CLUSTERLOGFILE);
+        $select->add(\*HTTPLOGFILE);
+        $select->add(\*COMPUTERFILE);
+        $| = 1;
 
-    my $line = "";
-    my @hdls;
-    my $hdl;
-    for (; ;) {
-        if (@hdls = $select->can_read(0)) {
-            foreach $hdl (@hdls) {
-                if ($hdl == \*VARLOGMSGFILE) {
-                    chomp($line = <VARLOGMSGFILE>);
-                    my @tmp = split(/ /, $line);
-                    if ($tmp[4] =~ /dhcpd:/i) {
-                        handle_dhcp_msg("$line", $nics);
-                    } elsif ($tmp[4] =~ /in.tftpd/i) {
-                        handle_tftp_msg("$line");
+        my $line = "";
+        my @hdls;
+        my $hdl;
+        my $oldlines      = 10;
+        my $varlogmsgcnt  = 0;
+        my $clusterlogcnt = 0;
+        my $httplogcnt    = 0;
+        my $computercnt   = 0;
+        for (; ;) {
+
+            if (@hdls = $select->can_read(0)) {
+                foreach $hdl (@hdls) {
+                    if ($hdl == \*VARLOGMSGFILE) {
+                        chomp($line = <VARLOGMSGFILE>);
+                        ++$varlogmsgcnt;
+                        last if ($varlogmsgcnt <= $oldlines);
+                        my @tmp = split(/ /, $line);
+                        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
+                            handle_dhcp_msg("$line");
+                        } elsif ($tmp[4] =~ /in.tftpd/i) {
+                            handle_tftp_msg("$line");
+                        }
+                    } elsif ($hdl == \*CLUSTERLOGFILE) {
+                        chomp($line = <CLUSTERLOGFILE>);
+                        ++$clusterlogcnt;
+                        last if ($clusterlogcnt <= $oldlines);
+                        handle_cluster_msg("$line");
+                    } elsif ($hdl == \*HTTPLOGFILE) {
+                        chomp($line = <HTTPLOGFILE>);
+                        ++$httplogcnt;
+                        last if ($httplogcnt <= $oldlines);
+                        handle_http_msg("$line");
+                    } elsif ($hdl == \*COMPUTERFILE) {
+                        chomp($line = <COMPUTERFILE>);
+                        ++$computercnt;
+                        last if ($computercnt <= $oldlines);
+                        handle_compute_msg("$line");
                     }
-                } elsif ($hdl == \*CLUSTERLOGFILE) {
-                    chomp($line = <CLUSTERLOGFILE>);
-                    handle_cluster_msg("$line");
-                } elsif ($hdl == \*HTTPLOGFILE) {
-                    chomp($line = <HTTPLOGFILE>);
-                    handle_http_msg("$line");
-                } elsif ($hdl == \*COMPUTERFILE) {
-                    chomp($line = <COMPUTERFILE>);
-                    handle_compute_msg("$line");
                 }
             }
-        }
 
-        if ($terminal || (%monitor_nodes && all_monitor_node_done())) {
-            &dump_history;
-            close(VARLOGMSGFILE);
-            close(CLUSTERLOGFILE);
-            close(HTTPLOGFILE);
-            close(COMPUTERFILE);
-            exit 0;
+            if ($terminal || (%monitor_nodes && all_monitor_node_done())) {
+                if ($terminal) {
+                    probe_utils->send_msg("$output", "d", "Got <Ctrl+c> from STDIN");
+                } else {
+                    probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished discovery process");
+                }
+                last;
+            } sleep 0.01;
         }
-        sleep 0.01;
+        &dump_history;
     }
 
-    close(VARLOGMSGFILE);
-    close(CLUSTERLOGFILE);
-    close(HTTPLOGFILE);
-    close(COMPUTERFILE);
-    return 0;
+    kill 'INT', $clusterpid  if ($clusterpid);
+    kill 'INT', $httppid     if ($httppid);
+    kill 'INT', $computerpid if ($computerpid);
+    kill 'INT', $varlogpid   if ($varlogpid);
+    close(VARLOGMSGFILE)  if (VARLOGMSGFILE);
+    close(CLUSTERLOGFILE) if (CLUSTERLOGFILE);
+    close(COMPUTERFILE)   if (COMPUTERFILE);
+    close(HTTPLOGFILE)    if (HTTPLOGFILE);
+
+    return $rst;
 }
 
 #-------------------------------------
-# main process
+## main process
 #-------------------------------------
 if (
     !GetOptions("--help|h|?" => \$help,
-        "t"   => \$test,
-        "V"   => \$verbose,
-        "m"   => \$monitor,
-        "p"   => \$pre_check,
-        "T=s" => \$discovery_type,
-        "n=s" => \$noderange,
-        "N=s" => \$nics))
+        "T"            => \$test,
+        "V"            => \$verbose,
+        "--noprecheck" => \$no_pre_check,
+        "m=s"          => \$discovery_type,
+        "n=s"          => \$noderange,
+        "N=s" => \$nics)) #option N is a reservation option, dosen't show up in usage now
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
     probe_utils->send_msg("$output", "d", "$::USAGE");
@@ -941,7 +990,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "Do probe for discovery process, including pro-check for required configuration and realtime monitor of discovery process.Before using this command, please install nslookup command ahead.");
+    probe_utils->send_msg("$output", "o", "Do probe for discovery process, including pre-check for required configuration and realtime monitor of discovery process.Before using this command, please install nslookup command ahead.");
     exit 0;
 }
 
@@ -959,19 +1008,11 @@ if (defined($discovery_type)) {
     }
 }
 
-if ($pre_check) {
-    exit 1 if (do_pre_check($nics));
-}
-
-if ($monitor) {
-    $rst = do_monitor();
-}
-
-if (!$monitor && !$pre_check) {
+if (!$no_pre_check) {
     $rst = do_pre_check();
     exit 1 if ($rst);
-
-    $rst = do_monitor();
 }
+
+$rst = do_monitor();
 
 exit $rst;
