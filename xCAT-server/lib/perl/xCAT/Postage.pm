@@ -570,6 +570,7 @@ sub makescript {
   # This line only is used to compatible with the old code
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
 
+
   # we will create a file in /tftboot/mypostscript/mypostscript_<nodename> 
   if ((!defined($nofiles)) || ($nofiles == 0)) { #
       my $script;
@@ -596,7 +597,25 @@ sub makescript {
       close($script_fp{$node});
     # TODO remove the blank lines
   } 
-     
+      
+  # Check the validity of new generated mypostscirpt
+  # export does not support - in the environment variable name
+  my @invalid_var_name;
+  foreach my $line (split(/\n/, $inc)) {
+      if ($line =~ /export +(.*)/) {
+          my $varname = $1;
+          if ($varname =~ /-/) {
+              push @invalid_var_name, $varname;
+          }
+      }
+  }
+  if (@invalid_var_name) {
+      my $rsp;
+      push @{$rsp->{data}}, "In your configuration, the invalid charactor '-' is used in the following names: " . join(',', @invalid_var_name);
+      xCAT::MsgUtils->message("E", $rsp, $callback);
+      push @::exclude_nodes, $node; 
+  }
+
 } #end foreach node
   
   undef(%::GLOBAL_TAB_HASH);
