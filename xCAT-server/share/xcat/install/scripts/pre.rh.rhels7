@@ -176,32 +176,40 @@ if uname -r|grep -q '^3.*el7'; then
 fi
 
 if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
-	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
+	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile 
 fi
 if [ -d /sys/firmware/efi ]; then 
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitioning
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitioning
-echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
-echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitioning
-echo "volgroup system pv.01" >> /tmp/partitioning
-echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
+echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitionfile
+echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitionfile
+echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitionfile
+echo "volgroup system pv.01" >> /tmp/partitionfile
+echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitionfile
 
-#specify "bootloader" configuration in "/tmp/partitioning" if there is no user customized partition file
+#specify "bootloader" configuration in "/tmp/partitionfile" if there is no user customized partition file
 BOOTLOADER="bootloader "
-
-#specify the kernel options which will be persistent after installation
-[ -n "#ENV:PERSKCMDLINE#" ] && BOOTLOADER=$BOOTLOADER" --append=#ENV:PERSKCMDLINE#"
 
 #Specifies which drive the boot loader should be written to
 #and therefore which drive the computer will boot from.
 [ -n "$instdisk" ] && BOOTLOADER=$BOOTLOADER" --boot-drive=$(basename $instdisk)"
 
-echo "$BOOTLOADER" >> /tmp/partitioning
+echo "$BOOTLOADER" >> /tmp/partitionfile
 	
 #XCA_PARTITION_SCRIPT#
+
+#specify the kernel options which will be persistent after installation
+if [ -n "#ENV:PERSKCMDLINE#" ];then
+    #append the persistent kernel options to the lines including "bootloader --append"
+    sed -i -e /bootloader/s#\'#\"#g -e '/bootloader/s/--append=\([^"]\S*[^"]\)/--append="\1"/g' -e '/bootloader/s/--append="\(.*\)"/--append="\1 #ENV:PERSKCMDLINE#"/g' /tmp/partitionfile
+    #append the persistent kernel options to the lines including "bootloader" without "--append"
+    sed -i -e '/bootloader/{/append=/!s/$/& --append="#ENV:PERSKCMDLINE#" /}' /tmp/partitionfile
+    #append the persistent kernel options to /tmp/partitionfile if it does not include "bootloader"
+    grep bootloader /tmp/partitionfile >/dev/null 2>&1|| echo -e "bootloader --append=\"#ENV:PERSKCMDLINE#\"" >>/tmp/partitionfile
+fi
+
 
 
 # The following code is to generate the repository for the installation
