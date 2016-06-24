@@ -450,6 +450,8 @@ sub scan_process{
     {
        $method="nmap";
     }
+    # Handle commas in $range for nmap
+    $range =~ tr/,/ /;
 
     my $ip_list;
     ############################################################
