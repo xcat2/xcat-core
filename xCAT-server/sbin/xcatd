@@ -625,12 +625,13 @@ sub do_discovery_process {
             $req->{'_xcat_clientport'}=$sport;
             if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { # only discover from ips that appear to be on a managed network
                 xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
-                $req->{cacheonly}->[0] = 1;
+                # Using cacheonly will cause the discovery processing running 2 times, cacheonly seems useless for switch.pm, so remove it
+                #$req->{cacheonly}->[0] = 1;
+                #plugin_command($req,undef,\&build_response);
+                #if ($req->{cacheonly}->[0]) {
+                #delete $req->{cacheonly};
                 plugin_command($req,undef,\&build_response);
-                if ($req->{cacheonly}->[0]) {
-                    delete $req->{cacheonly};
-                    plugin_command($req,undef,\&build_response);
-                }
+                #}
             } else {
                 xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".$client." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
             }

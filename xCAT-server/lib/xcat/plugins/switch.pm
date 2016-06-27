@@ -268,15 +268,11 @@ sub process_request {
         }
         return;
     } elsif ($req->{command}->[0] eq 'findme') {
-        # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
-        if (!($req->{cacheonly}) or !($req->{cacheonly}->[0])) {
-            return;
-        }
         if (defined($req->{discoverymethod}) and defined($req->{discoverymethod}->[0]))  {
             # The findme request had been processed by other module, just return
             return;
         }
-        xCAT::MsgUtils->message("S", __PACKAGE__.": Processing findme request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Processing discovery request");
 	my $ip = $req->{'_xcat_clientip'};
 	if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
 	    #Don't attempt switch discovery of a  VM Guest
@@ -314,19 +310,19 @@ sub process_request {
 		if ($node) { last; }
 	    }
 	}
-        my $pbmc_node = undef;
+        my $bmc_node = undef;
         if ($req->{'mtm'}->[0] and $req->{'serial'}->[0]) {
             my $mtms = $req->{'mtm'}->[0]."*".$req->{'serial'}->[0];
             my $tmp_nodes = $::XCATVPDHASH{$mtms};
             foreach (@$tmp_nodes) {
                 if ($::XCATMPHASH{$_}) {
-                    $pbmc_node = $_;
+                    $bmc_node = $_;
                 }
             } 
         }
 	 
 	if ($node) {
-            xCAT::MsgUtils->message("S", __PACKAGE__.": Find a node for the findme request");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Find node:$node for the discovery request");
             # No need to write mac table here, 'discovered' command will write
 	    # my $mactab = xCAT::Table->new('mac',-create=>1);
 	    # $mactab->setNodeAttribs($node,{mac=>$mac});
@@ -340,12 +336,12 @@ sub process_request {
             my $request = {%$req};
 	    $request->{command}=['discovered'];
 	    $request->{noderange} = [$node];
-            $request->{pbmc_node} = [$pbmc_node];
+	    $request->{bmc_node} = [$bmc_node];
 	    $doreq->($request); 
 	    %{$request}=();#Clear req structure, it's done..
 	    undef $mactab;
 	} else { 
-	    #Shouldn't complain, might be blade, but how to log total failures?
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Error: Could not find any node");
 	}
     }
 }

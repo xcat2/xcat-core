@@ -4442,9 +4442,9 @@ sub cleanup_for_powerLE_hardware_discovery {
     }
     my $subreq = shift;
     my $host_node = $request->{node}->[0];
-    my $pbmc_node = undef;
-    if (defined($request->{pbmc_node}) and defined($request->{pbmc_node}->[0])) {
-        $pbmc_node = $request->{pbmc_node}->[0];
+    my $bmc_node = undef;
+    if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
+        $bmc_node = $request->{bmc_node}->[0];
     }
 
     my $ipmitab = xCAT::Table->new("ipmi");
@@ -4457,31 +4457,31 @@ sub cleanup_for_powerLE_hardware_discovery {
         my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
         my $new_bmc_username = $ipmihash->{$host_node}->[0]->{username};
         my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
-        if (!defined($pbmc_node)) {
+        if (!defined($bmc_node)) {
             xCAT::MsgUtils->message("S", "Discover info: configure static BMC ip:$new_bmc_ip for host_node:$host_node.");
             `rspconfig $host_node ip=$new_bmc_ip`;
             return;
         }
-        xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
+        xCAT::MsgUtils->message("S", "Discovery info: configure password for bmc_node:$bmc_node.");
         if (defined($new_bmc_username) and $new_bmc_username ne '') {
             if ($new_bmc_username eq "ADMIN" or $new_bmc_username eq 'USERID') {
                 # ADMIN is username for OpenPOWER server, it is not allowed to modify at present
                 # USERID is username for IBM system x server, just modify password
-                `rspconfig $pbmc_node userid=2 password=$new_bmc_password`;
+                `rspconfig $bmc_node userid=2 password=$new_bmc_password`;
             } else {
                 # For other username, we'd better create new user for them
-                `rspconfig $pbmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
+                `rspconfig $bmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
             }
         } else {
-            `rspconfig $pbmc_node password=$new_bmc_password`;
+            `rspconfig $bmc_node password=$new_bmc_password`;
         }
         # the rspconfig doesn't update node definition, need to modify manually for modifying bmc ip address
-        `chdef $pbmc_node bmcusername=$new_bmc_username bmcpassword=$new_bmc_password`;
+        `chdef $bmc_node bmcusername=$new_bmc_username bmcpassword=$new_bmc_password`;
         #if ($new_bmc_password) {
         #    xCAT::Utils->runxcmd(
         #        {
         #        command => ["rspconfig"],
-        #        node => ["$pbmc_node"],
+        #        node => ["$bmc_node"],
         #        arg     => [ "password=$new_bmc_password" ],
         #        },
         #        $subreq, 0,1);
@@ -4491,13 +4491,13 @@ sub cleanup_for_powerLE_hardware_discovery {
         #    }
         #}
 
-        xCAT::MsgUtils->message("S", "Discover info: configure ip:$new_bmc_ip for pbmc_node:$pbmc_node.");
-        `rspconfig $pbmc_node ip=$new_bmc_ip`;
+        xCAT::MsgUtils->message("S", "Discover info: configure ip:$new_bmc_ip for bmc_node:$bmc_node.");
+        `rspconfig $bmc_node ip=$new_bmc_ip`;
         #if($new_bmc_ip) {
         #    xCAT::Utils->runxcmd(
         #        {
         #        command => ["rspconfig"],
-        #        node => ["$pbmc_node"],
+        #        node => ["$bmc_node"],
         #        arg     => [ "ip=$new_bmc_ip" ],
         #        },
         #        $subreq, 0,1);
@@ -4506,12 +4506,12 @@ sub cleanup_for_powerLE_hardware_discovery {
         #        return;
         #    }
         #}
-        xCAT::MsgUtils->message("S", "Discovery info: remove pbmc_node:$pbmc_node.");
-        `rmdef $pbmc_node`;
+        xCAT::MsgUtils->message("S", "Discovery info: remove bmc_node:$bmc_node.");
+        `rmdef $bmc_node`;
         #xCAT::Utils->runxcmd(
         #   {
         #   command => ["rmdef"],
-        #   node => ["$pbmc_node"],
+        #   node => ["$bmc_node"],
         #   },
         #   $subreq, 0,1);
     }

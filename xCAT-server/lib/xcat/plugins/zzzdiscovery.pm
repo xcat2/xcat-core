@@ -1,4 +1,5 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# The last module to deal with hardware discovery request, write information that which module can deal with this request or no module can deal with it at all 
 package xCAT_plugin::zzzdiscovery;
 BEGIN
 {
@@ -16,18 +17,15 @@ sub process_request {
     my $cb = shift;
     my $doreq = shift;
     if ($req->{command}->[0] eq 'findme') {
-        # The findme request is supposed to be dealt with in the first loop that cacheonly attribute is set for a request
-        if (!($req->{cacheonly}) or !($req->{cacheonly}->[0])) {
-            return;
-        }
-        xCAT::MsgUtils->message("S", __PACKAGE__.": Processing findme request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{mtm}->[0]*$req->{serial}->[0]) Finish to process the discovery request");
         if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]))  {
             my $rsp = {};
-            $rsp->{error}->[0] = "The findme request can not be processed";
+            $rsp->{error}->[0] = "The discovery request can not be processed";
             $cb->($rsp);
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{mtm}->[0]*$req->{serial}->[0]) Failed to be processed");
             return;
         }
-        xCAT::MsgUtils->message("S", __PACKAGE__.": This findme request had been processed by $req->{discoverymethod}->[0] module");
+        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{mtm}->[0]*$req->{serial}->[0]) Successfully processed by $req->{discoverymethod}->[0] method");
         return;
     }
 }
