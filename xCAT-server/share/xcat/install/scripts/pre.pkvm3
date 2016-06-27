@@ -21,8 +21,8 @@ if [ -e "/tmp/xcat.install_disk" ]; then
     instdisk=`cat /tmp/xcat.install_disk`
 fi
 
-echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitioning
-echo "volgroup ibmpkvm_rootvg PV.01" >> /tmp/partitioning	
+echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitionfile
+echo "volgroup ibmpkvm_rootvg PV.01" >> /tmp/partitionfile	
 
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set +x

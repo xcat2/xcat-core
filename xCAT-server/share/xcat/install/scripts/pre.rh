@@ -207,19 +207,19 @@ BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
 
 if [ `uname -m` = "ppc64" ]; then
-	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
+	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile 
 fi
 if [ -d /sys/firmware/efi ]; then 
-    echo 'bootloader --driveorder='$instdisk >> /tmp/partitioning
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitioning
+    echo 'bootloader --driveorder='$instdisk >> /tmp/partitionfile
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
 else
-    echo 'bootloader' >> /tmp/partitioning
+    echo 'bootloader' >> /tmp/partitionfile
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitioning
-echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
-echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
+echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitionfile
+echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitionfile
+echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitionfile
 	
 #XCA_PARTITION_SCRIPT#
 

@@ -370,10 +370,9 @@ sub subvars {
               
               #for redhat/sl/centos/kvm/fedora
               if ($inc =~ /#XCAT_PARTITION_START#/) {
-                  my $tempstr = "%include /tmp/partitionfile\n";
-                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
                   # Put the base64 coded partitionfile into %pre part
                   $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  $partcontent .= "rm -rf /tmp/partitionfile\n";
                   # Put the code to decode the partitionfile
                   $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
                   $partcontent .= "chmod 755 /tmp/partscript\n";
@@ -416,7 +415,17 @@ sub subvars {
           else{
               $partcontent =~ s/\s$//;
               if ($inc =~ /#XCAT_PARTITION_START#/){
-                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+                  # %pre and decode it out during the running time.
+                  use MIME::Base64;
+                  $partcontent = encode_base64($partcontent);
+                  $partcontent =~ s/\n//g;
+                  # Put the base64 coded partitionfile into %pre part
+                  $partcontent = "cat > /tmp/partitionfile.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  $partcontent .= "rm -rf /tmp/partitionfile\n";
+                  # Put the code to decode the partitionfile
+                  $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partitionfile.enc\",\"rb\").read())' >/tmp/partitionfile\n";
+                  #replace the #XCA_PARTITION_SCRIPT#
+                  $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
               }
               elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
                   $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
