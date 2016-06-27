@@ -827,7 +827,7 @@ function add_repo_by_url_apt()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.list"
-		echo "deb [arch=$(dpkg --print-architechure)] file://${url} ${codename} main" >"${tmp}"
+		echo "deb [arch=$(dpkg --print-architecture)] file://${url} ${codename} main" >"${tmp}"
 		add_repo_by_file_apt "${tmp}" "${repo_id}"
 		return "$?"
 	fi
