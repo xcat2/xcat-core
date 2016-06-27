@@ -685,6 +685,11 @@ sub process_request {
 		}
 	}
 	if ($request->{command}->[0] eq "findme") {
+                if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+                    # The findme request had been processed by other module, just return
+                    return;
+                }
+                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
 		my $mptab = xCAT::Table->new("mp");
 		unless ($mptab) { return 2; }
 		my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
@@ -728,21 +733,25 @@ sub process_request {
 			}
 		}
 		unless ($macmap{$mac}) { 
+                        xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
 			return 1; #failure
 		}
-		my $mactab = xCAT::Table->new('mac',-create=>1);
-		$mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
-		$mactab->close();
+                # The discovered command will update mac table, no need to update here
+		#my $mactab = xCAT::Table->new('mac',-create=>1);
+		#$mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
+		#$mactab->close();
 		#my %request = (
 		#  command => ['makedhcp'],
 		#  node => [$macmap{$mac}]
 		#  );
 		#$doreq->(\%request);
-		$request->{command}=['discovered'];
-		$request->{noderange} = [$macmap{$mac}];
-		$doreq->($request);
-		%{$request}=(); #Clear request. it is done
-		undef $mactab;
+                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node:$macmap{$mac} for the discovery request");
+                my $req={%$request};
+		$req->{command}=['discovered'];
+		$req->{noderange} = [$macmap{$mac}];
+		$doreq->($req);
+		%{$req}=(); #Clear request. it is done
+		#undef $mactab;
 		return 0;
 	}
 		

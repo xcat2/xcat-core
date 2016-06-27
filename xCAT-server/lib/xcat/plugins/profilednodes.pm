@@ -1816,6 +1816,10 @@ Usage:
 
 #-------------------------------------------------------
 sub findme{
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
     # re-initalize the global variable
     %args_dict = ();
     # Read DB to confirm the discover is started. 

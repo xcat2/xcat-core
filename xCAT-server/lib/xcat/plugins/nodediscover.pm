@@ -373,8 +373,8 @@ sub process_request {
     }
     if (defined($request->{bmcinband})) {
         syslog("local4|info", "The attribute bmcinband is specified, just remove the temp BMC node if there is");
-        if (defined($request->{pbmc_node}) and defined($request->{pbmc_node}->[0]))  {
-            my $bmc_node = $request->{pbmc_node}->[0];
+        if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0]))  {
+            my $bmc_node = $request->{bmc_node}->[0];
             syslog("local4|info", "Find BMC $bmc_node, so remove it");
             $doreq->({ command => ['rmdef'], arg => [$bmc_node]});
         }

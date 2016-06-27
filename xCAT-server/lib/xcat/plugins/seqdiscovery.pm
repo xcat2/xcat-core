@@ -50,22 +50,20 @@ sub findme {
     my $request = shift;
     my $callback = shift;
     my $subreq = shift;
-
+    
     my @SEQdiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
+    
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
     unless ($SEQdiscover[0]) {
-        if ($PCMdiscover[0]) {
-            #profile disocvery is running, then just return to make profile discovery to handle it
-            return;
-        }
-        # update the discoverydata table to have an undefined node
-        $request->{discoverymethod}->[0] = 'undef';
-        xCAT::DiscoveryUtils->update_discovery_data($request);
         return;
     }
 
     # do the sequential discovery
-    xCAT::MsgUtils->message("S", "Sequential Discovery: Processing");
+    xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
 
     # Get the parameters for the sequential discovery
     my %param;
@@ -78,7 +76,7 @@ sub findme {
     my $mac;
     my $ip = $request->{'_xcat_clientip'};
     if (defined $request->{nodetype} and $request->{nodetype}->[0] eq 'virtual') {
-        xCAT::MsgUtils->message("S", "Sequential discovery does not support virtual machines, exiting...");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: virtual machines is not supported");
         return;
     }
     my $arptable;
@@ -98,7 +96,7 @@ sub findme {
     }
     
     unless ($mac) {
-        xCAT::MsgUtils->message("S", "Discovery Error: Could not find the mac of the $ip.");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find mac of the $ip");
         return;
     }
 
@@ -130,13 +128,13 @@ sub findme {
             $node = $allnodes[0];
         }
     }
-    my $pbmc_node = undef;
+    my $bmc_node = undef;
     if ($request->{'mtm'}->[0] and $request->{'serial'}->[0]) {
         my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0];
         my $tmp_nodes = $::XCATVPDHASH{$mtms};
         foreach (@$tmp_nodes) {
             if ($::XCATMPHASH{$_}) {
-                $pbmc_node = $_;
+                $bmc_node = $_;
             }
         } 
     }
@@ -375,19 +373,20 @@ sub findme {
 
         # call the discovered command to update the discovery request to a node
          
-        $request->{command}=['discovered'];
-        $request->{noderange} = [$node];
-        if ($pbmc_node) {
-            $request->{pbmc_node} = [$pbmc_node];
-        }
-
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node:$node for the discovery request");
         $request->{discoverymethod} = ['sequential'];
-        $request->{updateswitch} = ['yes'];
-        $subreq->($request); 
-        %{$request}=();#Clear req structure, it's done..
+        my $req = {%$request};
+        $req->{command}=['discovered'];
+        $req->{noderange} = [$node];
+        $request->{bmc_node} = [$bmc_node];
+
+        $req->{updateswitch} = ['yes'];
+        $subreq->($req); 
+        %{$req}=();#Clear req structure, it's done..
         undef $mactab;
     } else {
         nodediscoverstop($callback, undef, "node names");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
         return;
     }
 
