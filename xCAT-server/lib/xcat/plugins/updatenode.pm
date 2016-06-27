@@ -1242,7 +1242,7 @@ sub updatenode
     if (@exclude_nodes > 0) {
        my $rsp = {};
        $rsp->{error}->[0] =
-       "Following nodes will be ignored bacause they are missing some attribute definitions: @exclude_nodes";
+       "Following nodes will be ignored bacause they are missing some attributes or have incorrect configuration: @exclude_nodes";
        $rsp->{errorcode}->[0] =1;
        $callback->($rsp);
     }
