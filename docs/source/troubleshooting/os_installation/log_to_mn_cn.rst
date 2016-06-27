@@ -14,27 +14,27 @@ The logs during diskfull provision:
 
 * PostBootScript logs: the logs during the post boot scripts execution, which are specified in "postbootscripts" attribute of node and osimage definition and run during the 1st reboot after installation.
 
-+------------------------+-----------------------+-----------------------+-----------------------+
-|  **xcatdebugmode**     |       0               |       1               |       2               |
-+------------------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-| OS Distribution        | RHEL  | SLES  | UBT   | RHEL  | SLES  | UBT   | RHEL  | SLES  | UBT   |
-+================+=======+=======+=======+=======+=======+=======+=======+=======+=======+=======+
-| Pre-Install    | [MN]_ | [N]_                  | [N]_                  | [N]_                  |
-+  logs          +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-|                | [CN]_ | [Y1]_                 | [Y2]_                 | [Y2]_                 |
-+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Installer      | [MN]_ | [N]_  | [N]_  | [N]_  | [Y7]_ | [Y7]_ | [Y7]_ | [Y7]_ | [Y7]_ | [Y7]_ |
-+  logs          +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-|                | [CN]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ | [Y6]_ |
-+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-| Post-Install   | [MN]_ | [Y5]_                 | [Y3]_                 | [Y3]_                 |
-+  logs          +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-|                | [CN]_ | [Y1]_                 | [Y2]_                 | [Y2]_                 |
-+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-| PostBootScript | [MN]_ | [Y5]_                 | [Y3]_                 | [Y3]_                 |
-+  logs          +-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
-|                | [CN]_ | [Y1]_                 | [Y2]_                 | [Y2]_                 |
-+----------------+-------+-------+-------+-------+-------+-------+-------+-------+-------+-------+
++---------------------+--------------+--------------+--------------+
+|  **xcatdebugmode**  |       0      |       1      |       2      |
++---------------------+----+----+----+----+----+----+----+----+----+
+| OS Distribution     |RHEL|SLES|UBT |RHEL|SLES|UBT |RHEL|SLES|UBT |
++================+====+====+====+====+====+====+====+====+====+====+
+| Pre-Install    | MN | N            | N            | N            |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | C1           | C1   C2      | C1   C2      |
++----------------+----+----+----+----+----+----+----+----+----+----+
+| Installer      | MN | N  | N  | N  | M1 | M1 | M1 | M1 | M1 | M1 |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | C3 | C3 | C3 | C3 | C3 | C3 | C3 | C3 | C3 |
++----------------+----+----+----+----+----+----+----+----+----+----+
+| Post-Install   | MN | M2           | M3           | M3           |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | C1           | C1   C2      | C1   C2      |
++----------------+----+----+----+----+----+----+----+----+----+----+
+| PostBootScript | MN | M2           | M3           | M3           |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | C1           | C1   C2      | C1   C2      |
++----------------+----+----+----+----+----+----+----+----+----+----+
 
 The logs during diskless provision:
 ```````````````````````````````````
@@ -43,37 +43,39 @@ The logs during diskless provision:
 
 * PostBootScript logs: the logs during the post boot scripts execution, which are specified in "postbootscripts" attribute of node and osimage definition and run during the 1st reboot after installation.
 
-+------------------------+--------------+--------------+--------------+
-|  **xcatdebugmode**     |      0       |       1      |       2      |
-+------------------------+----+----+----+----+----+----+----+----+----+
-| OS Distribution        |RHEL|SLES|UBT |RHEL|SLES|UBT |RHEL|SLES|UBT |
-+================+=======+====+====+====+====+====+====+====+====+====+
-| Provision      | [MN]_ | [N]_         | [Y3]_        | [Y3]_        |
-+  logs          +-------+----+----+----+----+----+----+----+----+----+
-|                | [CN]_ | [N]_         | [N]_         | [N]_         |
-+----------------+-------+----+----+----+----+----+----+----+----+----+
-| PostBootScript | [MN]_ | [Y3]_        | [Y4]_        | [Y4]_        |
-+  logs          +-------+----+----+----+----+----+----+----+----+----+
-|                | [CN]_ | [Y1]_        | [Y2]_        | [Y2]_        |
-+----------------+-------+----+----+----+----+----+----+----+----+----+
++---------------------+--------------+--------------+--------------+
+|  **xcatdebugmode**  |      0       |       1      |       2      |
++---------------------+----+----+----+----+----+----+----+----+----+
+| OS Distribution     |RHEL|SLES|UBT |RHEL|SLES|UBT |RHEL|SLES|UBT |
++================+====+====+====+====+====+====+====+====+====+====+
+| Provision      | MN | N            | M3           | M3           |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | N            | N            | N            |
++----------------+----+----+----+----+----+----+----+----+----+----+
+| PostBootScript | MN | M3           | M3   M4      | M3   M4      |
++  logs          +----+----+----+----+----+----+----+----+----+----+
+|                | CN | C1           | C1   C2      | C1   C2      |
++----------------+----+----+----+----+----+----+----+----+----+----+
 
-.. [MN] means the logs forwarded to management node.
+MN: the logs forwarded to management node(M1-M4 is the operation for MN). ::
 
-.. [CN] means the logs on compute node.
+    M1 means the installer logs can be forwarded to the MN in ``/var/log/xcat/computes.log`` file.
 
-.. [Y1] means the installation logs can be saved to ``/var/log/xcat/xcat.log`` file on CN.
+    M2 means the error messages can be forwarded to ``/var/log/xcat/computes.log`` file on MN only when critical error happens.
 
-.. [Y2] means the installation logs and debug trace("set -x" or "-o xtrace") of bash scripts can be saved to ``/var/log/xcat/xcat.log`` file on CN.
+    M3 means the installation logs can be forwarded to ``/var/log/xcat/computes.log`` file on MN.
 
-.. [Y3] means the installation logs can be forwarded to ``/var/log/xcat/computes.log`` file on MN.
+    M4 means the debug trace("set -x" or "-o xtrace") of bash scripts enabled.
 
-.. [Y4] means the installation logs and debug trace("set -x" or "-o xtrace") of bash scripts can be forwarded to ``/var/log/xcat/computes.log`` file on MN.
+    N means the logs can not be forwarded to MN.
 
-.. [Y5] means the error messages can be forwarded to ``/var/log/xcat/computes.log`` file on MN only when critical error happens.
+CN: the logs on compute node(C1-C3 is the operation for CN). ::
 
-.. [Y6] means the installer log can be saved to the CN in ``/var/log/anaconda`` for RHEL, ``/var/log/YaST2`` for SLES, ``/var/log/installer`` for UBT.
+    C1 means the installation logs can be saved to ``/var/log/xcat/xcat.log`` file on CN.
 
-.. [Y7] means the installer log can be forwarded to the MN in ``/var/log/xcat/computes.log`` file.
+    C2 means the debug trace("set -x" or "-o xtrace") of bash scripts enabled.
 
-.. [N] means the logs can not be forwarded or saved.
+    C3 means the installer logs can be saved to the CN in ``/var/log/anaconda`` for RHEL, ``/var/log/YaST2`` for SLES, ``/var/log/installer`` for UBT.
+
+    N means the logs can not be saved to CN.
 
