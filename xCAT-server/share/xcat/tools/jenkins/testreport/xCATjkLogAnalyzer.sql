@@ -1,6 +1,6 @@
 -- MySQL dump 10.14  Distrib 5.5.47-MariaDB, for Linux (ppc64)
 --
--- Host: localhost    Database: xcatjkloganalyzer
+-- Host: localhost    Database: xCATjkLogAnalyzer
 -- ------------------------------------------------------
 -- Server version	5.5.47-MariaDB
 
@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS `ArchDict`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ArchDict` (
   `ArchId` int(11) NOT NULL AUTO_INCREMENT,
-  `ArchName` varchar(255) NOT NULL,
+  `ArchName` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   PRIMARY KEY (`ArchId`),
   UNIQUE KEY `ArchName` (`ArchName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -133,7 +133,7 @@ DROP TABLE IF EXISTS `OSDict`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `OSDict` (
   `OSId` int(11) NOT NULL AUTO_INCREMENT,
-  `OSName` varchar(255) NOT NULL,
+  `OSName` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   PRIMARY KEY (`OSId`),
   UNIQUE KEY `OSName` (`OSName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -148,7 +148,7 @@ DROP TABLE IF EXISTS `ResultDict`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ResultDict` (
   `ResultId` int(11) NOT NULL AUTO_INCREMENT,
-  `ResultName` varchar(255) NOT NULL,
+  `ResultName` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   PRIMARY KEY (`ResultId`),
   UNIQUE KEY `ResultName` (`ResultName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -217,7 +217,7 @@ DROP TABLE IF EXISTS `TestCase`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `TestCase` (
   `TestCaseId` int(11) NOT NULL AUTO_INCREMENT,
-  `TestCaseName` varchar(255) NOT NULL,
+  `TestCaseName` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   `Memo` text NOT NULL,
   PRIMARY KEY (`TestCaseId`),
   UNIQUE KEY `TestCaseName` (`TestCaseName`)
@@ -254,12 +254,12 @@ DROP TABLE IF EXISTS `TestRun`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `TestRun` (
   `TestRunId` int(11) NOT NULL AUTO_INCREMENT,
-  `TestRunName` varchar(255) NOT NULL,
+  `TestRunName` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   `StartTime` datetime NOT NULL,
   `EndTime` datetime NOT NULL,
   `ArchId` int(11) NOT NULL,
   `OSId` int(11) NOT NULL,
-  `xCATgitCommit` varchar(255) NOT NULL,
+  `xCATgitCommit` varchar(255) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL,
   `Memo` text NOT NULL,
   PRIMARY KEY (`TestRunId`),
   UNIQUE KEY `TestRunName` (`TestRunName`),
@@ -542,4 +542,4 @@ SET character_set_client = @saved_cs_client;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-06-07  1:14:01
+-- Dump completed on 2016-06-29  4:52:47
