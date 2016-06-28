@@ -91,21 +91,22 @@ foreach (@nodes) {
     
     if (length($node_osimage_name) > 0) {
         # Get provmethod for the osimage
-        my $osimage_provmethod = `lsdef -t osimage $node_osimage_name -i provmethod -c`;
+        my $osimage_provmethod = `lsdef -t osimage $node_osimage_name -i provmethod,rootimgdir -c`;
         if (length($osimage_provmethod) <= 0) {
             next;
         }
-        my ($junk2, $osimage_provmethod_type) = split "=", $osimage_provmethod;
+        my ($line1, $line2) = split("[\n\r]", $osimage_provmethod);
+        ($junk, my $osimage_provmethod_type) = split "=", $line1;
+        ($junk, my $rootimagedir)            = split "=", $line2;
         chomp($osimage_provmethod_type);
+        chomp($rootimagedir);
 
         # Check if it is netboot, meaning diskless
         if ($osimage_provmethod_type eq 'netboot') {
             push(@diskless_nodes, $_);
             probe_utils->send_msg("$output", "o", "$_ is diskless");
-            # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
-            $rootimagedir = `lsdef -t osimage $node_osimage_name -i rootimgdir -c | cut -d "=" -f 2`;
-            chomp($rootimagedir);
             if (length($rootimagedir) > 0) {
+                # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
                 my $xcatinfo_file = $rootimagedir . "/rootimg/opt/xcat/xcatinfo";
                 if (-r $xcatinfo_file) {
                     $defined_UUID = `awk -F"'" '/IMAGEUUID/ {print \$2}' $xcatinfo_file`;
@@ -225,7 +226,7 @@ if ($DEFINITION_CHECK) {
             }
         }
         else {
-            $msg = "$_: Unmatched os image name or image UUID.\n         Defined: name = $node_defined_image_name_hash{$_}" .
+            $msg = "$_: Unmatched os image name or image UUID.\n         Defined:   name = $node_defined_image_name_hash{$_}" .
 " uuid = $node_defined_image_uuid_hash{$_}\n         Installed: name = $node_running_image_name_hash{$_}" .
               " uuid = $node_running_image_uuid_hash{$_}";
             $status = "f";
@@ -267,7 +268,7 @@ if ($CONSISTENCY_CHECK) {
     else {
         my $node_image_table;
         foreach $compute_node (keys %node_running_image_name_hash) {
-            $node_image_table .= sprintf("%-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
+            $node_image_table .= sprintf("         %-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
         }
         $msg = "Not all compute nodes are installed with the same os image.\n" . $node_image_table;
         $status = "f";
