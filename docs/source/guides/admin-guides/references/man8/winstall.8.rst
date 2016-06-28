@@ -19,9 +19,11 @@ Name
 ****************
 
 
-\ **winstall**\  [\ **-o | -**\ **-osver**\ ] [\ **-p | -**\ **-profile**\ ] [\ **-a | -**\ **-arch**\ ] [\ *noderange*\ ]
+\ **rinstall**\  \ *noderange*\  \ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\  [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **winstall**\  [\ **-O | -**\ **-osimage**\ ] [\ *noderange*\ ]
+\ **rinstall**\  \ *noderange*\  \ **osimage**\ =\ *imagename*\  | [\ **-O**\ ] \ *imagename*\  [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+
+\ **rinstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -29,10 +31,9 @@ Name
 *******************
 
 
-\ **winstall**\  is a convenience tool that will change attributes as requested for operating system version, profile, and architecture, call \ **nodeset**\  to modify the network boot configuration, call \ **rsetboot**\  net to set the next boot over network (only support nodes
-with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before \ **winstall**\ ), and \ **rpower**\  to begin a boot cycle.
+\ **winstall**\  is a convenience command to begin OS provision on a noderange(support nodes with "nodetype.mgt=ipmi,blade,hmc,ivm,fsp,kvm,esx,rhevm").
 
-If [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ *osimage*\  is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
+If \ **osimage**\ =\ *imagename*\  | \ **-O**\  \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
 
 It  will then run wcons on the nodes.
 
@@ -41,6 +42,44 @@ It  will then run wcons on the nodes.
 \ **Options**\ 
 ***************
 
+
+
+\ **boot**\ 
+ 
+ Instruct network boot loader to be skipped, generally meaning boot to hard disk
+ 
+
+
+\ **osimage | osimage=**\ \ *imagename*\ |\ **-O**\ \ *imagename*\ 
+ 
+ Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ 
+
+
+\ **-**\ **-ignorekernelchk**\ 
+ 
+ Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+ 
+
+
+\ **runimage**\ =\ *task*\ 
+ 
+ If you would like to run a task after deployment, you can define that task with this attribute.
+ 
+
+
+\ **runcmd=bmcsetup**\ 
+ 
+ This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
+ for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ 
+
+
+\ **shell**\ 
+ 
+ This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+ The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
+ 
 
 
 \ **-h | -**\ **-help**\ 
@@ -55,27 +94,21 @@ It  will then run wcons on the nodes.
  
 
 
-\ **-o | -**\ **-osver**\ 
+\ **-u | -**\ **-uefimode**\ 
  
- Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [\ *-O*\  | \ *--osimage*\ ] is specified or nodetype.provmethod=\ *osimage*\ .
- 
-
-
-\ **-p | -**\ **-profile**\ 
- 
- Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ *osimage*\ .
+ For BMC-based servers, to specify the next boot mode to be "UEFI Mode".
  
 
 
-\ **-a | -**\ **-arch**\ 
+\ **-V | -**\ **-Verbose**\ 
  
- Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ *osimage*\ .
+ Verbose output.
  
 
 
-\ **-O | -**\ **-osimage**\ 
+\ **-c | -**\ **-console**\ 
  
- Specifies the osimage to provision.
+ Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting consoles on multiple nodes.
  
 
 
@@ -96,17 +129,7 @@ It  will then run wcons on the nodes.
  
 
 
-2. Provision nodes 1 through 20, forcing rhels5.1 and compute profile.
- 
- 
- .. code-block:: perl
- 
-   winstall node1-node20 -o rhels5.1 -p compute
- 
- 
-
-
-3. Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
+2. Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
  
  
  .. code-block:: perl
