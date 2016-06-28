@@ -2646,7 +2646,7 @@ sub rmkitcomp
                     unless (@entries) {
                         my %rsp;
                         push@{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        xCAT::MsgUtils->message( "W", \%rsp, $callback );
                     }
 
                     my $kitcompdepname = get_highest_version('kitcompname', 'version', 'release', @entries);
