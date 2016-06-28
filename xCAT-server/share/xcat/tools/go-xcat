@@ -582,11 +582,13 @@ function add_repo_by_file_yum()
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
 	exit_if_bad "$?" "${repo_id} illegal character in repo id"
-	remove_repo_yum "${repo_id}"
+	local tmp="${TMP_DIR}/tmp_repo_file_${repo_id}.repo"
 	{
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
-	} >"/etc/yum.repos.d/${repo_id}.repo"
+	} >"${tmp}"
+	remove_repo_yum "${repo_id}" &&
+		cp "${tmp}" "/etc/yum.repos.d/${repo_id}.repo"
 }
 
 #       $1      repo file
@@ -604,13 +606,13 @@ function add_repo_by_file_zypper()
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
 	exit_if_bad "$?" "${repo_id} illegal character in repo id"
-	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
+	local tmp="${TMP_DIR}/tmp_repo_file_${repo_id}.repo"
 	{
 		echo "[${repo_id}]"
 		grep -v '^\[' "${repo_file}"
-	} >"${tmp_repo_file}"
-	remove_repo_zypper "${repo_id}"
-	zypper addrepo "${tmp_repo_file}" >/dev/null 2>&1
+	} >"${tmp}"
+	remove_repo_zypper "${repo_id}" &&
+		zypper addrepo "${tmp}" >/dev/null 2>&1
 }
 
 #       $1      repo file
@@ -810,12 +812,6 @@ function add_repo_by_url_apt()
 	esac
 	if [[ -f "${url}" ]]
 	then
-		case "${url##*.}" in
-		"list") # local repo file
-			add_repo_by_file_apt "${url}" "${repo_id}"
-			return "$?"
-			;;
-		esac
 		extract_archive "${url}" "${repo_id}" "${install_path}"
 		warn_if_bad "$?" "extract ${repo_id} archive file failed" ||
 			return 1
