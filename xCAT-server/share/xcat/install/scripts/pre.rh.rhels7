@@ -210,7 +210,11 @@ if [ -n "#ENV:PERSKCMDLINE#" ];then
     grep bootloader /tmp/partitionfile >/dev/null 2>&1|| echo -e "bootloader --append=\"#ENV:PERSKCMDLINE#\"" >>/tmp/partitionfile
 fi
 
-
+#save the content of /tmp/partitionfile in /var/log/xcat/xcat.log
+#so that we can inspect the partition scheme after installation
+echo "=================The Partition Scheme================"
+cat /tmp/partitionfile
+echo "====================================================="
 
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
