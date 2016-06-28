@@ -915,6 +915,13 @@ sub ssl_reaper {
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
             # got here because UDP child is gone
             close($udpctl); $udpctl=0;
+            $pid_UDP = 0;
+        }
+        if ($CHILDPID == $cmdlog_svrpid) {
+            $cmdlog_svrpid = 0;
+        }
+        if ($CHILDPID == $pid_MON) {
+            $pid_MON = 0;
         }
     }
     $SIG{CHLD} = \&ssl_reaper;
@@ -1470,12 +1477,16 @@ if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
 }
 if ($listener) { $listener->close; }
 my $lastpid;
-while (keys %immediatechildren || $pid_UDP) {
+while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
     $lastpid=wait();
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
     } elsif ($lastpid == $pid_UDP) {
         $pid_UDP = 0;
+    } elsif ($lastpid == $cmdlog_svrpid) {
+        $cmdlog_svrpid = 0;
+    } elsif ($lastpid == $pid_MON) {
+        $pid_MON = 0;
     }
 }
 xCAT::Table::shut_dbworker;
