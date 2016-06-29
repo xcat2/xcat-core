@@ -1,7 +1,7 @@
 Troubleshooting
 ===============
 
-This chapter introduces the methods of how to troubleshoot a real cluster. Basically, it includes the following parts.
+This chapter introduces the methods of troubleshooting a real cluster. It includes the following parts.
 
 .. toctree::
    :maxdepth: 2

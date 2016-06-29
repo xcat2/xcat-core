@@ -1,21 +1,21 @@
-Enable Debug Port: Running commands in the installer from MN
-------------------------------------------------------------
+Enabling Debug Port: Running commands in the installer from MN
+--------------------------------------------------------------
 
-**This mode is only supported with debug level set to 1 or 2**
+**This mode is supported with debug level set to 1 or 2**
 
-xCAT creates a server in the **installer** listening on port ``3001``. It executes commands sent to it from the xCAT MN and returns the response output.
+xCAT creates a server in the **installer**, listening on port ``3001``. It executes commands sent to it from the xCAT MN and returns the response output.
 
-The command ``runcmdinstaller`` can be used to send request to installer: ::
+The command ``runcmdinstaller`` can be used to send request to installer:
 
-    Usage:
+Usage: ::
 
-       runcmdinstaller <node> "<command>"
+ runcmdinstaller <node> "<command>"
 
-       make sure all the commands are quoted by ""
+make sure all the commands are quoted by ``""``
 
-    Example:
+Example:
 
-       To list all the items under the /etc directory in the installer
+To list all the items under the /etc directory in the installer ::
 
-       runcmdinstaller c910f03c01p03 "ls /etc"
-
+ runcmdinstaller c910f03c01p03 "ls /etc"
+ 
