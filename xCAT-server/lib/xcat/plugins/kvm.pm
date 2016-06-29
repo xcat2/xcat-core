@@ -3074,7 +3074,6 @@ sub power {
     }
 
     $newnodestatus{$newstat}=[$node];
-    xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
 
     unless ($retstring =~ /reset/) {
