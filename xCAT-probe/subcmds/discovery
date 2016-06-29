@@ -676,17 +676,6 @@ sub do_pre_check {
     my $rst  = 0;
     my $msg;
 
-    if (defined($noderange) && defined($discovery_type)) {
-        $msg = "All pre_defined nodes '$noderange' are valid";
-        my $rc = check_pre_defined_node($discovery_type, $noderange);
-        if ($rc) {
-            probe_utils->send_msg("$output", "f", $msg);
-            $rst = 1;
-        } else {
-            probe_utils->send_msg("$output", "o", $msg);
-        }
-    }
-
     #The block of $nics is ture is a reservation part, this part don't show up in usage
     if ($nics) {
         if ($nics =~ /[^\w|]/) {
@@ -815,21 +804,6 @@ sub do_monitor {
         $terminal = 1;
     };
     
-    #check pre_defined node should be done during "do_pre_check" part.
-    #if we use '--noprecheck' to skip pre_check(include pre_defined node checking)
-    #then go to monitor directly, we should do pre_defined node checking
-    #here if noderange and discovery_type are specified.
-    if ($no_pre_check && defined($noderange) && defined($discovery_type)) {
-        $msg = "All pre_defined nodes are valid";
-        my $rc = check_pre_defined_node($discovery_type, $noderange);
-        if ($rc) {
-            probe_utils->send_msg("$output", "f", $msg);
-            return 1;
-        } else {
-            probe_utils->send_msg("$output", "o", $msg);
-        }
-    }
-
     if (!$nics) {
         my $masteripinsite = `tabdump site | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
@@ -1009,6 +983,17 @@ if (defined($discovery_type)) {
         probe_utils->send_msg("$output", "f", "Invalid discovery type. the vaild types are $valid_discovery_type_str");
         probe_utils->send_msg("$output", "d", "$::USAGE");
         exit 1;
+    }
+}
+
+if (defined($noderange) && defined($discovery_type)) {
+    $msg = "All pre_defined nodes are valid";
+    my $rc = check_pre_defined_node($discovery_type, $noderange);
+    if ($rc) {
+        probe_utils->send_msg("$output", "f", $msg);
+        return 1;
+    } else {
+        probe_utils->send_msg("$output", "o", $msg);
     }
 }
 
