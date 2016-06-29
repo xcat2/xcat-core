@@ -914,6 +914,7 @@ sub initmysqldb
 
         exit(1);
     }
+
 }
 
 #-----------------------------------------------------------------------------
@@ -1213,6 +1214,14 @@ sub setupxcatdb
     $grantall .= "\'";
     $grantall .= " IDENTIFIED BY \'$::adminpassword\';\r";
 
+    #GRAND user xcatadmin to localhost account
+    my $grantall_localhost= "";
+    $grantall_localhost = "GRANT ALL on xcatdb.* TO xcatadmin@";
+    $grantall_localhost .= "\'";
+    $grantall_localhost .= "localhost";
+    $grantall_localhost .= "\'";
+    $grantall_localhost .= " IDENTIFIED BY \'$::adminpassword\';\r";
+
     #
     # -re $pwd_prompt
     #     Enter the password for root
@@ -1278,6 +1287,8 @@ sub setupxcatdb
              $mysql->send("$createuser");
              $mysql->clear_accum();
              $mysql->send("$grantall");
+             $mysql->clear_accum();
+             $mysql->send("$grantall_localhost");
              $mysql->clear_accum();
              $mysql->send("exit;\r");
 
