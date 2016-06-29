@@ -189,7 +189,7 @@ sub listvalidsubcmd {
     }
     $maxlen += 4;
 
-    my $desiredwidth = 100;
+    my $desiredwidth = 120;
     my $screenwidth  = (`tput cols` + 0);
     my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 

@@ -814,7 +814,11 @@ sub do_monitor {
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;
     };
-
+    
+    #check pre_defined node should be done during "do_pre_check" part.
+    #if we use '--noprecheck' to skip pre_check(include pre_defined node checking)
+    #then go to monitor directly, we should do pre_defined node checking
+    #here if noderange and discovery_type are specified.
     if ($no_pre_check && defined($noderange) && defined($discovery_type)) {
         $msg = "All pre_defined nodes are valid";
         my $rc = check_pre_defined_node($discovery_type, $noderange);
