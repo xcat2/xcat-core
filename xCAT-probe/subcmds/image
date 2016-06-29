@@ -71,9 +71,6 @@ unless (defined($CONSISTENCY_CHECK) || defined($DEFINITION_CHECK)) {
     exit 1;
 }
 
-my @nodes = `nodels`;
-@nodes = grep(s/^[\s]+|[\s]*$//g, @nodes);
-
 my @pingable_nodes;
 my @diskless_nodes;
 my $na = "N/A";
@@ -81,30 +78,37 @@ my $na = "N/A";
 my $defined_UUID = $na;
 my %node_defined_image_uuid_hash;
 my %node_defined_image_name_hash;
+my %osimage_defined_provmethod_hash;
+
+my $all_nodes_provmethod = `lsdef -i provmethod -c`;
+my $all_osimage_provmethod = `lsdef -t osimage -i provmethod,rootimgdir -c`;
+chomp($all_nodes_provmethod);
+my @all_nodes_provmethod_lines = split("[\n\r]", $all_nodes_provmethod);
+my @all_osimage_provmethod_lines = split("[\n\r]", $all_osimage_provmethod);
+
+# Build a hash of key="osimage name + attribute name" value="provmethod and rootimgdir attribute value"
+foreach (@all_osimage_provmethod_lines) {
+    my ($osimage_name, $values) = split "=", $_;
+    $osimage_defined_provmethod_hash{$osimage_name} = $values;
+}
 
 # First, extract diskless nodes
-foreach (@nodes) {
+foreach (@all_nodes_provmethod_lines) {
     # Get osimage name for the node
-    my $node_provmethod = `lsdef $_ -i provmethod -c`;
-    my ($junk, $node_osimage_name) = split "=", $node_provmethod;
+    my ($node_name, $junk, $node_osimage_name) = split "[:=]", $_;
     chomp($node_osimage_name);
     
     if (length($node_osimage_name) > 0) {
-        # Get provmethod for the osimage
-        my $osimage_provmethod = `lsdef -t osimage $node_osimage_name -i provmethod,rootimgdir -c`;
-        if (length($osimage_provmethod) <= 0) {
-            next;
-        }
-        my ($line1, $line2) = split("[\n\r]", $osimage_provmethod);
-        ($junk, my $osimage_provmethod_type) = split "=", $line1;
-        ($junk, my $rootimagedir)            = split "=", $line2;
-        chomp($osimage_provmethod_type);
-        chomp($rootimagedir);
+        # Get provmethod and rootimgdir for the osimage
+        my $osimage_provmethod_type = $osimage_defined_provmethod_hash{$node_osimage_name . ": provmethod"};
+        my $rootimagedir= $osimage_defined_provmethod_hash{$node_osimage_name . ": rootimgdir"};
+        chomp($osimage_provmethod_type) if ($osimage_provmethod_type);
+        chomp($rootimagedir) if ($rootimagedir);
 
         # Check if it is netboot, meaning diskless
-        if ($osimage_provmethod_type eq 'netboot') {
-            push(@diskless_nodes, $_);
-            probe_utils->send_msg("$output", "o", "$_ is diskless");
+        if ($osimage_provmethod_type && $osimage_provmethod_type eq 'netboot') {
+            push(@diskless_nodes, $node_name);
+            probe_utils->send_msg("$output", "o", "$node_name is diskless");
             if (length($rootimagedir) > 0) {
                 # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
                 my $xcatinfo_file = $rootimagedir . "/rootimg/opt/xcat/xcatinfo";
@@ -116,12 +120,12 @@ foreach (@nodes) {
                     }
                 }
             }
-            $node_defined_image_uuid_hash{$_} = $defined_UUID;
-            $node_defined_image_name_hash{$_} = $node_osimage_name;
-            print "Node $_ has defined image $node_osimage_name at $rootimagedir with UUID $defined_UUID\n" if ($VERBOSE);
+            $node_defined_image_uuid_hash{$node_name} = $defined_UUID;
+            $node_defined_image_name_hash{$node_name} = $node_osimage_name;
+            print "Node $node_name has defined image $node_osimage_name at $rootimagedir with UUID $defined_UUID\n" if ($VERBOSE);
         }
         else {
-            probe_utils->send_msg("$output", "w", "$_ is not diskless. No image consistency verification will be performed.");
+            probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.");
 	}
     }
 }
@@ -191,7 +195,7 @@ foreach (@pingable_nodes) {
    }
 }
 
-# Build a hash of key=hostname, value=running OS image name
+# Build a hash of key="hostname", value="running OS image name"
 foreach (@xdsh_name_lines) {
     my ($hostname, $osimage_name) = split ": ", $_;
     chomp($hostname);
