@@ -2150,6 +2150,9 @@ sub power_with_context {
 sub power_response { 
 	my $rsp = shift;
 	my $sessdata = shift;
+	my $newstat;
+	my %newnodestatus=();
+
 	if($rsp->{error}) {
 		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
 		return;
@@ -2159,7 +2162,20 @@ sub power_response {
 		my $text = $codes{$rsp->{code}};
 		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
 		xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
-	}
+	} else {
+            my $command = $sessdata->{subcommand};
+            my $status = $sessdata->{powerstatus};
+            if ($command eq "on") { $newstat = $::STATUS_POWERING_ON; }
+            if ($command eq "off" or $command eq "softoff") { $newstat = $::STATUS_POWERING_OFF; }
+            if ($command eq "reset" and $status eq "on"){$newstat = $::STATUS_POWERING_ON; }
+            if ($command eq "boot"){$newstat = $::STATUS_POWERING_ON; }
+            
+            if ($newstat) {
+                $newnodestatus{$newstat}=[$sessdata->{node}];
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+            }
+        } 
+        
 	if ($sessdata->{waitforsuspend}) { #have to repeatedly power stat until happy or timeout exceeded
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_wait_for_suspend,callback_args=>$sessdata);
 		return;
@@ -7911,33 +7927,7 @@ sub process_request {
 	}
       }
       #print "oldstatus:" . Dumper(\%oldnodestatus);
-      
-      #set the new status to the nodelist.status
-      my %newnodestatus=(); 
-      my $newstat;
-      if (($extrargs->[0] eq 'off') || ($extrargs->[0] eq 'softoff')) { 
-	  my $newstat=$::STATUS_POWERING_OFF; 
-	  $newnodestatus{$newstat}=\@allnodes;
-      } else {
-        #get the current nodeset stat
-        if (@allnodes>0) {
-	  my $nsh={};
-          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-          if (!$ret) { 
-            foreach (keys %$nsh) {
-		my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, "rpower");
-		$newnodestatus{$newstat}=$nsh->{$_};
-	    }
-	  } else {
-	      $callback->({data=>$msg});
-	  }
-        }
       }
-      #donot update node provision status (installing or netbooting) here
-      xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-      #print "newstatus" . Dumper(\%newnodestatus);
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
-    }
   }
 
     # NOTE (chenglch) rflash for one node need about 5-10 minutes. There is no need to rflash node
