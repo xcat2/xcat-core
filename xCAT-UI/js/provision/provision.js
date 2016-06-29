@@ -5,7 +5,7 @@ var provisionTabs; // Provision tabs
 
 /**
  * Set the provision tab
- * 
+ *
  * @param obj Tab object
  */
 function setProvisionTab(obj) {
@@ -14,7 +14,7 @@ function setProvisionTab(obj) {
 
 /**
  * Get the provision tab
- * 
+ *
  * @param Nothing
  * @return Tab object
  */
@@ -63,10 +63,10 @@ function loadProvisionPage() {
             success : setGroupsCookies
         });
     }
-    
+
     // Create info bar
     var infoBar = createInfoBar('Select a platform to provision or re-provision a node on, then click Ok.');
-    
+
     // Create provision page
     var provPg = $('<div class="form"></div>');
     provPg.append(infoBar);
@@ -79,13 +79,13 @@ function loadProvisionPage() {
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-    var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
-    var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
-    var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
-    
+    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
+    var ipmi = $('<li><input type="radio" name="hw" value="ipmi" disabled/>iDataPlex</li>');
+    var blade = $('<li><input type="radio" name="hw" value="blade" disabled/>BladeCenter</li>');
+    var hmc = $('<li><input type="radio" name="hw" value="hmc" disabled/>System p</li>');
+
     hwList.append(esx);
     hwList.append(kvm);
     hwList.append(zvm);
@@ -101,7 +101,7 @@ function loadProvisionPage() {
     okBtn.bind('click', function(event) {
         // Get hardware that was selected
         var hw = $(this).parent().find('input[name="hw"]:checked').val();
-        
+
         var inst = 0;
         var newTabId = hw + 'ProvisionTab' + inst;
         while ($('#' + newTabId).length) {
@@ -109,7 +109,7 @@ function loadProvisionPage() {
             inst = inst + 1;
             newTabId = hw + 'ProvisionTab' + inst;
         }
-        
+
         // Create an instance of the plugin
         var title = '';
         var plugin;
@@ -146,7 +146,7 @@ function loadProvisionPage() {
         plugin.loadProvisionPage(newTabId);
     });
     provPg.append(okBtn);
-    
+
     // Create resources tab
     var resrcPg = $('<div class="form"></div>');
 
@@ -156,20 +156,20 @@ function loadProvisionPage() {
 
     // Create radio buttons for platforms
     var rsrcHwList = $('<ol>Platforms available:</ol>');
-    esx = $('<li><input type="radio" name="rsrcHw" value="esx" checked/>ESX</li>');
-    kvm = $('<li><input type="radio" name="rsrcHw" value="kvm"/>KVM</li>');
-    zvm = $('<li><input type="radio" name="rsrcHw" value="zvm"/>z\/VM</li>');
-    ipmi = $('<li><input type="radio" name="rsrcHw" value="ipmi"/>iDataPlex</li>');
-    blade = $('<li><input type="radio" name="rsrcHw" value="blade"/>BladeCenter</li>');
-    hmc = $('<li><input type="radio" name="rsrcHw" value="hmc"/>System p</li>');
-    
+    esx = $('<li><input type="radio" name="rsrcHw" value="esx" disabled/>ESX</li>');
+    kvm = $('<li><input type="radio" name="rsrcHw" value="kvm" disabled/>KVM</li>');
+    zvm = $('<li><input type="radio" name="rsrcHw" value="zvm" checked/>z\/VM</li>');
+    ipmi = $('<li><input type="radio" name="rsrcHw" value="ipmi" disabled/>iDataPlex</li>');
+    blade = $('<li><input type="radio" name="rsrcHw" value="blade" disabled/>BladeCenter</li>');
+    hmc = $('<li><input type="radio" name="rsrcHw" value="hmc" disabled/>System p</li>');
+
     rsrcHwList.append(esx);
     rsrcHwList.append(kvm);
     rsrcHwList.append(zvm);
     rsrcHwList.append(blade);
     rsrcHwList.append(ipmi);
     rsrcHwList.append(hmc);
-    
+
     resrcPg.append(rsrcHwList);
 
     var okBtn = createButton('Ok');
@@ -212,7 +212,7 @@ function loadProvisionPage() {
                     displayName = "z\/VM";
                     break;
             }
-            
+
             // Add resource tab and load resources
             tab.add(newTabId, displayName, loader, true);
             plugin.loadResources();
@@ -221,8 +221,8 @@ function loadProvisionPage() {
         // Select tab
         tab.select(newTabId);
     });
-    
-    resrcPg.append(okBtn);    
+
+    resrcPg.append(okBtn);
 
     // Add provision tab
     tab.add('provisionTab', 'Provision', provPg, false);
@@ -230,21 +230,21 @@ function loadProvisionPage() {
     tab.add('imagesTab', 'Images', '', false);
     // Add resource tab
     tab.add('resourceTab', 'Resources', resrcPg, false);
-    
+
     // Load tabs onselect
-    $('#provisionPageTabs').bind('tabsselect', function(event, ui){ 
-        // Load image page 
+    $('#provisionPageTabs').bind('tabsselect', function(event, ui){
+        // Load image page
         if (!$('#imagesTab').children().length && ui.index == 1) {
             $('#imagesTab').append($('<center></center>').append(createLoader('')));
             loadImagesPage();
         }
     });
-    
+
     // Open the quick provision tab
     if (window.location.search) {
         tab.add('quickProvisionTab', 'Quick Provision', '', true);
         tab.select('quickProvisionTab');
-        
+
         var provForm = $('<div class="form"></div>');
         $('#quickProvisionTab').append(provForm);
         appendProvisionSection('quick', provForm);

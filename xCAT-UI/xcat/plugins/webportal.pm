@@ -45,7 +45,7 @@ sub process_request {
     );
 
     # Check if the request is authorized
-    split ' ', $request->{arg}->[0];
+    @_ = split ' ', $request->{arg}->[0];
     my $cmd = $_[0];
     if ( grep { $_ eq $cmd } keys %authorized_cmds ) {
         my $func = $authorized_cmds{$cmd};
@@ -73,6 +73,21 @@ sub lszvm {
     my $out = "";
     my %pair;
 
+    # Look in 'zvm2' table for zVM host systems
+    my $tab2 = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
+    my @results2 = $tab2->getAllAttribsWhere( "nodetype='zvm'", 'hcp', 'node' );
+    foreach (@results2) {
+        if ( $_->{'hcp'} && !$pair{ $_->{'hcp'} } ) {
+
+            # Save zVM:HCP pairing
+            $pair{ $_->{'hcp'} } = $_->{'node'};
+
+            # Print out zVM:HCP
+            $out .= $_->{'node'} . ":" . $_->{'hcp'} . "\n";
+        }
+    }
+    
+    # Look in 'zvm' table for zVM host systems that may not be setup with nodetype=zvm
     # Look in 'zvm' table
     my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
     my @results = $tab->getAllAttribsWhere( "nodetype='vm'", 'hcp', 'parent' );
@@ -271,11 +286,11 @@ sub provzlinux {
         my @devices;
         
         if (ref($devices_ref) eq 'HASH') {
-        	# In the case of 1 device in the listentry, push hash into array
-        	push(@devices, $devices_ref);
+                # In the case of 1 device in the listentry, push hash into array
+                push(@devices, $devices_ref);
         } else {
-        	# Listentry is an array reference
-        	@devices = @$devices_ref;
+                # Listentry is an array reference
+                @devices = @$devices_ref;
         }
         
         foreach (@devices) {
@@ -330,9 +345,6 @@ sub provzlinux {
     
     # Update hosts table
     `/opt/xcat/sbin/makehosts`;
-
-    # Update DHCP
-    `makedhcp -a`;
 
     # Toggle node power so COMMAND SET will get executed
     `/opt/xcat/bin/rpower $node on`;
@@ -680,8 +692,8 @@ sub clonezlinux {
     # my ($node, $ip, $base_digit) = gennodename( $callback, $group );
     my ($node, $ip, $hostname) = findfreenode( $callback, $group );
     if (!$node) {
-    	println( $callback, "Unable to find a free node, IP, and hostname for $group from the IP pool" );
-        return;	
+        println( $callback, "Unable to find a free node, IP, and hostname for $group from the IP pool" );
+        return; 
     }
     
     my $userid = $node;
@@ -696,11 +708,7 @@ sub clonezlinux {
     # Update hosts table
     sleep(5); # Time needed to update /etc/hosts
     `/opt/xcat/sbin/makehosts`;
-    `/opt/xcat/sbin/makedns`;
-
-    # Update DHCP
-    `/opt/xcat/sbin/makedhcp -a`;
-    println( $callback, "hosts table, DHCP, and DNS updated" );
+    println( $callback, "hosts table updated" );
 
     # Clone virtual machine    
     sleep(5); # Time needed to update /etc/hosts
@@ -710,9 +718,6 @@ sub clonezlinux {
         return;
     }
         
-    # Configure Ganglia monitoring
-    $out = `/opt/xcat/bin/moncfg gangliamon $node -r`;
-    
     # Show node information, e.g. IP, hostname, and root password
     $out = `/opt/xcat/bin/lsdef $node | egrep "ip=|hostnames="`;
     my $rootpw = getsysrootpw();
@@ -807,22 +812,22 @@ sub lsgoldenimages {
     my @results = $tab->getAllAttribsWhere( "provmethod='clone'", 'node', 'comments' );
     foreach (@results) {
         if ($_->{'node'}) {
-        	$clones .= $_->{'node'} . ": ";
-        	
-        	$comments = $_->{'comments'};
-        	@args = split(';', $comments);
-        	foreach (@args) {
-        		if ($_ =~ m/description:/i) {
-        			$description = $_;
-        			$description =~ s/description://g;
-        			$description =~ s/\s*$//;    # Trim right
+                $clones .= $_->{'node'} . ": ";
+                
+                $comments = $_->{'comments'};
+                @args = split(';', $comments);
+                foreach (@args) {
+                        if ($_ =~ m/description:/i) {
+                                $description = $_;
+                                $description =~ s/description://g;
+                                $description =~ s/\s*$//;    # Trim right
                     $description =~ s/^\s*//;    # Trim left
-        		} else {
-        			$description = "No comments";
-        		}
-        	}
-        	
-        	$clones .= $description . ",";
+                        } else {
+                                $description = "No comments";
+                        }
+                }
+                
+                $clones .= $description . ",";
         }
     }
     
@@ -833,8 +838,8 @@ sub lsgoldenimages {
 }
 
 sub findfreenode {
-	# Generate node name based on given group
-	my ( $callback, $group ) = @_;
+        # Generate node name based on given group
+        my ( $callback, $group ) = @_;
     
     # IP pool contained in /var/opt/xcat/ippool where a file exists per group
     if ( !(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`) ) {
@@ -853,23 +858,23 @@ sub findfreenode {
     my $out = `cat /var/opt/xcat/ippool/$group.pool | grep -v "#"`;
     my @entries = split( /\n/, $out );
     if (@entries < 1) {
-    	return;
+        return;
     }
     
     my $found = 0;
     foreach(@entries) {
-    	# Grab the 1st free entry found
-    	($node, $ipaddr, $hostname) = split(/,/, $_);
-    	if ($node && $ipaddr && $hostname) {
-    		
-    		# Check against xCAT tables, /etc/hosts, and ping to see if hostname is already used
-		    if (`/opt/xcat/bin/nodels $node` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
-		        next;
-		    } else {
-		    	$found = 1;
-		    	return ($node, $ipaddr, $hostname);
-		    }
-    	}
+        # Grab the 1st free entry found
+        ($node, $ipaddr, $hostname) = split(/,/, $_);
+        if ($node && $ipaddr && $hostname) {
+                
+                # Check against xCAT tables, /etc/hosts, and ping to see if hostname is already used
+                    if (`/opt/xcat/bin/nodels $node` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
+                        next;
+                    } else {
+                        $found = 1;
+                        return ($node, $ipaddr, $hostname);
+                    }
+        }
     }
 
     return;

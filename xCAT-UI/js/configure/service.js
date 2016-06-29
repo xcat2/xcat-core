@@ -5,13 +5,13 @@ var topPriority = 0;
 
 /**
  * Load the service portal's provision page
- * 
+ *
  * @param tabId Tab ID where page will reside
  */
 function loadServicePage(tabId) {
     // Create info bar
     var infoBar = createInfoBar('Select a platform to configure, then click Ok.');
-    
+
     // Create self-service portal page
     var tabId = 'serviceTab';
     var servicePg = $('<div class="form"></div>');
@@ -19,10 +19,10 @@ function loadServicePage(tabId) {
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-    
+    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
+
     hwList.append(esx);
     hwList.append(kvm);
     hwList.append(zvm);
@@ -32,9 +32,9 @@ function loadServicePage(tabId) {
      * Ok
      */
     var okBtn = createButton('Ok');
-    okBtn.bind('click', function(event) {        
+    okBtn.bind('click', function(event) {
         var configTabs = getConfigTab();
-        
+
         // Get hardware that was selected
         var hw = $(this).parent().find('input[name="hw"]:checked').val();
         var newTabId = hw + 'ProvisionTab';
@@ -43,7 +43,7 @@ function loadServicePage(tabId) {
             configTabs.select(newTabId);
         } else {
             var title = '';
-            
+
             // Create an instance of the plugin
             var plugin = null;
             switch (hw) {
@@ -58,7 +58,7 @@ function loadServicePage(tabId) {
             case "zvm":
                 plugin = new zvmPlugin();
                 title = 'z/VM';
-                
+
                 // Get zVM host names
                 if (!$.cookie('zvms')){
                     $.ajax( {
@@ -76,7 +76,7 @@ function loadServicePage(tabId) {
                         }
                     });
                 }
-                
+
                 break;
             }
 
@@ -86,13 +86,13 @@ function loadServicePage(tabId) {
             plugin.loadConfigPage(newTabId);
         }
     });
-    
+
     servicePg.append(okBtn);
 }
 
 /**
  * Round a floating point to a given precision
- * 
+ *
  * @param value Floating point
  * @param precision Decimal precision
  * @returns Floating point number
@@ -104,7 +104,7 @@ function toFixed(value, precision) {
 
 /**
  * Query the images that exists
- * 
+ *
  * @param panelId Panel ID
  */
 function queryImages(panelId) {
@@ -124,19 +124,19 @@ function queryImages(panelId) {
 
 /**
  * Panel to configure OS images
- * 
+ *
  * @param data Data from HTTP request
  */
-function configImagePanel(data) {    
+function configImagePanel(data) {
     var panelId = data.msg;
     var rsp = data.rsp;
-    
+
     // Wipe panel clean
     $('#' + panelId).empty();
 
     // Add info bar
     $('#' + panelId).append(createInfoBar('Create, edit, and delete operating system images for the self-service portal.'));
-    
+
     // Create table
     var tableId = panelId + 'Datatable';
     var table = new DataTable(tableId);
@@ -160,47 +160,47 @@ function configImagePanel(data) {
                 imagePos = i;
             }
             break;
-            
+
             case 'profile':{
                 profilePos = i;
             }
             break;
-            
+
             case 'osvers':{
                 osversPos = i;
             }
             break;
-            
+
             case 'osarch':{
                 osarchPos = i;
             }
             break;
-            
+
             case 'osname':{
                 osnamePos = i;
             }
             break;
-            
+
             case 'imagetype':{
                 imagetypePos = i;
             }
             break;
-            
+
             case 'comments':{
                 comments = i;
             }
             break;
-            
+
             case 'provmethod':{
                 provMethodPos = i;
-            }            
+            }
             break;
-            
+
             default :
             break;
         }
     }
-    
+
     // Go through each index
     for (var i = 1; i < rsp.length; i++) {
         // Get image name
@@ -213,13 +213,13 @@ function configImagePanel(data) {
         var osName = cols[osnamePos].replace(new RegExp('"', 'g'), '');
         var imageType = cols[imagetypePos].replace(new RegExp('"', 'g'), '');
         var osComments = cols[comments].replace(new RegExp('"', 'g'), '');
-                
+
         // Only save install boot and s390x architectures
         if (osArch == "s390x") {
             // Set default description and selectable
             selectable = "no";
             desc = "No description";
-            
+
             if (osComments) {
                 tmp = osComments.split('|');
                 for (var j = 0; j < tmp.length; j++) {
@@ -228,7 +228,7 @@ function configImagePanel(data) {
                         desc = tmp[j].replace('description:', '');
                         desc = jQuery.trim(desc);
                     }
-                    
+
                     // Is the image selectable?
                     if (tmp[j].indexOf('selectable:') > -1) {
                         selectable = tmp[j].replace('selectable:', '');
@@ -236,7 +236,7 @@ function configImagePanel(data) {
                     }
                 }
             }
-            
+
             // Columns are: name, selectable, OS version, OS arch, OS name, type, profile, method, and description
             var cols = new Array(name, selectable, osVer, osArch, osName, imageType, profile, provMethod, desc);
 
@@ -245,9 +245,9 @@ function configImagePanel(data) {
 
             // Add row
             table.add(cols);
-        }        
+        }
     }
-    
+
     // Append datatable to tab
     $('#' + panelId).append(table.object());
 
@@ -266,26 +266,26 @@ function configImagePanel(data) {
             }
         }
     });
-    
+
     // Create action bar
     var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
-    
+
     // Create a profile
     var createLnk = $('<a>Create</a>');
     createLnk.click(function() {
         imageDialog();
     });
-    
+
     // Edit a profile
     var editLnk = $('<a>Edit</a>');
     editLnk.click(function() {
         var images = $('#' + tableId + ' input[type=checkbox]:checked');
         for (var i in images) {
-            var image = images.eq(i).attr('name');            
+            var image = images.eq(i).attr('name');
             if (image) {
                 // Columns are: name, selectable, OS version, OS arch, OS name, type, profile, method, and description
                 var cols = images.eq(i).parents('tr').find('td');
-                var selectable = cols.eq(2).text();                
+                var selectable = cols.eq(2).text();
                 var osVersion = cols.eq(3).text();
                 var osArch = cols.eq(4).text();
                 var osName = cols.eq(5).text();
@@ -293,12 +293,12 @@ function configImagePanel(data) {
                 var profile = cols.eq(7).text();
                 var method = cols.eq(8).text();
                 var description = cols.eq(9).text();
-                
+
                 editImageDialog(image, selectable, osVersion, osArch, osName, type, profile, method, description);
             }
         }
     });
-        
+
     // Delete a profile
     var deleteLnk = $('<a>Delete</a>');
     deleteLnk.click(function() {
@@ -307,30 +307,30 @@ function configImagePanel(data) {
             deleteImageDialog(images);
         }
     });
-    
+
     // Refresh profiles table
     var refreshLnk = $('<a>Refresh</a>');
     refreshLnk.click(function() {
         queryImages(panelId);
     });
-    
+
     // Create an action menu
     var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
-    
+
     // Set correct theme for action menu
     actionsMenu.find('li').hover(function() {
         setMenu2Theme($(this));
     }, function() {
         setMenu2Normal($(this));
     });
-    
+
     // Create a division to hold actions menu
     var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
     $('#' + tableId + '_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
+    menuDiv.append(actionBar);
     $('#' + tableId + '_filter').appendTo(menuDiv);
 
     // Resize accordion
@@ -344,17 +344,17 @@ function imageDialog() {
     // Create form to add profile
     var dialogId = 'createImage';
     var imageForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
     imageForm.append(info);
-        
+
     var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of the image"/></div>');
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this image to appear on the self service portal"/></div>');
     var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
     var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64, and s390x."/></div>');
     var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');    
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');
     var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
     var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
@@ -366,7 +366,7 @@ function imageDialog() {
     provisionMethod.append(provisionSelect);
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="Any user-written notes"/></div>');
     imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
-    
+
 	// Generate tooltips
     imageForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
@@ -387,7 +387,7 @@ function imageDialog() {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to add image
     imageForm.dialog({
         title:'Create image',
@@ -400,7 +400,7 @@ function imageDialog() {
             "Ok": function() {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get image attributes
                 var imageType = $(this).find('input[name="imagetype"]');
                 var selectable = $(this).find('input[name="selectable"]');
@@ -410,7 +410,7 @@ function imageDialog() {
                 var profile = $(this).find('input[name="profile"]');
                 var provisionMethod = $(this).find('select[name="provmethod"]');
                 var comments = $(this).find('input[name="comments"]');
-                                
+
                 // Check that image attributes are provided before continuing
                 var ready = 1;
                 var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
@@ -421,7 +421,7 @@ function imageDialog() {
                     } else
                         inputs[i].css('border-color', '');
                 }
-                
+
                 // If inputs are not complete, show warning message
                 if (!ready) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
@@ -430,16 +430,16 @@ function imageDialog() {
                     // Override image name
                     $(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
                     var imageName = $(this).find('input[name="imagename"]');
-                    
+
                     // Change dialog buttons
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
-                    
+
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
-                    
+
                     // Create arguments to send via AJAX
                     var args = 'updateosimage;' + imageName.val() + ';' +
                         imageType.val() + ';' +
@@ -448,12 +448,12 @@ function imageDialog() {
                         osVersion.val() + ';' +
                         profile.val() + ';' +
                         provisionMethod.val() + ';';
-                        
+
                     if (selectable.attr('checked'))
                         args += '"description:' + comments.val() + '|selectable:yes"';
                     else
                         args += '"description:' + comments.val() + '|selectable:no"';
-                                                            
+
                     // Add image to xCAT
                     $.ajax( {
                         url : 'lib/cmd.php',
@@ -464,7 +464,7 @@ function imageDialog() {
                             args : args,
                             msg : dialogId
                         },
-    
+
                         success : updatePanel
                     });
                 }
@@ -478,7 +478,7 @@ function imageDialog() {
 
 /**
  * Edit image dialog
- * 
+ *
  * @param iName Image name
  * @param iSelectable Is image selectable from service page
  * @param iOsVersion OS version
@@ -494,20 +494,20 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
         inst = inst + 1;
         dialogId = 'editImage' + inst;
     }
-	
+
 	// Create form to add profile
     var imageForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
     imageForm.append(info);
-        
+
     var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of the image"/></div>');
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this image to appear on the self service portal"/></div>');
     var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
     var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64, and s390x."/></div>');
     var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');    
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The Linux operating system deployed on this node. Valid values: rhel*, centos*, fedora*, and sles* (where * is the version #)."/></div>');
     var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
     var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
@@ -519,7 +519,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
     provisionMethod.append(provisionSelect);
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="Any user-written notes"/></div>');
     imageForm.append(imageName, selectable, imageType, architecture, osName, osVersion, profile, provisionMethod, comments);
-    
+
     // Fill in image attributes
     imageForm.find('input[name="imagename"]').val(iName);
     imageForm.find('input[name="osvers"]').val(iOsVersion);
@@ -531,7 +531,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
     imageForm.find('input[name="comments"]').val(iComments);
     if (iSelectable == "yes")
         imageForm.find('input[name="selectable"]').attr('checked', 'checked');
-        
+
 	// Generate tooltips
     imageForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
@@ -552,7 +552,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to add image
     imageForm.dialog({
         title:'Edit image',
@@ -565,7 +565,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
             "Ok": function() {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get image attributes
                 var imageType = $(this).find('input[name="imagetype"]');
                 var selectable = $(this).find('input[name="selectable"]');
@@ -575,7 +575,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                 var profile = $(this).find('input[name="profile"]');
                 var provisionMethod = $(this).find('select[name="provmethod"]');
                 var comments = $(this).find('input[name="comments"]');
-                                
+
                 // Check that image attributes are provided before continuing
                 var ready = 1;
                 var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
@@ -586,7 +586,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                     } else
                         inputs[i].css('border-color', '');
                 }
-                
+
                 // If inputs are not complete, show warning message
                 if (!ready) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
@@ -595,16 +595,16 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                     // Override image name
                     $(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
                     var imageName = $(this).find('input[name="imagename"]');
-                    
+
                     // Change dialog buttons
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
-                    
+
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
-                    
+
                     // Create arguments to send via AJAX
                     var args = 'updateosimage;' + imageName.val() + ';' +
                         imageType.val() + ';' +
@@ -613,12 +613,12 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                         osVersion.val() + ';' +
                         profile.val() + ';' +
                         provisionMethod.val() + ';';
-                        
+
                     if (selectable.attr('checked'))
                         args += '"description:' + comments.val() + '|selectable:yes"';
                     else
                         args += '"description:' + comments.val() + '|selectable:no"';
-                                                            
+
                     // Add image to xCAT
                     $.ajax( {
                         url : 'lib/cmd.php',
@@ -629,7 +629,7 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
                             args : args,
                             msg : dialogId
                         },
-    
+
                         success : updatePanel
                     });
                 }
@@ -643,18 +643,18 @@ function editImageDialog(iName, iSelectable, iOsVersion, iOsArch, iOsName, iType
 
 /**
  * Open dialog to confirm image delete
- * 
+ *
  * @param images Images to delete
  */
 function deleteImageDialog(images) {
     // Create form to delete disk to pool
     var dialogId = 'deleteImage';
     var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Are you sure you want to delete ' + images.replace(new RegExp(',', 'g'), ', ') + '?');
     deleteForm.append(info);
-            
+
     // Open dialog to delete user
     deleteForm.dialog({
         title:'Delete image',
@@ -667,12 +667,12 @@ function deleteImageDialog(images) {
             "Ok": function(){
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Change dialog buttons
                 $(this).dialog('option', 'buttons', {
                     'Close': function() {$(this).dialog("close");}
                 });
-                                        
+
                 // Delete user
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -695,7 +695,7 @@ function deleteImageDialog(images) {
 
 /**
  * Query the groups that exists
- * 
+ *
  * @param panelId Panel ID
  */
 function queryGroups(panelId) {
@@ -715,19 +715,19 @@ function queryGroups(panelId) {
 
 /**
  * Panel to configure groups
- * 
+ *
  * @param data Data from HTTP request
  */
-function configGroupPanel(data) {    
+function configGroupPanel(data) {
     var panelId = data.msg;
     var rsp = data.rsp;
-    
+
     // Wipe panel clean
     $('#' + panelId).empty();
 
     // Add info bar
     $('#' + panelId).append(createInfoBar('Create, edit, and delete groups for the self-service portal.'));
-    
+
     // Create table
     var tableId = panelId + 'Datatable';
     var table = new DataTable(tableId);
@@ -746,24 +746,24 @@ function configGroupPanel(data) {
             case 'node':
                 nodePos = i;
                 break;
-            
+
             case 'ip':
                 ipPos = i;
                 break;
-            
+
             case 'hostnames':
                 hostnamePos = i;
                 break;
-            
+
             case 'comments':
                 commentsPos = i;
                 break;
-            
+
             default :
                 break;
         }
     }
-    
+
     // Go through each index
     for (var i = 1; i < rsp.length; i++) {
         // Get image name
@@ -772,12 +772,12 @@ function configGroupPanel(data) {
         var ip = cols[ipPos].replace(new RegExp('"', 'g'), '');
         var hostname = cols[hostnamePos].replace(new RegExp('"', 'g'), '');
         var comments = cols[commentsPos].replace(new RegExp('"', 'g'), '');
-                
+
         // Set default description and selectable
         selectable = "no";
         network = "";
         desc = "No description";
-        
+
         if (comments) {
             tmp = comments.split('|');
             for (var j = 0; j < tmp.length; j++) {
@@ -786,7 +786,7 @@ function configGroupPanel(data) {
                     desc = tmp[j].replace('description:', '');
                     desc = jQuery.trim(desc);
                 }
-                
+
                 // Is the group selectable?
                 if (tmp[j].indexOf('selectable:') > -1) {
                     selectable = tmp[j].replace('selectable:', '');
@@ -794,7 +794,7 @@ function configGroupPanel(data) {
                 }
             }
         }
-        
+
         // Columns are: name, selectable, network, and description
         var cols = new Array(name, selectable, ip, hostname, desc);
 
@@ -804,7 +804,7 @@ function configGroupPanel(data) {
         // Add row
         table.add(cols);
     }
-    
+
     // Append datatable to tab
     $('#' + panelId).append(table.object());
 
@@ -823,35 +823,35 @@ function configGroupPanel(data) {
             }
         }
     });
-    
+
     // Create action bar
     var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
-    
+
     // Create a group
     var createLnk = $('<a>Create</a>');
     createLnk.click(function() {
         groupDialog();
     });
-    
+
     // Edit a group
     var editLnk = $('<a>Edit</a>');
     editLnk.click(function() {
         var groups = $('#' + tableId + ' input[type=checkbox]:checked');
         for (var i in groups) {
-            var group = groups.eq(i).attr('name');            
+            var group = groups.eq(i).attr('name');
             if (group) {
                 // Column order is: name, selectable, network, and description
                 var cols = groups.eq(i).parents('tr').find('td');
-                var selectable = cols.eq(2).text();                
+                var selectable = cols.eq(2).text();
                 var ip = cols.eq(3).text();
                 var hostnames = cols.eq(4).text();
                 var description = cols.eq(5).text();
-                
+
                 editGroupDialog(group, selectable, ip, hostnames, description);
             }
         }
     });
-        
+
     // Delete a profile
     var deleteLnk = $('<a>Delete</a>');
     deleteLnk.click(function() {
@@ -860,30 +860,30 @@ function configGroupPanel(data) {
             deleteGroupDialog(groups);
         }
     });
-    
+
     // Refresh profiles table
     var refreshLnk = $('<a>Refresh</a>');
     refreshLnk.click(function() {
         queryGroups(panelId);
     });
-    
+
     // Create an action menu
     var actionsMenu = createMenu([refreshLnk, createLnk, editLnk, deleteLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
-    
+
     // Set correct theme for action menu
     actionsMenu.find('li').hover(function() {
         setMenu2Theme($(this));
     }, function() {
         setMenu2Normal($(this));
     });
-    
+
     // Create a division to hold actions menu
     var menuDiv = $('<div id="' + tableId + '_menuDiv" class="menuDiv"></div>');
     $('#' + tableId + '_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
+    menuDiv.append(actionBar);
     $('#' + tableId + '_filter').appendTo(menuDiv);
 
     // Resize accordion
@@ -897,20 +897,20 @@ function groupDialog() {
     // Create form to add profile
     var dialogId = 'createGroup';
     var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the group.');
     groupForm.append(info);
-        
+
     var group = $('<div><label>Group:</label><input type="text" name="group" title="The group name"/></div>');
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
     var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address of the nodes, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
     var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname of the nodes, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
     var ipPool = $('<div><label style="vertical-align: top;">IP pool:</label><textarea name="ip_pool" title="A pool of node names, IP addresses, and hostnames that can be chosen from for a newly provisioned virtual machine. An entry in the pool could be: ihost12,10.1.2.12,ihost12.endicott.ibm.com. A newline separates each entry."/></div>');
-    
+
     groupForm.append(group, selectable, ip, hostnames, comments, ipPool);
-    
+
 	// Generate tooltips
     groupForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
@@ -931,7 +931,7 @@ function groupDialog() {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to add image
     groupForm.dialog({
         title:'Create group',
@@ -944,7 +944,7 @@ function groupDialog() {
             "Ok": function() {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get group attributes
                 var group = $(this).find('input[name="group"]');
                 var selectable = $(this).find('input[name="selectable"]');
@@ -952,7 +952,7 @@ function groupDialog() {
                 var hostnames = $(this).find('input[name="hostnames"]');
                 var comments = $(this).find('input[name="comments"]');
                 var ipPool = $(this).find('textarea[name=ip_pool]').val();
-                                
+
                 // Check that group attributes are provided before continuing
                 var ready = 1;
                 var inputs = new Array(group);
@@ -963,7 +963,7 @@ function groupDialog() {
                     } else
                         inputs[i].css('border-color', '');
                 }
-                
+
                 // If inputs are not complete, show warning message
                 if (!ready) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
@@ -973,23 +973,23 @@ function groupDialog() {
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
-                    
+
                     // A newline at the end of IP pool is needed
                     ipPool = ipPool.replace(/^\s+|\s+$/g, '');
                     ipPool += '\n';
-                    
+
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
-                    
+
                     // Create arguments to send via AJAX
                     var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
-                        
+
                     if (selectable.attr("checked"))
                         args += "'description:" + comments.val() + "|selectable:yes";
                     else
                         args += "'description:" + comments.val() + "|selectable:no";
-                                                            
+
                     // Add image to xCAT
                     $.ajax({
                         url : 'lib/cmd.php',
@@ -1000,10 +1000,10 @@ function groupDialog() {
                             args : args,
                             msg : dialogId
                         },
-    
+
                         success : updatePanel
                     });
-                    
+
                     // Write IP pool file to /var/tmp
                     $.ajax({
                         url : 'lib/cmd.php',
@@ -1018,7 +1018,7 @@ function groupDialog() {
 
                         success : function(data) {
                             var args = data.msg.split(';');
-                                                        
+
                             // Create profile in xCAT
                             $.ajax({
                                 url : 'lib/cmd.php',
@@ -1029,7 +1029,7 @@ function groupDialog() {
                                     args : 'mkippool;' + args[1],
                                     msg : args[0]
                                 },
-                                
+
                                 success: updatePanel
                             });
                         }
@@ -1045,7 +1045,7 @@ function groupDialog() {
 
 /**
  * Edit group dialog
- * 
+ *
  * @param iGroup Group name
  * @param iSelectable Is group selectable from the service page
  * @param iIp Group IP regex
@@ -1056,20 +1056,20 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
     // Create form to add profile
     var dialogId = 'createGroup-' + iGroup;
     var groupForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the group.');
     groupForm.append(info);
-        
+
     var group = $('<div><label>Group:</label><input type="text" name="group" title="The group name"/></div>');
     var selectable = $('<div><label>Selectable:</label><input type="checkbox" name="selectable" title="Select if you want this group to appear on the self service portal"/></div>');
     var ip = $('<div><label>IP:</label><input type="text" name="ip" title="The IP address for the group, usually given as a regular expression, e.g. |ihost(\d+)|10.1.1.($1+0)|"/></div>');
     var hostnames = $('<div><label>Hostnames:</label><input type="text" name="hostnames" title="The hostname for the group, usually given as a regular expression, e.g. |(.*)|($1).sourceforge.net|"/></div>');
     var comments = $('<div><label>Description:</label><input type="text" name="comments" title="A description of the group"/></div>');
     var ipPool = $('<div><label style="vertical-align: top;">IP pool:</label><textarea name="ip_pool" title="A pool of node names, IP addresses, and hostnames that can be chosen from for a newly provisioned virtual machine."/></div>');
-    
+
     groupForm.append(group, selectable, ip, hostnames, comments, ipPool);
-    
+
 	// Query IP pool based on group name
     $.ajax({
         url : 'lib/cmd.php',
@@ -1086,7 +1086,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
         	$('#' + data.msg).find('textarea[name="ip_pool"]').val(data.rsp[0]);
         }
     });
-    
+
     // Fill in group attributes
     groupForm.find('input[name="group"]').val(iGroup);
     groupForm.find('input[name="ip"]').val(iIp);
@@ -1094,7 +1094,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
     groupForm.find('input[name="comments"]').val(iComments);
     if (iSelectable == "yes")
         groupForm.find('input[name="selectable"]').attr('checked', 'checked');
-    
+
 	// Generate tooltips
     groupForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
@@ -1115,7 +1115,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to add image
     groupForm.dialog({
         title:'Edit group',
@@ -1128,7 +1128,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
             "Ok": function() {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get group attributes
                 var group = $(this).find('input[name="group"]');
                 var selectable = $(this).find('input[name="selectable"]');
@@ -1136,7 +1136,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                 var hostnames = $(this).find('input[name="hostnames"]');
                 var comments = $(this).find('input[name="comments"]');
                 var ipPool = $(this).find('textarea[name=ip_pool]').val();
-                                
+
                 // Check that group attributes are provided before continuing
                 var ready = 1;
                 var inputs = new Array(group);
@@ -1147,7 +1147,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                     } else
                         inputs[i].css('border-color', '');
                 }
-                
+
                 // If inputs are not complete, show warning message
                 if (!ready) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
@@ -1157,23 +1157,23 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
-                    
+
                     // A newline at the end of IP pool is needed
                     ipPool = ipPool.replace(/^\s+|\s+$/g, '');
                     ipPool += '\n';
-                    
+
                     // Set default description
                     if (!comments.val())
                         comments.val('No description');
-                    
+
                     // Create arguments to send via AJAX
                     var args = "updategroup;" + group.val() + ";'" + ip.val() + "';'" + hostnames.val() + "';";
-                        
+
                     if (selectable.attr("checked"))
                         args += "'description:" + comments.val() + "|selectable:yes";
                     else
                         args += "'description:" + comments.val() + "|selectable:no";
-                                                            
+
                     // Add image to xCAT
                     $.ajax( {
                         url : 'lib/cmd.php',
@@ -1184,10 +1184,10 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                             args : args,
                             msg : dialogId
                         },
-    
+
                         success : updatePanel
                     });
-                    
+
                     // Write IP pool file to /var/tmp
                     $.ajax({
                         url : 'lib/cmd.php',
@@ -1202,7 +1202,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
 
                         success : function(data) {
                             var args = data.msg.split(';');
-                                                        
+
                             // Create profile in xCAT
                             $.ajax({
                                 url : 'lib/cmd.php',
@@ -1213,7 +1213,7 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
                                     args : 'mkippool;' + args[1],
                                     msg : args[0]
                                 },
-                                
+
                                 success: updatePanel
                             });
                         }
@@ -1229,18 +1229,18 @@ function editGroupDialog(iGroup, iSelectable, iIp, iHostnames, iComments) {
 
 /**
  * Open dialog to confirm group delete
- * 
+ *
  * @param groups Groups to delete
  */
 function deleteGroupDialog(groups) {
     // Create form to delete disk to pool
     var dialogId = 'deleteImage';
     var deleteForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Are you sure you want to delete ' + groups.replace(new RegExp(',', 'g'), ', ') + '?');
     deleteForm.append(info);
-            
+
     // Open dialog to delete user
     deleteForm.dialog({
         title:'Delete group',
@@ -1253,12 +1253,12 @@ function deleteGroupDialog(groups) {
             "Ok": function(){
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Change dialog buttons
                 $(this).dialog('option', 'buttons', {
                     'Close': function() {$(this).dialog("close");}
                 });
-                                        
+
                 // Delete user
                 $.ajax( {
                     url : 'lib/cmd.php',

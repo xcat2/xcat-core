@@ -1,6 +1,6 @@
 /**
  * Load nodeset page
- * 
+ *
  * @param tgtNodes Targets to run nodeset against
  */
 function loadNodesetPage(tgtNodes) {
@@ -29,7 +29,7 @@ function loadNodesetPage(tgtNodes) {
         inst = inst + 1;
         tabId = 'nodesetTab' + inst;
     }
-    
+
     // Create nodeset form
     var nodesetForm = $('<div class="form"></div>');
 
@@ -44,23 +44,23 @@ function loadNodesetPage(tgtNodes) {
     // Create info bar
     var infoBar = createInfoBar('Set the boot state for a node range');
     nodesetForm.append(statBar, infoBar);
-    
+
 	// Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     nodesetForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
-    
+
 	// Create options fieldset
     var imageFS = $('<fieldset></fieldset>');
     var imageLegend = $('<legend>Image</legend>');
     imageFS.append(imageLegend);
     nodesetForm.append(imageFS);
-    
+
     var imageAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     imageFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
     imageFS.append(imageAttr);
@@ -68,7 +68,7 @@ function loadNodesetPage(tgtNodes) {
     // Create target node or group
     var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to set the boot state for"/></div>');
     vmAttr.append(tgt);
-    
+
     // Create boot type drop down
     var type = $('<div></div>');
     var typeLabel = $('<label>Boot type:</label>');
@@ -80,13 +80,13 @@ function loadNodesetPage(tgtNodes) {
     type.append(typeLabel);
     type.append(typeSelect);
     imageAttr.append(type);
-    
+
     // Create operating system image input
     var os = $('<div></div>');
     var osLabel = $('<label>Operating system image:</label>');
     var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
-    
+
     var imageNames = $.cookie('imagenames').split(',');
     if (imageNames) {
         imageNames.sort();
@@ -112,7 +112,7 @@ function loadNodesetPage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-    
+
     /**
      * Ok
      */
@@ -124,7 +124,7 @@ function loadNodesetPage(tgtNodes) {
     okBtn.bind('click', function(event) {
     	// Remove any warning messages
     	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-        
+
         // Check state, OS, arch, and profile
         var ready = true;
         var inputs = $('#' + tabId + ' input');
@@ -139,7 +139,7 @@ function loadNodesetPage(tgtNodes) {
 
         if (ready) {
             // Get nodes
-            var tgts = $('#' + tabId + ' input[name=target]').val();            
+            var tgts = $('#' + tabId + ' input[name=target]').val();
             // Get boot type
             var type = $('#' + tabId + ' select[id=bootType]').val();
             // Get operating system image
@@ -185,7 +185,7 @@ function loadNodesetPage(tgtNodes) {
 
 /**
  * Update nodeset status
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function updateNodesetStatus(data) {
@@ -217,7 +217,7 @@ function updateNodesetStatus(data) {
             // Create target nodes string
             var tgtNodesStr = '';
             var nodes = tgts.split(',');
-            
+
             // Loop through each node
             for ( var i in nodes) {
                 // If it is the 1st and only node
@@ -239,7 +239,7 @@ function updateNodesetStatus(data) {
                     }
                 }
             }
-            
+
             $('#' + statBarId).find('div').append('<pre>Node definition created for ' + tgtNodesStr + '</pre>');
             $.ajax( {
                 url : 'lib/cmd.php',
@@ -267,53 +267,7 @@ function updateNodesetStatus(data) {
             $('#' + statBarId).find('div').append('<pre>/etc/hosts updated</pre>');
         }
 
-        // Update DNS
-        $.ajax( {
-            url : 'lib/cmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'makedns',
-                tgt : '',
-                args : '',
-                msg : 'cmd=makedns;inst=' + inst
-            },
-
-            success : updateNodesetStatus
-        });
-    }
-
-    /**
-     * (5) Update DHCP
-     */
-    else if (cmd == 'makedns') {
-        // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);    
-        
-        // Update DHCP
-        $.ajax( {
-            url : 'lib/cmd.php',
-            dataType : 'json',
-            data : {
-                cmd : 'makedhcp',
-                tgt : '',
-                args : '-a',
-                msg : 'cmd=makedhcp;inst=' + inst
-            },
-
-            success : updateNodesetStatus
-        });
-    }
-
-    /**
-     * (6) Prepare node for boot
-     */
-    else if (cmd == 'makedhcp') {
-        // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);    
-
-        // Prepare node for boot
+        // Go straight to prepare node for boot
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -329,12 +283,12 @@ function updateNodesetStatus(data) {
     }
 
     /**
-     * (7) Boot node from network
+     * (5) Boot node from network
      */
     else if (cmd == 'nodeset') {
         // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);    
+        var prg = writeRsp(rsp, '');
+        $('#' + statBarId).find('div').append(prg);
 
         // Hide loader
         $('#' + statBarId).find('img').hide();
