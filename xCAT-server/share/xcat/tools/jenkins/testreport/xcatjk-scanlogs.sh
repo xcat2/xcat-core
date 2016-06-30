@@ -4,7 +4,7 @@ function usage()
 {
 	local script="${0##*/}"
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	Usage: ${script} [OPTIONS] DIRECTORY
 
 	Options:
@@ -226,7 +226,7 @@ done
 [ -d "${xCATjkLog_TopDir}" ]
 exit_if_bad "$?" "${xCATjkLog_TopDir}: No such directory"
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkScanLogs - version ${VERSION}
 --
 -- Run on host ${HOSTNAME}
@@ -240,7 +240,7 @@ find "${xCATjkLog_TopDir}" -name 'log.*-*-*' "${FIND_ARGS[@]}" -print0 |
 	awk '{ print $2 }' | xargs -r -n 1 dirname |
 	xargs -r -n 1 "${xCATjkLog2SQL}"
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 
 --
 -- All log directories parse completed on $(date "+%Y-%m-%d %H:%M:%S %z")

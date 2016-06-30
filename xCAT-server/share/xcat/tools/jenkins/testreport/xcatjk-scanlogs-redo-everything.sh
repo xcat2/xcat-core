@@ -30,7 +30,7 @@ then
 	exit 1
 fi
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkLogs redo everything
 --
 -- Run on host ${HOSTNAME}
@@ -38,6 +38,6 @@ while read ; do echo "${REPLY}" ; done <<EOF
 
 EOF
 
-while read ; do echo "${REPLY}" ; done <"${SQLofCreateTables}"
+while read -r ; do echo "${REPLY}" ; done <"${SQLofCreateTables}"
 
 "${xCATjkScanLogs}" /xCATjk/log

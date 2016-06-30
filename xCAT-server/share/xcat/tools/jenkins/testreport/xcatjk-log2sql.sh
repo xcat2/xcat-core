@@ -4,7 +4,7 @@ function usage()
 {
 	local script="${0##*/}"
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	Usage: ${script} [OPTIONS] DIRECTORY
 
 	Options:
@@ -194,7 +194,7 @@ function xcattestlog2sql()
 	[ -n "${test_run_name}" ]
 	warn_if_bad "$?" "test run has no name" || return 1
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
 	-- Test run has name '${test_run_name}'
 	--
@@ -204,16 +204,16 @@ function xcattestlog2sql()
 	[ -f "${logfile}" ]
 	warn_if_bad "$?" "${logfile}: No such log file" || return 1
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
 	-- Analysis file '${logfile}'
 	--
 
 	EOF
 
-	while read test_case_name test_case_result duration
+	while read -r test_case_name test_case_result duration
 	do
-		while read ; do echo "${REPLY}" ; done <<-EOF
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		INSERT INTO TestCase (TestCaseId, TestCaseName)
 		SELECT * FROM (SELECT NULL, '${test_case_name}') AS tmp
 		WHERE NOT EXISTS (
@@ -259,7 +259,7 @@ function xcattestbundle2sql()
 	[ -n "${test_run_name}" ]
 	warn_if_bad "$?" "test run has no name" || return 1
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
 	-- Test run has name '${test_run_name}'
 	--
@@ -269,7 +269,7 @@ function xcattestbundle2sql()
 	[ -f "${logfile}" ]
 	warn_if_bad "$?" "${logfile}: No such log file" || return 1
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
 	-- Analysis file '${logfile}'
 	--
@@ -282,12 +282,12 @@ function xcattestbundle2sql()
 
 	EOF
 
-	while read test_case_name
+	while read -r test_case_name
 	do
 		# Need chomp ${test_case_name}
 		test_case_name=$(echo ${test_case_name})
 
-		while read ; do echo "${REPLY}" ; done <<-EOF
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		INSERT INTO TestCase (TestCaseId, TestCaseName)
 		SELECT * FROM (SELECT NULL, '${test_case_name}') AS tmp
 		WHERE NOT EXISTS (
@@ -330,7 +330,7 @@ function jenkinsprojectlog2sql()
 	[ -f "${logfile}" ]
 	warn_if_bad "$?" "${logfile}: No such log file" || return 1
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	--
 	-- Analysis file '${logfile}'
 	--
@@ -363,7 +363,7 @@ function jenkinsprojectlog2sql()
 
 	memo="$(tr -d '\r' <"${logfile}" | grep -A 7 'project.*description' | cut -d ' ' -f 4-)"
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	INSERT INTO ArchDict (ArchId, ArchName)
 	SELECT * FROM (SELECT NULL, '${arch}') AS tmp
 	WHERE NOT EXISTS (
@@ -428,7 +428,7 @@ JenkinsMailLog="$(echo "${xCATjkLog_DIR}/mail."*)"
 [ -f "${JenkinsMailLog}" ]
 exit_if_bad "$?" "${JenkinsMailLog}: no such log file"
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkLog2SQL - version ${VERSION}
 --
 -- Run on host ${HOSTNAME}
@@ -452,7 +452,7 @@ do
 	warn_if_bad "$?" "${xCATTestLog}: parse error"
 done
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 -- Logs parse completed on $(date "+%Y-%m-%d %H:%M:%S %z")
 EOF
 

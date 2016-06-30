@@ -201,7 +201,7 @@ function Email_setSubject()
 
 	while :
 	do
-		read -n 1
+		read -r -n 1
 		[[ -z "${REPLY}" || "${REPLY}" =~ [\x00-\x7f\xc0-\xff] ]] &&
 			(( ${#w} + ${#c} > limit )) &&
 			declare -g ${mailSubject}+="$(echo -n "${w}" |
@@ -243,7 +243,7 @@ function Email_addAttachment()
 
 	# 76 is a magic number, see RFC 2045
 
-	while read -n 76
+	while read -r -n 76
 	do
 		inMessage+="${REPLY}"
 		inMessage+=$'\n'

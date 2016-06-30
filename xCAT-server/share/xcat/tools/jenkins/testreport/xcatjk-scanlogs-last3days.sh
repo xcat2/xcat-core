@@ -22,7 +22,7 @@ then
 	exit 1
 fi
 
-while read ; do echo "${REPLY}" ; done <<EOF
+while read -r ; do echo "${REPLY}" ; done <<EOF
 -- xCATjkLogs scan last three days
 --
 -- Run on host ${HOSTNAME}

@@ -78,7 +78,7 @@ LatestDailyReport="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT Title, Arch, OS, Durati
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n title arch os duration passed failed no_run subtotal pass_rate n
+while read -r n title arch os duration passed failed no_run subtotal pass_rate n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	echo "<tr style=\"background-color: ${color}; vertical-align: baseline;\" title=\"${title}\">"
@@ -97,7 +97,7 @@ IFS="${oIFS}"
 LatestDailyReportSummary="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(Duration))) AS Duration, SUM(Passed), SUM(Failed), SUM(\`No run\`), SUM(Subtotal), IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A') AS \`Pass rate\` FROM LatestDailyReport;")"
 oIFS="${IFS}"
 IFS="|"
-read n duration passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${LatestDailyReportSummary}" | sed -e '1d' -e 's/ *| */|/g')
+read -r n duration passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${LatestDailyReportSummary}" | sed -e '1d' -e 's/ *| */|/g')
 echo "<tr style=\"background-color: #cccccc; vertical-align: baseline;\">"
 echo "<th style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">Total</th>"
 echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">-</td>"
@@ -124,7 +124,7 @@ FailedTestCasesReport="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT Title, Arch, OS, \`
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n title arch os failed_test_cases n
+while read -r n title arch os failed_test_cases n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	[ "${color}" = "#e0e0e0" ] && color2="#f0f0f0" || color2="#d0e8ff"
@@ -153,7 +153,7 @@ SevenDayLookBack="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT Arch, OS, \`Test runs\`,
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n arch os test_runs passed failed no_run subtotal pass_rate n
+while read -r n arch os test_runs passed failed no_run subtotal pass_rate n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	echo "<tr style=\"background-color: ${color}; vertical-align: baseline;\" title=\"${title}\">"
@@ -172,7 +172,7 @@ IFS="${oIFS}"
 SevenDayLookBackSummary="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT SUM(\`Test runs\`), SUM(Passed), SUM(Failed), SUM(\`No run\`), SUM(Subtotal), IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A') AS \`Pass rate\` FROM SevenDayLookBack;")"
 oIFS="${IFS}"
 IFS="|"
-read n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${SevenDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
+read -r n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${SevenDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
 echo "<tr style=\"background-color: #cccccc; vertical-align: baseline;\">"
 echo "<th style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">Total</th>"
 echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">-</td>"
@@ -203,7 +203,7 @@ ThirtyDayLookBack="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT Arch, OS, \`Test runs\`
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n arch os test_runs passed failed no_run subtotal pass_rate n
+while read -r n arch os test_runs passed failed no_run subtotal pass_rate n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	echo "<tr style=\"background-color: ${color}; vertical-align: baseline;\" title=\"${title}\">"
@@ -222,7 +222,7 @@ IFS="${oIFS}"
 ThirtyDayLookBackSummary="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT SUM(\`Test runs\`), SUM(Passed), SUM(Failed), SUM(\`No run\`), SUM(Subtotal), IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A') AS \`Pass rate\` FROM ThirtyDayLookBack;")"
 oIFS="${IFS}"
 IFS="|"
-read n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${ThirtyDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
+read -r n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${ThirtyDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
 echo "<tr style=\"background-color: #cccccc; vertical-align: baseline;\">"
 echo "<th style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">Total</th>"
 echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">-</td>"
@@ -253,7 +253,7 @@ NinetyDayLookBack="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT Arch, OS, \`Test runs\`
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n arch os test_runs passed failed no_run subtotal pass_rate n
+while read -r n arch os test_runs passed failed no_run subtotal pass_rate n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	echo "<tr style=\"background-color: ${color}; vertical-align: baseline;\" title=\"${title}\">"
@@ -272,7 +272,7 @@ IFS="${oIFS}"
 NinetyDayLookBackSummary="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT SUM(\`Test runs\`), SUM(Passed), SUM(Failed), SUM(\`No run\`), SUM(Subtotal), IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A') AS \`Pass rate\` FROM NinetyDayLookBack;")"
 oIFS="${IFS}"
 IFS="|"
-read n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${NinetyDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
+read -r n test_runs passed failed no_run total pass_rate n < <(grep -v -- ---- <<<"${NinetyDayLookBackSummary}" | sed -e '1d' -e 's/ *| */|/g')
 echo "<tr style=\"background-color: #cccccc; vertical-align: baseline;\">"
 echo "<th style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">Total</th>"
 echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">-</td>"
@@ -302,7 +302,7 @@ Top50FailedTestCases="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT @rank := @rank + 1 A
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n rank test_case arch os last_seven_days last_thirty_days last_ninety_days n
+while read -r n rank test_case arch os last_seven_days last_thirty_days last_ninety_days n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	[ "${color}" = "#e0e0e0" ] && color2="#f0f0f0" || color2="#d0e8ff"
