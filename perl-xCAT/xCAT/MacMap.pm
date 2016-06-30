@@ -16,6 +16,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::TableUtils;
+use xCAT::NetworkUtils;
 use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
@@ -573,10 +574,14 @@ sub getsnmpsession {
       $snmpver=$swent->{snmpversion};
       $community=$swent->{password};
   }
+  my $switch_ip = xCAT::NetworkUtils->getipaddr($switch);
+  unless ($switch_ip) {
+      return ({"ErrorStr"=>"Can not resolve IP address for $switch"});
+  }
   if ($snmpver ne '3') {
       if ($vlanid) { $community .= '@'.$vlanid; }
       $session = new SNMP::Session(
-                      DestHost => $switch,
+                      DestHost => $switch_ip,
                       Version => $snmpver,
                       Community => $community,
                       UseNumeric => 1
@@ -587,7 +592,7 @@ sub getsnmpsession {
 
   } else { #we have snmp3
        my %args= (
-                      DestHost => $switch,
+                      DestHost => $switch_ip,
                       SecName => $swent->{username},
                       AuthProto => uc($swent->{auth}),
                       AuthPass => $community,
@@ -629,8 +634,11 @@ sub refresh_switch {
       }
       return; 
   }
-  elsif ($session->{ErrorStr} and $self->{collect_mac_info}) {
-      $self->{macinfo}->{$switch}->{ErrorStr} = $session->{ErrorStr};
+  elsif ($session->{ErrorStr}) {
+      if ($self->{collect_mac_info}) {
+          $self->{macinfo}->{$switch}->{ErrorStr} = $session->{ErrorStr};
+      }
+      return;
   }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1', verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback});
     #namemap is the mapping of ifIndex->(human readable name)
@@ -695,6 +703,12 @@ sub refresh_switch {
         $session = $self->getsnmpsession('switch'=>$switch,'community'=>$community,'vlanid'=>$vlan);
     }
     unless ($session) { return; } 
+    elsif ($session->{ErrorStr}) {
+      if ($self->{collect_mac_info}) {
+          $self->{macinfo}->{$switch}->{ErrorStr} = $session->{ErrorStr};
+      }
+      return;
+    }
     my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2', ciscowarn=>$iscisco, verbose=>$self->{show_verbose_info}, switch=>$switch, callback=>$self->{callback}); # Good for all switches
     if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) { 
         xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": failed to get a valid response to BRIDGE-MIB request");
