@@ -5,7 +5,7 @@ package probe_utils;
 use strict;
 use File::Path;
 use File::Copy;
-
+use Socket;
 #-----------------------------------------
 
 =head3
@@ -48,12 +48,12 @@ sub send_msg {
     }
 
     if ($output eq "stdout") {
-        print "$flag $msg\n";
+        print "$flag$msg\n";
     } else {
         if (!open(LOGFILE, ">> $output")) {
             return 1;
         }
-        print LOGFILE "$flag $msg\n";
+        print LOGFILE "$flag$msg\n";
         close LOGFILE;
     }
     return 0;
@@ -339,6 +339,100 @@ sub is_dns_ready {
         return 0 if ($?);
         return 1;
     }
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert host name to ip address 
+    Arguments:
+        hostname: The hostname need to convert 
+    Returns:
+        ip: The ip address 
+=cut
+
+#------------------------------------------
+sub get_ip_from_hostname{
+    my $hostname = shift;
+    $hostname=shift if(($hostname) && ($hostname =~ /probe_utils/));
+    my $ip = "";
+
+    my @output = `ping -c 1 $hostname 2>&1`;
+    if(!$?){
+       if($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/){
+           $ip=$1;
+       }
+    }
+    return $ip;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Calculate network address from ip and netmask 
+    Arguments:
+        ip: ip address
+        mask: network mask
+    Returns:
+        network : The network address
+=cut
+
+#------------------------------------------
+sub get_network{
+    my $ip = shift;
+    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+    my $mask = shift;
+    my $net="";
+
+    return $net if (!is_ip_addr($ip));
+    return $net if ($mask !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+
+    my $bin_mask = unpack("N", inet_aton($mask));
+    my $bin_ip = unpack("N", inet_aton($ip));;
+    my $net_int32 = $bin_mask & $bin_ip;
+    $net = ($net_int32 >> 24) . "." . (($net_int32 >> 16) & 0xff) . "." . (($net_int32 >> 8) & 0xff) . "." . ($net_int32 & 0xff);
+    return "$net/$mask";
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert ip to hostname 
+    Arguments:
+        ip: The ip need to convert
+    Returns:
+        hostname: hostname or "" 
+=cut
+
+#------------------------------------------
+sub get_hostname_from_ip{
+    my  $ip = shift;
+    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+    my $dns_server = shift;
+    my $hostname="";
+    my $output="";
+
+    `which nslookup > /dev/null 2>&1`;
+    if(!$?){ 
+        $output = `nslookup $ip  $dns_server 2>&1`;
+        if (!$?) {
+            chomp($output);
+            my $rc = $hostname = `echo "$output"|awk -F" " '/name =/ {print \$4}'|awk -F"." '{print \$1}'`;
+            chomp($hostname);
+            return $hostname if (!$rc);
+        }    
+    }
+    if(($hostname eq "") && (-e "/etc/hosts")){
+        $output = `cat /etc/hosts 2>&1 |grep $ip`;
+        if(!$?){
+            my @splitoutput = split(" ", $output);
+            $hostname = $splitoutput[1]; 
+        }
+    }
+    return $hostname; 
 }
 
 1;
