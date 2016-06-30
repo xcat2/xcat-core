@@ -5,9 +5,9 @@ The ability to access the installer or to collect logs during the installation p
 
 A new attribute is provided in the **site** table called ``xcatdebugmode``.
 
-* xcatdebugmode=0: Diagnose Log will be shown in corresponding files.
-* xcatdebugmode=1: Diagnose Log will be shown in corresponding files and debug port will be opened.
-* xcatdebugmode=2: Diagnose Log will be shown in corresponding files, debug port will be opened and SSH access is enabled.
+* xcatdebugmode=0: Diagnostic entries will be shown in corresponding log files.
+* xcatdebugmode=1: Diagnostic entries will be shown in corresponding log files and debug port will be opened.
+* xcatdebugmode=2: Diagnostic entries will be shown in corresponding log files, debug port will be opened and SSH access is enabled.
 
 Supported OS:
 

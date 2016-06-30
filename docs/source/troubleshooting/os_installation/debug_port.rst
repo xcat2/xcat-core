@@ -7,15 +7,9 @@ xCAT creates a server in the **installer**, listening on port ``3001``. It execu
 
 The command ``runcmdinstaller`` can be used to send request to installer:
 
-Usage: ::
+Usage: ``runcmdinstaller <node> "<command>"``
 
- runcmdinstaller <node> "<command>"
+Note: Make sure all the commands are quoted by ``""``
 
-make sure all the commands are quoted by ``""``
-
-Example:
-
-To list all the items under the /etc directory in the installer ::
-
- runcmdinstaller c910f03c01p03 "ls /etc"
+To list all the items under the /etc directory in the installer: ``runcmdinstaller c910f03c01p03 "ls /etc"``
  
