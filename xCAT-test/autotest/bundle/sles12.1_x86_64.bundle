@@ -211,6 +211,3 @@ sles_migration1
 sles_migration2
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
-SN_setup_case
-reg_linux_diskfull_installation_hierarchy
-reg_linux_diskless_installation_hierarchy
