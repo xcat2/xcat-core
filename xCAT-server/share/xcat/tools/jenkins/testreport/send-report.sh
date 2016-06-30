@@ -289,6 +289,7 @@ IFS="${oIFS}"
 <p style="font-size: 12pt; font-weight: 700; text-align: center;">Top 50 Failed Test Cases</p>
 <table style="border-collapse: collapse; border-style: none; border-width: 0; box-shadow: 1px 2px 3px #cccccc; text-align: left; margin: auto; width: 680px;">
 <tr style="background-color: #003366; color: #ffffff; font-weight: 700; text-align: center; vertical-align: baseline;">
+<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 40px;">Rank</th>
 <th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Test case</th>
 <th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 60px">Arch</th>
 <th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 100px;">OS</th>
@@ -297,15 +298,16 @@ IFS="${oIFS}"
 <th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 50px;">Last 90 days</th>
 </tr>
 $(
-Top50FailedTestCases="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT \`Test case\`, Arch, OS, \`Last seven days\`, \`Last thirty days\`, \`Last ninety days\` FROM FailedTestCasesTopList LIMIT 50;")"
+Top50FailedTestCases="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT @rank := @rank + 1 AS Rank, \`Test case\`, Arch, OS, \`Last seven days\`, \`Last thirty days\`, \`Last ninety days\` FROM FailedTestCasesTopList, (SELECT @rank := 0) AS RANK LIMIT 50;")"
 oIFS="${IFS}"
 IFS="|"
 color=""
-while read n test_case arch os last_seven_days last_thirty_days last_ninety_days n
+while read n rank test_case arch os last_seven_days last_thirty_days last_ninety_days n
 do
 	[ "${color}" = "#e0e0e0" ] && color="#a0d0ff" || color="#e0e0e0"
 	[ "${color}" = "#e0e0e0" ] && color2="#f0f0f0" || color2="#d0e8ff"
 	echo "<tr style=\"background-color: ${color2}; vertical-align: baseline;\">"
+	echo "<td style=\"background-color: ${color}; border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;\">${rank}</td>"
 	echo "<td style=\"background-color: ${color}; border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">${test_case}</td>"
 	echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">${arch}</td>"
 	echo "<td style=\"border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;\">${os}</td>"
