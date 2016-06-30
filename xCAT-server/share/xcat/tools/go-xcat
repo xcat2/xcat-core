@@ -422,7 +422,8 @@ function check_repo_version_dnf()
 #       $@      package names
 function check_repo_version_yum()
 {
-	type repoquery >/dev/null 2>&1 || return 255
+	type yum >/dev/null 2>&1 || return 255
+	check_exec_or_exit repoquery
 	local -a name=()
 	local -a ver=()
 	while read name ver
@@ -526,7 +527,8 @@ function get_package_list_dnf()
 #       $1      repo id
 function get_package_list_yum()
 {
-	type repoquery >/dev/null 2>&1 || return 255
+	type yum >/dev/null 2>&1 || return 255
+	check_exec_or_exit repoquery
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
