@@ -7,6 +7,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
+use Sys::Syslog qw(:standard :extended);
 use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::MsgUtils;
@@ -592,85 +593,96 @@ sub getNodeStatusFromNodesetState {
 =cut
 #--------------------------------------------------------------------------------
 sub setNodeStatusAttributes {
-  print "monitorctrl::setNodeStatusAttributes called\n";
-  my $temp=shift;
-  if ($temp =~ /xCAT_monitoring::monitorctrl/) {
-    $temp=shift;
-  }
-  my $force=shift;
-  my $tab = xCAT::Table->new('nodelist',-create=>1,-autocommit=>1);
-  my $nttab = xCAT::Table->new('nodetype',-create=>1,-autocommit=>1);
-
-  my %status_hash=%$temp;
-
-  #check if the next value is valid or not
-  if (!$force) {
-    foreach my $s (keys %status_hash) {
-      my @new_nodes=();
-      my $nodes=$status_hash{$s};
-      if ($nodes && (@$nodes>0)) {
-        my $tabdata=$tab->getNodesAttribs($nodes,['node', 'status']); 
-        my $nttabdata=$nttab->getNodesAttribs($nodes,['node', 'nodetype']); 
-        foreach my $node (@$nodes) {
-          my $tmp1=$tabdata->{$node}->[0];
-          if ($tmp1) {
-            my $status=$tmp1->{status};
-            if (!$status) {$status=$::STATUS_DEFINED; } #default is 'defined'
-            if ($::NEXT_NODESTAT_VAL{$status}->{$s}==1) { push(@new_nodes,$node); }
-            else {
-              #for non-osi type, always change
-	      my $type;
-              my $nttmp1=$nttabdata->{$node}->[0];
-              if ($nttmp1) {
-                $type=$nttmp1->{nodetype};
-	      }
-              if ((!$type) || ($type !~ /osi/)) {push(@new_nodes,$node);}
-            } 
-          }  
-        }
-      }
-      #print "newnodes=@new_nodes\n";
-      $status_hash{$s}=\@new_nodes;
-    } #end foreach
-  }
-
-  my %updates;
-  my (
-      $sec,  $min,  $hour, $mday, $mon,
-      $year, $wday, $yday, $isdst
-      )
-      = localtime(time);
-  my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-			 $mon + 1, $mday, $year + 1900,
-			 $hour, $min, $sec);
-  if ($tab) {
-    foreach (keys %status_hash) {
-      my $nodes=$status_hash{$_};
-      if (@$nodes > 0) {
-        $updates{'status'} = $_;
-        $updates{'statustime'} = $currtime;
-        my $where_clause;
-        my $dbname=xCAT::Utils->get_DBName() ;
-        if ($dbname eq 'DB2') {
-             $where_clause="\"node\" in ('" . join("','", @$nodes) . "')";
-        } else {
-             $where_clause="node in ('" . join("','", @$nodes) . "')";
-        }
-        $tab->setAttribsWhere($where_clause, \%updates );
-      }
+    print "monitorctrl::setNodeStatusAttributes called\n";
+    my $temp = shift;
+    if ($temp =~ /xCAT_monitoring::monitorctrl/) {
+        $temp = shift;
     }
-  } 
-  else {
-    xCAT::MsgUtils->message("S", "Could not read the nodelist table\n");
-  }
+    my $force = shift;
+    my $nltab = xCAT::Table->new('nodelist',-create=>1,-autocommit=>1);
+    my $nttab = xCAT::Table->new('nodetype',-create=>1,-autocommit=>1);
 
-  if ($tab) { 
-      $tab->close;
-  }
-  if ($nttab) { 
-      $nttab->close;
-  }
-  return 0;
+    my %status_hash = %$temp;
+
+    #check if the next value is valid or not
+    if (!$force) {
+        foreach my $s (keys %status_hash) {
+            my @new_nodes = ();
+            my $nodes = $status_hash{$s};
+            if ($nodes && (@$nodes>0)) {
+                my $tabdata = $nltab->getNodesAttribs($nodes,['node', 'status']);
+                my $nttabdata = $nttab->getNodesAttribs($nodes,['node', 'nodetype']);
+                foreach my $node (@$nodes) {
+                    my $tmp1 = $tabdata->{$node}->[0];
+                    if ($tmp1) {
+                        my $status = $tmp1->{status};
+                        if (!$status) {
+                            #default is 'defined'
+                            $status = $::STATUS_DEFINED;
+                        }
+                        if ($::NEXT_NODESTAT_VAL{$status}->{$s} == 1) {
+                            push(@new_nodes,$node);
+                        }
+                        else {
+                            #for non-osi type, always change
+                            my $type;
+                            my $nttmp1 = $nttabdata->{$node}->[0];
+                            if ($nttmp1) {
+                                $type = $nttmp1->{nodetype};
+                            }
+                            if ((!$type) || ($type !~ /osi/)) {push(@new_nodes,$node);}
+                        }
+                    }
+                }
+            }
+            #print "newnodes=@new_nodes\n";
+            $status_hash{$s} = \@new_nodes;
+        #end foreach
+        }
+    }
+
+    my %updates;
+    my (
+        $sec,  $min,  $hour, $mday, $mon,
+        $year, $wday, $yday, $isdst
+        )
+        = localtime(time);
+    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+        $mon + 1, $mday, $year + 1900,
+        $hour, $min, $sec);
+    if ($nltab) {
+        foreach (keys %status_hash) {
+            my $nodes = $status_hash{$_};
+            if (@$nodes > 0) {
+                $updates{'status'} = $_;
+                $updates{'statustime'} = $currtime;
+                my $nodestate = "@$nodes status: $updates{'status'} statustime: $updates{'statustime'}";
+                openlog('xcat', 'ndelay', 'local4');
+                syslog('local4|info', '%s', $nodestate);
+                closelog();
+                my $where_clause;
+                my $dbname = xCAT::Utils->get_DBName() ;
+                if ($dbname eq 'DB2') {
+                    $where_clause = "\"node\" in ('" . join("','", @$nodes) . "')";
+                }
+                else {
+                    $where_clause = "node in ('" . join("','", @$nodes) . "')";
+                }
+                $nltab->setAttribsWhere($where_clause, \%updates );
+            }
+        }
+    } 
+    else {
+        xCAT::MsgUtils->message("S", "Could not read the nodelist table\n");
+    }
+
+    if ($nltab) { 
+        $nltab->close;
+    }
+    if ($nttab) { 
+        $nttab->close;
+    }
+    return 0;
 }
 
 #--------------------------------------------------------------------------------
