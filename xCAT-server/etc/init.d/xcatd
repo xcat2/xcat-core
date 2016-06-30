@@ -6,7 +6,7 @@
 
 ### BEGIN INIT INFO
 # Provides: xcatd
-# Required-Start: $network $syslog sshd
+# Required-Start: $network $syslog 
 # Required-Stop: 
 # Should-Start: mysql
 # Default-Start: 3 4 5
