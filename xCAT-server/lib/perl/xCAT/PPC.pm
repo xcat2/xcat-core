@@ -250,32 +250,6 @@ sub process_command {
                 }
             }
             #print "oldstatus:" . Dumper(\%oldnodestatus);
-
-            #set the new status to the nodelist.status
-            my %newnodestatus=(); 
-            my $newstat;
-            if (($subcommand eq 'off') || ($subcommand eq 'softoff')) { 
-                my $newstat=$::STATUS_POWERING_OFF; 
-                $newnodestatus{$newstat}=\@allnodes;
-            } else {
-                #get the current nodeset stat
-                if (@allnodes>0) {
-                    my $nsh={};
-                    my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-                    if (!$ret) { 
-                        foreach (keys %$nsh) {
-                            my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, $command);
-                            $newnodestatus{$newstat}=$nsh->{$_};
-                        }
-                    } else {
-                        trace( $request, $msg );
-                    }
-                }
-            }
-            #donot update node provision status (installing or netbooting) here
-            xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-            #print "newstatus" . Dumper(\%newnodestatus);
-            xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
         }
     }
 

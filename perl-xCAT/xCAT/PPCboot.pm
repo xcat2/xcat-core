@@ -596,6 +596,10 @@ sub rnetboot {
     #
     #####################################
     if ( $data =~ /Finished/) {
+        my $newstat = $::STATUS_POWERING_ON;
+        my %newnodestatus=();
+        $newnodestatus{$newstat}=[$node];
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
         return( [[$node,"Success",$Rc]] );
     }
     #####################################
