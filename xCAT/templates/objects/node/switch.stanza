@@ -1,6 +1,6 @@
 # <the switch definition template>
 
-switch:
+switch-template:
     objtype=node
     groups=switch
     ip="OPTIONAL:the ip address of the switch"

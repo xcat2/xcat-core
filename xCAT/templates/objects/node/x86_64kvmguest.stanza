@@ -1,6 +1,6 @@
 # <the system X kvm node definition>
 
-x86_64kvmguest:
+x86_64kvmguest-template:
     objtype=node
     arch=x86_64
     groups=all

@@ -1,6 +1,6 @@
 # <the template for hmc definition >
 
-hmc:
+hmc-template:
     objtype=node
     groups=hmc
     hwtype=hmc
