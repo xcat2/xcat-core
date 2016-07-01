@@ -604,6 +604,14 @@ sub processArgs
         return 2;
     }
 
+    #"--template" can only be used with "mkdef" and "lsdef" command
+    if(defined $::opt_template && ($::command ne "mkdef" && $::command ne "lsdef")){
+        my $rsp;
+        $rsp->{data}->[0] = "The option \'--template\' can not be used with \'$::command\'.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
     #it is illegal to specify no object template for "mkdef --template", 
     if($::command eq "mkdef" and defined $::opt_template and !$::opt_template){
         my $rsp;
