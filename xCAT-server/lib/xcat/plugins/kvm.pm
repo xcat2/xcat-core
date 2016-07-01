@@ -3020,6 +3020,7 @@ sub power {
             }
         } elsif (not $dom->is_active()) {
             $dom->create();
+            $newstat = $::STATUS_POWERING_ON;
         } else {
             $retstring .= "$status_noop";
         }
@@ -3072,9 +3073,10 @@ sub power {
             return (1, "Unsupported power directive '$subcommand'");
         }
     }
-
-    $newnodestatus{$newstat}=[$node];
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    if ($newstat) {
+        $newnodestatus{$newstat}=[$node];
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    }
 
     unless ($retstring =~ /reset/) {
         $retstring = $retstring . getpowstate($dom);
