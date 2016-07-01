@@ -35,7 +35,7 @@ function initServicePage() {
                 break;
             default:
                 includeCss("css/themes/jquery-ui-start.css");
-        }                
+        }
     } else {
         includeCss("css/themes/jquery-ui-start.css");
     }
@@ -45,10 +45,10 @@ function initServicePage() {
     includeCss("css/superfish.css");
     includeCss("css/jstree.css");
     includeCss("css/jquery.jqplot.css");
-    
+
     // Load custom stylesheet
-    includeCss("css/style.css");    
-        
+    includeCss("css/style.css");
+
     // Reuqired JQuery plugins
     includeJs("js/jquery/jquery.dataTables.min.js");
     includeJs("js/jquery/jquery.cookie.min.js");
@@ -56,22 +56,22 @@ function initServicePage() {
     includeJs("js/jquery/superfish.min.js");
     includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
-    
+
     // Custom plugins
     includeJs("js/custom/esx.js");
     includeJs("js/custom/kvm.js");
     includeJs("js/custom/zvm.js");
-        
-    // Enable settings link     
+
+    // Enable settings link
     $('#xcat_settings').click(function() {
         openSettings();
     });
-    
+
     // Show service page
     $("#content").children().remove();
     includeJs("js/service/utils.js");
     loadServicePage();
-    
+
     // Initialize tab index history
     $.cookie('tabindex_history', '0,0');
 }
@@ -85,15 +85,15 @@ function loadServicePage() {
         // Do not load again
         return;
     }
-        
+
     // Create manage and provision tabs
     serviceTabs = new Tab();
     serviceTabs.init();
     $('#content').append(serviceTabs.object());
-    
+
     var manageTabId = 'manageTab';
     serviceTabs.add(manageTabId, 'Manage', '', false);
-    
+
     // Get nodes owned by user
     $.ajax( {
         url : 'lib/srv_cmd.php',
@@ -112,8 +112,8 @@ function loadServicePage() {
             getNodesCurrentLoad();
             loadManagePage(manageTabId);
         }
-    });    
-    
+    });
+
 	// Get OS image names
     $.ajax({
         url : 'lib/srv_cmd.php',
@@ -130,7 +130,7 @@ function loadServicePage() {
             setOSImageCookies(data);
         }
     });
-        
+
     // Get contents of hosts table
     $.ajax({
         url : 'lib/srv_cmd.php',
@@ -144,10 +144,10 @@ function loadServicePage() {
         },
 
         success : function(data) {
-            setGroupCookies(data);        
+            setGroupCookies(data);
         }
     });
-    
+
     var provTabId = 'provisionTab';
     serviceTabs.add(provTabId, 'Provision', '', false);
     loadServiceProvisionPage(provTabId);
@@ -157,23 +157,23 @@ function loadServicePage() {
 
 /**
  * Load the service portal's provision page
- * 
+ *
  * @param tabId Tab ID where page will reside
  */
 function loadServiceProvisionPage(tabId) {
     // Create info bar
     var infoBar = createInfoBar('Select a platform to provision a node on, then click Ok.');
-    
+
     // Create provision page
     var provPg = $('<div class="form"></div>');
     $('#' + tabId).append(infoBar, provPg);
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
-    
+    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
+
     hwList.append(esx);
     hwList.append(kvm);
     hwList.append(zvm);
@@ -186,14 +186,14 @@ function loadServiceProvisionPage(tabId) {
     okBtn.bind('click', function(event) {
         var userName = $.cookie('xcat_username');
         var tmp = $.cookie(userName + '_usrnodes');
-        
+
         // Get maximun number for nodes from cookie
         var nodes = '';
         var maxVM = 0;
         if (tmp.length) {
             nodes = tmp.split(',');
             maxVM = parseInt($.cookie(userName + '_maxvm'));
-            
+
             // Do not allow user to clone if the maximum number of VMs is reached
             if (nodes.length >= maxVM) {
                 var warn = createWarnBar('You have reached the maximum number of virtual machines allowed (' + maxVM + ').  Delete unused virtual machines or contact your system administrator request more virtual machines.');
@@ -201,7 +201,7 @@ function loadServiceProvisionPage(tabId) {
                 return;
             }
         }
-        
+
         // Get hardware that was selected
         var hw = $(this).parent().find('input[name="hw"]:checked').val();
         var newTabId = hw + 'ProvisionTab';
@@ -210,7 +210,7 @@ function loadServiceProvisionPage(tabId) {
             serviceTabs.select(newTabId);
         } else {
             var title = '';
-            
+
             // Create an instance of the plugin
             var plugin = null;
             switch (hw) {
@@ -237,7 +237,7 @@ function loadServiceProvisionPage(tabId) {
             case "zvm":
                 plugin = new zvmPlugin();
                 title = 'z/VM';
-                
+
                 // Get zVM host names
                 $.ajax({
                     url : 'lib/srv_cmd.php',
@@ -254,7 +254,7 @@ function loadServiceProvisionPage(tabId) {
                         setzVMCookies(data);
                     }
                 });
-                
+
                 // Get master copies for clone
                 $.ajax({
                     url : 'lib/srv_cmd.php',
@@ -271,7 +271,7 @@ function loadServiceProvisionPage(tabId) {
                         setGoldenImagesCookies(data);
                     }
                 });
-                
+
                 break;
             }
 
@@ -286,7 +286,7 @@ function loadServiceProvisionPage(tabId) {
 
 /**
  * Load manage page
- * 
+ *
  * @param tabId Tab ID where page will reside
  */
 function loadManagePage(tabId) {
@@ -303,7 +303,7 @@ function loadManagePage(tabId) {
 function getUserNodesDef() {
     var userName = $.cookie('xcat_username');
     var userNodes = $.cookie(userName + '_usrnodes');
-    if (userNodes) {    
+    if (userNodes) {
          // Get nodes definitions
         $.ajax( {
             url : 'lib/srv_cmd.php',
@@ -314,7 +314,7 @@ function getUserNodesDef() {
                 args : userNodes,
                 msg : ''
             },
-    
+
             success : loadNodesTable
         });
     } else {
@@ -325,16 +325,16 @@ function getUserNodesDef() {
 
 /**
  * Load user nodes definitions into a table
- * 
+ *
  * @param data Data from HTTP request
  */
 function loadNodesTable(data) {
     // Clear the tab before inserting the table
     $('#manageTab').children().remove();
-    
+
     // Nodes datatable ID
     var nodesDTId = 'userNodesDT';
-    
+
     // Hash of node attributes
     var attrs = new Object();
     // Node attributes
@@ -356,7 +356,7 @@ function loadNodesTable(data) {
         args = data.rsp[i].split('=', 2);
         var key = jQuery.trim(args[0]);
         var val = jQuery.trim(data.rsp[i].substring(data.rsp[i].indexOf('=') + 1, data.rsp[i].length));
-        
+
         // Create a hash table
         attrs[node][key] = val;
         headers[key] = 1;
@@ -374,9 +374,9 @@ function loadNodesTable(data) {
     sorted.sort();
 
     // Add column for check box, node, ping, power, monitor, and comments
-    sorted.unshift('<input type="checkbox" onclick="selectAll(event, $(this))">', 
-        'node', 
-        '<span><a>status</a></span><img src="images/loader.gif" style="display: none;"></img>', 
+    sorted.unshift('<input type="checkbox" onclick="selectAll(event, $(this))">',
+        'node',
+        '<span><a>status</a></span><img src="images/loader.gif" style="display: none;"></img>',
         '<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>',
         '<span><a>monitor</a></span><img src="images/loader.gif" style="display: none;"></img>',
         'comments');
@@ -384,30 +384,30 @@ function loadNodesTable(data) {
     // Create a datatable
     var nodesDT = new DataTable(nodesDTId);
     nodesDT.init(sorted);
-    
+
     // Go through each node
     for (var node in attrs) {
         // Create a row
         var row = new Array();
-        
+
         // Create a check box, node link, and get node status
         var checkBx = $('<input type="checkbox" name="' + node + '"/>');
         var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-        
+
         // If there is no status attribute for the node, do not try to access hash table
         // Else the code will break
         var status = '';
         if (attrs[node]['status']) {
             status = attrs[node]['status'].replace('sshd', 'ping');
         }
-            
+
         // Push in checkbox, node, status, monitor, and power
         row.push(checkBx, nodeLink, status, '', '');
-        
+
         // If the node attributes are known (i.e the group is known)
         if (attrs[node]['groups']) {
             // Put in comments
-            var comments = attrs[node]['usercomment'];            
+            var comments = attrs[node]['usercomment'];
             // If no comments exists, show 'No comments' and set icon image source
             var iconSrc;
             if (!comments) {
@@ -416,25 +416,25 @@ function loadNodesTable(data) {
             } else {
                 iconSrc = 'images/nodes/ui-icon-comment.png';
             }
-                    
+
             // Create comments icon
             var tipID = node + 'Tip';
             var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
                 'width': '18px',
                 'height': '18px'
             });
-            
+
             // Create tooltip
             var tip = createCommentsToolTip(comments);
             var col = $('<span></span>').append(icon);
             col.append(tip);
             row.push(col);
-        
+
             // Generate tooltips
             icon.tooltip({
                 position: "center right",
                 offset: [-2, 10],
-                effect: "fade",    
+                effect: "fade",
                 opacity: 0.8,
                 relative: true,
                 delay: 500
@@ -443,12 +443,12 @@ function loadNodesTable(data) {
             // Do not put in comments if attributes are not known
             row.push('');
         }
-        
+
         // Go through each header
         for (var i = 6; i < sorted.length; i++) {
             // Add the node attributes to the row
             var key = sorted[i];
-            
+
             // Do not put comments and status in twice
             if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
                 var val = attrs[node][key];
@@ -463,14 +463,14 @@ function loadNodesTable(data) {
         // Add the row to the table
         nodesDT.add(row);
     }
-    
+
     // Create info bar
     var infoBar = createInfoBar('Manage and monitor your virtual machines.');
     $('#manageTab').append(infoBar);
-    
+
     // Insert action bar and nodes datatable
     $('#manageTab').append(nodesDT.object());
-        
+
     // Turn table into a datatable
     $('#' + nodesDTId).dataTable({
     	'iDisplayLength': 50,
@@ -486,12 +486,12 @@ function loadNodesTable(data) {
             }
         }
     });
-    
+
     // Set datatable header class to add color
     // $('.datatable thead').attr('class', 'ui-widget-header');
-    
+
     // Do not sort ping, power, and comment column
-    $('#' + nodesDTId + ' thead tr th').click(function() {        
+    $('#' + nodesDTId + ' thead tr th').click(function() {
         getNodeAttrs(group);
     });
     var checkboxCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(0)');
@@ -504,7 +504,7 @@ function loadNodesTable(data) {
     powerCol.unbind('click');
     monitorCol.unbind('click');
     commentCol.unbind('click');
-    
+
     // Refresh the node ping, power, and monitor status on-click
     var nodes = getNodesShown(nodesDTId);
     pingCol.find('span a').click(function() {
@@ -516,7 +516,7 @@ function loadNodesTable(data) {
     monitorCol.find('span a').click(function() {
         refreshGangliaStatus(nodes);
     });
-    
+
     // Create actions menu
     // Power on
     var powerOnLnk = $('<a>Power on</a>');
@@ -526,7 +526,7 @@ function loadNodesTable(data) {
             powerNode(tgtNodes, 'on');
         }
     });
-    
+
     // Power off
     var powerOffLnk = $('<a>Power off</a>');
     powerOffLnk.click(function() {
@@ -535,7 +535,7 @@ function loadNodesTable(data) {
             powerNode(tgtNodes, 'off');
         }
     });
-    
+
 	// Power softoff
     var powerSoftoffLnk = $('<a>Shutdown</a>');
     powerSoftoffLnk.click(function() {
@@ -544,25 +544,7 @@ function loadNodesTable(data) {
             powerNode(tgtNodes, 'softoff');
         }
     });
-    
-    // Turn monitoring on
-    var monitorOnLnk = $('<a>Monitor on</a>');
-    monitorOnLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesDTId);
-        if (tgtNodes) {
-            monitorNode(tgtNodes, 'on');
-        }
-    });
 
-    // Turn monitoring off
-    var monitorOffLnk = $('<a>Monitor off</a>');
-    monitorOffLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesDTId);
-        if (tgtNodes) {
-            monitorNode(tgtNodes, 'off');
-        }
-    });
-    
     // Clone
     var cloneLnk = $('<a>Clone</a>');
     cloneLnk.click(function() {
@@ -571,7 +553,7 @@ function loadNodesTable(data) {
             cloneNode(tgtNodes);
         }
     });
-    
+
     // Delete
     var deleteLnk = $('<a>Delete</a>');
     deleteLnk.click(function() {
@@ -589,10 +571,10 @@ function loadNodesTable(data) {
             unlockNode(tgtNodes);
         }
     });
-    
+
     // Create action bar
     var actionBar = $('<div class="actionBar"></div>').css('width', '370px');
-    
+
     // Prepend menu to datatable
     var actionsLnk = $('<a>Actions</a>');
     var refreshLnk = $('<a>Refresh</a>');
@@ -612,7 +594,7 @@ function loadNodesTable(data) {
                 // Save nodes owned by user
                 setUserNodes(data);
                 getNodesCurrentLoad();
-                
+
                 // Refresh nodes table
                 var userName = $.cookie('xcat_username');
                 var userNodes = $.cookie(userName + '_usrnodes');
@@ -627,7 +609,7 @@ function loadNodesTable(data) {
                             args : userNodes,
                             msg : ''
                         },
-                
+
                         success : loadNodesTable
                     });
                 } else {
@@ -636,36 +618,36 @@ function loadNodesTable(data) {
                     $('#manageTab').append(createWarnBar('You are not managing any node.  Try to provision a node.'));
                 }
             }
-        });    
+        });
     });
-    
-    var actionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, powerSoftoffLnk, unlockLnk]);
+
+    var actionMenu = createMenu([cloneLnk, deleteLnk, powerOnLnk, powerOffLnk, powerSoftoffLnk, unlockLnk]);
     var menu = createMenu([[actionsLnk, actionMenu], refreshLnk]);
     menu.superfish();
     actionBar.append(menu);
-    
+
     // Set correct theme for action menu
     actionMenu.find('li').hover(function() {
         setMenu2Theme($(this));
     }, function() {
         setMenu2Normal($(this));
     });
-        
+
     // Create a division to hold actions menu
     var menuDiv = $('<div id="' + nodesDTId + '_menuDiv" class="menuDiv"></div>');
     $('#' + nodesDTId + '_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
+    menuDiv.append(actionBar);
     $('#' + nodesDTId + '_filter').appendTo(menuDiv);
-        
+
     // Get power and monitor status
     var nodes = getNodesShown(nodesDTId);
     refreshPowerStatus(nodes);
-    refreshGangliaStatus(nodes);    
+    refreshGangliaStatus(nodes);
 }
 
 /**
  * Refresh ping status for each node
- * 
+ *
  * @param nodes Nodes to get ping status
  */
 function refreshNodeStatus(nodes) {
@@ -673,7 +655,7 @@ function refreshNodeStatus(nodes) {
     var nodesDTId = 'userNodesDT';
     var pingCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
     pingCol.find('img').show();
-        
+
     // Get the node ping status
     $.ajax( {
         url : 'lib/srv_cmd.php',
@@ -691,7 +673,7 @@ function refreshNodeStatus(nodes) {
 
 /**
  * Load node ping status for each node
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadNodePing(data) {
@@ -703,18 +685,18 @@ function loadNodePing(data) {
     // Get all nodes within datatable
     for (var i in rsp) {
         args = rsp[i].split(':');
-        
+
         // args[0] = node and args[1] = status
         node = jQuery.trim(args[0]);
         status = jQuery.trim(args[1]).replace('sshd', 'ping');
-        
+
         // Get row containing node
         rowPos = findRow(node, '#' + nodesDTId, 1);
 
         // Update ping status column
         datatable.fnUpdate(status, rowPos, 2, false);
     }
-    
+
     // Hide status loader
     var pingCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
     pingCol.find('img').hide();
@@ -723,15 +705,15 @@ function loadNodePing(data) {
 
 /**
  * Refresh power status for each node
- * 
+ *
  * @param nodes Nodes to get power status
  */
-function refreshPowerStatus(nodes) {    
+function refreshPowerStatus(nodes) {
     // Show power loader
     var nodesDTId = 'userNodesDT';
     var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').show();
-            
+
     // Get power status
     $.ajax( {
         url : 'lib/srv_cmd.php',
@@ -749,7 +731,7 @@ function refreshPowerStatus(nodes) {
 
 /**
  * Load power status for each node
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadPowerStatus(data) {
@@ -763,14 +745,14 @@ function loadPowerStatus(data) {
         args = power[i].split(':');
         node = jQuery.trim(args[0]);
         status = jQuery.trim(args[1]);
-        
+
         // Get the row containing the node
         rowPos = findRow(node, '#' + nodesDTId, 1);
 
         // Update the power status column
         datatable.fnUpdate(status, rowPos, 3, false);
     }
-    
+
     // Hide power loader
     var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').hide();
@@ -779,7 +761,7 @@ function loadPowerStatus(data) {
 
 /**
  * Refresh the status of Ganglia for each node
- * 
+ *
  * @param nodes Nodes to get Ganglia status
  */
 function refreshGangliaStatus(nodes) {
@@ -787,7 +769,7 @@ function refreshGangliaStatus(nodes) {
     var nodesDTId = 'userNodesDT';
     var gangliaCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
     gangliaCol.find('img').show();
-    
+
     // Get the status of Ganglia
     $.ajax( {
         url : 'lib/srv_cmd.php',
@@ -805,7 +787,7 @@ function refreshGangliaStatus(nodes) {
 
 /**
  * Load the status of Ganglia for a given group
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadGangliaStatus(data) {
@@ -826,7 +808,7 @@ function loadGangliaStatus(data) {
 
             // Update the power status column
             datatable.fnUpdate(status, rowNum, 4);
-        }        
+        }
     }
 
     // Hide Ganglia loader
@@ -837,14 +819,14 @@ function loadGangliaStatus(data) {
 
 /**
  * Load inventory for given node
- * 
+ *
  * @param e Windows event
  */
 function loadNode(e) {
     if (!e) {
         e = window.event;
     }
-    
+
     // Get node that was clicked
     var node = (e.target) ? e.target.id : e.srcElement.id;
 
@@ -856,7 +838,7 @@ function loadNode(e) {
         var loader = createLoader(node + 'Loader');
         loader = $('<center></center>').append(loader);
         serviceTabs.add(tabId, node, loader, true);
-            
+
         // Get node inventory
         var msg = 'out=' + tabId + ',node=' + node;
         $.ajax( {
@@ -874,10 +856,10 @@ function loadNode(e) {
 
                 // Get node
                 var node = args[1].replace('node=', '');
-                
+
                 // Get the management plugin
                 var mgt = getNodeAttr(node, 'mgt');
-                
+
                 // Create an instance of the plugin
                 var plugin;
                 switch (mgt) {
@@ -896,7 +878,7 @@ function loadNode(e) {
                 plugin.loadServiceInventory(data);
             }
         });
-    }    
+    }
 
     // Select new tab
     serviceTabs.select(tabId);
@@ -904,27 +886,27 @@ function loadNode(e) {
 
 /**
  * Set a cookie for group names
- * 
+ *
  * @param data Data from HTTP request
  */
 function setGroupCookies(data) {
     if (data.rsp) {
         var groups = new Array();
-        
+
         // Index 0 is the table header
         var cols, name, ip, hostname, desc, selectable, comments, tmp;
         for (var i = 1; i < data.rsp.length; i++) {
             // Set default description and selectable
             selectable = "no";
             desc = "No description";
-            
+
             // Split into columns:
             // node, ip, hostnames, otherinterfaces, comments, disable
             cols = data.rsp[i].split(',');
             name = cols[0].replace(new RegExp('"', 'g'), '');
             ip = cols[1].replace(new RegExp('"', 'g'), '');
             hostname = cols[2].replace(new RegExp('"', 'g'), '');
-            
+
             // It should return: "description: All machines; network: 10.1.100.0/24;"
             comments = cols[4].replace(new RegExp('"', 'g'), '');
             tmp = comments.split('|');
@@ -934,19 +916,19 @@ function setGroupCookies(data) {
                     desc = tmp[j].replace('description:', '');
                     desc = jQuery.trim(desc);
                 }
-                
+
                 // Is the group selectable?
                 if (tmp[j].indexOf('selectable:') > -1) {
                     selectable = tmp[j].replace('selectable:', '');
                     selectable = jQuery.trim(selectable);
                 }
             }
-            
+
             // Save groups that are selectable
             if (selectable == "yes")
                 groups.push(name + ':' + ip + ':' + hostname + ':' + desc);
         }
-        
+
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
@@ -956,7 +938,7 @@ function setGroupCookies(data) {
 
 /**
  * Set a cookie for the OS images
- * 
+ *
  * @param data Data from HTTP request
  */
 function setOSImageCookies(data) {
@@ -982,37 +964,37 @@ function setOSImageCookies(data) {
                 imagePos = i;
             }
             break;
-            
+
             case 'profile':{
                 profilePos = i;
             }
             break;
-            
+
             case 'osvers':{
                 osversPos = i;
             }
             break;
-            
+
             case 'osarch':{
                 osarchPos = i;
             }
             break;
-            
+
             case 'comments':{
                 comments = i;
             }
             break;
-            
+
             case 'provmethod':{
                 provMethodPos = i;
-            }            
+            }
             break;
-            
+
             default :
             break;
         }
     }
-    
+
     // Go through each index
     for (var i = 1; i < rsp.length; i++) {
         // Get image name
@@ -1023,7 +1005,7 @@ function setOSImageCookies(data) {
         var osVer = cols[osversPos].replace(new RegExp('"', 'g'), '');
         var osArch = cols[osarchPos].replace(new RegExp('"', 'g'), '');
         var osComments = cols[comments].replace(new RegExp('"', 'g'), '');
-        
+
         // Only save install boot
         if (provMethod.indexOf('install') > -1) {
             if (osComments) {
@@ -1031,7 +1013,7 @@ function setOSImageCookies(data) {
                 // Set default description and selectable
                 selectable = "no";
                 desc = "No description";
-                
+
                 tmp = osComments.split('|');
                 for (var j = 0; j < tmp.length; j++) {
                     // Save description
@@ -1039,23 +1021,23 @@ function setOSImageCookies(data) {
                         desc = tmp[j].replace('description:', '');
                         desc = jQuery.trim(desc);
                     }
-                    
+
                     // Is the image selectable?
                     if (tmp[j].indexOf('selectable:') > -1) {
                         selectable = tmp[j].replace('selectable:', '');
                         selectable = jQuery.trim(selectable);
                     }
                 }
-                
+
                 // Save images that are selectable
                 if (selectable == "yes")
                     imageNames.push(osImage + ':' + desc);
             }
-            
+
             profilesHash[profile] = 1;
             osVersHash[osVer] = 1;
             osArchsHash[osArch] = 1;
-        }        
+        }
     }
 
     // Save image names in a cookie
@@ -1087,7 +1069,7 @@ function setOSImageCookies(data) {
 
 /**
  * Set a cookie for user nodes
- * 
+ *
  * @param data Data from HTTP request
  */
 function setUserNodes(data) {
@@ -1095,14 +1077,14 @@ function setUserNodes(data) {
         // Get user name that is logged in
         var userName = $.cookie('xcat_username');
         var usrNodes = new Array();
-        
+
         // Ignore first columns because it is the header
         for ( var i = 1; i < data.rsp.length; i++) {
             // Go through each column
             // where column names are: node, os, arch, profile, provmethod, supportedarchs, nodetype, comments, disable
             var cols = data.rsp[i].split(',');
             var node = cols[0].replace(new RegExp('"', 'g'), '');
-            
+
             // Comments can contain the owner and description
             var comments = new Array();
             if (cols[7].indexOf(';') > -1) {
@@ -1110,22 +1092,22 @@ function setUserNodes(data) {
             } else {
             	comments.push(cols[7].replace(new RegExp('"', 'g'), ''));
             }
-            
+
             // Extract the owner
             var owner;
             for (var j in comments) {
             	if (comments[j].indexOf('owner:') > -1) {
             		owner = comments[j].replace('owner:', '');
-            		
+
             		if (owner == userName) {
                         usrNodes.push(node);
                     }
-            		
+
             		break;
             	}
             }
         } // End of for
-        
+
         // Set cookie to expire in 240 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
@@ -1135,7 +1117,7 @@ function setUserNodes(data) {
 
 /**
  * Power on a given node
- * 
+ *
  * @param tgtNodes Node to power on or off
  * @param power2 Power node to given state
  */
@@ -1144,12 +1126,12 @@ function powerNode(tgtNodes, power2) {
     var nodesDTId = 'userNodesDT';
     var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').show();
-    
+
     var nodes = tgtNodes.split(',');
     for (var n in nodes) {
         // Get hardware that was selected
         var hw = getUserNodeAttr(nodes[n], 'mgt');
-        
+
         // Change to power softoff (to gracefully shutdown)
         switch (hw) {
         case "blade":
@@ -1162,11 +1144,11 @@ function powerNode(tgtNodes, power2) {
             if (power2 == 'off') {
                 power2 = 'softoff';
             }
-            
+
             break;
         }
     }
-    
+
     $.ajax({
         url : 'lib/srv_cmd.php',
         dataType : 'json',
@@ -1183,7 +1165,7 @@ function powerNode(tgtNodes, power2) {
 
 /**
  * Update power status of a node in the datatable
- * 
+ *
  * @param data Data from HTTP request
  */
 function updatePowerStatus(data) {
@@ -1219,7 +1201,7 @@ function updatePowerStatus(data) {
             alert(rsp[i]);
         }
     }
-    
+
     var powerCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').hide();
     adjustColumnSize(nodesDTId);
@@ -1227,7 +1209,7 @@ function updatePowerStatus(data) {
 
 /**
  * Turn on monitoring for a given node
- * 
+ *
  * @param node Node to monitor on or off
  * @param monitor Monitor state, on or off
  */
@@ -1236,7 +1218,7 @@ function monitorNode(node, monitor) {
     var nodesDTId = 'userNodesDT';
     var gangliaCol = $('#' + nodesDTId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
     gangliaCol.find('img').show();
-    
+
     if (monitor == 'on') {
         if (node) {
             // Check if ganglia RPMs are installed
@@ -1252,7 +1234,7 @@ function monitorNode(node, monitor) {
 
                 /**
                  * Start ganglia on a given node range
-                 * 
+                 *
                  * @param data
                  *            Data returned from HTTP request
                  * @return Nothing
@@ -1268,7 +1250,7 @@ function monitorNode(node, monitor) {
                         // If an RPM is not installed
                         if (out[i].indexOf('not installed') > -1) {
                             warn = true;
-                            
+
                             if (warningMsg) {
                                 warningMsg += '<br>' + out[i];
                             } else {
@@ -1276,7 +1258,7 @@ function monitorNode(node, monitor) {
                             }
                         }
                     }
-                    
+
                     // If there are warnings
                     if (warn) {
                         // Create warning bar
@@ -1328,28 +1310,28 @@ function monitorNode(node, monitor) {
 
 /**
  * Open a dialog to clone node
- * 
+ *
  * @param tgtNodes Nodes to clone
  */
-function cloneNode(tgtNodes) {    
-    var userName = $.cookie('xcat_username');    
+function cloneNode(tgtNodes) {
+    var userName = $.cookie('xcat_username');
     var nodes = tgtNodes.split(',');
     var tmp = $.cookie(userName + '_usrnodes');
     var usrNodes = tmp.split(',');
-    
+
     var maxVM = parseInt($.cookie(userName + '_maxvm'));
-    
+
     // Do not allow user to clone if the maximum number of VMs is reached
     if (usrNodes.length >= maxVM) {
         var warn = createWarnBar('You have reached the maximum number of virtual machines allowed (' + maxVM + ').  Delete un-used virtual machines or contact your system administrator request more virtual machines.');
         warn.prependTo($('#manageTab'));
         return;
     }
-    
+
     for (var n in nodes) {
         // Get hardware that was selected
         var hw = getUserNodeAttr(nodes[n], 'mgt');
-        
+
         // Create an instance of the plugin
         var plugin;
         switch (hw) {
@@ -1365,22 +1347,22 @@ function cloneNode(tgtNodes) {
         }
 
         // Clone node
-        plugin.serviceClone(nodes[n]);                
+        plugin.serviceClone(nodes[n]);
     }
 }
-    
+
 
 /**
  * Open a dialog to delete node
- * 
+ *
  * @param tgtNodes Nodes to delete
  */
 function deleteNode(tgtNodes) {
     var nodes = tgtNodes.split(',');
-        
+
     // Loop through each node and create target nodes string
     var tgtNodesStr = '';
-    for (var i in nodes) {        
+    for (var i in nodes) {
         if (i == 0 && i == nodes.length - 1) {
             // If it is the 1st and only node
             tgtNodesStr += nodes[i];
@@ -1397,12 +1379,12 @@ function deleteNode(tgtNodes) {
             }
         }
     }
-    
+
     // Confirm delete of node
     var dialog = $('<div></div>');
     var warn = createWarnBar('Are you sure you want to delete ' + tgtNodesStr + '?');
     dialog.append(warn);
-        
+
     // Open dialog
     dialog.dialog({
         title: "Confirm",
@@ -1412,7 +1394,7 @@ function deleteNode(tgtNodes) {
         },
         width: 400,
         buttons: {
-            "Yes": function(){ 
+            "Yes": function(){
                 // Create status bar and append to tab
                 var instance = 0;
                 var statBarId = 'deleteStat' + instance;
@@ -1421,12 +1403,12 @@ function deleteNode(tgtNodes) {
                     instance = instance + 1;
                     statBarId = 'deleteStat' + instance;
                 }
-                
+
                 var statBar = createStatusBar(statBarId);
                 var loader = createLoader('');
                 statBar.find('div').append(loader);
                 statBar.prependTo($('#manageTab'));
-                
+
                 // Delete the virtual server
                 $.ajax( {
                     url : 'lib/srv_cmd.php',
@@ -1442,7 +1424,7 @@ function deleteNode(tgtNodes) {
                         var args = data.msg.split(';');
                         var statBarId = args[0].replace('out=', '');
                         var tgts = args[2].replace('tgt=', '').split(',');
-                        
+
                         // Get data table
                         var nodesDTId = 'userNodesDT';
                         var dTable = $('#' + nodesDTId).dataTable();
@@ -1454,14 +1436,14 @@ function deleteNode(tgtNodes) {
                         // Remove loader and append output
                         $('#' + statBarId + ' img').remove();
                         $('#' + statBarId + ' div').append(output);
-                        
+
                         // If there was an error, do not continue
                         if (output.html().indexOf('Error') > -1) {
                             failed = true;
                         }
 
                         // Update data table
-                        var rowPos;                        
+                        var rowPos;
                         for (var i in tgts) {
                             if (!failed) {
                                 // Get row containing the node link and delete it
@@ -1469,7 +1451,7 @@ function deleteNode(tgtNodes) {
                                 dTable.fnDeleteRow(rowPos);
                             }
                         }
-                        
+
                         // Refresh nodes owned by user
                         $.ajax( {
                             url : 'lib/srv_cmd.php',
@@ -1487,7 +1469,7 @@ function deleteNode(tgtNodes) {
                         });
                     }
                 });
-                
+
                 $(this).dialog("close");
             },
             "No": function() {
@@ -1499,15 +1481,15 @@ function deleteNode(tgtNodes) {
 
 /**
  * Unlock a node by setting the ssh keys
- * 
+ *
  * @param tgtNodes Nodes to unlock
  */
 function unlockNode(tgtNodes) {
     var nodes = tgtNodes.split(',');
-    
+
     // Loop through each node and create target nodes string
     var tgtNodesStr = '';
-    for (var i in nodes) {        
+    for (var i in nodes) {
         if (i == 0 && i == nodes.length - 1) {
             // If it is the 1st and only node
             tgtNodesStr += nodes[i];
@@ -1528,14 +1510,14 @@ function unlockNode(tgtNodes) {
     var dialog = $('<div></div>');
     var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
     dialog.append(infoBar);
-    
+
     var unlockForm = $('<div class="form"></div>').css('margin', '5px');
     unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '" title="The node or node range to unlock"/></div>');
     unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password" title="The root password to unlock this node"/></div>');
     dialog.append(unlockForm);
-    
+
     dialog.find('div input').css('margin', '5px');
-    
+
     // Generate tooltips
     unlockForm.find('div input[title]').tooltip({
         position: "center right",
@@ -1550,7 +1532,7 @@ function unlockNode(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-        
+
     // Open dialog
     dialog.dialog({
         title: "Confirm",
@@ -1569,12 +1551,12 @@ function unlockNode(tgtNodes) {
                     instance = instance + 1;
                     statBarId = 'unlockStat' + instance;
                 }
-                
+
                 var statBar = createStatusBar(statBarId);
                 var loader = createLoader('');
                 statBar.find('div').append(loader);
                 statBar.prependTo($('#manageTab'));
-                                
+
                 // If a password is given
                 var password = unlockForm.find('input[name=password]:eq(0)');
                 if (password.val()) {
@@ -1588,7 +1570,7 @@ function unlockNode(tgtNodes) {
                             args : 'unlock;' + tgtNodes + ';' + password.val(),
                             msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
                         },
-            
+
                         success : function(data) {
                             // Create an info box to show output
                             var output = writeRsp(data.rsp, '');
@@ -1598,9 +1580,9 @@ function unlockNode(tgtNodes) {
                             $('#' + statBarId + ' div').append(output);
                         }
                     });
-                    
+
                     $(this).dialog("close");
-                }            
+                }
             },
             "Cancel": function() {
                 $(this).dialog("close");
@@ -1615,7 +1597,7 @@ function unlockNode(tgtNodes) {
 function getNodesCurrentLoad(){
     var userName = $.cookie('xcat_username');
     var nodes = $.cookie(userName + '_usrnodes');
-    
+
     // Get nodes current status
     $.ajax({
         url : 'lib/srv_cmd.php',
@@ -1626,34 +1608,34 @@ function getNodesCurrentLoad(){
             args : 'gangliacurrent;node;' + nodes,
             msg : ''
         },
-        
+
         success: saveNodeLoad
     });
 }
 
 /**
  * Save node load data
- * 
+ *
  * @param status Data returned from HTTP request
  */
 function saveNodeLoad(status){
     // Save node path and status for future use
     nodePath = new Object();
     nodeStatus = new Object();
-    
+
     // Get nodes status
     var nodes = status.rsp[0].split(';');
-    
+
     var i = 0, pos = 0;
     var node = '', tmpStr = '';
-    var tmpArry;   
-    
+    var tmpArry;
+
     for (i = 0; i < nodes.length; i++){
         tmpStr = nodes[i];
         pos = tmpStr.indexOf(':');
         node = tmpStr.substring(0, pos);
         tmpArry = tmpStr.substring(pos + 1).split(',');
-        
+
         switch(tmpArry[0]){
             case 'UNKNOWN':{
                 nodeStatus[node] = -2;
@@ -1679,14 +1661,14 @@ function saveNodeLoad(status){
 
 /**
  * Get monitoring metrics and load into inventory fieldset
- * 
+ *
  * @param node Node to collect metrics
  */
 function getMonitorMetrics(node) {
     // Inventory tab should have this fieldset already created
     // e.g. <fieldset id="gpok123_monitor"></fieldset>
     $('#' + node + '_monitor').children('div').remove();
-    
+
     // Before trying to get the metrics, check if Ganglia is running
     $.ajax({
         url : 'lib/srv_cmd.php',
@@ -1697,7 +1679,7 @@ function getMonitorMetrics(node) {
             args : 'gangliastatus;' + node,
             msg : ''
         },
-        
+
         success: function(data) {
             var ganglia = data.rsp;
             var node, status;
@@ -1707,7 +1689,7 @@ function getMonitorMetrics(node) {
                 // ganglia[0] = nodeName and ganglia[1] = state
                 node = jQuery.trim(ganglia[i][0]);
                 status = jQuery.trim(ganglia[i][1]);
-                
+
                 if (node && status == 'on') {
                     // Get monitoring metrics
                     $.ajax({
@@ -1719,7 +1701,7 @@ function getMonitorMetrics(node) {
                             args : 'gangliashow;' + nodePath[node] + ';hour;_summary_',
                             msg : node
                         },
-                        
+
                         success: drawMonitoringCharts
                     });
                 } else if (node && status == 'off') {
@@ -1728,23 +1710,23 @@ function getMonitorMetrics(node) {
                 }
             } // End of for
         } // End of function
-    });    
+    });
 }
 
 /**
  * Draw monitoring charts based on node metrics
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function drawMonitoringCharts(data){
     var nodeMetrics = new Object();
     var metricData = data.rsp[0].split(';');
     var node = data.msg;
-        
+
     var metricName = '';
     var metricVal = '';
     var pos = 0;
-    
+
     // Go through the metrics returned
     for (var m = 0; m < metricData.length; m++){
         pos = metricData[m].indexOf(':');
@@ -1759,7 +1741,7 @@ function drawMonitoringCharts(data){
             nodeMetrics[metricName].push(Number(metricVal[i]));
         }
     }
-    
+
     drawLoadFlot(node, nodeMetrics['load_one'], nodeMetrics['cpu_num']);
     drawCpuFlot(node, nodeMetrics['cpu_idle']);
     drawMemFlot(node, nodeMetrics['mem_free'], nodeMetrics['mem_total']);
@@ -1769,7 +1751,7 @@ function drawMonitoringCharts(data){
 
 /**
  * Draw load metrics flot
- * 
+ *
  * @param node Node name
  * @param loadpair Load timestamp and value pair
  * @param cpupair CPU number and value pair
@@ -1777,11 +1759,11 @@ function drawMonitoringCharts(data){
 function drawLoadFlot(node, loadPair, cpuPair){
     var load = new Array();
     var cpu = new Array();
-    
+
     var i = 0;
     var yAxisMax = 0;
     var interval = 1;
-    
+
     // Append flot to node monitoring fieldset
     var loadFlot = $('<div id="' + node + '_load"></div>').css({
         'float': 'left',
@@ -1791,7 +1773,7 @@ function drawLoadFlot(node, loadPair, cpuPair){
     });
     $('#' + node + '_monitor').append(loadFlot);
     $('#' + node + '_load').empty();
-    
+
     // Parse load pair where:
     // timestamp must be mutiplied by 1000 and Javascript timestamp is in ms
     for (i = 0; i < loadPair.length; i += 2){
@@ -1800,7 +1782,7 @@ function drawLoadFlot(node, loadPair, cpuPair){
             yAxisMax = loadPair[i + 1];
         }
     }
-    
+
     // Parse CPU pair
     for (i = 0; i < cpuPair.length; i += 2){
         cpu.push([cpuPair[i] * 1000, cpuPair[i + 1]]);
@@ -1808,12 +1790,12 @@ function drawLoadFlot(node, loadPair, cpuPair){
             yAxisMax = cpuPair[i + 1];
         }
     }
-    
+
     interval = parseInt(yAxisMax / 3);
     if (interval < 1){
         interval = 1;
     }
-    
+
     $.jqplot(node + '_load', [load, cpu],{
         title: ' Loads/Procs Last Hour',
         axes:{
@@ -1841,13 +1823,13 @@ function drawLoadFlot(node, loadPair, cpuPair){
 
 /**
  * Draw CPU usage flot
- * 
+ *
  * @param node Node name
  * @param cpuPair CPU timestamp and value pair
  */
 function drawCpuFlot(node, cpuPair){
     var cpu = new Array();
-    
+
     // Append flot to node monitoring fieldset
     var cpuFlot = $('<div id="' + node + '_cpu"></div>').css({
         'float': 'left',
@@ -1857,13 +1839,13 @@ function drawCpuFlot(node, cpuPair){
     });
     $('#' + node + '_monitor').append(cpuFlot);
     $('#' + node + '_cpu').empty();
-    
+
     // Time stamp should by mutiplied by 1000
     // CPU idle comes from server, subtract 1 from idle
     for(var i = 0; i < cpuPair.length; i +=2){
         cpu.push([(cpuPair[i] * 1000), (100 - cpuPair[i + 1])]);
     }
-    
+
     $.jqplot(node + '_cpu', [cpu],{
         title: 'CPU Use Last Hour',
         axes:{
@@ -1887,7 +1869,7 @@ function drawCpuFlot(node, cpuPair){
 
 /**
  * Draw memory usage flot
- * 
+ *
  * @param node Node name
  * @param freePair Free memory timestamp and value pair
  * @param totalPair Total memory timestamp and value pair
@@ -1896,7 +1878,7 @@ function drawMemFlot(node, freePair, totalPair){
     var used = new Array();
     var total = new Array();
     var size = 0;
-    
+
     // Append flot to node monitoring fieldset
     var memoryFlot = $('<div id="' + node + '_memory"></div>').css({
         'float': 'left',
@@ -1906,13 +1888,13 @@ function drawMemFlot(node, freePair, totalPair){
     });
     $('#' + node + '_monitor').append(memoryFlot);
     $('#' + node + '_memory').empty();
-    
+
     if(freePair.length < totalPair.length){
         size = freePair.length;
     } else {
         size = freePair.length;
     }
-    
+
     var tmpTotal, tmpUsed;
     for(var i = 0; i < size; i+=2){
         tmpTotal = totalPair[i+1];
@@ -1922,7 +1904,7 @@ function drawMemFlot(node, freePair, totalPair){
         total.push([totalPair[i]*1000, tmpTotal]);
         used.push([freePair[i]*1000, tmpUsed]);
     }
-    
+
     $.jqplot(node + '_memory', [used, total],{
         title: 'Memory Use Last Hour',
         axes:{
@@ -1950,7 +1932,7 @@ function drawMemFlot(node, freePair, totalPair){
 
 /**
  * Draw disk usage flot
- * 
+ *
  * @param node Node name
  * @param freePair Free disk space (Ganglia only logs free data)
  * @param totalPair Total disk space
@@ -2019,7 +2001,7 @@ function drawDiskFlot(node, freePair, totalPair) {
 
 /**
  * Draw network usage flot
- * 
+ *
  * @param node Node name
  * @param freePair Free memory timestamp and value pair
  * @param totalPair Total memory timestamp and value pair
@@ -2040,7 +2022,7 @@ function drawNetworkFlot(node, inPair, outPair) {
     });
     $('#' + node + '_monitor').append(diskFlot);
     $('#' + node + '_network').empty();
-    
+
     for (var i = 0; i < inPair.length; i += 2) {
         if (inPair[i + 1] > maxVal) {
             maxVal = inPair[i + 1];
@@ -2106,7 +2088,7 @@ function drawNetworkFlot(node, inPair, outPair) {
 
 /**
  * Get an attribute of a given node
- * 
+ *
  * @param node The node
  * @param attrName The attribute
  * @return The attribute of the node
@@ -2117,7 +2099,7 @@ function getNodeAttr(node, attrName) {
 
     // Search for the column containing the attribute
     var attrCol = null;
-    
+
     var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
     // Loop through each column
     for (var i in cols) {
@@ -2127,7 +2109,7 @@ function getNodeAttr(node, attrName) {
             break;
         }
     }
-    
+
     // If the column containing the attribute is found
     if (attrCol) {
         // Get the attribute column index
@@ -2146,7 +2128,7 @@ function getNodeAttr(node, attrName) {
  */
 function setMaxVM() {
     var userName = $.cookie('xcat_username');
-    
+
     $.ajax( {
         url : 'lib/srv_cmd.php',
         dataType : 'json',
@@ -2161,7 +2143,7 @@ function setMaxVM() {
             // Get response
             var rsp = jQuery.trim(data.rsp);
             rsp = rsp.replace('Max allowed:', '');
-            
+
             // Set cookie to expire in 60 minutes
             var exDate = new Date();
             exDate.setTime(exDate.getTime() + (240 * 60 * 1000));

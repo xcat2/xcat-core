@@ -41,6 +41,8 @@ sub process_request {
         'stopcondresp'        => \&web_stopcondresp,
         'lsevent'             => \&web_lsevent,
         'unlock'              => \&web_unlock,
+        'unlockbyip'          => \&web_unlockByIP,
+        'unlockshow'          => \&web_unlockShow,
         'rmcstart'            => \&web_rmcmonStart,
         'rmcshow'             => \&web_rmcmonShow,
         'gangliaconf'         => \&web_gangliaconf,
@@ -78,11 +80,14 @@ sub process_request {
         'updategroup'         => \&web_updategroup,
         'rmgroup'             => \&web_rmgroup,
         'framesetup'          => \&web_framesetup,
-        'cecsetup'            => \&web_cecsetup
+        'cecsetup'            => \&web_cecsetup,
+        'deletefile'          => \&web_deletefile,
+        'createfolder'        => \&web_createfolder,
+        'getrepospace'        => \&web_getrepospace
     );
 
     # Check whether the request is authorized or not
-    split ' ', $request->{arg}->[0];
+    @_ = split ' ', $request->{arg}->[0];
     my $cmd = $_[0];
     if ( grep { $_ eq $cmd } keys %authorized_cmds ) {
         my $func = $authorized_cmds{$cmd};
@@ -419,7 +424,30 @@ sub web_unlock {
     my $password = $request->{arg}->[2];
 
     # Unlock a node by setting up the SSH keys
-    my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K`;
+    my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K 2>&1`;
+
+    $callback->( { data => $out } );
+}
+
+sub web_unlockByIP {
+    my ( $request, $callback, $sub_req ) = @_;
+    my $node     = $request->{arg}->[1];
+    my $password = $request->{arg}->[2];
+    my $ip       = $request->{arg}->[3];
+
+    # Unlock a node by setting up the SSH keys
+    my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K --ip $ip 2>&1`;
+
+    $callback->( { data => $out } );
+}
+
+sub web_unlockShow {
+    my ( $request, $callback, $sub_req ) = @_;
+    my $node     = $request->{arg}->[1];
+    my $show     = $request->{arg}->[2];
+
+    # Unlock a node by setting up the SSH keys
+    my $out = `/opt/xcat/bin/xdsh $node -K --show $show 2>&1`;
 
     $callback->( { data => $out } );
 }
@@ -446,7 +474,7 @@ sub web_gangliastatus {
             $status = 'off';
         }
 
-        split( ': ', $line );
+        @_ = split( ': ', $line );
         $callback->({
             node => [{
                     name => [ $_[0] ],    # Node name
@@ -615,9 +643,9 @@ sub web_installganglia() {
 
         # If any attributes are missing, skip
         if ( !$attrs->{'os'}
-	            || !$attrs->{'arch'}
-	            || !$attrs->{'profile'}
-	            || !$attrs->{'provmethod'} ){
+                    || !$attrs->{'arch'}
+                    || !$attrs->{'profile'}
+                    || !$attrs->{'provmethod'} ){
             $callback->({ info => "$_: (Error) Missing attribute (os, arch, profile, or provmethod) in nodetype table" });
             next;
         }
@@ -626,15 +654,15 @@ sub web_installganglia() {
         if ( $attrs->{'os'} =~ /fedora/ ) {
             $osType = 'fedora';
         } elsif ($attrs->{'os'} =~ /rh/
-	            || $attrs->{'os'} =~ /rhel/
-	            || $attrs->{'os'} =~ /rhels/ ) {
+                    || $attrs->{'os'} =~ /rhel/
+                    || $attrs->{'os'} =~ /rhels/ ) {
             $osType = 'rh';
         } elsif ( $attrs->{'os'} =~ /sles/ ) {
             $osType = 'sles';
         }
 
-		# Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
-		# If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
+                # Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
+                # If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
         $dir = "/install/post/otherpkgs/$attrs->{'os'}/$attrs->{'arch'}/";
         if (!( `test -e $dir/ganglia-gmond-* && echo 'File exists'`
                 && `test -e $dir/libconfuse-* && echo 'File exists'`
@@ -653,8 +681,8 @@ sub web_installganglia() {
             `mkdir -p $dir`;
         }
 
-		# Find pkglist file
-		# Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
+                # Find pkglist file
+                # Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
         $pkglist = "$attrs->{'profile'}.$attrs->{'os'}.$attrs->{'arch'}.otherpkgs.pkglist";
         if ( !(`test -e $dir/$pkglist && echo 'File exists'`) ) {
 
@@ -694,8 +722,8 @@ sub web_installganglia() {
 }
 
 sub web_gangliaShow {
-	# Get ganglia data from RRD file
-	
+        # Get ganglia data from RRD file
+        
     my ( $request, $callback, $sub_req ) = @_;
     my $nodename   = $request->{arg}->[1];
     my $timeRange  = 'now-1h';
@@ -809,8 +837,8 @@ my $gangliaclustername;
 my $ganglianodename;
 
 sub web_gangliaLatest {
-	# Use socket to connect ganglia port to get the latest value/status
-	
+        # Use socket to connect ganglia port to get the latest value/status
+        
     my ( $request, $callback, $sub_req ) = @_;
     my $type      = $request->{arg}->[1];
     my $groupname = '';
@@ -873,8 +901,8 @@ sub web_gangliaLatest {
 }
 
 sub web_gangliaGridLatest {
-	# Create return data for grid current status
-	
+        # Create return data for grid current status
+        
     my $callback    = shift;
     my $retStr      = '';
     my $timestamp   = time();
@@ -906,8 +934,8 @@ sub web_gangliaGridLatest {
 }
 
 sub web_gangliaNodeLatest {
-	# Create return data for node current status
-	
+        # Create return data for node current status
+        
     my ( $callback, $groupname ) = @_;
     my $node      = '';
     my $retStr    = '';
@@ -950,12 +978,12 @@ sub web_gangliaNodeLatest {
 }
 
 sub web_gangliaXmlEnd {
-	# XML parser end function, do noting here
+        # XML parser end function, do noting here
 }
 
 sub web_gangliaGridXmlStart {
-	# XML parser start function
-	
+        # XML parser start function
+        
     my ( $parseinst, $elementname, %attrs ) = @_;
     my $metricname = '';
 
@@ -2446,7 +2474,7 @@ sub web_lsippool() {
     if ( !(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`) ) {
         $entries = "No IP pool found!";
     } else {
-    	# List IP pool under /var/opt/xcat/ippool   
+        # List IP pool under /var/opt/xcat/ippool   
         $entries = `cat /var/opt/xcat/ippool/$group.pool`;
     }
     
@@ -2591,6 +2619,68 @@ sub web_cecsetup() {
 
         $callback->( { info => 'Hardware connection and configure password created.' } );
     }
+}
+
+sub web_deletefile() {
+    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get file location
+    my $file = $request->{arg}->[1];
+    
+    my $info;
+    if (substr($file, 0, 9) ne "/install/") {
+        $info = "(Error) Files are restricted to those in /install";
+        $callback->( { info => $info } );
+        return;
+    }
+    
+    unless (-e $file) {
+        $info = "(Error) File does not exist";
+        $callback->( { info => $info } );
+        return;
+    }
+    
+    # Escape spaces
+    $file =~ s/ /\\ /g;
+    my $out = `/bin/rm -rf $file`;
+    
+    $info = "File successfully deleted";
+    $callback->( { info => $info } );
+}
+
+sub web_createfolder() {
+    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get folder location
+    my $folder = $request->{arg}->[1];
+    
+    my $info;
+    if (substr($folder, 0, 9) ne "/install/") {
+        $info = "(Error) Folders are restricted to those in /install";
+        $callback->( { info => $info } );
+        return;
+    }
+        
+    # Escape spaces
+    $folder =~ s/ /\\ /g;
+    my $out = `/bin/mkdir -p $folder`;
+    $out = `chown apache:apache $folder`;
+    
+    $info = "Folder successfully created";
+    $callback->( { info => $info } );
+}
+
+sub web_getrepospace() {
+        my ( $request, $callback, $sub_req ) = @_;
+        
+        # Query repository space. Output is: size, used, available, used %, mount
+        # remove trailing / from /install so this query also works on CMO which uses cmo-data on /data
+        my $space = `/bin/df -h /install | egrep -i "/install"`;
+        $space =~ s/\s+/ /g;
+    $space =~ s/\s*$//;
+    $space =~ s/^\s*//;
+                
+        $callback->( { info => $space } );
 }
 
 1;

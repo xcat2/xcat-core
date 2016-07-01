@@ -6,7 +6,7 @@ var configDatatables = new Object(); // Datatables on the config page
 
 /**
  * Set the datatable
- * 
+ *
  * @param id The ID of the datatable
  * @param obj Datatable object
  */
@@ -16,7 +16,7 @@ function setConfigDatatable(id, obj) {
 
 /**
  * Get the datatable with the given ID
- * 
+ *
  * @param id The ID of the datatable
  * @return Datatable object
  */
@@ -26,7 +26,7 @@ function getConfigDatatable(id) {
 
 /**
  * Set the configure tab
- * 
+ *
  * @param obj Tab object
  */
 function setConfigTab(obj) {
@@ -35,7 +35,7 @@ function setConfigTab(obj) {
 
 /**
  * Get the configure tab
- * 
+ *
  * @param Nothing
  * @return Tab object
  */
@@ -66,16 +66,19 @@ function loadConfigPage() {
     tab.add('configTablesTab', 'Tables', loader, false);
 
     // Add the update tab
-    tab.add('updateTab', 'Update', '', false);
-    
-    // Add the self-service tab
+//    tab.add('updateTab', 'Update', '', false);
+
+    // Add the Users tab
     tab.add('usersTab', 'Users', '', false);
-    
+
     // Add the discover tab
-    tab.add('discoverTab', 'Discover', '', false);
-    
-    // Add the self-service tab
-    tab.add('serviceTab', 'Service', '', false);
+//    tab.add('discoverTab', 'Discover', '', false);
+
+	// Add the self-service tab
+//    tab.add('serviceTab', 'Service', '', false);
+
+    // Add the files tab
+    tab.add('filesTab', 'Files', '', false);
 
     // Get list of tables and their descriptions
     $.ajax({
@@ -97,22 +100,23 @@ function loadConfigPage() {
     	if ($(ui.panel).children().length) {
     		return;
     	}
-    	
+
         if (ui.index == 1) {
-        	loadUpdatePage();
+            loadUserPage();
         } else if (ui.index == 2) {
-        	loadUserPage();
+            loadServicePage();
         } else if (ui.index == 3) {
-        	loadDiscoverPage();
-        } else if (ui.index == 4) {
-        	loadServicePage();
-        } 
+            loadFilesPage();
+//          loadDiscoverPage();
+//        } else if (ui.index == 4) {
+//          loadServicePage();
+        }
     });
 }
 
 /**
  * Load xCAT database table names and their descriptions
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadTableNames(data) {
@@ -130,7 +134,7 @@ function loadTableNames(data) {
     // Create info bar
     var infoBar = createInfoBar('Select a table to view or edit.');
     tablesDIV.append(infoBar);
-    
+
     // Create a list for the tables
     var list = $('<ul></ul>');
     // Loop through each table
@@ -186,7 +190,7 @@ function loadTableNames(data) {
 
 /**
  * Load a given database table
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadTable(data) {
@@ -271,7 +275,7 @@ function loadTable(data) {
     }
 
     // Turn table into datatable
-    var dTable = $('#' + id + 'Datatable').dataTable({        
+    var dTable = $('#' + id + 'Datatable').dataTable({
         'iDisplayLength': 50,
         'bLengthChange': false,
         "bScrollCollapse": true,
@@ -307,16 +311,16 @@ function loadTable(data) {
             placeholder: ' ',
             height : '30px' // The height of the text area
         });
-    
+
     // Create action bar
     var actionBar = $('<div class="actionBar"></div>');
-    
+
     var saveLnk = $('<a>Save</a>');
     saveLnk.click(function() {
         // Get table ID and name
         var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
         var tableName = tableId.replace('Datatable', '');
-        
+
         // Get datatable
         var dTable = $('#' + tableId).dataTable();
         // Get the nodes from the table
@@ -332,7 +336,7 @@ function loadTable(data) {
                 var vals = new Object();
                 for ( var j = 1; j < cols.length; j++) {
                     var val = cols.item(j).firstChild.nodeValue;
-                    
+
                     // Insert quotes
                     if (val == ' ') {
                         vals[j - 1] = '';
@@ -345,7 +349,7 @@ function loadTable(data) {
                 newCont[i + 1] = vals;
             }
         }
-        
+
         // Update xCAT table
         $.ajax({
             type : 'POST',
@@ -358,14 +362,14 @@ function loadTable(data) {
             success : function(data) {
                 // Create info message
                 var dialog = $('<div></div>').append(createInfoBar('Changes saved!'));
-                
+
                 // Open dialog
                 dialog.dialog({
                     modal: true,
                     title: 'Info',
                     width: 400,
                     buttons: {
-                        "Ok": function(){ 
+                        "Ok": function(){
                             $(this).dialog("close");
                         }
                     }
@@ -373,15 +377,15 @@ function loadTable(data) {
             }
         });
     });
-    
+
     var undoLnk = $('<a>Undo</a>');
     undoLnk.click(function() {
         // Get table ID
         var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
-        
+
         // Get datatable
         var dTable = $('#' + tableId).dataTable();
-        
+
         // Clear entire datatable
         dTable.fnClearTable();
 
@@ -410,7 +414,7 @@ function loadTable(data) {
                 height : '30px' // The height of the text area
             });
     });
-    
+
     var addLnk = $('<a>Add row</a>');
     addLnk.click(function() {
         // Create an empty row
@@ -426,10 +430,10 @@ function loadTable(data) {
 
         // Get table ID and name
         var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
-        
+
         // Get datatable
         var dTable = $('#' + tableId).dataTable();
-        
+
         // Add the row to the data table
         dTable.fnAddData(row);
 
@@ -453,30 +457,30 @@ function loadTable(data) {
                 height : '30px' // The height of the text area
             });
     });
-    
+
     // Create an action menu
     var actionsMenu = createMenu([saveLnk, undoLnk, addLnk]);
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
-    
+
     // Set correct theme for action menu
     actionsMenu.find('li').hover(function() {
         setMenu2Theme($(this));
     }, function() {
         setMenu2Normal($(this));
     });
-    
+
     // Create a division to hold actions menu
     var menuDiv = $('<div id="' + id + 'Datatable_menuDiv" class="menuDiv"></div>');
     $('#' + id + 'Datatable_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
+    menuDiv.append(actionBar);
     $('#' + id + 'Datatable_filter').appendTo(menuDiv);
 }
 
 /**
  * Delete a row in the data table
- * 
+ *
  * @param obj The object that was clicked
  */
 function deleteRow(obj) {
@@ -504,7 +508,7 @@ function deleteRow(obj) {
 
 /**
  * Count the number of occurrences of a specific character in a string
- * 
+ *
  * @param c Character to count
  * @return The number of occurrences
  */
@@ -514,7 +518,7 @@ String.prototype.count = function(c) {
 
 /**
  * Update dialog
- * 
+ *
  * @param data HTTP request data
  */
 function updatePanel(data) {
@@ -530,14 +534,14 @@ function updatePanel(data) {
     } else {
         infoMsg = data.rsp;
     }
-    
+
     // Create info bar with close button
     var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
     var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
         'display': 'inline-block',
         'margin': '10px 5px'
     });
-    
+
     // Create close button to close info bar
     var close = $('<span class="ui-icon ui-icon-close"></span>').css({
         'display': 'inline-block',
@@ -545,12 +549,12 @@ function updatePanel(data) {
     }).click(function() {
         $(this).parent().remove();
     });
-    
+
     var msg = $('<pre>' + infoMsg + '</pre>').css({
         'display': 'inline-block',
         'width': '85%'
     });
-    
-    infoBar.append(icon, msg, close);    
+
+    infoBar.append(icon, msg, close);
     infoBar.prependTo($('#' + dialogId));
 }

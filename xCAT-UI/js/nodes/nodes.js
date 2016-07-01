@@ -6,10 +6,12 @@ var origAttrs = new Object(); // Original node attributes
 var nodeAttrs; // Node attributes
 var nodesList; // Node list
 var nodesTableId = 'nodesDatatable'; // Nodes datatable ID
+var nodesTabInfoBar;
+var builtInXCAT = 1; // 1 means xCAT shipped with zVM
 
 /**
  * Set node tab
- * 
+ *
  * @param tab
  *            Tab object
  * @return Nothing
@@ -20,7 +22,7 @@ function setNodesTab(tab) {
 
 /**
  * Get node tab
- * 
+ *
  * @return Tab object
  */
 function getNodesTab() {
@@ -28,8 +30,28 @@ function getNodesTab() {
 }
 
 /**
+ * Set node tab info bar. Used by zvmUtils.js
+ *
+ * @param tab
+ *            infobar object
+ * @return Nothing
+ */
+function setNodesTabInfoBar(tabinfo) {
+    nodesTabInfoBar = tabinfo;
+}
+
+/**
+ * Get node tab info bar
+ *
+ * @return Tab info bar object
+ */
+function getNodesTabInfoBar() {
+    return nodesTabInfoBar;
+}
+
+/**
  * Get node list
- * 
+ *
  * @return Node list
  */
 function getNodesList() {
@@ -38,7 +60,7 @@ function getNodesList() {
 
 /**
  * Get nodes table ID
- * 
+ *
  * @return Nodes table ID
  */
 function getNodesTableId() {
@@ -74,7 +96,7 @@ function loadNodesPage() {
             // Load groups
             success : function(data){
                 loadGroups(data);
-                
+
                 var cookieGroup = $.cookie('selectgrouponnodes');
                 if (cookieGroup) {
                     $('#groups .groupdiv div').each(function(){
@@ -94,7 +116,7 @@ function loadNodesPage() {
 
 /**
  * Show cluster summary in pie charts
- * 
+ *
  * @param groupName Group name
  */
 function loadPieSummary(groupName){
@@ -110,7 +132,7 @@ function loadPieSummary(groupName){
                        '</tr></table>';
     $('#summaryTab').append(summaryTable);
     $('#summaryTab .summarypie').append(createLoader());
-    
+
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -118,9 +140,9 @@ function loadPieSummary(groupName){
             cmd : 'webrun',
             tgt : '',
             args : 'summary;' + groupName,
-            msg : '' 
+            msg : ''
         },
-        
+
         success:function(data) {
              for (var i in data.rsp) {
                  drawPieSummary(i, data.rsp[i]);
@@ -131,7 +153,7 @@ function loadPieSummary(groupName){
 
 /**
  * Get nodes information and draw pie chart
- * 
+ *
  * @param index Node index
  * @param valuePair Node information key value pairing
  */
@@ -143,20 +165,20 @@ function drawPieSummary(index, valuePair){
     var dataArray = [];
     var tempArray = [];
     var container = $('#summaryTab .summarypie').eq(index);
-    
+
     position = valuePair.indexOf('=');
     chartTitle = valuePair.substr(0, position);
     tempArray = valuePair.substr(position + 1).split(';');
-    
+
     for (var i in tempArray) {
         position = tempArray[i].indexOf(':');
         key = tempArray[i].substr(0, position);
         val = Number(tempArray[i].substr(position + 1));
         dataArray.push([key,val]);
     }
-                
+
     container.empty();
-    
+
     var plot = $.jqplot(container.attr('id'), [dataArray], {
                 title: chartTitle,
                 seriesDefaults: {
@@ -181,13 +203,13 @@ function drawPieSummary(index, valuePair){
 
 /**
  * Load groups
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadGroups(data) {
     // Remove loader
     $('#groups').find('img').remove();
-    
+
     // Save group in cookie
     var groups = data.rsp;
     setGroupsCookies(data);
@@ -199,21 +221,21 @@ function loadGroups(data) {
     for (var i = 0; i < groups.length; i++) {
         grouplist.append('<div>' + groups[i] + '</div>');
     }
-    
+
     $('#groups').append(grouplist);
-    
+
     // Bind the click event
     $('#groups .groupdiv div').bind('click', function(){
         var thisGroup = $(this).text();
         $('#groups .groupdiv div').removeClass('selectgroup');
         $(this).addClass('selectgroup');
-        
+
         // Save selected group into cookie
         $.cookie('selectgrouponnodes', thisGroup, { expires: 7 });
-        
+
         drawNodesArea(thisGroup,'',thisGroup);
     });
-    
+
     // Make a link to add nodes
     $('#groups').append('<div class="actionDiv" id="adddiv"></div>');
     $('#groups #adddiv').append(mkAddNodeLink());
@@ -221,7 +243,7 @@ function loadGroups(data) {
 
 /**
  * Empty the nodes area and add three tabs for nodes result
- * 
+ *
  * @param targetgroup The name range for nodels command
  * @param cmdargs Filter arguments for nodels command
  * @param message The useful information from the HTTP request
@@ -229,7 +251,7 @@ function loadGroups(data) {
 function drawNodesArea(targetgroup, cmdargs, message){
     // Clear nodes division
     $('#nodes').empty();
-    
+
     // Create a tab for this group
     var tab = new Tab('nodesPageTabs');
     setNodesTab(tab);
@@ -237,20 +259,22 @@ function drawNodesArea(targetgroup, cmdargs, message){
     $('#nodes').append(tab.object());
     tab.add('summaryTab', 'Summary', '', false);
     tab.add('nodesTab', 'Nodes', '', false);
-    tab.add('graphTab', 'Graphic', '', false);
-           
+    if (builtInXCAT == 0) {
+        tab.add('graphTab', 'Graphic', '', false);
+    }
+
     // Load nodes table when tab is selected
     $('#nodesPageTabs').bind('tabsselect', function(event, ui) {
         // Load summary when tab is selected
         if (!$('#summaryTab').children().length && ui.index == 0) {
             loadPieSummary(targetgroup);
         }
-        
+
         // Load nodes table when tab is selected
         else if (!$('#nodesTab').children().length && ui.index == 1) {
             // Create loader
             $('#nodesTab').append($('<center></center>').append(createLoader()));
-                    
+
             // To improve performance, get all nodes within selected group
             // Get node definitions only for first 50 nodes
             $.ajax( {
@@ -265,13 +289,13 @@ function drawNodesArea(targetgroup, cmdargs, message){
 
                 /**
                  * Get node definitions for first 50 nodes
-                 * 
+                 *
                  * @param data Data returned from HTTP request
                  */
                 success : function(data) {
                     var rsp = data.rsp;
                     var group = data.msg;
-                    
+
                     // Save nodes in a list so it can be accessed later
                     nodesList = new Array();
                     for (var i in rsp) {
@@ -279,23 +303,23 @@ function drawNodesArea(targetgroup, cmdargs, message){
                             nodesList.push(rsp[i][0]);
                         }
                     }
-                    
+
                     // Sort nodes list
                     nodesList.sort();
-                    
+
                     // Get first 50 nodes
                     var nodes = '';
                     for (var i = 0; i < nodesList.length; i++) {
                         if (i > 49) {
                             break;
                         }
-                        
-                        nodes += nodesList[i] + ',';                        
+
+                        nodes += nodesList[i] + ',';
                     }
-                                
+
                     // Remove last comma
                     nodes = nodes.substring(0, nodes.length-1);
-                    
+
                     // Get nodes definitions
                     $.ajax( {
                         url : 'lib/cmd.php',
@@ -309,18 +333,18 @@ function drawNodesArea(targetgroup, cmdargs, message){
 
                         success : loadNodes
                     });
-                    
+
                 }
             });
         }
-        
+
         // Load graphical layout when tab is selected
-        else if (!$('#graphTab').children().length && ui.index == 2) {
+        else if ((builtInXCAT == 0) && (!$('#graphTab').children().length && ui.index == 2)) {
             // For the graphical tab, check the graphical data first
             createPhysicalLayout(nodesList);
         }
     });
-        
+
     // Get last view (if any)
     // This can be summary, nodes, or graphic
     if ($.cookie('tabindex_history')) {
@@ -344,7 +368,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
 
 /**
  * Make a link to add nodes
- * 
+ *
  * @returns Link to add nodes
  */
 function mkAddNodeLink() {
@@ -353,21 +377,29 @@ function mkAddNodeLink() {
     addNodeLink.click(function() {
         // Create info bar
         var info = createInfoBar('Select the hardware management for the new node range');
-        
+
         // Create form to add node
         var addNodeForm = $('<div class="form"></div>');
         addNodeForm.append(info);
-        addNodeForm.append('<div><label>Hardware management:</label>'
+        if (builtInXCAT == 0) {
+            addNodeForm.append('<div><label>Hardware management:</label>'
             + '<select name="mgt">'
                 + '<option value="esx">ESX</option>'
                 + '<option value="kvm">KVM</option>'
                 + '<option value="zvm">z\/VM</option>'
-                + '<option value="ipmi">iDataPlex</option>' 
+                + '<option value="ipmi">iDataPlex</option>'
                 + '<option value="blade">BladeCenter</option>'
                 + '<option value="hmc">System p</option>'    // Documentation refers to 'IBM System p' (where p is NOT capitalized)
-            + '</select>'
+                + '</select>'
+            + '</div>');
+        } else {
+            addNodeForm.append('<div><label>Hardware management:</label>'
+                + '<select name="mgt">'
+                    + '<option value="zvm">z\/VM</option>'
+                + '</select>'
         + '</div>');
-        
+        }
+
         // Create advanced link to set advanced node properties
         var advanced = $('<div></div>');
         var advancedLnk = $('<a>Advanced</a>').css({
@@ -388,7 +420,7 @@ function mkAddNodeLink() {
 
                 /**
                  * Set node attributes and open dialog
-                 * 
+                 *
                  * @param data Data returned from HTTP request
                  */
                 success : function(data) {
@@ -398,13 +430,13 @@ function mkAddNodeLink() {
                     openSetAttrsDialog();
                 }
             });
-            
+
             // Close dialog
             addNodeForm.dialog('destroy').remove();
         });
         advanced.append(advancedLnk);
         addNodeForm.append(advanced);
-                    
+
         // Open dialog to add node
         addNodeForm.dialog({
             modal: true,
@@ -414,8 +446,8 @@ function mkAddNodeLink() {
             buttons: {
                 'Ok': function() {
                     // Get hardware management
-                    var mgt = $(this).find('select[name=mgt]').val();                    
-                    
+                    var mgt = $(this).find('select[name=mgt]').val();
+
                     var plugin;
                     switch(mgt) {
                         case "kvm":
@@ -437,7 +469,7 @@ function mkAddNodeLink() {
                             plugin = new zvmPlugin();
                             break;
                     }
-                    
+
                     $(this).dialog('destroy').remove();
                     plugin.addNode();
                 },
@@ -448,7 +480,7 @@ function mkAddNodeLink() {
         });
 
     });
-    
+
     // Generate tooltips
     addNodeLink.tooltip({
         position: 'center right',
@@ -457,20 +489,20 @@ function mkAddNodeLink() {
         opacity: 0.7,
         predelay: 800
     });
-    
+
     return addNodeLink;
 }
 
 /**
  * Load nodes belonging to a given group
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadNodes(data) {
     // Clear the tab before inserting the table
     $('#nodesTab').children().remove();
 
-    // Data returned    
+    // Data returned
     var rsp = data.rsp;
     // Group name
     var group = data.msg;
@@ -478,13 +510,13 @@ function loadNodes(data) {
     var attrs = new Object();
     // Node attributes
     var headers = new Object();
-    
+
     // Variable to send command and request node status
     var getNodeStatus = true;
 
     // Clear hash table containing node attributes
     origAttrs = '';
-    
+
     var node, args;
     for (var i in rsp) {
         // Get node name
@@ -501,18 +533,18 @@ function loadNodes(data) {
         args = rsp[i].split('=', 2);
         var key = jQuery.trim(args[0]);
         var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1));
-        
+
         // Create a hash table
         attrs[node][key] = val;
         headers[key] = 1;
-        
+
         // If node status is available
         if (key == 'status') {
             // Do not request node status
             getNodeStatus = false;
         }
     }
-    
+
     // Add nodes that are not in data returned
     for (var i in nodesList) {
         if (!attrs[nodesList[i]]) {
@@ -521,7 +553,7 @@ function loadNodes(data) {
             attrs[nodesList[i]]['node'] = nodesList[i];
         }
     }
-    
+
     // Save attributes in hash table
     origAttrs = attrs;
 
@@ -536,9 +568,9 @@ function loadNodes(data) {
     sorted.sort();
 
     // Add column for check box, node, ping, power, monitor, and comments
-    sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
-        'node', 
-        '<span><a>status</a></span><img src="images/loader.gif"></img>', 
+    sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">',
+        'node',
+        '<span><a>status</a></span><img src="images/loader.gif"></img>',
         '<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>',
         '<span><a>monitor</a></span><img src="images/loader.gif" style="display: none;"></img>',
         'comments');
@@ -546,30 +578,30 @@ function loadNodes(data) {
     // Create a datatable
     var nodesTable = new DataTable(nodesTableId);
     nodesTable.init(sorted);
-    
+
     // Go through each node
     for (var node in attrs) {
         // Create a row
         var row = new Array();
-        
+
         // Create a check box, node link, and get node status
         var checkBx = '<input type="checkbox" name="' + node + '"/>';
         var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-        
+
         // If there is no status attribute for the node, do not try to access hash table
         // else the code will break
         var status = '';
         if (attrs[node]['status']) {
             status = attrs[node]['status'].replace('sshd', 'ping');
         }
-            
+
         // Push in checkbox, node, status, monitor, and power
         row.push(checkBx, nodeLink, status, '', '');
-        
+
         // If the node attributes are known (i.e the group is known)
         if (attrs[node]['groups']) {
             // Put in comments
-            var comments = attrs[node]['usercomment'];        
+            var comments = attrs[node]['usercomment'];
             // If no comments exists, show 'No comments' and set icon image source
             var iconSrc;
             if (!comments) {
@@ -578,25 +610,25 @@ function loadNodes(data) {
             } else {
                 iconSrc = 'images/nodes/ui-icon-comment.png';
             }
-                    
+
             // Create comments icon
             var tipID = node + 'Tip';
             var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
                 'width': '18px',
                 'height': '18px'
             });
-            
+
             // Create tooltip
             var tip = createCommentsToolTip(comments);
             var col = $('<span></span>').append(icon);
             col.append(tip);
             row.push(col);
-        
+
             // Generate tooltips
             icon.tooltip({
                 position: "center right",
                 offset: [-2, 10],
-                effect: "fade",    
+                effect: "fade",
                 opacity: 0.8,
                 relative: true,
                 delay: 500
@@ -605,12 +637,12 @@ function loadNodes(data) {
             // Do not put in comments if attributes are not known
             row.push('');
         }
-        
+
         // Go through each header
         for (var i = 6; i < sorted.length; i++) {
             // Add the node attributes to the row
             var key = sorted[i];
-            
+
             // Do not put comments and status in twice
             if (key != 'usercomment' && key != 'status' && key.indexOf('status') < 0) {
                 var val = attrs[node][key];
@@ -628,10 +660,12 @@ function loadNodes(data) {
 
     // Clear the tab before inserting the table
     $('#nodesTab').children().remove();
-    
+
     // Create info bar for nodes tab
     var info = createInfoBar('Double-click on a cell to edit a node\'s properties.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
     $('#nodesTab').append(info);
+    info.id = 'NodesInfoBar';
+    setNodesTabInfoBar(info);
 
     // Create action bar
     var actionBar = $('<div class="actionBar"></div>').css("width", "400px");
@@ -648,26 +682,65 @@ function loadNodes(data) {
             powerNode(tgtNodes, 'on');
         }
     });
-    
+
     // Power off
     var powerOffLnk = $('<a>Power off</a>');
     powerOffLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId);
         if (tgtNodes) {
+
+            var msg = 'Do you want to power off: ' + tgtNodes + '?';
+            // Open dialog to confirm
+            var confirmDialog = $('<div><p>' + msg + '</p></div>');
+            confirmDialog.dialog({
+                title:'Confirm',
+                 modal: true,
+                 close: function(){
+                     $(this).remove();
+                 },
+                 width: 400,
+                 buttons: {
+                     "Ok": function() {
             powerNode(tgtNodes, 'off');
+                         $(this).dialog("close");
+                     },
+                     "Cancel": function() {
+                         $(this).dialog("close");
+        }
+    }
+            });
         }
     });
-    
+
     // Power softoff
     var powerSoftoffLnk = $('<a>Shutdown</a>');
     powerSoftoffLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId);
         if (tgtNodes) {
+            var msg = 'Do you want to shutdown: ' + tgtNodes + '?';
+            // Open dialog to confirm
+            var confirmDialog = $('<div><p>' + msg + '</p></div>');
+            confirmDialog.dialog({
+                title:'Confirm',
+                 modal: true,
+                 close: function(){
+                     $(this).remove();
+                 },
+                 width: 400,
+                 buttons: {
+                     "Ok": function() {
             powerNode(tgtNodes, 'softoff');
+                         $(this).dialog("close");
+                     },
+                     "Cancel": function() {
+                         $(this).dialog("close");
+                     }
+                 }
+            });
         }
     });
-    
-    // Turn monitoring on
+    if (builtInXCAT == 0) {
+        // Turn monitoring on
     var monitorOnLnk = $('<a>Monitor on</a>');
     monitorOnLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId);
@@ -684,6 +757,7 @@ function loadNodes(data) {
             monitorNode(tgtNodes, 'off');
         }
     });
+    }
 
     // Clone
     var cloneLnk = $('<a>Clone</a>');
@@ -705,8 +779,14 @@ function loadNodes(data) {
                     plugin = new zvmPlugin();
                     break;
             }
-            
-            plugin.loadClonePage(tgtNodes[i]);
+            if (mgt == "zvm") {
+                var nodeOS = getNodeAttr(tgtNodes[i], 'os');
+                var nodeArch = getNodeAttr(tgtNodes[i], 'arch');
+                plugin.loadClonePage(tgtNodes[i], nodeOS, nodeArch);
+            } else {
+                plugin.loadClonePage(tgtNodes[i]);
+            }
+
         }
     });
 
@@ -719,31 +799,89 @@ function loadNodes(data) {
         }
     });
 
-    // Unlock
+    // Unlock Function
     var unlockLnk = $('<a>Unlock</a>');
     unlockLnk.click(function() {
-        var tgtNodes = getNodesChecked(nodesTableId);
-        if (tgtNodes) {
-            loadUnlockPage(tgtNodes);
+
+        // Get the "master" value from the site table.
+        var siteMaster;
+        $.ajax({
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'tabdump',
+                tgt : '',
+                args : 'site',
+                msg : 'cmd=tabdump site;'
+            },
+
+            success : function(data) {
+                var outId = $(data.msg);
+                var props = data.rsp;
+                if ( jQuery.isArray(data.rsp) ) {
+                    for (var i in data.rsp) {
+                        if ( data.rsp[i].indexOf('"master"') == 0 ) {
+                            siteMaster = data.rsp[i].slice( 10, -3 );
+                        }
+                    }
+                } else {
+                    if ( data.rsp.indexOf('"master"') == 0 ) {
+                        siteMaster = data.rsp.slice( 10, -3 );
+                    }
+                }
+
+                // Process the nodes that were checked.
+                var tgtNodes = getNodesChecked(nodesTableId).split(',');
+                var normalNodes = '';
+                var mnNode = '';
+                for (var i in tgtNodes) {
+                    var nodeIP = getNodeAttr( tgtNodes[i], 'ip' );
+                    if ( nodeIP == siteMaster ) {
+                        if ( mnNode == '' ) {
+                            // Only one xCAT node will have the same address as
+                            // the site master IP address and this is the
+                            // xCAT MN.
+                            mnNode = tgtNodes[i];
+                        }
+                     } else {
+                        if ( normalNodes == '' ) {
+                            normalNodes = tgtNodes[i];
+                        } else {
+                            normalNodes = normalNodes + "," + tgtNodes[i];
+                        }
+                    }
+                }
+
+                if ( normalNodes != '' ) {
+            loadUnlockPage( normalNodes );
+                }
+                if ( mnNode != '' ) {
+                    loadUnlockNonNodesPage( mnNode );
         }
+            }
+        });
     });
 
     // Run script
     var scriptLnk = $('<a>Run script</a>');
     scriptLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId);
-        if (tgtNodes) {            
+        if (tgtNodes) {
             loadScriptPage(tgtNodes);
+        } else {
+            openDialog('warn', "No nodes checked!");
         }
     });
-    
+
     // Migrate VM
     var migrateLnk = $('<a>Migrate</a>');
     migrateLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId).split(',');
         var mgt = "", tmp = "";
+        var fromhcp = "";
         for (var i in tgtNodes) {
             tmp = getNodeAttr(tgtNodes[i], 'mgt');
+            fromhcp += getNodeAttr(tgtNodes[i], 'hcp') + ',';
             if (!mgt) {
                 mgt = tmp
             } else {
@@ -753,7 +891,7 @@ function loadNodes(data) {
                 }
             }
         }
-        
+
         // Create an instance of the plugin
         var plugin;
         switch(mgt) {
@@ -768,8 +906,11 @@ function loadNodes(data) {
                 plugin = new zvmPlugin();
                 break;
         }
-        
-        plugin.loadMigratePage(tgtNodes);
+        if (mgt == "zvm") {
+            plugin.loadMigratePage(tgtNodes, fromhcp);
+        } else {
+            plugin.loadMigratePage(tgtNodes);
+        }
     });
 
     // Update
@@ -798,7 +939,7 @@ function loadNodes(data) {
             loadNetbootPage(tgtNodes);
         }
     });
-    
+
     // Provision node
     var provisionLnk = $('<a>Provision</a>');
     provisionLnk.click(function() {
@@ -817,7 +958,34 @@ function loadNodes(data) {
             loadRconsPage(tgtNodes);
         }
     });
-    
+
+    // Discovery
+    var discoverLnk = $('<a>Discover systems</a>');
+    discoverLnk.bind( 'click', function(event) {
+        var tgtNodes = getNodesChecked(nodesTableId).split(',');
+        if ( tgtNodes ) {
+            var hosts;
+            for (var i in tgtNodes) {
+                var hostType = getNodeAttr( tgtNodes[i], 'hosttype' );
+                if ( hostType == 'zvm' ) {
+                    if ( hosts ) {
+                        hosts += "," + tgtNodes[i];
+                    } else {
+                        hosts = tgtNodes[i];
+                    }
+
+                } else {
+                    openDialog('warn', tgtNodes[i] + " does not have a hosttype of 'zvm': " + hostType );
+                }
+            }
+            if ( hosts ) {
+                discoverVMNodes( hosts );
+            }
+        } else {
+            openDialog('warn', "No nodes checked!");
+        }
+    });
+
     // Edit properties
     var editProps = $('<a>Edit properties</a>');
     editProps.bind('click', function(event){
@@ -826,7 +994,7 @@ function loadNodes(data) {
             editNodeProps(tgtNodes[i]);
         }
     });
-    
+
     // Install Ganglia
     var installMonLnk = $('<a>Install monitoring</a>');
     installMonLnk.click(function() {
@@ -835,7 +1003,7 @@ function loadNodes(data) {
             installGanglia(tgtNodes);
         }
     });
-    
+
     // Scan
     var rscanLnk = $('<a>Scan</a>');
     rscanLnk.bind('click', function(event){
@@ -844,7 +1012,7 @@ function loadNodes(data) {
             loadRscanPage(tgtNodes);
         }
     });
-    
+
     // Event log
     var logLnk = $('<a>Event log</a>');
     logLnk.click(function() {
@@ -874,29 +1042,106 @@ function loadNodes(data) {
                     plugin = new zvmPlugin();
                     break;
             }
-            
+
             plugin.loadLogPage(tgtNodes[i]);
         }
     });
-    
+
     // Actions
     var actionsLnk = '<a>Actions</a>';
-    var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk, powerSoftoffLnk]);
+    if (builtInXCAT == 0) {
+        if (group == 'hosts') {
+            var actsMenu = createMenu([deleteLnk]);
+        } else {
+            var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk, powerSoftoffLnk]);
+        }
+    } else {
+        if (group == 'hosts') {
+            var actsMenu = createMenu([deleteLnk]);
+        } else {
+            var actsMenu = createMenu([cloneLnk, deleteLnk, migrateLnk, powerOnLnk, powerOffLnk, scriptLnk, powerSoftoffLnk]);
+        }
+    }
 
     // Configurations
     var configLnk = '<a>Configuration</a>';
-    var configMenu = createMenu([editProps, logLnk, installMonLnk, rscanLnk, unlockLnk, updateLnk]);
+    if (builtInXCAT == 0) {
+        if (group == 'hosts') {
+            var configMenu = createMenu([editProps]);
+        } else {
+            var configMenu = createMenu([editProps, logLnk, installMonLnk, rscanLnk, unlockLnk, updateLnk]);
+        }
+    } else {
+        if (group == 'hosts') {
+            var configMenu = createMenu([ discoverLnk, editProps ]);
+        } else {
+            var configMenu = createMenu([editProps, logLnk, rscanLnk, unlockLnk, updateLnk]);
+        }
+    }
 
     // Provision
     var provLnk = '<a>Provision</a>';
-    var provMenu = createMenu([boot2NetworkLnk, rcons, setBootStateLnk, provisionLnk]);
+    if (builtInXCAT == 0) {
+        var provMenu = createMenu([boot2NetworkLnk, rcons, setBootStateLnk, provisionLnk]);
+    } else {
+        var provMenu = createMenu([boot2NetworkLnk, setBootStateLnk]);
+    }
+
+    /**
+     * Refresh button
+     */
+    var refreshBtn = createButton('Refresh');
+    refreshBtn.click(function() {
+      // Remove any warning messages
+      $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+
+      var zhcpsCheck = $.cookie('zhcps').split(',');
+      var zhcpHash = new Object();
+      for (var h in zhcpsCheck) {
+          if (!zhcpHash[zhcpsCheck[h]]) {
+
+              zhcpHash[zhcpsCheck[h]] = 1;
+              if (typeof console == "object"){
+                    console.log("zhcp check for <"+zhcpsCheck[h]+">");
+              }
+
+              // Check if SMAPI is online
+              $.ajax({
+                  url : 'lib/cmd.php',
+                  dataType : 'json',
+                  data : {
+                      cmd : 'lsvm',
+                      tgt : zhcpsCheck[h],
+                      args : '',
+                      msg : 'group=refreshgroups' + ';hcp=' + zhcpsCheck[h]
+                  },
+
+                  // Load hardware control point specific info
+                  // Get disk pools and network names
+                  success : loadHcpInfo
+              });
+          }
+      }
+
+      window.location.reload();
+    });
+    refreshBtn.css({'width': '80px'});
+    refreshBtn.css({'height': '27px'});
+    //refreshBtn.css('vertical-align', 'top');
+    refreshBtn.css({'align': 'top'});
 
     // Create an action menu
-    var actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
+    var actionsMenu;
+    if (group == 'hosts') {
+        actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ] ]);
+    } else {
+        actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
+    }
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
-    
+    actionBar.append(refreshBtn);
+
     // Set correct theme for action menu
     actionsMenu.find('li').hover(function() {
         setMenu2Theme($(this));
@@ -906,7 +1151,7 @@ function loadNodes(data) {
 
     // Insert action bar and nodes datatable
     $('#nodesTab').append(nodesTable.object());
-        
+
     // Turn table into a datatable
     var nodesDatatable = $('#' + nodesTableId).dataTable({
         'iDisplayLength': 50,
@@ -922,32 +1167,32 @@ function loadNodes(data) {
             }
         }
     });
-    
+
     // Filter table when enter key is pressed
     $('#' + nodesTableId + '_filter input').unbind();
     $('#' + nodesTableId + '_filter input').bind('keyup', function(e){
         if (e.keyCode == 13) {
             var table = $('#' + nodesTableId).dataTable();
             table.fnFilter($(this).val());
-            
+
             // If there are nodes found, get the node attributes
             if (!$('#' + nodesTableId + ' .dataTables_empty').length) {
                 getNodeAttrs(group);
             }
         }
     });
-    
+
     // Load node definitions when next or previous buttons are clicked
     $('#' + nodesTableId + '_next, #' + nodesTableId + '_previous').click(function() {
         getNodeAttrs(group);
     });
-    
+
     /**
      * Change how datatable behaves
      */
-    
+
     // Do not sort ping, power, and comment column
-    var cols = $('#' + nodesTableId + ' thead tr th').click(function() {        
+    var cols = $('#' + nodesTableId + ' thead tr th').click(function() {
         getNodeAttrs(group);
     });
     var checkboxCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(0)');
@@ -960,16 +1205,16 @@ function loadNodes(data) {
     powerCol.unbind('click');
     monitorCol.unbind('click');
     commentCol.unbind('click');
-    
+
     // Create enough space for loader to be displayed
     // Center align power, ping, and comments
     $('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
         'text-align': 'center'
     });
-    
+
     // No minimum width for comments column
     $('#' + nodesTableId + ' tbody tr td:nth-child(6)').css('text-align', 'center');
-    
+
     // Instead refresh the node, power, and monitor status
     pingCol.find('span a').click(function() {
         refreshNodeStatus(group, nodesTableId);
@@ -980,18 +1225,24 @@ function loadNodes(data) {
     monitorCol.find('span a').click(function() {
         refreshGangliaStatus(group, nodesTableId);
     });
-    
+
     // Create a division to hold actions menu
-    var menuDiv = $('<div id="' + nodesTableId + '_menuDiv" class="menuDiv"></div>');
-    $('#' + nodesTableId + '_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
-    $('#' + nodesTableId + '_filter').appendTo(menuDiv);
-    
+    var menuDiv = $('<div id="' + nodesTableId + '_menuDiv" class="menuDiv"></div>'); // # <div id=nodesDataTable_menuDiv
+    $('#' + nodesTableId + '_wrapper').prepend(menuDiv);  // #nodesDataTable_wrapper
+    actionBar.css({'height': '30px'});
+    actionBar.css('vertical-align', 'top');
+    menuDiv.append(actionBar);
+
+    $('#' + nodesTableId + '_filter').css({'width': '240px'});
+    $('#' + nodesTableId + '_filter').css({'height': '40px'});
+    $('#' + nodesTableId + '_filter').css('vertical-align', 'middle');
+    $('#' + nodesTableId + '_filter').appendTo(menuDiv);  // #nodesDataTable_filter
+
     // Create tooltip for status
     var tooltipConf = {
             position: "center right",
             offset: [-2, 10],
-            effect: "fade",    
+            effect: "fade",
             opacity: 0.8,
             relative: true,
             predelay: 800
@@ -1000,52 +1251,52 @@ function loadNodes(data) {
     var pingTip = createStatusToolTip();
     pingCol.find('span').append(pingTip);
     pingCol.find('span a').tooltip(tooltipConf);
-    
+
     // Create tooltip for power
     var powerTip = createPowerToolTip();
     powerCol.find('span').append(powerTip);
     powerCol.find('span a').tooltip(tooltipConf);
-    
+
     // Create tooltip for monitor
     var monitorTip = createMonitorToolTip();
     monitorCol.find('span').append(monitorTip);
     monitorCol.find('span a').tooltip(tooltipConf);
-    
+
     /**
      * Enable editable columns
      */
     // Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
     $('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
-        function(value, settings) {     
+        function(value, settings) {
             // If users did not make changes, return the value directly
             // jeditable saves the old value in this.revert
             if ($(this).attr('revert') == value){
                 return value;
             }
-            
+
             // Get column index
             var colPos = this.cellIndex;
-                        
+
             // Get row index
             var dTable = $('#' + nodesTableId).dataTable();
             var rowPos = dTable.fnGetPosition(this.parentNode);
-            
+
             // Update datatable
             dTable.fnUpdate(value, rowPos, colPos, false);
-            
+
             // Get table headers
             var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
-                        
+
             // Get node name
             var node = $(this).parent().find('td a.node').text();
             // Get attribute name
             var attrName = jQuery.trim(headers.eq(colPos).text());
             // Get column value
             var value = $(this).text();
-            
+
             // Build argument
             var args = attrName + '=' + value;
-            
+
             // Send command to change node attributes
             $.ajax( {
                 url : 'lib/cmd.php',
@@ -1059,7 +1310,7 @@ function loadNodes(data) {
 
                 success: showChdefOutput
             });
-            
+
             // Save the data into global origAttrs
             origAttrs[node][attrName] = value;
 
@@ -1071,7 +1322,7 @@ function loadNodes(data) {
             event : "dblclick", // Double click and edit
             height : '30px'     // The height of the text area
         });
-    
+
     /**
      * Get the node status and definable node attributes
      */
@@ -1079,7 +1330,7 @@ function loadNodes(data) {
     // If request to get node status is made
     if (getNodeStatus) {
         var tgt = getNodesShown(nodesTableId);
-        
+
         // Get node status
         $.ajax( {
             url : 'lib/cmd.php',
@@ -1090,7 +1341,7 @@ function loadNodes(data) {
                 args : '-u',
                 msg : ''
             },
-    
+
             success : loadNodeStatus
         });
     } else {
@@ -1099,7 +1350,7 @@ function loadNodes(data) {
         statCol.find('img').hide();
         adjustColumnSize(nodesTableId);
     }
-    
+
     if (undefined == nodeAttrs){
         // Get definable node attributes
         $.ajax( {
@@ -1115,27 +1366,27 @@ function loadNodes(data) {
             success : setNodeAttrs
         });
     }
-    
+
     /**
      * Additional ajax requests need to be made for zVM
-     * load advanced information based on hardware architecture 
+     * load advanced information based on hardware architecture
      */
     advancedLoad(group);
 }
 
 /**
  * Get nodes currently shown in datatable
- * 
+ *
  * @param tableId Datatable ID
  * @return String of nodes shown
  */
 function getNodesShown(tableId) {
     // String of nodes shown
     var shownNodes = '';
-    
+
     // Get rows of shown nodes
     var nodes = $('#' + tableId + ' tbody tr');
-                
+
     // Go through each row
     var cols;
     for (var i = 0; i < nodes.length; i++) {
@@ -1143,7 +1394,7 @@ function getNodesShown(tableId) {
         cols = nodes.eq(i).find('td');
         shownNodes += cols.eq(1).text() + ',';
     }
-    
+
     // Remove last comma
     shownNodes = shownNodes.substring(0, shownNodes.length-1);
     return shownNodes;
@@ -1151,14 +1402,14 @@ function getNodesShown(tableId) {
 
 /**
  * Get attributes for nodes not yet initialized
- * 
+ *
  * @param group Group name
  */
-function getNodeAttrs(group) {    
+function getNodeAttrs(group) {
     // Get datatable headers and rows
     var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
     var nodes = $('#' + nodesTableId + ' tbody tr');
-    
+
     // Find group column
     var head, groupsCol;
     for (var i = 0; i < headers.length; i++) {
@@ -1179,12 +1430,12 @@ function getNodeAttrs(group) {
             tgtNodes += node + ',';
         }
     }
-        
+
     // If there are node definitions to load
     if (tgtNodes) {
         // Remove last comma
         tgtNodes = tgtNodes.substring(0, tgtNodes.length-1);
-                
+
         // Get node definitions
         $.ajax( {
             url : 'lib/cmd.php',
@@ -1195,14 +1446,14 @@ function getNodeAttrs(group) {
                 args : tgtNodes,
                 msg : group
             },
-    
+
             success : addNodes2Table
         });
-        
+
         // Create dialog to indicate table is updating
         var update = $('<div id="updatingDialog"></div>');
         update.append(createInfoBar('Updating table <img src="images/loader.gif"/>'));
-        
+
         update.dialog({
             title: 'Updating',
             modal: true,
@@ -1214,7 +1465,7 @@ function getNodeAttrs(group) {
 
 /**
  * Add nodes to datatable
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function addNodes2Table(data) {
@@ -1226,10 +1477,10 @@ function addNodes2Table(data) {
     var attrs = new Object();
     // Node attributes
     var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr th');
-    
+
     // Variable to send command and request node status
     var getNodeStatus = true;
-    
+
     // Go through each attribute
     var node, args;
     for (var i in rsp) {
@@ -1247,19 +1498,19 @@ function addNodes2Table(data) {
         args = rsp[i].split('=', 2);
         var key = jQuery.trim(args[0]);
         var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
-        
+
         // Create a hash table
         attrs[node][key] = val;
         // Save attributes in original hash table
         origAttrs[node][key] = val;
-                
+
         // If node status is available
         if (key == 'status') {
             // Do not request node status
             getNodeStatus = false;
         }
     }
-        
+
     // Set the first five headers
     var headersCol = new Object();
     headersCol['node'] = 1;
@@ -1267,7 +1518,7 @@ function addNodes2Table(data) {
     headersCol['power'] = 3;
     headersCol['monitor'] = 4;
     headersCol['comments'] = 5;
-    
+
     // Go through each header
     for (var i = 6; i < headers.length; i++) {
         // Get the column index
@@ -1287,15 +1538,15 @@ function addNodes2Table(data) {
                 break;
             }
         }
-        
+
         // Get node status
         var status = '';
         if (attrs[node]['status']){
             status = attrs[node]['status'].replace('sshd', 'ping');
         }
-        
+
         rows[nodeRowPos][headersCol['status']] = status;
-        
+
         // Go through each header
         for (var key in headersCol) {
             // Do not put comments and status in twice
@@ -1306,15 +1557,15 @@ function addNodes2Table(data) {
                 }
             }
         }
-        
+
         // Update row
-        datatable.fnUpdate(rows[nodeRowPos], nodeRowPos, 0, false);
-        
+        datatable.fnUpdate(rows[nodeRowPos], parseInt(nodeRowPos), undefined, false);
+
         // Insert node comments
         // This is done after datatable is updated because
         // you cannot insert an object using fnUpdate()
         var comments = attrs[node]['usercomment'];
-        
+
         // If no comments exists, show 'No comments' and
         // set icon image source
         var iconSrc;
@@ -1324,22 +1575,22 @@ function addNodes2Table(data) {
         } else {
             iconSrc = 'images/nodes/ui-icon-comment.png';
         }
-        
+
         // Create icon for node comments
         var tipID = node + 'Tip';
         var commentsCol = $('#' + node).parent().parent().find('td').eq(5);
-        
+
         // Create tooltip
         var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
             'width': '18px',
             'height': '18px'
         });
-        
+
         var tip = createCommentsToolTip(comments);
         var span = $('<span></span>').append(icon);
         span.append(tip);
         commentsCol.append(span);
-                
+
         // Generate tooltips
         icon.tooltip({
             position: "center right",
@@ -1350,19 +1601,19 @@ function addNodes2Table(data) {
             delay: 500
         });
     }
-    
+
     // Enable node link
     $('.node').bind('click', loadNode);
 
     // Close dialog for updating table
     $('.ui-dialog-content').dialog('destroy').remove();
-    
+
     /**
      * Enable editable columns
      */
     // Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
     $('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
-        function(value, settings) {            
+        function(value, settings) {
             // If users did not do changes, return the value directly
             // jeditable save the old value in this.revert
             if ($(this).attr('revert') == value){
@@ -1370,27 +1621,27 @@ function addNodes2Table(data) {
             }
             // Get column index
             var colPos = this.cellIndex;
-                        
+
             // Get row index
             var dTable = $('#' + nodesTableId).dataTable();
             var rowPos = dTable.fnGetPosition(this.parentNode);
-            
+
             // Update datatable
             dTable.fnUpdate(value, rowPos, colPos, false);
-            
+
             // Get table headers
             var headers = $('#' + nodesTableId + ' thead tr th');
-            
+
             // Get node name
             var node = $(this).parent().find('td a.node').text();
             // Get attribute name
             var attrName = jQuery.trim(headers.eq(colPos).text());
             // Get column value
             var value = $(this).text();
-            
+
             // Build argument
             var args = attrName + '=' + value;
-            
+
             // Send command to change node attributes
             $.ajax( {
                 url : 'lib/cmd.php',
@@ -1413,7 +1664,7 @@ function addNodes2Table(data) {
             event : 'dblclick',
             height : '30px'     // The height of the text area
         });
-    
+
     // If request to get node status is made
     if (getNodeStatus) {
         // Get node status
@@ -1426,7 +1677,7 @@ function addNodes2Table(data) {
                 args : '-u',
                 msg : ''
             },
-    
+
             success : loadNodeStatus
         });
     } else {
@@ -1434,7 +1685,7 @@ function addNodes2Table(data) {
         var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
         statCol.find('img').hide();
     }
-    
+
     /**
      * Additional ajax requests need to be made for zVM
      */
@@ -1444,7 +1695,7 @@ function addNodes2Table(data) {
 
 /**
  * Load the status of Ganglia for a given group
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadGangliaStatus(data) {
@@ -1461,7 +1712,7 @@ function loadGangliaStatus(data) {
         if (node) {
             // Get the row containing the node
             rowNum = findRow(node, '#' + nodesTableId, 1);
-    
+
             // Update the power status column
             datatable.fnUpdate(status, rowNum, 4);
         }
@@ -1475,14 +1726,14 @@ function loadGangliaStatus(data) {
 
 /**
  * Refresh the status of Ganglia for each node
- * 
+ *
  * @param group Group name
  */
 function refreshGangliaStatus(group) {
     // Show ganglia loader
     var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
     gangliaCol.find('img').show();
-    
+
     // Get power status for nodes shown
     var nodes = getNodesShown(nodesTableId);
 
@@ -1503,7 +1754,7 @@ function refreshGangliaStatus(group) {
 
 /**
  * Load power status for each node
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadPowerStatus(data) {
@@ -1516,14 +1767,14 @@ function loadPowerStatus(data) {
         args = power[i].split(':');
         node = jQuery.trim(args[0]);
         status = jQuery.trim(args[1]);
-        
+
         // Get the row containing the node
         rowPos = findRow(node, '#' + nodesTableId, 1);
 
         // Update the power status column
         dTable.fnUpdate(status, rowPos, 3);
     }
-    
+
     // Hide power loader
     var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').hide();
@@ -1532,7 +1783,7 @@ function loadPowerStatus(data) {
 
 /**
  * Refresh power status for each node
- * 
+ *
  * @param group Group name
  * @param tableId Table to update node status
  */
@@ -1540,10 +1791,10 @@ function refreshPowerStatus(group, tableId) {
     // Show power loader
     var powerCol = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').show();
-    
+
     // Get power status for nodes shown
     var nodes = getNodesShown(tableId);
-        
+
     // Get power status
     $.ajax( {
         url : 'lib/cmd.php',
@@ -1561,7 +1812,7 @@ function refreshPowerStatus(group, tableId) {
 
 /**
  * Load node status for each node
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadNodeStatus(data) {
@@ -1572,18 +1823,18 @@ function loadNodeStatus(data) {
     // Get all nodes within datatable
     for (var i in rsp) {
         args = rsp[i].split(':');
-        
+
         // args[0] = node and args[1] = status
         node = jQuery.trim(args[0]);
         status = jQuery.trim(args[1]).replace('sshd', 'ping');
-        
+
         // Get row containing node
         rowPos = findRow(node, '#' + nodesTableId, 1);
 
         // Update ping status column
         dTable.fnUpdate(status, rowPos, 2, false);
     }
-    
+
     // Hide status loader
     var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
     statCol.find('img').hide();
@@ -1592,7 +1843,7 @@ function loadNodeStatus(data) {
 
 /**
  * Refresh ping status for each node
- * 
+ *
  * @param group Group name
  * @param tableId Table to update node status
  */
@@ -1600,10 +1851,10 @@ function refreshNodeStatus(group, tableId) {
     // Show ping loader
     var pingCol = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
     pingCol.find('img').show();
-    
+
     // Get power status for nodes shown
     var nodes = getNodesShown(tableId);
-    
+
     // Get the node status
     $.ajax( {
         url : 'lib/cmd.php',
@@ -1621,18 +1872,18 @@ function refreshNodeStatus(group, tableId) {
 
 /**
  * Load inventory for given node
- * 
+ *
  * @param e Windows event
  */
 function loadNode(e) {
     if (!e) {
         e = window.event;
     }
-    
+
     // Get node that was clicked
     var node = (e.target) ? e.target.id : e.srcElement.id;
     var mgt = getNodeAttr(node, 'mgt');
-        
+
     // Create an instance of the plugin
     var plugin;
     switch(mgt) {
@@ -1694,7 +1945,7 @@ function loadNode(e) {
 
 /**
  * Unlock a node by setting the ssh keys
- * 
+ *
  * @param tgtNodes Nodes to unlock
  */
 function loadUnlockPage(tgtNodes) {
@@ -1720,17 +1971,17 @@ function loadUnlockPage(tgtNodes) {
 
     // Create info bar
     var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
-    
+
     // Create unlock form
     var unlockForm = $('<div class="form"></div>');
     unlockForm.append(statBar, infoBar);
-    
+
     // Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     unlockForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
@@ -1752,7 +2003,7 @@ function loadUnlockPage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-    
+
     /**
      * Ok
      */
@@ -1764,7 +2015,7 @@ function loadUnlockPage(tgtNodes) {
     unlockBtn.click(function() {
         // Remove any warning messages
         $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-        
+
         // If a password is given
         var password = $('#' + newTabId + ' input[name=password]').css('border', 'solid #BDBDBD 1px');
         if (password.val()) {
@@ -1778,13 +2029,13 @@ function loadUnlockPage(tgtNodes) {
                     args : 'unlock;' + tgtNodes + ';' + password.val(),
                     msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
                 },
-    
+
                 success : updateStatusBar
             });
-    
+
             // Show status bar
             statBar.show();
-    
+
             // Disable all inputs and Ok button
             $('#' + newTabId + ' input').attr('disabled', 'disabled');
             $(this).attr('disabled', 'true');
@@ -1801,9 +2052,297 @@ function loadUnlockPage(tgtNodes) {
     tab.select(newTabId);
 }
 
+function loadUnlockNonNodesPage( tgtNodes ) {
+
+    // Get nodes tab
+    var tab = getNodesTab();
+    var fs, legend;
+
+    // Generate new tab ID
+    var instance = 0;
+    var newTabId = 'unlockNonNodesTab' + instance;
+    while ($('#' + newTabId).length) {
+        // If one already exists, generate another one
+        instance = instance + 1;
+        newTabId = 'unlockNonNodesTab' + instance;
+    }
+
+    // Create info bar and status bar
+    var infoBar = createInfoBar( 'Unlock systems that have not been defined to xCAT. Either:<br>' +
+                                 '-Create a script to install the xCAT Management Node\'s public key on the target systems, or<br>' +
+                                 '-Unlock system(s) directly using their IP address(es) ' +
+                                 '(Specify multiple systems by separating the addresses with a comma),<br>' +
+                                 '-Show the xCAT Management Node\'s public key to use to unlock the system.' );
+
+    var statBarId = 'unlockNonNodesStatusBar' + instance;
+    var statBar = createStatusBar(statBarId).hide();
+    var loader = createLoader( '' );
+    statBar.find('div').append( loader );
+
+    // Create unlock form and put info and status bars on the form
+    var unlockNonNodesForm = $( '<div class="form"></div>' );
+    unlockNonNodesForm.append( infoBar, statBar );
+
+    // Create 'Create an Unlock Script' fieldset
+    fs = $( '<fieldset></fieldset>' );
+    legend = $( '<legend>Create an Unlock Script</legend>' );
+    fs.append( legend );
+    unlockNonNodesForm.append( fs );
+
+    // Create Script bar
+    var scriptBarId = 'unlockNonNodesScriptBar' + instance;
+    var scriptBar = createStatusBar(scriptBarId).hide();
+    unlockNonNodesForm.append( scriptBar );
+
+    var createBtn = createButton( 'Create Script' );
+    createBtn.css({
+        'width': '200px',
+        'display': 'block'
+    });
+
+    createBtn.click(function() {
+        // Remove any warning messages
+        $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+
+        // Get the SSH keys for a non-node
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'webrun',
+                tgt  : '',
+                args : 'unlockshow;' + tgtNodes + ';script;',
+                msg  : 'out=' + statBarId + ';scriptBar=' + scriptBarId +';cmd=unlock;tgt=' + tgtNodes
+            },
+
+                success : updateScriptBar
+            });
+
+            // Show status bar
+            statBar.show();
+    });
+
+    unlockNonNodesForm.append( createBtn );
+
+    // Create 'Unlock a system using the root password' Script fieldset
+    fs = $( '<fieldset></fieldset>' );
+    legend = $( '<legend>Unlock a system using the root password</legend>' );
+    fs.append( legend );
+    unlockNonNodesForm.append( fs );
+
+    var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>' );
+    fs.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
+    fs.append( vmAttr );
+
+    vmAttr.append( '<div><label>IP Address:</label><input type="text" id="ip" name="ip" value="" title="The IP address of the system to unlock."/></div>' );
+    vmAttr.append( '<div><label>Password:</label><input type="password" id="password" name="password" title="The root password to unlock this system."/></div>' );
+
+    /**
+     * Unlock button for non-nodes
+     */
+    var unlockBtn = createButton('Unlock');
+    unlockBtn.css({
+        'width': '80px',
+        'display': 'block'
+    });
+
+    unlockBtn.click(function() {
+        // Remove any warning messages
+        $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+
+        // If an ip and password is given
+        var ip = $('#' + newTabId + ' input[name=ip]').css('border', 'solid #BDBDBD 1px');
+        var password = $( '#' + newTabId + ' input[name=password]').css('border', 'solid #BDBDBD 1px' );
+        if ( password.val() && ip.val() ) {
+            $('#' + statBarId).find('img').show();
+            // Setup SSH keys for a non-node
+            $.ajax( {
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'webrun',
+                    tgt : '',
+                    args : 'unlockbyip;' + tgtNodes + ';' + password.val() + ";" + ip.val(),
+                    msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
+                },
+
+                success : updateStatusBar
+            });
+
+            // Show status bar
+            statBar.show();
+        } else {
+            // Show warning message
+            var warn = createWarnBar('Both ip address and password must be specified.');
+            warn.prependTo($(this).parents('.ui-tabs-panel'));
+            password.css('border', 'solid #FF0000 1px');
+        }
+    });
+
+    unlockNonNodesForm.append(unlockBtn);
+
+    // Create 'SSH Key' fieldset
+    var sshKey = '';
+    fs = $( '<fieldset></fieldset>' );
+    legend = $( '<legend>xCAT Management Node Public Key</legend>' );
+    fs.append( legend );
+    unlockNonNodesForm.append( fs );
+
+    // Create key bar, hide on load
+    var keyBarId = 'unlockNonNodesKeyBar' + instance;
+    var keyBar = createStatusBar(keyBarId).hide();
+    unlockNonNodesForm.append( keyBar );
+
+    // Generate tooltips
+    unlockNonNodesForm.find('div input[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.7,
+        predelay: 800,
+        events : {
+            def : "mouseover,mouseout",
+            input : "mouseover,mouseout",
+            widget : "focus mouseover,blur mouseout",
+            tooltip : "mouseover,mouseout"
+        }
+    });
+
+    /**
+     * "Get Key" button
+     */
+    var getBtn = createButton('Get Key');
+    getBtn.css({
+        'width': '80px',
+        'display': 'block'
+    });
+
+    getBtn.click(function() {
+        // Remove any warning messages
+        $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+
+        // Get the SSH keys for a non-node
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'webrun',
+                tgt  : '',
+                args : 'unlockshow;' + tgtNodes + ';key;',
+                msg  : 'out=' + statBarId + ';keyBar=' + keyBarId +';cmd=unlock;tgt=' + tgtNodes
+            },
+
+                success : updateKeyBar
+            });
+
+            // Show status bar
+            statBar.show();
+    });
+
+    unlockNonNodesForm.append(getBtn);
+
+    tab.add(newTabId, 'Unlock System', unlockNonNodesForm, true);
+    tab.select(newTabId);
+}
+
+
+/**
+ * Update key and status bar of a given tab
+ *
+ * @param data Data returned from HTTP request
+ */
+function updateKeyBar(data) {
+    // Get ajax response
+    var rsp = data.rsp;
+    var args = data.msg.split(';');
+    var statBarId = args[0].replace('out=', '');
+    var keyBarId = args[1].replace('keyBar=', '');
+    var cmd = args[2].replace('cmd=', '');
+    var tgts = args[3].replace('tgt=', '').split(',');
+
+    $('#' + statBarId).find('img').hide();
+
+    // Extract the key portion and status portions from the response
+    var keyRespStart = rsp[0].indexOf("<keyFile>");
+    var keyRespEnd = rsp[0].indexOf("</keyFile>");;
+    var keyOnly = rsp[0].substring( keyRespStart+9, keyRespEnd );
+    var statLines = rsp[0].substring( 0, keyRespStart-1 );
+
+    if ( keyOnly.length > 0 ) {
+        // Expected response was returned, show it in the key bar.
+        var keyLines = keyOnly.split(/\n/);
+        for ( var i in keyLines ) {
+            $('#' + keyBarId).find( 'div' ).append( keyLines[i] );
+            $('#' + keyBarId).find( 'div' ).append( '<br/>' );
+        }
+        $('#' + keyBarId).show();
+
+        // Other lines from the response are shown in the Status bar.
+        if ( statLines.length > 0 ) {
+            prg = statLines.split(/\n/);
+            prg = writeRsp( prg, '' );
+            $('#' + statBarId).find( 'div' ).append( prg );
+        }
+    } else {
+        // Did not find the expected response, write the ajax response to status bar.
+        var prg = writeRsp(rsp, '');
+        $('#' + statBarId).find('div').append(prg);
+    }
+
+}
+
+
+/**
+ * Update the script and status bar of a given tab
+ *
+ * @param data Data returned from HTTP request
+ */
+function updateScriptBar(data) {
+    // Get ajax response
+    var rsp = data.rsp;
+    var args = data.msg.split(';');
+    var statBarId = args[0].replace('out=', '');
+    var scriptBarId = args[1].replace('scriptBar=', '');
+    var cmd = args[2].replace('cmd=', '');
+    var tgts = args[3].replace('tgt=', '').split(',');
+
+    $('#' + statBarId).find('img').hide();
+
+    // Extract the key portion and status portions from the response
+    var scriptRespStart = rsp[0].indexOf("<scriptFile>");
+    var scriptRespEnd = rsp[0].indexOf("</scriptFile>");;
+    var scriptOnly = rsp[0].substring( scriptRespStart+12, scriptRespEnd );
+    var statLines = rsp[0].substring( 0, scriptRespStart-1 );
+
+    if ( scriptOnly.length > 0 ) {
+        // Expected response was returned, show it in the script bar along with the rest of the code.
+        var scriptLines = scriptOnly.split(/\n/);
+        for ( var i in scriptLines ) {
+            scriptLines[i] = scriptLines[i].replace(/^\s\s\s\s\s\s\s\s+/gm, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
+            scriptLines[i] = scriptLines[i].replace(/^\s\s\s\s\s\s+/gm, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;');
+            scriptLines[i] = scriptLines[i].replace(/^\s\s\s\s+/gm, '&nbsp;&nbsp;&nbsp;&nbsp;');
+            scriptLines[i] = scriptLines[i].replace(/^\s\s+/gm, '&nbsp;&nbsp;');
+            $('#' + scriptBarId).find( 'div' ).append( scriptLines[i] + '<br/>' );
+        }
+        $('#' + scriptBarId).show();
+
+        // Other lines from the response are shown in the Status bar.
+        if ( statLines.length > 0 ) {
+            prg = statLines.split(/\n/);
+            prg = writeRsp( prg, '' );
+            $('#' + statBarId).find( 'div' ).append( prg );
+        }
+    } else {
+        // Did not find the expected response, write the ajax response to status bar.
+        var prg = writeRsp(rsp, '');
+        $('#' + statBarId).find('div').append(prg);
+    }
+
+}
+
 /**
  * Load script page
- * 
+ *
  * @param tgtNodes Targets to run script against
  */
 function loadScriptPage(tgtNodes) {
@@ -1821,7 +2360,7 @@ function loadScriptPage(tgtNodes) {
 
     // Create remote script form
     var scriptForm = $('<div class="form"></div>');
-    
+
     // Create status bar
     var barId = 'scriptStatusBar' + inst;
     var statBar = createStatusBar(barId);
@@ -1831,28 +2370,28 @@ function loadScriptPage(tgtNodes) {
 
     // Create info bar
     var infoBar = createInfoBar('Load a script to run against this node range.');
-    scriptForm.append(statBar, infoBar);
-    
+    scriptForm.append(infoBar, statBar);
+
     // Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     scriptForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
-    
+
     // Create logs fieldset
     var scriptFS = $('<fieldset></fieldset>');
     var scriptLegend = $('<legend>Script</legend>');
     scriptFS.append(scriptLegend);
     scriptForm.append(scriptFS);
-    
+
     var scriptAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     scriptFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/nodes/script.png"></img></div>'));
     scriptFS.append(scriptAttr);
-        
+
     // Target node or group
     var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to run a given script against"/></div>');
     vmAttr.append(tgt);
@@ -1864,11 +2403,11 @@ function loadScriptPage(tgtNodes) {
     var subBtn = createButton('Load');
     upload.append(label, file, subBtn);
     scriptAttr.append(upload);
-    
+
     // Script
     var script = $('<div><label>Script:</label><textarea title="The code to run against the node range"/>');
     scriptAttr.append(script);
-    
+
     // Generate tooltips
     scriptForm.find('div input[title],textarea').tooltip({
         position: "center right",
@@ -1898,13 +2437,13 @@ function loadScriptPage(tgtNodes) {
     runBtn.css({
         'width': '80px'
     });
-    runBtn.click(function() { 
+    runBtn.click(function() {
         // Remove any warning messages
         $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-        
+
         // Get script to run
         var textarea = $('#' + newTabId + ' textarea').css('border', 'solid #BDBDBD 1px');
-        
+
         // If no inputs are empty
         if (textarea.val()) {
             // Run script
@@ -1927,7 +2466,7 @@ function loadScriptPage(tgtNodes) {
 
 /**
  * Sort a list
- * 
+ *
  * @return Sorted list
  */
 jQuery.fn.sort = function() {
@@ -1940,7 +2479,7 @@ function sortAlpha(a, b) {
 
 /**
  * Power on a given node
- * 
+ *
  * @param node Node to power on or off
  * @param power2 Power node to given state
  */
@@ -1948,7 +2487,7 @@ function powerNode(node, power2) {
     // Show power loader
     var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').show();
-    
+
     node = node.replace('Power', '');
     $.ajax( {
         url : 'lib/cmd.php',
@@ -1966,7 +2505,7 @@ function powerNode(node, power2) {
 
 /**
  * Load delete node page
- * 
+ *
  * @param tgtNodes Nodes to delete
  */
 function loadDeletePage(tgtNodes) {
@@ -2009,7 +2548,7 @@ function loadDeletePage(tgtNodes) {
 
     // Create delete form
     var deleteForm = $('<div class="form"></div>');
-    
+
     // Create status bar, hide on load
     var statBarId = 'deleteStatusBar' + inst;
     var statBar = createStatusBar(statBarId).hide();
@@ -2017,22 +2556,22 @@ function loadDeletePage(tgtNodes) {
     // Create loader
     var loader = createLoader('');
     statBar.find('div').append(loader);
-    statBar.hide();    
+    statBar.hide();
     deleteForm.append(statBar);
-    
+
     // Create confirm fieldset
     var confirmFS = $('<fieldset></fieldset>');
     var confirmLegend = $('<legend>Confirm</legend>');
     confirmFS.append(confirmLegend);
     deleteForm.append(confirmFS);
-    
+
     var confirmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     confirmFS.append($('<div style="display: inline-table; vertical-align: middle; margin-right: 10px;"><img src="images/nodes/remove.png"></img></div>'));
     confirmFS.append(confirmAttr);
-    
+
     // Confirm delete
     var instr = $('<p>Are you sure you want to delete <b>' + tgtNodesStr + '</b>?</p>').css('word-wrap', 'break-word');
-    var dbOnly = $('<div><input type="checkbox" name="db-only"/>Only delete entries in database</div>');
+    var dbOnly = $('<div><input type="checkbox" name="db-only" checked/>Only delete entries in database</div>');
     confirmAttr.append(instr);
     confirmAttr.append(dbOnly);
 
@@ -2046,8 +2585,8 @@ function loadDeletePage(tgtNodes) {
         if ($("#" + newTabId + " input[name='db-only']").attr('checked')) {
             cmd = "noderm";
         }
-        
-        // Delete the virtual server
+
+        // Delete the virtual server or remove the node.
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -2067,7 +2606,7 @@ function loadDeletePage(tgtNodes) {
         // Disable delete button
         $(this).attr('disabled', 'true');
     });
-    
+
     /**
      * Cancel
      */
@@ -2084,7 +2623,7 @@ function loadDeletePage(tgtNodes) {
 
 /**
  * Update status bar of a given tab
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function updateStatusBar(data) {
@@ -2100,8 +2639,8 @@ function updateStatusBar(data) {
         $('#' + statBarId).find('img').hide();
 
         // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);    
+        var prg = writeRsp(rsp, '');
+        $('#' + statBarId).find('div').append(prg);
     } else if (cmd == 'rmvm') {
         // Get data table
         var dTable = $('#' + nodesTableId).dataTable();
@@ -2112,8 +2651,8 @@ function updateStatusBar(data) {
 
         // Write ajax response to status bar
         var prg = writeRsp(rsp, '');
-        $('#' + statBarId).find('div').append(prg);    
-        
+        $('#' + statBarId).find('div').append(prg);
+
         // If there was an error, do not continue
         if (prg.html().indexOf('Error') > -1) {
             failed = true;
@@ -2121,7 +2660,8 @@ function updateStatusBar(data) {
     } else if (cmd == 'xdsh') {
         // Hide loader
         $('#' + statBarId).find('img').hide();
-        
+        $('#' + statBarId).find('#loadingpic2').remove();
+
         // Write ajax response to status bar
         var prg = $('<pre></pre>');
         for (var i in rsp) {
@@ -2130,36 +2670,50 @@ function updateStatusBar(data) {
             }
 
             prg.append(rsp[i]);
-            prg.append('<br>');    
+            prg.append('<br>');
         }
-        $('#' + statBarId).find('div').append(prg);    
-        
+        $('#' + statBarId).find('div').append(prg);
+        $('#' + statBarId).find('div').append('<hr>');
+
+        // The status area division contains useful scrollTop() and "scrollHeight dom 0" information.
+        // The inner div grows in height along with the status bar scroll height
+        // The status area client does not grow, that is the visible scroll area
+        var scrtop = $('#' + statBarId ).scrollTop();
+        var scrheight = $('#' + statBarId )[0].scrollHeight;
+        var dcheight = $('#' + statBarId)[0].clientHeight;
+        var dcheight2 = $('#' + statBarId).find('div')[0].clientHeight;
+
+        // Adjust the scroll bar to move to the bottom
+        if (scrtop < (scrheight-dcheight)) {
+            $('#' + statBarId ).scrollTop(scrheight-dcheight);
+        }
+
         // Enable fields
         $('#' + statBarId).parent().find('input').removeAttr('disabled');
         $('#' + statBarId).parent().find('textarea').removeAttr('disabled');
-        
+
         // Enable buttons
         $('#' + statBarId).parent().find('button').removeAttr('disabled');
     } else if (cmd == 'noderm') {
         // Hide loader
         $('#' + statBarId).find('img').hide();
-        
+
         // Write ajax response to status bar
-        var prg = $('<pre>Entries deleted in database</pre>');   
-        $('#' + statBarId).find('div').append(prg);    
+        var prg = $('<pre>Entries deleted in database</pre>');
+        $('#' + statBarId).find('div').append(prg);
     } else {
         // Hide loader
         $('#' + statBarId).find('img').hide();
-        
+
         // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
-        $('#' + statBarId).find('div').append(prg);    
+        var prg = writeRsp(rsp, '');
+        $('#' + statBarId).find('div').append(prg);
     }
 }
 
 /**
  * Update power status of a node in the datatable
- * 
+ *
  * @param data Data from HTTP request
  */
 function updatePowerStatus(data) {
@@ -2198,14 +2752,14 @@ function updatePowerStatus(data) {
             alert(rsp[i]);
         }
     }
-    
+
     // Adjust datatable column size
     adjustColumnSize(nodesTableId);
 }
 
 /**
  * Run a script
- * 
+ *
  * @param inst Remote script tab instance
  */
 function runScript(inst) {
@@ -2215,8 +2769,27 @@ function runScript(inst) {
     var tgts = $('#' + tabId + ' input[name=target]').val();
     // Get script
     var script = $('#' + tabId + ' textarea').val();
-    
+
     var statBarId = 'scriptStatusBar' + inst;
+
+    // The status area division contains useful scrollTop() and "scrollHeight dom 0" information.
+    // The inner div grows in height along with the status bar scroll height
+    // The status area client does not grow, that is the visible scroll area
+    var scrtop = $('#' + statBarId ).scrollTop();
+    var scrheight = $('#' + statBarId )[0].scrollHeight;
+    var dcheight = $('#' + statBarId)[0].clientHeight;
+    var dcheight2 = $('#' + statBarId).find('div')[0].clientHeight;
+
+    //If this is not first time for run script and it has scrolled then add a progress gif at the end.
+    if (scrheight > dcheight) {
+        $('#'+statBarId).find('div').append("<img id='loadingpic2' src='images/loader.gif'>");
+        scrtop = $('#' + statBarId ).scrollTop();
+        scrheight = $('#' + statBarId )[0].scrollHeight;
+        dcheight = $('#' + statBarId)[0].clientHeight;
+        // Scroll down so gif shows
+        $('#' + statBarId ).scrollTop(scrheight-dcheight);
+    }
+
     $('#' + statBarId).show();                    // Show status bar
     $('#' + statBarId + ' img').show();           // Show loader
     $('#' + statBarId + ' p').remove();           // Clear status bar
@@ -2224,7 +2797,7 @@ function runScript(inst) {
     // Disable all fields
     $('#' + tabId + ' input').attr('disabled', 'true');
     $('#' + tabId + ' textarea').attr('disabled', 'true');
-    
+
     // Disable buttons
     $('#' + tabId + ' button').attr('disabled', 'true');
 
@@ -2246,7 +2819,7 @@ function runScript(inst) {
 
 /**
  * Get an attribute of a given node
- * 
+ *
  * @param node The node
  * @param attrName The attribute
  * @return The attribute of the node
@@ -2257,7 +2830,7 @@ function getNodeAttr(node, attrName) {
 
     // Search for the column containing the attribute
     var attrCol;
-    
+
     var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
     // Loop through each column
     for (var i in cols) {
@@ -2267,7 +2840,7 @@ function getNodeAttr(node, attrName) {
             break;
         }
     }
-    
+
     // If the column containing the attribute is found
     if (attrCol) {
         // Get the attribute column index
@@ -2283,7 +2856,7 @@ function getNodeAttr(node, attrName) {
 
 /**
  * Set a cookie for the OS images
- * 
+ *
  * @param data Data from HTTP request
  */
 function setOSImageCookies(data) {
@@ -2298,7 +2871,7 @@ function setOSImageCookies(data) {
     var profilePos = 0;
     var osversPos = 0;
     var osarchPos = 0;
-    
+
     // Get column value
     var colNameArray = rsp[0].substr(1).split(',');
     for (var i in colNameArray){
@@ -2319,7 +2892,7 @@ function setOSImageCookies(data) {
                 break;
         }
     }
-    
+
     // Go through each index
     for (var i = 1; i < rsp.length; i++) {
         // Get image name
@@ -2328,7 +2901,7 @@ function setOSImageCookies(data) {
         var profile = cols[profilePos].replace(new RegExp('"', 'g'), '');
         var osVer = cols[osversPos].replace(new RegExp('"', 'g'), '');
         var osArch = cols[osarchPos].replace(new RegExp('"', 'g'), '');
-        
+
         imageNames.push(osImage);
         profilesHash[profile] = 1;
         osVersHash[osVer] = 1;
@@ -2362,7 +2935,7 @@ function setOSImageCookies(data) {
 
 /**
  * Set a cookie for the groups
- * 
+ *
  * @param data Data from HTTP request
  */
 function setGroupsCookies(data) {
@@ -2372,17 +2945,17 @@ function setGroupsCookies(data) {
 
 /**
  * Find the row index containing a column with a given string
- * 
+ *
  * @param str String to search for
  * @param table Table to check
  * @param col Column to find string under
  * @return The row index containing the search string
  */
-function findRow(str, table, col){    
+function findRow(str, table, col){
     // Get datatable
     var dTable = $(table).dataTable();
     var rows = dTable.fnGetData();
-    
+
     // Loop through each row
     for (var i in rows) {
         // If the column contains the search string
@@ -2390,13 +2963,13 @@ function findRow(str, table, col){
             return parseInt(i);
         }
     }
-    
+
     return -1;
 }
 
 /**
  * Select all checkboxes in the datatable
- * 
+ *
  * @param event Event on element
  * @param obj Object triggering event
  */
@@ -2411,7 +2984,7 @@ function selectAllCheckbox(event, obj) {
 
 /**
  * Load rcons page
- * 
+ *
  * @param tgtNodes Targets to run rcons against
  */
 function loadRconsPage(tgtNodes){
@@ -2419,25 +2992,25 @@ function loadRconsPage(tgtNodes){
     var urlPath = window.location.pathname;
     var redirectUrl = 'https://';
     var pos = 0;
-    
+
     // We only support one node
     if (-1 != tgtNodes.indexOf(',')){
         alert("You can only open one console at a time!");
         return;
     }
-    
+
     redirectUrl += hostName;
     pos = urlPath.lastIndexOf('/');
     redirectUrl += urlPath.substring(0, pos + 1);
     redirectUrl += 'rcons.php';
-    
+
     // Open the rcons page
     window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=590,height=436");
 }
 
 /**
  * Create a tool tip for comments
- * 
+ *
  * @param comment Comments to be placed in a tool tip
  * @return Tool tip
  */
@@ -2454,7 +3027,7 @@ function createCommentsToolTip(comment) {
         'border': '0px',
         'display': 'block'
     });
-    
+
     // Create links to save and cancel changes
     var lnkStyle = {
         'color': '#58ACFA',
@@ -2463,17 +3036,17 @@ function createCommentsToolTip(comment) {
         'padding': '5px',
         'float': 'right'
     };
-    
+
     var saveLnk = $('<a>Save</a>').css(lnkStyle).hide();
     var cancelLnk = $('<a>Cancel</a>').css(lnkStyle).hide();
     var infoSpan = $('<span>Click to edit</span>').css(lnkStyle);
-    
+
     // Save changes onclick
     saveLnk.bind('click', function(){
         // Get node and comment
         var node = $(this).parent().parent().find('img').attr('id').replace('Tip', '');
         var comments = $(this).parent().find('textarea').val();
-        
+
         // Save comment
         $.ajax( {
             url : 'lib/cmd.php',
@@ -2484,45 +3057,45 @@ function createCommentsToolTip(comment) {
                 args : '-t;node;-o;' + node + ';usercomment=' + comments,
                 msg : 'out=nodesTab;tgt=' + node
             },
-            
+
             success: showChdefOutput
         });
-        
+
         // Hide cancel and save links
         $(this).hide();
         cancelLnk.hide();
     });
-        
+
     // Cancel changes onclick
     cancelLnk.bind('click', function(){
         // Get original comment and put it back
         var orignComments = $(this).parent().find('textarea').text();
         $(this).parent().find('textarea').val(orignComments);
-        
+
         // Hide cancel and save links
         $(this).hide();
         saveLnk.hide();
         infoSpan.show();
     });
-    
+
     // Show save link when comment is edited
     txtArea.bind('click', function(){
         saveLnk.show();
         cancelLnk.show();
         infoSpan.hide();
     });
-        
+
     toolTip.append(txtArea);
     toolTip.append(cancelLnk);
     toolTip.append(saveLnk);
     toolTip.append(infoSpan);
-    
+
     return toolTip;
 }
 
 /**
  * Create a tool tip for node status
- * 
+ *
  * @return Tool tip
  */
 function createStatusToolTip() {
@@ -2531,19 +3104,19 @@ function createStatusToolTip() {
         'width': '150px',
         'font-weight': 'normal'
     });
-    
+
     // Create info text
     var info = $('<p></p>').css({
         'white-space': 'normal'
     });
     info.append('Click here to refresh the node status. To configure the xCAT monitor, ');
-    
+
     // Create link to turn on xCAT monitoring
     var monitorLnk = $('<a>click here</a>').css({
         'color': '#58ACFA',
         'font-size': '10px'
     });
-    
+
     // Open dialog to configure xCAT monitor
     monitorLnk.bind('click', function(){
         // Check if xCAT monitor is enabled
@@ -2560,16 +3133,16 @@ function createStatusToolTip() {
             success : openConfXcatMon
         });
     });
-    
+
     info.append(monitorLnk);
     toolTip.append(info);
-    
+
     return toolTip;
 }
 
 /**
  * Create a tool tip for power status
- * 
+ *
  * @return Tool tip
  */
 function createPowerToolTip() {
@@ -2584,7 +3157,7 @@ function createPowerToolTip() {
 
 /**
  * Create a tool tip for monitoring status
- * 
+ *
  * @return Tool tip
  */
 function createMonitorToolTip() {
@@ -2593,13 +3166,13 @@ function createMonitorToolTip() {
         'width': '150px',
         'white-space': 'normal',
         'font-weight': 'normal'
-    });    
+    });
     return toolTip;
 }
 
 /**
  * Open dialog to configure xCAT monitor
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function openConfXcatMon(data) {
@@ -2607,12 +3180,12 @@ function openConfXcatMon(data) {
     var info = createInfoBar('Configure the xCAT monitor. Select to enable or disable the monitor below.');
     var dialog = $('<div></div>');
     dialog.append(info);
-    
+
     // Create status area
     var statusArea = $('<div></div>').css('padding-top', '10px');
     var label = $('<label>Status:</label>');
     statusArea.append(label);
-    
+
     // Get xCAT monitor status
     var status = data.rsp[0];
     var buttons;
@@ -2620,7 +3193,7 @@ function openConfXcatMon(data) {
     if (status.indexOf('not-monitored') > -1) {
         status = $('<span>Disabled</span>').css('padding', '0px 5px');
         statusArea.append(status);
-        
+
         // Create enable and cancel buttons
         buttons = {
             "Enable": function(){
@@ -2634,21 +3207,21 @@ function openConfXcatMon(data) {
                         args : 'xcatmon',
                         msg : ''
                     },
-    
+
                     success : function(data){
                         openDialog('info', data.rsp[0]);
                     }
                 });
                 $(this).dialog("close");
             },
-            "Cancel": function(){ 
+            "Cancel": function(){
                 $(this).dialog("close");
             }
         };
     } else {
         status = $('<span>Enabled</span>').css('padding', '0px 5px');
         statusArea.append(status);
-        
+
         // Create disable and cancel buttons
         buttons = {
             "Disable": function(){
@@ -2662,21 +3235,21 @@ function openConfXcatMon(data) {
                         args : 'xcatmon',
                         msg : ''
                     },
-    
+
                     success : function(data){
                         openDialog('info', data.rsp[0]);
                     }
                 });
                 $(this).dialog("close");
             },
-            "Cancel": function(){ 
+            "Cancel": function(){
                 $(this).dialog("close");
             }
         };
     }
-    
+
     dialog.append(statusArea);
-    
+
     // Open dialog
     dialog.dialog({
         modal: true,
@@ -2687,7 +3260,7 @@ function openConfXcatMon(data) {
 
 /**
  * Show chdef output
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function showChdefOutput(data) {
@@ -2696,7 +3269,7 @@ function showChdefOutput(data) {
     var args = data.msg.split(';');
     var tabID = args[0].replace('out=', '');
     var tgt = args[1].replace('tgt=', '');
-    
+
     // Find info bar on nodes tab, if any
     var info = $('#' + tabID).find('.ui-state-highlight');
     if (!info.length) {
@@ -2704,25 +3277,25 @@ function showChdefOutput(data) {
         info = createInfoBar('');
         $('#' + tabID).append(info);
     }
-        
+
     // Go through output and append to paragraph
     var prg = $('<p></p>');
     for (var i in out) {
         prg.append(tgt + ': ' + out[i] + '<br>');
     }
-    
+
     info.append(prg);
 }
 
 /**
  * Set node attributes
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function setNodeAttrs(data) {
     // Clear hash table containing definable node attributes
     nodeAttrs = new Array();
-    
+
     // Get definable attributes
     var attrs = data.rsp[2].split(/\n/);
 
@@ -2730,7 +3303,7 @@ function setNodeAttrs(data) {
     var attr, key, descr;
     for (var i in attrs) {
         attr = attrs[i];
-        
+
         // If the line is not empty
         if (attr) {
             // If the line has the attribute name
@@ -2738,16 +3311,16 @@ function setNodeAttrs(data) {
                 // Get attribute name and description
                 key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
                 descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
-                
+
                 // Remove arrow brackets
                 descr = descr.replace(new RegExp('<|>', 'g'), '');
-                
+
                 // Set hash table where key = attribute name and value = description
                 nodeAttrs[key] = descr;
             } else {
                 // Remove arrow brackets
                 attr = attr.replace(new RegExp('<|>', 'g'), '');
-                
+
                 // Append description to hash table
                 nodeAttrs[key] = nodeAttrs[key] + '\n' + attr;
             }
@@ -2755,9 +3328,368 @@ function setNodeAttrs(data) {
     } // End of for
 }
 
+
+/**
+ * Load the discover z/VM virtual systems page
+ *
+ * @param tgtNode Target node to set properties
+ */
+function discoverVMNodes(tgtNodes) {
+    var fs, legend, htmlLine;
+
+    // Get nodes tab
+    var tab = getNodesTab();
+
+    // Generate new tab ID
+    var inst = 0;
+    var newTabId = 'discoverVMNodesTab' + inst;
+    while ($('#' + newTabId).length) {
+        // If one already exists, generate another one
+        inst = inst + 1;
+        newTabId = 'discoverVMNodesTab' + inst;
+    }
+
+    // Open new tab
+    // Create set properties form
+    var discoverVMNodesForm = $('<div class="form"></div>');
+
+    // Create info bar
+    var infoBar = createInfoBar( 'Initiate, stop or query the status of z/VM node discovery. ' +
+        'To initiate discovery, specify discovery parameters and click on the Discover button. ' +
+        'To stop an on-going discovery related to a z/VM host, specify the host node name and '+
+        'click on the Stop button. ' +
+        'To obtain the status of discovery for a particular host, specify the host node name and '+
+        'click on the Stop button.'
+        );
+    discoverVMNodesForm.append(infoBar);
+
+    // Create the status bar and hide it.
+    var statBarId = 'statusBar_' + newTabId;
+    //var statBar = $( '<div id="'+statBarId+'"></div>' );
+    //discoverVMNodesForm.append( statBar );
+    statBar = createStatusBar( statBarId );
+    statBar.hide();
+    discoverVMNodesForm.append( statBar );
+
+    // Create Host fieldset
+    fs = $('<fieldset></fieldset>');
+    legend = $('<legend>z/VM Host</legend>');
+    fs.append(legend);
+    discoverVMNodesForm.append(fs);
+
+    // Target node or group
+    htmlLine = $('<div><label>z/VM host range:</label><input type="text" name="hosts" value="' + tgtNodes + '" title="The node or node range of the z/VM hosts to run discovery."/></div>');
+    discoverVMNodesForm.append( htmlLine );
+
+    // Create Discovery Parameters fieldset
+    fs = $('<fieldset></fieldset>');
+    legend = $('<legend>Discovery Parameters</legend>');
+    fs.append( legend );
+    discoverVMNodesForm.append( fs );
+
+    // Create an input for each definable attribute
+    var div, label, input, descr, value;
+
+    // Define DefineTo radio buttons
+    div = $('<div></div>').css( 'display', 'inline-block' ).css( 'vertical-align', 'top' );
+    div.append( '<label>Define systems to:</label>' );
+    div.append( '<li><input type="radio" value="both" name="defineTo" checked>xCAT and OpenStack</li>' );
+    div.append( '<li><input type="radio" value="xcatonly" name="defineTo">xCAT only</li>' );
+    div.append( '<li><input type="radio" value="openstackonly" name="defineTo">OpenStack only (only already discovered xCAT nodes)</li>' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // Userid filter
+    divUserid = newTabId + "_divUserid";
+    div = $('<div id=' + divUserid + '></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' );
+    div.append( '<label>z/VM Userid Filter:</label>' );
+    div.append( '<input type="text" size="80" title="Regular expression indicating z/VM userids to be considered for discovery.  For example: &quot;virt1|virt2|lnx.*&quot; selects userids: virt1, virt2 and any userid beginning with lnx" placeholder="z/VM userid filter information" value="" name="useridFilter">' ).css( 'margin-top', '5px' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // IP address filter
+    divIP = newTabId + "_divIP";
+    div = $('<div id=' + divIP + '></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' );
+    div.append( '<label>IP Address Filter:</label>' );
+    div.append( '<input type="text" size="80" title="Regular expression indicating IP addresses to be considered for discovery.  For example: &quot;9.47.45..*|10.10.10..*&quot; selects IP addresses in the 9.47.45.xxx subnet and the 10.10.10.xxx subnet." placeholder="IP address filter information" value="" name="ipFilter">' ).css( 'margin-top', '5px' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // Group name input
+    divGroup = newTabId + '_divGroup';
+    div = $('<div id=' + divGroup + '></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' );
+    div.append( '<label>Assign to group(s):</label>' );
+    div.append( '<input type="text" title="The group ID or IDs to assign to the discovered nodes." placeholder="group IDs" value="all" name="group">' ).css( 'margin-top', '5px' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // Node Name Format input
+    divNodename = newTabId + '_divNodename';
+    div = $('<div id=' + divNodename + '></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' );
+    div.append( '<label>xCAT node name format:</label>' );
+    div.append( '<input type="text" size="40" title="The node name format to be used by xCAT when assigning a name to the discovered systems." placeholder="Nodename template, e.g. node#NNN" value="" name="nodeNameFmt">' ).css( 'margin-top', '5px' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+    discoverVMNodesForm.find('#' + divNodename).hide();
+
+    // OpenStack operand input
+    divOpenStackOps = newTabId + '_divOpenStackOps';
+    div = $('<div id=' + divOpenStackOps + '></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' );
+    div.append( '<label>Assign to OpenStack Project:</label>' );
+    div.append( '<input type="text" title="The OpenStack project to assign the instances." placeholder="OpenStack project" value="" name="openStackProj">' ).css( 'margin-top', '5px' );
+    div.append( '<br>' );
+    div.append( '<label>Assign to OpenStack User:</label>' );
+    div.append( '<input type="text" title="The OpenStack user to assign the instances." placeholder="OpenStack user" value="" name="openStackUser">' ).css( 'margin-top', '5px' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // Define Verbose radio buttons
+    div = $('<div></div>').css( 'display', 'inline-table' ).css( 'vertical-align', 'top' ).css( 'text-align', 'top' );
+    div.append( '<label>Node discovery output:</label>' );
+    div.append( '<li><input type="radio" value="no" name="verbose" checked>Normal response, showing only important information</li>' );
+    div.append( '<li><input type="radio" value="yes" name="verbose">Verbose response, normal response plus additional information (e.g. reason a system is ignored)</li>' );
+    discoverVMNodesForm.append( div );
+    discoverVMNodesForm.append( '<br>' );
+
+    // Generate tooltips
+    discoverVMNodesForm.find('div input[title]').tooltip({
+        position: "center right",
+        offset: [-2, 10],
+        effect: "fade",
+        opacity: 0.8,
+        delay: 0,
+        predelay: 800,
+        events: {
+              def:     "mouseover,mouseout",
+              input:   "mouseover,mouseout",
+              widget:  "focus mouseover,blur mouseout",
+              tooltip: "mouseover,mouseout"
+        }
+    });
+
+    // Show appropriate input fields for defineto choices.
+    discoverVMNodesForm.change(function(){
+          var defineTo = $(this).parent().find('input[name="defineTo"]:checked').val();
+          if ( defineTo == 'both' ) {
+              discoverVMNodesForm.find('#' + divUserid).show();
+              discoverVMNodesForm.find('#' + divIP).show();
+              discoverVMNodesForm.find('#' + divGroup).show();
+              discoverVMNodesForm.find('#' + divOpenStackOps).show();
+              discoverVMNodesForm.find('#' + divNodename).hide();
+          } else if ( defineTo == 'xcatonly' ) {
+              discoverVMNodesForm.find('#' + divUserid).show();
+              discoverVMNodesForm.find('#' + divIP).show();
+              discoverVMNodesForm.find('#' + divGroup).show();
+              discoverVMNodesForm.find('#' + divOpenStackOps).hide();
+              discoverVMNodesForm.find('#' + divNodename).show();
+          } else if ( defineTo == 'openstackonly' ) {
+              discoverVMNodesForm.find('#' + divUserid).hide();
+              discoverVMNodesForm.find('#' + divIP).hide();
+              discoverVMNodesForm.find('#' + divGroup).hide();
+              discoverVMNodesForm.find('#' + divOpenStackOps).show();
+              discoverVMNodesForm.find('#' + divNodename).hide();
+          }
+    });
+
+
+    // Discover nodes button action
+    var discoverBtn = createButton('Discover');
+    discoverBtn.click(function() {
+        var argList = '';
+        var filter = '';
+
+        var hosts = $(this).parent().find('input[name=hosts]').val();
+        if ( hosts != '' ) {
+            argList = 'zvmhost=' + hosts;
+        }
+
+        var defineTo = $(this).parent().find('input[name="defineTo"]:checked').val();
+        argList = argList + '||defineto=' + defineTo;
+
+        var verbose = $(this).parent().find('input[name="verbose"]:checked').val();
+        if ( verbose == 'yes' ) {
+            argList = argList + '||--verbose';
+        }
+
+        var useridFilter = $(this).parent().find('input[name=useridFilter]').val();
+        if (( defineTo == 'both' || defineTo == 'xcatonly' ) && ( useridFilter != '' )) {
+            argList = argList + '||useridfilter=' + useridFilter;
+        }
+
+        var ipFilter = $(this).parent().find('input[name=ipFilter]').val();
+        if (( defineTo == 'both' || defineTo == 'xcatonly' ) && ( ipFilter != '' )) {
+            argList = argList + '||ipfilter=' + ipFilter;
+        }
+
+        var group = $(this).parent().find('input[name=group]').val();
+        if (( defineTo == 'both' || defineTo == 'xcatonly' ) && ( group != '' )) {
+            argList = argList + '||groups=' + group;
+        }
+
+        var nodeNameFmt = $(this).parent().find('input[name=nodeNameFmt]').val();
+        if ( defineTo == 'xcatonly' &&  nodeNameFmt != '' ) {
+            argList = argList + '||nodenameformat=' + nodeNameFmt;
+        }
+
+        var openStackProj = $(this).parent().find('input[name=openStackProj]').val();
+        var openStackUser = $(this).parent().find('input[name=openStackUser]').val();
+        if ((( defineTo == 'both' ) || ( defineTo == 'openstackonly' )) &&
+            (( openStackProj != '' ) || ( openStackUser != '' ))) {
+            if ( openStackProj != '' ) {
+                osArgs = '--project ' + openStackProj;
+            } else {
+                osArgs = '';
+            }
+            if ( openStackUser != '' ) {
+                if ( osArgs != '' ) {
+                    osArgs = osArgs + ' --user ' + openStackUser;
+                } else {
+                    osArgs = '--user ' + openStackUser;
+                }
+            }
+            argList = argList + "||openstackoperands='" + osArgs + "'";
+        }
+
+        var out = $('<p></p>');
+        out.append( 'Starting node discovery...' );
+        out.append( '<br>' );
+        out.append( 'If node discovery is a short running task then its response will follow.  If, however, the time it takes to complete discovery exceeds the http request timeout of a few minutes then the discovery response will not be returned to the browser.  The status and list buttons can be used to obtained status on the discovery and see what systems have been discovered.' );
+        $( '#' + statBarId ).find( 'div' ).append( out );
+        statBar.show();
+
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'nodediscoverstart',
+                tgt  : '',
+                args : argList,
+                att  : '',
+                msg  : statBarId
+            },
+            success: function(data) {
+                updateDiscoverStatusBar( data, 1 );
+            }
+        });
+
+    });
+    discoverVMNodesForm.append(discoverBtn);
+
+    // Status button
+    var statusBtn = createButton('Status');
+    statusBtn.click( function() {
+        var hosts = $(this).parent().find('input[name=hosts]').val();
+        var out = $('<p></p>');
+        out.append( 'Querying status for discovery on ' + hosts + '...' );
+        out.append( '<br>' );
+        $( '#' + statBarId ).find( 'div' ).append( out );
+
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'nodediscoverstatus',
+                tgt  : '',
+                args : '--zvmhost||' + hosts,
+                att  : '',
+                msg  : statBarId
+            },
+            success: function(data) {
+                updateDiscoverStatusBar( data, 1 );
+            }
+        });
+
+    });
+    discoverVMNodesForm.append( statusBtn );
+
+    // List button
+    var listBtn = createButton('List');
+    listBtn.click( function() {
+        var hosts = $(this).parent().find('input[name=hosts]').val();
+        var out = $('<p></p>');
+        out.append( 'Listing systems discovered by the latest discovery on ' + hosts + '...' );
+        out.append( '<br>' );
+        $( '#' + statBarId ).find( 'div' ).append( out );
+
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'nodediscoverls',
+                tgt  : '',
+                args : '-t||zvm||--zvmhost||' + hosts,
+                att  : '',
+                msg  : statBarId
+            },
+            success: function(data) {
+                updateDiscoverStatusBar( data, 1 );
+            }
+        });
+    });
+    discoverVMNodesForm.append( listBtn );
+
+    // Stop button
+    var stopBtn = createButton('Stop');
+    stopBtn.click(function() {
+        var hosts = $(this).parent().find('input[name=hosts]').val();
+        var out = $('<p></p>');
+        out.append( 'Stopping discovery on ' + hosts + '...' );
+        out.append( '<br>' );
+        $( '#' + statBarId ).find( 'div' ).append( out );
+
+        $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd  : 'nodediscoverstop',
+                tgt  : '',
+                args : '--zvmhost||' + hosts,
+                att  : '',
+                msg  : statBarId
+            },
+            success: function(data) {
+                updateDiscoverStatusBar( data, 1 );
+            }
+        });
+    });
+    discoverVMNodesForm.append( stopBtn );
+
+    // Append to discover tab
+    tab.add(newTabId, 'Discover', discoverVMNodesForm, true);
+
+    // Select new tab
+    tab.select(newTabId);
+}
+
+
+/**
+ * Update discovery status bar
+ *
+ * @param data Data returned from HTTP request
+ */
+function updateDiscoverStatusBar( data, preformatted ) {
+    var statBarId = data.msg;
+    var rsp = data.rsp;
+    var statBar = $( '#' + statBarId );
+
+    // Go through response to make it readable in the status bar.
+    var out = $('<p></p>');
+    for ( var i in rsp ) {
+        if ( preformatted == 1 ) {
+            out.append( '<pre>' + rsp[i] + '</pre>' );
+        } else {
+            out.append( rsp[i] + '<br>' );
+        }
+    }
+
+    // Write response to status bar and show the bar.
+    $( '#' + statBarId ).find( 'div' ).append( out );
+    statBar.show();
+}
+
 /**
  * Load set node properties page
- * 
+ *
  * @param tgtNode Target node to set properties
  */
 function editNodeProps(tgtNode) {
@@ -2793,17 +3725,17 @@ function editNodeProps(tgtNode) {
         } else {
             value = '';
         }
-        
+
         // Create label and input for attribute
-        div = $('<div></div>').css('display', 'inline-table');        
+        div = $('<div></div>').css('display', 'inline-table');
         label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
         input = $('<input type="text" value="' + value + '" title="' + nodeAttrs[key] + '"/>').css('margin-top', '5px');
-        
+
         // Change border to blue onchange
         input.bind('change', function(event) {
             $(this).css('border-color', 'blue');
         });
-        
+
         div.append(label);
         div.append(input);
         editPropsForm.append(div);
@@ -2814,7 +3746,7 @@ function editNodeProps(tgtNode) {
         'display': 'block',
         'margin': '0px 0px 10px 0px'
     });
-    
+
     // Generate tooltips
     editPropsForm.find('div input[title]').tooltip({
         position: "center right",
@@ -2833,10 +3765,10 @@ function editNodeProps(tgtNode) {
 
     // Save changes
     var saveBtn = createButton('Save');
-    saveBtn.click(function() {    
+    saveBtn.click(function() {
         // Get all inputs
         var inputs = $('#' + newTabId + ' input');
-        
+
         // Go through each input
         var args = '';
         var attrName, attrVal;
@@ -2845,11 +3777,11 @@ function editNodeProps(tgtNode) {
             if ($(this).css('border-left-color') == 'rgb(0, 0, 255)') {
                 // Change border color back to normal
                 $(this).css('border-color', '');
-                
+
                 // Get attribute name and value
                 attrName = $(this).parent().find('label').text().replace(':', '');
                 attrVal = $(this).val();
-                
+
                 // Build argument string
                 if (args) {
                     // Handle subsequent arguments
@@ -2860,7 +3792,7 @@ function editNodeProps(tgtNode) {
                 }
             }
         });
-        
+
         // Send command to change node attributes
         $.ajax( {
             url : 'lib/cmd.php',
@@ -2876,7 +3808,7 @@ function editNodeProps(tgtNode) {
         });
     });
     editPropsForm.append(saveBtn);
-    
+
     // Cancel changes
     var cancelBtn = createButton('Cancel');
     cancelBtn.click(function() {
@@ -2903,33 +3835,33 @@ function openSetAttrsDialog() {
     // Create info bar
     var infoBar = createInfoBar('Choose the properties you wish to change on the node. When you are finished, click Save.');
     setPropsForm.append(infoBar);
-    
+
     // Create an input for each definable attribute
     var div, label, input, descr, value;
     for (var key in nodeAttrs) {
         value = '';
-        
+
         // Create label and input for attribute
         div = $('<div></div>').css('display', 'inline');
         label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
         input = $('<input type="text" value="' + value + '" title="' + nodeAttrs[key] + '"/>').css('margin-top', '5px');
-        
+
         // Change border to blue onchange
         input.bind('change', function(event) {
             $(this).css('border-color', 'blue');
         });
-        
+
         div.append(label);
         div.append(input);
         setPropsForm.append(div);
     }
-    
+
     // Change style for last division
     div.css({
         'display': 'block',
         'margin': '0px 0px 10px 0px'
     });
-    
+
     // Generate tooltips
     setPropsForm.find('div input[title]').tooltip({
         position: "center right",
@@ -2950,10 +3882,10 @@ function openSetAttrsDialog() {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Enable vertical scroll
     setPropsForm.css('overflow', 'auto');
-        
+
     // Open form as a dialog
     setPropsForm.dialog({
         title: 'Set attributes',
@@ -2967,10 +3899,10 @@ function openSetAttrsDialog() {
             "Save": function() {
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get all inputs
                 var inputs = $(this).find('input');
-                
+
                 // Go through each input
                 var args = '';
                 var tgtNode, attrName, attrVal;
@@ -2979,11 +3911,11 @@ function openSetAttrsDialog() {
                     if ($(this).css('border-left-color') == 'rgb(0, 0, 255)') {
                         // Change border color back to normal
                         $(this).css('border-color', '');
-                        
+
                         // Get attribute name and value
                         attrName = $(this).parent().find('label').text().replace(':', '');
                         attrVal = $(this).val();
-                        
+
                         // Get node name
                         if (attrName == 'node') {
                             tgtNode = attrVal;
@@ -2999,7 +3931,7 @@ function openSetAttrsDialog() {
                         }
                     }
                 });
-                
+
                 // Send command to change node attributes
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -3013,7 +3945,7 @@ function openSetAttrsDialog() {
 
                     /**
                      * Show results
-                     * 
+                     *
                      * @param data
                      *            Data returned from HTTP request
                      * @return Nothing
@@ -3022,7 +3954,7 @@ function openSetAttrsDialog() {
                         // Get output
                         var out = data.rsp;
                         var node = data.msg.replace('node=', '');
-                        
+
                         // Go through output and append to paragraph
                         var msg = '';
                         for (var i in out) {
@@ -3032,11 +3964,11 @@ function openSetAttrsDialog() {
                                 msg += '<br>' + node + ': ' + out[i];
                             }
                         }
-                        
+
                         openDialog('info', msg);
                     }
                 });
-                
+
                 // Close dialog
                 $(this).dialog( "close" );
             },
@@ -3049,7 +3981,7 @@ function openSetAttrsDialog() {
 
 /**
  * Turn on monitoring for a given node
- * 
+ *
  * @param node Node to monitor on or off
  * @param monitor Monitor state, on or off
  */
@@ -3057,7 +3989,7 @@ function monitorNode(node, monitor) {
     // Show ganglia loader
     var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
     gangliaCol.find('img').show();
-    
+
     if (monitor == 'on') {
         // Append loader to warning bar
         var warningBar = $('#nodesTab').find('.ui-state-error p');
@@ -3079,7 +4011,7 @@ function monitorNode(node, monitor) {
 
                 /**
                  * Start ganglia on a given node range
-                 * 
+                 *
                  * @param data Data returned from HTTP request
                  */
                 success : function(data) {
@@ -3093,7 +4025,7 @@ function monitorNode(node, monitor) {
                         // If an RPM is not installed
                         if (out[i].indexOf('not installed') > -1) {
                             warn = true;
-                            
+
                             if (warningMsg) {
                                 warningMsg += '<br>' + out[i];
                             } else {
@@ -3101,7 +4033,7 @@ function monitorNode(node, monitor) {
                             }
                         }
                     }
-                    
+
                     // If there are warnings
                     if (warn) {
                         // Create warning bar
@@ -3122,7 +4054,7 @@ function monitorNode(node, monitor) {
                             success : function(data) {
                                 // Remove any warnings
                                 $('#nodesTab').find('.ui-state-error').remove();
-                                                                
+
                                 // Update datatable
                                 $.ajax( {
                                     url : 'lib/cmd.php',
@@ -3187,20 +4119,20 @@ function monitorNode(node, monitor) {
 
 /**
  * Install Ganglia on a given node
- * 
+ *
  * @param node Node to install Ganglia on
  */
 function installGanglia(node) {
     var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
     iframe.prependTo($('#nodesTab'));
-    
+
     // Turn on Ganglia for node
     monitorNode(node, 'on');
 }
 
 /**
- * After nodes are loaded, load more information based on different hardware architectures 
- * 
+ * After nodes are loaded, load more information based on different hardware architectures
+ *
  * @param group Group name
  */
 function advancedLoad(group){
@@ -3209,7 +4141,7 @@ function advancedLoad(group){
     var colNameHash = new Object();
     var colName = '';
     var archCol = 0, hcpCol = 0;
-    
+
     // Find out the column name and their index
     for (tempIndex = 0; tempIndex < tableHeaders.size(); tempIndex++){
         var header = tableHeaders.eq(tempIndex);
@@ -3217,25 +4149,25 @@ function advancedLoad(group){
         if (header.find('a').size() > 0){
             continue;
         }
-        
+
         colName = header.text();
-        
+
         if (colName) {
             colNameHash[colName] = tempIndex;
         }
     }
-    
+
     // If there is no arch column, exit because you cannot distinguish hardware type
     if (!colNameHash['arch']) {
         return;
     }
-    
+
     if (!colNameHash['hcp']) {
         return;
     }
     archCol = colNameHash['arch'];
     hcpCol = colNameHash['hcp'];
-    
+
     // Get hardware control point
     var rows = $('#' + nodesTableId + ' tbody tr');
     var hcps = new Object();
@@ -3249,13 +4181,26 @@ function advancedLoad(group){
         hcps[val] = 1;
     }
 
+    if (Object.keys(hcps).length == 0) {
+        openDialog('warn', "No node found with hcp column filled in and 390 arch!");
+        return;
+    }
+    // Get Nodes info bar
+    //var nodeInfoBar = getNodesTabInfoBar();
+    //nodeInfoBar.append("\nEntering Advanced Load...\n")
+
     var args;
     var shortzHcps = new Array();
+    var zhcpHash = new Object();
     for (var h in hcps) {
         // Get node without domain name
         args = h.split('.');
-        shortzHcps.push(args[0]);
-        
+
+        if (!zhcpHash[args[0]]) {
+
+            shortzHcps.push(args[0]);
+            zhcpHash[args[0]] = 1;
+
         // If there are no disk pools or network names cookie for this hcp
         if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
             // Check if SMAPI is online
@@ -3273,12 +4218,13 @@ function advancedLoad(group){
                 // Get disk pools and network names
                 success : loadHcpInfo
             });
+            }
         }
     } // End of for
-    
+
     // Save zHCPs as a cookie
     setzHcpCookies(shortzHcps);
-    
+
     // Retrieve z/VM hypervisors and their zHCPs
     if (!$.cookie('zvms')) {
         $.ajax( {
@@ -3300,7 +4246,7 @@ function advancedLoad(group){
 
 /**
  * Jump to provision page on-click
- * 
+ *
  * @param tgtNodes Target nodes
  */
 function jump2Provision(tgtNodes){
@@ -3313,21 +4259,21 @@ function jump2Provision(tgtNodes){
     var tftpserver = '';
     var nfsserver = '';
     var diaDiv = $('<div title="Provision" class="form" id="deployDiv"></div>');
-    
+
     // Check the first node's arch type
     for (index in nodeArray){
         nodeName = nodeArray[index];
-        
+
         // Skip if node does not have arch
         if (!origAttrs[nodeName]['arch']){
             errorMsg = 'Nodes should have arch defined! ';
             break;
         }
-        
+
         if (index == 0) {
             archType = origAttrs[nodeName]['arch'];
         }
-        
+
         // Skip if nodes do not have same arch
         if (archType != origAttrs[nodeName]['arch']){
             errorMsg = 'Nodes should belong to the same arch!<br/>';
@@ -3342,11 +4288,11 @@ function jump2Provision(tgtNodes){
             break;
         }
     }
-    
+
     if (archType.indexOf('390') != -1) {
         errorMsg += 'Please use the provision page';
     }
-    
+
     // Open dialog to show error message
     if (errorMsg){
         diaDiv.append(createWarnBar(errorMsg));
@@ -3362,22 +4308,22 @@ function jump2Provision(tgtNodes){
                 }
             }
         });
-        
+
         return;
     }
-    
+
     if (origAttrs[nodeName]['xcatmaster']) {
         master = origAttrs[nodeName]['xcatmaster'];
     }
-    
+
     if (origAttrs[nodeName]['tftpserver']) {
         tftpserver = origAttrs[nodeName]['tftpserver'];
     }
-    
+
     if (origAttrs[nodeName]['nfsserver']) {
         nfsserver = origAttrs[nodeName]['nfsserver'];
     }
-    
+
     window.location.href = 'provision.php?nodes=' + tgtNodes + '&arch=' + archType + '&master=' + master +
                            '&tftpserver=' + tftpserver + '&nfsserver=' + nfsserver;
 }
