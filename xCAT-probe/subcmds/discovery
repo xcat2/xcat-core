@@ -284,6 +284,86 @@ sub check_genesis_file {
 sub dhcp_dynamic_range_check {
     my $nets = shift;
     my $rst  = 0;
+
+    my $dhcpconfig = "/etc/dhcp/dhcpd.conf";
+    my $os = probe_utils->get_os();
+
+    if ($os =~ "unknown") {
+        probe_utils->send_msg("$output", "d", "The OS is not supported.") if ($verbose);
+        return 1;
+    } elsif ($os =~ "ubuntu") {
+        if (! -e "/etc/dhcp") {
+            $dhcpconfig = "/etc/dhcp3/dhcpd.conf";
+        }
+    }
+
+    my $config_line;
+    my $net_ip;
+    my $net_mask;
+    my $is_match;
+    my $dynamic_range;
+    my $net_file;
+    my $arch = `uname -i`;
+    chomp($arch);
+    my $tftpdir = `tabdump site | grep "tftpdir" | awk -F "," '{print \$2}'`;
+    chomp($tftpdir);
+    $tftpdir =~ s/"//g;
+
+    foreach $net (@$nets){
+        ($net_ip, $net_mask) = split ('/', $net);
+        $net_str = "subnet $net_ip netmask $net_mask";
+
+        $is_match = 0;
+        $dynamic_range = "";
+
+        unless (open (FILE, $dhcpconfig)) {
+            probe_utils->send_msg("$output", "d", "Cannot open file $dhcpconfig.") if ($verbose);
+            return 1;
+        }
+
+        while ($config_line  = <FILE>) {
+            chomp($config_line);
+            $config_line =~ s/^\s+|\s+$//g;
+
+            if ($config_line =~ /^$net_str/) {
+                $is_match = 1;
+                probe_utils->send_msg("$output", "d", "The net $net is matched.") if ($verbose);
+            }
+
+            if ($config_line =~ /subnet_end/) {
+                if ($is_match eq 0) {
+                    probe_utils->send_msg("$output", "d", "There is no subnet match net $net.") if ($verbose);
+                    $rst = 1;
+                    next;
+                }
+                unless ($dynamic_range) {
+                    probe_utils->send_msg("$output", "d", "Dynamic range for net $net did not be configured.") if ($verbose);
+                    $rst = 1;
+                }
+            }
+
+            if (($config_line =~ /^range dynamic-bootp/) and ($is_match eq 1)) {
+                my @range_tmp = split(' ', $config_line);
+                $dynamic_range = "$range_tmp[2]-$range_tmp[3]";
+                probe_utils->send_msg("$output", "d", "Dynamic range for net $net is $dynamic_range.") if ($verbose);
+            }
+        }
+
+        my $net_cdir = xCAT::NetworkUtils::formatNetmask($net_mask, 0, 1);
+        if ($arch =~ /ppc64/i) {
+            $net_file = "$tftpdir/pxelinux.cfg/p/$net_ip"."_$net_cdir";
+        } else {
+            $net_file = "$tftpdir/xcat/xnba/nets/$net_ip"."_$net_cdir.uefi";
+        }
+
+        if (-e "$net_file") {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net exists.") if ($verbose);
+        } else {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net dose not exist.") if ($verbose);
+            $rst = 1;
+        }
+    }
+
     return $rst;
 }
 
@@ -1001,7 +1081,7 @@ if (!$no_pre_check) {
     $rst = do_pre_check();
     exit 1 if ($rst);
 }
-
+exit;
 $rst = do_monitor();
 
 exit $rst;
