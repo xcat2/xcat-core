@@ -1,6 +1,6 @@
 # <the power LE kvm node definition template>
 
-ppc64lekvmguest:
+ppc64lekvmguest-template:
     objtype=node
     arch=ppc64le
     groups=all

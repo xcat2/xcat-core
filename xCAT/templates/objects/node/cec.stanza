@@ -1,6 +1,6 @@
 # <the cec definition template>
 
-cec:
+cec-template:
     objtype=node
     groups=cec,all
     hcp="MANDATORY:The hardware control point(HMC) for the node"
