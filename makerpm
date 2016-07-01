@@ -40,6 +40,12 @@ function makenoarch {
 				fi
 			fi 
 		fi
+                if [ $RPMNAME = "xCAT-probe" ]; then
+                    CURDIR=$(pwd)
+                    mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                fi
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
