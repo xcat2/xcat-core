@@ -28,6 +28,12 @@ if [[ $TFTPDIR != /* ]]; then
     TFTPDIR="/"$TFTPDIR
 fi
 
+
+(cat  << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
+EOF
+) >/tmp/updateflag
+
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
@@ -38,7 +44,7 @@ sleep $RAND
 # Stop if no openssl to help the next bit
 if [ ! -x /usr/bin/openssl ]; then
     msgutil_r "$MASTER_IP" "debug" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 
@@ -75,14 +81,14 @@ fi
 # Stop if no wget to help the next bit
 if [ ! -x /usr/bin/wget ]; then
     msgutil_r "$MASTER_IP" "debug" "/usr/bin/wget does not exist, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 
 wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost
 if [ "$?" != "0" ]; then
     msgutil_r "$MASTER_IP" "debug" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
@@ -126,7 +132,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
     # Stop if no getpostscript.awk to help the next bit
     if [ ! -x /xcatpost/getpostscript.awk ]; then
         msgutil_r "$MASTER_IP" "debug" "/xcatpost/getpostscript.awk does not exist, halt ..." "/var/log/xcat/xcat.log"
-        updateflag $MASTER $XCATIPORT "installstatus failed"
+        /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
         sleep 36500d
     fi
     /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
@@ -227,7 +233,7 @@ fi
 chmod +x /xcatpost/mypostscript
 if [ ! -x /xcatpost/mypostscript ]; then
     msgutil_r "$MASTER_IP" "debug" "generate mypostscript file failure, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 else
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
