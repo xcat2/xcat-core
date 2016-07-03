@@ -385,6 +385,16 @@ if [[ $OSVER == ubuntu* ]]; then
     elif [[ -r /boot/grub/grub.cfg ]] ; then
         update-grub
     fi
+    
+    #print the kernel messages and service start messages with systemd on the console during system bootup
+    [ -f /etc/default/grub ] && sed -i -e '/GRUB_CMDLINE_LINUX_DEFAULT=/s/quiet//;s/splash//' -e '/#GRUB_TERMINAL=/s/#//' -e 's/#GRUB_GFXMODE=.*/GRUB_GFXMODE=text/' /etc/default/grub && update-grub
+
+    if echo "$ARCH" | grep -i 'x86_64'; then
+        #grab the install-time console configuration from /proc/cmdline inside os installer
+        CONSOLECFG=$(awk 'BEGIN{RS="[ \n]" ;ORS=" "} $0 ~ /^console=/{print $0}' /proc/cmdline)
+        #if the console configuration is not applied to the grub configuration,apply it 
+        cat /boot/grub/grub.cfg |grep "$CONSOLECFG" >/dev/null 2>&1 || ([ -f /etc/default/grub ] && sed -i -e "/GRUB_CMDLINE_LINUX_DEFAULT=/s/=\"/=\" $CONSOLECFG /" /etc/default/grub && update-grub)
+    fi 
     if echo "$ARCH" | grep -i 'ppc64'; then
         if [ -z "$CONSOLEPORT" ] ; then
             export CONSOLEPORT=0
