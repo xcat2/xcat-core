@@ -736,7 +736,8 @@ function add_repo_by_url_yum_or_zypper()
 			enabled=1
 			gpgcheck=0
 			EOF
-			url="${tmp}"
+			add_repo_by_file "${tmp}" "${repo_id}"
+			return "$?"
 			;;
 		esac
 		;;
@@ -804,7 +805,8 @@ function add_repo_by_url_apt()
 		*) # assume it is the base url of the repo
 			tmp="${TMP_DIR}/tmp_repo.list"
 			echo "deb [arch=$(dpkg --print-architecture)] ${url} ${codename} main" >"${tmp}"
-			url="${tmp}"
+			add_repo_by_file_apt "${tmp}" "${repo_id}"
+			return "$?"
 			;;
 		esac
 		;;
