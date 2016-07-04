@@ -288,12 +288,12 @@ EXAMPLES
 
 13
  
- To create a PowerLE kvm node definition with the xCAT shipped template "powerLEkvm".
+ To create a PowerLE kvm node definition with the xCAT shipped template "ppc64lekvmguest-template".
  
  
  .. code-block:: perl
  
-   mkdef -t node cn1 --template powerLEkvm ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
+   mkdef -t node cn1 --template ppc64lekvmguest-template ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
  
  
 

@@ -399,12 +399,12 @@ EXAMPLES
 
 19.
  
- To display the details of "node" object definition template "powerLEnv" shipped in xCAT.
+ To display the details of "node" object definition template "ppc64le-template" shipped in xCAT.
  
  
  .. code-block:: perl
  
-   lsdef -t node --template powerLEnv
+   lsdef -t node --template ppc64le-template
  
  
 
