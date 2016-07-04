@@ -273,8 +273,8 @@ sub check_genesis_file {
         1. check if there are dynamic range for specific networks defineded in dhcp conf file
         2. check if these specific networks have corresponding genesis configuration 
     Arguments:
-        networks: A Comma separated list of networks. Every network is combined by network address and mask(i.e. network/mask).
-        For example: 10.0.0.0/255.0.0.0,50.1.0.0/255.255.0.0
+        networks: Array of networks. Every network is combined by network address and mask(i.e. network/mask).
+        For example: (10.0.0.0/255.0.0.0, 50.1.0.0/255.255.0.0)
     Returns:
         0 : pass
         1 : failed
@@ -284,6 +284,92 @@ sub check_genesis_file {
 sub dhcp_dynamic_range_check {
     my $nets = shift;
     my $rst  = 0;
+
+    my $dhcpconfig;
+    if (-e "/etc/dhcp/dhcpd.conf"){
+        $dhcpconfig = "/etc/dhcp/dhcpd.conf";
+    } elsif (-e "/etc/dhcp3/dhcpd.conf"){
+        $dhcpconfig = "/etc/dhcp3/dhcpd.conf";
+    } 
+
+    unless ($dhcpconfig) {
+        probe_utils->send_msg("$output", "d", "Cannot find the dhcpd.conf file.") if ($verbose);
+        return 1;
+    }
+
+    my $config_line;
+    my $subnet;
+    my $dynamic_range;
+    my %subnet_hash;
+
+    unless (open (FILE, $dhcpconfig)) {
+        probe_utils->send_msg("$output", "d", "Cannot open file $dhcpconfig.") if ($verbose);
+        ($net_ip, $net_mask) = split ('/', $net);
+        return 1;
+    }
+
+    while ($config_line  = <FILE>) {
+        chomp($config_line);
+        $config_line =~ s/^\s+|\s+$//g;
+
+        if ($config_line =~ /^subnet\s+(\d+\.\d+\.\d+\.\d+)\s+netmask\s+(\d+\.\d+\.\d+\.\d+)\s+/) {
+            $subnet = "$1/$2";
+            $subnet_hash{$subnet} = "unknown";
+        }
+        if ($config_line =~ /subnet_end/) {
+            $subnet_hash{$subnet} = $dynamic_range if ($dynamic_range);
+            $subnet = "";
+            $dynamic_range = "";
+        }
+        if ($config_line =~ /^range dynamic-bootp (\d+.\d+.\d+.\d+) (\d+.\d+.\d+.\d+)/) {
+            $dynamic_range = "$1-$2";
+        }
+    }
+
+    my $net_ip;
+    my $netmask;
+    my $netfile;
+    my $net_cdir;
+    my $arch = `uname -i`;
+    chomp($arch);
+    my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F "=" '{print \$2}'`;
+    chomp($tftpdir);
+    unless ($tftpdir) {
+       $tftpdir = "/tftpboot";
+    }
+
+    foreach my $net (@$nets){
+
+        if ( !exists($subnet_hash{$net})) {
+            probe_utils->send_msg("$output", "d", "The net $net is not matched.") if ($verbose);
+            $rst = 1;
+            next;
+        }
+
+        if ($subnet_hash{$net} ne "unknown") {
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is $subnet_hash{$net}.") if ($verbose);
+        } else {
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net did not be configured.") if ($verbose);
+            $rst = 1;
+            next;
+        }
+
+        ($net_ip, $net_mask) = split ('/', $net);
+        $net_cdir = xCAT::NetworkUtils::formatNetmask($net_mask, 0, 1);
+        if ($arch =~ /ppc64/i) {
+            $net_file = "$tftpdir/pxelinux.cfg/p/$net_ip"."_$net_cdir";
+        } else {
+            $net_file = "$tftpdir/xcat/xnba/nets/$net_ip"."_$net_cdir.uefi";
+        }
+
+        if (-e "$net_file") {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net exists.") if ($verbose);
+        } else {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net dose not exist.") if ($verbose);
+            $rst = 1;
+        }
+    }
+
     return $rst;
 }
 
