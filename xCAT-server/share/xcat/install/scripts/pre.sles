@@ -19,32 +19,15 @@ fi
 AWK=`find / -name awk | tail -1`
 #old awk /mounts/instsys/bin/awk -f
 
-cat >/tmp/bar.awk <<EOF
-#!$AWK -f
 
-BEGIN {
+XCATDPORT=#TABLE:site:key=xcatiport:value#
+XCATDHOST="#XCATVAR:XCATMASTER#"
 
-        xcatiport = "#TABLE:site:key=xcatiport:value#"
-        xcatdhost = "#XCATVAR:XCATMASTER#"
-
-        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
-        print ARGV[1]
-        print "xCAT_xcatd" |& ns
-
-        while(1) {
-                ns |& getline
-
-                if(\$0 == "ready")
-                        print ARGV[1] |& ns
-                if(\$0 == "done")
-                        break
-        }
-
-        close(ns)
-
-        exit 0
-}
+(
+cat << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
 EOF
+) > /tmp/updateflag
 
 
 if [ ! -c /dev/vcs ]; then
@@ -120,15 +103,15 @@ BEGIN {
 EOF
 
 chmod 755 /tmp/foo.awk
-chmod 755 /tmp/bar.awk
+chmod 755 /tmp/updateflag
 
 
-/tmp/bar.awk "installmonitor" &
+/tmp/updateflag $XCATDHOST $XCATDPORT "installmonitor" &
 
 NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#
 
 if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
-   /tmp/bar.awk "installstatus installing" &
+   /tmp/updateflag $XCATDHOST $XCATDPORT "installstatus installing" &
 fi
 
 /tmp/foo.awk >/tmp/foo.log 2>&1 &
