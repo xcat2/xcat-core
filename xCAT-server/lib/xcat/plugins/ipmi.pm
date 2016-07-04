@@ -7949,22 +7949,6 @@ sub process_request {
         }
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
-
-    if ($check) {
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old=(); 
-        foreach my $node (keys %allerrornodes) {
-    	    my $stat=$oldnodestatus{$node};
-    	    if (exists($old{$stat})) {
-    		    my $pa=$old{$stat};
-        		push(@$pa, $node);
-    	    } else {
-          		$old{$stat}=[$node];
-	        }
-        } 
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-    }  
 }
 
 #sub updateNodeStatus {

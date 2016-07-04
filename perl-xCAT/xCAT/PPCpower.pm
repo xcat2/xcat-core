@@ -237,7 +237,9 @@ sub powercmd_boot {
                             $op,
                             $d );
         unless (@$result[0] != SUCCESS) {
-            $newnodestatus{$newstat}=[$name] if ($newstat);
+            if ($newstat)
+                $newnodestatus{$newstat}=[$name];
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
         }
         push @output, [$name,@$result[1],@$result[0]];
     }
@@ -298,7 +300,6 @@ sub powercmd_boot {
         }
      }
 
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return( \@output );
 }
 
@@ -365,6 +366,7 @@ sub powercmd {
         unless ($Rc != SUCCESS) {
             if ($newstat) {
                 $newnodestatus{$newstat}=[$name];
+                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
             }
         }
 
@@ -417,7 +419,6 @@ sub powercmd {
              }
         }
      }
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return( \@result );
 }
 
