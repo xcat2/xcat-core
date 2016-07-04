@@ -2330,10 +2330,13 @@ sub power {
   }
   
   my $old_stat=$stat;
+  my $newstat;
+  my %newnodestatus=();
   if ($subcommand eq "softoff") {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,2,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_OFF;
     $stat = "softoff"; 
     if ($old_stat eq "off") { $stat .= " $status_noop"; }
   } 
@@ -2341,12 +2344,14 @@ sub power {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,0,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_OFF;
     $stat = "off"; 
     if ($old_stat eq "off") { $stat .= " $status_noop"; }
   } 
   if ($subcommand eq "on" or ($subcommand eq "boot" and $stat eq "off")) {
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_ON;
     if ($subcommand eq "boot") { $stat .= " " . ($data ? "on" : "off"); } 
     if ($subcommand eq "on") {
       $stat = ($data ? "on" : "off");
@@ -2355,11 +2360,17 @@ sub power {
   } elsif ($subcommand eq "reset" or ($subcommand eq "boot" and $stat eq "on")) {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_ON;
     if ($subcommand eq "boot") { $stat = "on reset"; } else { $stat = "reset"; }
   } elsif (not $validsub) {
       return 1,"Unknown/Unsupported power command $subcommand";
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+  if ($newstat) {
+      $newnodestatus{$newstat}=[$currnode];
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+  }
+
   if ($stat) { return (0,$stat); }
 }
     
@@ -5963,32 +5974,6 @@ sub dompa {
 	}
       }
       #print "oldstatus:" . Dumper(\%oldnodestatus);
-      
-      #set the new status to the nodelist.status
-      my %newnodestatus=(); 
-      my $newstat;
-      if (($args->[0] eq 'off') || ($args->[0] eq 'softoff')) { 
-	  my $newstat=$::STATUS_POWERING_OFF; 
-	  $newnodestatus{$newstat}=\@allnodes;
-      } else {
-        #get the current nodeset stat
-        if (@allnodes>0) {
-	  my $nsh={};
-          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-          if (!$ret) { 
-            foreach (keys %$nsh) {
-		my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, "rpower");
-		$newnodestatus{$newstat}=$nsh->{$_};
-	    }
-	  }
-        }
-      }
-
-
-      #donot update node provision status (installing or netbooting) here
-      xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-      #print "newstatus" . Dumper(\%newnodestatus);
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
   }
   if ($command eq "rvitals") {
@@ -6054,22 +6039,6 @@ sub dompa {
     yield;
   }
 
-  if ($check) {
-      #print "allerrornodes=@allerrornodes\n";
-      #revert the status back for there is no-op for the nodes
-      my %old=(); 
-      foreach my $node (@allerrornodes) {
-	  my $stat=$oldnodestatus{$node};
-	  if (exists($old{$stat})) {
-	      my $pa=$old{$stat};
-	      push(@$pa, $node);
-	  }
-	  else {
-	      $old{$stat}=[$node];
-	  }
-      } 
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-  }
   verbose_message("SNMP session completed.");
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";
