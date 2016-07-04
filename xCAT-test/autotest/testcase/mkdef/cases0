@@ -226,8 +226,6 @@ cmd:result=`lsdef | grep  auto_test_cec_node_2`; if [[ $result =~ "auto_test_cec
 cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test groups=test_template
 check：rc==0
 check:output=~1 object definitions have been created or modified
-check:chdef -t node auto_test_cec_node_1 -o groups=test_template
-check:rc==0
 check:output=~created
 cmd:mkdef -t node -o auto_test_cec_node_2 --template auto_test_cec_node_1 serial=test2 mtm=test2 hcp=test2
 check：rc==0
@@ -282,3 +280,34 @@ check:output=~serial\=test
 cmd:noderm auto_test_cec_node_1
 check:rc==0
 end
+
+start:check_mkdef_node_with_template_priority
+os:linux
+description:create node named cec-template with cec template at beginning, the node is priority high than tempalate to create a new node
+cmd:result=`lsdef | grep  cec-template`; if [[ $result =~ "cec-template" ]]; then echo $result; noderm cec-template; fi
+cmd:result=`lsdef | grep  auto_test_cec_node`; if [[ $result =~ "auto_test_cec_node" ]]; then echo $result; noderm auto_test_cec_node; fi
+cmd:mkdef -t node -o cec-template --template cec-template serial=test mtm=test hcp=test groups=test_template_priority
+check：rc==0
+check:output=~1 object definitions have been created or modified
+cmd:mkdef -t node -o auto_test_cec_node --template cec-template serial=test2 mtm=test2 hcp=test2
+check：rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef auto_test_cec_node
+check:output=~Object name\: auto\_test\_cec\_node\_2
+check:output=~groups\=test\_template\_priority
+check:output!=groups\=cec\,all
+check:output=~hwtype\=cec
+check:output=~mgt\=hmc
+check:output=~nodetype\=ppc
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the cec definition template
+check:output=~hcp\=test2
+check:output=~mtm\=test2
+check:output=~serial\=test2
+cmd:noderm cec-template
+check：rc==0
+cmd:noderm auto_test_cec_node
+check：rc==0
+end
+
