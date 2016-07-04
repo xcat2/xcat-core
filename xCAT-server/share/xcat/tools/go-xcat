@@ -2,6 +2,8 @@
 #
 # go-xcat - Install xCAT automatically.
 #
+# Version 1.0.0
+#
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
 #     <http://www.eclipse.org/legal/epl-v10.html>
@@ -16,7 +18,15 @@ function usage()
 {
 	local script="${0##*/}"
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	${script} version $(
+		for i in {0..9}
+		do
+			read -r
+			[[ ${REPLY} =~ \#\ +[Vv]ersion ]] && echo "${REPLY##* }"
+		done <"$0"
+	)
+
 	Usage: ${script} [OPTION]... [ACTION]
 	Install xCAT automatically
 
@@ -54,17 +64,17 @@ function usage()
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
-	  ${script} --xcat-core=/path/to/xcat-core.repo \\\\
+	  ${script} --xcat-core=/path/to/xcat-core.repo \\
 	          --xcat-dep=/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=/path/to/xcat-core \\\\
+	  ${script} --xcat-core=/path/to/xcat-core \\
 	          --xcat-dep=/path/to/xcat-dep install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\\\
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\\\
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\\\
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\\\
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
 
 	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
@@ -343,7 +353,7 @@ function check_package_version_rpm()
 {
 	type rpm >/dev/null 2>&1 || return 255
 	local ver=""
-	while read ver
+	while read -r ver
 	do
 		if [[ -z "${ver}" || "${ver}" =~ not\ installed ]]
 		then
@@ -361,7 +371,7 @@ function check_package_version_deb()
 	type dpkg-query >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
-	while read name ver
+	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
@@ -396,7 +406,7 @@ function check_repo_version_dnf()
 	type dnf >/dev/null 2>&1 || return 255
 	local -a name=()
 	local -a ver=()
-	while read name ver
+	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
@@ -426,7 +436,7 @@ function check_repo_version_yum()
 	check_exec_or_exit repoquery
 	local -a name=()
 	local -a ver=()
-	while read name ver
+	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
@@ -455,7 +465,7 @@ function check_repo_version_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local -a name=()
 	local -a ver=()
-	while read name ver
+	while read -r name ver
 	do
 		name+=("${name}")
 		ver+=("${ver}")
@@ -485,7 +495,7 @@ function check_repo_version_apt()
 	type apt-cache >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
-	while read name ver
+	while read -r name ver
 	do
 		if [[ "${name}" =~ ^[a-z] ]]
 		then
@@ -729,7 +739,7 @@ function add_repo_by_url_yum_or_zypper()
 			;;
 		*) # assume it is the base url of the repo
 			tmp="${TMP_DIR}/tmp_repo.repo"
-			while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+			while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
 			[${repo_id}]
 			name=${repo_id}
 			baseurl=${url}
@@ -764,7 +774,7 @@ function add_repo_by_url_yum_or_zypper()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.repo"
-		while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+		while read -r ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
 		[${repo_id}]
 		name=${repo_id}
 		baseurl=file://${url}
@@ -1096,7 +1106,7 @@ function update_xcat()
 	))
 	for i in "${!install_list[@]}"
 	do
-		read ver
+		read -r ver
 		[[ "${ver}" = "(not installed)" ]] &&
 			unset "install_list[${i}]"
 	done < <(check_package_version "${install_list[@]}")
@@ -1134,7 +1144,7 @@ function list_xcat_packages()
 		"------------" "---------" "-------------"
 	for pkg in "${GO_XCAT_CORE_PACKAGE_LIST[@]}"
 	do
-		read i_ver && read -u 42 r_ver
+		read -r i_ver && read -u 42 -r r_ver
 		printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
 			"${pkg:0:${first_col}}" \
 			"${i_ver:0:${second_col}}" \
@@ -1154,8 +1164,8 @@ function list_xcat_packages()
 
 	for pkg in "${GO_XCAT_DEP_PACKAGE_LIST[@]}"
 	do
-		read i_ver
-		read -u 42 r_ver
+		read -r i_ver
+		read -u 42 -r r_ver
 		printf "%-${first_col}s %-${second_col}s %-${third_col}s\n" \
 			"${pkg:0:${first_col}}" \
 			"${i_ver:0:${second_col}}" \
@@ -1170,7 +1180,7 @@ function test_case_000_version()
 {
 	local ver=""
 	local -i ret=0
-	while read
+	while read -r
 	do
 		[[ "${REPLY}" = "(not installed)" ]] && continue
 		[[ -z "${ver}" ]] && ver="${REPLY%%-*}"
@@ -1223,10 +1233,10 @@ function perform_smoke_test()
 			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
 			echo "==== ${test_case} failed with exit code ${ret} ===="
 			echo "-- 8< ${test_case} stdout -- --"
-			while read ; do echo "${REPLY}" ; done \
+			while read -r ; do echo "${REPLY}" ; done \
 				<"${TMP_DIR}/${test_case}.stdout"
 			echo "-- 8< ${test_case} stderr -- --"
-			while read ; do echo "${REPLY}" ; done \
+			while read -r ; do echo "${REPLY}" ; done \
 				<"${TMP_DIR}/${test_case}.stderr"
 			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
 			# skip all the remain test cases
@@ -1339,7 +1349,7 @@ esac
 GO_XCAT_OS="$(check_os)"
 GO_XCAT_ARCH="$(check_arch)"
 
-while read ; do echo "${REPLY}" ; echo "${REPLY}" >&2
+while read -r ; do echo "${REPLY}" ; echo "${REPLY}" >&2
 	done 2>"${TMP_DIR}/go-xcat.log.000" <<EOF
 Operating system:   ${GO_XCAT_OS}
 Architecture:       ${GO_XCAT_ARCH}
@@ -1364,7 +1374,7 @@ esac
 GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
 GO_XCAT_LINUX_VERSION="$(check_linux_version)"
 
-while read ; do echo "${REPLY}" ; echo "${REPLY}" >&2
+while read -r ; do echo "${REPLY}" ; echo "${REPLY}" >&2
 	done 2>"${TMP_DIR}/go-xcat.log.001" <<EOF
 Linux Distribution: ${GO_XCAT_LINUX_DISTRO}
 Version:            ${GO_XCAT_LINUX_VERSION}
@@ -1410,7 +1420,7 @@ case "${GO_XCAT_ACTION}" in
 	then
 		echo
 		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
-		read -p "Continue? [y/n] "
+		read -r -p "Continue? [y/n] "
 		case "${REPLY}" in
 		"Y"*|"y"*)
 			;;
@@ -1430,10 +1440,10 @@ case "${GO_XCAT_ACTION}" in
 		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
 		echo "==== ${GO_XCAT_INSTALLER} exited with exit code ${RET} ===="
 		echo "-- 8< ${GO_XCAT_INSTALLER} stdout -- --"
-		while read ; do echo "${REPLY}" ; done \
+		while read -r ; do echo "${REPLY}" ; done \
 			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
 		echo "-- 8< ${GO_XCAT_INSTALLER} stderr -- --"
-		while read ; do echo "${REPLY}" ; done \
+		while read -r ; do echo "${REPLY}" ; done \
 			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr"
 		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
 	} >"${TMP_DIR}/go-xcat.log.005"
@@ -1449,10 +1459,10 @@ case "${GO_XCAT_ACTION}" in
 			echo "-- 8< -- -- -- -- vv -- -- -- vv -- -- -- -- 8< --"
 			echo "==== perform_smoke_test failed with exit code ${RET} ===="
 			echo "-- 8< perform_smoke_test stdout -- --"
-			while read ; do echo "${REPLY}" ; done \
+			while read -r ; do echo "${REPLY}" ; done \
 				<"${TMP_DIR}/perform_smoke_test.stdout"
 			echo "-- 8< perform_smoke_test stderr -- --"
-			while read ; do echo "${REPLY}" ; done \
+			while read -r ; do echo "${REPLY}" ; done \
 				<"${TMP_DIR}/perform_smoke_test.stderr"
 			echo "-- 8< -- -- -- -- ^^ -- -- -- ^^ -- -- -- -- 8< --"
 		fi
@@ -1464,7 +1474,7 @@ case "${GO_XCAT_ACTION}" in
 	then
 		GO_XCAT_LOG="/tmp/go-xcat.log"
 		cat "${TMP_DIR}/go-xcat.log."* >"${GO_XCAT_LOG}" 2>/dev/null
-		while read ; do echo "${REPLY}" ; done >&2 <<-EOF
+		while read -r ; do echo "${REPLY}" ; done >&2 <<-EOF
 
 
 		Boo-boo
@@ -1478,7 +1488,7 @@ case "${GO_XCAT_ACTION}" in
 		exit "${RET}"
 	fi
 
-	while read ; do echo "${REPLY}" ; done <<-EOF
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
 
 
 	Congratulations
