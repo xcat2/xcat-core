@@ -19,7 +19,7 @@ BuildArch: noarch
 Provides: xCAT-probe = %{version}
 
 %description
-CAT-probe provides a toolkits to probe potential issues with the xCAT cluster.
+xCAT-probe provides a toolkits to probe potential issues with the xCAT cluster.
 
 %prep
 %setup -q -n xCAT-probe
@@ -57,7 +57,7 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 
 %changelog
-* Fri Jul 1 2016 - huweihu <huweihua@cn.ibm.com>
+* Fri Jul 1 2016 - huweihua <huweihua@cn.ibm.com>
 - "Create xCAT probe package"
 
 %post

@@ -1,5 +1,5 @@
-xcat-probe (2.12) xcat; urgency=low
+xcat-probe (2.12) unstable; urgency=low
 
-  * initial build
+  * Initial build
 
  -- huweihua <huweihua@cn.ibm.com>  Fri, 1 Jul 2016 19:42:58 -0400
