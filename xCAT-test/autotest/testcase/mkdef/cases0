@@ -293,7 +293,7 @@ cmd:mkdef -t node -o auto_test_cec_node --template cec-template serial=test2 mtm
 check：rc==0
 check:output=~1 object definitions have been created or modified
 cmd:lsdef auto_test_cec_node
-check:output=~Object name\: auto\_test\_cec\_node\_2
+check:output=~Object name\: auto\_test\_cec\_node
 check:output=~groups\=test\_template\_priority
 check:output!=groups\=cec\,all
 check:output=~hwtype\=cec
