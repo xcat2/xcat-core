@@ -1,4 +1,4 @@
-Summary: xCAT automated test tool
+Summary: xCAT diagnostic tool 
 Name: xCAT-probe
 Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
@@ -12,7 +12,6 @@ Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
-# AIX will build with an arch of "ppc"
 %ifos linux
 BuildArch: noarch
 %endif
@@ -20,7 +19,7 @@ BuildArch: noarch
 Provides: xCAT-probe = %{version}
 
 %description
-Provides a toolkits to help probe all the possible issues in xCAT 
+CAT-probe provides a toolkits to probe potential issues with the xCAT cluster.
 
 %prep
 %setup -q -n xCAT-probe
@@ -44,8 +43,8 @@ cp -r subcmds  $RPM_BUILD_ROOT/%{prefix}/probe/
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/probe/subcmds/*
 
 cp -r lib $RPM_BUILD_ROOT/%{prefix}/probe/
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/*
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/xCAT/*
+chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/
+chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/xCAT/
 
 %clean
 # This step does not happen until *after* the %files packaging below
@@ -58,8 +57,8 @@ rm -rf $RPM_BUILD_ROOT
 %{prefix}
 
 %changelog
-* Tue Sep 14 2010 - Airong Zheng <zhengar@us.ibm.com>
-- "Create xCAT autotest package"
+* Fri Jul 1 2016 - huweihu <huweihua@cn.ibm.com>
+- "Create xCAT probe package"
 
 %post
 

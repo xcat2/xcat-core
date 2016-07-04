@@ -242,6 +242,10 @@ then
                     cd $file
                     dch -v $pkg_version -b -c debian/changelog $build_string
                     if [ "$target_arch" = "all" ]; then
+                        #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
+                        #1 make xcat probe code to be self-contained
+                        #2 don't maintain two files for each script
+                        #3 symbolic link can't work during package
                         if [ $file_low = "xcat-probe" ]; then
                             CURDIR=$(pwd)
                             mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
