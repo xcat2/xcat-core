@@ -18,7 +18,7 @@ sub process_request {
     my $doreq = shift;
     if ($req->{command}->[0] eq 'findme') {
         xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{mtm}->[0]*$req->{serial}->[0]) Finish to process the discovery request");
-        if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]))  {
+        if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef'))  {
             my $rsp = {};
             $rsp->{error}->[0] = "The discovery request can not be processed";
             $cb->($rsp);

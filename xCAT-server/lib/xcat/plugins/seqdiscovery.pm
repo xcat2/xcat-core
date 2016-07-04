@@ -54,7 +54,7 @@ sub findme {
     my @SEQdiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
     
-    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]))  {
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef'))  {
         # The findme request had been processed by other module, just return
         return;
     }
