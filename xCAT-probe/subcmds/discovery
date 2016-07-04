@@ -978,7 +978,7 @@ sub do_monitor {
                         chomp($line = <VARLOGMSGFILE>);
                         ++$varlogmsgcnt;
                         last if ($varlogmsgcnt <= $oldlines);
-                        my @tmp = split(/ /, $line);
+                        my @tmp = split(/\s+/, $line);
                         if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
                             handle_dhcp_msg("$line");
                         } elsif ($tmp[4] =~ /in.tftpd/i) {
@@ -1065,7 +1065,7 @@ if (defined($noderange) && !defined($discovery_type)) {
 }
 
 if (defined($discovery_type)) {
-    unless (@valid_discovery_type ~~ /^$discovery_type$/) {
+    unless (grep(/^$discovery_type$/,  @valid_discovery_type)){
         probe_utils->send_msg("$output", "f", "Invalid discovery type. the vaild types are $valid_discovery_type_str");
         probe_utils->send_msg("$output", "d", "$::USAGE");
         exit 1;

@@ -21,7 +21,7 @@ my $rst     = 0;
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -t
+    $program_name -T
     $program_name {-c|-d} [-V]
 
 Description:
@@ -30,7 +30,7 @@ Description:
 
 Options:
     -h : Get usage information of $program_name
-    -t : To verify if $program_name can work, reserve option for probe framework
+    -T : To verify if $program_name can work, reserve option for probe framework
     -d : To verify diskless, pingable compute nodes have the same images installed as defines in xCAT DB. 
     -c : To verify all diskless, pingable compute nodes have the identical images installed.
     -V : To print additional debug information.
@@ -41,7 +41,7 @@ Options:
 #-------------------------------------
 if (
     !GetOptions("--help|h" => \$help,
-        "t" => \$test,
+        "T" => \$test,
         "V" => \$VERBOSE,
         "c" => \$CONSISTENCY_CHECK,
         "d" => \$DEFINITION_CHECK))

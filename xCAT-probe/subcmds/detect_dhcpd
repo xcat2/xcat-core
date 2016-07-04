@@ -29,7 +29,8 @@ Options:
     -i interface:  Required. The interface which facing the target network.
     -m macaddress: The mac that will be used to detect dhcp server. Recommend to use the real mac of the node that will be netboot. If no specified, the mac of interface which specified by -i will be used.
     -d duration:   The time to wait to detect the dhcp messages. The default value is 10s.
-    -t         :   To verify if $program_name can work, reserve option for probe framework.
+    -V verbose:    To print additional debug information. 
+    -T         :   To verify if $program_name can work, reserve option for probe framework.
 ";
 
 #---------------------------
@@ -40,7 +41,7 @@ if (!GetOptions(
         'i=s'       => \$::IF,
         'm=s'       => \$::MACADD,
         'd=s'       => \$::DURATION,
-        't'         => \$::TEST,
+        'T'         => \$::TEST,
         'V|verbose' => \$::VERBOSE,
         'h|help'    => \$::HELP,))
 {

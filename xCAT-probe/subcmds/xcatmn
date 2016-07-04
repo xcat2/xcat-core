@@ -18,15 +18,15 @@ my $rst     = 0;
 
 $::USAGE = "Usage:
     $proname -h
-    $proname -t
-    $proname [-n] <install_nic> [-V]
+    $proname -T
+    $proname [-n <install_nic>] [-V]
 
 Description:
     After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. 
 
 Options:
     -h : Get usage information of $proname
-    -t : To verify if $proname can work, reserve option for probe framework
+    -T : To verify if $proname can work, reserve option for probe framework
     -n : Required. Specify the network interface name of provision network
     -V : Output more information for debug
 ";
@@ -46,7 +46,7 @@ sub returncmdoutput {
 #-------------------------------------
 if (
     !GetOptions("--help|h" => \$help,
-        "t"   => \$test,
+        "T"   => \$test,
         "V"   => \$verbose,
         "n=s" => \$installnic))
 {
@@ -354,8 +354,7 @@ if (probe_utils->is_selinux_enable()) {
 
 $msg = "Firewall is closed on current server";
 if (probe_utils->is_firewall_open()) {
-    probe_utils->send_msg("$output", "f", "$msg");
-    $rst = 1;
+    probe_utils->send_msg("$output", "w", "Firewall is configured on current server");
 } else {
     probe_utils->send_msg("$output", "o", "$msg");
 }
