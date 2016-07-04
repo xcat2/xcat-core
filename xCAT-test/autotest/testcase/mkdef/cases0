@@ -159,4 +159,126 @@ check:output=~not a valid
 end
 
 
+start:mkdef_template_switch_template_without_attribute
+os:linux
+description:create a node with swtich template without any attributes
+cmd:result=`lsdef | grep  auto_test_node_1`; if [[ $result =~ "auto_test_node_1" ]]; then echo $result; noderm auto_test_node_1; fi
+cmd:mkdef -t node -o auto_test_node_1 --template switch-template
+check:rc==0
+check:output=~1 object definitions have been created or modified.
+cmd:lsdef auto_test_node_1
+check:rc==0
+check:output=~Object name\: auto_test_node_1
+check:output=~groups=switch
+check:output=~nodetype=switch
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
+check:output=~usercomment\=the switch definition template  
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output!=ip\=OPTIONAL\:the ip address of the switch
+check:output!=mac\=OPTIONAL\:the MAC address of the switch
+check:output!=switchtype\=
+cmd:noderm auto_test_node_1
+check:rc==0
+end
 
+start:mkdef_template_cec_template_without_remainder
+os:linux
+description:create a node with cec template once
+cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
+check：rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef auto_test_cec_node_1
+check:output=~Object name\: auto\_test\_cec\_node\_1
+check:output=~groups\=cec\,all
+check:output=~hwtype\=cec
+check:output=~mgt\=hmc
+check:output=~nodetype\=ppc
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the cec definition template
+check:output=~hcp\=test
+check:output=~mtm\=test
+check:output=~serial\=test
+cmd:noderm auto_test_cec_node_1
+check:rc==0
+end
+
+start:mkdef_template_invalid_template
+os:linux
+description:create a node with invalid template 
+cmd:result=`lsdef | grep  auto_test_node`; if [[ $result =~ "auto_test_node" ]]; then echo $result; noderm auto_test_node; fi
+cmd:result=`lsdef | grep  auto_test_invalid_template`; if [[ $result =~ "auto_test_invalid_template" ]]; then echo $result; noderm auto_test_invalid_template; fi
+cmd:lsdef --template auto_test_invalid_template
+check:rc==1
+check:output=~Error\: Could not find auto\_test\_invalid\_template in xCAT templates
+cmd:mkdef -t node -o auto_test_node --template auto_test_invalid_template
+check：rc==1
+check:output=~Error\: Could not find the template object named \'auto\_test\_invalid\_template\' of type \'node\'
+end
+
+start:mkdef_node_with_a_node_template
+os:linux
+description:create a node with a node template, using cec template to create node at beginning
+cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
+cmd:result=`lsdef | grep  auto_test_cec_node_2`; if [[ $result =~ "auto_test_cec_node_2" ]]; then echo $result; noderm auto_test_cec_node_2; fi
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test groups=test_template
+check：rc==0
+check:output=~1 object definitions have been created or modified
+check:chdef -t node auto_test_cec_node_1 -o groups=test_template
+check:rc==0
+check:output=~created
+cmd:mkdef -t node -o auto_test_cec_node_2 --template auto_test_cec_node_1 serial=test2 mtm=test2 hcp=test2
+check：rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef auto_test_cec_node_2
+check:output=~Object name\: auto\_test\_cec\_node\_2
+check:output=~groups\=test\_template
+check:output!=groups\=cec\,all
+check:output=~hwtype\=cec
+check:output=~mgt\=hmc
+check:output=~nodetype\=ppc
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the cec definition template
+check:output=~hcp\=test2
+check:output=~mtm\=test2
+check:output=~serial\=test2
+cmd:noderm auto_test_cec_node_1
+check:rc==0
+cmd:noderm auto_test_cec_node_2
+check:rc==0
+end
+
+start:mkdef_template_cec_template_step_by_step
+os:linux
+description:create a node with cec template step by step
+cmd:result=`lsdef | grep  auto_test_cec_node_1`; if [[ $result =~ "auto_test_cec_node_1" ]]; then echo $result; noderm auto_test_cec_node_1; fi
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template
+check:rc==1
+check:output=~Error\: The attribute \"serial\" must be specified!
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test
+check:rc==1
+check:output=~Error\: The attribute \"mtm\" must be specified!
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test
+check:rc==1
+check:output=~Error\: The attribute \"hcp\" must be specified!
+cmd:mkdef -t node -o auto_test_cec_node_1 --template cec-template serial=test mtm=test hcp=test
+check：rc==0
+check:output=~1 object definitions have been created or modified
+cmd:lsdef auto_test_cec_node_1
+check:output=~Object name\: auto\_test\_cec\_node\_1
+check:output=~groups\=cec\,all
+check:output=~hwtype\=cec
+check:output=~mgt\=hmc
+check:output=~nodetype\=ppc
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles
+check:output=~usercomment\=the cec definition template
+check:output=~hcp\=test
+check:output=~mtm\=test
+check:output=~serial\=test
+cmd:noderm auto_test_cec_node_1
+check:rc==0
+end
