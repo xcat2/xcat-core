@@ -16,14 +16,14 @@ my $output  = "stdout";
 
 $::USAGE = "Usage:
     $proname -h
-    $proname -t
+    $proname -T
     $proname  <noderange> [-c] [-V]
 
 Description:
     To retrieve MAC address mapping for the specified switch, or all the switches defined in switches table in xCAT db.
 
 Options:
-    -t: Check whether this script is OK to run.
+    -T: Check whether this script is OK to run.
     -c: To check whether the switch is OK to retrieve MAC address mapping.
     -V: Output verbose information when accessing switch
 ";
@@ -34,7 +34,7 @@ my $check;
 my @nodes = ();
 my $verbose = '';
 if (!GetOptions("help|h" => \$help, 
-                "t" => \$test,
+                "T" => \$test,
                 "c" => \$check,
                 "V" => \$verbose)) {
     probe_utils->send_msg("$output", "f", "Option not support");

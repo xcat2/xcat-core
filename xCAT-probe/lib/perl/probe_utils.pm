@@ -223,23 +223,22 @@ sub is_selinux_enable {
 
 #------------------------------------------
 sub is_firewall_open {
-    my $os = get_os();
     my $output;
     my $rst = 0;
 
-    if ($os =~ /redhat/) {
-        $output = `service iptables status 2>&1`;
-        $rst = 1 if ($output =~ /running/i);
-    } elsif ($os =~ /sles/) {
-        $output = `service SuSEfirewall2_setup status`;
-        $rst = 1 if ($output =~ /running/i);
-    } elsif ($os =~ /ubuntu/) {
-        $output = `ufw status`;
-        $rst = 1 if ($output =~ /Status: active/i);
-    }
+    my $output =`iptables -nvL -t filter 2>&1`;
+
+    `echo "$output" |grep "Chain INPUT (policy ACCEPT" > /dev/null  2>&1`;
+    $rst=1 if($?);
+
+    `echo "$output" |grep "Chain FORWARD (policy ACCEPT" > /dev/null  2>&1`;
+    $rst=1 if($?);
+
+    `echo "$output" |grep "Chain OUTPUT (policy ACCEPT" > /dev/null  2>&1`;
+    $rst=1 if($?);
+
     return $rst;
 }
-
 #------------------------------------------
 
 =head3
