@@ -2,6 +2,8 @@
 #
 # go-xcat - Install xCAT automatically.
 #
+# Version 1.0.0
+#
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
 #     <http://www.eclipse.org/legal/epl-v10.html>
@@ -17,6 +19,14 @@ function usage()
 	local script="${0##*/}"
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	${script} version $(
+		for i in {0..9}
+		do
+			read -r
+			[[ ${REPLY} =~ \#\ +[Vv]ersion ]] && echo "${REPLY##* }"
+		done <"$0"
+	)
+
 	Usage: ${script} [OPTION]... [ACTION]
 	Install xCAT automatically
 
