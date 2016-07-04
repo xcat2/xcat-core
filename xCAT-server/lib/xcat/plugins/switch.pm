@@ -268,7 +268,7 @@ sub process_request {
         }
         return;
     } elsif ($req->{command}->[0] eq 'findme') {
-        if (defined($req->{discoverymethod}) and defined($req->{discoverymethod}->[0]))  {
+        if (defined($req->{discoverymethod}) and defined($req->{discoverymethod}->[0]) and ($req->{discoverymethod}->[0] ne 'undef'))  {
             # The findme request had been processed by other module, just return
             return;
         }
