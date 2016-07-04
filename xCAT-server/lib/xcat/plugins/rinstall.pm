@@ -321,15 +321,13 @@ sub rinstall {
 
     $rc = $::RUNCMD_RC;
     my $rsp = {};
-    if ($rc == 0) {
-        if ($VERBOSE) {
-            my @cmd = "Run command: nodeset @nodes @parameter";
-            push @{$rsp->{data}}, @cmd;
-            push @{$rsp->{data}}, @$res;
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
+    if ($VERBOSE) {
+        my @cmd = "Run command: nodeset @nodes @parameter";
+        push @{$rsp->{data}}, @cmd;
+        push @{$rsp->{data}}, @$res;
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
-    else {
+    unless ($rc == 0) {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
@@ -342,10 +340,17 @@ sub rinstall {
                 $nodes{$successnode} = 0;
                 push @successnodes, $successnode;
             }
+            if ($line =~ /dhcp server is not running/) {
+                my $rsp = {};
+                $rsp->{error}->[0] = "Fatal error";
+                $rsp->{errorcode}->[0] = 1;
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
         foreach my $node (@nodes) {
-            if ($nodes{$node} = 1) {
+            if ($nodes{$node} == 1) {
                 push @failurenodes, $node;
             }
         }
@@ -388,15 +393,13 @@ sub rinstall {
 
             $rc = $::RUNCMD_RC;
             my $rsp = {};
-            if ($rc == 0) {
-                if ($VERBOSE) {
-                    my @cmd = "Run command: rnetboot @nodes";
-                    push @{$rsp->{data}}, @cmd;
-                    push @{$rsp->{data}}, @$res;
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+            if ($VERBOSE) {
+                my @cmd = "Run command: rnetboot @nodes";
+                push @{$rsp->{data}}, @cmd;
+                push @{$rsp->{data}}, @$res;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-            else {
+            unless ($rc == 0) {
                 # We got an error with the rnetboot
                 my @failurenodes;
                 foreach my $line (@$res) {
@@ -410,7 +413,7 @@ sub rinstall {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 foreach my $node (@nodes) {
-                    if ($nodes{$node} = 1) {
+                    if ($nodes{$node} == 1) {
                         push @failurenodes, $node;
                     }
                 }
@@ -441,15 +444,13 @@ sub rinstall {
 
                 $rc = $::RUNCMD_RC;
                 my $rsp = {};
-                if ($rc == 0) {
-                    if ($VERBOSE) {
-                        my @cmd = "Run command: rsetboot @nodes @rsetbootarg";
-                        push @{$rsp->{data}}, @cmd;
-                        push @{$rsp->{data}}, @$res;
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                    }
+                if ($VERBOSE) {
+                    my @cmd = "Run command: rsetboot @nodes @rsetbootarg";
+                    push @{$rsp->{data}}, @cmd;
+                    push @{$rsp->{data}}, @$res;
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
-                else {
+                unless ($rc == 0) {
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
@@ -465,7 +466,7 @@ sub rinstall {
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
                     foreach my $node (@nodes) {
-                        if ($nodes{$node} = 1) {
+                        if ($nodes{$node} == 1) {
                             push @failurenodes, $node;
                         }
                     }
@@ -492,15 +493,13 @@ sub rinstall {
 
             $rc = $::RUNCMD_RC;
             my $rsp = {};
-            if ($rc == 0) {
-                if ($VERBOSE) {
-                    my @cmd = "Run command: rpower @nodes @rpowerarg";
-                    push @{$rsp->{data}}, @cmd;
-                    push @{$rsp->{data}}, @$res;
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
-                }
+            if ($VERBOSE) {
+                my @cmd = "Run command: rpower @nodes @rpowerarg";
+                push @{$rsp->{data}}, @cmd;
+                push @{$rsp->{data}}, @$res;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-            else {
+            unless ($rc == 0) {
                 # We got an error with the rpower
                 my @failurenodes;
                 foreach my $line (@$res) {
@@ -514,7 +513,7 @@ sub rinstall {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 foreach my $node (@nodes) {
-                    if ($nodes{$node} = 1) {
+                    if ($nodes{$node} == 1) {
                         push @failurenodes, $node;
                     }
                 }
