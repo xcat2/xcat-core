@@ -3836,37 +3836,6 @@ sub process_request {
             updateNodeStatus($handlednodes, \@allerrornodes);
         }
     }
-
-    #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
-
-    #Make sure they get drained, this probably is overkill but shouldn't hurt
-    #my $rc=1;
-    #while ( $rc>0 ) {
-    #  my $handlednodes={};
-    #  $rc=forward_data($callback,$sub_fds,$handlednodes);
-    #  #update the node status to the nodelist.status table
-    #  if ($check) {
-    #    updateNodeStatus($handlednodes, \@allerrornodes);
-    #  }
-    #}
-
-    if ($check) {
-
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old = ();
-        foreach my $node (@allerrornodes) {
-            my $stat = $oldnodestatus{$node};
-            if (exists($old{$stat})) {
-                my $pa = $old{$stat};
-                push(@$pa, $node);
-            }
-            else {
-                $old{$stat} = [$node];
-            }
-        }
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-    }
 }
 
 sub updateNodeStatus {

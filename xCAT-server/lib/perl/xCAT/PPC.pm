@@ -516,24 +516,6 @@ ENDOFFORK:
         trace( $request, $msg );
     }
 
-    if ($check) {
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old=(); 
-        foreach my $node (@allerrornodes) {
-            my $stat=$oldnodestatus{$node};
-            if (exists($old{$stat})) {
-                my $pa=$old{$stat};
-                push(@$pa, $node);
-            }
-            else {
-                $old{$stat}=[$node];
-            }
-        } 
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-    }  
-
-
     return(0);
 }
 
