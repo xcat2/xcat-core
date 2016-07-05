@@ -84,7 +84,7 @@ OPTIONS
 
 \ **-**\ **-template**\  \ *template-object-name*\ 
  
- Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. For the details of xCAT shipped object definition templates, please refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
+ Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. If there are an existing object and a template with the same name \ *template-object-name*\ , the existing object takes precedence over the object definition template. For the details of xCAT shipped object definition templates, please refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
  
 
 
