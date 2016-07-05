@@ -310,9 +310,10 @@ sub deploy_genesis {
             },
             $subreq, 0, 1);
         if ($::RUNCMD_RC != 0) {
-            $callback->({ error => "failed to run command: nodeset $node rumcmd=getadapter", errorcode => 1 });
+            $callback->({ error => "failed to run command: nodeset $node runcmd=getadapter", errorcode => 1 });
             return 1;
         }
+        # TODO: use rinstall to replace the following code when rinstall is ready.
         if ($node_desc_ptr->{mgt} eq "ipmi") {
             $outref = xCAT::Utils->runxcmd(
                 {
@@ -325,7 +326,6 @@ sub deploy_genesis {
                 $callback->({ error => "failed to run command: rsetboot $node net", errorcode => 1 });
                 return 1;
             }
-
             $outref = xCAT::Utils->runxcmd(
                 {
                     command => ['rpower'],
@@ -337,7 +337,19 @@ sub deploy_genesis {
                 $callback->({ error => "failed to run command: rpower $node reset", errorcode => 1 });
                 return 1;
             }
-        } else {
+        } elsif ($node_desc_ptr->{mgt} eq "kvm") {
+            $outref = xCAT::Utils->runxcmd(
+                {
+                    command => ['rpower'],
+                    node    => ["$node"],
+                    arg     => ['reset'],
+                },
+                $subreq, 0, 1);
+            if ($::RUNCMD_RC != 0) {
+                $callback->({ error => "failed to run command: rpower $node reset", errorcode => 1 });
+                return 1;
+            }
+        } elsif ($node_desc_ptr->{mgt} eq "hmc") {
             $outref = xCAT::Utils->runxcmd(
                 {
                     command => ["rnetboot"],
@@ -348,7 +360,12 @@ sub deploy_genesis {
                 $callback->({ error => "failed to run command: rnetboot $node", errorcode => 1 });
                 return 1;
             }
+        } else {
+            $callback->({ error => "$node: The mgt configuration is not supported by getadapter.",
+                errorcode => 1 });
+            return 1;
         }
+        $callback->({data=>"$node: Booting into genesis, this could take several minutes..."});
         return 0;
     };    # end of child_process_func
 
@@ -476,6 +493,11 @@ sub update_adapter_result {
         $output .= "\n";
     }
     $callback->({ data => "$output" });
+    if (!$has_nic) {
+        $callback->({ data => "$node: Couldn't find interface name information detected by udevadm,"
+        ." the nics table will not be updated." });
+        return 0;
+    }
     my $nics_table = xCAT::Table->new('nics');
     unless ($nics_table) {
         xCAT::MsgUtils->message("S", "Unable to open nics table, denying");

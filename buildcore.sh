@@ -67,7 +67,7 @@ if [ -z "$UP" ]; then
 fi
 
 # These are the rpms that should be built for each kind of xcat build
-ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
@@ -288,7 +288,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe; do
     if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix

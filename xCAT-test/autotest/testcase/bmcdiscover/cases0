@@ -7,7 +7,7 @@ check:output=~Usage
 end
 
 start:bmcdiscover_nmap_range
-cmd:bmcdiscover -s nmap --range $$bmcrange
+cmd:bmcdiscover -s nmap --range $$bmcrange -u $$bmcusername -p $$bmcpasswd
 check:rc==0
 check:output=~$$bmcrange
 end
@@ -37,13 +37,13 @@ check:output=~Static Address
 end
 
 start:bmcdiscover_range_w
-cmd:bmcdiscover --range  $$bmcrange -w
+cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -w
 check:rc==0
 check:output=~bmc=$$bmcrange
 end
 
 start:bmcdiscover_range_z
-cmd:bmcdiscover --range  $$bmcrange -z
+cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0
 check:output=~bmc=$$bmcrange
 end

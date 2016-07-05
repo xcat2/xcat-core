@@ -217,6 +217,18 @@ my %URIdef = (
                 outhdler => \&noout,
             }
         },
+        console => {
+            desc => "[URI:/nodes/{noderange}/console] - The console configuration for the node {noderange}",
+            matcher => '^/nodes/[^/]*/console$',
+            PUT => {
+                desc => "Update conserver configuration for the node {noderange}.",
+                usage => "|Json Formatted DataBody: {action:on/off}.|$usagemsg{non_getreturn}|",
+                example => "|Enable the console capability for node1|PUT|/nodes/node1/console {\"action\":\"on\"}||",
+                cmd => "makeconservercf",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            }
+        },
         energy => {
             desc => "[URI:/nodes/{noderange}/energy] - The energy resource for the node {noderange}",
             matcher => '^/nodes/[^/]*/energy$',
@@ -2119,6 +2131,14 @@ sub actionhdl {
             }
         }
 
+    } elsif ($params->{'resourcename'} eq "console") {
+        if ($paramhash->{'action'}) {
+            my $option = $paramhash->{'action'};
+            my %op_hash = ('on' => '', 'off' => '-d');
+            push @args, $op_hash{$paramhash->{'action'}};
+        } else {
+            error("Missed Action.",$STATUS_NOT_FOUND);
+        }
     }
 
     push @{$request->{arg}}, @args;  
@@ -2991,6 +3011,8 @@ sub sendRequest {
             SSL_key_file  => $keyfile,
             SSL_cert_file => $certfile,
             SSL_ca_file   => $cafile,
+            SSL_verify_mode => SSL_VERIFY_PEER,
+            SSL_verifycn_scheme => "none",
             SSL_use_cert  => 1,
             Timeout       => 15,);
     }

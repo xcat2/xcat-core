@@ -33,8 +33,16 @@ check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/sles/compute.synclist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/rh/compute.synclist;fi
 check:rc==0
 
+cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
+cmd:mount |sort > /tmp/mountoutput/file.org
+cmd:cat /tmp/mountoutput/file.org
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
+cmd:mount |sort > /tmp/mountoutput/file.new
+cmd:cat /tmp/mountoutput/file.new
+cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new
+check:rc==0
+cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 

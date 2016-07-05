@@ -1,0 +1,17 @@
+# <the power LE kvm node definition template>
+
+ppc64lekvmguest-template:
+    objtype=node
+    arch=ppc64le
+    groups=all
+    ip="OPTIONAL:the ip address of the kvm guest"
+    mac="OPTIONAL:the mac of the kvm guest"
+    mgt=kvm
+    netboot=grub2
+    vmcpus=2
+    vmhost="MANDATORY:the hostname or ip address of the KVM hypervisor"
+    vmmemory=4096
+    vmnicnicmodel=virtio
+    vmnics="MANDATORY:the hypervisor nics used to create the kvm guest network"
+    vmstorage=dir:///var/lib/libvirt/images
+    usercomment="the power LE kvm node definition template"

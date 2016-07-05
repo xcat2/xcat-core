@@ -44,10 +44,9 @@ prescripts Attributes:
 
 \ **begin**\ 
  
- The scripts to be run at the beginning of the nodeset(Linux),
-  nimnodeset(AIX) or mkdsklsnode(AIX) command.
+ The scripts to be run at the beginning of the nodeset(Linux), nimnodeset(AIX) or mkdsklsnode(AIX) command.
   The format is:
-    [action1:]s1,s2...[|action2:s3,s4,s5...]
+    [action1:]s1,s2...[| action2:s3,s4,s5...]
   where:
    - action1 and action2 for Linux are the nodeset actions specified in the command. 
      For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'
@@ -59,28 +58,20 @@ prescripts Attributes:
     myscript1,myscript2  (all actions)
     diskless:myscript1,myscript2   (AIX)
     install:myscript1,myscript2|netboot:myscript3   (Linux)
- 
- 
- .. code-block:: perl
- 
-   All the scripts should be copied to /install/prescripts directory.
-   The following two environment variables will be passed to each script: 
-     NODES a coma separated list of node names that need to run the script for
-     ACTION current nodeset action.
-  
-   If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script
-   will get invoked for each node in parallel, but no more than number of instances
-   will be invoked at at a time. If it is not specified, the script will be invoked
-   once for all the nodes.
- 
+  All the scripts should be copied to /install/prescripts directory.
+  The following two environment variables will be passed to each script: 
+    NODES a coma separated list of node names that need to run the script for
+    ACTION current nodeset action.
+  If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script
+  will get invoked for each node in parallel, but no more than number of instances
+  will be invoked at at a time. If it is not specified, the script will be invoked
+  once for all the nodes.
  
 
 
 \ **end**\ 
  
- The scripts to be run at the end of the nodeset(Linux),
-  nimnodeset(AIX),or mkdsklsnode(AIX) command. 
-  The format is the same as the 'begin' column.
+ The scripts to be run at the end of the nodeset(Linux), nimnodeset(AIX),or mkdsklsnode(AIX) command. The format is the same as the 'begin' column.
  
 
 

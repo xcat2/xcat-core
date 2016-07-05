@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The \ **rmkitcomp**\  command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|-**\ **-uninstall> option.
+The \ **rmkitcomp**\  command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by \ **-u|-**\ **-uninstall**\  option.
 
 Note: The xCAT support for Kits is only available for Linux operating systems.
 

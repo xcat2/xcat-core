@@ -294,9 +294,21 @@ sub mn_install {
 	}
 	
 	send_msg(2, "[$mn->$confkeys{$mn}][mn_install] installing $osimage for node $confkeys{$mn}................");
+        
+        if( $arch =~ /x86_64/ || $arch =~ /ppc64le/ || $arch =~ /ppc64el/){
+            &runcmd("rmvm $confkeys{$mn} -f -p ");
+            &runcmd("chdef $confkeys{$mn} mac= ");
+            &runcmd("mkvm $confkeys{$mn} -s 40G");
+            }
 
         &runcmd("makedhcp -n");
         &runcmd("makedns -n");
+        &runcmd("chdef $confkeys{$mn} status=");
+        if($?){
+            send_msg(0, "[$mn->$confkeys{$mn}][mn_install] Failed to change MN status in current control node");
+            return 1;
+        }
+
 
 	&runcmd("nodeset $confkeys{$mn} osimage=$osimage");
 	if( $arch =~ /x86_64/ || $arch =~ /ppc64le/ || $arch =~ /ppc64el/){
@@ -305,18 +317,26 @@ sub mn_install {
 	    &runcmd("rnetboot $confkeys{$mn}");
 	}
 	
-	if($mn !~ /ubuntu/){
-	    &runcmd("sleep 300");
-	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
-	else{
-	    &runcmd("sleep 1800");	
-	}
+         &runcmd("sleep 600");
+         &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 30;((a++));if [ \$a -gt 100 ];then break;fi done");
+
+#	if($mn !~ /ubuntu/){
+#	    &runcmd("sleep 300");
+#	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
+#	else{
+#	    &runcmd("sleep 1800");	
+#	}
 	
 	&runcmd("lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null");
 	if($?){
         send_msg(0, "[$mn->$confkeys{$mn}][mn_install] install $osimage for node $confkeys{$mn} failed");
         return 1;
 	}
+        
+        if($mn =~ /ubuntu/){
+            system("xdsh $confkeys{$mn} \"rm -rf /bin/sh\" >/dev/null 2>&1");
+            system("xdsh $confkeys{$mn} \"ln -s /bin/bash /bin/sh\"");
+        }
 #	if($mn =~ /ubuntu/){
 #	    system("updatenode $confkeys{$mn} -P \"confignics -s\" >/dev/null 2>&1");  
 #	    system("xdsh $confkeys{$mn} \"iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\" >/dev/null 2>&1");   
@@ -666,15 +686,13 @@ sub install_xcat {
         system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test  > /var/log/xcat/install_xcat.log 2>&1' >/dev/null 2>&1");
-
-        system("xdsh $confkeys{$mn} 'mkdir -p /install/ubuntu14.04.3/ppc64el/install/netboot '");
-        system("scp /install/ubuntu14.04.3/ppc64el/install/netboot/initrd.gz $confkeys{$mn}:/install/ubuntu14.04.3/ppc64el/install/netboot  ");
-        }
+        system("scp $osisodir/mini.iso  $confkeys{$mn}:/  ");        
+        }    
 
 	#check if MN is installed successful 
-	my $lsdefout = `ssh -t $confkeys{$mn} 'bash -l -i -c "lsdef -v"'`;
-    chomp($lsdefout);
-	if($lsdefout !~ /^lsdef - Version/ ){
+        my $lsdefout = `xdsh $confkeys{$mn} '/opt/xcat/bin/lsdef -v'`;    
+        chomp($lsdefout);
+	if($lsdefout !~ /lsdef - Version/ ){
 	    send_msg(0, "[$mn->$confkeys{$mn}][install_xcat] install xcat in $mn failed");
 	    return 1;
     }
@@ -870,13 +888,15 @@ sub do_test {
                 $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\"' >/dev/null 2>&1");
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
                 last if($rc != 0);
-
-                #set up dockerhosts
-                send_msg(2, "[$mn->$confkeys{$mn}][do_test] setupdockerhost $mn.....");
-                $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $setup_dockerhost_testcase\"' >/dev/null 2>&1");
-                send_msg(2, "[$mn->$confkeys{$mn}][do_test] setup dockerhosts $mn.....[done]");
-                last if($rc != 0);
-
+                
+                if($mn =~ /ubuntux/){
+                    #set up dockerhosts
+                    send_msg(2, "[$mn->$confkeys{$mn}][do_test] setupdockerhost $mn.....");
+                    $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $setup_dockerhost_testcase\"' >/dev/null 2>&1");
+                    send_msg(2, "[$mn->$confkeys{$mn}][do_test] setup dockerhosts $mn.....[done]");
+                    last if($rc != 0);
+                    }
+	
                 #commands bundle in flat mode test
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
                 $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\"' >/dev/null 2>&1");

@@ -45,6 +45,31 @@ rpower fails with "Error: internal error: process exited while connecting to mon
 
      Then reboot the hypervisor...
 
+rmigrate fails with "Error: libvirt error code: 38, message: unable to connect to server at 'c910f05c35:49152': No route to host."
+----------------------------------------------------------------------------------------------------------------------------------
+
+   **Issue**: ::
+
+    #rmigrate vm1 kvmhost2
+    vm1: Error: libvirt error code: 38, message: unable to connect to server at 'kvmhost2:49152': No route to host: Failed migration of vm1 from kvmhost1 to kvmhost2
+
+   **Solution**:
+     Usually caused by active firewall. To disable the firewall issue: ::
+
+       systemctl disable firewalld
+
+rmigrate fails with "Error: 38, message: failed to create directory '<dir-name>': File exists: Unknown issue libvirt error code."
+---------------------------------------------------------------------------------------------------------------------------------
+
+   **Issue**: ::
+
+    #rmigrate vm1 kvmhost2
+    vm1: Error: 38, message: failed to create directory '<dir-name>': File exists: Unknown issue libvirt error code.
+
+   **Solution**:
+     Ususally happens when `nfs:` is specified for vmstorage attribute but that NFS directory is no longer mounted. Make sure the directory /var/lib/xcat/pools is empty on the destination kvmhost.
+
+
 Error: Cannot communicate via libvirt to kvmhost1
 -------------------------------------------------
 

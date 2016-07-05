@@ -23,6 +23,7 @@ sub handled_commands {
     return {
 	findme => 'switch',
 	findmac => 'switch',
+        switchprobe => 'switch',
 	rspconfig => 'nodehm:mgt',
     };
 }
@@ -36,13 +37,13 @@ sub preprocess_request {
 
   my $noderange = $request->{node}; 
   my $command = $request->{command}->[0];
-  my $extrargs = $request->{arg};
-  my @exargs=($request->{arg});
-  if (ref($extrargs)) {
-    @exargs=@$extrargs;
-  }
 
   if ($command eq "rspconfig") {
+      my $extrargs = $request->{arg};
+      my @exargs=($request->{arg});
+      if (ref($extrargs)) {
+          @exargs=@$extrargs;
+      }
       my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
       if ($usage_string) {
 	  $callback->({data=>$usage_string});
@@ -100,6 +101,90 @@ sub preprocess_request {
       }
       return \@requests;  
   }
+  elsif ($command eq 'switchprobe') {
+      @ARGV = ();
+      if (ref($request->{arg})) {
+          @ARGV = @{$request->{arg}};
+      }
+      use Getopt::Long;
+      $Getopt::Long::ignorecase = 0;
+      Getopt::Long::Configure( "bundling" );
+      my $verbose = undef;
+      my $check = undef;
+      my $help = undef;
+      unless (GetOptions('h|help' => \$help, 'V|verbose' => \$verbose, 'c|check'  => \$check)) {
+          $callback->({error=>["Parse args failed"], errorcode=>1});
+          return;
+      }
+      if (@ARGV) {
+          $callback->({error=>["Option @ARGV not supported.\n".xCAT::Usage->getUsage($command)], errorcode=>1});
+          return;
+      }
+      if (defined($help)) {
+          $callback->({data=>xCAT::Usage->getUsage($command)});
+          return; 
+      }
+      if (defined($verbose)) {
+          $request->{opt}->{verbose} = $verbose;
+      }
+      if (defined($check)) {
+          $request->{opt}->{check} = $check;
+      }
+      if (defined($noderange)) {
+          my $nthash = undef;
+          my $swhash = undef;
+          my $nodetypetab=xCAT::Table->new('nodetype',-create=>0);
+          if ($nodetypetab) {
+              $nthash = $nodetypetab->getNodesAttribs($noderange, ['nodetype']);
+              if (!defined($nthash)) {
+                  $callback->({error=>["Get attributes from table 'nodetype' failed"],errorcode=>1});
+                  return;
+              }
+          } 
+          else {
+              $callback->({error=>["Open table 'nodetype' failed"],errorcode=>1});
+              return;
+          }
+          my $switchestab  = xCAT::Table->new('switches', -create=>0);
+          if ($switchestab) {
+              $swhash = $switchestab->getNodesAttribs($noderange, ['switch']);
+              if (!defined($swhash)) {
+                   $callback->({error=>["Get attributes from table 'switches' failed"],errorcode=>1});
+                   return;
+              }
+          }
+          else {
+              $callback->({error=>["Open table 'switches' failed"],errorcode=>1});
+              return;
+
+          }
+          my @switchnode = ();
+          my @errswnode = ();
+          my @errornode = ();
+          foreach my $node (@$noderange) {
+              if (!defined($nthash->{$node}) or $nthash->{$node}->[0]->{nodetype} ne 'switch') {
+                  push @errornode, $node;
+              }
+              elsif (!defined($swhash->{$node})) {
+                  push @errswnode, $node;
+              }
+              else {
+                  push @switchnode, $node;
+              }
+          }
+          if (@errornode) {
+              $callback->({error=>["The nodetype is not 'switch' for nodes: ". join(",",@errornode)],errorcode=>1});
+          }
+          if (@errswnode) {
+              $callback->({error=>["No switch configuration info find for ". join(",",@errswnode)],errorcode=>1});
+          }
+          if (@switchnode) {
+              @{$request->{node}} = @switchnode;
+              return [$request];
+          }
+          return;
+      }
+  }
   return [$request];
 }
 
@@ -119,7 +204,75 @@ sub process_request {
 	return;
     }  elsif ($req->{command}->[0] eq 'rspconfig') {
 	return process_switch_config($req, $cb, $doreq);
+    } elsif ($req->{command}->[0] eq 'switchprobe') {
+        my $macinfo = $macmap->dump_mac_info($req, $cb);
+        if ($macinfo and ref($macinfo) eq 'HASH') {
+            my $switch_name_length = 0;
+            my $port_name_length = 0;
+            foreach my $switch (keys %$macinfo) {
+                if (length($switch) > $switch_name_length) {
+                    $switch_name_length = length($switch);
+                }
+                if (defined($macinfo->{$switch}->{ErrorStr})) {
+                    next;
+                }
+                foreach my $portname (keys %{$macinfo->{$switch}}) {
+                    if (length($portname) > $port_name_length) {
+                        $port_name_length = length($portname);
+                    }
+                }
+            }
+            my $format = "%-".$switch_name_length."s  %-".$port_name_length."s  %-18s  %s";
+            my %failed_switches = ();
+            my $header = sprintf($format, "Switch", "Port", "MAC address", "Node");
+            if (!defined($req->{opt}->{check}) and $port_name_length) {
+                $cb->({data=>$header});
+                $cb->({data=>"------------------------------------------------------------------"})
+            };
+            foreach my $switch (keys %$macinfo) {
+                if (defined($macinfo->{$switch}->{ErrorStr})) {
+                    if (defined($req->{opt}->{check})) {
+                        $cb->({node=>[{name=>$switch, error=>[$macinfo->{$switch}->{ErrorStr}], errorcode=>1}]});
+                    }
+                    else {
+                        $failed_switches{$switch} = "$macinfo->{$switch}->{ErrorStr}";
+                    }
+                    next;
+                }
+                elsif (defined($req->{opt}->{check})) {
+                    $cb->({node=>[{name=>$switch, data=>["PASS"]}]});
+                    next;
+                }
+                foreach my $port (sort keys %{$macinfo->{$switch}}) {
+                    my $node = '';
+                    if (defined($macinfo->{$switch}->{$port}->{Node})) {
+                        $node = $macinfo->{$switch}->{$port}->{Node};
+                    }
+                    my @macarrary = ();
+                    if (defined($macinfo->{$switch}->{$port}->{MACaddress})) {
+                        @macarray = @{$macinfo->{$switch}->{$port}->{MACaddress}};
+                        foreach (@macarray) {
+                            my $data = sprintf($format, $switch, $port, ($_ ne '') ? $_ : '       N/A', $node);
+                            $cb->({data=>$data});
+                            #$cb->({node=>[{name=>$switch,data=>$data}]});
+                        }
+                    }
+                }
+            }
+            if (!defined($req->{opt}->{check}) and $port_name_length) {
+                $cb->({data=>"------------------------------------------------------------------"})
+            }
+            foreach (keys %failed_switches) {
+                $cb->({node=>[{name=>$_, error=>[$failed_switches{$_}], errorcode=>1}]});
+            }
+        }
+        return;
     } elsif ($req->{command}->[0] eq 'findme') {
+        if (defined($req->{discoverymethod}) and defined($req->{discoverymethod}->[0]) and ($req->{discoverymethod}->[0] ne 'undef'))  {
+            # The findme request had been processed by other module, just return
+            return;
+        }
+        xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Processing discovery request");
 	my $ip = $req->{'_xcat_clientip'};
 	if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
 	    #Don't attempt switch discovery of a  VM Guest
@@ -157,37 +310,38 @@ sub process_request {
 		if ($node) { last; }
 	    }
 	}
-        my $pbmc_node = undef;
+        my $bmc_node = undef;
         if ($req->{'mtm'}->[0] and $req->{'serial'}->[0]) {
             my $mtms = $req->{'mtm'}->[0]."*".$req->{'serial'}->[0];
             my $tmp_nodes = $::XCATVPDHASH{$mtms};
             foreach (@$tmp_nodes) {
                 if ($::XCATMPHASH{$_}) {
-                    $pbmc_node = $_;
+                    $bmc_node = $_;
                 }
             } 
         }
 	 
 	if ($node) {
-	    my $mactab = xCAT::Table->new('mac',-create=>1);
-	    $mactab->setNodeAttribs($node,{mac=>$mac});
-	    $mactab->close();
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Find node:$node for the discovery request");
+            # No need to write mac table here, 'discovered' command will write
+	    # my $mactab = xCAT::Table->new('mac',-create=>1);
+	    # $mactab->setNodeAttribs($node,{mac=>$mac});
+	    # $mactab->close();
 	    #my %request = (
 	    #  command => ['makedhcp'],
 	    #  node => [$node]
 	    #);
 	    #$doreq->(\%request);
-	    $req->{command}=['discovered'];
-	    $req->{noderange} = [$node];
-            if ($pbmc_node) {
-                $req->{pbmc_node} = [$pbmc_node];
-            }
-	    $req->{discoverymethod} = ['switch'];
-	    $doreq->($req); 
-	    %{$req}=();#Clear req structure, it's done..
+	    $req->{discoverymethod}->[0] = 'switch';
+            my $request = {%$req};
+	    $request->{command}=['discovered'];
+	    $request->{noderange} = [$node];
+	    $request->{bmc_node} = [$bmc_node];
+	    $doreq->($request); 
+	    %{$request}=();#Clear req structure, it's done..
 	    undef $mactab;
 	} else { 
-	    #Shouldn't complain, might be blade, but how to log total failures?
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Error: Could not find any node");
 	}
     }
 }

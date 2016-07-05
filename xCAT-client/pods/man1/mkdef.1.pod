@@ -6,12 +6,12 @@ B<mkdef> - Use this command to create xCAT data object definitions.
 
 B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>] [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]] [B<-u> B<provmethod>={B<install> | B<netboot> | B<statelite>} B<profile=> I<xxx> [B<osvers=> I<value>] [B<osarch=> I<value>]]
+B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<--template> I<template-object-name>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>] [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]] [B<-u> B<provmethod>={B<install> | B<netboot> | B<statelite>} B<profile=> I<xxx> [B<osvers=> I<value>] [B<osarch=> I<value>]]
 
 
 =head1 DESCRIPTION
 
-This command is used to create xCAT object definitions which are stored in the xCAT database. If the definition already exists it will return an error message. The force option may be used to re-create a definition.  In this case the old definition will be remove and the new definition will be created.
+This command is used to create xCAT object definitions which are stored in the xCAT database. If the definition already exists it will return an error message. The force option may be used to re-create a definition.  In this case the old definition will be remove and the new definition will be created. 
 
 
 =head1 OPTIONS
@@ -47,6 +47,10 @@ A set of comma delimited object names.
 =item B<-t> I<object-types>
 
 A set of comma delimited object types.  Use the help option to get a list of valid object types.
+
+=item B<--template> I<template-object-name>
+
+Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of B<mkdef> command. For the details of xCAT shipped object definition templates, please refer to the manpage of B<--template> option in L<lsdef(1)|lsdef.1>.
 
 =item B<-V|--verbose>
 
@@ -162,6 +166,18 @@ To create a node definition with nic attributes
 To create an osimage definition and fill in attributes automatically.
 
  mkdef redhat6img -u profile=compute provmethod=statelite
+
+=item 13
+
+To create a PowerLE kvm node definition with the xCAT shipped template "ppc64lekvmguest-template".
+
+ mkdef -t node cn1 --template ppc64lekvmguest-template ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
+
+=item 14
+
+To create a node definition from an existing node definition "cn1"
+
+ mkdef -t node cn2 --template cn1 ip=1.1.1.2 mac=42:3d:0a:05:27:0c
 
 =back
 

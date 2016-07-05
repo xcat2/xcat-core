@@ -1,8 +1,8 @@
-start:runcmdinstaller
+start:runcmdinstaller_h
 descriptiop:runcmdinstaller -h
-cmd:runcmdinstaller
-##check:rc==0
-check:output=~runcmdinstaller <node> "<command>"
+cmd:runcmdinstaller -h
+check:rc==0
+check:output=~runcmdinstaller <node> <commands>
 end
 start:runcmdinstaller_command
 descriptiop:runcmdinstaller

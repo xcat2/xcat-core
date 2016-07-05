@@ -4,19 +4,49 @@ B<rinstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<rinstall> [B<-O>|B<--osimage>] [B<-c>|B<--console>] [I<noderange>]
+B<rinstall> I<noderange> B<boot> | B<shell> | B<runcmd=bmcsetup> [B<-c>|B<--console>] [B<-V>|B<--verbose>]
+
+B<rinstall> I<noderange> B<osimage>=I<imagename> | [B<-O>] I<imagename> [B<--ignorekernelchk>] [B<-c>|B<--console>] [B<-u>|B<--uefimode>] [B<-V>|B<--verbose>]
+
+B<rinstall> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 B<Description>
 
-B<rinstall> is a convenience command that will change tables as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<rinstall>), and B<rpower> to begin a boot cycle.
+B<rinstall> is a convenience command to begin OS provision on a noderange(support nodes with "nodetype.mgt=ipmi,blade,hmc,ivm,fsp,kvm,esx,rhevm").
 
-If [B<-O>|B<--osimage>] is specified or nodetype.provmethod=B<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
+If B<osimage>=I<imagename> | B<-O> I<imagename> is specified or nodetype.provmethod=B<osimage> is set, provision the noderange with the osimage specified/configured.
 
 If -c is specified, it will then run rcons on the node. This is allowed only if one node in the noderange.   If need consoles on multiple nodes , see L<winstall(8)|winstall.8>.
 
 =head1 B<Options>
 
 =over 7
+
+=item B<boot>
+
+Instruct network boot loader to be skipped, generally meaning boot to hard disk
+
+=item B<osimage>|B<osimage=>I<imagename>|B<-O>I<imagename>
+
+Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
+
+=item B<--ignorekernelchk>
+
+Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+
+=item B<runimage>=I<task>
+
+If you would like to run a task after deployment, you can define that task with this attribute.    
+
+=item B<runcmd=bmcsetup>
+
+This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
+for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+
+=item B<shell>
+
+This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
 
 =item B<-h>|B<--help>
 
@@ -26,13 +56,17 @@ Display usage message.
 
 Display version. 
 
-=item B<-O>|B<--osimage>
+=item B<-u>|B<--uefimode>
 
-Specifies the osimage to provision. 
+For BMC-based servers, to specify the next boot mode to be "UEFI Mode". 
+
+=item B<-V>|B<--Verbose>
+
+Verbose output. 
 
 =item B<-c>|B<--console>
 
-Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See L<winstall(8)|winstall.8> for starting nsoles on multiple nodes.
+Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See L<winstall(8)|winstall.8> for starting consoles on multiple nodes.
 
 =back
 
@@ -49,7 +83,7 @@ Provision nodes 1 through 20, using their current configuration.
 =item 2.
 Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
 
- rinstall node1-node20 -O rhels6.4-ppc64-netboot-compute
+ rinstall node1-node20 osimage=rhels6.4-ppc64-netboot-compute
 
 =item 3.
 Provision node1 and start a console to monitor the process.

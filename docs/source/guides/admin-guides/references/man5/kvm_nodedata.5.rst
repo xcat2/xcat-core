@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-Persistant store for KVM plugin, not intended for manual modification.
+Persistent store for KVM plugin, not intended for manual modification.
 
 
 ************************

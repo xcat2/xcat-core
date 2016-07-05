@@ -31,7 +31,7 @@ DESCRIPTION
 
 Generate the initrd for the osimage: \ **imagename**\  which is an xCAT object of \ *osimage*\  type.
 
-\ **Diskfull Osimage**\ 
+\ **Diskful Osimage**\ 
 
 
 If the \ **imagename**\  is a stateful one (The provmethod attribute for the osimage is 'install'), 

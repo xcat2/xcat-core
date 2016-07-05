@@ -41,7 +41,7 @@ blade specific:
 ===============
 
 
-\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **-**\ **-verbose**\ ] [\ **-d**\ ] [\ **-**\ **-arp**\ ] [\ **-i**\  \ *ethN*\ |\ *enN*\ ]
+\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **-**\ **-verbose**\ ] [\ **-d**\ ] [\ **-**\ **-arp**\ ] [\ **-i**\  \ *ethN*\  | \ *enN*\ ]
 
 
 

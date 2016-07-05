@@ -69,7 +69,11 @@ require xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
 require xCAT::NotifHandler;
 
-my $dbworkerpid; #The process id of the database worker
+#The process id of the database worker
+# -1 db process has not been started, access db in direct access mode.
+# 0 db process itself.
+# >0 db process is started, access db in cache mode.
+my $dbworkerpid = -1;
 my $dbworkersocket;
 my $dbsockpath = "/var/run/xcat/dbworker.sock.".$$;
 my $exitdbthread;
@@ -99,8 +103,8 @@ sub dbc_submit {
     my $err;
     while($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
         #print "waiting for clisock to be available\n";
-        if ($tries % 10 == 0 and $dbworkerpid != 0 and not xCAT::Utils::is_process_exists($dbworkerpid)) {
-            $dbworkerpid = 0;
+        if ($tries % 10 == 0 and $dbworkerpid > 0 and not xCAT::Utils::is_process_exists($dbworkerpid)) {
+            $dbworkerpid = -1;
             xCAT::MsgUtils->message("S","xcatd: DB access process is down, xcat is running in direct access mode. "
                                        ."Please restart xcatd to avoid of this error.");
             return undef;
@@ -108,7 +112,7 @@ sub dbc_submit {
         sleep 0.1;
         $tries--;
     }
-    if ( $dbworkerpid !=0 and !$clisock) {
+    if ( $dbworkerpid > 0 and !$clisock) {
         use Carp qw/cluck/;
         cluck();
     }
@@ -147,7 +151,7 @@ sub dbc_submit {
 }
 
 sub shut_dbworker {
-    $dbworkerpid = 0; #For now, just turn off usage of the db worker
+    $dbworkerpid = -1; #For now, just turn off usage of the db worker
     #This was created as the monitoring framework shutdown code otherwise seems to have a race condition
     #this may incur an extra db handle per service node to tolerate shutdown scenarios
 }
@@ -390,7 +394,7 @@ sub handle_dbc_request {
 
 sub _set_use_cache {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'_set_use_cache',@_);
     }
     
@@ -757,7 +761,7 @@ sub new
     }
     $self->{realautocommit} = $self->{autocommit}; #Assume requester autocommit behavior maps directly to DBI layer autocommit
     my $class = ref($proto) || $proto;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         my $request = { 
             function => "new",
             tablename => $self->{tabname},
@@ -1351,7 +1355,7 @@ sub addAttribs
     my $self   = shift;
     xCAT::MsgUtils->message("S","addAttribs is not supported");
     die "addAttribs is not supported";
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'addAttribs',@_);
     }
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
@@ -1444,7 +1448,7 @@ sub addAttribs
 sub rollback
 {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'rollback',@_);
     }
     $self->{dbh}->rollback;
@@ -1482,7 +1486,7 @@ sub rollback
 sub commit
 {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'commit',@_);
     }
     unless ($self->{dbh}->{AutoCommit}) { #caller can now hammer commit function with impunity, even when it makes no sense
@@ -1540,7 +1544,7 @@ sub setAttribs
     #-Hash reference of column-value pairs to set
     my $xcatcfg =get_xcatcfg();
     my $self     = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'setAttribs',@_);
     }
     my $pKeypairs=shift;
@@ -1768,7 +1772,7 @@ sub setAttribsWhere
     #-Where clause
     #-Hash reference of column-value pairs to set
     my $self     = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'setAttribsWhere',@_);
     }
     my $where_clause = shift;
@@ -1881,7 +1885,7 @@ sub setNodesAttribs {
 #-Insert intelligently with respect to scale (prepare one statement, execute many times, other syntaxes not universal)
 #Intelligently in this case means folding them to some degree.  Update where clauses will be longer, but must be capped to avoid exceeding SQL statement length restrictions on some DBs.  Restricting even all the way down to 256 could provide better than an order of magnitude better performance though
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'setNodesAttribs',@_);
     }
     my $nodelist = shift;
@@ -2075,7 +2079,7 @@ sub setNodesAttribs {
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getNodesAttribs',@_);
     }
     my $nodelist = shift;
@@ -2146,7 +2150,7 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
 #TODO: increment a reference counter type thing to preserve current cache
 #Also, if ref count is 1 or greater, and the current cache is less than 3 seconds old, reuse the cache?
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'_build_cache',@_);
     }
     my $attriblist = shift;
@@ -2246,7 +2250,7 @@ $evalcpt->permit('require');
 sub getNodeAttribs
 {
     my $self    = shift;
-    if ($dbworkerpid) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
+    if ($dbworkerpid > 0) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
                         #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
                         #db worker scope
         return dbc_call($self,'getNodeAttribs',@_);
@@ -2750,7 +2754,7 @@ sub getNodeAttribs_nosub_returnany
 sub getAllEntries
 {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getAllEntries',@_);
     }
 
@@ -2844,7 +2848,7 @@ sub getAllAttribsWhere
 
     #Takes a list of attributes, returns all records in the table.
     my $self        = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getAllAttribsWhere',@_);
     }
     my $clause = shift; 
@@ -2927,7 +2931,7 @@ sub getAllNodeAttribs
 
     #Extract and substitute every node record, expanding groups and substituting as getNodeAttribs does
     my $self    = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getAllNodeAttribs',@_);
     }
     my $attribq = shift;
@@ -3052,7 +3056,7 @@ sub getAllAttribs
 
     #Takes a list of attributes, returns all records in the table.
     my $self    = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getAllAttribs',@_);
     }
 
@@ -3154,7 +3158,7 @@ sub getAllAttribs
 sub delEntries
 {
     my $self   = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'delEntries',@_);
     }
     my $keyref = shift;
@@ -3286,7 +3290,7 @@ sub getAttribs
     # (recurse argument intended only for internal use.)
     # Returns a hash reference with requested attributes defined.
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getAttribs',@_);
     }
 
@@ -3443,7 +3447,7 @@ sub getTable
     #   table.  Each array entry contains a pointer to a hash which is
     #   one row of the table.  The row hash is keyed by attribute name.
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getTable',@_);
     }
     my @return;
@@ -3501,7 +3505,7 @@ sub close
     my $self = shift;
     #if ($self->{dbh}) { $self->{dbh}->disconnect(); }
     #undef $self->{dbh};
-    if ($0 ne "xcatd: DB Access") {
+    if ($dbworkerpid != 0) {
         if ($self->{tabname} eq 'nodelist') {
             undef $self->{nodelist};
         } else {
@@ -3904,7 +3908,7 @@ sub buildWhereClause {
 sub writeAllEntries
 {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'writeAllEntries',@_);
     }
     my $filename = shift;
@@ -3983,7 +3987,7 @@ sub writeAllAttribsWhere
 
     #Takes a list of attributes, returns all records in the table.
     my $self        = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'writeAllAttribsWhere',@_);
     }
     my $clause = shift; 
@@ -4100,7 +4104,7 @@ sub output_table {
 sub getMAXMINEntries
 {
     my $self = shift;
-    if ($dbworkerpid) {
+    if ($dbworkerpid > 0) {
         return dbc_call($self,'getMAXMINEntries',@_);
     }
     my $attr = shift;

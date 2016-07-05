@@ -1,0 +1,303 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+use File::Basename;
+use Data::Dumper;
+use File::Path;
+use POSIX qw(WNOHANG setsid :errno_h);
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
+
+$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+
+my $program_name = basename($0);
+
+my $pro_dir    = "$::XCATROOT/probe/";
+my $plugin_dir = "$pro_dir/subcmds";
+my %cmds       = ();
+
+my $verbose = 0;
+my $color   = (-t *STDOUT);
+my $fullmsg = 0;
+my $help    = 0;
+my $list    = 0;
+
+$::USAGE = "Usage:
+xcatprobe -h
+xcatprobe -l
+xcatprobe [-V] <subcommand>  <attrbute_to_subcommand>
+
+Options:
+    -h : get usage information of $program_name 
+    -l : list all valid sub commands
+    -V : print verbose information of $program_name
+";
+
+#-----------------------------------
+
+=head3
+    Description:
+    Load sub commands from ~/subcmds directory
+    Using -t option of command to judge if it is valid.
+    If command in ~/subcmds has syntax error, or doesn't follow interface specification, this command will be skipped
+=cut
+
+#-----------------------------------
+sub loadsubcmds {
+    my @candidate = glob("$plugin_dir/*");
+    my @subcmds   = ();
+    my $output;
+
+    print "Starting to load sub command form ~/subcmds.............\n" if ($verbose);
+
+    foreach (@candidate) {
+        my $cmdname = basename("$_");
+        $output = `$_ -T 2>&1`;
+        chomp($output);
+
+        print "\n-->$_\n[OUTPUT]:\n$output\n" if ($verbose);
+        if ($output !~ /\[(\w+)\]\s*:\s*(.+)/) {
+            print "skip $_ for doing '$_ -T' failed, bad format\n" if ($verbose);
+            next;
+        } else {
+            my $desc = $2;
+            unless ($1 =~ /^ok$/) { 
+                print "skip $_ for doing '$_ -T' failed, invalid flag\n" if ($verbose);
+                next;
+            }
+            $cmds{$cmdname} = $desc;
+            print "load $_ \n" if ($verbose);
+        }
+    }
+    print "\nLoad sub command.........[done]\n" if ($verbose);
+}
+
+
+#-----------------------------------
+
+=head3
+    Description:
+    Format the output of sub command, make them colorfully.
+=cut
+
+#----------------------------------
+sub format_cmd_output {
+    my $line    = shift;
+    my $color   = shift;
+    my $fullmsg = shift;
+
+    my $msg;
+    my $flag;
+
+    if ($line =~ /\[(\w+)\]\s*:(.+)/) {
+        $flag = $1;
+        $msg  = $2;
+    } else {
+        $msg = $line;
+    }
+
+    $msg =~ s/\t/        /g;
+    my $flaglen      = 6;
+    my $desiredwidth = 120;
+    my $screenwidth  = (`tput cols` + 0);
+    my $maxlen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
+
+    my @finalmsg = ();
+    my $msglen   = length($msg);
+    if ($msglen <= $maxlen) {
+        if (!$fullmsg && $flag) {
+            my $leftspace = $maxlen - length($msg);
+            if ($leftspace < $flaglen) {
+                $msg = substr($msg, 0, $maxlen - $flaglen);
+                $msg =~ s/(.*).../$1\.\.\./g;
+            }
+        }
+        push @finalmsg, $msg;
+    } else {
+        my @tmpmsg = split("", $msg);
+        my $head   = 0;
+        my $tail   = $maxlen;
+        while ($head < $msglen) {
+            push @finalmsg, substr($msg, $head, ($tail - $head));
+            if (!$fullmsg) {
+                if ($flag) {
+                    $finalmsg[0] =~ s/(.*).........$/$1\.\.\./g;
+                } else {
+                    $finalmsg[0] =~ s/(.*)...$/$1\.\.\./g;
+                }
+                last;
+            }
+            $head = $tail;
+            $tail = $head + ($maxlen <= ($msglen - $tail) ? $maxlen : ($msglen - $tail));
+        }
+    }
+
+    for (my $i = 0 ; $i < $#finalmsg + 1 ; ++$i) {
+        if ($i ne $#finalmsg) {
+            print "$finalmsg[$i]\n";
+            next;
+        }
+
+        if ($flag) {
+            my $leftspace = $maxlen - length($finalmsg[$i]);
+            my $spacenum = (($leftspace >= $flaglen) ? ($leftspace - $flaglen) : ($screenwidth - length($finalmsg[$i]) + $maxlen - $flaglen));
+            my $spacestr = " " x $spacenum;
+            print "$finalmsg[$i]$spacestr";
+
+            if ($flag =~ /failed/i) {
+                if ($color) {
+                    print BOLD RED "[FAIL]\n";
+                } else {
+                    print "[FAIL]\n";
+                }
+            } elsif ($flag =~ /warning/i) {
+                if ($color) {
+                    print BOLD BLUE "[WARN]\n";
+                } else {
+                    print "[WARN]\n";
+                }
+            } elsif ($flag =~ /ok/i) {
+                if ($color) {
+                    print BOLD GREEN "[ OK ]\n";
+                } else {
+                    print "[ OK ]\n";
+                }
+            } elsif ($flag =~ /debug/i) {
+                print "\n";
+            } elsif ($flag =~ /info/i) {
+                print "[INFO]\n";
+            }
+        } else {
+            print "$finalmsg[$i]\n";
+        }
+    }
+    return 0;
+}
+
+#-----------------------------------
+
+=head3
+    Description:
+    List all valid sub command in ~/subcmds directory
+=cut
+
+#----------------------------------
+sub listvalidsubcmd {
+    my $maxlen = 0;
+    foreach my $key (keys %cmds) {
+        $maxlen = length($key) if (length($key) > $maxlen);
+    }
+    $maxlen += 4;
+
+    my $desiredwidth = 120;
+    my $screenwidth  = (`tput cols` + 0);
+    my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
+
+    print "Supported sub commands are:\n";
+    foreach my $key (keys %cmds) {
+        my @desc       = split(" ", $cmds{$key});
+        my $str        = "";
+        my @formatdesc = ();
+        foreach my $word (@desc) {
+            if (length($str) + length($word) > $finallen - $maxlen) {
+                $str =~ s/([^\s]+)\s$/$1/g;
+                push @formatdesc, $str;
+                $str = "";
+            }
+            $str .= $word . " ";
+        }
+        $str =~ s/([^\s]+)\s$/$1/g;
+        push @formatdesc, $str;
+
+        if ($color) {
+            print BOLD GREEN "$key";
+        } else {
+            print "$key";
+        }
+        my $space = " " x ($maxlen - length($key));
+        print "$space$formatdesc[0]\n";
+        delete $formatdesc[0];
+        $space = " " x $maxlen;
+        foreach my $line (@formatdesc) {
+            print "$space$line\n" if (length($line));
+        }
+    }
+}
+
+#######################################
+# main
+#######################################
+my @tmpargv = @ARGV;
+my @supportopt = ("-V", "-h", "-l", "-w");
+my $pluginname;
+my $optnum = 0;
+foreach my $attr (@tmpargv) {
+    if ($attr =~ /^-/) {
+        unless (grep(/^$attr$/,  @supportopt)){
+            print "Unsupported attribute: $attr\n";
+            print $::USAGE;
+            exit 1;
+        }
+        $optnum++;
+        $help    = 1 if ($attr eq "-h");
+        $verbose = 1 if ($attr eq "-V");
+        $list    = 1 if ($attr eq "-l");
+        $fullmsg = 1 if ($attr eq "-w");
+    } else {
+        $pluginname = $attr;
+        last;
+    }
+}
+
+
+&loadsubcmds;
+if (defined($pluginname)) {
+    my $hit = 0;
+    foreach my $key (keys %cmds) {
+        $hit = 1 if ($pluginname eq $key);
+    }
+    unless ($hit) {
+        print "Unsupported sub command: $pluginname\n";
+        &listvalidsubcmd;
+        exit 1;
+    }
+}
+
+if ($help) {
+    print $::USAGE;
+    exit 0;
+}
+
+if ($ARGV[0] eq "-l") {
+    &listvalidsubcmd;
+    exit 0;
+}
+
+if (!defined($pluginname)) {
+    print "There isn't sub command input from command line, please use '-l' to list all valid subcommand\n";
+    exit 0;
+}
+
+splice(@tmpargv, 0, $optnum + 1);
+my $pluginattrs = join(" ", @tmpargv);
+my $subcmd = "$plugin_dir/$pluginname $pluginattrs";
+print "\nsubcmd = $subcmd\n" if ($verbose);
+
+my $subcmdpid = 0;
+$SIG{TERM} = $SIG{INT} = sub {
+    $subcmdpid or exit 0;
+    kill 'INT', $subcmdpid;
+};
+
+$subcmdpid = open(PIPE, "$subcmd |") or die("Something went wrong while fork()ing to handle subcommand $subcmd: $!");
+
+while (<PIPE>) {
+    chomp;
+    format_cmd_output($_, $color, $fullmsg);
+}
+close(PIPE);    # This will set the $? properly
+
+my $ret = $? >> 8;
+
+exit $ret;
+

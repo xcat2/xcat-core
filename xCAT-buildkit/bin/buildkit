@@ -1184,6 +1184,9 @@ sub edit_bldkitconf
         if ($debianflag){
             s/(filename=.*?)\-(.*)\.noarch\.rpm/$1_$2_all.deb/;
         }
+        if ($osbasename =~ /rh/){
+            s/.*<<<INSERT_compatible_HERE_>>>/  compat_osbasenames=centos/;
+        }
     }
 
     # Write the buildkit.conf back out

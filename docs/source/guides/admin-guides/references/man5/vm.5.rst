@@ -86,7 +86,7 @@ vm Attributes:
 
 \ **cfgstore**\ 
  
- Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data
+ Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data
  
 
 
@@ -128,7 +128,8 @@ vm Attributes:
 
 \ **virtflags**\ 
  
- General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+ General flags used by the virtualization method.  
+           For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
              imageformat=[raw|fullraw|qcow2]
                  raw is a generic sparse file that allocates storage on demand
                  fullraw is a generic, non-sparse file that preallocates all space
@@ -190,7 +191,7 @@ vm Attributes:
 
 \ **othersettings**\ 
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively,the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 

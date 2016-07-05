@@ -1010,8 +1010,8 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
         chmod($perm&07777, "$dracutmpath/install");
 
-        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
-        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        cp("$installroot/postscripts/updateflag.awk","$dracutmpath/xcat-updateflag");
+        $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-updateflag");
 
         cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
@@ -1042,8 +1042,8 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
 
-        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
-        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        cp("$installroot/postscripts/updateflag.awk","$dracutmpath/xcat-updateflag");
+        $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
         chmod($perm&07777, "$dracutmpath/xcat-updateflag");
         if ($prinic) {
             my $optspec;

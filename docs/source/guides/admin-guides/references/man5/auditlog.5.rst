@@ -27,11 +27,7 @@ DESCRIPTION
 ***********
 
 
-
-.. code-block:: perl
-
-  Audit Data log.
-
+Audit Data log.
 
 
 ********************

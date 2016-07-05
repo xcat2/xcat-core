@@ -5,6 +5,11 @@ fi
 
 #!/bin/sh
 
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    killall syslogd
+    syslogd -R #XCATVAR:XCATMASTER#
+fi
+
 if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
 fi

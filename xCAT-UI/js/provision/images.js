@@ -23,7 +23,7 @@ var softwareList = {
 function loadImagesPage() {
     // Set padding for images page
     $('#imagesTab').css('padding', '20px 60px');
-    
+
     // Get images within the database
     $.ajax( {
         url : 'lib/cmd.php',
@@ -41,7 +41,7 @@ function loadImagesPage() {
 
 /**
  * Load images within the database
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function loadImages(data) {
@@ -50,12 +50,12 @@ function loadImages(data) {
     if (rsp[0].indexOf('Could not find any object definitions') > -1) {
     	rsp = new Array();
     }
-    
+
     // Image attributes hash
     var attrs = new Object();
     // Image attributes
     var headers = new Object();
-    
+
     // Clear hash table containing image attributes
     origAttrs = '';
 
@@ -82,7 +82,7 @@ function loadImages(data) {
         attrs[image][key] = val;
         headers[key] = 1;
     }
-    
+
     // Save attributes in hash table
     origAttrs = attrs;
 
@@ -108,7 +108,7 @@ function loadImages(data) {
         var checkBx = '<input type="checkbox" name="' + img + '"/>';
         // Push in checkbox and image name
         row.push(checkBx, img);
-        
+
         // Go through each header
         for (var i = 2; i < sorted.length; i++) {
             // Add the node attributes to the row
@@ -127,7 +127,7 @@ function loadImages(data) {
 
     // Clear the tab before inserting the table
     $('#imagesTab').children().remove();
-    
+
     // Create info bar for images tab
     var info = createInfoBar('Double click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
     $('#imagesTab').append(info);
@@ -142,13 +142,13 @@ function loadImages(data) {
     copyCDLnk.click(function() {
         openCopyCdDialog();
     });
-    
+
     // Generate stateless or statelite image
     var generateLnk = $('<a>Generate image</a>');
     generateLnk.click(function() {
         loadCreateImage();
     });
-    
+
     // Edit image attributes
     var editLnk = $('<a>Edit</a>');
     editLnk.click(function() {
@@ -159,22 +159,22 @@ function loadImages(data) {
             }
         }
     });
-    
+
     // Add a row
     var addLnk = $('<a>Add</a>');
     addLnk.click(function() {
         openAddImageDialog();
     });
-    
+
     // Remove a row
     var removeLnk = $('<a>Remove</a>');
     removeLnk.click(function() {
         var images = getNodesChecked(imgTableId);
         if (images) {
             confirmImageDeleteDialog(images);
-        }        
+        }
     });
-    
+
     // Refresh image table
     var refreshLnk = $('<a>Refresh</a>');
     refreshLnk.click(function() {
@@ -192,7 +192,7 @@ function loadImages(data) {
             success : loadImages
         });
     });
-    
+
     // Insert table
     $('#imagesTab').append(dTable.object());
 
@@ -211,12 +211,12 @@ function loadImages(data) {
             }
         }
     });
-    
+
     // Set datatable width
     $('#' + imgTableId + '_wrapper').css({
         'width': '880px'
     });
-    
+
     // Actions
     var actionBar = $('<div class="actionBar"></div>').css("width", "450px");
     var advancedLnk = '<a>Advanced</a>';
@@ -227,50 +227,50 @@ function loadImages(data) {
     actionsMenu.superfish();
     actionsMenu.css('display', 'inline-block');
     actionBar.append(actionsMenu);
-    
+
     // Set correct theme for action menu
     actionsMenu.find('li').hover(function() {
         setMenu2Theme($(this));
     }, function() {
         setMenu2Normal($(this));
     });
-    
+
     // Create a division to hold actions menu
     var menuDiv = $('<div id="' + imgTableId + '_menuDiv" class="menuDiv"></div>');
     $('#' + imgTableId + '_wrapper').prepend(menuDiv);
-    menuDiv.append(actionBar);    
+    menuDiv.append(actionBar);
     $('#' + imgTableId + '_filter').appendTo(menuDiv);
-    
+
     /**
      * Enable editable columns
      */
-    
+
     // Do not make 1st or 2nd columns editable
     $('#' + imgTableId + ' td:not(td:nth-child(1),td:nth-child(2))').editable(
-        function(value, settings) {    
+        function(value, settings) {
             // Get column index
             var colPos = this.cellIndex;
-                        
+
             // Get row index
             var dTable = $('#' + imgTableId).dataTable();
             var rowPos = dTable.fnGetPosition(this.parentNode);
-            
+
             // Update datatable
             dTable.fnUpdate(value, rowPos, colPos);
-            
+
             // Get image name
             var image = $(this).parent().find('td:eq(1)').text();
-                    
+
             // Get table headers
             var headers = $('#' + imgTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
 
             // Get attribute name
             var attrName = jQuery.trim(headers.eq(colPos).text());
             // Get column value
-            var value = $(this).text();        
+            var value = $(this).text();
             // Build argument
             var args = attrName + '=' + value;
-                    
+
             // Send command to change image attributes
             $.ajax( {
                 url : 'lib/cmd.php',
@@ -293,7 +293,7 @@ function loadImages(data) {
             event : "dblclick", // Double click and edit
             height : '30px'     // The height of the text area
         });
-        
+
     // Get definable node attributes
     $.ajax( {
         url : 'lib/cmd.php',
@@ -311,7 +311,7 @@ function loadImages(data) {
 
 /**
  * Open dialog to confirm deleting image
- * 
+ *
  * @param images Comma delimited image names
  */
 function confirmImageDeleteDialog(images) {
@@ -321,7 +321,7 @@ function confirmImageDeleteDialog(images) {
     var confirmDialog = $('<div id="' + dialogId + '">'
             + '<p>Are you sure you want to remove ' + tmp + '?</p>'
         + '</div>');
-            
+
     // Open dialog to confirm delete
     confirmDialog.dialog({
         modal: true,
@@ -331,12 +331,12 @@ function confirmImageDeleteDialog(images) {
         title: 'Confirm',
         width: 500,
         buttons: {
-            "Ok": function(){ 
+            "Ok": function(){
                 // Change dialog buttons
                 $(this).dialog('option', 'buttons', {
                     'Close': function() {$(this).dialog("close");}
                 });
-                
+
                 // Add image to xCAT
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -351,7 +351,7 @@ function confirmImageDeleteDialog(images) {
                     success : updateImageDialog
                 });
             },
-            "Cancel": function(){ 
+            "Cancel": function(){
                 $(this).dialog("close");
             }
         }
@@ -365,32 +365,32 @@ function openAddImageDialog() {
     // Create dialog to add image
     var dialogId = 'addImage';
     var addImageForm = $('<div id="' + dialogId + '" class="form"></div>');
-    
+
     // Create info bar
     var info = createInfoBar('Provide the following attributes for the image. The image name will be generated based on the attributes you will give.');
-    
+
     var imageFS = $('<fieldset></fieldset>');
     var imageLegend = $('<legend>Image</legend>');
     imageFS.append(imageLegend);
     var imageAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     imageFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
     imageFS.append(imageAttr);
-    
+
     var optionFS = $('<fieldset></fieldset>');
     var optionLegend = $('<legend>Options</legend>');
     optionFS.append(optionLegend);
     var optionAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     optionFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
     optionFS.append(optionAttr);
-    
+
     addImageForm.append(info, imageFS, optionFS);
-    
+
     // Create inputs for image attributes
     var imageName = $('<div><label>Image name:</label><input type="text" name="imagename" disabled="disabled" title="The name of this xCAT OS image definition"/></div>');
     var imageType = $('<div><label>Image type:</label><input type="text" name="imagetype" value="linux" title="The type of operating system image this definition represents"/></div>');
-    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this image. Valid values: x86_64, x86, ia64, ppc64, and s390x."/></div>');
+    var architecture = $('<div><label>OS architecture:</label><input type="text" name="osarch" title="The hardware architecture of this image. Valid values: s390x."/></div>');
     var osName = $('<div><label>OS name:</label><input type="text" name="osname" value="Linux" title="Operating system name"/></div>');
-    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The operating system deployed on this node. Valid values: rhel*, centos*, fedora*, sles* (where * is the version #)."/></div>');    
+    var osVersion = $('<div><label>OS version:</label><input type="text" name="osvers" title="The operating system deployed on this node. Valid values: rhel*, sles* (where * is the version #)."/></div>');
     var profile = $('<div><label>Profile:</label><input type="text" name="profile" title="The node usage category"/></div>');
     var provisionMethod = $('<div><label>Provision method:</label></div>');
     var provisionSelect = $('<select name="provmethod" title="The provisioning method for node deployment">'
@@ -400,7 +400,7 @@ function openAddImageDialog() {
             + '<option value="statelite">statelite</option>'
         + '</select>');
     provisionMethod.append(provisionSelect);
-    
+
     // Create inputs for optional attributes
     var otherpkgDirectory = $('<div><label>Other package directory:</label></div>');
     var otherpkgDirectoryInput = $('<input type="text" name="otherpkgdir" title="The base directory where the non-distro packages are stored"/>');
@@ -498,10 +498,10 @@ function openAddImageDialog() {
         height : '300',
         basePath : '/install' // Limit user to only install directory
     });
-        
+
     imageAttr.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod);
     optionAttr.append(otherpkgDirectory, packageDirectory, packageList, template);
-        
+
 	// Generate tooltips
     addImageForm.find('div input[title],select[title]').tooltip({
         position: "center right",
@@ -522,7 +522,7 @@ function openAddImageDialog() {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to add image
     addImageForm.dialog({
         title:'Add image',
@@ -536,7 +536,7 @@ function openAddImageDialog() {
             "Ok": function(){
                 // Remove any warning messages
                 $(this).find('.ui-state-error').remove();
-                
+
                 // Get image attributes
                 var imageType = $(this).find('input[name="imagetype"]');
                 var architecture = $(this).find('input[name="osarch"]');
@@ -544,13 +544,13 @@ function openAddImageDialog() {
                 var osVersion = $(this).find('input[name="osvers"]');
                 var profile = $(this).find('input[name="profile"]');
                 var provisionMethod = $(this).find('select[name="provmethod"]');
-                
+
                 // Get optional image attributes
                 var otherpkgDirectory = $(this).find('input[name="otherpkgdir"]');
                 var pkgDirectory = $(this).find('input[name="pkgdir"]');
                 var pkgList = $(this).find('input[name="pkglist"]');
                 var template = $(this).find('input[name="template"]');
-                
+
                 // Check that image attributes are provided before continuing
                 var ready = 1;
                 var inputs = new Array(imageType, architecture, osName, osVersion, profile, provisionMethod);
@@ -561,7 +561,7 @@ function openAddImageDialog() {
                     } else
                         inputs[i].css('border-color', '');
                 }
-                
+
                 // If inputs are not complete, show warning message
                 if (!ready) {
                     var warn = createWarnBar('Please provide a value for each missing field.');
@@ -570,12 +570,12 @@ function openAddImageDialog() {
                     // Override image name
                     $(this).find('input[name="imagename"]').val(osVersion.val() + '-' + architecture.val() + '-' + provisionMethod.val() + '-' + profile.val());
                     var imageName = $(this).find('input[name="imagename"]');
-                    
+
                     // Change dialog buttons
                     $(this).dialog('option', 'buttons', {
                         'Close': function() {$(this).dialog("close");}
                     });
-                    
+
                     // Create arguments to send via AJAX
                     var args = '-t;osimage;-o;' + imageName.val() + ';' +
                         'imagetype=' + imageType.val() + ';' +
@@ -584,7 +584,7 @@ function openAddImageDialog() {
                         'osvers=' + osVersion.val() + ';' +
                         'profile=' + profile.val() + ';' +
                         'provmethod=' + provisionMethod.val();
-                    
+
                     // Get optional attributes
                     if (otherpkgDirectory.val())
                         args += ';otherpkgdir=' + otherpkgDirectory.val();
@@ -594,7 +594,7 @@ function openAddImageDialog() {
                         args += ';pkglist=' + pkgList.val();
                     if (template.val())
                         args += ';template=' + template.val();
-                    
+
                     // Add image to xCAT
                     $.ajax( {
                         url : 'lib/cmd.php',
@@ -605,7 +605,7 @@ function openAddImageDialog() {
                             args : args,
                             msg : dialogId
                         },
-    
+
                         success : updateImageDialog
                     });
                 }
@@ -619,40 +619,40 @@ function openAddImageDialog() {
 
 /**
  * Update image dialog
- * 
+ *
  * @param data HTTP request data
  */
-function updateImageDialog(data) {    
+function updateImageDialog(data) {
     var dialogId = data.msg;
     var infoMsg;
-    
+
     // Delete loader if one does exist
     $('.ui-dialog #' + dialogId + ' img[src="images/loader.gif"]').remove();
 
     // Create info message
     if (jQuery.isArray(data.rsp)) {
         infoMsg = '';
-        
+
         // If the data returned is more than 10 lines, get only the last line
         var i, start;
         if (data.rsp.length > 10)
             start = data.rsp.length - 1;
         else
             start = 0;
-        
+
         for (i = start; i < data.rsp.length; i++)
             infoMsg += data.rsp[i] + '</br>';
     } else {
         infoMsg = data.rsp;
     }
-    
+
     // Create info bar with close button
     var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css('margin', '5px 0px');
     var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
         'display': 'inline-block',
         'margin': '10px 5px'
     });
-    
+
     // Create close button to close info bar
     var close = $('<span class="ui-icon ui-icon-close"></span>').css({
         'display': 'inline-block',
@@ -660,25 +660,25 @@ function updateImageDialog(data) {
     }).click(function() {
         $(this).parent().remove();
     });
-    
+
     var msg = $('<p>' + infoMsg + '</p>').css({
         'display': 'inline-block',
         'width': '90%'
     });
-    
-    infoBar.append(icon, msg, close);    
+
+    infoBar.append(icon, msg, close);
     infoBar.prependTo($('.ui-dialog #' + dialogId));
 }
 
 /**
  * Set definable image attributes
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function setImageDefAttrs(data) {
     // Clear hash table containing definable image attributes
     defAttrs = new Array();
-    
+
     // Get definable attributes
     var attrs = data.rsp[2].split(/\n/);
 
@@ -686,19 +686,19 @@ function setImageDefAttrs(data) {
     var attr, key, descr;
     for (var i in attrs) {
         attr = attrs[i];
-        
+
         // If the line is not empty
         if (attr) {
-            // If the line has the attribute name 
+            // If the line has the attribute name
             if (attr.indexOf(':') && attr.indexOf(' ')) {
                 // Get attribute name and description
                 key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
                 descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
                 descr = descr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
-                                
+
                 // Set hash table where key = attribute name and value = description
                 defAttrs[key] = descr;
-            } else {                
+            } else {
                 // Append description to hash table
                 defAttrs[key] = defAttrs[key] + '\n' + attr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
             }
@@ -713,7 +713,7 @@ function loadCreateImage() {
     // Get nodes tab
     var tab = getProvisionTab();
     var tabId = 'createImageTab';
-    
+
     // Generate new tab ID
     if ($('#' + tabId).size()) {
         tab.select(tabId);
@@ -723,7 +723,7 @@ function loadCreateImage() {
     var imageOsVers = $.cookie("osvers").split(",");
     var imageArch = $.cookie("osarchs").split(",");
     var profiles = $.cookie("profiles").split(",");
-    
+
     var createImgForm = $('<div class="form"></div>');
     var createImgFS = $('<fieldset></fieldset>').append('<legend>Create Image</legend>');
     createImgForm.append(createImgFS);
@@ -746,20 +746,20 @@ function loadCreateImage() {
 
     // Netboot interface input
     createImgFS.append($('<div><label>Netboot interface:</label><input type="text" id="netbootif"/></div>'));
-    
+
     // Profile selector
     var profileSelect = $('<select id="profile" onchange="hpcShow()">');
     for (var i in profiles)
         profileSelect.append('<option value="' + profiles[i] + '">' + profiles[i] + '</option>');
     createImgFS.append($('<div><label>Profile:</label></div>').append(profileSelect));
-    
+
     // Boot method drop down
     createImgFS.append($('<div><label>Boot method:</label>' +
         '<select id="bootmethod">' +
-            '<option value="stateless">stateless</option>' + 
-            '<option value="statelite">statelite</option>' + 
+            '<option value="stateless">stateless</option>' +
+            '<option value="statelite">statelite</option>' +
         '</select></div>'));
-    
+
     // Create HPC software stack fieldset
     createHpcFS(createImgForm);
 
@@ -770,25 +770,25 @@ function loadCreateImage() {
     });
 
     createImgForm.append(createImageBtn);
-    
+
     // Add tab
     tab.add(tabId, 'Create', createImgForm, true);
     tab.select(tabId);
 
     // Check the selected OS version and OS arch for HPC stack
     // If they are valid, show the HCP stack fieldset
-    hpcShow();    
+    hpcShow();
 }
 
 /**
  * Create HPC fieldset
- * 
+ *
  * @param container The container to hold the HPC fieldset
  */
 function createHpcFS(container) {
     var hpcFieldset = $('<fieldset id="hpcsoft"></fieldset>');
     hpcFieldset.append('<legend>HPC Software Stack</legend>');
-    
+
     var str = 'Before selecting the software, you should have the following already completed on your xCAT cluster:<br/><br/>'
             + '1. If you are using the xCAT hierarchy, your service nodes are installed and running.<br/>'
             + '2. Your compute nodes are defined in xCAT, and you have verified your hardware control capabilities, '
@@ -797,12 +797,12 @@ function createHpcFS(container) {
             + '4. You should install the software on the management node and copy all correponding packages into the location "/install/custom/otherpkgs/" based on '
             + 'these <a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=IBM_HPC_Stack_in_an_xCAT_Cluster" target="_blank">documents</a>.<br/>';
     hpcFieldset.append(createInfoBar(str));
-    
+
     // Advanced software
     str = '<div id="partlysupport"><ul><li id="gpfsli"><input type="checkbox" onclick="softwareCheck(this)" name="gpfs">GPFS</li>' +
-        '<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' + 
-        '<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>' + 
-        '<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl & PESSL</li>' + 
+        '<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' +
+        '<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>' +
+        '<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl & PESSL</li>' +
         '</ul></div>' +
         '<div><ul><li id="gangliali"><input type="checkbox" onclick="softwareCheck(this)" name="ganglia">Ganglia</li>' +
         '</ul></div>';
@@ -813,7 +813,7 @@ function createHpcFS(container) {
 
 /**
  * Check the dependance for ESSL and start the software check for ESSL
- * 
+ *
  * @param softwareObject The checkbox object of ESSL
  */
 function esslCheck(softwareObject) {
@@ -821,11 +821,11 @@ function esslCheck(softwareObject) {
     if (!$('#createImageTab input[name=pe]').attr('checked')) {
         var warnBar = createWarnBar('You must first select the PE');
         $(':checkbox[name=essl]').attr("checked", false);
-        
+
         // Clear existing warnings and append new warning
         $('#hpcsoft .ui-state-error').remove();
         $('#hpcsoft').prepend(warnBar);
-        
+
         return;
     } else {
         softwareCheck(softwareObject);
@@ -834,7 +834,7 @@ function esslCheck(softwareObject) {
 
 /**
  * Check the parameters for the HPC software
- * 
+ *
  * @param softwareObject Checkbox object of the HPC software
  * @return True if the checkbox is checked, false otherwise
  */
@@ -869,14 +869,14 @@ function softwareCheck(softwareObject) {
 
 /**
  * Check if the RPMs are copied to the special location
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function rpmCopyCheck(data) {
     // Remove the loading image
     var errorStr = '';
     var softwareName = data.msg;
-    
+
     // Check the return information
     var reg = /.+:(.+): No such.*/;
     var resultArray = data.rsp.split("\n");
@@ -891,7 +891,7 @@ function rpmCopyCheck(data) {
         }
     }
     $('#createImageTab #' + softwareName + 'li').find('img').remove();
-    
+
     // No error, show the check image
     if (!errorStr) {
         var infoPart = '<div style="display:inline-block; margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
@@ -901,7 +901,7 @@ function rpmCopyCheck(data) {
         errorStr = 'To install the RSCT on your compute node. You should:<br/>' + errorStr + '</div>';
         var warnBar = createWarnBar(errorStr);
         $(':checkbox[name=' + softwareName + ']').attr("checked", false);
-        
+
         // Clear existing warnings and append new warning
         $('#hpcsoft .ui-state-error').remove();
         $('#hpcsoft').prepend(warnBar);
@@ -910,7 +910,7 @@ function rpmCopyCheck(data) {
 
 /**
  * Generate the RPM command for rpmcheck
- * 
+ *
  * @param softwareName The name of the software
  * @return The RPM command
  */
@@ -924,13 +924,13 @@ function genRpmCmd(softwareName) {
     for (var i in softwareList['base']) {
         cmdString += softwareList['base'][i] + ' ';
     }
-    
+
     return cmdString;
 }
 
 /**
  * Check if the RPMs for the HPC software are copied to the special location
- * 
+ *
  * @param softwareName The name of the software
  */
 function genLsCmd(softwareName) {
@@ -949,7 +949,7 @@ function genLsCmd(softwareName) {
 
 /**
  * Check if all RPMs are installed
- * 
+ *
  * @param checkInfo 'rpm -q' output
  * @return True if all RPMs are installed, false otherwise
  */
@@ -969,7 +969,7 @@ function rpmCheck(checkInfo, name) {
 
     errorStr = errorStr.substr(0, errorStr.length - 1);
     $(':checkbox[name=' + name + ']').attr('checked', false);
-    
+
     // Add the error
     var warnBar = createWarnBar(errorStr);
     $('#createImageTab #' + name + 'li').find('img').remove();
@@ -977,7 +977,7 @@ function rpmCheck(checkInfo, name) {
     // Clear existing warnings and append new warning
     $('#hpcsoft .ui-state-error').remove();
     $('#hpcsoft').prepend(warnBar);
-    
+
     return;
 }
 
@@ -996,7 +996,7 @@ function hpcShow() {
 
 /**
  * Load set image properties page
- * 
+ *
  * @param tgtImage Target image to set properties
  */
 function openEditImagePage(tgtImage) {
@@ -1033,7 +1033,7 @@ function openEditImagePage(tgtImage) {
         } else {
             value = '';
         }
-        
+
         // Create label and input for attribute
         div = $('<div></div>').css('display', 'inline');
         label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
@@ -1042,17 +1042,17 @@ function openEditImagePage(tgtImage) {
             'float': 'none',
             'width': 'inherit'
         });
-        
+
         // There is an element called groups that will override the defaults for the groups attribute.
         // Hence, the input must have use CSS to override the float and width.
-        
+
         // Split attributes into 2 per row
         if (attrIndex > 0 && !(attrIndex % 2)) {
             div.css('display', 'inline-block');
         }
-        
+
         attrIndex++;
-        
+
         // Create server browser
         switch (key) {
             case 'pkgdir':
@@ -1178,22 +1178,22 @@ function openEditImagePage(tgtImage) {
             default:
                 // Do nothing
         }
-        
+
         // Change border to blue onchange
         input.bind('change', function(event) {
             $(this).css('border-color', 'blue');
         });
-        
+
         div.append(label, input);
         setPropsForm.append(div);
     }
-    
+
     // Change style for last division
     div.css({
         'display': 'block',
         'margin': '0px 0px 10px 0px'
     });
-    
+
     // Generate tooltips
     setPropsForm.find('div input[title]').tooltip({
         position: "center right",
@@ -1214,10 +1214,10 @@ function openEditImagePage(tgtImage) {
      * Save
      */
     var saveBtn = createButton('Save');
-    saveBtn.bind('click', function(event) {    
+    saveBtn.bind('click', function(event) {
         // Get all inputs
         var inputs = $('#' + newTabId + ' input');
-        
+
         // Go through each input
         var args = '';
         var attrName, attrVal;
@@ -1226,11 +1226,11 @@ function openEditImagePage(tgtImage) {
             if ($(this).css('border-left-color') == 'rgb(0, 0, 255)') {
                 // Change border color back to normal
                 $(this).css('border-color', '');
-                
+
                 // Get attribute name and value
                 attrName = $(this).parent().find('label').text().replace(':', '');
                 attrVal = $(this).val();
-                
+
                 // Build argument string
                 if (args) {
                     // Handle subsequent arguments
@@ -1241,7 +1241,7 @@ function openEditImagePage(tgtImage) {
                 }
             }
         });
-        
+
         // Send command to change image attributes
         $.ajax( {
             url : 'lib/cmd.php',
@@ -1257,7 +1257,7 @@ function openEditImagePage(tgtImage) {
         });
     });
     setPropsForm.append(saveBtn);
-    
+
     /**
      * Cancel
      */
@@ -1278,15 +1278,15 @@ function openEditImagePage(tgtImage) {
 /**
  * Load copy CD page
  */
-function openCopyCdDialog() {    
+function openCopyCdDialog() {
     // Create copy Linux form
     var dialogId = 'imageCopyCd';
     var copyLinuxForm = $('<div id="' + dialogId + '" class="form"></div>');
-            
+
     // Create info bar
     var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
     copyLinuxForm.append(infoBar);
-            
+
     // Create Linux ISO input
     var iso = $('<div></div>');
     var isoLabel = $('<label> Linux ISO/DVD:</label>').css('vertical-align', 'middle');
@@ -1294,12 +1294,12 @@ function openCopyCdDialog() {
     iso.append(isoLabel);
     iso.append(isoInput);
     copyLinuxForm.append(iso);
-    
+
     // Create architecture input
-    copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch" title="The hardware architecture of this node. Valid values: x86_64, x86, ia64, ppc64, and s390x."/></div>');
+    copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch" title="The hardware architecture of this node. Valid values: s390x."/></div>');
     // Create distribution input
-    copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro" title="The operating system name. Valid values: rhel*, centos*, fedora*, sles* (where * is the version #)."/></div>');
-            
+    copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro" title="The operating system name. Valid values: rhel*, sles* (where * is the version #).<br>Note: dashes are parsed to fill in distro, profile, os, and arch fields in xCAT table."/></div>');
+
     /**
      * Browse
      */
@@ -1328,7 +1328,7 @@ function openCopyCdDialog() {
         height : '300',
         basePath : '/install' // Limit user to only install directory
     });
-    
+
 	// Generate tooltips
     copyLinuxForm.find('div input[title],select[title]').tooltip({
         position: "center right",
@@ -1349,7 +1349,7 @@ function openCopyCdDialog() {
             this.getTip().css('z-index', $.topZIndex());
         }
     });
-    
+
     // Open dialog to copy CD
     copyLinuxForm.dialog({
         title:'Copy CD',
@@ -1362,12 +1362,12 @@ function openCopyCdDialog() {
             "Copy": function() {
                 // Show loader
                 $('.ui-dialog #imageCopyCd').append(createLoader(''));
-                
+
                 // Change dialog buttons
                 $(this).dialog('option', 'buttons', {
                     'Close': function() {$(this).dialog("close");}
                 });
-                                
+
                 // Get image attributes
                 var iso = $(this).find('input[name="iso"]');
                 var arch = $(this).find('input[name="arch"]');
@@ -1383,7 +1383,7 @@ function openCopyCdDialog() {
                         args : '-n;' + distro.val() + ';-a;' + arch.val() + ';' + iso.val(),
                         msg : dialogId
                     },
-                    
+
                     success : updateImageDialog
                 });
             },
@@ -1429,7 +1429,7 @@ function createImage() {
             msg : ''
         },
         success : function(data) {
-            
+
         }
     });
 }

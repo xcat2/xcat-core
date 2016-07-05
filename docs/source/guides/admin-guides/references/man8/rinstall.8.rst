@@ -19,7 +19,11 @@ Name
 ****************
 
 
-\ **rinstall**\  [\ **-O | -**\ **-osimage**\ ] [\ **-c | -**\ **-console**\ ] [\ *noderange*\ ]
+\ **rinstall**\  \ *noderange*\  \ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\  [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
+
+\ **rinstall**\  \ *noderange*\  \ **osimage**\ =\ *imagename*\  | [\ **-O**\ ] \ *imagename*\  [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+
+\ **rinstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -27,9 +31,9 @@ Name
 *******************
 
 
-\ **rinstall**\  is a convenience command that will change tables as requested for operating system version, profile, and architecture, call \ **nodeset**\  to modify the network boot configuration, call \ **rsetboot**\  net to set the next boot over network (only support nodes with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before \ **rinstall**\ ), and \ **rpower**\  to begin a boot cycle.
+\ **rinstall**\  is a convenience command to begin OS provision on a noderange(support nodes with "nodetype.mgt=ipmi,blade,hmc,ivm,fsp,kvm,esx,rhevm").
 
-If [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
+If \ **osimage**\ =\ *imagename*\  | \ **-O**\  \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
 
 If -c is specified, it will then run rcons on the node. This is allowed only if one node in the noderange.   If need consoles on multiple nodes , see winstall(8)|winstall.8.
 
@@ -38,6 +42,44 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
 \ **Options**\ 
 ***************
 
+
+
+\ **boot**\ 
+ 
+ Instruct network boot loader to be skipped, generally meaning boot to hard disk
+ 
+
+
+\ **osimage | osimage=**\ \ *imagename*\ |\ **-O**\ \ *imagename*\ 
+ 
+ Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ 
+
+
+\ **-**\ **-ignorekernelchk**\ 
+ 
+ Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+ 
+
+
+\ **runimage**\ =\ *task*\ 
+ 
+ If you would like to run a task after deployment, you can define that task with this attribute.
+ 
+
+
+\ **runcmd=bmcsetup**\ 
+ 
+ This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
+ for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ 
+
+
+\ **shell**\ 
+ 
+ This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+ The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
+ 
 
 
 \ **-h | -**\ **-help**\ 
@@ -52,15 +94,21 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
 
 
-\ **-O | -**\ **-osimage**\ 
+\ **-u | -**\ **-uefimode**\ 
  
- Specifies the osimage to provision.
+ For BMC-based servers, to specify the next boot mode to be "UEFI Mode".
+ 
+
+
+\ **-V | -**\ **-Verbose**\ 
+ 
+ Verbose output.
  
 
 
 \ **-c | -**\ **-console**\ 
  
- Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting nsoles on multiple nodes.
+ Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting consoles on multiple nodes.
  
 
 
@@ -86,7 +134,7 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
  .. code-block:: perl
  
-   rinstall node1-node20 -O rhels6.4-ppc64-netboot-compute
+   rinstall node1-node20 osimage=rhels6.4-ppc64-netboot-compute
  
  
 

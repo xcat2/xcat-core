@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-The host, slot id and configuraton of the mic (Many Integrated Core).
+The host, slot id and configuration of the mic (Many Integrated Core).
 
 
 ***************

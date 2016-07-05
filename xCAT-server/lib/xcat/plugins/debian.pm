@@ -1431,16 +1431,17 @@ sub mknetboot
         }
 
 
-        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
 
-           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
-           if($ipaddr){
-              $kcmdline .=" LOGSERVER=$ipaddr ";
-           }else{
-              $kcmdline .=" LOGSERVER=$xcatmaster ";
-           }
+            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+            if ($ipaddr) {
+                $kcmdline .=" LOGSERVER=$ipaddr ";
+            }
+            else {
+                $kcmdline .=" LOGSERVER=$xcatmaster ";
+            }
 
-           $kcmdline .= " xcatdebugmode=1 ";
+            $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
 
 

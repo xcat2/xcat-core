@@ -329,11 +329,7 @@ The tables are:
 
 auditlog(5)|auditlog.5
  
- 
- .. code-block:: perl
- 
-   Audit Data log.
- 
+ Audit Data log.
  
 
 
@@ -441,13 +437,13 @@ kitrepo(5)|kitrepo.5
 
 kvm_masterdata(5)|kvm_masterdata.5
  
- Persistant store for KVM plugin for masters
+ Persistent store for KVM plugin for masters
  
 
 
 kvm_nodedata(5)|kvm_nodedata.5
  
- Persistant store for KVM plugin, not intended for manual modification.
+ Persistent store for KVM plugin, not intended for manual modification.
  
 
 
@@ -477,7 +473,7 @@ mac(5)|mac.5
 
 mic(5)|mic.5
  
- The host, slot id and configuraton of the mic (Many Integrated Core).
+ The host, slot id and configuration of the mic (Many Integrated Core).
  
 
 
@@ -645,7 +641,7 @@ rack(5)|rack.5
 
 routes(5)|routes.5
  
- Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the servie node as gateway.
+ Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the service node as gateway.
  
 
 

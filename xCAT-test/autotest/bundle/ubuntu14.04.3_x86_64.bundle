@@ -1,6 +1,5 @@
 Ubuntu_diskless_installation_flat_x86_vm
 Ubuntu_full_installation_flat_x86_vm
-Full_installation_flat_docker
 makehosts_h
 makehosts_help
 makehosts_n_noderange
@@ -244,6 +243,7 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
+Full_installation_flat_docker
 rpower_stop
 rpower_start
 rpower_state

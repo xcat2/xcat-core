@@ -12,7 +12,7 @@ If you no longer want to use MySQL/MariaDB to maintain ``xcatdb``, and like to s
 
       XCATBYPASS=1 restorexCATdb -p ~/xcat-dbback
 
-*  Change to PostgreSQL, please following documentation: :doc:`/guides/admin-guides/large_clusters/databases/postgres_install` 
+*  Change to PostgreSQL, please following documentation: :doc:`/advanced/hierarchy/databases/postgres_install` 
 
 
 *  Change back to default xCAT database, SQLite (**Note**:  xCAT Hierarchy cluster will no longer work)

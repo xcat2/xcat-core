@@ -23,7 +23,7 @@ SYNOPSIS
 
 To build a new Kit
 
-\ **buildkit**\  [\ **-V | -**\ **-verbose]**\  \ *subcommand*\  [\ *kit_name*\ ] [\ *repo_name*\ |\ **all**\ ] [\ **-l | -**\ **-kitloc**\  \ *kit_location*\ ]
+\ **buildkit**\  [\ **-V | -**\ **-verbose]**\  \ *subcommand*\  [\ *kit_name*\ ] [\ *repo_name*\  | \ **all**\ ] [\ **-l | -**\ **-kitloc**\  \ *kit_location*\ ]
 
 To add packages to an existing Kit.
 
@@ -314,7 +314,7 @@ EXAMPLES
  
  \ **buildkit listrepo**\ 
  
- \ **buildkit buildrepo all **\ 
+ \ **buildkit buildrepo all**\ 
  
  \ **buildkit buildtar**\ 
  

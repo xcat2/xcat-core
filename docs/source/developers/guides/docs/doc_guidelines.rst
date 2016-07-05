@@ -62,10 +62,28 @@ Enumerated List
     2. Item 2
       a) item a
 
+Include another file
+--------------------
+
+To add contents of a document file inside another file, use ``.. include::``. This is usefull when a common information needs to be displayed in multiple files, whithout the use of a hyperlink.
+::
+
+ .. include:: config_common.rst
+
+
+``Note:`` Do not put customized link targets, such as ``.. _my_link_taget:`` inside the file to be included. If you do, a warning for a duplicate label will be displayed during the documentation build process.
+
+Index file
+----------
+
+Index.rst files contain the ``.. toctree::`` tag. Files listed under that tag will have links to them displayed in the left side navigation area. If a documentation file does not wish to be accessbile from the navigation area, do not list it under the ``.. toctree::``.
+
+``Note:`` If a file is not listed under the ``.. toctree::`` it might generate a warning during the documentation build ``WARNING: document isn't included in any toctree``. To eliminate such warning, add the file to the ``exclude_patterns`` list in the ``docs/source/conf.py`` file. However, do not add a file to the ``exclude_patterns`` list if it contains a customized link target, such as ``.. _my_link_taget:``. This link target will not be visible to other files and a ``WARNING: undefined label:`` will be displayed during the documentation build.
+
 Hyperlinks -> Internal Links -> External Links
 ----------------------------------------------
 
-Add links to refer other web page  is a very common way in writting document, it's very helpful to reduce the doc duplication and make doc to be easy to understand. Following are several ways to add a link in the xCAT documentation.
+Add links to refer other web page  is a very common way in writting document, it's very helpful to reduce the doc duplication and make docs easy to understand. Following are several ways to add a link in the xCAT documentation.
 
 * **Add an Internal Link to ``Customized Link Target``**
 
@@ -85,7 +103,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
  Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`: ::
 
-    Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`
+    :ref:`my link <my_link_target>`
 
 ..
 
@@ -95,7 +113,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to an internal section in current page: `Guidelines for xCAT Documentation`_: ::
 
-    Link to an internal section in current page: `Guidelines for xCAT Documentation`_
+    `Guidelines for xCAT Documentation`_
 
 ..
 
@@ -103,15 +121,15 @@ Add links to refer other web page  is a very common way in writting document, it
 
 * **Add an Internal Link to Other Page via File Path**
 
-  Link to page ``http://server/overview/suport_list.html`` with **absolute file path** :doc:`support list </overview/support_list>`: ::
+  Link to page `http://server/overview/suport_list.html` with **absolute file path** ::
 
-    Link to page ``http://server/overview/suport_list.html`` with **absolute file path** :doc:`support list </overview/support_list>`
+    :doc:`support list </overview/support_list>`
 
 ..
 
-  Link to page ``http://server/overview/suport_list.html`` with **relative file path** :doc:`support list <../overview/support_list>`: ::
+  Link to page `http://server/overview/suport_list.html` with **relative file path** ::
 
-    Link to page ``http://server/overview/suport_list.html`` with **relative file path** :doc:`support list <../overview/support_list>`
+    :doc:`support list <../overview/support_list>`
 
 .. 
 
@@ -121,7 +139,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to an external web page: `google <http://www.goole.com>`_: ::
 
-    Link to an external web page: `google <http://www.goole.com>`_
+    `google <http://www.goole.com>`_
 
 ..
 
@@ -133,7 +151,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to http://www.google.com: ::
 
-    Link to http://www.google.com
+    http://www.google.com
 
 ..
 

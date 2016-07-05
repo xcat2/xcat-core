@@ -276,7 +276,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
-runcmdinstaller
+runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
@@ -301,3 +301,4 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+clean_up_env

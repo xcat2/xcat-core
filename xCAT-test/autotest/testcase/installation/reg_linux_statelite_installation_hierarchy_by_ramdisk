@@ -20,7 +20,8 @@ check:rc==0
 
 cmd:copycds $$ISO
 check:rc==0
-
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+check:rc==0
 cmd:xdsh $$SN df|grep /install;if [ $? -eq 0 ] ;then xdsh $$SN umount /install;fi
 check:rc==0
 cmd:xdsh $$SN 'cat /etc/exports|grep install; if [ "$?" -ne "0" ]; then echo "/install *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi'
@@ -93,9 +94,14 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~rootfs on / type
-cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`; result=`xdsh $$CN "cat /etc/resolv.conf|grep $MNIP"`; if [ "$result" = "$$CN: nameserver $MNIP" ]; then echo "sync file works well"; fi;
-check:output=~sync file works well
+cmd:scp $$CN:/etc/resolv.conf /tmp/resolv.conf
+check:rc==0
+cmd:diff /etc/resolv.conf /tmp/resolv.conf
+check:rc==0
+cmd:rm -f /tmp/resolv.conf
 
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 end

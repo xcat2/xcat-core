@@ -1,32 +1,62 @@
-#!/bin/sh 
+#!/bin/bash
 #usage:
 #runcmdinstaller: issue command which run in the installer and print the command output
 #runcmdinstaller <node> "<command>"
 
+node=$1
+shift
+cmd=$*
 
-awk  -v argc="$#" -v node="$1" -v cmd="$2" 'BEGIN {
-port = 3001
-action = "sh"
-if(node=="-h"){
-  print "Usage:\n\n   runcmdinstaller <node> \"<command>\"\n"
-  print           "   make sure all the commands are quoted by \"\"\n";
-  exit 0;
+function print_usage {
+    echo "Usage:"
+    echo "       runcmdinstaller <node> <commands>"
+    echo "       runcmdinstaller [-h] [--help]"        
+    echo "Description:"
+    echo "       A debug tool to run commands inside the os installer of a node"
+    echo "Notice:" 
+    echo "       1. runcmdinstaller is only available against the node provisioned with xcatdebugmode turned on(1 or 2)"
+    echo "       2. <node> can not be multiple nodes or node group"
+    echo "       3. <node> must be the node in 'installing' status"
+    echo "       4. <commands> must be the commads which will return immediately, otherwise, runcmdinstaller will be blocked"
+    echo "       5. runcmdinstaller can not be run concurrently"
+
 }
-if(argc !=2 || ! node || ! cmd){
-  print "Usage:\n\n   runcmdinstaller <node> \"<command>\"\n"
-  print           "   make sure all the commands are quoted by \"\"\n";
-  exit 1;
-}
 
-ns = "/inet/tcp/0/" node "/" port
+if [ "$node" = "-h" ] || [ "$node" = "--help" ]; then
+    print_usage
+    exit 0
+fi
 
-#print "sh " |& ns
-print action " " cmd " " |& ns
+if [ -z "$node" ] || [ -z "$cmd" ];then
+   print_usage 
+   exit 1
+fi
 
-while((ns |& getline) > 0)
-print $0
 
-close(ns)
+XCATDEBUGMODE=$(lsdef -t site -o clustersite -i xcatdebugmode 2>/dev/null | grep "xcatdebugmode="|cut -d= -f2) 
+if [[ -z "$XCATDEBUGMODE" || "$XCATDEBUGMODE" == "0" ]];then
+    echo "Warning:"
+    echo "      The xcatdebugmode is disabled"
+    echo "      runcmdinstaller is only available against the node provisioned with xcatdebugmode enabled(
+1 or 2)" 
+else
+    NSupdate=$(lsdef -t site -o clustersite -i nodestatus 2>/dev/null | grep "nodestatus="|cut -d= -f2) 
+    nodestatus=$(lsdef $node -i status 2>/dev/null | grep "status="|cut -d= -f2)
+    
+    if [[ "$NSupdate" != "n" && "$NSupdate" != "N" &&  "$NSupdate" != "0" && "$nodestatus" != "installing" ]];then
+        echo "Warning:"
+        echo "      The node status update is enabled and the 'nodestatus' of $node is $nodestatus"
+        echo "      runcmdinstaller can only be run against the node in 'installing' status!"
+    fi
+fi 
 
-exit 0
-}'
+type -p nc >/dev/null 2>&1
+retcode=$?
+if [ "$retcode" != "0" ];then
+    echo "Error:"
+    echo "nc(netcat) is not installed, please install it first!"
+    exit $retcode
+fi
+
+echo "sh $cmd 2>&1" | nc -w 20 $node 3001 
+

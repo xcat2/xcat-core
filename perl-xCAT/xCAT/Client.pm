@@ -249,6 +249,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     SSL_cert_file => $certfile,
     SSL_ca_file => $cafile,
     SSL_verify_mode => SSL_VERIFY_PEER,
+    SSL_verifycn_scheme => "none",
     SSL_use_cert => 1,
     Timeout => 0,
     %sslargs,

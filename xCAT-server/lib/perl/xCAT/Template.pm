@@ -74,28 +74,43 @@ sub subvars {
     $inc.=$_;
   }
   close($inh);
+ 
+  #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
+  #the "xcatmaster" attribute of the node
+  #the site.master
+  #the ip address of the mn facing the compute node
   my $master;
-  #my $sitetab = xCAT::Table->new('site');
+
+  #the "xcatmaster" attribute of the node
   my $noderestab = xCAT::Table->new('noderes');
-  #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  my @masters = xCAT::TableUtils->get_site_attribute("master");
-  my $tmp = $masters[0];
-  if ( defined($tmp) ) {
-      $master = $tmp;
-  }
-  my $ipfn; 
-  my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
-  unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
-  if ($ipfn) {
-      $master = $ipfn;
-  }
   my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
     $master = $et->{'xcatmaster'};
   }
+  
+  unless ($master){
+      #the site.master
+      my @masters = xCAT::TableUtils->get_site_attribute("master");
+      my $tmp = $masters[0];
+      if ( defined($tmp) ) {
+          $master = $tmp;
+      }
+  }
+ 
+  unless ($master){
+      #the ip address of the mn facing the compute node
+      my $ipfn; 
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
+      if ($ipfn) {
+          $master = $ipfn;
+      }
+  }
+
   unless ($master) {
       die "Unable to identify master for $node";
   }
+
   $ENV{XCATMASTER}=$master;
 
   my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
@@ -355,10 +370,9 @@ sub subvars {
               
               #for redhat/sl/centos/kvm/fedora
               if ($inc =~ /#XCAT_PARTITION_START#/) {
-                  my $tempstr = "%include /tmp/partitionfile\n";
-                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
                   # Put the base64 coded partitionfile into %pre part
                   $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  $partcontent .= "rm -rf /tmp/partitionfile\n";
                   # Put the code to decode the partitionfile
                   $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
                   $partcontent .= "chmod 755 /tmp/partscript\n";
@@ -401,7 +415,17 @@ sub subvars {
           else{
               $partcontent =~ s/\s$//;
               if ($inc =~ /#XCAT_PARTITION_START#/){
-                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+                  # %pre and decode it out during the running time.
+                  use MIME::Base64;
+                  $partcontent = encode_base64($partcontent);
+                  $partcontent =~ s/\n//g;
+                  # Put the base64 coded partitionfile into %pre part
+                  $partcontent = "cat > /tmp/partitionfile.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  $partcontent .= "rm -rf /tmp/partitionfile\n";
+                  # Put the code to decode the partitionfile
+                  $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partitionfile.enc\",\"rb\").read())' >/tmp/partitionfile\n";
+                  #replace the #XCA_PARTITION_SCRIPT#
+                  $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
               }
               elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
                   $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
@@ -411,7 +435,7 @@ sub subvars {
      
  
       if ($diskfile && $doneincludes) {
-          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/install_disk
+          # The content of the specified file is the disknames to partition or a script which can write disk names into /tmp/xcat.install_disk
           # split the disk file out from the $inc
           ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
           ($diskcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONDISKFILEEND/, $diskcontent);
@@ -433,9 +457,8 @@ sub subvars {
                 $diskcontent .= "chmod 755 /tmp/diskscript\n";
                 $diskcontent .= "/tmp/diskscript\n";
              }else{
-                # Put the code to decode the preseed  disk file
-                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/install_disk\n";
-                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/install_disk\n";
+                # Put the code to decode the preseed disk file
+                $diskcontent .= "base64decode</tmp/diskscript.enc > /tmp/xcat.install_disk\n";
 
              }
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
@@ -444,10 +467,10 @@ sub subvars {
       }
       elsif ("ubuntu" eq $platform) {
           my $default_script = "    wget http://`cat /tmp/xcatserver`".$ENV{INSTALLDIR}."/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
-          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/$default_script/;
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
       }
       else {
-          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/    /;
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/    /;
       }
 
  

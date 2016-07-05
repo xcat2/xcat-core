@@ -8,6 +8,9 @@ use xCAT::Usage;
 use xCAT::MsgUtils;
 use xCAT::FSPpower;
 
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
+
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
@@ -183,6 +186,9 @@ sub powercmd_boot {
     my $Rc = shift(@$stat);
     my $data = @$stat[0];
 
+    my $newstat;
+    my %newnodestatus = ();
+
     while (my ($name,$d) = each(%$hash) ) { 
         ##################################
         # Look up by lparid
@@ -197,6 +203,7 @@ sub powercmd_boot {
             push @output, [$name,$data,$Rc];
             next;
         }
+
         ##################################
         # Node not found 
         ##################################
@@ -209,6 +216,10 @@ sub powercmd_boot {
         ##################################
         my $state = power_status($data->{$id});
         my $op    = ($state =~ /^off$/) ? "on" : "reset";
+
+        if ($state =~ /^off$/) {
+            $newstat = $::STATUS_POWERING_ON;
+        }
 
         # Attribute powerinterval in site table,
         # to control the rpower forking speed
@@ -225,6 +236,9 @@ sub powercmd_boot {
                             $exp,
                             $op,
                             $d );
+        unless (@$result[0] != SUCCESS) {
+            $newnodestatus{$newstat}=[$name] if ($newstat);
+        }
         push @output, [$name,@$result[1],@$result[0]];
     }
     if (defined($request->{opt}->{m})) {
@@ -283,6 +297,8 @@ sub powercmd_boot {
              }
         }
      }
+
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return( \@output );
 }
 
@@ -298,6 +314,14 @@ sub powercmd {
     my @result  = ();
     my $callback = $request->{'callback'};
 
+    my ($name) = keys %$hash;
+    my $mtms   = @{$hash->{$name}}[2];
+    my $stat = enumerate( $exp, $hash, $mtms );
+    my $Rc = shift(@$stat);
+    my $data = @$stat[0];
+
+    my $newstat;
+    my %newnodestatus=();
 
     ####################################
     # Power commands are grouped by CEC 
@@ -305,6 +329,7 @@ sub powercmd {
     ####################################
 
     while (my ($name,$d) = each(%$hash) ) {
+        $newstat = "";        
         # Attribute powerinterval in site table,
         # to control the rpower forking speed
         if ((defined($request->{op})) && ($request->{op} ne 'stat') && ($request->{op} ne 'status') 
@@ -313,6 +338,21 @@ sub powercmd {
                 Time::HiRes::sleep($request->{'powerinterval'});
             }    
         } 
+        if (($request->{op} eq 'off') || ($request->{op} ne 'softoff')) {
+            $newstat = $::STATUS_POWERING_OFF;
+        }
+        if ($request->{op} eq 'on') {
+            $newstat = $::STATUS_POWERING_ON;
+        }
+
+        if ($request->{op} eq 'reset') {
+            my $type = @$d[4];
+            my $id   = ($type=~/^(fsp|bpa|frame|cec)$/) ? $type : @$d[0];
+            my $state = power_status($data->{$id});
+            if ($state !~ /^off$/) {
+                $newstat = $::STATUS_POWERING_ON;
+            }
+        }
         ################################
         # Send command to each LPAR
         ################################
@@ -320,7 +360,13 @@ sub powercmd {
                             $exp,
                             $request->{op},
                             $d );
-        my $Rc = shift(@$values);
+        my $Rc = shift(@$values); 
+  
+        unless ($Rc != SUCCESS) {
+            if ($newstat) {
+                $newnodestatus{$newstat}=[$name];
+            }
+        }
 
         ################################
         # Return result
@@ -371,6 +417,7 @@ sub powercmd {
              }
         }
      }
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     return( \@result );
 }
 

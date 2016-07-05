@@ -38,7 +38,7 @@ The trace message includes: The name of the called subroutine; The arguments whi
 
 The flag \ **-c**\  is used to specify the subroutine list for \ **subroutine calling trace**\ , it can only work with \ **-f**\ . The value of \ **-c**\  can be a configuration file or a subroutine list.
   \ **configuration file**\ : a file contains multiple lines of \ **SUBROUTINE_DEFINITION**\ 
-  \ **subroutine list**\ :    \ **SUBROUTINE_DEFINITION | SUBROUTINE_DEFINITION**\ |...
+  \ **subroutine list**\ :    \ **SUBROUTINE_DEFINITION | SUBROUTINE_DEFINITION|...**\ 
 
 \ **SUBROUTINE_DEFINITION**\ : is the element for the \ **-c**\  to specify the subroutine list.
 
@@ -109,7 +109,7 @@ OPTIONS
      xCAT_plugin::DBobjectdefs(defls,process_request)
      xCAT::DBobjUtils(getobjdefs)
  
- \ **subroutine list**\ : a string like  \ **SUBROUTINE_DEFINITION | SUBROUTINE_DEFINITION**\ |...
+ \ **subroutine list**\ : a string like  \ **SUBROUTINE_DEFINITION | SUBROUTINE_DEFINITION|...**\ 
    e.g.
      "(plugin_command)|xCAT_plugin::DBobjectdefs(defls,process_request)|xCAT::DBobjUtils(getobjdefs)"
  
@@ -131,32 +131,62 @@ EXAMPLES
 
 
 1. Enable the \ **subroutine calling trace**\  for all the subroutines in the xcatd and plugin modules.
- xcatdebug -f enable
-
+ 
+ 
+ .. code-block:: perl
+ 
+   xcatdebug -f enable
+ 
+ 
 
 
 2. Enable the \ **subroutine calling trace**\  for the subroutines configured in the /opt/xcat/share/xcat/samples/tracelevel0
- xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
-
+ 
+ 
+ .. code-block:: perl
+ 
+   xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
+ 
+ 
 
 
 3. Enable the \ **subroutine calling trace**\  for the plugin_command in xcatd and defls,process_request in the xCAT_plugin::DBobjectdefs module.
- xcatdebug -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
-
+ 
+ 
+ .. code-block:: perl
+ 
+   xcatdebug -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
+ 
+ 
 
 
 4. Disable the \ **subroutine calling trace**\  for all the subroutines which have been enabled by \ **xcatdebug -f enable**\ .
- xcatdebug -f disable
-
+ 
+ 
+ .. code-block:: perl
+ 
+   xcatdebug -f disable
+ 
+ 
 
 
 5. Enable the \ **commented trace log**\ 
- xcatdebug -d enable
-
+ 
+ 
+ .. code-block:: perl
+ 
+   xcatdebug -d enable
+ 
+ 
 
 
 6. Enable both the \ **subroutine calling trace**\  and \ **commented trace log**\ 
-  xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
-
+ 
+ 
+ .. code-block:: perl
+ 
+    xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
+ 
+ 
 
 

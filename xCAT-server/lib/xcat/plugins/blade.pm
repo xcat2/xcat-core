@@ -2330,10 +2330,13 @@ sub power {
   }
   
   my $old_stat=$stat;
+  my $newstat;
+  my %newnodestatus=();
   if ($subcommand eq "softoff") {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,2,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_OFF;
     $stat = "softoff"; 
     if ($old_stat eq "off") { $stat .= " $status_noop"; }
   } 
@@ -2341,12 +2344,14 @@ sub power {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,0,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_OFF;
     $stat = "off"; 
     if ($old_stat eq "off") { $stat .= " $status_noop"; }
   } 
   if ($subcommand eq "on" or ($subcommand eq "boot" and $stat eq "off")) {
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_ON;
     if ($subcommand eq "boot") { $stat .= " " . ($data ? "on" : "off"); } 
     if ($subcommand eq "on") {
       $stat = ($data ? "on" : "off");
@@ -2355,11 +2360,17 @@ sub power {
   } elsif ($subcommand eq "reset" or ($subcommand eq "boot" and $stat eq "on")) {
     $data = $session->set(new SNMP::Varbind([".".$powerresetoid,$slot ,1,'INTEGER']));
     unless ($data) { return (1,$session->{ErrorStr}); }
+    $newstat = $::STATUS_POWERING_ON;
     if ($subcommand eq "boot") { $stat = "on reset"; } else { $stat = "reset"; }
   } elsif (not $validsub) {
       return 1,"Unknown/Unsupported power command $subcommand";
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+  if ($newstat) {
+      $newnodestatus{$newstat}=[$currnode];
+      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+  }
+
   if ($stat) { return (0,$stat); }
 }
     
@@ -4359,6 +4370,12 @@ sub process_request {
     }
   }
   if ($request->{command}->[0] eq "findme") {
+    if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef'))  {
+        # The findme request had been processed by other module, just return
+        return;
+    }
+
+    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
     my $mptab = xCAT::Table->new("mp");
     unless ($mptab) { return 2; }
     my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
@@ -4437,6 +4454,7 @@ sub process_request {
        }
     }
     unless ($node) {
+      xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
       return 1; #failure
     }
     if ($request->{mtm} and $request->{mtm} =~ /^(\w{4})/) {
@@ -4452,16 +4470,18 @@ sub process_request {
        undef $mactab;
     }
 
+    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node $node for the discovery request");
     #my %request = (
     #  command => ['makedhcp'],
     #  node => [$macmap{$mac}]
     #  );
     #$doreq->(\%request);
     $request->{command}=['discovered'];
-    $request->{noderange} = [$node];
-    $request->{discoverymethod} = ['blade'];
-    $doreq->($request);
-    %{$request}=(); #Clear request. it is done
+    my $req = {%$request};
+    $req->{noderange} = [$node];
+    $req->{discoverymethod} = ['blade'];
+    $doreq->($req);
+    %{$req}=(); #Clear request. it is done
     return 0;
   }
 
@@ -5954,32 +5974,6 @@ sub dompa {
 	}
       }
       #print "oldstatus:" . Dumper(\%oldnodestatus);
-      
-      #set the new status to the nodelist.status
-      my %newnodestatus=(); 
-      my $newstat;
-      if (($args->[0] eq 'off') || ($args->[0] eq 'softoff')) { 
-	  my $newstat=$::STATUS_POWERING_OFF; 
-	  $newnodestatus{$newstat}=\@allnodes;
-      } else {
-        #get the current nodeset stat
-        if (@allnodes>0) {
-	  my $nsh={};
-          my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-          if (!$ret) { 
-            foreach (keys %$nsh) {
-		my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, "rpower");
-		$newnodestatus{$newstat}=$nsh->{$_};
-	    }
-	  }
-        }
-      }
-
-
-      #donot update node provision status (installing or netbooting) here
-      xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-      #print "newstatus" . Dumper(\%newnodestatus);
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
   }
   if ($command eq "rvitals") {
@@ -6045,22 +6039,6 @@ sub dompa {
     yield;
   }
 
-  if ($check) {
-      #print "allerrornodes=@allerrornodes\n";
-      #revert the status back for there is no-op for the nodes
-      my %old=(); 
-      foreach my $node (@allerrornodes) {
-	  my $stat=$oldnodestatus{$node};
-	  if (exists($old{$stat})) {
-	      my $pa=$old{$stat};
-	      push(@$pa, $node);
-	  }
-	  else {
-	      $old{$stat}=[$node];
-	  }
-      } 
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-  }
   verbose_message("SNMP session completed.");
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
   #print $out $msgtoparent; #$node.": $_\n";

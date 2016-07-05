@@ -585,13 +585,13 @@ sub do_discovery_process {
     populate_vpd_hash();
     populate_mp_hash();
     while (not $quit) {
+        my $msg = fd_retrieve($broker);
         if ((time()-$vintage)> 15) {
             populate_site_hash();
             populate_vpd_hash();
             populate_mp_hash();
             $vintage = time();
         } # site table reread every 15 second
-        my $msg = fd_retrieve($broker);
         my $data;
         my $client;
         my $clientn;
@@ -616,7 +616,7 @@ sub do_discovery_process {
             # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
             IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);
-            $data = $bigdata
+            $data = $bigdata;
         }
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
@@ -625,12 +625,13 @@ sub do_discovery_process {
             $req->{'_xcat_clientport'}=$sport;
             if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { # only discover from ips that appear to be on a managed network
                 xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
-                $req->{cacheonly}->[0] = 1;
+                # Using cacheonly will cause the discovery processing running 2 times, cacheonly seems useless for switch.pm, so remove it
+                #$req->{cacheonly}->[0] = 1;
+                #plugin_command($req,undef,\&build_response);
+                #if ($req->{cacheonly}->[0]) {
+                #delete $req->{cacheonly};
                 plugin_command($req,undef,\&build_response);
-                if ($req->{cacheonly}->[0]) {
-                    delete $req->{cacheonly};
-                    plugin_command($req,undef,\&build_response);
-                }
+                #}
             } else {
                 xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".$client." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
             }
@@ -886,6 +887,8 @@ unless ($foreground) {
 }
 
 $dbmaster=xCAT::Table::init_dbworker;
+# Make sure DB process is ready.
+wait_db_process();
 my $CHILDPID=0; # Global for reapers
 my %immediatechildren;
 sub generic_reaper {
@@ -912,6 +915,13 @@ sub ssl_reaper {
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
             # got here because UDP child is gone
             close($udpctl); $udpctl=0;
+            $pid_UDP = 0;
+        }
+        if ($CHILDPID == $cmdlog_svrpid) {
+            $cmdlog_svrpid = 0;
+        }
+        if ($CHILDPID == $pid_MON) {
+            $pid_MON = 0;
         }
     }
     $SIG{CHLD} = \&ssl_reaper;
@@ -1293,8 +1303,7 @@ my @pendingconnections;
 my $tconn;
 my $sslfudgefactor = 0;
 my $udpalive = 1;
-# Make sure DB process is ready.
-wait_db_process();
+
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
     while ($udpalive and $udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
@@ -1468,10 +1477,16 @@ if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
 }
 if ($listener) { $listener->close; }
 my $lastpid;
-while (keys %immediatechildren) {
+while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
     $lastpid=wait();
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
+    } elsif ($lastpid == $pid_UDP) {
+        $pid_UDP = 0;
+    } elsif ($lastpid == $cmdlog_svrpid) {
+        $cmdlog_svrpid = 0;
+    } elsif ($lastpid == $pid_MON) {
+        $pid_MON = 0;
     }
 }
 xCAT::Table::shut_dbworker;
@@ -2373,9 +2388,10 @@ sub wait_db_process {
         xCAT::MsgUtils->message("S","Error: xcat db process has not been started in 10 seconds.");
         return -1;
     }
-    # use create 1 to make sure nodelist and site object cached.
+    # use '-create=>1' to make sure nodelist and site object cached.
     my $tmptab = xCAT::Table->new('site',-create=>1);
     if(!$tmptab) {
+        xCAT::MsgUtils->message("S","Error: Failed to access site table when monitoring DB process.");
         return -1;
     }
     return 0;
@@ -2463,23 +2479,41 @@ sub get_request {
     my $sock = shift;
     my $encode = shift;
     my $request = shift;
+
     if ($encode eq "xml") {
-        my $line = $request;
+        my $readtry = 0;
         while ((!$request) || ($request !~ m/<\/xcatrequest>/)) {
+            if ($readtry > 10) {
+                # if retry too much, sleep for a while and try again
+                # otherwise it will use too much cpu
+                sleep 1;
+                $readtry = 0;
+            }
             my $flags=fcntl($sock,F_GETFL,0);
             $flags |= O_NONBLOCK; # we want sysread to bail on us, select seems to be evil to us still..
             fcntl($sock,F_SETFL,$flags);
             my $bytesread;
-            if (!($line) ) { $line = ''; }
+            my $line = '';
             do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
             if (length($line)==0) {
-                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
+                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) {
+                    # retry when an error happens
+                    # ECHILD makes no sense, but some platform does it
+                    $readtry++;
+                    next;
+                }
                 return undef;
             }
             $flags=fcntl($sock,F_GETFL,0);
             $flags &= ~O_NONBLOCK; # now we want *print* to be blocking IO
             fcntl($sock,F_SETFL,$flags);
-            $request = $line;
+            $request .= $line;
+
+            # check the validity of the request message
+            if ($request and length($request) > 15 and ($request !~ m/<xcatrequest>/)) {
+                xCAT::MsgUtils->message("S", "xcatd: Close an invalid connection.");
+                return undef;
+            }
         }
         return eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
     } elsif ($encode eq "storable") {

@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the servie node as gateway.
+Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the service node as gateway.
 
 
 ******************

@@ -250,32 +250,6 @@ sub process_command {
                 }
             }
             #print "oldstatus:" . Dumper(\%oldnodestatus);
-
-            #set the new status to the nodelist.status
-            my %newnodestatus=(); 
-            my $newstat;
-            if (($subcommand eq 'off') || ($subcommand eq 'softoff')) { 
-                my $newstat=$::STATUS_POWERING_OFF; 
-                $newnodestatus{$newstat}=\@allnodes;
-            } else {
-                #get the current nodeset stat
-                if (@allnodes>0) {
-                    my $nsh={};
-                    my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
-                    if (!$ret) { 
-                        foreach (keys %$nsh) {
-                            my $newstat=xCAT_monitoring::monitorctrl->getNodeStatusFromNodesetState($_, $command);
-                            $newnodestatus{$newstat}=$nsh->{$_};
-                        }
-                    } else {
-                        trace( $request, $msg );
-                    }
-                }
-            }
-            #donot update node provision status (installing or netbooting) here
-            xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-            #print "newstatus" . Dumper(\%newnodestatus);
-            xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
         }
     }
 
@@ -2135,44 +2109,7 @@ sub parse_args
 }
 
 
-sub findme {
-    my $request = shift;
-    my $callback = shift;
-    my $subreq = shift;
-    if (!defined $request->{'mtm'} or !defined $request->{'serial'}) {
-        xCAT::MsgUtils->message("S", "Discovery Error: 'mtm' or 'serial' not found.");
-        return;
-    }
-    my @attr_array = ();
-    my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0]; 
-    my $tmp_nodes = $::XCATVPDHASH{$mtms};
-    my @nodes = ();
-    my $pbmc_node;
-    foreach (@$tmp_nodes) {
-        if ($::XCATMPHASH{$_}) {
-            $pbmc_node = $_;
-        } else {
-            push @nodes, $_;
-        }
-    }
-    my $nodenum = $#nodes;
-    if ($nodenum < 0) {
-        xCAT::MsgUtils->message("S", "Discovery Error: Could not find any node.");
-        return;
-    } elsif ($nodenum > 0) {
-        xCAT::MsgUtils->message("S", "Discovery Error: More than one node were found.");
-        return;
-    }
-    {
-        my $req = {%$request};
-        $req->{command} = ['discovered'];
-        $req->{noderange} = [$nodes[0]];
-        $req->{pbmc_node} = [$pbmc_node];
-        $req->{discoverymethod} = ['mtms'];
-        $subreq->($req);
-        %{$req} = ();
-    }
-}
+
 
 ##########################################################################
 # Process request from xCat daemon
@@ -2188,15 +2125,6 @@ sub process_request {
     # Get hwtype 
     ####################################
     $package =~ s/xCAT_plugin:://;
-
-    ####################################
-    # Deal with findme request
-    ####################################
-    if ($req->{command}->[0] eq 'findme') {
-        # Need to support both ppc64 and ppc64le, maybe also x86_64. Will be move out later.
-        &findme($req, $callback, $subreq);
-        return;
-    }
     ####################################
     # Build hash to pass around 
     ####################################

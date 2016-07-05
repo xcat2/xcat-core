@@ -1439,38 +1439,45 @@ sub add_or_delete_records {
                 }
                 $numreqs -= 1;
                 if ($numreqs == 0) {
-                    $update->sign_tsig("xcat_key",$ctx->{privkey});
-                    $numreqs=300;
-                    my $reply = $resolver->send($update);
-                    if ($reply)
-                    {
-                        if ($reply->header->rcode ne 'NOERROR')
-                        {
-                            xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                    # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                    for (1..3) {
+                        $update->sign_tsig("xcat_key",$ctx->{privkey});
+                        $numreqs=300;
+                        my $reply = $resolver->send($update);
+                        if ($reply) {
+                            if ($reply->header->rcode eq 'NOTAUTH' ) {
+                                next;
+                            }
+                            if ($reply->header->rcode ne 'NOERROR') {
+                                xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                            }
                         }
+                        else {
+                            xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                        }
+                        last;
                     }
-                    else
-                    {
-                        xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
-                    }
-                    
                     $update =  Net::DNS::Update->new($zone); #new empty request
                 }
             }
             if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-                $update->sign_tsig("xcat_key",$ctx->{privkey});
-                my $reply = $resolver->send($update);
-                    if ($reply)
-                    {
-                        if ($reply->header->rcode ne 'NOERROR')
-                        {
+                # sometimes even the xcat_key is correct, but named still replies NOTAUTH, so retry
+                for (1..3) {
+                    $update->sign_tsig("xcat_key",$ctx->{privkey});
+                    my $reply = $resolver->send($update);
+                    if ($reply) {
+                        if ($reply->header->rcode eq 'NOTAUTH' ) {
+                            next;
+                        }
+                        if ($reply->header->rcode ne 'NOERROR') {
                             xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
                         }
                     }
-                    else
-                    {
+                    else {
                         xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
                     }
+                    last;
+                }
                 
                 # sometimes resolver does not work if the update zone request sent so quick
                 sleep 1;

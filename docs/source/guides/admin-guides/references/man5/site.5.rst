@@ -307,7 +307,7 @@ site Attributes:
                    currently supported values:
                      '0':  disable debug mode
                      '1':  enable basic debug mode
-                     '2':  enalbe expert debug mode
+                     '2':  enable expert debug mode
                    For the details on 'basic debug mode' and 'expert debug mode',
                    please refer to xCAT documentation.
   

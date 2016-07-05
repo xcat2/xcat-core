@@ -576,27 +576,25 @@ sub mknetboot
            $kcmdline .= " nonodestatus ";
         }
 
+        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
 
-        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+            if ($ipaddr) {
+                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
+                $kcmdline .=" LOGSERVER=$ipaddr ";
 
-           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
-           if($ipaddr){
-              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-              $kcmdline .=" LOGSERVER=$ipaddr ";
+                #for use in syslog dracut module in the initrd
+                $kcmdline .=" syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
+            }
+            else {
+                #for use in postscript and postbootscript in xcatdsklspost in the rootimg
+                $kcmdline .=" LOGSERVER=$xcatmaster ";
 
-              #for use in syslog dracut module in the initrd
-              $kcmdline .=" syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
-           }else{
-              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
-              $kcmdline .=" LOGSERVER=$xcatmaster ";
-
-              #for use in syslog dracut module in the initrd
-              $kcmdline .=" syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
-           }
-
-           $kcmdline .= " xcatdebugmode=1 ";
+                #for use in syslog dracut module in the initrd
+                $kcmdline .=" syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
+            }
+            $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
-
 
         $kcmdline .= "NODE=$node ";
         # add flow control setting

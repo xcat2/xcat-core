@@ -26,6 +26,9 @@ SYNOPSIS
 [\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
+\ **lsdef**\  [\ **-l | -**\ **-long**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-z | -**\ **-stanza**\ ] 
+[\ **-i**\  \ *attr-list*\ ] [\ **-**\ **-template**\  [\ *template-object-name*\ ]]
+
 
 ***********
 DESCRIPTION
@@ -33,7 +36,7 @@ DESCRIPTION
 
 
 This command is used to display xCAT object definitions which are stored
-in the xCAT database.
+in the xCAT database and xCAT object definition templates shipped in xCAT.
 
 
 *******
@@ -98,6 +101,12 @@ OPTIONS
 \ **-o**\  \ *object-names*\ 
  
  A set of comma delimited object names.
+ 
+
+
+\ **-**\ **-template**\  [\ *template-object-name*\ ]
+ 
+ Show the object definition templates \ *template-object-name*\   shipped in xCAT. If no \ *template-object-name*\  is specified, all the object definition templates of the specified type \ **-t**\  \ *object-types*\  will be listed. Use \ **-a|-**\ **-all**\  option to list all the object definition templates.
  
 
 
@@ -372,6 +381,42 @@ EXAMPLES
  .. code-block:: perl
  
    lsdef cn1 --nics
+ 
+ 
+
+
+18.
+ 
+ To list all the object definition templates shipped in xCAT.
+ 
+ 
+ .. code-block:: perl
+ 
+   lsdef --template -a
+ 
+ 
+
+
+19.
+ 
+ To display the details of "node" object definition template "ppc64le-template" shipped in xCAT.
+ 
+ 
+ .. code-block:: perl
+ 
+   lsdef -t node --template ppc64le-template
+ 
+ 
+
+
+20.
+ 
+ To list all the "node" object definition templates shipped in xCAT.
+ 
+ 
+ .. code-block:: perl
+ 
+   lsdef -t node --template
  
  
 

@@ -74,7 +74,7 @@ Configure xdsh for Mellanox Switch
 ----------------------------------
 To run xdsh commands to the Mellanox Switch, you must use the --devicetype input flag to xdsh. In addition, for xCAT versions less than 2.8, you must add a configuration file, please see `Setup ssh connection to the Mellanox Switch`_ section.
 
-For the Mellanox Switch the ``--devicetype`` is ``IBSwitch::Mellanox``. See :doc:`xdsh man page <../../../guides/admin-guides/references/man/xdsh.1.html>` for details.
+For the Mellanox Switch the ``--devicetype`` is ``IBSwitch::Mellanox``. See :doc:`xdsh man page </guides/admin-guides/references/man1/xdsh.1>` for details.
 
 Now you can run the switch commands from the mn using xdsh. For example: ::
 
