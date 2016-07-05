@@ -25,7 +25,7 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
