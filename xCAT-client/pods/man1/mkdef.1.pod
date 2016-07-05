@@ -50,7 +50,7 @@ A set of comma delimited object types.  Use the help option to get a list of val
 
 =item B<--template> I<template-object-name>
 
-Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of B<mkdef> command. For the details of xCAT shipped object definition templates, please refer to the manpage of B<--template> option in L<lsdef(1)|lsdef.1>.
+Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of B<mkdef> command. If there are an existing object and a template with the same name I<template-object-name>, the existing object takes precedence over the object definition template. For the details of xCAT shipped object definition templates, please refer to the manpage of B<--template> option in L<lsdef(1)|lsdef.1>.
 
 =item B<-V|--verbose>
 
