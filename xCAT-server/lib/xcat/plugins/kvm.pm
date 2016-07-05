@@ -3899,7 +3899,7 @@ sub forward_data {
 
                 #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
                 my $no_op = 0;
-                if ($_->{node}->[0]->{errorcode}) { $no_op = 1; }
+                if ($_->{node}->[0]->{errorcode}->[0]) { $no_op = 1; }
                 else {
                     my $text = $_->{node}->[0]->{data}->[0]->{contents}->[0];
 
