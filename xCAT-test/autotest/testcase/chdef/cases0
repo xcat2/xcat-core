@@ -222,3 +222,20 @@ cmd:chdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
 check:output=~not a valid
 end
+
+
+start:chdef_template
+os:linux
+description:try to change a template, a new node is created according to chdef. 
+cmd:result=`lsdef | grep  switch-template`; if [[ $result =~ "switch-template" ]]; then echo $result; noderm switch-template; fi
+cmd:chdef -t node -o switch-template groups=test
+check:output=~1 object definitions have been created or modified
+check:output=~New object definitions \'switch-template\' have been created
+check:rc==0
+cmd:lsdef switch-template
+check:output=~Object name\: switch\-template
+check:output=~groups\=test
+check:rc==0
+cmd:noderm switch-template
+check:rc==0
+end
