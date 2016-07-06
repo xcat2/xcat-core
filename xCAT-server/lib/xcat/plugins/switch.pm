@@ -277,8 +277,8 @@ sub process_request {
             # The findme request had been processed by other module, just return
             return;
         }
-        xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Processing discovery request");
-	my $ip = $req->{'_xcat_clientip'};
+        $mac = $req->{_xcat_clientmac}->[0];
+        xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($mac) Processing discovery request");
 	if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
 	    #Don't attempt switch discovery of a  VM Guest
 	    #TODO: in this case, we could/should find the host system 
@@ -287,20 +287,6 @@ sub process_request {
 	    #anyway, however, complex network topology function may be aided by
 	    #discovery working.  Food for thought.
 	    return;
-	}
-	my $arptable;
-        if ( -x "/usr/sbin/arp") {
-            $arptable = `/usr/sbin/arp -n`;
-        }
-        else{
-            $arptable = `/sbin/arp -n`;
-        }
-	my @arpents = split /\n/,$arptable;
-	foreach  (@arpents) {
-	    if (m/^($ip)\s+\S+\s+(\S+)\s/) {
-		$mac=$2;
-		last;
-	    }
 	}
 	my $firstpass=1;
 	if ($mac) {
@@ -327,7 +313,7 @@ sub process_request {
         }
 	 
 	if ($node) {
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Find node:$node for the discovery request");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Find node:$node for the discovery request");
             # No need to write mac table here, 'discovered' command will write
 	    # my $mactab = xCAT::Table->new('mac',-create=>1);
 	    # $mactab->setNodeAttribs($node,{mac=>$mac});
@@ -346,7 +332,7 @@ sub process_request {
 	    %{$request}=();#Clear req structure, it's done..
 	    undef $mactab;
 	} else { 
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{mtm}->[0]*$req->{serial}->[0]) Error: Could not find any node");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Error: Could not find any node");
 	}
     }
 }
