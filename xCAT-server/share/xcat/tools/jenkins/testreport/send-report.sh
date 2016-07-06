@@ -298,7 +298,7 @@ IFS="${oIFS}"
 <th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; width: 50px;">Last 90 days</th>
 </tr>
 $(
-Top50FailedTestCases="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT @rank := @rank + 1 AS Rank, \`Test case\`, Arch, OS, \`Last seven days\`, \`Last thirty days\`, \`Last ninety days\` FROM FailedTestCasesTopList, (SELECT @rank := 0) AS RANK LIMIT 50;")"
+Top50FailedTestCases="$("${MYSQL_COMMAND[@]}" -t <<<"SELECT @rank := @rank + 1 AS Rank, \`Test case\`, Arch, OS, \`Last seven days\`, \`Last thirty days\`, \`Last ninety days\` FROM (SELECT \`Test case\`, Arch, OS, \`Last seven days\`, \`Last thirty days\`, \`Last ninety days\` FROM FailedTestCasesTopList LIMIT 50) AS TopFifty, (SELECT @rank := 0) AS Rank;")"
 oIFS="${IFS}"
 IFS="|"
 color=""
