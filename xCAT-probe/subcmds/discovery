@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/perl
 # IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
@@ -38,6 +38,7 @@ $::USAGE = "Usage:
 Description:
     Do probe for discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
     If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name exit for error.  
+    In order to do realtime monitor, $program_name probe program must be run along with the node discovery procedure. Plese trigger this command before trigger node discovery procedure.
 
 Options:
     -h : Get usage information of $program_name.
@@ -98,7 +99,7 @@ sub check_genesis_file {
 
     probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch installed, start to check files...") if ($verbose);
 
-    my $tftpdir = `tabdump site | grep "tftpdir" | awk -F "," '{print \$2}'`;
+    my $tftpdir = `tabdump site | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
     chomp($tftpdir);
     $tftpdir =~ s/"//g;
     my $genesis_folder;
@@ -529,7 +530,7 @@ sub handle_compute_msg {
     my $ip     = "";
     my $msg;
 
-    my @splitline = split(" ", $line);
+    my @splitline = split(/\s+/, $line);
     if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
         $sender = $splitline[3];
         splice(@splitline, 0, 5);
@@ -799,7 +800,7 @@ sub do_pre_check {
         }
     } else {
         $msg = "Attribute 'master' in 'site' table is configured well";
-        my $masteripinsite = `tabdump site | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+        my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
         if ($masteripinsite eq "") {
             probe_utils->send_msg("$output", "d", "There isn't 'master' definition in 'site' talbe") if ($verbose);
@@ -891,7 +892,7 @@ sub do_monitor {
     };
     
     if (!$nics) {
-        my $masteripinsite = `tabdump site | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+        my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
         $nics = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
         chomp($nics);
@@ -934,22 +935,22 @@ sub do_monitor {
     my $rst = 0;
     {    #important to hold a block
             # start ot obtain logs from every log file
-        if (!($varlogpid = open(VARLOGMSGFILE, "tail -f $varlogmsg 2>&1 |"))) {
+        if (!($varlogpid = open(VARLOGMSGFILE, "tail -f -n 0 $varlogmsg 2>&1 |"))) {
             probe_utils->send_msg("$output", "f", "Can't open $varlogmsg to get logs");
             $rst = 1;
             last;
         }
-        if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f $clusterlog 2>&1 |"))) {
+        if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f -n 0 $clusterlog 2>&1 |"))) {
             probe_utils->send_msg("$output", "f", "Can't open $clusterlog to get logs");
             $rst = 1;
             last;
         }
-        if (!($httppid = open(HTTPLOGFILE, "tail -f $httplog 2>&1 |"))) {
+        if (!($httppid = open(HTTPLOGFILE, "tail -f -n 0 $httplog 2>&1 |"))) {
             probe_utils->send_msg("$output", "f", "Can't open $httplog to get logs");
             $rst = 1;
             last;
         }
-        if (!($computerpid = open(COMPUTERFILE, "tail -f $computelog 2>&1 |"))) {
+        if (!($computerpid = open(COMPUTERFILE, "tail -f -n 0 $computelog 2>&1 |"))) {
             probe_utils->send_msg("$output", "f", "Can't open $computelog to get logs");
             $rst = 1;
             last;
@@ -965,19 +966,12 @@ sub do_monitor {
         my $line = "";
         my @hdls;
         my $hdl;
-        my $oldlines      = 10;
-        my $varlogmsgcnt  = 0;
-        my $clusterlogcnt = 0;
-        my $httplogcnt    = 0;
-        my $computercnt   = 0;
         for (; ;) {
 
             if (@hdls = $select->can_read(0)) {
                 foreach $hdl (@hdls) {
                     if ($hdl == \*VARLOGMSGFILE) {
                         chomp($line = <VARLOGMSGFILE>);
-                        ++$varlogmsgcnt;
-                        last if ($varlogmsgcnt <= $oldlines);
                         my @tmp = split(/\s+/, $line);
                         if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
                             handle_dhcp_msg("$line");
@@ -986,18 +980,12 @@ sub do_monitor {
                         }
                     } elsif ($hdl == \*CLUSTERLOGFILE) {
                         chomp($line = <CLUSTERLOGFILE>);
-                        ++$clusterlogcnt;
-                        last if ($clusterlogcnt <= $oldlines);
                         handle_cluster_msg("$line");
                     } elsif ($hdl == \*HTTPLOGFILE) {
                         chomp($line = <HTTPLOGFILE>);
-                        ++$httplogcnt;
-                        last if ($httplogcnt <= $oldlines);
                         handle_http_msg("$line");
                     } elsif ($hdl == \*COMPUTERFILE) {
                         chomp($line = <COMPUTERFILE>);
-                        ++$computercnt;
-                        last if ($computercnt <= $oldlines);
                         handle_compute_msg("$line");
                     }
                 }
