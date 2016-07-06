@@ -570,10 +570,14 @@ sub getsnmpsession {
     my $snmpver='1';
     my $swent = $self->{switchparmhash}->{$switch};
 
-  if ($swent) {
-      $snmpver=$swent->{snmpversion};
-      $community=$swent->{password};
-  }
+    if ($swent) {
+        if ($swent->{snmpversion}) {
+            $snmpver=$swent->{snmpversion};
+        }
+        if ($swent->{password}) {
+            $community=$swent->{password};
+        }
+    }
   my $switch_ip = xCAT::NetworkUtils->getipaddr($switch);
   unless ($switch_ip) {
       return ({"ErrorStr"=>"Can not resolve IP address for $switch"});
