@@ -58,7 +58,7 @@ sub check_noderange{
             $nodecheckrst{$currentnode}{"error"} = "Could not find node definition";
             $rst = 1;
         } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
-            $monitor_nodes{$1} = 0; 
+            $monitor_nodes{$1}{"rst"} = 0; 
             $currentnode = $1;
             $ip = "NOIP";
         } elsif ($_ =~ /^ip=(.+)/i) {
@@ -230,14 +230,27 @@ sub handle_cluster_msg {
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{ $node }{"history"} }, $record);
         }
-        
+
         if (exists($rawdata{$node}) and ($status eq "booted")) {
-            $monitor_nodes{$node} = 1 if (defined($monitor_nodes{$node}));
-            probe_utils->send_msg("$output", "o", "Node $node has finished it's os provision process");
+            if ($monitor_nodes{$node}{"status"} eq "installing") {
+                $record = "Node $node has finished it's os provision process";
+                probe_utils->send_msg("$output", "o", "$record");
+                push(@{ $rawdata{ $node }{"history"} }, $record);
+            } else {
+                $record = "NO installing process detected for node $node";
+                probe_utils->send_msg("$output", "f", "$record");
+                push(@{ $rawdata{ $node }{"history"} }, $record);
+            }
+            $monitor_nodes{$node}{"rst"} = 1 if (defined($monitor_nodes{$node}));
         } elsif (exists($rawdata{$node}) and ($status eq "failed")) {
-            $monitor_nodes{$node} = 1 if (defined($monitor_nodes{$node}));
+            $monitor_nodes{$node}{"rst"} = 1 if (defined($monitor_nodes{$node}));
             probe_utils->send_msg("$output", "f", "Node $node has finished it's os provision process");
+            push(@{ $rawdata{ $node }{"history"} }, "Node $node os provision failed");
+        } elsif (exists($rawdata{$node}) and ($status eq "installing")) {
+            $monitor_nodes{$node}{"status"} = "installing";
         }
+
+
     }
     return 0;
 }
@@ -270,7 +283,7 @@ sub handle_compute_msg {
 sub all_monitor_node_done {
     my $done = 1;
     foreach my $node (keys %monitor_nodes) {
-        if ($monitor_nodes{$node} == 0) {
+        if ($monitor_nodes{$node}{"rst"} == 0) {
             $done = 0;
             last;
         }
