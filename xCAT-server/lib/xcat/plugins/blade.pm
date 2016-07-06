@@ -4375,7 +4375,7 @@ sub process_request {
         return;
     }
 
-    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
+    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Processing discovery request");
     my $mptab = xCAT::Table->new("mp");
     unless ($mptab) { return 2; }
     my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
@@ -4454,7 +4454,7 @@ sub process_request {
        }
     }
     unless ($node) {
-      xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
+      xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Error: Could not find any node");
       return 1; #failure
     }
     if ($request->{mtm} and $request->{mtm} =~ /^(\w{4})/) {
@@ -4470,7 +4470,7 @@ sub process_request {
        undef $mactab;
     }
 
-    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node $node for the discovery request");
+    xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Find node $node for the discovery request");
     #my %request = (
     #  command => ['makedhcp'],
     #  node => [$macmap{$mac}]

@@ -22,7 +22,7 @@ sub findme {
     }
     my @attr_array = ();
     my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0]; 
-    xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($mtms) Processing discovery request");
+    xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Processing discovery request");
     my $tmp_nodes = $::XCATVPDHASH{$mtms};
     my @nodes = ();
     my $bmc_node;
@@ -35,14 +35,14 @@ sub findme {
     }
     my $nodenum = $#nodes;
     if ($nodenum < 0) {
-        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($mtms) Error: Could not find any node");
+        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Error: Could not find any node");
         return;
     } elsif ($nodenum > 0) {
-        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($mtms) Error: More than one node were found");
+        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Error: More than one node were found");
         return;
     }
     {
-        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($mtms) Find node:$nodes[0] for the discovery request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Find node:$nodes[0] for the discovery request");
         $request->{discoverymethod}->[0] = 'mtms';
         my $req = {%$request};
         $req->{command} = ['discovered'];
