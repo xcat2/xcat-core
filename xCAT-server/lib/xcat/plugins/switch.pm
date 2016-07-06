@@ -130,9 +130,21 @@ sub preprocess_request {
       if (defined($check)) {
           $request->{opt}->{check} = $check;
       }
+      my $switchestab = xCAT::Table->new('switches', -create=>0);
+      my $swhash = undef;
+      if ($switchestab) {
+          $swhash = $switchestab->getAllNodeAttribs(['switch'], 1);
+          if (!defined($swhash)) {
+              $callback->({error=>["Get attributes from table 'switches' failed"],errorcode=>1});
+              return;
+          }
+      }
+      else {
+          $callback->({error=>["Open table 'switches' failed"],errorcode=>1});
+          return;
+      }
       if (defined($noderange)) {
           my $nthash = undef;
-          my $swhash = undef;
           my $nodetypetab=xCAT::Table->new('nodetype',-create=>0);
           if ($nodetypetab) {
               $nthash = $nodetypetab->getNodesAttribs($noderange, ['nodetype']);
@@ -145,19 +157,6 @@ sub preprocess_request {
               $callback->({error=>["Open table 'nodetype' failed"],errorcode=>1});
               return;
           }
-          my $switchestab  = xCAT::Table->new('switches', -create=>0);
-          if ($switchestab) {
-              $swhash = $switchestab->getNodesAttribs($noderange, ['switch']);
-              if (!defined($swhash)) {
-                   $callback->({error=>["Get attributes from table 'switches' failed"],errorcode=>1});
-                   return;
-              }
-          }
-          else {
-              $callback->({error=>["Open table 'switches' failed"],errorcode=>1});
-              return;
-
-          }
           my @switchnode = ();
           my @errswnode = ();
           my @errornode = ();
@@ -165,7 +164,7 @@ sub preprocess_request {
               if (!defined($nthash->{$node}) or $nthash->{$node}->[0]->{nodetype} ne 'switch') {
                   push @errornode, $node;
               }
-              elsif (!defined($swhash->{$node})) {
+              elsif (!defined($swhash->{$node}) or !defined($swhash->{$node}->[0])) {
                   push @errswnode, $node;
               }
               else {
@@ -183,6 +182,12 @@ sub preprocess_request {
               return [$request];
           }
           return;
+      } 
+      else {
+          if (!scalar(keys %$swhash)) {
+              $callback->({error=>["No switch configuration info get from 'switches' table"],errorcode=>1});
+              return;
+          }
       }
   }
   return [$request];

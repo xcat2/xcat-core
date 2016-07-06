@@ -53,13 +53,15 @@ if ($help) {
     probe_utils->send_msg("$output", "d", $::USAGE);
     exit 0;
 }
+
+if (! -d "$currdir/bin") {
+    mkpath("$currdir/bin/");    
+}
+if (! -e "$currdir/bin/switchprobe") {
+    link("$::XCATROOT/bin/xcatclient", "$currdir/bin/switchprobe");
+}
+
 if ($test) {
-    if (! -d "$currdir/bin") {
-        mkpath("$currdir/bin/");    
-    }
-    if (! -e "$currdir/bin/switchprobe") {
-        link("$::XCATROOT/bin/xcatclient", "$currdir/bin/switchprobe");
-    }
     `$currdir/bin/switchprobe -h`;
     if ($?) {
         probe_utils->send_msg("$output", "f", "No switchprobe tool is available at $currdir/bin/");
@@ -92,20 +94,24 @@ if (-f $error_file) {
 }
 my $fd;
 open($fd, "<", "$normal_file");
-my %fails = ();
+my @fails = ();
+# There is 2 kinds of error message:
+# 1. Error: The nodetype is not 'switch' for nodes: switch1
+#    Error: No switch configuration info find for switch-10-5-23-1
+# 2. switch-10-5-23-1: Error: Timeout
 foreach (<$fd>) {
     chomp($_);
-    if (/^(\S*):\s*(.*)/) {
-        my $switch = $1;
-        my $info = $2;
-        if (/PASS/) {
-            probe_utils->send_msg("$output", "o", "$switch");
-        } elsif (/Error:/) {
-            $info =~ s/Error://;
-            $fails{$switch} = $info;
+    if (/Error:/) {
+        if (/^(\S*):\s*Error:\s*(.*)/) {
+            push @fails, "$1 - $2";
+        } elsif (/^Error:\s*(.*)/) {
+            push @fails, $1;
         } else {
-            probe_utils->send_msg("$output", "d", "$_");
+            push @fails, $_; 
         }
+    }
+    elsif (/^(\S*):\s*PASS/) {
+        probe_utils->send_msg("$output", "o", "$1");
     }
     else {
         probe_utils->send_msg("$output", "d", $_);
@@ -118,7 +124,7 @@ if (-f $normal_file) {
 if (-f $error_file) {
     unlink($error_file);
 }
-foreach (keys %fails) {
-    probe_utils->send_msg("$output", "f", "$_ - $fails{$_}");
+foreach (@fails) {
+    probe_utils->send_msg("$output", "f", "$_");
 }
 exit 0;
