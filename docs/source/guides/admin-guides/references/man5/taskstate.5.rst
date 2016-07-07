@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **taskstate Attributes:**\   \ *node*\ , \ *command*\ , \ *state*\ , \ *pid*\ , \ *reserve*\ 
+\ **taskstate Attributes:**\   \ *node*\ , \ *command*\ , \ *state*\ , \ *pid*\ , \ *reserve*\ , \ *disable*\ 
 
 
 ***********
@@ -63,6 +63,12 @@ taskstate Attributes:
 \ **reserve**\ 
  
  used to lock the node
+ 
+
+
+\ **disable**\ 
+ 
+ Set to 'yes' or '1' to comment out this row.
  
 
 
