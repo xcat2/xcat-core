@@ -341,18 +341,13 @@ sub do_monitor{
     }
 
     my $rst = 0;
-    my $startline = "
--------------------------------------------------------------
-                               ___
-        ____    _  _____   _.-|   |          |\\__/,|   (`\\
- __  __/ ___|  / \\|_   _| {   |   |          |x x  |__ _) )
- \\ \\/ / |     / _ \\ | |    \"-.|___|        _.( T   )  `  /
-  >  <| |___ / ___ \\| |    .--'-`-.     _((_ `^--' /_<  \\
- /_/\\_\\\\____/_/   \\_\\_|  .+|______|__.-||__)`-'(((/  (((/
+    my $startline = 
+"-------------------------------------------------------------
+Start to capture every message during os provision process......
 -------------------------------------------------------------
 ";
 
-    probe_utils->send_msg("$output", "d", "$startline");
+    print("$startline\n");
 
     my $varlogmsg = "/var/log/messages";
     my $clusterlog = "/var/log/xcat/cluster.log";
