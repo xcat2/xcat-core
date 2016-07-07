@@ -144,9 +144,7 @@ sub handle_dhcp_msg {
             my $record = "Send DHCPACK on $ip back to [$node] $mac via $nic";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{$node}{"history"} }, $record);
-            if ($macmap{$mac}{"ip"} != "NOIP") {
-                $ipnodemap{$ip} = $node;
-            }
+            $ipnodemap{$ip} = $node;
         }
     } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
         my $mac = $1;
@@ -168,9 +166,7 @@ sub handle_dhcp_msg {
             my $record = "Send BOOTREPLY on $ip back to [$node] $mac via $nic";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{$node}{"history"} }, $record);
-            if ($macmap{$mac}{"ip"} != "NOIP") {
-                $ipnodemap{$ip} = $node;
-            }
+            $ipnodemap{$ip} = $node;
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
                 my $warn_msg = "The ip of [$node] $mac from DHCP $ip is different with definition $macmap{$mac}{'ip'}.";
