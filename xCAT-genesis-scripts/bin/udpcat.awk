@@ -5,7 +5,7 @@ BEGIN {
   xcatdhost = ARGV[1]
   delete ARGV[1]
   delete ARGV[2]
-  RS=""
+  RS=rand()
 }
 END {
   print $0 |& "/inet/udp/301/"xcatdhost"/"xcatdport
