@@ -287,11 +287,11 @@ sub dhcp_dynamic_range_check {
     my $rst  = 0;
 
     my $dhcpconfig;
-    if (-e "/etc/dhcp/dhcpd.conf"){
+    if (-e "/etc/dhcp/dhcpd.conf") {
         $dhcpconfig = "/etc/dhcp/dhcpd.conf";
-    } elsif (-e "/etc/dhcp3/dhcpd.conf"){
+    } elsif (-e "/etc/dhcp3/dhcpd.conf") {
         $dhcpconfig = "/etc/dhcp3/dhcpd.conf";
-    } 
+    }
 
     unless ($dhcpconfig) {
         probe_utils->send_msg("$output", "d", "Cannot find the dhcpd.conf file.") if ($verbose);
@@ -303,13 +303,13 @@ sub dhcp_dynamic_range_check {
     my $dynamic_range;
     my %subnet_hash;
 
-    unless (open (FILE, $dhcpconfig)) {
+    unless (open(FILE, $dhcpconfig)) {
         probe_utils->send_msg("$output", "d", "Cannot open file $dhcpconfig.") if ($verbose);
-        ($net_ip, $net_mask) = split ('/', $net);
+        ($net_ip, $net_mask) = split('/', $net);
         return 1;
     }
 
-    while ($config_line  = <FILE>) {
+    while ($config_line = <FILE>) {
         chomp($config_line);
         $config_line =~ s/^\s+|\s+$//g;
 
@@ -319,8 +319,8 @@ sub dhcp_dynamic_range_check {
         }
         if ($config_line =~ /subnet_end/) {
             $subnet_hash{$subnet} = $dynamic_range if ($dynamic_range);
-            $subnet = "";
-            $dynamic_range = "";
+            $subnet               = "";
+            $dynamic_range        = "";
         }
         if ($config_line =~ /^range dynamic-bootp (\d+.\d+.\d+.\d+) (\d+.\d+.\d+.\d+)/) {
             $dynamic_range = "$1-$2";
@@ -335,13 +335,14 @@ sub dhcp_dynamic_range_check {
     chomp($arch);
     my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F "=" '{print \$2}'`;
     chomp($tftpdir);
+
     unless ($tftpdir) {
-       $tftpdir = "/tftpboot";
+        $tftpdir = "/tftpboot";
     }
 
-    foreach my $net (@$nets){
+    foreach my $net (@$nets) {
 
-        if ( !exists($subnet_hash{$net})) {
+        if (!exists($subnet_hash{$net})) {
             probe_utils->send_msg("$output", "d", "The net $net is not matched.") if ($verbose);
             $rst = 1;
             next;
@@ -355,12 +356,12 @@ sub dhcp_dynamic_range_check {
             next;
         }
 
-        ($net_ip, $net_mask) = split ('/', $net);
+        ($net_ip, $net_mask) = split('/', $net);
         $net_cdir = xCAT::NetworkUtils::formatNetmask($net_mask, 0, 1);
         if ($arch =~ /ppc64/i) {
-            $net_file = "$tftpdir/pxelinux.cfg/p/$net_ip"."_$net_cdir";
+            $net_file = "$tftpdir/pxelinux.cfg/p/$net_ip" . "_$net_cdir";
         } else {
-            $net_file = "$tftpdir/xcat/xnba/nets/$net_ip"."_$net_cdir.uefi";
+            $net_file = "$tftpdir/xcat/xnba/nets/$net_ip" . "_$net_cdir.uefi";
         }
 
         if (-e "$net_file") {
@@ -533,7 +534,11 @@ sub handle_compute_msg {
     my @splitline = split(/\s+/, $line);
     if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
         $sender = $splitline[3];
-        splice(@splitline, 0, 5);
+        if (($splitline[4] =~ /^xcat/i) && ($splitline[5] !~ /^xcat/i)) {
+            splice(@splitline, 0, 4);
+        } else {
+            splice(@splitline, 0, 5);
+        }
         $msg = join(" ", @splitline);
 
         if (!xCAT::NetworkUtils->isIpaddr($sender)) {
@@ -580,19 +585,22 @@ sub handle_cluster_msg {
     my $ip     = "";
     my $msg;
 
-    if ($line =~ /.+\d+:\d+:\d+\s+(.+)\s+(xcat.+)/i) {
-        $sender = $1;
-        $msg    = $2;
-
-        if (!xCAT::NetworkUtils->isIpaddr($sender)) {
-            $ip = xCAT::NetworkUtils->getipaddr($sender);
-        } else {
-            $ip = $sender;
-        }
-        if ($ip ne "" && defined($ipmacmap{$ip})) {
-            my $record = "Recv from $ip : $msg";
-            probe_utils->send_msg("$output", "d", "$record");
-            push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
+    my @splitline = split(/\s+/, $line);
+    if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
+        if (($splitline[5] =~ /^xcat.discovery/i) && ($splitline[6] =~ /^\((.+)\)$/)) {
+            my $mac = $1;
+            if (xCAT::NetworkUtils->isValidMAC($mac) && defined($rawdata{$mac})) {
+                splice(@splitline, 0, 5);
+                splice(@splitline, 1, 1);
+                $msg = join(" ", @splitline);
+                if (defined($rawdata{$mac}{"ip"})) {
+                    $record = "Recv from $rawdata{$mac}{ip} : $msg";
+                } else {
+                    $record = "Recv from $mac : $msg";
+                }
+                probe_utils->send_msg("$output", "d", "$record");
+                push(@{ $rawdata{$mac}{"history"} }, $record);
+            }
         }
     }
     return 0;
@@ -890,7 +898,7 @@ sub do_monitor {
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;
     };
-    
+
     if (!$nics) {
         my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
@@ -933,8 +941,21 @@ sub do_monitor {
     my $computerpid;
     my $varlogpid;
     my $rst = 0;
-    {    #important to hold a block
-            # start ot obtain logs from every log file
+    {   #important to hold a block
+        if(! -e "$varlogmsg"){
+            probe_utils->send_msg("$output", "w", "$varlogmsg doesn't exist");
+        }
+        if(! -e "$clusterlog"){
+            probe_utils->send_msg("$output", "w", "$clusterlog doesn't exist");
+        }
+        if(! -e "$computelog"){
+            probe_utils->send_msg("$output", "w", "$computelog doesn't exist");
+        }
+        if(! -e "$httplog"){
+            probe_utils->send_msg("$output", "w", "$httplog doesn't exist");
+        }
+
+        # start ot obtain logs from every log file
         if (!($varlogpid = open(VARLOGMSGFILE, "tail -f -n 0 $varlogmsg 2>&1 |"))) {
             probe_utils->send_msg("$output", "f", "Can't open $varlogmsg to get logs");
             $rst = 1;
@@ -967,7 +988,6 @@ sub do_monitor {
         my @hdls;
         my $hdl;
         for (; ;) {
-
             if (@hdls = $select->can_read(0)) {
                 foreach $hdl (@hdls) {
                     if ($hdl == \*VARLOGMSGFILE) {
@@ -998,7 +1018,8 @@ sub do_monitor {
                     probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished discovery process");
                 }
                 last;
-            } sleep 0.01;
+            } 
+            sleep 0.01;
         }
         &dump_history;
     }
@@ -1053,7 +1074,7 @@ if (defined($noderange) && !defined($discovery_type)) {
 }
 
 if (defined($discovery_type)) {
-    unless (grep(/^$discovery_type$/,  @valid_discovery_type)){
+    unless (grep(/^$discovery_type$/, @valid_discovery_type)) {
         probe_utils->send_msg("$output", "f", "Invalid discovery type. the vaild types are $valid_discovery_type_str");
         probe_utils->send_msg("$output", "d", "$::USAGE");
         exit 1;
@@ -1065,7 +1086,7 @@ if (defined($noderange) && defined($discovery_type)) {
     my $rc = check_pre_defined_node($discovery_type, $noderange);
     if ($rc) {
         probe_utils->send_msg("$output", "f", $msg);
-        return 1;
+        exit 1;
     } else {
         probe_utils->send_msg("$output", "o", $msg);
     }
