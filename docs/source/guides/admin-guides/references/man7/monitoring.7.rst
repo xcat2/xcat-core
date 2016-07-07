@@ -53,7 +53,7 @@ monitoring Attributes:
 
 \ **name**\  (monitoring.name)
  
- The name of the monitoring plug-in module.  The plug-in must be put in /lib/perl/xCAT_monitoring/.  See the man page for monstart for details.
+ The name of the monitoring plug-in module.  The plug-in must be put in /opt/xcat/lib/perl/xCAT_monitoring/.  See the man page for monstart for details.
  
 
 
