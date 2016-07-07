@@ -25,8 +25,26 @@ sub process_request {
             $cb->($rsp);
             return;
         }
-        xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: ($req->{mtm}->[0]*$req->{serial}->[0]) Get a discover request");
+        my $client_ip = $req->{'_xcat_clientip'};
+        my $arptable;
+        if ( -x "/usr/sbin/arp") {
+            $arptable = `/usr/sbin/arp -n`;
+        }
+        else{
+            $arptable = `/sbin/arp -n`;
+        }
+	my @arpents = split /\n/,$arptable;
+        my $mac = "$req->{mtm}->[0]*$req->{serial}->[0]";
+	foreach  (@arpents) {
+	    if (m/^($client_ip)\s+\S+\s+(\S+)\s/) {
+		$mac=$2;
+		last;
+	    }
+	}
+
+        xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: ($mac) Get a discover request");
         $req->{discoverymethod}->[0] = 'undef';
+        $req->{_xcat_clientmac}->[0] = $mac;
         xCAT::DiscoveryUtils->update_discovery_data($req);
         return;
     }

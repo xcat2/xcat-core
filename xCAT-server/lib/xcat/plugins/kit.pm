@@ -3205,7 +3205,7 @@ sub rmkitcomp
                         #check if the parameter is used by other kitcomponent
                         foreach my $otherline ( @otherlines ) {
                             chomp $otherline;
-                            if ( $line =~ m!$otherline! ) {
+                            if ( $otherline && $line =~ m!$otherline! ) {
                                 $found = 1;
                                 last;
                             }
@@ -3216,7 +3216,7 @@ sub rmkitcomp
                         } else {
                             foreach my $content ( @contents ) {
                                 chomp $content;
-                                if ( $line =~ m!$content! ) {
+                                if ( $content && $line =~ m!$content! ) {
                                     $found = 1;
                                     last;
                                 }

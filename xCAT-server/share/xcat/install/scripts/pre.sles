@@ -18,7 +18,9 @@ fi
 
 AWK=`find / -name awk | tail -1`
 #old awk /mounts/instsys/bin/awk -f
-
+if [ ! -e /usr/bin/awk ]; then
+    ln -s $AWK /usr/bin/awk
+fi
 
 XCATDPORT=#TABLE:site:key=xcatiport:value#
 XCATDHOST="#XCATVAR:XCATMASTER#"

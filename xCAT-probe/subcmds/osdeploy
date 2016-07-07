@@ -144,9 +144,7 @@ sub handle_dhcp_msg {
             my $record = "Send DHCPACK on $ip back to [$node] $mac via $nic";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{$node}{"history"} }, $record);
-            if ($macmap{$mac}{"ip"} != "NOIP") {
-                $ipnodemap{$ip} = $node;
-            }
+            $ipnodemap{$ip} = $node;
         }
     } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
         my $mac = $1;
@@ -168,9 +166,7 @@ sub handle_dhcp_msg {
             my $record = "Send BOOTREPLY on $ip back to [$node] $mac via $nic";
             probe_utils->send_msg("$output", "d", "$record");
             push(@{ $rawdata{$node}{"history"} }, $record);
-            if ($macmap{$mac}{"ip"} != "NOIP") {
-                $ipnodemap{$ip} = $node;
-            }
+            $ipnodemap{$ip} = $node;
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
                 my $warn_msg = "The ip of [$node] $mac from DHCP $ip is different with definition $macmap{$mac}{'ip'}.";
@@ -345,18 +341,13 @@ sub do_monitor{
     }
 
     my $rst = 0;
-    my $startline = "
--------------------------------------------------------------
-                               ___
-        ____    _  _____   _.-|   |          |\\__/,|   (`\\
- __  __/ ___|  / \\|_   _| {   |   |          |x x  |__ _) )
- \\ \\/ / |     / _ \\ | |    \"-.|___|        _.( T   )  `  /
-  >  <| |___ / ___ \\| |    .--'-`-.     _((_ `^--' /_<  \\
- /_/\\_\\\\____/_/   \\_\\_|  .+|______|__.-||__)`-'(((/  (((/
+    my $startline = 
+"-------------------------------------------------------------
+Start to capture every message during os provision process......
 -------------------------------------------------------------
 ";
 
-    probe_utils->send_msg("$output", "d", "$startline");
+    print("$startline\n");
 
     my $varlogmsg = "/var/log/messages";
     my $clusterlog = "/var/log/xcat/cluster.log";

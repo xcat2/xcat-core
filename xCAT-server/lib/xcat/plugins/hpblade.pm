@@ -689,7 +689,7 @@ sub process_request {
                     # The findme request had been processed by other module, just return
                     return;
                 }
-                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
+                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Processing discovery request");
 		my $mptab = xCAT::Table->new("mp");
 		unless ($mptab) { return 2; }
 		my @bladents = $mptab->getAllNodeAttribs([qw(node)]);
@@ -733,7 +733,7 @@ sub process_request {
 			}
 		}
 		unless ($macmap{$mac}) { 
-                        xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
+                        xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Error: Could not find any node");
 			return 1; #failure
 		}
                 # The discovered command will update mac table, no need to update here
@@ -745,7 +745,7 @@ sub process_request {
 		#  node => [$macmap{$mac}]
 		#  );
 		#$doreq->(\%request);
-                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node:$macmap{$mac} for the discovery request");
+                xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Find node:$macmap{$mac} for the discovery request");
                 my $req={%$request};
 		$req->{command}=['discovered'];
 		$req->{noderange} = [$macmap{$mac}];

@@ -63,7 +63,7 @@ sub findme {
     }
 
     # do the sequential discovery
-    xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Processing discovery request");
+    xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Processing discovery request");
 
     # Get the parameters for the sequential discovery
     my %param;
@@ -76,7 +76,7 @@ sub findme {
     my $mac;
     my $ip = $request->{'_xcat_clientip'};
     if (defined $request->{nodetype} and $request->{nodetype}->[0] eq 'virtual') {
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: virtual machines is not supported");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: virtual machines is not supported");
         return;
     }
     my $arptable;
@@ -96,7 +96,7 @@ sub findme {
     }
     
     unless ($mac) {
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find mac of the $ip");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: Could not find mac of the $ip");
         return;
     }
 
@@ -373,7 +373,7 @@ sub findme {
 
         # call the discovered command to update the discovery request to a node
          
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Find node:$node for the discovery request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Find node:$node for the discovery request");
         $request->{discoverymethod} = ['sequential'];
         my $req = {%$request};
         $req->{command}=['discovered'];
@@ -386,7 +386,7 @@ sub findme {
         undef $mactab;
     } else {
         nodediscoverstop($callback, undef, "node names");
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{mtm}->[0]*$request->{serial}->[0]) Error: Could not find any node");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: Could not find any node");
         return;
     }
 
