@@ -1035,25 +1035,25 @@ function add_xcat_dep_repo()
 function update_repo_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	dnf --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
+	dnf --nogpgcheck updateinfo
 }
 
 function update_repo_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	yum --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
+	yum --nogpgcheck updateinfo
 }
 
 function update_repo_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
-	zypper --gpg-auto-import-keys refresh </dev/null >/dev/null 2>&1
+	zypper --gpg-auto-import-keys refresh
 }
 
 function update_repo_apt()
 {
 	type apt-get >/dev/null 2>&1 || return 255
-	apt-get update </dev/null >/dev/null 2>&1
+	apt-get --allow-unauthenticated update
 }
 
 function update_repo()
@@ -1090,7 +1090,7 @@ function install_packages_apt()
 	type apt-get >/dev/null 2>&1 || return 255
 	local -a args=()
 	[[ "$1" = "-y" ]] && args=("-y") && shift
-	apt-get install "${args[@]}" "$@"
+	apt-get --allow-unauthenticated install "${args[@]}" "$@"
 }
 
 function install_packages()
