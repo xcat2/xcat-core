@@ -185,48 +185,48 @@ sub setstate {
   #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
   #         node=>[$node]},$callback);  #It hopefully will perform correctly
   if ($cref and $cref->{currstate} eq "boot") {
-    $breaknetbootnodes{$node}=1;
-    delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
-    #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
-    #       node=>[$node],
-    #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-    #print $pcfg "bye\n";
-    close($pcfg);
+      $breaknetbootnodes{$node}=1;
+      delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+      #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
+      #       node=>[$node],
+      #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+      #print $pcfg "bye\n";
+      close($pcfg);
   } elsif ($kern and $kern->{kernel} and $cref and $cref->{currstate} ne "offline") {
-    #It's time to set yaboot for this node to boot the kernel, but only if not offline directive
-    print $pcfg "default xCAT\n";
-    print $pcfg "label xCAT\n";
-    print $pcfg "\tkernel $kern->{kernel}\n";
-    if ($kern and $kern->{initrd}) {
-      print $pcfg "\tinitrd ".$kern->{initrd}."\n";
-    }
-    if ($kern and $kern->{kcmdline}) {
-      print $pcfg "\tappend \"".$kern->{kcmdline}."\"\n";
-    }
-    close($pcfg);
-    my $inetn = xCAT::NetworkUtils->getipaddr($node);
-    unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in petitboot plugin");
-     return;
-    }
+      #It's time to set petitboot for this node to boot the kernel, but only if not offline directive
+      print $pcfg "default xCAT\n";
+      print $pcfg "label xCAT\n";
+      print $pcfg "\tkernel $kern->{kernel}\n";
+      if ($kern and $kern->{initrd}) {
+          print $pcfg "\tinitrd ".$kern->{initrd}."\n";
+      }
+      if ($kern and $kern->{kcmdline}) {
+          print $pcfg "\tappend \"".$kern->{kcmdline}."\"\n";
+      }
+      close($pcfg);
+      my $inetn = xCAT::NetworkUtils->getipaddr($node);
+      unless ($inetn) {
+          syslog("local1|err","xCAT unable to resolve IP for $node in petitboot plugin");
+          return;
+      }
   } else { #TODO: actually, should possibly default to xCAT image?
-    #print $pcfg "bye\n";
-    close($pcfg);
+        #print $pcfg "bye\n";
+        close($pcfg);
   }
   my $ip = xCAT::NetworkUtils->getipaddr($node);
   unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in petitboot plugin");
-    return;
+      syslog("local1|err","xCAT unable to resolve IP in petitboot plugin");
+      return;
   }
 
-      my @ipa=split(/\./,$ip);
-      my $pname = sprintf("%02x%02x%02x%02x",@ipa);
-      $pname = uc($pname);
-      # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
-      unlink($tftpdir."/".$pname);
-      if ($cref and $cref->{currstate} ne "offline") {
-        link($tftpdir."/petitboot/".$node,$tftpdir."/".$pname);
-      }
+  my @ipa=split(/\./,$ip);
+  my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+  $pname = uc($pname);
+  # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
+  unlink($tftpdir."/".$pname);
+  if ($cref and $cref->{currstate} ne "offline") {
+      link($tftpdir."/petitboot/".$node,$tftpdir."/".$pname);
+  }
   return;      
 }
   
@@ -480,29 +480,29 @@ sub process_request {
 
   my $tftpdir;
   foreach (@nodes) {
-    my %response;
-    if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
-       $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
-    } else {
-       $tftpdir = $globaltftpdir;
-    }
-    $response{node}->[0]->{name}->[0]=$_;
-    if ($args[0] eq 'stat') {
-      $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
-      $callback->(\%response);
-    } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      my $ent = $typehash->{$_}->[0]; 
-      my $osimgname = $ent->{'provmethod'};
-      my $linuximghash = $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+      my %response;
+      if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
+          $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
+      } else {
+          $tftpdir = $globaltftpdir;
+      }
+      $response{node}->[0]->{name}->[0]=$_;
+      if ($args[0] eq 'stat') {
+          $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
+          $callback->(\%response);
+      } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+          my $ent = $typehash->{$_}->[0]; 
+          my $osimgname = $ent->{'provmethod'};
+          my $linuximghash = $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
      
 
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nodereshash,$linuximghash);
-      if ($rc) {
-        $response{node}->[0]->{errorcode}->[0]= $rc;
-        $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
+          ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nodereshash,$linuximghash);
+          if ($rc) {
+              $response{node}->[0]->{errorcode}->[0]= $rc;
+              $response{node}->[0]->{errorc}->[0]= $errstr;
+              $callback->(\%response);
+          }
       }
-    }
   }# end of foreach node    
 
   my @normalnodeset = keys %normalnodes;
@@ -544,11 +544,8 @@ sub process_request {
   }
 
   if ($args[0] eq 'offline') {
-    # If nodeset directive was offline we need to remove dhcp entries
-    foreach my $node (@normalnodeset) {
-      $sub_req->({ command => ['makedhcp'],arg=>['-d'],
-                   node => [$node] }, $callback);
-    }
+      # If nodeset directive was offline we need to remove dhcp entries
+      $sub_req->({ command => ['makedhcp'],arg=>['-d'], node => \@normalnodeset }, $callback);
   }
   
   #now run the end part of the prescripts
