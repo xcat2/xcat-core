@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.0
+# Version 1.0.1
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -17,15 +17,10 @@
 function usage()
 {
 	local script="${0##*/}"
+	local version="$(version)"
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
-	${script} version $(
-		for i in {0..9}
-		do
-			read -r
-			[[ ${REPLY} =~ \#\ +[Vv]ersion ]] && echo "${REPLY##* }"
-		done <"$0"
-	)
+	${script} version ${version}
 
 	Usage: ${script} [OPTION]... [ACTION]
 	Install xCAT automatically
@@ -80,6 +75,20 @@ function usage()
 	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
 	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
 	EOF
+}
+
+#
+# version		Print out the version number.
+#
+function version()
+{
+	# Read the first ten lines of this script
+	for i in {0..9}
+	do
+		read -r
+		[[ ${REPLY} =~ \#\ +[Vv]ersion ]] && echo "${REPLY##* }" && return 0
+	done <"$0"
+	return 1
 }
 
 GO_XCAT_DEFAULT_BASE_URL="http://xcat.org/files/xcat/repos"
@@ -573,10 +582,13 @@ function get_package_list()
 
 function download_file()
 {
+	local script="${0##*/}"
+	local version="$(version)"
+	local user_agent="${script}/${version} (${GO_XCAT_OS}; ${GO_XCAT_ARCH}; ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION})"
 	type wget >/dev/null 2>&1 || return 255
 	local url="$1"
 	local local_file="$2"
-	wget -q "${url}" -O "${local_file}"
+	wget -U "${user_agent}" -q "${url}" -O "${local_file}"
 }
 
 #       $1      repo file
