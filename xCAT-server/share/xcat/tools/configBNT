@@ -1,0 +1,224 @@
+#!/usr/bin/env perl
+
+#---------------------------------------------------------
+# Configure Ethnet BNT switches
+#---------------------------------------------------------
+
+use strict;
+use Getopt::Long;
+use Expect;
+
+my $args = join ' ', @ARGV;
+$::command = "$0 $args";
+
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+
+#---------------------------------------------------------
+#Main
+
+# parse the options
+if (
+    !GetOptions(
+                'h|help'       => \$::HELP,
+                'r|range=s'    => \$::SWITCH,  
+                'p|port=s'     => \$::PORT,  
+                'v|vlan=s'     => \$::VLAN,
+                'u|user=s'     => \$::USER,
+                'w|password=s' => \$::PASSWORD,
+                'g|group=s'    => \$::GROUP,
+                'snmp'         => \$::SNMP,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+    &usage;
+    exit(0);
+}
+
+my $switch;
+if ($::SWITCH)
+{
+    $switch = $::SWITCH;
+} else {
+    &usage;
+    exit(1);
+}
+
+my $cmd;
+
+#default root/password and protcol for BNT switch
+my $cmd = `chdef $switch protocol=telnet username=root password=admin`; 
+
+my $vlan;
+my $port;
+if ($::VLAN)
+{
+    if ($::PORT) {
+        $port = $::PORT;
+    } else {
+        print "Need port number to set up VLAN\n";
+        &usage;
+        exit(1);
+    }
+    $vlan = $::VLAN;
+    print "Tagging VLAN=$vlan for $switch port $port\n";
+    #create vlan
+    #tagged vlan
+    $cmd = `xdsh $switch --devicetype EthSwitch::BNT "enable;configure terminal;vlan $vlan;exit;interface port $port;switchport mode trunk;switchport trunk allowed vlan $vlan;write memory;exit;exit"`;
+}
+
+#setup secure SNMP v3 
+if ($::SNMP){
+    my $mysw;
+    my $enable_cmd="enable\r";
+    my $config_cmd="configure terminal\r";
+    my $exit_cmd="exit\r";
+
+    my $pwd_prompt   = "password: ";
+    my $sw_prompt = "$switch>";
+    my $enable_prompt="$switch#";
+    my $config_prompt="^.*\\\(config\\\)\#";
+
+    $mysw = new Expect;
+    my $timeout = 20;
+    my $login_cmd = "telnet $switch\r";
+    my $passwd = "admin\r";
+    my $snmp_user;
+    my $snmp_passwd;
+    my $snmp_group;
+    if ($::USER) {
+        $snmp_user = $::USER;
+    } else {
+        $snmp_user = "xcatadmin\r";
+    }
+    if ($::PASSWORD) {
+        $snmp_passwd = $::PASSWORD;
+    } else {
+        # Need a special character
+        $snmp_passwd = "xcatadminpassw0rd\@snmp\r";
+    }
+    if ($::GROUP) {
+        $snmp_group = $::GROUP;
+    } else {
+        $snmp_group = "xcatgroup\r";
+    }
+    print "Setup SNMP server for user=$snmp_user, password=$snmp_passwd, group=$snmp_group\n";
+    #create a SNMP user
+    my $cfg_user1="snmp-server user 5 name $snmp_user\r";
+    my $cfg_user2="snmp-server user 5 authentication-protocol sha authentication-password\r";
+    #create a SNMP group
+    my $cfg_group1="snmp-server group 5 group-name $snmp_group\r";
+    my $cfg_group2="snmp-server group 5 user-name $snmp_user\r";
+    my $cfg_group3="snmp-server group 5 security usm\r";
+    #Add access permission
+    my $cfg_access1="snmp-server access 5 name $snmp_group\r";
+    my $cfg_access2="snmp-server access 5 level authNoPriv\r";
+    my $cfg_access3="snmp-server access 5 security usm\r";
+    my $cfg_access4="snmp-server access 5 read-view iso\r";
+
+    $mysw->slave->stty(qw(sane -echo));
+
+    unless ($mysw->spawn($login_cmd))
+    {
+        $mysw->soft_close();
+        print "Unable to run $login_cmd\n";
+        next;
+    }
+    my @result = $mysw->expect(
+        $timeout,
+        [
+            $pwd_prompt,
+            sub {
+                $mysw->clear_accum();
+                $mysw->send("$passwd\r");
+                $mysw->clear_accum();
+                $mysw->exp_continue();
+            }
+        ],
+        [
+            "-re", $sw_prompt,
+            sub {
+                #print "$switch: sending enable command: $enable_cmd\n";
+                $mysw->clear_accum();
+                $mysw->send($enable_cmd);
+                $mysw->exp_continue();
+            }
+        ],
+        [
+            "-re", $enable_prompt,
+            sub {
+                #print "$switch: sending config command: $config_cmd\n";
+                $mysw->clear_accum();
+                $mysw->send($config_cmd);
+                $mysw->exp_continue();
+            }
+        ],
+        [
+            "-re", $config_prompt,
+            sub {
+                $mysw->clear_accum();
+                $mysw->send($cfg_user1);
+                $mysw->send($cfg_user2);
+                $mysw->send($passwd);
+                $mysw->send($snmp_passwd);
+                $mysw->send($snmp_passwd);
+                sleep 1;
+                $mysw->clear_accum();
+                # create snmp group
+                $mysw->send($cfg_group1);
+                $mysw->send($cfg_group2);
+                $mysw->send($cfg_group3);
+                $mysw->clear_accum();
+                $mysw->send($cfg_access1);
+                $mysw->send($cfg_access2);
+                $mysw->send($cfg_access3);
+                $mysw->send($cfg_access4);
+                $mysw->clear_accum();
+                $mysw->send("write memory\r");
+                $mysw->send($exit_cmd);
+                $mysw->send($exit_cmd);
+            }
+        ],
+    );
+    ##########################################
+    # Expect error - report and quit
+    ##########################################
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $mysw->soft_close();
+        print "Failed expect command $errmsg\n";
+        exit(1);
+    }
+    $mysw->soft_close();
+
+             
+}
+
+#---------------------------------------------------------
+
+=head3    usage
+
+        Displays message for -h option
+
+=cut
+
+#---------------------------------------------------------
+sub usage
+{
+    print "Usage:
+    configBNT [-?│-h│--help] 
+    configBNT [--range switchnames] [-p|--port port] [-v|--vlan vlan]
+    configBNT [--range switchnames] [--snmp] [-u|--user snmp_user] [-w|--password snmp_password] [-g|--group snmp_group]
+    \n";
+}
+
+

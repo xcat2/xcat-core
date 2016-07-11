@@ -1,0 +1,115 @@
+#!/usr/bin/env perl
+
+#---------------------------------------------------------
+# Configure Ethnet Mellonax switches
+#---------------------------------------------------------
+
+use strict;
+use Getopt::Long;
+use Expect;
+
+my $args = join ' ', @ARGV;
+$::command = "$0 $args";
+
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+
+#---------------------------------------------------------
+#Main
+
+# parse the options
+if (
+    !GetOptions(
+                'h|help'       => \$::HELP,
+                'r|range=s'    => \$::SWITCH,  
+                'u|user=s'     => \$::USER,
+                'i|ip=s'     => \$::IP,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+    &usage;
+    exit(0);
+}
+
+my $switch;
+if ($::SWITCH)
+{
+    $switch = $::SWITCH;
+} else {
+    &usage;
+    exit(1);
+}
+
+my $user;
+
+if ($::USER)
+{
+    $user = $::USER;
+} else {
+    &usage;
+    exit(1);
+}
+
+my $ip;
+if ($::IP)
+{
+    $ip = $::IP;
+} else {
+    &usage;
+    exit(1);
+}
+
+
+my $cmd;
+
+#default root/password and protcol for Mellonax switch
+$cmd = `chtab switch=$switch switches.sshusername=$user`; 
+print $cmd;
+
+#call rspconfig command to setup switch
+#enable ssh
+$cmd=`rscpconfig $switch sshcfg=enable`;
+print $cmd;
+
+#enable snmp function on the switch
+$cmd=`rscpconfig $switch snmpcfg=enable`;
+print $cmd;
+
+#enable the snmp trap
+$cmd=`rscpconfig $switch alert=enable`;
+print $cmd;
+
+#Logging destination:
+$cmd=`rscpconfig $switch logdest=$ip`;
+print $cmd;
+
+#config ntp
+$cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $ip; ntp server $ip;configuration write;show ntp" `;
+print $cmd;
+
+#---------------------------------------------------------
+
+=head3    usage
+
+        Displays message for -h option
+
+=cut
+
+#---------------------------------------------------------
+sub usage
+{
+    print "Usage:
+    configMellonax [-?│-h│--help] 
+    configMellonax [--range switchnames] [-u|--user sshusername] [-i|--ip xcatMN_ip_address] 
+    \n";
+}
+
+
