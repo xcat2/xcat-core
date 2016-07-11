@@ -22,7 +22,7 @@ my $rst     = 0;
 $::USAGE = "Usage:
     $program_name -h
     $program_name -T
-    $program_name {-c|-d} [-V]
+    $program_name {-c|-d} [-V] [noderange]
 
 Description:
     Use this command to check if diskless, pingable compute nodes have the same images installed as defines in xCAT DB. 
@@ -61,7 +61,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "Use this command to check if all compute nodes have the same images installed or if compute nodes are installed with the same image as defined on MN.");
+    probe_utils->send_msg("$output", "o", "Use this command to check if specified compute nodes have the same images installed or if compute nodes are installed with the same image as defined on MN.");
     exit 0;
 }
 
@@ -80,11 +80,24 @@ my %node_defined_image_uuid_hash;
 my %node_defined_image_name_hash;
 my %osimage_defined_provmethod_hash;
 
-my $all_nodes_provmethod = `lsdef -i provmethod -c`;
+my $all_nodes_provmethod = `lsdef -i provmethod -c @ARGV`;
 my $all_osimage_provmethod = `lsdef -t osimage -i provmethod,rootimgdir -c`;
 chomp($all_nodes_provmethod);
 my @all_nodes_provmethod_lines = split("[\n\r]", $all_nodes_provmethod);
 my @all_osimage_provmethod_lines = split("[\n\r]", $all_osimage_provmethod);
+
+if ($all_nodes_provmethod =~ /Usage:/) {
+    # lsdef command displayed a Usage message. Must be some noderange formatting problem.
+    # Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
+    exit 1;
+}
+
+if (scalar(@all_nodes_provmethod_lines) <=0) {
+    # There were no nodes matching the noderange. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
+    exit 1;
+}
 
 # Build a hash of key="osimage name + attribute name" value="provmethod and rootimgdir attribute value"
 foreach (@all_osimage_provmethod_lines) {
@@ -128,6 +141,15 @@ foreach (@all_nodes_provmethod_lines) {
             probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.");
 	}
     }
+    else {
+        probe_utils->send_msg("$output", "w", "$node_name has no provision method defined. No image consistency verification will be performed.");
+    }
+}
+
+if (scalar(@diskless_nodes) <=0) {
+    # There were no diskless nodes found. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No diskless compute nodes were found.");
+    exit 1;
 }
 
 if (scalar(@diskless_nodes) <=0) {
@@ -157,6 +179,13 @@ foreach (@pping_lines) {
 if (scalar(@pingable_nodes) <=0) {
     # There were no pingable, diskless nodes found. Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "No diskless, pingable compute nodes were found");
+    exit 1;
+}
+
+if ((scalar(@pingable_nodes) == 1) && ($CONSISTENCY_CHECK)) {
+    # There was only one node in noderange and comparison check was requested.
+    # Nothing to compare the single node to.
+    probe_utils->send_msg("$output", "w", "Comparison check for a single diskless pingable node will not be performed. Minimum of 2 nodes are needed for that.");
     exit 1;
 }
 
