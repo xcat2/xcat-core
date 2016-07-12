@@ -54,9 +54,6 @@ if ($::SWITCH)
 
 my $cmd;
 
-#default root/password and protcol for BNT switch
-my $cmd = `chdef $switch protocol=telnet username=root password=admin`; 
-
 my $vlan;
 my $port;
 if ($::VLAN)
