@@ -109,9 +109,9 @@ sub timesleep
      }
 }
 if ($rungenesiscmd)
-    {
-    &rungenesiscmd;
-    }
+   {
+   &rungenesiscmd;
+   }
 if ($timesleep)
    {
    &timesleep;
@@ -119,10 +119,6 @@ if ($timesleep)
 if($rungenesisimg)
    {
    &rungenesisimg;
-   }
-if ($?)
-   {
-    return 0;
    }
 
 
