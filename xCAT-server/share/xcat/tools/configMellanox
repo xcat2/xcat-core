@@ -76,19 +76,19 @@ print $cmd;
 
 #call rspconfig command to setup switch
 #enable ssh
-$cmd=`rscpconfig $switch sshcfg=enable`;
+$cmd=`rspconfig $switch sshcfg=enable`;
 print $cmd;
 
 #enable snmp function on the switch
-$cmd=`rscpconfig $switch snmpcfg=enable`;
+$cmd=`rspconfig $switch snmpcfg=enable`;
 print $cmd;
 
 #enable the snmp trap
-$cmd=`rscpconfig $switch alert=enable`;
+$cmd=`rspconfig $switch alert=enable`;
 print $cmd;
 
 #Logging destination:
-$cmd=`rscpconfig $switch logdest=$ip`;
+$cmd=`rspconfig $switch logdest=$ip`;
 print $cmd;
 
 #config ntp
