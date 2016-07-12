@@ -1,0 +1,42 @@
+start:nodeset_shell
+description: verify could log in genesis shell
+cmd:nodeset $$CN shell
+check:rc==0
+cmd:rpower $$CN boot
+cmd: perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/cmdtest.pl -t $$CN
+cmd:xdsh $$CN cat /proc/cmdline
+check:rc==0
+check:output=~BOOT_IMAGE=/xcat/genesis.kernel
+cmd:nodeset $$CN boot
+check:rc==0
+end
+start:nodeset_cmdline
+description:verify could run cmdline successfully
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/cmdtest.pl -c __GETNODEATTR($$CN,arch)__
+cmd:nodeset $$CN runcmd="cmdtest,shell"
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd: perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/cmdtest.pl -t $$CN
+cmd:xdsh $$CN "cat /tmp/cmdtest"
+check:rc==0
+check:output=~test
+cmd:nodeset $$CN boot
+check:rc==0
+cmd:rm -rf /tmp/cmdtest
+end
+start:nodeset_runimg
+description:verify runimg could work
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/cmdtest.pl -i $$CN $$imgdirip
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd: perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/cmdtest.pl -t $$CN
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/cmdtest"
+check:output=~test
+check:rc==0
+cmd:nodeset $$CN boot
+cmd:rm -rf /install/my_image
+cmd:rm -rf /tmp/runme.sh
+end
