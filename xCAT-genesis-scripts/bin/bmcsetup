@@ -20,17 +20,19 @@ TIMEOUT=15
 # Function: cold_reset_bmc
 #
 # Cold reset the BMC for certain servers
-#    Product ID: 309   - x3755 M4 (8722)
-#    Product ID: 43707 - IBM Power S822LC and S812LC
+#    Product ID: 309                          - x3755 M4 (8722)
+#    Product ID: 43707 and Manufacturer ID: 0 - IBM Power S822LC and S812LC
 #
 # Otherwise the BMC will not respond to ping after running the ipmitool commands in this script
-#
+# It is found that Dell PowerEdge M605 server have the same product ID '43707', but its 'Manufacturer ID' is '674'
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
-
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
+        return
+    fi
     if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
         if [ "$XPROD" = "43707" ]; then
             # OpenPower SPECIFIC, the OpenPower machines with AMI BMC should NOT need a 
@@ -86,7 +88,9 @@ function snooze() {
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
-
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
+        return
+    fi
     if [ "$XPROD" = "43707" ]; then
         # For OpenPower Machines 
         logger -s -t $log_label -p local4.debug "OpenPower, snooze for 30 seconds..."
@@ -581,7 +585,7 @@ while [ $idev -gt 0 ]; do
     fi
 
     logger -s -t $log_label -p local4.info "Lighting Identify Light"
-    if [ "$XPROD" = "43707" ]; then
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" = '0' ]; then
         # OpenPower BMC specific, turn on the LED beacon light.  
         #   - default interval, # ipmitool chassis identify
         #                         Chassis identify interval: default (15 seconds)
