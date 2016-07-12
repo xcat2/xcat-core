@@ -724,16 +724,16 @@ sub process_request {
         }
     }
 
-    my @makedhcp_nodes;
     if ($args[0] eq 'offline') {
+        my @rmdhcp_nodes;
         # If nodeset directive was offline we need to remove the architecture file link and remove dhcp entries
         foreach my $osimage (keys %osimagenodehash) {
             foreach my $tmp_node (@{ $osimagenodehash{$osimage} }) {
                 unlink( "$tftpdir/boot/grub2/grub2-$tmp_node");
-                push(@makedhcp_nodes, $tmp_node);
+                push(@rmdhcp_nodes, $tmp_node);
             }
         }
-        $sub_req->({ command => ['makedhcp'],arg=>['-d'], node => \@makedhcp_nodes }, $callback);
+        $sub_req->({ command => ['makedhcp'],arg=>['-d'], node => \@rmdhcp_nodes }, $callback);
     } 
 
     #now run the end part of the prescripts

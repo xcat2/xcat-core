@@ -532,7 +532,6 @@ sub process_request {
   my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
 
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
-  my @makedhcp_nodes;
   foreach (@nodes) {
     my $tftpdir;
     if ($nrhash{$_}->[0] and $nrhash{$_}->[0]->{tftpdir}) {
@@ -567,13 +566,12 @@ sub process_request {
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".pxelinux");
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".uefi");
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".elilo");
-        push(@makedhcp_nodes, $_);
       }
     }
   }
   # for offline operation, remove the dhcp entries
   if ($args[0] eq 'offline') {
-      $sub_req->({ command => ['makedhcp'],arg=>['-d'],node => \@makedhcp_nodes }, $::XNBA_callback);
+      $sub_req->({ command => ['makedhcp'],arg=>['-d'],node => \@nodes }, $::XNBA_callback);
   }
 
 
