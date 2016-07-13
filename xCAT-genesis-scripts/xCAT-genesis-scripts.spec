@@ -98,6 +98,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/pseries_platform
 %{rpminstallroot}/bin/update_flash
 %{rpminstallroot}/bin/update_flash_nv
+%{rpminstallroot}/bin/restart
 %{rpminstallroot}/debian/changelog
 %{rpminstallroot}/debian/compat
 %{rpminstallroot}/debian/control
