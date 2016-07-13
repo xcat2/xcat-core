@@ -63,7 +63,8 @@ sub getstate {
       chomp($headline);
       return $headline;
     } else {
-      return "boot";
+      # There is no boot configuration file, node must be offline
+      return "offline";
     }
   } else {
     return "discover";
@@ -168,10 +169,13 @@ sub setstate {
   }
   my $nodemac;
 
-  open($pcfg,'>',$tftpdir."/petitboot/".$node);
   my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
-  if ($cref->{currstate}) {
-    print $pcfg "#".$cref->{currstate}."\n";
+
+  # remove the old boot configuration file and create a new one, but only if not offline directive
+  unlink($tftpdir . "/petitboot/" . $node);
+  if ($cref and $cref->{currstate} ne "offline") {
+     open($pcfg,'>',$tftpdir."/petitboot/".$node);
+     print $pcfg "#".$cref->{currstate}."\n";
   }
   $normalnodes{$node}=1; #Assume a normal netboot (well, normal dhcp, 
                       #which is normally with a valid 'filename' field,
@@ -181,45 +185,48 @@ sub setstate {
   #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
   #         node=>[$node]},$callback);  #It hopefully will perform correctly
   if ($cref and $cref->{currstate} eq "boot") {
-    $breaknetbootnodes{$node}=1;
-    delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
-    #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
-    #       node=>[$node],
-    #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-    #print $pcfg "bye\n";
-    close($pcfg);
-  } elsif ($kern and $kern->{kernel}) {
-    #It's time to set yaboot for this node to boot the kernel..
-    print $pcfg "default xCAT\n";
-    print $pcfg "label xCAT\n";
-    print $pcfg "\tkernel $kern->{kernel}\n";
-    if ($kern and $kern->{initrd}) {
-      print $pcfg "\tinitrd ".$kern->{initrd}."\n";
-    }
-    if ($kern and $kern->{kcmdline}) {
-      print $pcfg "\tappend \"".$kern->{kcmdline}."\"\n";
-    }
-    close($pcfg);
-    my $inetn = xCAT::NetworkUtils->getipaddr($node);
-    unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in petitboot plugin");
-     return;
-    }
+      $breaknetbootnodes{$node}=1;
+      delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+      #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
+      #       node=>[$node],
+      #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+      #print $pcfg "bye\n";
+      close($pcfg);
+  } elsif ($kern and $kern->{kernel} and $cref and $cref->{currstate} ne "offline") {
+      #It's time to set petitboot for this node to boot the kernel, but only if not offline directive
+      print $pcfg "default xCAT\n";
+      print $pcfg "label xCAT\n";
+      print $pcfg "\tkernel $kern->{kernel}\n";
+      if ($kern and $kern->{initrd}) {
+          print $pcfg "\tinitrd ".$kern->{initrd}."\n";
+      }
+      if ($kern and $kern->{kcmdline}) {
+          print $pcfg "\tappend \"".$kern->{kcmdline}."\"\n";
+      }
+      close($pcfg);
+      my $inetn = xCAT::NetworkUtils->getipaddr($node);
+      unless ($inetn) {
+          syslog("local1|err","xCAT unable to resolve IP for $node in petitboot plugin");
+          return;
+      }
   } else { #TODO: actually, should possibly default to xCAT image?
-    #print $pcfg "bye\n";
-    close($pcfg);
+        #print $pcfg "bye\n";
+        close($pcfg);
   }
   my $ip = xCAT::NetworkUtils->getipaddr($node);
   unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in petitboot plugin");
-    return;
+      syslog("local1|err","xCAT unable to resolve IP in petitboot plugin");
+      return;
   }
 
-      my @ipa=split(/\./,$ip);
-      my $pname = sprintf("%02x%02x%02x%02x",@ipa);
-      $pname = uc($pname);
-      unlink($tftpdir."/".$pname);
+  my @ipa=split(/\./,$ip);
+  my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+  $pname = uc($pname);
+  # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
+  unlink($tftpdir."/".$pname);
+  if ($cref and $cref->{currstate} ne "offline") {
       link($tftpdir."/petitboot/".$node,$tftpdir."/".$pname);
+  }
   return;      
 }
   
@@ -473,29 +480,29 @@ sub process_request {
 
   my $tftpdir;
   foreach (@nodes) {
-    my %response;
-    if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
-       $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
-    } else {
-       $tftpdir = $globaltftpdir;
-    }
-    $response{node}->[0]->{name}->[0]=$_;
-    if ($args[0] eq 'stat') {
-      $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
-      $callback->(\%response);
-    } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      my $ent = $typehash->{$_}->[0]; 
-      my $osimgname = $ent->{'provmethod'};
-      my $linuximghash = $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+      my %response;
+      if ($nodereshash->{$_} and $nodereshash->{$_}->[0] and $nodereshash->{$_}->[0]->{tftpdir}) {
+          $tftpdir =  $nodereshash->{$_}->[0]->{tftpdir};
+      } else {
+          $tftpdir = $globaltftpdir;
+      }
+      $response{node}->[0]->{name}->[0]=$_;
+      if ($args[0] eq 'stat') {
+          $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
+          $callback->(\%response);
+      } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+          my $ent = $typehash->{$_}->[0]; 
+          my $osimgname = $ent->{'provmethod'};
+          my $linuximghash = $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
      
 
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nodereshash,$linuximghash);
-      if ($rc) {
-        $response{node}->[0]->{errorcode}->[0]= $rc;
-        $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
+          ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nodereshash,$linuximghash);
+          if ($rc) {
+              $response{node}->[0]->{errorcode}->[0]= $rc;
+              $response{node}->[0]->{errorc}->[0]= $errstr;
+              $callback->(\%response);
+          }
       }
-    }
   }# end of foreach node    
 
   my @normalnodeset = keys %normalnodes;
@@ -535,6 +542,11 @@ sub process_request {
           }
       }
   }
+
+  if ($args[0] eq 'offline') {
+      # If nodeset directive was offline we need to remove dhcp entries
+      $sub_req->({ command => ['makedhcp'],arg=>['-d'], node => \@normalnodeset }, $callback);
+  }
   
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
@@ -557,27 +569,6 @@ sub process_request {
 	  $callback->($rsp);
 	  return; 
       }
-  }
-}
-
-sub getstate {
-  my $node = shift;
-  my $tftpdir = shift;
-  unless ($tftpdir) { $tftpdir = _slow_get_tftpdir($node); }
-  if (check_dhcp($node)) {
-    if (-r $tftpdir . "/petitboot/".$node) {
-      my $fhand;
-      open ($fhand,$tftpdir . "/petitboot/".$node);
-      my $headline = <$fhand>;
-      close $fhand;
-      $headline =~ s/^#//;
-      chomp($headline);
-      return $headline;
-    } else {
-      return "boot";
-    }
-  } else {
-    return "discover";
   }
 }
 

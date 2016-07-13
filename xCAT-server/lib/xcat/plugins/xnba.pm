@@ -18,7 +18,7 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
+    "nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline]",
 );
 sub handled_commands {
   return {
@@ -76,7 +76,8 @@ sub getstate {
       chomp($headline);
       return $headline;
     } else {
-      return "boot";
+      # There is no boot configuration file, node must be offline
+      return "offline";
     }
   } else {
     return "discover";
@@ -567,6 +568,10 @@ sub process_request {
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".elilo");
       }
     }
+  }
+  # for offline operation, remove the dhcp entries
+  if ($args[0] eq 'offline') {
+      $sub_req->({ command => ['makedhcp'],arg=>['-d'],node => \@nodes }, $::XNBA_callback);
   }
 
 
