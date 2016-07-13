@@ -20,29 +20,32 @@ TIMEOUT=15
 # Function: cold_reset_bmc
 #
 # Cold reset the BMC for certain servers
-#    Product ID: 309   - x3755 M4 (8722)
-#    Product ID: 43707 - IBM Power S822LC and S812LC
+#    Product ID: 309                          - x3755 M4 (8722)
+#    Product ID: 43707 and Manufacturer ID: 0 - IBM Power S822LC and S812LC
 #
 # Otherwise the BMC will not respond to ping after running the ipmitool commands in this script
-#
+# It is found that Dell PowerEdge M605 server have the same product ID '43707', but its 'Manufacturer ID' is '674'
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
-
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
+        return
+    fi
     if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
         if [ "$XPROD" = "43707" ]; then
             # OpenPower SPECIFIC, the OpenPower machines with AMI BMC should NOT need a 
             # reset after applying ipmitool commands.  However, it seems there is a problem with 
             # the BMC where after 15 seconds, it stops responding.  To work around, sleep 30
             # seconds before issuing the reset of the BMC.
-            sleep 30
+            snooze
+        else
+            logger -s -t $log_label -p local4.info "Resetting BMC ..."
+            ipmitool mc reset cold
+            logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
         fi
-        logger -s -t $log_label -p local4.info "Resetting BMC ..."
-        ipmitool mc reset cold
 
-        logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
         if [ "$XPROD" = "43707" ]; then
             # OpenPower SPECIFIC, check the BMC with the following raw command to
             # make sure that the bmc is really in a "ready" state before continuing 
@@ -85,7 +88,9 @@ function snooze() {
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
-
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
+        return
+    fi
     if [ "$XPROD" = "43707" ]; then
         # For OpenPower Machines 
         logger -s -t $log_label -p local4.debug "OpenPower, snooze for 30 seconds..."
@@ -125,18 +130,22 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
 done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
-logger -s -t $log_label -p local4.debug "BMC IP=$BMCIP, NETMASK=$BMCNM, GATEWAY=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW" 
-logger -s -t $log_label -p local4.info "NUMBMCS=$NUMBMCS"
+logger -s -t $log_label -p local4.debug "BMC Information obtained from xCAT"
+logger -s -t $log_label -p local4.debug "NUMBMCS=$NUMBMCS ==> BMC IP=$BMCIP/$BMCNM, GW=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW"
+
 #
 # Get the BMC Version and Manufacturer ID
 #
-IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
-IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
-logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG"
+MC_INFO=/tmp/xcat.ipmitool.mcinfo
+
+ipmitool mc info > ${MC_INFO}
+IPMIVER=`cat ${MC_INFO} |grep ^IPMI|awk  '{print $4}'`
+IPMIMFG=`cat ${MC_INFO} |grep "^Manufacturer ID"|awk  '{print $4}'`
 
 # Get the BMC Product ID
-XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-logger -s -t $log_label -p local4.info "XPROD=$XPROD"
+XPROD=`cat ${MC_INFO} |grep "^Product ID"|awk '{print $4}'`
+
+logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG, XPROD=$XPROD"
 
 #
 # IPMIMFG=2 = IBM
@@ -225,6 +234,16 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
         fi
 elif [ "$IPMIMFG" == "47488" ]; then
     LOCKEDUSERS=1
+elif [ "$IPMIMFG" == "674" ]; then # DELL
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "0" ]; then # dedicated
+        ipmitool delloem lan set dedicated &>/dev/null
+    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4"]; then # shared
+        ipmitool delloem lan set shared &>/dev/null
+        ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
+        ipmitool delloem lan set shared with failover all loms &>dev/null
+    fi
 fi
 
 while [ -z "$LANCHAN" ]; do 
@@ -474,7 +493,7 @@ while [ $idev -gt 0 ]; do
     done
     if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
     
-    MSG="Enabling IPMI v 1.5 MD5 LAN access"
+    MSG="Enabling IPMI MD5 LAN access"
     logger -s -t $log_label -p local4.info "$MSG"
     TRIES=0
     # Set the auth level to md5 for the channel
@@ -516,6 +535,8 @@ while [ $idev -gt 0 ]; do
             fi
             i=$((i+1))
         done
+
+        logger -s -t $log_label -p local4.info "ACCESS=$NEWACCESS"
 
         MSG="Set the cipher_privileges for the channel"
         logger -s -t $log_label -p local4.info "$MSG"
@@ -564,9 +585,13 @@ while [ $idev -gt 0 ]; do
     fi
 
     logger -s -t $log_label -p local4.info "Lighting Identify Light"
-    if [ "$XPROD" = "43707" ]; then
-        # OpenPower BMC specific, turn on the LED beacon for 5 minutes 
-        ipmitool chassis identify 300
+    if [ "$XPROD" = "43707" -a "$IPMIMFG" = '0' ]; then
+        # OpenPower BMC specific, turn on the LED beacon light.  
+        #   - default interval, # ipmitool chassis identify
+        #                         Chassis identify interval: default (15 seconds)
+        #   - 275 is too large, # ipmitool chassis identify 275
+        #                         Given interval is too big.
+        ipmitool chassis identify 250
     else
         # All other BMCs
         while :
