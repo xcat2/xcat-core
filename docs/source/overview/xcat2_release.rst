@@ -24,7 +24,7 @@ xCAT 2.12.x
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.12                      |- RHEL 6.8     |             |- Docker: xCAT in Docker          |
 || 2016/5/20                      |- UBT 14.4.4 LE|             |- Docker: container life cycle mgt|
-||                                |- UBT 14.04    |             |- Docker: Set up Docker Registry  |
+||                                |- UBT 16.04    |             |- Docker: Set up Docker Registry  |
 | `2.12 Release Notes <https://   |               |             |- New command: getadapter         |
 | github.com/xcat2/xcat-core/     |               |             |- Add get_install_disk (diskful)  |
 | wiki/XCAT_2.12_Release_Notes>`_ |               |             |- Add site.xcatdebugmode          |
