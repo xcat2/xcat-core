@@ -6,7 +6,7 @@
 =cut
 
 #-------------------------------------------------------
-package xCAT_plugin::runsyscmd;
+package xCAT_plugin::restapirun;
 
 BEGIN
 {
@@ -40,7 +40,7 @@ Return list of commands handled by this plugin
 sub handled_commands
 {
     return {
-            runsyscmd => "runsyscmd",
+            restapirun => "restapirun",
 	   };
 }
 
@@ -65,19 +65,60 @@ sub process_request
     my $command  = $request->{command}->[0];
     my $rc;
 
-    if ($command eq "runsyscmd"){
-        $rc = runsyscmd($request, $callback, $request_command);
+    my $xusage = sub {
+        my %rsp;
+        push@{ $rsp{data} }, "Usage: restapirun - Execute for restapi.";
+        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    };
+
+    unless(defined($request->{arg})){ $xusage->(1); return; }
+    @ARGV = @{$request->{arg}};
+    if($#ARGV eq -1){
+            $xusage->(1);
+            return;
+    }
+
+    if ($command eq "restapirun"){
+        $rc = restapirun($request, $callback, $request_command);
     } else{
         $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
         return 1;
     }
-
 }
-
 
 #----------------------------------------------------------------------------
 
-=head3  runsyscmd
+=head3  restapirun
+
+        To run sub command
+        Returns:
+                0 - OK
+                1 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub restapirun {
+    my $request = shift;
+    my $callback = shift;
+    my $request_command = shift;
+
+    my $rc = 0;
+    my $subcmd = shift @ARGV;
+    if (defined(&$subcmd)){
+        if ( $subcmd eq "syscmd" ) {
+            $rc = syscmd($request, $callback, $request_command);
+        }else{
+            $callback->({error=>["Error: sub-command $subcmd not found in this module."],errorcode=>[1]});
+            return 1;
+        }
+    }
+        
+}
+
+#----------------------------------------------------------------------------
+
+=head3  syscmd
 
         Execute system command
         Returns:
@@ -86,7 +127,7 @@ sub process_request
 =cut
 
 #-----------------------------------------------------------------------------
-sub runsyscmd {
+sub syscmd {
 
     my $request = shift;
     my $callback = shift;
@@ -94,21 +135,11 @@ sub runsyscmd {
 
     my $rc = 0;
 
-    my $xusage = sub {
-        my %rsp;
-        push@{ $rsp{data} }, "Usage: runsyscmd - Execute system command.";
-        push@{ $rsp{data} }, "\trunsyscmd command";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
-    };
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
-    }
 
     my $ccmd = shift @ARGV;
-    $rc=execute_cmd($ccmd);
+    if ( defined($ccmd) ) {
+        $rc=execute_cmd($ccmd);
+    }
     return $rc;
 
 }
@@ -135,15 +166,21 @@ sub execute_cmd {
     my @validcmd_array = ("ls");
 
     if ( $ccmd && grep { $_ eq $ccmd } @validcmd_array ){
-        my $cmd_result = xCAT::Utils->runcmd($cmd_string, -1);
+        my @cmd_result = xCAT::Utils->runcmd($cmd_string, -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp = {};
             push @{ $rsp->{data} }, "$cmd_string is failed.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         } else {
+            
             my $rsp = {};
-            push @{ $rsp->{data} }, "$cmd_result";
+            #push @{ $rsp->{data} }, $cmd_result;
+            foreach my $f (@cmd_result)
+            {
+                    push(@{ $rsp->{data} }, $f);
+            }
+
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             return 0;
         }

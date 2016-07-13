@@ -721,6 +721,19 @@ my %URIdef = (
 
             }
         },
+        getifaces => {
+            desc => "[URI:/services/getifaces] - Get MN network interfaces.",
+            matcher => '^/services/getifaces$',
+            GET => {
+                desc => "Get MN network interfaces.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get MN network interfaces.|GET|/services/getifaces||",
+                cmd => "restapirun",
+                fhandler => \&getifaceshdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
 
         dhcp => {
             desc => "[URI:/services/dhcp] - The dhcp service resource.",
@@ -2472,6 +2485,30 @@ sub bmclisthdl {
     return $responses;
 
 }
+
+#get network interfaces
+sub getifaceshdl {
+
+    my $params = shift;
+    my @args;
+    $request->{command} = $params->{'cmd'};
+
+    if ($params->{'resourcename'} eq "getifaces") {
+       if (isGET()) {
+            push @args, "syscmd";
+            push @args, "ls /sys/class/net";
+        }
+
+    }
+
+    push @{$request->{arg}}, @args;
+    my $req = genRequest();
+    my $responses = sendRequest($req);
+
+    return $responses;
+
+}
+
 
 # get attrs of tables for keys
 sub tablerowhdl {
