@@ -37,6 +37,7 @@ use Time::HiRes qw/time/;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
+my %newnodestatus=();
 my $global_sessdata;
 my %child_pids;
 
@@ -2151,7 +2152,6 @@ sub power_response {
 	my $rsp = shift;
 	my $sessdata = shift;
 	my $newstat;
-	my %newnodestatus=();
 
 	if($rsp->{error}) {
 		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
@@ -2165,14 +2165,18 @@ sub power_response {
 	} else {
             my $command = $sessdata->{subcommand};
             my $status = $sessdata->{powerstatus};
-            if ($command eq "on") { $newstat = $::STATUS_POWERING_ON; }
+            if ($command eq "on" or $command eq "boot") { $newstat = $::STATUS_POWERING_ON; }
             if ($command eq "off" or $command eq "softoff") { $newstat = $::STATUS_POWERING_OFF; }
-            if ($command eq "reset" and $status eq "on"){$newstat = $::STATUS_POWERING_ON; }
-            if ($command eq "boot"){$newstat = $::STATUS_POWERING_ON; }
-            
+            if ($command eq "reset") {
+                if ($status eq "off"){
+                    $newstat = $::STATUS_POWERING_OFF; 
+                } else {
+                    $newstat = $::STATUS_POWERING_ON;
+                }
+            }
+
             if ($newstat) {
-                $newnodestatus{$newstat}=[$sessdata->{node}];
-                xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+                push @{ $newnodestatus{$newstat} }, $sessdata->{node};
             }
         } 
         
@@ -7907,28 +7911,9 @@ sub process_request {
   if (defined $::XCATSITEVALS{nodestatus} and $::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
 
 
-  if ($command eq 'rpower') {
-    if (($global_check) && ($extrargs->[0] ne 'stat') && ($extrargs->[0] ne 'status') && ($extrargs->[0] ne 'state') && ($extrargs->[0] ne 'suspend') && ($extrargs->[0] ne 'wake')) { 
-      $check=1; 
-      my @allnodes=();
-      foreach (@donargs) { push(@allnodes, $_->[0]); }
-
-      #save the old status
-      my $nodelisttab = xCAT::Table->new('nodelist');
-      if ($nodelisttab) {
-        my $tabdata     = $nodelisttab->getNodesAttribs(\@allnodes, ['node', 'status']);
-        foreach my $node (@allnodes)
-        {
-            my $tmp1 = $tabdata->{$node}->[0];
-            if ($tmp1) { 
-		if ($tmp1->{status}) { $oldnodestatus{$node}=$tmp1->{status}; }
-		else { $oldnodestatus{$node}=""; }
-	    }
-	}
-      }
-      #print "oldstatus:" . Dumper(\%oldnodestatus);
-      }
-  }
+    if ($command eq 'rpower') {
+        %newnodestatus = ();
+    }
 
     # NOTE (chenglch) rflash for one node need about 5-10 minutes. There is no need to rflash node
     # one by one, fork a process for each node.
@@ -7950,20 +7935,8 @@ sub process_request {
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
 
-    if ($check) {
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old=(); 
-        foreach my $node (keys %allerrornodes) {
-    	    my $stat=$oldnodestatus{$node};
-    	    if (exists($old{$stat})) {
-    		    my $pa=$old{$stat};
-        		push(@$pa, $node);
-    	    } else {
-          		$old{$stat}=[$node];
-	        }
-        } 
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
+    if ($command eq 'rpower' and %newnodestatus) {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }  
 }
 
