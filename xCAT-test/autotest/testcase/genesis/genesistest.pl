@@ -15,20 +15,19 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
-my $needhelp  = 0;
 my $rungenesiscmd = 0;
 my $rungenesisimg = 0;
 my $shellmode = 0;
-my $cmdtest="/tmp/cmdtest";
+my $cmdtest = "/tmp/cmdtest";
 my $timesleep = 0;
-my $noderange = 0;
+my $noderange ;
 my $clearenv = 0;
-my $arch = 0;
+my $arch ;
 my $imgip ;
-my $runimgtest="/tmp/imgtest";
-my $testresult="/tmp/testresult";
-my $genesisdir="/opt/xcat/share/xcat/netboot/genesis";
-my $genesisfiledir="$genesisdir/$arch/fs/bin";
+my $runimgtest = "/tmp/imgtest";
+my $testresult = "/tmp/testresult";
+my $genesisdir = "/opt/xcat/share/xcat/netboot/genesis";
+my $genesisfiledir ;
 
 if (
     !GetOptions("h|?"  => \$::HELP,
@@ -46,7 +45,7 @@ if (
 }
 sub usage
 {
-    print "Usage:run genesis cases.\n";
+    print "Usage:run for genesis cases.\n";
     print "  genesistest.pl [-?|-h]\n";
     print "  genesistest.pl [-d] [-n node] [-r arch]  Test runcmd for genesis \n";
     print "  genesistest.pl [-g] [-n ndoe] [-i imgip] Test runimg for genesis\n";
