@@ -237,7 +237,9 @@ sub powercmd_boot {
                             $op,
                             $d );
         unless (@$result[0] != SUCCESS) {
-            $newnodestatus{$newstat}=[$name] if ($newstat);
+            if ($newstat) {
+                push @{ $newnodestatus{$newstat} }, $name;
+            }
         }
         push @output, [$name,@$result[1],@$result[0]];
     }
@@ -364,7 +366,7 @@ sub powercmd {
   
         unless ($Rc != SUCCESS) {
             if ($newstat) {
-                $newnodestatus{$newstat}=[$name];
+                push @{ $newnodestatus{$newstat} }, $name;
             }
         }
 
