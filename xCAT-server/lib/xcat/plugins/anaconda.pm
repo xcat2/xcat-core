@@ -2564,7 +2564,7 @@ sub insert_dd {
         my @osupdirs = split (/,/, $osupdirlist);
         foreach my $osupdir (@osupdirs) {
             # find all the rpms start with kernel.*
-            my @kernel_rpms = `find $osupdir -name kernel-*.rpm`;
+            my @kernel_rpms = `find $osupdir -name 'kernel-*.rpm'`;
             push @rpm_list, @kernel_rpms;
         }
     }
@@ -2706,7 +2706,7 @@ sub insert_dd {
                 # and copy it to the /tftpboot
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
                 foreach my $new_kernel (@new_kernels) {
-                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+))$/) {
+                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+|ppc64le))$/) {
                         $new_kernel_ver = $1;
                         $cmd = "/bin/mv -f $new_kernel $kernelpath";
                         xCAT::Utils->runcmd($cmd, -1);

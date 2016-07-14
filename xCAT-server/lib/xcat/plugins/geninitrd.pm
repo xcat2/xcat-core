@@ -123,6 +123,8 @@ sub geninitrd {
         return;
     }
     $pkgdir = $lient->{'pkgdir'};
+    my @srcdir=split(/,/,$pkgdir);
+    $pkgdir = $srcdir[0];    
     $driverupdatesrc = $lient->{'driverupdatesrc'};
     $netdrivers = $lient->{'netdrivers'};
 
