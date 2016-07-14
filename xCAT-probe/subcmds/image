@@ -131,7 +131,7 @@ foreach (@all_nodes_provmethod_lines) {
         # Check if it is netboot, meaning diskless
         if ($osimage_provmethod_type && $osimage_provmethod_type eq 'netboot') {
             push(@diskless_nodes, $node_name);
-            probe_utils->send_msg("$output", "o", "$node_name is diskless");
+            probe_utils->send_msg("$output", "o", "$node_name is diskless") if ($VERBOSE);
             if (length($rootimagedir) > 0) {
                 # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
                 my $xcatinfo_file = $rootimagedir . "/rootimg/opt/xcat/xcatinfo";
@@ -181,7 +181,7 @@ foreach (@pping_lines) {
         probe_utils->send_msg("$output", "f", "Pinging $hostname");
     }
     else {
-        probe_utils->send_msg("$output", "o", "Pinging $hostname");
+        probe_utils->send_msg("$output", "o", "Pinging $hostname") if ($VERBOSE);
         push(@pingable_nodes, $hostname);
     }
 }
@@ -254,27 +254,31 @@ foreach (@xdsh_name_lines) {
 
 # Probe verification step 1 - make sure all nodes are installed with the osimage name and imageUUID as defined on MN
 if ($DEFINITION_CHECK) {
+    my $success_nodes = 0;
+    my $msg;
     foreach (@pingable_nodes) {
-        my $msg;
-        my $status;
         if (($node_running_image_name_hash{$_} eq $node_defined_image_name_hash{$_}) &&
             ($node_running_image_uuid_hash{$_} eq $node_defined_image_uuid_hash{$_})) {
             if ($node_running_image_uuid_hash{$_} eq $na) {
                 $msg = "$_: Not able to determine installed os image name or uuid";
-                $status = "f";
             }
             else {
-                $msg    = "OS image installed on compute node $_ matches the image defined for it on management node";
-                $status = "o";
+                $msg = "OS image installed on compute node $_ matches the image defined for it on management node";
+                probe_utils->send_msg("$output", "o", "$msg") if ($VERBOSE);
+                $success_nodes++;
+                next;
             }
         }
         else {
             $msg = "$_: Unmatched os image name or image UUID.\n         Defined:   name = $node_defined_image_name_hash{$_}" .
 " uuid = $node_defined_image_uuid_hash{$_}\n         Installed: name = $node_running_image_name_hash{$_}" .
               " uuid = $node_running_image_uuid_hash{$_}";
-            $status = "f";
         }
-        probe_utils->send_msg("$output", "$status", "$msg");
+        probe_utils->send_msg("$output", "f", "$msg");
+    }
+    if (scalar(@pingable_nodes) eq $success_nodes) {
+        # All pingable nodes were tested with success
+        probe_utils->send_msg("$output", "o", "OS image installed on each diskless compute node matches the image defined for it on management node");
     }
 }
 
