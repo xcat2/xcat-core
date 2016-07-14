@@ -192,6 +192,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 redhat_migration1
 redhat_migration2
 clean_up_env

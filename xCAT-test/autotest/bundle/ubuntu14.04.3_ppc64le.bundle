@@ -234,6 +234,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 xcatd_start
 xcatd_stop
 xcatd_restart
