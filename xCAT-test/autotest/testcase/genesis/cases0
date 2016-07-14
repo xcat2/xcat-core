@@ -7,7 +7,7 @@ check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -t -n $$CN
 cmd:xdsh $$CN cat /proc/cmdline
 check:rc==0
-check:output=~BOOT_IMAGE=/xcat/genesis.kernel
+check:output=~destiny=shell
 cmd:nodeset $$CN boot
 cmd:rpower $$CN boot
 check:rc==0

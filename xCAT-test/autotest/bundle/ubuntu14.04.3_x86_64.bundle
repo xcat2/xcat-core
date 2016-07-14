@@ -242,6 +242,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 nodeset_check_warninginfo
 Full_installation_flat_docker
 rpower_stop
