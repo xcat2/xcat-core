@@ -86,8 +86,8 @@ sub check_genesis_file {
         probe_utils->send_msg("$output", "d", "The OS is not supported.") if ($verbose);
         return 1;
     } elsif ($os =~ "ubuntu") {
-        $genesis_base = `dpkg -l | grep -i "xcat-genesis-base" | grep -i "$arch_tmp"`;
-        $genesis_scripts = `dpkg -l | grep -i "xcat-genesis-scripts" | grep -i "$arch_tmp"`;
+        $genesis_base = `dpkg -l | grep -iE "ii\\s+xcat-genesis-base" | grep -i "$arch_tmp"`;
+        $genesis_scripts = `dpkg -l | grep -iE "ii\\s+xcat-genesis-scripts" | grep -i "$arch_tmp"`;
     } else {
         $genesis_base = `rpm -qa | grep -i "xcat-genesis-base" | grep -i "$arch"`;
         $genesis_scripts = `rpm -qa | grep -i "xcat-genesis-scripts" | grep -i "$arch"`;
@@ -267,6 +267,55 @@ sub check_genesis_file {
     return $rst_f;
 }
 
+sub get_node_ip {
+    my $ip_net;
+    my @node_info = `lsdef $noderange -i ip -c 2>&1`;
+    my %nodeip;
+    my %nodecheckrst;
+
+    foreach (@node_info) {
+        chomp($_);
+        $_ =~ s/^\s+|\s+$//g;
+        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+            $nodecheckrst{$1}{"error"} = "Could not find node definition";
+            $rst = 1;
+        } elsif ($_ =~ /^(\w+): ip=(.+)/i) {
+            $nodeip{$1} = $2;
+        }
+    }
+
+    foreach my $node (keys %nodeip) {
+        $ip_net = xCAT::NetworkUtils->getipaddr($node);
+        if ($nodeip{$node} and ($nodeip{$node} ne $ip_net)) {
+            probe_utils->send_msg("$output", "d", "IP $nodeip{$node} of definition for $node is not correct") if ($verbose);
+        }
+        $nodeip{$node} = $ip_net;
+    }
+
+    foreach my $node (keys %nodecheckrst) {
+        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if(exists($nodecheckrst{$node}{error}));
+    }
+
+    return %nodeip;
+}
+
+sub compare_ip_value {
+    my $ip1 = shift;
+    my $ip2 = shift;
+
+    my @ip_arr1 = split(/\./, $ip1);
+    my @ip_arr2 = split(/\./, $ip2);
+
+    my $ip_num1 = ($ip_arr1[0] << 24) | ($ip_arr1[1] << 16) | ($ip_arr1[2] << 8) | $ip_arr1[3];
+    my $ip_num2 = ($ip_arr2[0] << 24) | ($ip_arr2[1] << 16) | ($ip_arr2[2] << 8) | $ip_arr2[3];
+
+    if ($ip_num1 <= $ip_num2) {
+        return 1;
+    }
+
+    return 0;
+}
+
 #------------------------------------------
 
 =head3
@@ -291,6 +340,8 @@ sub dhcp_dynamic_range_check {
         $dhcpconfig = "/etc/dhcp/dhcpd.conf";
     } elsif (-e "/etc/dhcp3/dhcpd.conf") {
         $dhcpconfig = "/etc/dhcp3/dhcpd.conf";
+    } elsif (-e "/etc/dhcpd.conf") {
+        $dhcpconfig = "/etc/dhcpd.conf";
     }
 
     unless ($dhcpconfig) {
@@ -300,7 +351,7 @@ sub dhcp_dynamic_range_check {
 
     my $config_line;
     my $subnet;
-    my $dynamic_range;
+    my @dynamic_range;
     my %subnet_hash;
 
     unless (open(FILE, $dhcpconfig)) {
@@ -318,12 +369,17 @@ sub dhcp_dynamic_range_check {
             $subnet_hash{$subnet} = "unknown";
         }
         if ($config_line =~ /subnet_end/) {
-            $subnet_hash{$subnet} = $dynamic_range if ($dynamic_range);
+            $subnet_hash{$subnet} = [@dynamic_range] if (@dynamic_range);
             $subnet               = "";
-            $dynamic_range        = "";
+            @dynamic_range        = "";
         }
         if ($config_line =~ /^range dynamic-bootp (\d+.\d+.\d+.\d+) (\d+.\d+.\d+.\d+)/) {
-            $dynamic_range = "$1-$2";
+            if (compare_ip_value($1, $2)) {
+                push @dynamic_range, "$1-$2";
+            } else {
+                push @dynamic_range, "$2-$1";
+            }
+            
         }
     }
 
@@ -340,6 +396,11 @@ sub dhcp_dynamic_range_check {
         $tftpdir = "/tftpboot";
     }
 
+    my %node_ip;
+    if ($noderange) {
+        %node_ip = get_node_ip();
+    }
+
     foreach my $net (@$nets) {
 
         if (!exists($subnet_hash{$net})) {
@@ -349,7 +410,20 @@ sub dhcp_dynamic_range_check {
         }
 
         if ($subnet_hash{$net} ne "unknown") {
-            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is $subnet_hash{$net}.") if ($verbose);
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is @{$subnet_hash{$net}}.") if ($verbose);
+
+            if (%node_ip) {
+               foreach my $node (keys %node_ip) {
+                   foreach my $dr (@{$subnet_hash{$net}}) {
+                       my @dr_ip = split(/-/, $dr);
+
+                       if (compare_ip_value($dr_ip[0], $node_ip{$node}) and compare_ip_value($node_ip{$node}, $dr_ip[1])) {
+                           probe_utils->send_msg("$output", "d", "$node ip $node_ip{$node} is conflicting with dynamic range.") if ($verbose);
+                           $rst = 1;
+                       }
+                   }
+               }
+            }
         } else {
             probe_utils->send_msg("$output", "d", "Dynamic range for net $net did not be configured.") if ($verbose);
             $rst = 1;
