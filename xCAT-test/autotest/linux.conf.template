@@ -84,7 +84,9 @@ LATEST_VERSION=2.12.1
 DOCKERIMAGE=ubuntu
 DOCKERCOMMAND=/bin/bash
 DOCKERCONIP=10.4.27.100
+#container on CN so the ip should be same network section  with CN
 DOCKERHOSIP=10.4.27.10
+#should be same with CN's ip
 DOCKERMNXCAT=xcatmn
 MYNET0VALUE=10.0.0.0/8
 DOCKERCN=host05c08
@@ -101,12 +103,15 @@ range=10.4-5.24-25.1
 #End
 #For ntp case start
 extntpserversip=10.2.1.12
+###the extntpserversip should be sure have ntp server on it
 DATE=2016
 #End
 #For bmc test case start
 bmcrange=10.4.30.254
+#bmc ip
 bmcusername=USERID
 bmcpasswd=PASSW0RD
+#For bmc case u need to set username and passwd first
 #End
 [Custom]
 
@@ -129,4 +134,8 @@ bmcpasswd=PASSW0RD
 
 #commands run after test
 [Script_Post]
-
+NODEIP=10.4.27.10
+#should same with CN's ip this ip is set for CN's confignics' set up
+#genesis testcase
+imgip=10.4.27.10
+#imgip should be same with CN's ip 
