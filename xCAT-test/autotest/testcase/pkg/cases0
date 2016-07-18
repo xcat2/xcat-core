@@ -1,35 +1,40 @@
 start:del_ospkg
 descreption:del ospkg
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s $$osimage pkglist __GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep "ii  rpm"|grep "package manager for RPM" ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c $$osimage pkglist __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -g $$osimage -t pkglist -v  __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r  $$osimage pkglist __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r -g $$osimage -t pkglist -v  __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c $$osimage pkglist __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -g $$osimage -t pkglist -v  __GETNODEATTR($$CN,os)__
 cmd:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep "ii  rpm" |grep "package manager for RPM";else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc!=0
 cmd:copycds $$ISO
 check:rc==0
 end
+
 start:add_ospkg_updatenode
 descreption:add ospkg
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s $$osimage pkglist  __GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -g $$osimage -t pkglist -v  __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep "ii  rpm"|grep "package manager for RPM";else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c $$osimage pkglist  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r rpm; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
@@ -38,15 +43,18 @@ check:rc!=0
 cmd:copycds $$ISO
 check:rc==0
 end
+
 start:add_includeospkg_updatenode
 descreption:add include ospkg list
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i $$osimage pkglist __GETNODEATTR($$CN,os)__ 
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__ 
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep "ii  rpm"|grep "package manager for RPM" ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c  $$osimage pkglist  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c  -g $$osimage -t pkglist -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r rpm; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
@@ -55,14 +63,17 @@ check:rc!=0
 cmd:copycds $$ISO
 check:rc==0
 end
+
 start:add_other_pkg
 descreption:add other pkg
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o -g $$osimage -t otherpkgdir  -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r xcat-test; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
@@ -74,7 +85,9 @@ end
 
 start:del_other_pkg
 descreption:del other pkg
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
@@ -82,30 +95,33 @@ cmd:sleep 10
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc!=0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage otherpkgdir __GETNODEATTR($$CN,os)__ 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__ 
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
 end
+
 start:add_other_pkg_include
 descreption:add other pkg include other list 
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -i -o -g $$osimage -t otherpkgdir  -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage  otherpkgdir __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o -g $$osimage -t otherpkgdir -v __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r xcat-test; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
