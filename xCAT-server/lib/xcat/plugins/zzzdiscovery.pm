@@ -17,15 +17,14 @@ sub process_request {
     my $cb = shift;
     my $doreq = shift;
     if ($req->{command}->[0] eq 'findme') {
-        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Finish to process the discovery request");
         if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef'))  {
             my $rsp = {};
             $rsp->{error}->[0] = "The discovery request can not be processed";
             $cb->($rsp);
-            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed to be processed");
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed to discover the node.");
             return;
         }
-        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully processed by $req->{discoverymethod}->[0] method");
+        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully discovered the node using $req->{discoverymethod}->[0] discovery method.");
         return;
     }
 }

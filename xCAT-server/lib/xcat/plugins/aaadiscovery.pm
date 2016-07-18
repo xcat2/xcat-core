@@ -42,7 +42,7 @@ sub process_request {
 	    }
 	}
 
-        xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: ($mac) Get a discover request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: ($mac) Got a discovery request, attempting to discover the node...");
         $req->{discoverymethod}->[0] = 'undef';
         $req->{_xcat_clientmac}->[0] = $mac;
         xCAT::DiscoveryUtils->update_discovery_data($req);

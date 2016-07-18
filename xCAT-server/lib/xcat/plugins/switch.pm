@@ -278,7 +278,6 @@ sub process_request {
             return;
         }
         $mac = $req->{_xcat_clientmac}->[0];
-        xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($mac) Processing discovery request");
 	if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
 	    #Don't attempt switch discovery of a  VM Guest
 	    #TODO: in this case, we could/should find the host system 
@@ -313,7 +312,7 @@ sub process_request {
         }
 	 
 	if ($node) {
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Find node:$node for the discovery request");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Found node: $node");
             # No need to write mac table here, 'discovered' command will write
 	    # my $mactab = xCAT::Table->new('mac',-create=>1);
 	    # $mactab->setNodeAttribs($node,{mac=>$mac});
@@ -332,7 +331,7 @@ sub process_request {
 	    %{$request}=();#Clear req structure, it's done..
 	    undef $mactab;
 	} else { 
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Error: Could not find any node");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Warning: Could not find any nodes using switch-based discovery");
 	}
     }
 }
