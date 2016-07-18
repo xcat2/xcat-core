@@ -254,7 +254,17 @@ then
                         fi
                         dpkg-buildpackage -uc -us
                     else
+                        if [ "$file" = "xCAT-genesis-scripts" ]; then
+                            CURDIR=$(pwd)
+                            echo "Rename control file to build pkg: mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control"
+                            mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control
+                        fi
                         dpkg-buildpackage -uc -us -a$target_arch
+                        if [ "$file" = "xCAT-genesis-scripts" ]; then
+                            CURDIR=$(pwd)
+                            echo "Move control file back: mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}"
+                            mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}
+                        fi
                     fi
                     rc=$?
                     if [ $rc -gt 0 ]; then
