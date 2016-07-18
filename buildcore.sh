@@ -175,6 +175,9 @@ function setversionvars {
     VER=`cat Version`
     SHORTVER=`cat Version|cut -d. -f 1,2`
     SHORTSHORTVER=`cat Version|cut -d. -f 1`
+    BUILD_TIME=`date`
+    BUILD_MACHINE=`hostname`
+    COMMIT_ID=`git rev-parse --short HEAD`
 }
 
 
@@ -504,6 +507,16 @@ if [ -n "$VERBOSEMODE" ]; then
 else
     verboseflag=""
 fi
+
+#
+# Add a VERSION file into the tar.bz2 file to track information about the build
+#
+BUILDINFO=$XCATCORE/buildinfo
+echo "VERSION=$VER" > $BUILDINFO
+echo "BUILD_TIME=$BUILD_TIME" >> $BUILDINFO
+echo "BUILD_MACHINE=$BUILD_MACHINE" >> $BUILDINFO
+echo "COMMIT_ID=$COMMIT_ID" >> $BUILDINFO
+
 echo "Creating $(dirname $DESTDIR)/$TARNAME ..."
 if [[ -e $TARNAME ]]; then
     mkdir -p previous
