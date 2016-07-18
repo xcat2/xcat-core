@@ -284,8 +284,11 @@ function xcattestbundle2sql()
 
 	while read -r test_case_name
 	do
-		# Need chomp ${test_case_name}
+		# Remove any comment
+		test_case_name="${test_case_name%%#*}"
+		# Chomp
 		test_case_name=$(echo ${test_case_name})
+		[ -z "${test_case_name}" ] && continue
 
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 		INSERT INTO TestCase (TestCaseId, TestCaseName)
