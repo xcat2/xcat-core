@@ -6,6 +6,8 @@ use strict;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCpower;
 use xCAT::FSPUtils;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 #use Data::Dumper;
 
 ##########################################################################
@@ -51,7 +53,7 @@ sub enumerate {
     }
     foreach my $type ( keys %cmds ) {
         my $action = $cmds{$type};
-	#my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_bpa, $type, $action, $tooltype);
+        #my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_bpa, $type, $action, $tooltype);
         my $values =  xCAT::FSPUtils::fsp_state_action ($request, $cec_bpa, $tmp_d, $action, $tooltype);
         my $Rc = shift(@$values);
         ##################################
@@ -89,11 +91,6 @@ sub enumerate {
     return( [0,\%outhash] );
 }
 
-
-
-
-
-
 ##########################################################################
 # Performs boot operation (Off->On, On->Reset)
 ##########################################################################
@@ -103,7 +100,8 @@ sub powercmd_boot {
     my $hash    = shift;
     my @output  = (); 
     
-    
+    my $newstat;   
+    my %newnodestatus=();
     ######################################
     # Power commands are grouped by CEC 
     # not Hardware Control Point
@@ -153,12 +151,13 @@ sub powercmd_boot {
        #print "boot:state:$state\n";
        my $op    = ($state =~ /^off$/) ? "on" : "reset";
 
+       $newstat = $::STATUS_POWERING_ON;
+
        # Attribute powerinterval in site table,
        # to control the rpower speed
        if( defined($request->{'powerinterval'}) ) {
            Time::HiRes::sleep($request->{'powerinterval'});
        }
-
 
        $res = xCAT::FSPUtils::fsp_api_action ($request,$node_name, $d, $op);
 	
@@ -166,11 +165,17 @@ sub powercmd_boot {
        $Rc = @$res[2];
        $data = @$res[1];
        if ( $Rc != SUCCESS ) {
-	       push @output, [$node_name,$data,$Rc];
-	       next;
-	   }
-	   push @output,[$node_name, "Success", 0];	  
-
+           push @output, [$node_name,$data,$Rc];
+           next;
+       }
+   
+        push @output,[$node_name, "Success", 0];	  
+        if ($newstat) {
+            push @{ $newnodestatus{$newstat} }, $node_name;
+        }
+    }
+    if (%newnodestatus) {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
     return( \@output );
 }
@@ -215,50 +220,70 @@ sub powercmd {
     #				  0
     #				  ]
     # };
-																						      
+    my $newstat;
+    my @updatenode;
+    my %newnodestatus=();									      
     foreach $node_name ( keys %$hash)
     {
-	    $action  =  $request->{'op'};
+        $action  =  $request->{'op'};
         my $d = $hash->{$node_name};
-	if ($$d[4] =~ /^lpar$/) {
-	    if( !($action =~ /^(on|off|of|reset|sms)$/)) {
-	        push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
+        if ($$d[4] =~ /^lpar$/) {
+            if( !($action =~ /^(on|off|of|reset|sms)$/)) {
+                push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
 	        return (\@output);
-	    }
-	    $newids  .= "$$d[0],";
-	    $newnames .="$node_name,";
-	    $newd = $d;
-	    $lpar_flag = 1;
-	} elsif ($$d[4] =~ /^(fsp|cec|blade)$/) {
-	    if($action =~ /^on$/) { $action = "cec_on_autostart"; }
-	    if($action =~ /^off$/) { $action = "cec_off"; }
-	    if($action =~ /^resetsp$/) { $action = "reboot_service_processor"; }
-	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
-        #if($action =~ /^cycle$/) {$action = "cec_reboot";}
-        if($action =~ /^cycle$/) {$action = "reset";}
-	    if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ && $action !~ /^reset$/ && $action !~ /^sms$/) {
-	        push @output, [$node_name, "\'$action\' command not supported for $$d[4]", -1 ];
-		    return (\@output);
-	    }	
-            $newids = $$d[0];	    
-            $newnames = $node_name;
-            $newd = $d;	    
-	    $cec_flag = 1;  
+            }
+            $newids  .= "$$d[0],";
+            $newnames .="$node_name,";
+            $newd = $d;
+            $lpar_flag = 1;
+            if($action =~ /^on$/) { 
+                $newstat = $::STATUS_POWERING_ON;
+                push @updatenode, $node_name;
+            }
+            if($action =~ /^(off|of$)/) { 
+                $newstat = $::STATUS_POWERING_OFF; 
+                push @updatenode, $node_name;
+            }
+            if($action =~ /^reset$/) { 
+                my $res = xCAT::FSPUtils::fsp_api_action ($request,$node_name, $d, "state");
+                my $Rc = @$res[2];
+                my $data = @$res[1];
+                if ( $Rc != SUCCESS ) { next; }
+                my $state = power_status($data);
+                if ($state =~ /^off$/) { next; }
+                $newstat = $::STATUS_POWERING_ON;
+                push @updatenode, $node_name; 
+            } 
+        } elsif ($$d[4] =~ /^(fsp|cec|blade)$/) {
+            if($action =~ /^on$/) { $action = "cec_on_autostart"; }
+            if($action =~ /^off$/) { $action = "cec_off"; }
+            if($action =~ /^resetsp$/) { $action = "reboot_service_processor"; }
+            if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
+            #if($action =~ /^cycle$/) {$action = "cec_reboot";}
+            if($action =~ /^cycle$/) { $action = "reset"; }
+        if($action !~ /^cec_on_autostart$/ && $action !~ /^cec_off$/ &&  $action !~ /^cec_on_low_power$/ && $action !~ /^onstandby$/ && $action !~ /^reboot_service_processor$/ && $action !~ /^reset$/ && $action !~ /^sms$/) {
+            push @output, [$node_name, "\'$action\' command not supported for $$d[4]", -1 ];
+	    return (\@output);
+        }	
+        $newids = $$d[0];	    
+        $newnames = $node_name;
+        $newd = $d;	    
+        $cec_flag = 1;  
         } else {
-	     if ( $action =~ /^rackstandby$/) {
-	         $action = "enter_rack_standby";
-	     } elsif ( $action=~/^exit_rackstandby$/) {
-	         $action = "exit_rack_standby";
-         } elsif ($action =~ /^resetsp$/) {
-             $action = "reboot_service_processor";
-         } else {
-	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
-		     return (\@output);
-	     }
+             if ( $action =~ /^rackstandby$/) {
+                 $action = "enter_rack_standby";
+             } elsif ( $action=~/^exit_rackstandby$/) {
+                 $action = "exit_rack_standby";
+             } elsif ($action =~ /^resetsp$/) {
+                 $action = "reboot_service_processor";
+             } else {
+                 push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
+                 return (\@output);
+             }
              $newids = $$d[0];	    
              $newnames = $node_name;
              $newd = $d;	    
-	     $frame_flag = 1;
+             $frame_flag = 1;
         }		
 
 	if( $lpar_flag && $cec_flag) {
@@ -319,7 +344,14 @@ sub powercmd {
                }
 	       push @output, [$node_name,"Success", 0];
 	       #push @output, [$node_name,$msg, 0];
+	       if (($newstat) and (grep{$_ eq $node_name}@updatenode)) {
+	           push @{ $newnodestatus{$newstat} }, $node_name;
+               }
         }
+    }
+
+    if (%newnodestatus) {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     } 
     return( \@output );
 }
