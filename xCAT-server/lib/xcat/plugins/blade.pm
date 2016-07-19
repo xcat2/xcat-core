@@ -54,6 +54,7 @@ my $verbose_cmd = undef;
 my $vitals_info = undef; #used by 'rvitals <node> all' to show lcds info for Firebird blade
 my %x222_info = (); #used to collect x222 infomations
 my $has_x222 = undef;
+my %newnodestatus=();
 
 sub handled_commands {
   return {
@@ -2331,7 +2332,6 @@ sub power {
   
   my $old_stat=$stat;
   my $newstat;
-  my %newnodestatus=();
   if ($subcommand eq "softoff") {
     $validsub=1;
     $data = $session->set(new SNMP::Varbind([".".$powerchangeoid,$slot,2,'INTEGER']));
@@ -2367,8 +2367,7 @@ sub power {
   }
   if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
   if ($newstat) {
-      $newnodestatus{$newstat}=[$currnode];
-      xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+      push @{ $newnodestatus{$newstat} }, $currnode;
   }
 
   if ($stat) { return (0,$stat); }
@@ -5955,27 +5954,10 @@ sub dompa {
   #}
 
 
-  if ($command eq 'rpower') {
-    if (($global_check) && ($args->[0]  ne 'stat') && ($args->[0]  ne 'status') && ($args->[0]  ne 'state')) { 
-      $check=1; 
-      my @allnodes=keys %{$mpahash->{$mpa}->{nodes}};
-
-      #save the old status
-      my $nodelisttab = xCAT::Table->new('nodelist');
-      if ($nodelisttab) {
-        my $tabdata     = $nodelisttab->getNodesAttribs(\@allnodes, ['node', 'status']);
-        foreach my $node (@allnodes)
-        {
-            my $tmp1 = $tabdata->{$node}->[0];
-            if ($tmp1) { 
-		if ($tmp1->{status}) { $oldnodestatus{$node}=$tmp1->{status}; }
-		else { $oldnodestatus{$node}=""; }
-	    }
-	}
-      }
-      #print "oldstatus:" . Dumper(\%oldnodestatus);
+    if ($command eq 'rpower') {
+        %newnodestatus = ();
     }
-  }
+
   if ($command eq "rvitals") {
       if ((scalar(@$args) == 1 and $args->[0] eq '') or grep (/all/,@$args)) {
           $vitals_info = &get_blades_for_mpa($mpa);
@@ -6038,6 +6020,10 @@ sub dompa {
     }
     yield;
   }
+
+    if ($command eq 'rpower' and %newnodestatus) {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    }
 
   verbose_message("SNMP session completed.");
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
