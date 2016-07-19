@@ -94,11 +94,12 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~rootfs on / type
-cmd:scp $$CN:/etc/resolv.conf /tmp/resolv.conf
-check:rc==0
-cmd:diff /etc/resolv.conf /tmp/resolv.conf
-check:rc==0
-cmd:rm -f /tmp/resolv.conf
+
+#cmd:scp $$CN:/etc/resolv.conf /tmp/resolv.conf
+#check:rc==0
+#cmd:diff /etc/resolv.conf /tmp/resolv.conf
+#check:rc==0
+#cmd:rm -f /tmp/resolv.conf
 
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
