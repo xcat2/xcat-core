@@ -410,19 +410,17 @@ sub process_request {
     unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.sfs");
 
-    my $compress="gzip";
-    #use "pigz" as the compress tool instead of gzip if "pigz" exist
-    my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
-    if($ispigz == 0){
-       $compress="pigz";
-    }
-
-    $callback->({info=>["compress method:$compress"]});
- 
+    $callback->({info=>["compress method:$method"]});
     if ($method =~ /cpio/) {
+        my $compress="gzip";
+        #use "pigz" as the compress tool instead of gzip if "pigz" exist
+        my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+        if($ispigz == 0){
+            $compress="pigz";
+        }
         if ( ! $exlistloc ) {
             $excludestr = "find . -xdev |cpio -H newc -o | $compress -c - > ../rootimg.gz";
-        }else {
+        } else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile"); 
             if ($includestr) {
@@ -432,15 +430,21 @@ sub process_request {
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /txc/) {
+        my $isxz=system("bash -c 'type -p xz' >/dev/null 2>&1");
+        unless($isxz == 0) {
+            $callback->({error=>["Command xz does not exist, please make sure it works."]});
+            return 1;
+        }
+        $callback->({info=>["It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail."]});
         if ( ! $exlistloc ) {
-            $excludestr = "find . -xdev | tar --selinux --xattr-include='*' -T - -Jcvf ../rootimg.txz";
-        }else {
+            $excludestr = "find . -xdev | tar --selinux --xattrs-include='*' -T - -Jcvf ../rootimg.txz";
+        } else {
             chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile"); 
+            system("$excludestr >> $xcat_packimg_tmpfile");
             if ($includestr) {
-            	system("$includestr >> $xcat_packimg_tmpfile"); 
+            	system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattr-include='*' -T -Jcvf ../rootimg.txz";
+            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' -T - -Jcvf ../rootimg.txz";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
@@ -467,6 +471,9 @@ sub process_request {
             chmod 0644, "rootimg.gz.metainfo";
             chdir($currdir);
         }
+        umask $oldmask;
+    } elsif ($method =~ /txc/) {
+        chmod 0644,"$destdir/rootimg.txz";
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
        my $flags;
