@@ -279,7 +279,7 @@ sub get_node_ip {
         if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
             $nodecheckrst{$1}{"error"} = "Could not find node definition";
             $rst = 1;
-        } elsif ($_ =~ /^(\w+): ip=(.+)/i) {
+        } elsif ($_ =~ /^(\w+): ip=(.*)/i) {
             $nodeip{$1} = $2;
         }
     }
