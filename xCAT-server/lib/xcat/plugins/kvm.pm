@@ -39,6 +39,7 @@ my $parser;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+my %allnodestatus;
 require Sys::Virt;
 
 if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
@@ -3000,8 +3001,6 @@ sub power {
         }
     }
     my $errstr;
-    my $newstat;
-    my %newnodestatus=();
 
     if ($subcommand eq 'on') {
         unless ($dom) {
@@ -3016,11 +3015,11 @@ sub power {
             ($dom, $errstr) = makedom($node, $cdloc);
             if ($errstr) { return (1, $errstr); }
             else {
-                $newstat = $::STATUS_POWERING_ON;
+                $allnodestatus{$node} = $::STATUS_POWERING_ON;
             }
         } elsif (not $dom->is_active()) {
             $dom->create();
-            $newstat = $::STATUS_POWERING_ON;
+            $allnodestatus{$node} = $::STATUS_POWERING_ON;
         } else {
             $retstring .= "$status_noop";
         }
@@ -3030,7 +3029,7 @@ sub power {
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             if ($dom->is_active()) {
                 $dom->destroy();
-                $newstat=$::STATUS_POWERING_OFF;
+                $allnodestatus{$node} = $::STATUS_POWERING_OFF;
             }
             undef $dom;
         } else { $retstring .= "$status_noop"; }
@@ -3039,7 +3038,7 @@ sub power {
             my $newxml = $dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             $dom->shutdown();
-            $newstat=$::STATUS_POWERING_OFF;
+            $allnodestatus{$node} = $::STATUS_POWERING_OFF;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'reset') {
         if ($dom && $dom->is_active()) {
@@ -3052,7 +3051,7 @@ sub power {
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
                 my $persist = $dom->is_persistent();
                 $dom->destroy();
-                $newstat=$::STATUS_POWERING_OFF;
+                $allnodestatus{$node} = $::STATUS_POWERING_OFF;
                 if ($persist) { $dom->undefine(); }
                 undef $dom;
                 if ($use_xhrm) {
@@ -3061,7 +3060,7 @@ sub power {
                 ($dom, $errstr) = makedom($node, $cdloc, $newxml);
                 if ($errstr) { return (1, $errstr); }
                 else {
-                    $newstat=$::STATUS_POWERING_ON;
+                    $allnodestatus{$node} = $::STATUS_POWERING_ON;
                 }
                 
             } else { #no changes, just restart the domain TODO when possible, stupid lack of feature...
@@ -3072,10 +3071,6 @@ sub power {
         unless ($subcommand =~ /^stat/) {
             return (1, "Unsupported power directive '$subcommand'");
         }
-    }
-    if ($newstat) {
-        $newnodestatus{$newstat}=[$node];
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
 
     unless ($retstring =~ /reset/) {
@@ -3763,51 +3758,12 @@ sub process_request {
         return;
     }
 
-    #get new node status
-    my %oldnodestatus = ();    #saves the old node status
-    my @allerrornodes = ();
-    my $check         = 0;
-    my $global_check  = 1;
-    if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check = 0; }
-
-
-    if ($command eq 'rpower') {
-        my $subcommand = $exargs[0];
-        if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status')) {
-            $check = 1;
-            my @allnodes = @$noderange;
-
-            #save the old status
-            my $nodelisttab = xCAT::Table->new('nodelist');
-            if ($nodelisttab) {
-                my $tabdata = $nodelisttab->getNodesAttribs(\@allnodes, [ 'node', 'status' ]);
-                foreach my $node (@allnodes)
-                {
-                    my $tmp1 = $tabdata->{$node}->[0];
-                    if ($tmp1) {
-                        if ($tmp1->{status}) { $oldnodestatus{$node} = $tmp1->{status}; }
-                        else                 { $oldnodestatus{$node} = ""; }
-                    }
-                }
-            }
-
-            #print "oldstatus:" . Dumper(\%oldnodestatus);
-        }
-    }
-
     if ($::XCATSITEVALS{masterimgdir}) { $xCAT_plugin::kvm::masterdir = $::XCATSITEVALS{masterimgdir} }
-
-
 
     foreach $hyp (sort (keys %hyphash)) {
         while ($children > $vmmaxp) {
             my $handlednodes = {};
             forward_data($callback, $sub_fds, $handlednodes);
-
-            #update the node status to the nodelist.status table
-            if ($check) {
-                updateNodeStatus($handlednodes, \@allerrornodes);
-            }
         }
         $children++;
         my $cfd;
@@ -3830,11 +3786,6 @@ sub process_request {
     while ($sub_fds->count > 0) { # or $children > 0) { #if count is zero, even if we have live children, we can't possibly get data from them
         my $handlednodes = {};
         forward_data($callback, $sub_fds, $handlednodes);
-
-        #update the node status to the nodelist.status table
-        if ($check) {
-            updateNodeStatus($handlednodes, \@allerrornodes);
-        }
     }
 
     #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
@@ -3850,23 +3801,6 @@ sub process_request {
     #  }
     #}
 
-    if ($check) {
-
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old = ();
-        foreach my $node (@allerrornodes) {
-            my $stat = $oldnodestatus{$node};
-            if (exists($old{$stat})) {
-                my $pa = $old{$stat};
-                push(@$pa, $node);
-            }
-            else {
-                $old{$stat} = [$node];
-            }
-        }
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-    }
 }
 
 sub updateNodeStatus {
@@ -3997,6 +3931,15 @@ sub dohyp {
         }
     }
 
+    if ($command eq 'rpower') {
+        my $subcommand = $exargs[0];
+        if (($subcommand ne 'stat') && ($subcommand ne 'status')) {
+            %allnodestatus = ();
+        }
+    }
+
+    my %newnodestatus;
+
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         if ($confdata->{$hyp}->{cpumodel} and $confdata->{$hyp}->{cpumodel} =~ /ppc64/i) {
             $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
@@ -4038,12 +3981,25 @@ sub dohyp {
             } else {
                 $output{node}->[0]->{error} = $text;
             }
+
+            if ($command eq 'rpower') {
+                if (!$rc and $text !~ /$status_noop/) {
+                    if (%allnodestatus) {
+                        push @{ $newnodestatus{$allnodestatus{$node}} }, $node;
+                    }
+                }
+            }
             store_fd([ \%output ], $out);
             yield();
             waitforack($out);
         }
         yield();
     }
+
+    if ($command eq 'rpower') {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    }
+
     foreach (keys %$updatetable) {
         my $tabhandle = xCAT::Table->new($_, -create => 1);
         my $updates = $updatetable->{$_};
