@@ -1436,6 +1436,20 @@ EOMS
    print $inifile "    fi\n";
    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
    print $inifile "    echo Done\n";
+   print $inifile "elif [ -r /rootimg.txz ]; then\n";
+   print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.txz downloaded,setting up RAM-root tmpfs...\"\n";
+   print $inifile "    echo Setting up RAM-root tmpfs.\n";
+   if ($rootlimit) {
+      print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
+   } else {
+      print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+   }
+   print $inifile "    cd \$NEWROOT\n";
+   print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
+   print $inifile "    echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "    tar -Jxvf /rootimg.txz\n";
+   print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
+   print $inifile "    echo Done\n";
    print $inifile "else\n";
    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Failed to download image, panicing in 5...\"\n";
    print $inifile "    echo -n Failed to download image, panicing in 5...\n";
@@ -1573,7 +1587,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ( "usr/bin/dig","bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod","usr/bin/wget") {
+   foreach ( "usr/bin/dig","bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod","usr/bin/wget","usr/bin/xz") {
       getlibs($_);
       push @filestoadd,$_;
    }

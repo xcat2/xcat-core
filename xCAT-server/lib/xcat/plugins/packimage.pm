@@ -1,8 +1,26 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------
+
+=head1
+    xCAT plugin package to pack the stateless image
+
+    Supported options:
+        -h Display usage message
+        -v Command Version
+        -o Operating system (fedora8, rhel5, sles10,etc)
+        -p Profile (compute,service)
+        -a Architecture (ppc64,x86_64,etc)
+        -m Method (default cpio)
+
+=cut
+
+#-------------------------------------------------------
 package xCAT_plugin::packimage;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
+use strict;
 use lib "$::XCATROOT/lib/perl";
 use Data::Dumper;
 use xCAT::Table;
@@ -24,24 +42,44 @@ Getopt::Long::Configure("pass_through");
 my $verbose = 0;
 #$verbose = 1;
 
+#-------------------------------------------------------
+
+=head3  handled_commands
+
+    Return list of commands handled by this plugin
+
+=cut
+
+#-------------------------------------------------------
 sub handled_commands {
      return {
             packimage => "packimage",
    }
 }
 
+#-------------------------------------------------------
+
+=head3  Process the command
+
+=cut
+
+#-------------------------------------------------------
 sub process_request {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
    my $installroot = xCAT::TableUtils->getInstallDir();
 
-   @ARGV = @{$request->{arg}};
-   my $argc = scalar @ARGV;
-   if ($argc == 0) {
-       $callback->({info=>["packimage -h \npackimage -v \npackimage imagename"]});
-       return;
+   my $args;
+   if (defined($request->{arg})) {
+       $args = $request->{arg};
+       @ARGV = @{$args};
    }
+   if (scalar(@ARGV) == 0) {
+       $callback->({info=>["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"]});
+       return 0;
+   }
+
    my $osver;
    my $arch;
    my $profile;
@@ -52,6 +90,9 @@ sub process_request {
    my $destdir;
    my $imagename;
    my $dotorrent;
+   my $provmethod;
+   my $help;
+   my $version;
 
    GetOptions(
       "profile|p=s" => \$profile,
@@ -65,62 +106,62 @@ sub process_request {
    if ($version) {
       my $version = xCAT::Utils->Version(); 
       $callback->({info=>[$version]});
-      return;
+      return 0;
    }
    if ($help) {
-      $callback->({info=>["packimage -h \npackimage -v \npackimage imagename"]});
-      return;
+      $callback->({info=>["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"]});
+      return 0;
    }
 
    if (@ARGV > 0) {
        $imagename=$ARGV[0];
        if ($arch or $osver or $profile) {
            $callback->({error=>["-o, -p and -a options are not allowed when a image name is specified."],errorcode=>[1]});
-           return;
+           return 1;
        }
        # load the module in memory
        eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
        if ($@) {
            $callback->({error=>[$@],errorcode=>[1]});
-           return;
+           return 1;
        }
    
        # get the info from the osimage and linux 
        my $osimagetab=xCAT::Table->new('osimage', -create=>1);
        unless ($osimagetab) {
            $callback->({error=>["The osimage table cannot be opened."],errorcode=>[1]});
-           return;
+           return 1;
        }
        my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
        unless ($linuximagetab) {
            $callback->({error=>["The linuximage table cannot be opened."],errorcode=>[1]});
-           return;
+           return 1;
        }
        (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists');
        unless ($ref) {
            $callback->({error=>["Cannot find image \'$imagename\' from the osimage table."],errorcode=>[1]});
-           return;
+           return 1;
        }
        (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'exlist', 'rootimgdir');
        unless ($ref1) {
            $callback->({error=>["Cannot find $imagename from the linuximage table."],errorcode=>[1]});
-           return;
+           return 1;
        }
        
        $osver=$ref->{'osvers'};
        $arch=$ref->{'osarch'};
        $profile=$ref->{'profile'};
        $syncfile=$ref->{'synclists'};
-       my $provmethod=$ref->{'provmethod'};
+       $provmethod=$ref->{'provmethod'};
        
        unless ($osver and $arch and $profile and $provmethod) {
            $callback->({error=>["osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database."],errorcode=>[1]});
-           return;
+           return 1;
        }
        
        if ($provmethod ne 'netboot') {
            $callback->({error=>["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'."],errorcode=>[1]});
-           return;
+           return 1;
        }
        
        $exlistloc =$ref1->{'exlist'};
@@ -129,7 +170,7 @@ sub process_request {
        $provmethod="netboot";
        unless ($osver) {
 	   $callback->({error=>["Please specify a os version with the -o flag"],errorcode=>[1]});
-           return;
+           return 1;
        }
        unless ($arch) {
 	   $arch = `uname -m`;
@@ -139,7 +180,7 @@ sub process_request {
 
        unless ($profile) {
 	   $callback->({error=>["Please specify a profile name with -p flag"],errorcode=>[1]});
-           return;
+           return 1;
        }
    }
 
@@ -154,11 +195,11 @@ sub process_request {
    }
    unless ($distname) {
       $callback->({error=>["Unable to find $::XCATROOT/share/xcat/netboot directory for $osver"],errorcode=>[1]});
-      return;
+      return 1;
    }
    unless ($installroot) {
        $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
-       return;
+       return 1;
    }
    my $oldpath=cwd();
    unless ($imagename) {
@@ -169,7 +210,7 @@ sub process_request {
        my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "netboot");
        unless ($ret[0] eq 0) {
 	   $callback->({error=>["Error when updating the osimage tables: " . $ret[1]], errorcode=>[1]});
-	   return;
+	   return 1;
        }
    }
 
@@ -205,7 +246,7 @@ sub process_request {
     my %liteHash;   # create hash table for the entries in @listList
     if (parseLiteFiles($ref_liteList, \%liteHash)) {
         $callback->({error=>["Failed for parsing litefile table!"], errorcode=>[1]});
-        return;
+        return 1;
     }
 
     $verbose && $callback->({data=>["rootimg_status = $rootimg_status at line " . __LINE__ ]});
@@ -317,7 +358,7 @@ sub process_request {
    # add the xCAT post scripts to the image
     unless ( -d "$rootimg_dir") {
        $callback->({error=>["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"], errorcode=>[1]});
-       return;
+       return 1;
     }
 
    # some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
@@ -359,31 +400,27 @@ sub process_request {
            system("$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile");
    }
 
-    my $verb = "Packing";
-
     my $temppath;
     my $oldmask;
     unless ( -d $rootimg_dir) {
        $callback->({error=>["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
-       return;
+       return 1;
     }
-    $callback->({data=>["$verb contents of $rootimg_dir"]});
+    $callback->({data=>["Packing contents of $rootimg_dir"]});
     unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.sfs");
 
-    my $compress="gzip";
-    #use "pigz" as the compress tool instead of gzip if "pigz" exist
-    my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
-    if($ispigz == 0){
-       $compress="pigz";
-    }
-
-    $callback->({info=>["compress method:$compress"]});
- 
+    $callback->({info=>["compress method:$method"]});
     if ($method =~ /cpio/) {
+        my $compress="gzip";
+        #use "pigz" as the compress tool instead of gzip if "pigz" exist
+        my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+        if($ispigz == 0){
+            $compress="pigz";
+        }
         if ( ! $exlistloc ) {
             $excludestr = "find . -xdev |cpio -H newc -o | $compress -c - > ../rootimg.gz";
-        }else {
+        } else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile"); 
             if ($includestr) {
@@ -393,15 +430,21 @@ sub process_request {
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /txc/) {
+        my $isxz=system("bash -c 'type -p xz' >/dev/null 2>&1");
+        unless($isxz == 0) {
+            $callback->({error=>["Command xz does not exist, please make sure it works."]});
+            return 1;
+        }
+        $callback->({info=>["It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail."]});
         if ( ! $exlistloc ) {
-            $excludestr = "find . -xdev | tar --selinux --xattr-include='*' -T - -Jcvf ../rootimg.txz";
-        }else {
+            $excludestr = "find . -xdev | tar --selinux --xattrs-include='*' -T - -Jcvf ../rootimg.txz";
+        } else {
             chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile"); 
+            system("$excludestr >> $xcat_packimg_tmpfile");
             if ($includestr) {
-            	system("$includestr >> $xcat_packimg_tmpfile"); 
+            	system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattr-include='*' -T -Jcvf ../rootimg.txz";
+            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' -T - -Jcvf ../rootimg.txz";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
@@ -429,6 +472,9 @@ sub process_request {
             chdir($currdir);
         }
         umask $oldmask;
+    } elsif ($method =~ /txc/) {
+        chmod 0644,"$destdir/rootimg.txz";
+        umask $oldmask;
     } elsif ($method =~ /squashfs/) {
        my $flags;
        if ($arch =~ /x86/) {
@@ -443,17 +489,17 @@ sub process_request {
        
        if (! -x "/sbin/mksquashfs" && ! -x "/usr/bin/mksquashfs" ) {
           $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
-          return;
+          return 1;
        }
        my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
        if ($rc) {
           $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
-          return;
+          return 1;
        }
        $rc = system("rm -rf $temppath");
        if ($rc) {
           $callback->({error=>["Failed to clean up temp space"],errorcode=>[1]});
-          return;
+          return 1;
        }
        chmod(0644,"../rootimg.sfs");
     }
@@ -481,11 +527,15 @@ sub process_request {
    chdir($oldpath);
 }
 
-###########################################################
-#
-#  copybootscript - copy the xCAT diskless init scripts to the image
-#
-#############################################################
+#-------------------------------------------------------
+
+=head3  copybootscript
+
+    copy the xCAT diskless init scripts to the image
+
+=cut
+
+#-------------------------------------------------------
 sub copybootscript {
 
     my $installroot  = shift;
@@ -546,6 +596,14 @@ sub copybootscript {
 	return 0;
 }
 
+#-------------------------------------------------------
+
+=head3  include_file
+
+
+=cut
+
+#-------------------------------------------------------
 sub include_file
 {
    my $file = shift;
@@ -570,45 +628,47 @@ sub include_file
    return join("\n", @text);
 }
 
-=head3 parseLiteFiles
-In the liteentry table, one directory and its sub-items (including sub-directory and entries) can co-exist;
-In order to handle such a scenario, one hash is generated to show the hirarachy relationship
+#-------------------------------------------------------
 
-For example, one array with entry names is used as the input:
-my @entries = (
-    "imagename bind,persistent /var/",
-    "imagename bind /var/tmp/",
-    "imagename tmpfs,rw /root/",
-    "imagename tmpfs,rw /root/.bashrc",
-    "imagename tmpfs,rw /root/test/",
-    "imagename bind /etc/resolv.conf",
-    "imagename bind /var/run/"
-);
-Then, one hash will generated as:
-%hashentries = {
-          'bind,persistent /var/' => [
-                                                 'bind /var/tmp/',
-                                                 'bind /var/run/'
-                                               ],
-          'bind /etc/resolv.conf' => undef,
-          'tmpfs,rw /root/' => [
-                                           'tmpfs,rw /root/.bashrc',
-                                           'tmpfs,rw /root/test/'
-                                         ]
-        };
+=head3  parseLiteFiles
 
-Arguments:
-    one array with entrynames,
-    one hash to hold the entries parsed
+    In the liteentry table, one directory and its sub-items (including sub-directory and entries) can co-exist;
+    In order to handle such a scenario, one hash is generated to show the hirarachy relationship
 
-Returns:
-    0 if sucucess
-    1 if fail
+    For example, one array with entry names is used as the input:
+    my @entries = (
+        "imagename bind,persistent /var/",
+        "imagename bind /var/tmp/",
+        "imagename tmpfs,rw /root/",
+        "imagename tmpfs,rw /root/.bashrc",
+        "imagename tmpfs,rw /root/test/",
+        "imagename bind /etc/resolv.conf",
+        "imagename bind /var/run/"
+    );
+    Then, one hash will generated as:
+    %hashentries = {
+        'bind,persistent /var/' => [
+            'bind /var/tmp/',
+            'bind /var/run/'
+        ],
+        'bind /etc/resolv.conf' => undef,
+        'tmpfs,rw /root/' => [
+            'tmpfs,rw /root/.bashrc',
+            'tmpfs,rw /root/test/'
+        ]
+    };
+
+    Arguments:
+        one array with entrynames,
+        one hash to hold the entries parsed
+
+    Returns:
+        0 if sucucess
+        1 if fail
 
 =cut
 
-
-
+#-------------------------------------------------------
 sub parseLiteFiles {
     my ($flref, $dhref) = @_;
     my @entries = @{$flref};

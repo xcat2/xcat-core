@@ -87,6 +87,22 @@ elif [ -r /rootimg.gz ]; then
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
+elif [ -r /rootimg.txz ]; then
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg.txz downloaded,setting up RAM-root tmpfs...."
+  echo Setting up RAM-root tmpfs.
+  if [ -z $rootlimit ];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
+  cd $NEWROOT
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
+  echo -n "Extracting root filesystem:"
+  tar -Jxvf /rootimg.txz
+  $NEWROOT/etc/init.d/localdisk
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
+  echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
  

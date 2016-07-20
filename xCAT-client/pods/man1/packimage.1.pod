@@ -36,7 +36,7 @@ B<-p>          Profile (compute,service)
 
 B<-a>          Architecture (ppc64,x86_64,etc)
 
-B<-m>          Method (default cpio)
+B<-m>          Method (cpio,txc,squashfs, default is cpio)
 
 
 =head1 RETURN VALUE

@@ -1621,6 +1621,17 @@ EOMS
    print $inifile "  zcat /rootimg.gz |cpio -idum\n";
    print $inifile "  fi\n";
    print $inifile "  echo Done\n";
+   print $inifile "elif [ -r /rootimg.txz ]; then\n";
+   print $inifile "    echo Setting up RAM-root tmpfs.\n";
+   if ($rootlimit) {
+      print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
+   } else {
+      print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+   }
+   print $inifile "    cd \$NEWROOT\n";
+   print $inifile "    echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "    tar -Jxvf /rootimg.txz\n";
+   print $inifile "    echo Done\n";
    print $inifile "else\n";
    print $inifile "  echo -n Failed to download image, panicing in 5...\n";
    print $inifile "  for i in 4 3 2 1 0; do\n";
@@ -1728,7 +1739,7 @@ EOMS
      }
    }
     if($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
+        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz") {
             getlibs($_); 
             push @filestoadd,$_;
         } 
@@ -1740,7 +1751,7 @@ EOMS
         }
         
     }else {
-        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","usr/bin/egrep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
+        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","usr/bin/egrep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz") {
             getlibs($_); 
             push @filestoadd,$_;
         }
