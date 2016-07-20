@@ -84,7 +84,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -205,7 +204,6 @@ lskit_R
 lskit_C
 lskitcomp_v
 lskitcomp_h
-lskitcomp_C
 lskitcomp_C
 lskitcomp_S
 lskitdeployparam_v
