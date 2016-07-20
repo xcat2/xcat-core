@@ -26,7 +26,7 @@ xcatdebugmode="$(getarg xcatdebugmode=)"
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
 
 
-if [ $NODESTATUS -ne 0 ];then
+if [ "$NODESTATUS" != "0" ]; then
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "nodestatus: netbooting,reporting..."
 /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
