@@ -15,9 +15,9 @@ use JSON;
 sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
-    my $self = {};
+    my $self  = {};
     $self->{handle} = shift;
-    $self->{json} = JSON->new;
+    $self->{json}   = JSON->new;
     bless($self, $class);
     return $self;
 }
@@ -34,7 +34,7 @@ sub recv {
     if ($tl & (1 << 31)) {
         die "Reserved bit used, protocol violated";
     }
-    my $length = $tl & 16777215;  # lower 24 bits only
+    my $length   = $tl & 16777215;    # lower 24 bits only
     my $datatype = ($tl >> 24);
     my $bytedata = '';
     while (length($bytedata) < $length) {
@@ -53,8 +53,8 @@ sub recv {
 sub send {
     my $self = shift;
     my $data = shift;
-    if (ref $data eq 'HASH') {  # Need to do JSON
-        my $json = $self->{json}->utf8->encode($data);
+    if (ref $data eq 'HASH') {    # Need to do JSON
+        my $json       = $self->{json}->utf8->encode($data);
         my $typelength = length($json);
         if ($typelength > 16777215) {
             die "Data too large";
@@ -63,7 +63,7 @@ sub send {
         my $handle = $self->{handle};
         print $handle pack("N", $typelength) . $json;
         $self->{handle}->flush();
-    } elsif (not ref $data) {  # text data
+    } elsif (not ref $data) {     # text data
         my $typelength = length($data);
         if ($typelength > 16777215) {
             die "Data too large";

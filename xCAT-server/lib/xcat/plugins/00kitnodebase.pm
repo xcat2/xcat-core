@@ -44,9 +44,9 @@ require xCAT::ProfiledNodeUtils;
 #-------------------------------------------------------
 sub handled_commands {
     return {
-        kitnodeadd => '00kitnodebase',
-        kitnoderemove => '00kitnodebase',
-        kitnodeupdate => '00kitnodebase',
+        kitnodeadd     => '00kitnodebase',
+        kitnoderemove  => '00kitnodebase',
+        kitnodeupdate  => '00kitnodebase',
         kitnoderefresh => '00kitnodebase',
     };
 
@@ -62,24 +62,24 @@ sub handled_commands {
 
 #-------------------------------------------------------
 sub process_request {
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
-    my $command = $request->{command}->[0];
-    my $argsref = $request->{arg};
-    my $macflag = 1;
-    if(exists($request->{macflag}))
+    my $command         = $request->{command}->[0];
+    my $argsref         = $request->{arg};
+    my $macflag         = 1;
+    if (exists($request->{macflag}))
     {
         $macflag = $request->{macflag}->[0];
     }
     my $nodelist = $request->{node};
     my $retref;
     my $rsp;
-    
-    # Get nodes profile 
-    my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles($nodelist);
+
+    # Get nodes profile
+    my $profileref  = xCAT::ProfiledNodeUtils->get_nodes_profiles($nodelist);
     my %profilehash = %$profileref;
-    
+
     # Check whetehr we need to run makeconservercf
     # If one node has hardwareprofile, we need to run makeconservercf
     my $runconservercmd = 0;
@@ -89,106 +89,108 @@ sub process_request {
             last;
         }
     }
-    
+
     my @commandslist;
     my %argslist;
     my $noupdate_flag = 0;
-    my %msghash = ( "makehosts"         => "Updating hosts entries",
-                    "makedns"           => "Updating DNS entries",
-                    "makedhcp"          => "Update DHCP entries",
-                    "makeknownhosts"    => "Update known hosts",
-                    "makeconservercf"   => "Updating conserver configuration files",
-                    "kitnoderemove"     => "Remove nodes entries from system configuration files first.",
-                    "nodeset"           => "Update nodes' boot settings",
-                    "rspconfig"         => "Updating FSP's IP address",
-                    "rscan"             => "Update node's some attributes through 'rscan -u'",
-                    "mkhwconn"          => "Sets up connections for nodes to FSP",
-                  );
-    
-    # Stage1:  pre-run     
+    my %msghash = ("makehosts" => "Updating hosts entries",
+        "makedns"         => "Updating DNS entries",
+        "makedhcp"        => "Update DHCP entries",
+        "makeknownhosts"  => "Update known hosts",
+        "makeconservercf" => "Updating conserver configuration files",
+"kitnoderemove" => "Remove nodes entries from system configuration files first.",
+        "nodeset"   => "Update nodes' boot settings",
+        "rspconfig" => "Updating FSP's IP address",
+        "rscan"     => "Update node's some attributes through 'rscan -u'",
+        "mkhwconn"  => "Sets up connections for nodes to FSP",
+    );
+
+    # Stage1:  pre-run
     if ($command eq 'kitnoderefresh') {
+
         # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands. If not, old records can't be removed.
-        push @commandslist, ['makedns', '-d'];
-        push @commandslist, ['makehosts', '-d'];
+        push @commandslist, [ 'makedns',   '-d' ];
+        push @commandslist, [ 'makehosts', '-d' ];
     }
-    
+
     # Stage2: run xcat commands
     if ($command eq 'kitnodeadd' or $command eq 'kitnodeupdate' or $command eq 'kitnoderefresh') {
-        push @commandslist, ['makehosts', ''];
-        push @commandslist, ['makedns', ''];
+        push @commandslist, [ 'makehosts', '' ];
+        push @commandslist, [ 'makedns',   '' ];
+
         # Remove 'makedhcp' command, nodeset will update dhcp lease file
         #if ($macflag) {
         #    push @commandslist, ['makedhcp', ''];
         #}
-        push @commandslist, ['makeknownhosts', ''];
+        push @commandslist, [ 'makeknownhosts', '' ];
         if ($runconservercmd) {
-            push @commandslist, ['makeconservercf', ''];
+            push @commandslist, [ 'makeconservercf', '' ];
         }
-    }elsif ($command eq 'kitnoderemove') {
+    } elsif ($command eq 'kitnoderemove') {
         if ($runconservercmd) {
-            push @commandslist, ['makeconservercf', '-d'];
+            push @commandslist, [ 'makeconservercf', '-d' ];
         }
-        push @commandslist, ['makeknownhosts', '-r'];
+        push @commandslist, [ 'makeknownhosts', '-r' ];
         if ($macflag) {
-            push @commandslist, ['makedhcp', '-d'];
+            push @commandslist, [ 'makedhcp', '-d' ];
         }
     }
-    
+
     # Stage3: post-run
     if ($command eq 'kitnodeadd') {
-        my $firstnode = (@$nodelist)[0];
-        my $chaintab = xCAT::Table->new("chain");
-        my $chainref = $chaintab->getNodeAttribs($firstnode, ['chain']);
-        my $chainstr = $chainref->{'chain'};
+        my $firstnode  = (@$nodelist)[0];
+        my $chaintab   = xCAT::Table->new("chain");
+        my $chainref   = $chaintab->getNodeAttribs($firstnode, ['chain']);
+        my $chainstr   = $chainref->{'chain'};
         my @chainarray = split(",", $chainstr);
 
-        if($macflag)
+        if ($macflag)
         {
-            if ($chainarray[0]){
-                if($chainarray[0] =~ m/^osimage=/)
+            if ($chainarray[0]) {
+                if ($chainarray[0] =~ m/^osimage=/)
                 {
                     $noupdate_flag = 1;
                 }
-                push @commandslist, ['nodeset', $chainarray[0]];
+                push @commandslist, [ 'nodeset', $chainarray[0] ];
             }
         }
         my $isfsp = xCAT::ProfiledNodeUtils->is_fsp_node([$firstnode]);
         if ($isfsp) {
-            my $cmmref = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
+            my $cmmref     = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
             my @cmmchassis = keys %$cmmref;
-            
-            push @commandslist, ['rspconfig', 'network=*'];
-            push @commandslist, ['rscan', '-u'];
-            push @commandslist, ['mkhwconn', '-t'];
+
+            push @commandslist, [ 'rspconfig', 'network=*' ];
+            push @commandslist, [ 'rscan',     '-u' ];
+            push @commandslist, [ 'mkhwconn',  '-t' ];
         }
-    }elsif ($command eq 'kitnoderemove') {
-        push @commandslist, ['nodeset', 'offline'];
-    }elsif ($command eq 'kitnodeupdate') {
+    } elsif ($command eq 'kitnoderemove') {
+        push @commandslist, [ 'nodeset', 'offline' ];
+    } elsif ($command eq 'kitnodeupdate') {
         my $firstnode = (@$nodelist)[0];
-        if (exists $profilehash{$firstnode}{"ImageProfile"}){
-            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"};
+        if (exists $profilehash{$firstnode}{"ImageProfile"}) {
+            my $osimage = 'osimage=' . $profilehash{$firstnode}{"ImageProfile"};
             $noupdate_flag = 1;
-            push @commandslist, ['nodeset', $osimage];
+            push @commandslist, [ 'nodeset', $osimage ];
         }
     }
-    
+
     # Run commands
     foreach (@commandslist) {
-        my $current_cmd = $_->[0];
+        my $current_cmd  = $_->[0];
         my $current_args = $_->[1];
         setrsp_progress($msghash{$current_cmd});
         $retref = "";
-        if(($current_cmd eq "nodeset") && $noupdate_flag)
+        if (($current_cmd eq "nodeset") && $noupdate_flag)
         {
-            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, -1, 1);
+            $retref = xCAT::Utils->runxcmd({ command => [$current_cmd], node => $nodelist, arg => [ $current_args, "--noupdateinitrd" ] }, $request_command, -1, 1);
         }
         else
         {
-            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, -1, 1);
+            $retref = xCAT::Utils->runxcmd({ command => [$current_cmd], node => $nodelist, arg => [$current_args] }, $request_command, -1, 1);
         }
         log_cmd_return($current_cmd, $retref, $callback);
     }
-    
+
 }
 
 #-------------------------------------------------------
@@ -220,14 +222,14 @@ sub setrsp_progress
 #-------------------------------------------------------
 sub log_cmd_return
 {
-    my $command = shift;
-    my $res = shift;
+    my $command  = shift;
+    my $res      = shift;
     my $callback = shift;
-    my $errmsg = undef;
-    
-    if($::RUNCMD_RC) {
-         $errmsg = "Command '$command' failed, " . join(',', @$res);
-    }elsif ($command eq 'nodeset') { # Only check output for 'nodeset' command
+    my $errmsg   = undef;
+
+    if ($::RUNCMD_RC) {
+        $errmsg = "Command '$command' failed, " . join(',', @$res);
+    } elsif ($command eq 'nodeset') {  # Only check output for 'nodeset' command
         foreach my $line (@$res) {
             if (($line =~ /kernel cannot be found/) or ($line =~ /stop configuration/) or ($line =~ /failed to set up install resources/)) {
                 $errmsg = "Command '$command' failed, $line.";
@@ -235,14 +237,14 @@ sub log_cmd_return
             }
         }
     }
-    
-    if($errmsg)
+
+    if ($errmsg)
     {
         $callback->({
-            error=>[$errmsg],
-            errorcode=>[1]
+                error     => [$errmsg],
+                errorcode => [1]
         });
     }
-}   
+}
 
 1;

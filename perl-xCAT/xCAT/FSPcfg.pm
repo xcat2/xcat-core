@@ -8,6 +8,7 @@ use xCAT::Utils;
 use xCAT::FSPUtils;
 use xCAT::TableUtils;
 use xCAT::PPCcfg;
+
 #use Data::Dumper;
 #use xCAT::PPCcli;
 use xCAT::MsgUtils qw(verbose_message);
@@ -15,13 +16,13 @@ use xCAT::MsgUtils qw(verbose_message);
 ##########################################
 # Globals
 ##########################################
-my %rspconfig = ( 
-    frame  => \&frame,
-    cec_off_policy  => \&cec_off_policy,
+my %rspconfig = (
+    frame          => \&frame,
+    cec_off_policy => \&cec_off_policy,
 );
 
-my %default_passwd = ( 
-    HMC      => "",
+my %default_passwd = (
+    HMC     => "",
     admin   => "admin",
     general => "general",
 );
@@ -30,14 +31,14 @@ my %default_passwd = (
 # Parse the command line for options and operands
 ##########################################################################
 sub array_to_string {
-    my $array = shift;
+    my $array  = shift;
     my $string = "";
-    my $i = 0;
+    my $i      = 0;
     if (!scalar(@$array)) {
         return undef;
     }
     $string .= "\'$array->[0]\'";
-    for ($i = 1; $i < scalar(@$array) - 1; $i++) {
+    for ($i = 1 ; $i < scalar(@$array) - 1 ; $i++) {
         $string .= ", ";
         $string .= "\'$array->[$i]\'";
     }
@@ -48,18 +49,18 @@ sub array_to_string {
 }
 
 sub check_command {
-    my $cmd = shift;
-    my $rsp = shift;
+    my $cmd  = shift;
+    my $rsp  = shift;
     my @type = ();
     foreach my $tmp_type (keys %$rsp) {
-	if (grep (/^$cmd$/, @{$rsp->{$tmp_type}})) {
+        if (grep (/^$cmd$/, @{ $rsp->{$tmp_type} })) {
             push @type, $tmp_type;
-	}
+        }
     }
     if (!scalar(@type)) {
         return undef;
     } else {
-	return &array_to_string(\@type);	
+        return &array_to_string(\@type);
     }
 }
 
@@ -70,7 +71,7 @@ sub parse_args {
     my $args    = $request->{arg};
     my %opt     = ();
     my %cmds    = ();
-    my @fsp = (
+    my @fsp     = (
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
@@ -79,7 +80,7 @@ sub parse_args {
         "cec_off_policy"
     );
     my @bpa = (
-	"frame",
+        "frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
@@ -101,7 +102,7 @@ sub parse_args {
         "huge_page"
     );
     my @frame = (
-	"frame",
+        "frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
@@ -116,13 +117,13 @@ sub parse_args {
         "pending_power_on_side"
     );
 
- 
-    
+
+
     my %rsp = (
         fsp   => \@fsp,
         bpa   => \@bpa,
         cec   => \@cec,
-        blade   => \@blade,
+        blade => \@blade,
         frame => \@frame,
     );
     #############################################
@@ -131,7 +132,7 @@ sub parse_args {
     #my $typetab  = xCAT::Table->new( 'nodetype' );
     #my $nodes = $request->{node};
     #foreach (@$nodes) {
-    #    if ( defined( $typetab )) {      
+    #    if ( defined( $typetab )) {
     #        my ($ent) = $typetab->getAttribs({ node=>$_},'nodetype');
     #        if ( defined($ent) ) {
     #               $request->{hwtype} = $ent->{nodetype};
@@ -141,117 +142,117 @@ sub parse_args {
     #    }
     #
     #}
-    
+
     my $nodes = $request->{node};
     my $typehash = xCAT::DBobjUtils->getnodetype($nodes, "ppc");
     foreach my $nn (@$nodes) {
-        $request->{hwtype} =$$typehash{$nn};
+        $request->{hwtype} = $$typehash{$nn};
         last if ($request->{hwtype});
     }
- 
-    my $supported = $rsp{$request->{hwtype}};
-     
+
+    my $supported = $rsp{ $request->{hwtype} };
+
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($command);
-        return( [$_[0], $usage_string] );
+        return ([ $_[0], $usage_string ]);
     };
     #############################################
     # Process command-line arguments
     #############################################
-    if ( !defined( $args )) {
-        return(usage( "No command specified" ));
+    if (!defined($args)) {
+        return (usage("No command specified"));
     }
     #############################################
     # Checks case in GetOptions, allows opts
     # to be grouped (e.g. -vx), and terminates
     # at the first unrecognized option.
     #############################################
-    @ARGV = @$args;
+    @ARGV                     = @$args;
     $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
+    Getopt::Long::Configure("bundling");
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(V|verbose resetnet))) {
-        return( usage() );
+    if (!GetOptions(\%opt, qw(V|verbose resetnet))) {
+        return (usage());
     }
     ####################################
     # Check for "-" with no option
     ####################################
-    if ( grep(/^-$/, @ARGV )) {
-        return(usage( "Missing option: -" ));
+    if (grep(/^-$/, @ARGV)) {
+        return (usage("Missing option: -"));
     }
     ####################################
-    # Check for "=" with no argument 
+    # Check for "=" with no argument
     ####################################
-    if (my ($c) = grep(/=$/, @ARGV )) {
-        return(usage( "Missing argument: $c" ));
+    if (my ($c) = grep(/=$/, @ARGV)) {
+        return (usage("Missing argument: $c"));
     }
     ####################################
     # Check for unsupported commands
     ####################################
     my @arg_array = @ARGV;
-    my @fsp_cmds = ();
-    my @ppc_cmds = ();
-    foreach my $arg ( @arg_array ) {
-        my ($command,$value) = split( /=/, $arg );
-        if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
+    my @fsp_cmds  = ();
+    my @ppc_cmds  = ();
+    foreach my $arg (@arg_array) {
+        my ($command, $value) = split(/=/, $arg);
+        if (!grep(/^$command$/, @$supported) and !$opt{resetnet}) {
             $request->{arg} = [$arg];
-            my $res = xCAT::PPCcfg::parse_args($request, @_); 
+            my $res = xCAT::PPCcfg::parse_args($request, @_);
             if (ref($res) eq 'ARRAY') {
-		        my $check_cmd = &check_command($command, \%rsp);
-		        if (!defined($check_cmd)) {
+                my $check_cmd = &check_command($command, \%rsp);
+                if (!defined($check_cmd)) {
                     return $res;
-		        } else {
-		            return ([$_[0], "'$command' is only supported by type $check_cmd."]);
+                } else {
+                    return ([ $_[0], "'$command' is only supported by type $check_cmd." ]);
                 }
             } else {
                 push @ppc_cmds, $command;
-            } 
+            }
         } else {
             push @fsp_cmds, $command;
         }
-        if ( exists( $cmds{$command} )) {
-            return(usage( "Command multiple times: $command" ));
+        if (exists($cmds{$command})) {
+            return (usage("Command multiple times: $command"));
         }
         $cmds{$command} = $value;
     }
-    
+
     $request->{arg} = \@arg_array;
     if (scalar(@fsp_cmds) && scalar(@ppc_cmds)) {
         my $fsp_cmds_string = &array_to_string(\@fsp_cmds);
         my $ppc_cmds_string = &array_to_string(\@ppc_cmds);
         return (usage("Invalid command array: $fsp_cmds_string can not execute with $ppc_cmds_string."));
-    } elsif(scalar(@ppc_cmds)) {
+    } elsif (scalar(@ppc_cmds)) {
         my @enableASMI = xCAT::TableUtils->get_site_attribute("enableASMI");
         if (defined($enableASMI[0])) {
             $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
             if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
                 $request->{enableASMI} = 1;
-            } 
-        } 
+            }
+        }
         if ($request->{enableASMI} ne '1') {
-            return (usage( "You should enable \"ASMI\" first for \'$command\'."));
+            return (usage("You should enable \"ASMI\" first for \'$command\'."));
         }
     }
     ####################################
-    # Check command arguments 
+    # Check command arguments
     ####################################
-    foreach ( keys %cmds ) {
-        if ( $cmds{$_} ) {
-            my $result = parse_option( $request, $_, $cmds{$_} );
-            if ( $result ) {
-                return( usage($result) );
+    foreach (keys %cmds) {
+        if ($cmds{$_}) {
+            my $result = parse_option($request, $_, $cmds{$_});
+            if ($result) {
+                return (usage($result));
             }
         } elsif ($_ =~ /_passwd$/) {
-            return( usage("No argument specified for '$_'"));
-        } 
+            return (usage("No argument specified for '$_'"));
+        }
     }
-    
+
     ####################################
-    # Return method to invoke 
+    # Return method to invoke
     ####################################
     #if ( $request->{hwtype} =~ /(^hmc|ivm)$/ ) {
     #    $request->{method} = "cfg";
@@ -260,41 +261,41 @@ sub parse_args {
     ####################################
     # Return method to invoke
     ####################################
-    if ( exists($cmds{frame}) or exists($cmds{cec_off_policy})) {
+    if (exists($cmds{frame}) or exists($cmds{cec_off_policy})) {
         $request->{hcp} = (exists($cmds{frame})) ? "bpa" : "fsp";
-        $request->{method} = "cfg"; 
-        return( \%opt );
+        $request->{method} = "cfg";
+        return (\%opt);
     }
 
     ####################################
     # Return method to invoke
     ####################################
-    if ( $opt{resetnet}  ) {
-        $request->{hcp} = "fsp";
+    if ($opt{resetnet}) {
+        $request->{hcp}    = "fsp";
         $request->{method} = "resetnet";
-        return( \%opt );
+        return (\%opt);
     }
-    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})
-            or exists($cmds{setup_failover}) or exists($cmds{force_failover}) or exists ($cmds{huge_page})) {
-        $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
+    if (exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})
+        or exists($cmds{setup_failover}) or exists($cmds{force_failover}) or exists($cmds{huge_page})) {
+        $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa" : "fsp";
         $request->{method} = "do_fspapi_function";
         return (\%opt);
     }
     ####################################
     # Return method to invoke
     ####################################
-    if ( exists($cmds{HMC_passwd}) or exists($cmds{general_passwd}) or exists($cmds{admin_passwd}) or exists($cmds{"*_passwd"}) ) {
-        $request->{hcp} = "fsp";
+    if (exists($cmds{HMC_passwd}) or exists($cmds{general_passwd}) or exists($cmds{admin_passwd}) or exists($cmds{"*_passwd"})) {
+        $request->{hcp}    = "fsp";
         $request->{method} = "passwd";
-        return( \%opt );
+        return (\%opt);
     }
     $request->{method} = \%cmds;
-    return( \%opt );
+    return (\%opt);
 }
 
 
 ##########################################################################
-# Parse the command line optional arguments 
+# Parse the command line optional arguments
 ##########################################################################
 sub parse_option {
 
@@ -302,7 +303,7 @@ sub parse_option {
     my $command = shift;
     my $value   = shift;
 
-  
+
     ####################################
     # Password
     ####################################
@@ -313,32 +314,32 @@ sub parse_option {
     #    }
     #}
 
-    if ( $command eq 'HMC_passwd' or $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq "*_passwd" ) {
-        my ($passwd,$newpasswd) = split /,/, $value;
-        if ( !$newpasswd ) {
-            return( "New password couldn't be empty for user 'HMC', 'admin' or 'general'" );
+    if ($command eq 'HMC_passwd' or $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq "*_passwd") {
+        my ($passwd, $newpasswd) = split /,/, $value;
+        if (!$newpasswd) {
+            return ("New password couldn't be empty for user 'HMC', 'admin' or 'general'");
         }
     }
 
-    if ( $command eq 'frame' ){
-        if ( $value !~ /^\d+$/i && $value ne '*' ) { 
-            return( "Invalid frame number '$value'" );
+    if ($command eq 'frame') {
+        if ($value !~ /^\d+$/i && $value ne '*') {
+            return ("Invalid frame number '$value'");
         }
     }
 
-    if ( $command eq 'cec_off_policy' ){
-        if ( $value !~ /^poweroff$/i && $value !~ /^stayon$/i ) { 
-            return( "Invalid cec_off_policy '$value'" );
+    if ($command eq 'cec_off_policy') {
+        if ($value !~ /^poweroff$/i && $value !~ /^stayon$/i) {
+            return ("Invalid cec_off_policy '$value'");
         }
     }
     if ($command eq 'sysname') {
         if ($value ne '*') {
             if ($value !~ /^[a-zA-Z0-9-_]+$/) {
-                return( "Invalid sysname param '$value'" );
-            } elsif (scalar(@{$request->{node}}) gt '1') {
-                return( "Invalid sysname param '$value'" );
+                return ("Invalid sysname param '$value'");
+            } elsif (scalar(@{ $request->{node} }) gt '1') {
+                return ("Invalid sysname param '$value'");
             }
-            my $len = rindex $value."\$", "\$";
+            my $len = rindex $value . "\$", "\$";
             if ($len > '31') {
                 return ("Invalid sysname param '$value', name is too long, max 31 characters");
             }
@@ -354,85 +355,87 @@ sub parse_option {
             return ("Invalid setup_failover param '$value'");
         }
     }
-    if ($command =~ /^(BSR|force_failover)$/ ) {
+    if ($command =~ /^(BSR|force_failover)$/) {
         return ("BSR value can not be set");
     }
     if ($command =~ /^huge_page$/) {
-	    if ($value !~ /^[0-9]+$/) {
-		    return ("Invalid huge page param '$value'");
-	    }
+        if ($value !~ /^[0-9]+$/) {
+            return ("Invalid huge page param '$value'");
+        }
     }
     return undef;
 }
+
 sub check_node_info {
-	my $hash = shift;
-	my $invalid_node = undef;
-	while (my ($mtsm, $h) = each (%$hash)) {
-		while (my ($name, $d) = each(%$h)) {
-			if (@$d[4] !~ /^(cec|frame|blade)$/) {
-				$invalid_node = $name;
-				last;
-			}
-		}
-	}
-	return $invalid_node;
+    my $hash         = shift;
+    my $invalid_node = undef;
+    while (my ($mtsm, $h) = each(%$hash)) {
+        while (my ($name, $d) = each(%$h)) {
+            if (@$d[4] !~ /^(cec|frame|blade)$/) {
+                $invalid_node = $name;
+                last;
+            }
+        }
+    }
+    return $invalid_node;
 }
 
 my %fspapi_action = (
-        sysname => {
-            query => {
-                cec => "get_cec_name",
-                frame => "get_frame_name"
-            },
-            set => {
-                cec => "set_cec_name",
-                frame => "set_frame_name"
-            }
+    sysname => {
+        query => {
+            cec   => "get_cec_name",
+            frame => "get_frame_name"
         },
-        pending_power_on_side => {
-            query => {
-                cec => "list_firmware_level",
-                blade => "list_firmware_level",
-                frame => "list_firmware_level"
-            },
-            set => {
-                cec => "set_ipl_param",
-                blade => "set_ipl_param",
-                frame => "set_ipl_param"
-            }
+        set => {
+            cec   => "set_cec_name",
+            frame => "set_frame_name"
+          }
+    },
+    pending_power_on_side => {
+        query => {
+            cec   => "list_firmware_level",
+            blade => "list_firmware_level",
+            frame => "list_firmware_level"
         },
-        BSR => {
-            query => {
-                cec => "get_cec_bsr"
-            }    
+        set => {
+            cec   => "set_ipl_param",
+            blade => "set_ipl_param",
+            frame => "set_ipl_param"
+          }
+    },
+    BSR => {
+        query => {
+            cec => "get_cec_bsr"
+          }
+    },
+    setup_failover => {
+        query => {
+            cec => "cec_setup_failover"
         },
-        setup_failover => {
-            query => {
-                cec => "cec_setup_failover"
-            },
-            set => {
-                cec => "cec_setup_failover"
-            }
+        set => {
+            cec => "cec_setup_failover"
+          }
+    },
+    force_failover => {
+        query => {
+            cec => "cec_force_failover"
+          }
+    },
+    huge_page => {
+        query => {
+            cec => "get_huge_page"
         },
-        force_failover => {
-            query => {
-                cec => "cec_force_failover"
-            }
-        },
-        huge_page => {
-		    query => {
-		        cec => "get_huge_page"
-		    },
-		    set => {
-		        cec => "set_huge_page"
-		    }
-        }
+        set => {
+            cec => "set_huge_page"
+          }
+      }
 );
+
 sub do_process_query_res {
-    my $name = shift;
-    my $cmd = shift;
+    my $name   = shift;
+    my $cmd    = shift;
     my $result = shift;
-    my $res = shift;
+    my $res    = shift;
     if (@$res[2] != 0) {
         push @$result, $res;
         return "Error";
@@ -443,33 +446,35 @@ sub do_process_query_res {
         my @values = split(/\n/, @$res[1]);
         foreach my $v (@values) {
             if ($v =~ /pend_power_on_side_(\w+)=(temp|perm),/) {
-                push @$result, [$name, "Pending Power On Side \L\u$1: $2", '0'];
+                push @$result, [ $name, "Pending Power On Side \L\u$1: $2", '0' ];
             } else {
-                push @$result, [$name, $v, '1'];
+                push @$result, [ $name, $v, '1' ];
                 return "Error";
             }
         }
     } elsif ($cmd =~ /^(BSR|huge_page)$/) {
         my @values = split(/\n/, @$res[1]);
         foreach my $v (@values) {
-            push @$result, [$name, $v, '0'];
+            push @$result, [ $name, $v, '0' ];
         }
     } else {
         push @$result, $res;
     }
     return undef;
 }
+
 sub do_query {
     my $request = shift;
-    my $hash = shift;
-    my $cmd = shift;
-    my @result = ();
+    my $hash    = shift;
+    my $cmd     = shift;
+    my @result  = ();
     while (my ($mtms, $h) = each(%$hash)) {
-        while (my($name, $d) = each(%$h)) {
-            my $action = $fspapi_action{$cmd}{query}{@$d[4]};
-            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name."); 
+        while (my ($name, $d) = each(%$h)) {
+            my $action = $fspapi_action{$cmd}{query}{ @$d[4] };
+            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name.");
             my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action);
             &do_process_query_res($name, $cmd, \@result, $values);
+
             #my $res = &do_process_query_res($name, $cmd, \@result, $values);
             #if (defined($res)) {
             #    last;
@@ -478,47 +483,51 @@ sub do_query {
     }
     return (\@result);
 }
+
 sub do_set_get_para {
     my $node_name = shift;
-    my $cmd = shift;
-    my $value = shift;
+    my $cmd       = shift;
+    my $value     = shift;
     if ($cmd =~ /^sysname$/) {
         return (($value eq '*') ? $node_name : $value);
-    } elsif ($cmd =~ /^pending_power_on_side$/){
+    } elsif ($cmd =~ /^pending_power_on_side$/) {
         return ($value =~ /^perm$/) ? '0' : '1';
     } elsif ($cmd =~ /^setup_failover$/) {
         return ($value =~ /^enable$/) ? '1' : '0';
     } else {
-		return $value;
+        return $value;
     }
 }
 
 sub do_process_set_res {
-    my $name = shift;
-    my $cmd = shift;
+    my $name   = shift;
+    my $cmd    = shift;
     my $result = shift;
-    my $res = shift;
+    my $res    = shift;
     if (@$res[1] && @$res[1] !~ /success/i) {
         push @$result, $res;
         return "Error";
     } else {
-        push @$result, [$name, "Success", 0];
+        push @$result, [ $name, "Success", 0 ];
     }
 }
+
 sub do_set {
     my $request = shift;
-    my $hash = shift;
-    my $cmd = shift;
-    my $value = shift;
-    my @result = ();
+    my $hash    = shift;
+    my $cmd     = shift;
+    my $value   = shift;
+    my @result  = ();
     while (my ($mtms, $h) = each(%$hash)) {
-        while (my($name, $d) = each(%$h)) {
-            my $action = $fspapi_action{$cmd}{set}{@$d[4]};
-            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name, param:$value."); 
+        while (my ($name, $d) = each(%$h)) {
+            my $action = $fspapi_action{$cmd}{set}{ @$d[4] };
+            xCAT::MsgUtils->verbose_message($request, "rspconfig :$action for node:$name, param:$value.");
             my $para = &do_set_get_para($name, $cmd, $value);
             my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $para);
-#           print Dumper($values);
+
+            #           print Dumper($values);
             &do_process_set_res($name, $cmd, \@result, $values);
+
             #my $res = &do_process_set_res($name, $cmd, \@result, $values);
             #if (defined($res)) {
             #    last;
@@ -527,24 +536,26 @@ sub do_set {
     }
     return (\@result);
 }
+
 sub do_fspapi_function {
     my $request = shift;
-    my $hash = shift;
-    my $exp = shift;
-    my @ret = ();
+    my $hash    = shift;
+    my $exp     = shift;
+    my @ret     = ();
     my $res;
     my $args = $request->{arg};
     my @fspapi_array = qw/sysname pending_power_on_side BSR setup_failover force_failover huge_page/;
     my $invalid_node = &check_node_info($hash);
+
     if (defined($invalid_node)) {
-        return ([[$invalid_node, "Node must be CEC or Frame", '1']]);
+        return ([ [ $invalid_node, "Node must be CEC or Frame", '1' ] ]);
     }
     foreach my $arg (@$args) {
         my ($cmd, $value) = split /=/, $arg;
-	    if (!grep(/^$cmd$/, @fspapi_array)) {
+        if (!grep(/^$cmd$/, @fspapi_array)) {
             my $fspapi_array_string = &array_to_string(\@fspapi_array);
-	        return ([["Error", "'$cmd' can not execute with $fspapi_array_string", '1']]);
-	    }
+            return ([ [ "Error", "'$cmd' can not execute with $fspapi_array_string", '1' ] ]);
+        }
         if ($value) {
             $res = &do_set($request, $hash, $cmd, $value)
         } else {
@@ -568,20 +579,21 @@ sub passwd {
     my @output  = ();
     my $default;
 
-	foreach my $arg ( @$args ) {
-        my ($user,$value) = split /=/, $arg;
-	if ($user !~ /_passwd$/) {
-	    return ([["Error", "'$user' can not execute with '*_passwd' commands", '1']]);
-	}
-        my ($passwd,$newpasswd) = split /,/, $value;
-        $user =~ s/_passwd$//;
-        #$user =~ s/^HMC$/access/g;
-        
-        if( !$passwd) {
-            $default = 1;    
+    foreach my $arg (@$args) {
+        my ($user, $value) = split /=/, $arg;
+        if ($user !~ /_passwd$/) {
+            return ([ [ "Error", "'$user' can not execute with '*_passwd' commands", '1' ] ]);
         }
-         
-        if ( $user eq "*" ) {
+        my ($passwd, $newpasswd) = split /,/, $value;
+        $user =~ s/_passwd$//;
+
+        #$user =~ s/^HMC$/access/g;
+
+        if (!$passwd) {
+            $default = 1;
+        }
+
+        if ($user eq "*") {
             push @$users, "HMC";
             push @$users, "admin";
             push @$users, "general";
@@ -589,37 +601,37 @@ sub passwd {
             push @$users, $user;
         }
 
-        foreach my $usr ( @$users ) {
-	       if( $default == 1 ) {
-	           $passwd = $default_passwd{$usr};
-	       }
-                
-        	while ( my ($cec,$h) = each(%$hash) ) {
-           			while ( my ($node,$d) = each(%$h) ) {
-               			my $type = @$d[4];
-				my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-                                xCAT::MsgUtils->verbose_message($request, "rspconfig :modify password of $usr for node:$node.");
-				my $cmd = xCAT::FSPcfg::fsp_api_passwd ($request, $node, $d, $usr, $passwd, $newpasswd);
-                		my $Rc = @$cmd[2];
-				my $data = @$cmd[1];
-                		my $usr_back = $usr;
-                		$usr_back =~ s/^access$/HMC/g;
-				push @output,[$node,"$usr_back: $data",$Rc];
+        foreach my $usr (@$users) {
+            if ($default == 1) {
+                $passwd = $default_passwd{$usr};
+            }
+
+            while (my ($cec, $h) = each(%$hash)) {
+                while (my ($node, $d) = each(%$h)) {
+                    my $type = @$d[4];
+                    my $fsp_api = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+                    xCAT::MsgUtils->verbose_message($request, "rspconfig :modify password of $usr for node:$node.");
+                    my $cmd = xCAT::FSPcfg::fsp_api_passwd($request, $node, $d, $usr, $passwd, $newpasswd);
+                    my $Rc       = @$cmd[2];
+                    my $data     = @$cmd[1];
+                    my $usr_back = $usr;
+                    $usr_back =~ s/^access$/HMC/g;
+                    push @output, [ $node, "$usr_back: $data", $Rc ];
 
 
-                		##################################
-                		# Write the new password to table
-                		##################################
-                		if ( $Rc == 0 ) {
-                                    xCAT::MsgUtils->verbose_message($request, "rspconfig :update xCATdb for node:$node,ID:$usr.");
-                		    xCAT::PPCdb::update_credentials( $node, $type, $usr, $newpasswd );
-                		}
-            			}
-        		}
-		}
-	}
- 
-    return( \@output );
+                    ##################################
+                    # Write the new password to table
+                    ##################################
+                    if ($Rc == 0) {
+                        xCAT::MsgUtils->verbose_message($request, "rspconfig :update xCATdb for node:$node,ID:$usr.");
+                        xCAT::PPCdb::update_credentials($node, $type, $usr, $newpasswd);
+                    }
+                }
+            }
+        }
+    }
+
+    return (\@output);
 }
 
 ##########################################################################
@@ -633,22 +645,22 @@ sub cfg {
     my $args    = $request->{arg};
     my $result;
 
-    foreach ( @$args ) {
+    foreach (@$args) {
         ##################################
         # Ignore switches in command-line
         ##################################
-        unless ( /^-/ ) {
-            my ($cmd,$value) = split /=/;
-	    if ($cmd !~ /(frame|cec_off_policy)/) {
-		return ([["Error", "'$cmd' can not execute with 'frame' or 'cec_off_policy'", '1']]);		
-	    }
+        unless (/^-/) {
+            my ($cmd, $value) = split /=/;
+            if ($cmd !~ /(frame|cec_off_policy)/) {
+                return ([ [ "Error", "'$cmd' can not execute with 'frame' or 'cec_off_policy'", '1' ] ]);
+            }
 
             no strict 'refs';
-            $result = $rspconfig{$cmd}( $request, $value, $hash );
+            $result = $rspconfig{$cmd}($request, $value, $hash);
             use strict;
         }
     }
-    return( $result );
+    return ($result);
 }
 
 sub frame {
@@ -657,14 +669,14 @@ sub frame {
     my $hash    = shift;
     my $arg     = $request->{arg};
 
-    foreach ( @$arg ) {
+    foreach (@$arg) {
         my $result;
         my $Rc;
         my $data;
 
         my ($cmd, $value) = split /=/, $_;
-        if ( $cmd ne "frame" ) {
-            return( [["Error","Multiple option $cmd and frame is not accepted", -1]] );
+        if ($cmd ne "frame") {
+            return ([ [ "Error", "Multiple option $cmd and frame is not accepted", -1 ] ]);
         }
 
         #################################
@@ -672,91 +684,92 @@ sub frame {
         # the frame number between hcp
         # and database
         #################################
-        my $tab = xCAT::Table->new( "ppc" );
-        
-        while ( my ($cec,$h) = each(%$hash) ) {
-            while ( my ($node,$d) = each(%$h) ) {
-                if ( !defined($value) ) {
+        my $tab = xCAT::Table->new("ppc");
+
+        while (my ($cec, $h) = each(%$hash)) {
+            while (my ($node, $d) = each(%$h)) {
+                if (!defined($value)) {
 
                     #################################
                     # Get frame number
                     #################################
-		    #$data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
+                    #$data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
                     xCAT::MsgUtils->verbose_message($request, "rspconfig :get_frame_number for node:$node.");
-		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_frame_number");
+                    $data = xCAT::FSPUtils::fsp_api_action($request, $node, $d, "get_frame_number");
                     $Rc = pop(@$data);
 
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 || @$data[1] =~ /Error/ ) {
-                        return( [[$node,"@$data[1]. If just set the frame number, please wait for 5-10 minutes. Otherwise, maybe other problems cause this failure.",$Rc]] );
+                    if ($Rc != 0 || @$data[1] =~ /Error/) {
+                        return ([ [ $node, "@$data[1]. If just set the frame number, please wait for 5-10 minutes. Otherwise, maybe other problems cause this failure.", $Rc ] ]);
                     }
 
-                    push @$result, [$node,@$data[1], 0];
+                    push @$result, [ $node, @$data[1], 0 ];
 
                     #################################
                     # Set frame number to database
                     #################################
-                    $tab->setNodeAttribs( $node, { id=>@$data[1] } );
+                    $tab->setNodeAttribs($node, { id => @$data[1] });
 
-                } elsif ( $value eq '*' ) {
+                } elsif ($value eq '*') {
                     #################################
                     # Set frame number
-                    # Read the settings from database 
+                    # Read the settings from database
                     #################################
-                    my $ent=$tab->getNodeAttribs( $node,['id'] );
+                    my $ent = $tab->getNodeAttribs($node, ['id']);
 
                     #################################
                     # Return error
                     #################################
-                    if ( !defined($ent) or !defined($ent->{id}) ) {
-                        return( [[$node,"Cannot find frame num in database", -1]] );
+                    if (!defined($ent) or !defined($ent->{id})) {
+                        return ([ [ $node, "Cannot find frame num in database", -1 ] ]);
                     }
-		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
+
+                    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
                     xCAT::MsgUtils->verbose_message($request, "rspconfig :set_frame_number for node:$node,id:$ent->{id}.");
-		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $ent->{id});
+                    $data = xCAT::FSPUtils::fsp_api_action($request, $node, $d, "set_frame_number", 0, $ent->{id});
                     $Rc = pop(@$data);
 
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 ) {
-                        return( [[$node,@$data[1],$Rc]] );
+                    if ($Rc != 0) {
+                        return ([ [ $node, @$data[1], $Rc ] ]);
                     }
 
-                    push @$result, [$node,@$data[1], 0];
-                    push @$result, [$node,"It will take several minutes to complete. So please wait for 5-10 minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
+                    push @$result, [ $node, @$data[1], 0 ];
+                    push @$result, [ $node, "It will take several minutes to complete. So please wait for 5-10 minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0 ];
 
                 } else {
                     #################################
                     # Set frame number
                     # Read the frame number from opt
                     #################################
-		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
+                    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
                     xCAT::MsgUtils->verbose_message($request, "rspconfig :set_frame_number for node:$node,id:$value.");
-                    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "set_frame_number", 0, $value);
-		    $Rc = pop(@$data);
+                    $data = xCAT::FSPUtils::fsp_api_action($request, $node, $d, "set_frame_number", 0, $value);
+                    $Rc = pop(@$data);
 
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 ) {
-                        return( [[$node,@$data[1],$Rc]] );
+                    if ($Rc != 0) {
+                        return ([ [ $node, @$data[1], $Rc ] ]);
                     }
 
-                    push @$result, [$node,@$data[1],0];
-                    push @$result, [$node,"It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
+                    push @$result, [ $node, @$data[1], 0 ];
+                    push @$result, [ $node, "It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0 ];
 
                     #################################
                     # Set frame number to database
                     #################################
-                    $tab->setNodeAttribs( $node, { id=>$value } );
+                    $tab->setNodeAttribs($node, { id => $value });
                 }
             }
 
-            return( [@$result] );
-        }  
+            return ([@$result]);
+        }
     }
 }
 
@@ -765,67 +778,67 @@ sub cec_off_policy {
     my $value   = shift;
     my $hash    = shift;
     my $arg     = $request->{arg};
-    
-    foreach ( @$arg ) {
+
+    foreach (@$arg) {
         my $result;
         my $Rc;
         my $data;
 
         my ($cmd, $value) = split /=/, $_;
-        if ( $cmd ne "cec_off_policy" ) {
-            return( [["Error","Multiple option $cmd and cec is not accepted", -1]] );
+        if ($cmd ne "cec_off_policy") {
+            return ([ [ "Error", "Multiple option $cmd and cec is not accepted", -1 ] ]);
         }
 
-        while ( my ($cec,$h) = each(%$hash) ) {
-            while ( my ($node,$d) = each(%$h) ) {
-                if ( !defined($value) ) {
+        while (my ($cec, $h) = each(%$hash)) {
+            while (my ($node, $d) = each(%$h)) {
+                if (!defined($value)) {
 
                     #################################
-                    # Get platform IPL parameters 
+                    # Get platform IPL parameters
                     #################################
                     xCAT::MsgUtils->verbose_message($request, "rspconfig :get_phyp_cfg_power_off_policy for node:$node.");
-		    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, "get_phyp_cfg_power_off_policy");
+                    $data = xCAT::FSPUtils::fsp_api_action($request, $node, $d, "get_phyp_cfg_power_off_policy");
                     $Rc = pop(@$data);
 
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 ) {
-                        return( [[$node,@$data[1],$Rc]] );
+                    if ($Rc != 0) {
+                        return ([ [ $node, @$data[1], $Rc ] ]);
                     }
-                     
-                    @$data[1] =~ /cec_off_policy=(\w*);/;                    
 
-                    push @$result, [$node, $1, 0];
+                    @$data[1] =~ /cec_off_policy=(\w*);/;
+
+                    push @$result, [ $node, $1, 0 ];
 
 
-                 } else {
+                } else {
                     #################################
-                    # Set cec off policy 
+                    # Set cec off policy
                     #################################
                     xCAT::MsgUtils->verbose_message($request, "rspconfig :set power_off_policy for node:$node,policy:$value.");
-		    if( $value eq "poweroff") {
-		        $value = "cec_off_policy_poweroff";
-		    } else {
-		        $value = "cec_off_policy_stayon";
-		    }
-                    $data = xCAT::FSPUtils::fsp_api_action( $request, $node, $d, $value);
-		    $Rc = pop(@$data);
+                    if ($value eq "poweroff") {
+                        $value = "cec_off_policy_poweroff";
+                    } else {
+                        $value = "cec_off_policy_stayon";
+                    }
+                    $data = xCAT::FSPUtils::fsp_api_action($request, $node, $d, $value);
+                    $Rc = pop(@$data);
 
                     #################################
                     # Return error
                     #################################
-                    if ( $Rc != 0 ) {
-                        return( [[$node,@$data[1],$Rc]] );
+                    if ($Rc != 0) {
+                        return ([ [ $node, @$data[1], $Rc ] ]);
                     }
 
-                    push @$result, [$node,"Success",0];
+                    push @$result, [ $node, "Success", 0 ];
 
                 }
             }
 
-            return( [@$result] );
-        }  
+            return ([@$result]);
+        }
     }
 }
 
@@ -841,29 +854,29 @@ sub cec_off_policy {
 # Invoke fsp_api to change the passwords and store updated passwd in db
 ##########################################################################
 sub fsp_api_passwd {
-    my $request  = shift;
-    my $node_name  = shift;
-    my $attrs      = shift;
-    my $user       = shift;
-    my $passwd     = shift;
-    my $newpasswd  = shift;
-    my $id         = 1;
-    my $fsp_name   = ();
-    my $fsp_ip     = ();
-    my $type = (); # fsp|lpar -- 0. BPA -- 1
+    my $request   = shift;
+    my $node_name = shift;
+    my $attrs     = shift;
+    my $user      = shift;
+    my $passwd    = shift;
+    my $newpasswd = shift;
+    my $id        = 1;
+    my $fsp_name  = ();
+    my $fsp_ip    = ();
+    my $type      = ();      # fsp|lpar -- 0. BPA -- 1
     my @result;
-    my $Rc = 0 ;
+    my $Rc      = 0;
     my %outhash = ();
-    my $res = 0 ;
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+    my $res     = 0;
+    my $fsp_api = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
 
-    $id = $$attrs[0];
+    $id       = $$attrs[0];
     $fsp_name = $$attrs[3];
 
     ############################
     # Set type for FSP or BPA
     ############################
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ ||  $$attrs[4] =~ /^cec$/) {
+    if ($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
     } else {
         $type = 1;
@@ -875,26 +888,26 @@ sub fsp_api_passwd {
     #$fsp_ip = xCAT::NetworkUtils::get_hdwr_ip($fsp_name);
     #$fsp_ip = xCAT::NetworkUtils::getNodeIPaddress($fsp_name);
     #$fsp_ip = xCAT::Utils::getIPaddress($fsp_name);
-    $fsp_ip = xCAT::FSPUtils::getIPaddress($request, $$attrs[4], $fsp_name );
-    if(!defined($fsp_ip) or ($fsp_ip == -3)) {
+    $fsp_ip = xCAT::FSPUtils::getIPaddress($request, $$attrs[4], $fsp_name);
+    if (!defined($fsp_ip) or ($fsp_ip == -3)) {
         $res = "Failed to get IP address for $fsp_name.";
-        return ([$node_name, $res, -1]);
+        return ([ $node_name, $res, -1 ]);
     }
 
     #################################
     # Create command and run command
     #################################
     my $cmd;
-    if( $passwd ne "" ) {
+    if ($passwd ne "") {
         $cmd = "$fsp_api -a set_fsp_pw -u $user -p $passwd -P $newpasswd -t $type:$fsp_ip:$id:$node_name: ";
     } else {
-        $cmd = "$fsp_api -a set_fsp_pw -u $user -P $newpasswd -t $type:$fsp_ip:$id:$node_name: "; 
+        $cmd = "$fsp_api -a set_fsp_pw -u $user -P $newpasswd -t $type:$fsp_ip:$id:$node_name: ";
     }
     $SIG{CHLD} = ();
     $res = xCAT::Utils->runcmd($cmd, -1);
     $Rc = $::RUNCMD_RC;
 
-    if($Rc == 0) {
+    if ($Rc == 0) {
         $res = "Success";
     }
 
@@ -904,13 +917,13 @@ sub fsp_api_passwd {
     ##################
     #$outhash{ $node_name } = $res;
 
-    return( [$node_name,$res, $Rc] );
+    return ([ $node_name, $res, $Rc ]);
 
 }
 
 
 ##########################################################################
-# Do resetnet 
+# Do resetnet
 ##########################################################################
 sub resetnet {
     my $request = shift;

@@ -8,6 +8,7 @@ use Socket;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::TableUtils;
+
 # Define remote shell globals from xCAT
 
 our $XCAT_RSH_CMD;
@@ -123,8 +124,8 @@ sub all_devices
 
     xCAT::MsgUtils->message(
         "E",
-        " Nodes and Devices are considered nodes in xCAT.\n The -A flag is not supported. Use the all group in XCAT to dsh to all node/devices.\n"
-        );
+" Nodes and Devices are considered nodes in xCAT.\n The -A flag is not supported. Use the all group in XCAT to dsh to all node/devices.\n"
+    );
     return;
 }
 
@@ -320,29 +321,29 @@ sub resolve_node
 #-------------------------------------------------------------------------------
 sub get_xcat_remote_cmds
 {
-    # override with site table settings, if they exist 
+    # override with site table settings, if they exist
     my $ssh_setup = 0;
-    my @useSSH = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
+    my @useSSH    = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
     if (defined($useSSH[0])) {
-      $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper 
-      if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
-      {
-          $ssh_setup = 1;
-      }
-    } else {   # default is SSH
-          $ssh_setup = 1;
+        $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper
+        if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
+        {
+            $ssh_setup = 1;
+        }
+    } else {                          # default is SSH
+        $ssh_setup = 1;
     }
-    if (xCAT::Utils->isLinux()) { 
-      $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh
-      $XCAT_RCP_CMD = "/usr/bin/scp"; 
-    } else { # AIX
-      if ((-e "/usr/bin/ssh") && ( $ssh_setup == 1)) {  # ssh is configured 
-        $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh 
-        $XCAT_RCP_CMD = "/usr/bin/scp"; 
-      } else {
-        $XCAT_RSH_CMD = "/usr/bin/rsh";    #  use rsh
-        $XCAT_RCP_CMD = "/usr/bin/rcp"; 
-      }
+    if (xCAT::Utils->isLinux()) {
+        $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh
+        $XCAT_RCP_CMD = "/usr/bin/scp";
+    } else {                               # AIX
+        if ((-e "/usr/bin/ssh") && ($ssh_setup == 1)) {    # ssh is configured
+            $XCAT_RSH_CMD = "/usr/bin/ssh";                # use ssh
+            $XCAT_RCP_CMD = "/usr/bin/scp";
+        } else {
+            $XCAT_RSH_CMD = "/usr/bin/rsh";                #  use rsh
+            $XCAT_RCP_CMD = "/usr/bin/rcp";
+        }
     }
 
 }
@@ -413,7 +414,7 @@ sub get_xcat_node_list
 #-------------------------------------------------------------------------------
 sub get_xcat_nodegroup_table
 {
-    my $node_list = "";
+    my $node_list  = "";
     my @nodegroups = xCAT::TableUtils->list_all_node_groups;
     for my $group (@nodegroups)
     {

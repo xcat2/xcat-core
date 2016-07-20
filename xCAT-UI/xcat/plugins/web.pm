@@ -89,18 +89,18 @@ sub process_request {
     # Check whether the request is authorized or not
     @_ = split ' ', $request->{arg}->[0];
     my $cmd = $_[0];
-    if ( grep { $_ eq $cmd } keys %authorized_cmds ) {
+    if (grep { $_ eq $cmd } keys %authorized_cmds) {
         my $func = $authorized_cmds{$cmd};
-        $func->( $request, $callback, $sub_req );
+        $func->($request, $callback, $sub_req);
     }
     else {
         $callback->(
-            { error => "$cmd is not authorized!\n", errorcode => [1] } );
+            { error => "$cmd is not authorized!\n", errorcode => [1] });
     }
 }
 
 sub web_lsevent {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my @ret = `$request->{arg}->[0]`;
 
     # Please refer the manpage for the output format of lsevent
@@ -110,10 +110,10 @@ sub web_lsevent {
     my $j      = 0;
 
     foreach my $item (@ret) {
-        if ( $item ne "\n" ) {
+        if ($item ne "\n") {
             chomp $item;
-            my ( $key, $value ) = split( "=", $item );
-            if ( $j < 2 ) {
+            my ($key, $value) = split("=", $item);
+            if ($j < 2) {
                 $record .= $value . ';';
             }
             else {
@@ -121,68 +121,68 @@ sub web_lsevent {
             }
 
             $j++;
-            if ( $j == 3 ) {
+            if ($j == 3) {
                 $i++;
                 $j = 0;
-                push( @$data, $record );
+                push(@$data, $record);
                 $record = '';
             }
         }
 
     }
 
-    $callback->( { data => $data } );
+    $callback->({ data => $data });
 }
 
 sub web_mkcondresp {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $conditionName = $request->{arg}->[1];
     my $temp          = $request->{arg}->[2];
     my $cmd           = '';
-    my @resp          = split( ':', $temp );
+    my @resp          = split(':', $temp);
 
     # Create new associations
-    if ( 1 < length( @resp[0] ) ) {
-        $cmd = substr( @resp[0], 1 );
+    if (1 < length(@resp[0])) {
+        $cmd = substr(@resp[0], 1);
         $cmd =~ s/,/ /;
         $cmd = 'mkcondresp ' . $conditionName . ' ' . $cmd;
-        my $retInfo = xCAT::Utils->runcmd( $cmd, -1, 1 );
+        my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
     }
 
     # Delete old associations
-    if ( 1 < length( @resp[1] ) ) {
-        $cmd = substr( @resp[1], 1 );
+    if (1 < length(@resp[1])) {
+        $cmd = substr(@resp[1], 1);
         $cmd =~ s/,/ /;
         $cmd = 'rmcondresp ' . $conditionName . ' ' . $cmd;
-        my $retInfo = xCAT::Utils->runcmd( $cmd, -1, 1 );
+        my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
     }
 
     # There is no output for mkcondresp
     $cmd = 'startcondresp ' . $conditionName;
-    my $refInfo = xCAT::Utils->runcmd( $cmd, -1, 1 );
-    $callback->( { data => "Success." } );
+    my $refInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+    $callback->({ data => "Success." });
 }
 
 sub web_startcondresp {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $conditionName = $request->{arg}->[1];
     my $cmd           = 'startcondresp "' . $conditionName . '"';
-    my $retInfo       = xCAT::Utils->runcmd( $cmd, -1, 1 );
+    my $retInfo       = xCAT::Utils->runcmd($cmd, -1, 1);
     $callback->(
-        { data => 'start monitor "' . $conditionName . '" Successful.' } );
+        { data => 'start monitor "' . $conditionName . '" Successful.' });
 }
 
 sub web_stopcondresp {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $conditionName = $request->{arg}->[1];
     my $cmd           = 'stopcondresp "' . $conditionName . '"';
-    my $retInfo       = xCAT::Utils->runcmd( $cmd, -1, 1 );
+    my $retInfo       = xCAT::Utils->runcmd($cmd, -1, 1);
     $callback->(
-        { data => 'stop monitor "' . $conditionName . '" Successful.' } );
+        { data => 'stop monitor "' . $conditionName . '" Successful.' });
 }
 
 sub web_lscond {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $nodeRange = $request->{arg}->[1];
     my $names     = '';
 
@@ -193,26 +193,26 @@ sub web_lscond {
         my $nodeCount = @nodes;
 
         # No node in this group
-        if ( 1 > $nodeCount ) {
+        if (1 > $nodeCount) {
             return;
         }
 
         # No conditions return
-        my $tempCmd = 'lscondition -d :' . join( ',', @nodes );
-        my $retInfo = xCAT::Utils->runcmd( $tempCmd, -1, 1 );
-        if ( 1 > @$retInfo ) {
+        my $tempCmd = 'lscondition -d :' . join(',', @nodes);
+        my $retInfo = xCAT::Utils->runcmd($tempCmd, -1, 1);
+        if (1 > @$retInfo) {
             return;
         }
 
         shift @$retInfo;
         shift @$retInfo;
         foreach my $line (@$retInfo) {
-            my @temp = split( ':', $line );
+            my @temp = split(':', $line);
             $tempHash{ @temp[0] }++;
         }
 
-        foreach my $name ( keys(%tempHash) ) {
-            if ( $nodeCount == $tempHash{$name} ) {
+        foreach my $name (keys(%tempHash)) {
+            if ($nodeCount == $tempHash{$name}) {
                 $names = $names . $name . ';';
             }
         }
@@ -220,41 +220,41 @@ sub web_lscond {
 
     # Only list the conditions on local
     else {
-        my $retInfo = xCAT::Utils->runcmd( 'lscondition -d', -1, 1 );
-        if ( 2 > @$retInfo ) {
+        my $retInfo = xCAT::Utils->runcmd('lscondition -d', -1, 1);
+        if (2 > @$retInfo) {
             return;
         }
 
         shift @$retInfo;
         shift @$retInfo;
         foreach my $line (@$retInfo) {
-            my @temp = split( ':', $line );
-            $names = $names . @temp[0] . ':' . substr( @temp[2], 1, 3 ) . ';';
+            my @temp = split(':', $line);
+            $names = $names . @temp[0] . ':' . substr(@temp[2], 1, 3) . ';';
         }
     }
 
-    if ( '' eq $names ) {
+    if ('' eq $names) {
         return;
     }
 
-    $names = substr( $names, 0, ( length($names) - 1 ) );
-    $callback->( { data => $names } );
+    $names = substr($names, 0, (length($names) - 1));
+    $callback->({ data => $names });
 }
 
 sub web_mkcondition {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
-    if ( 'change' eq $request->{arg}->[1] ) {
+    if ('change' eq $request->{arg}->[1]) {
         my @nodes;
         my $conditionName = $request->{arg}->[2];
         my $groupName     = $request->{arg}->[3];
 
         my $retInfo =
-          xCAT::Utils->runcmd( 'nodels ' . $groupName . " ppc.nodetype", -1,
-            1 );
+          xCAT::Utils->runcmd('nodels ' . $groupName . " ppc.nodetype", -1,
+            1);
         foreach my $line (@$retInfo) {
-            my @temp = split( ':', $line );
-            if ( @temp[1] !~ /lpar/ ) {
+            my @temp = split(':', $line);
+            if (@temp[1] !~ /lpar/) {
                 $callback->(
                     {
                         data =>
@@ -264,61 +264,61 @@ sub web_mkcondition {
                 return;
             }
 
-            push( @nodes, @temp[0] );
+            push(@nodes, @temp[0]);
         }
 
-        xCAT::Utils->runcmd( 'chcondition -n ' + join( ',', @nodes ) + '-m m ' +
-              $conditionName );
-        $callback->( { data => 'Change scope success.' } );
+        xCAT::Utils->runcmd('chcondition -n ' + join(',', @nodes) + '-m m ' +
+              $conditionName);
+        $callback->({ data => 'Change scope success.' });
     }
 
 }
 
 sub web_lsresp {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $names = '';
     my @temp;
-    my $retInfo = xCAT::Utils->runcmd( 'lsresponse -d', -1, 1 );
+    my $retInfo = xCAT::Utils->runcmd('lsresponse -d', -1, 1);
 
     shift @$retInfo;
     shift @$retInfo;
     foreach my $line (@$retInfo) {
-        @temp = split( ':', $line );
+        @temp = split(':', $line);
         $names = $names . @temp[0] . ';';
     }
 
-    $names = substr( $names, 0, ( length($names) - 1 ) );
-    $callback->( { data => $names } );
+    $names = substr($names, 0, (length($names) - 1));
+    $callback->({ data => $names });
 }
 
 sub web_lscondresp {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $names = '';
     my @temp;
 
     # If there is a condition name, then we only show the condition linked associations
-    if ( $request->{arg}->[1] ) {
+    if ($request->{arg}->[1]) {
         my $cmd = 'lscondresp -d ' . $request->{arg}->[1];
-        my $retInfo = xCAT::Utils->runcmd( $cmd, -1, 1 );
-        if ( 2 > @$retInfo ) {
-            $callback->( { data => '' } );
+        my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+        if (2 > @$retInfo) {
+            $callback->({ data => '' });
             return;
         }
 
         shift @$retInfo;
         shift @$retInfo;
         for my $line (@$retInfo) {
-            @temp = split( ':', $line );
+            @temp = split(':', $line);
             $names = $names . @temp[1] . ';';
         }
     }
 
-    $names = substr( $names, 0, ( length($names) - 1 ) );
-    $callback->( { data => $names } );
+    $names = substr($names, 0, (length($names) - 1));
+    $callback->({ data => $names });
 }
 
 sub web_update {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $os         = "unknown";
     my $rpmNames   = $request->{arg}->[1];
     my $repository = $request->{arg}->[2];
@@ -329,11 +329,11 @@ sub web_update {
     my $remoteRpmFilePath = undef;
     my $localRpmFilePath  = undef;
 
-    if ( xCAT::Utils->isLinux() ) {
+    if (xCAT::Utils->isLinux()) {
         $os = xCAT::Utils->osver();
 
         # SUSE Linux
-        if ( $os =~ /sles.*/ ) {
+        if ($os =~ /sles.*/) {
             $rpmNames =~ s/,/ /g;
 
             # Create zypper command
@@ -344,12 +344,12 @@ sub web_update {
         else {
 
             # Check the yum config file, and detect if it exists
-            if ( -e "/tmp/xCAT_update.yum.conf" ) {
+            if (-e "/tmp/xCAT_update.yum.conf") {
                 unlink("/tmp/xCAT_update.yum.conf");
             }
 
             # Create file, return error if failed
-            unless ( open( $fileHandle, '>>', "/tmp/xCAT_update.yum.conf" ) ) {
+            unless (open($fileHandle, '>>', "/tmp/xCAT_update.yum.conf")) {
                 $callback->(
                     { error => "Created temp file error!\n", errorcode => [1] }
                 );
@@ -372,7 +372,7 @@ sub web_update {
 
         # Run the command and return the result
         $returnInfo = readpipe($cmd);
-        $callback->( { info => $returnInfo } );
+        $callback->({ info => $returnInfo });
     }
 
     # AIX
@@ -380,31 +380,31 @@ sub web_update {
 
         # Open the RPM path and read the page's content
         $webpageContent = LWP::Simple::get($repository);
-        unless ( defined($webpageContent) ) {
+        unless (defined($webpageContent)) {
             $callback->({
                     error     => "open $repository error, please check!!",
                     errorcode => [1]
-                });
+            });
             return;
         }
 
         # Must support updating several RPM
-        foreach ( split( /,/, $rpmNames ) ) {
+        foreach (split(/,/, $rpmNames)) {
 
             # Find out RPMs corresponding RPM HREF on the web page
             $webpageContent =~ m/href="($_-.*?[ppc64|noarch].rpm)/i;
-            unless ( defined($1) ) {
+            unless (defined($1)) {
                 next;
             }
             $remoteRpmFilePath = $repository . $1;
             $localRpmFilePath  = '/tmp/' . $1;
 
             # Download RPM package to temp
-            unless ( -e $localRpmFilePath ) {
+            unless (-e $localRpmFilePath) {
                 $cmd = "wget -O " . $localRpmFilePath . " " . $remoteRpmFilePath;
-                if ( 0 != system($cmd) ) {
+                if (0 != system($cmd)) {
                     $returnInfo = $returnInfo . "update " . $_ . " failed: cannot download the RPM\n";
-                    $callback->( { error => $returnInfo, errorcode => [1] } );
+                    $callback->({ error => $returnInfo, errorcode => [1] });
                     return;
                 }
             }
@@ -414,23 +414,23 @@ sub web_update {
             $returnInfo = $returnInfo . readpipe($cmd);
         }
 
-        $callback->( { info => $returnInfo } );
+        $callback->({ info => $returnInfo });
     }
 }
 
 sub web_unlock {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $node     = $request->{arg}->[1];
     my $password = $request->{arg}->[2];
 
     # Unlock a node by setting up the SSH keys
     my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K 2>&1`;
 
-    $callback->( { data => $out } );
+    $callback->({ data => $out });
 }
 
 sub web_unlockByIP {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $node     = $request->{arg}->[1];
     my $password = $request->{arg}->[2];
     my $ip       = $request->{arg}->[3];
@@ -438,22 +438,22 @@ sub web_unlockByIP {
     # Unlock a node by setting up the SSH keys
     my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K --ip $ip 2>&1`;
 
-    $callback->( { data => $out } );
+    $callback->({ data => $out });
 }
 
 sub web_unlockShow {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $node     = $request->{arg}->[1];
-    my $show     = $request->{arg}->[2];
+    my ($request, $callback, $sub_req) = @_;
+    my $node = $request->{arg}->[1];
+    my $show = $request->{arg}->[2];
 
     # Unlock a node by setting up the SSH keys
     my $out = `/opt/xcat/bin/xdsh $node -K --show $show 2>&1`;
 
-    $callback->( { data => $out } );
+    $callback->({ data => $out });
 }
 
 sub web_gangliastatus {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
     my $nr  = $request->{arg}->[1];
@@ -463,29 +463,29 @@ sub web_gangliastatus {
     # Output looks like:
     #     node_1: Checking for gmond: ..running
     #     node_2: Checking for gmond: ..running
-    my @lines = split( '\n', $out );
+    my @lines = split('\n', $out);
     my $line;
     my $status;
     foreach $line (@lines) {
-        if ( $line =~ m/running/i ) {
+        if ($line =~ m/running/i) {
             $status = 'on';
         }
         else {
             $status = 'off';
         }
 
-        @_ = split( ': ', $line );
+        @_ = split(': ', $line);
         $callback->({
-            node => [{
-                    name => [ $_[0] ],    # Node name
-                    data => [$status]     # Output
-                }]
+                node => [ {
+                        name => [ $_[0] ],    # Node name
+                        data => [$status]     # Output
+                    } ]
         });
     }
 }
 
 sub web_gangliaconf() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
     my $nr = $request->{arg}->[1];
@@ -511,19 +511,19 @@ sub web_gangliaconf() {
         $output .= `/opt/xcat/bin/moncfg gangliamon -r`;
     }
 
-    my @lines = split( '\n', $output );
+    my @lines = split('\n', $output);
     foreach (@lines) {
         if ($_) {
-            $info .= ( $_ . "\n" );
+            $info .= ($_ . "\n");
         }
     }
 
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_gangliastart() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
     my $nr = $request->{arg}->[1];
@@ -556,19 +556,19 @@ sub web_gangliastart() {
         $output .= `/opt/xcat/bin/monstart gangliamon -r`;
     }
 
-    my @lines = split( '\n', $output );
+    my @lines = split('\n', $output);
     foreach (@lines) {
         if ($_) {
-            $info .= ( $_ . "\n" );
+            $info .= ($_ . "\n");
         }
     }
 
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_gangliastop() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
     my $nr = $request->{arg}->[1];
@@ -591,39 +591,39 @@ sub web_gangliastop() {
         $output .= `/opt/xcat/bin/monstop gangliamon -r`;
     }
 
-    my @lines = split( '\n', $output );
+    my @lines = split('\n', $output);
     foreach (@lines) {
         if ($_) {
-            $info .= ( $_ . "\n" );
+            $info .= ($_ . "\n");
         }
     }
 
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_gangliacheck() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
     my $nr = $request->{arg}->[1];
-    if ( !$nr ) {
+    if (!$nr) {
         $nr = '';
     }
 
     # Check if ganglia RPMs are installed
     my $info;
     my $info = `/opt/xcat/bin/xdsh $nr "rpm -q ganglia-gmond libganglia libconfuse"`;
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_installganglia() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get node range
-    my $nr    = $request->{arg}->[1];
-    my @nodes = split( ',', $nr );
+    my $nr = $request->{arg}->[1];
+    my @nodes = split(',', $nr);
 
     # Loop through each node
     my $info;
@@ -637,34 +637,34 @@ sub web_installganglia() {
     foreach (@nodes) {
 
         # Get os, arch, profile, and provmethod
-        $tab   = xCAT::Table->new('nodetype');
+        $tab = xCAT::Table->new('nodetype');
         $attrs =
-          $tab->getNodeAttribs( $_, [ 'os', 'arch', 'profile', 'provmethod' ] );
+          $tab->getNodeAttribs($_, [ 'os', 'arch', 'profile', 'provmethod' ]);
 
         # If any attributes are missing, skip
-        if ( !$attrs->{'os'}
-                    || !$attrs->{'arch'}
-                    || !$attrs->{'profile'}
-                    || !$attrs->{'provmethod'} ){
+        if (!$attrs->{'os'}
+            || !$attrs->{'arch'}
+            || !$attrs->{'profile'}
+            || !$attrs->{'provmethod'}) {
             $callback->({ info => "$_: (Error) Missing attribute (os, arch, profile, or provmethod) in nodetype table" });
             next;
         }
 
         # Get the right OS type
-        if ( $attrs->{'os'} =~ /fedora/ ) {
+        if ($attrs->{'os'} =~ /fedora/) {
             $osType = 'fedora';
         } elsif ($attrs->{'os'} =~ /rh/
-                    || $attrs->{'os'} =~ /rhel/
-                    || $attrs->{'os'} =~ /rhels/ ) {
+            || $attrs->{'os'} =~ /rhel/
+            || $attrs->{'os'} =~ /rhels/) {
             $osType = 'rh';
-        } elsif ( $attrs->{'os'} =~ /sles/ ) {
+        } elsif ($attrs->{'os'} =~ /sles/) {
             $osType = 'sles';
         }
 
-                # Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
-                # If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
+        # Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
+        # If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
         $dir = "/install/post/otherpkgs/$attrs->{'os'}/$attrs->{'arch'}/";
-        if (!( `test -e $dir/ganglia-gmond-* && echo 'File exists'`
+        if (!(`test -e $dir/ganglia-gmond-* && echo 'File exists'`
                 && `test -e $dir/libconfuse-* && echo 'File exists'`
                 && `test -e $dir/libganglia-* && echo 'File exists'`
             )) {
@@ -676,15 +676,16 @@ sub web_installganglia() {
 
         # Find pkglist directory
         $dir = "/install/custom/$attrs->{'provmethod'}/$osType";
-        if ( !(`test -d $dir && echo 'Directory exists'`) ) {
+        if (!(`test -d $dir && echo 'Directory exists'`)) {
+
             # Create pkglist directory
             `mkdir -p $dir`;
         }
 
-                # Find pkglist file
-                # Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
+        # Find pkglist file
+        # Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
         $pkglist = "$attrs->{'profile'}.$attrs->{'os'}.$attrs->{'arch'}.otherpkgs.pkglist";
-        if ( !(`test -e $dir/$pkglist && echo 'File exists'`) ) {
+        if (!(`test -e $dir/$pkglist && echo 'File exists'`)) {
 
             # Copy default otherpkgs.pkglist
             $defaultDir = "/opt/xcat/share/xcat/$attrs->{'provmethod'}/$osType";
@@ -706,25 +707,26 @@ sub web_installganglia() {
 
         # Check if libapr1 is installed
         $info = `xdsh $_ "rpm -qa libapr1"`;
-        if ( !( $info =~ /libapr1/ ) ) {
+        if (!($info =~ /libapr1/)) {
             $callback->(
-                { info => "$_: (Error) libapr1 package not installed" } );
+                { info => "$_: (Error) libapr1 package not installed" });
             next;
         }
 
         # Install Ganglia RPMs using updatenode
-        $callback->( { info => "$_: Installing Ganglia..." } );
+        $callback->({ info => "$_: Installing Ganglia..." });
         $info = `/opt/xcat/bin/updatenode $_ -S`;
-        $callback->( { info => "$info" } );
+        $callback->({ info => "$info" });
     }
 
     return;
 }
 
 sub web_gangliaShow {
-        # Get ganglia data from RRD file
-        
-    my ( $request, $callback, $sub_req ) = @_;
+
+    # Get ganglia data from RRD file
+
+    my ($request, $callback, $sub_req) = @_;
     my $nodename   = $request->{arg}->[1];
     my $timeRange  = 'now-1h';
     my $resolution = 60;
@@ -736,25 +738,25 @@ sub web_gangliaShow {
     my $dirname = '/var/lib/ganglia/rrds/__SummaryInfo__/';
 
     # Get the summary for this grid (the meaning of grid is referenced from Ganglia)
-    if ( '_grid_' ne $nodename ) {
+    if ('_grid_' ne $nodename) {
         $dirname = '/var/lib/ganglia/rrds/' . $nodename . '/';
     }
 
-    if ( 'hour' eq $request->{arg}->[2] ) {
+    if ('hour' eq $request->{arg}->[2]) {
         $timeRange  = 'now-1h';
         $resolution = 60;
-    } elsif ( 'day' eq $request->{arg}->[2] ) {
+    } elsif ('day' eq $request->{arg}->[2]) {
         $timeRange  = 'now-1d';
         $resolution = 1800;
     }
 
-    if ( '_summary_' eq $metric ) {
+    if ('_summary_' eq $metric) {
         my @metricArray = (
             'load_one',  'cpu_num',    'cpu_idle',  'mem_free',
             'mem_total', 'disk_total', 'disk_free', 'bytes_in',
             'bytes_out'
         );
-        
+
         my $filename = '';
         my $step     = 1;
         my $index    = 0;
@@ -764,10 +766,10 @@ sub web_gangliaShow {
             my $line = '';
             $retStr .= $tempmetric . ':';
             $filename = $dirname . $tempmetric . '.rrd';
-            $cmd      = "rrdtool fetch $filename -s $timeRange -r $resolution AVERAGE";
-            $runInfo = xCAT::Utils->runcmd( $cmd, -1, 1 );
-            if ( scalar(@$runInfo) < 3 ) {
-                $callback->( { data => 'error.' } );
+            $cmd = "rrdtool fetch $filename -s $timeRange -r $resolution AVERAGE";
+            $runInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+            if (scalar(@$runInfo) < 3) {
+                $callback->({ data => 'error.' });
                 return;
             }
 
@@ -777,56 +779,58 @@ sub web_gangliaShow {
 
             # We only support 60 lines for one metric, in order to reduce the data load for web GUI
             $size = scalar(@$runInfo);
-            if ( $size > 60 ) {
-                $step = int( $size / 60 ) + 1;
+            if ($size > 60) {
+                $step = int($size / 60) + 1;
             }
 
-            if ( ( $tempmetric eq 'cpu_idle' ) && ( '_grid_' eq $nodename ) ) {
+            if (($tempmetric eq 'cpu_idle') && ('_grid_' eq $nodename)) {
                 my $cpuidle = 0;
                 my $cpunum  = 0;
-                for ( $index = 0 ; $index < $size ; $index += $step ) {
-                    if ( $runInfo->[$index] =~ /^(\S+): (\S+) (\S+)/ ) {
+                for ($index = 0 ; $index < $size ; $index += $step) {
+                    if ($runInfo->[$index] =~ /^(\S+): (\S+) (\S+)/) {
                         my $timestamp = $1;
                         my $value     = $2;
                         my $valuenum  = $3;
-                        if (( lc($value) =~ /nanq/ ) || ( lc($value) =~ /nan/ )) {
+                        if ((lc($value) =~ /nanq/) || (lc($value) =~ /nan/)) {
+
                             # The rrdtool fetch last line is always NaN, so no need to add into the return string
-                            if ( $index == ( $size - 1 ) ) {
+                            if ($index == ($size - 1)) {
                                 next;
                             }
-                            
+
                             $temp .= $timestamp . ',0,';
                         } else {
                             $cpuidle = sprintf "%.2f", $value;
                             $cpunum  = sprintf "%.2f", $valuenum;
-                            $temp .= $timestamp . ',' . ( sprintf "%.2f", $cpuidle / $cpunum ) . ',';
+                            $temp .= $timestamp . ',' . (sprintf "%.2f", $cpuidle / $cpunum) . ',';
                         }
                     }
                 }
             } else {
-                for ( $index = 0 ; $index < $size ; $index += $step ) {
-                    if ( $runInfo->[$index] =~ /^(\S+): (\S+).*/ ) {
+                for ($index = 0 ; $index < $size ; $index += $step) {
+                    if ($runInfo->[$index] =~ /^(\S+): (\S+).*/) {
                         my $timestamp = $1;
                         my $value     = $2;
-                        if (( lc($value) =~ /nanq/ ) || ( lc($value) =~ /nan/ )) {
+                        if ((lc($value) =~ /nanq/) || (lc($value) =~ /nan/)) {
+
                             # The rrdtool fetch last line is always NaN, so no need to add into the return string
-                            if ( $index == ( $size - 1 ) ) {
+                            if ($index == ($size - 1)) {
                                 next;
                             }
-                            
+
                             $temp .= $timestamp . ',0,';
                         } else {
-                            $temp .= $timestamp . ',' . ( sprintf "%.2f", $2 ) . ',';
+                            $temp .= $timestamp . ',' . (sprintf "%.2f", $2) . ',';
                         }
                     }
                 }
             }
-            
-            $retStr .= substr( $temp, 0, -1 ) . ';';
+
+            $retStr .= substr($temp, 0, -1) . ';';
         }
-        
-        $retStr = substr( $retStr, 0, -1 );
-        $callback->( { data => $retStr } );
+
+        $retStr = substr($retStr, 0, -1);
+        $callback->({ data => $retStr });
         return;
     }
 }
@@ -837,9 +841,10 @@ my $gangliaclustername;
 my $ganglianodename;
 
 sub web_gangliaLatest {
-        # Use socket to connect ganglia port to get the latest value/status
-        
-    my ( $request, $callback, $sub_req ) = @_;
+
+    # Use socket to connect ganglia port to get the latest value/status
+
+    my ($request, $callback, $sub_req) = @_;
     my $type      = $request->{arg}->[1];
     my $groupname = '';
     my $xmlparser;
@@ -853,10 +858,10 @@ sub web_gangliaLatest {
     $ganglianodename     = '';
     undef(%gangliaHash);
 
-    if ( $request->{arg}->[2] ) {
+    if ($request->{arg}->[2]) {
         $groupname = $request->{arg}->[2];
     }
-    if ( 'grid' eq $type ) {
+    if ('grid' eq $type) {
         $xmlparser = XML::Parser->new(
             Handlers => {
                 Start => \&web_gangliaGridXmlStart,
@@ -864,7 +869,7 @@ sub web_gangliaLatest {
             });
         $telnetcmd   = "/?filter=summary\n";
         $tmpFilename = '/tmp/gangliagriddata';
-    } elsif ( 'node' eq $type ) {
+    } elsif ('node' eq $type) {
         $xmlparser = XML::Parser->new(
             Handlers => {
                 Start => \&web_gangliaNodeXmlStart,
@@ -877,32 +882,33 @@ sub web_gangliaLatest {
     # Use socket to telnet 127.0.0.1:8652 (Ganglia's interactive port)
     $connect = IO::Socket::INET->new('127.0.0.1:8652');
     unless ($connect) {
-        $callback->( { 'data' => 'error: connect local port failed.' } );
+        $callback->({ 'data' => 'error: connect local port failed.' });
         return;
     }
 
     print $connect $telnetcmd;
-    open( TEMPFILE, '>' . $tmpFilename );
+    open(TEMPFILE, '>' . $tmpFilename);
     while (<$connect>) {
         print TEMPFILE $_;
     }
-    
+
     close($connect);
     close(TEMPFILE);
 
     $xmlparser->parsefile($tmpFilename);
 
-    if ( 'grid' eq $type ) {
+    if ('grid' eq $type) {
         web_gangliaGridLatest($callback);
-    } elsif ( 'node' eq $type ) {
-        web_gangliaNodeLatest( $callback, $groupname );
+    } elsif ('node' eq $type) {
+        web_gangliaNodeLatest($callback, $groupname);
     }
     return;
 }
 
 sub web_gangliaGridLatest {
-        # Create return data for grid current status
-        
+
+    # Create return data for grid current status
+
     my $callback    = shift;
     my $retStr      = '';
     my $timestamp   = time();
@@ -912,31 +918,32 @@ sub web_gangliaGridLatest {
         'disk_total', 'disk_free', 'bytes_in',  'bytes_out'
     );
 
-    if ( $gangliaHash{'cpu_idle'} ) {
+    if ($gangliaHash{'cpu_idle'}) {
         my $sum = $gangliaHash{'cpu_idle'}->{'SUM'};
         my $num = $gangliaHash{'cpu_idle'}->{'NUM'};
         $retStr .= 'cpu_idle:'
           . $timestamp . ','
-          . ( sprintf( "%.2f", $sum / $num ) ) . ';';
+          . (sprintf("%.2f", $sum / $num)) . ';';
     }
-    
+
     foreach $metricname (@metricArray) {
-        if ( $gangliaHash{$metricname} ) {
+        if ($gangliaHash{$metricname}) {
             $retStr .=
-                $metricname . ':'
+              $metricname . ':'
               . $timestamp . ','
               . $gangliaHash{$metricname}->{'SUM'} . ';';
         }
     }
-    
-    $retStr = substr( $retStr, 0, -1 );
-    $callback->( { data => $retStr } );
+
+    $retStr = substr($retStr, 0, -1);
+    $callback->({ data => $retStr });
 }
 
 sub web_gangliaNodeLatest {
-        # Create return data for node current status
-        
-    my ( $callback, $groupname ) = @_;
+
+    # Create return data for node current status
+
+    my ($callback, $groupname) = @_;
     my $node      = '';
     my $retStr    = '';
     my $timestamp = time() - 180;
@@ -944,59 +951,62 @@ sub web_gangliaNodeLatest {
 
     # Get all nodes by group
     if ($groupname) {
-        @nodes = xCAT::NodeRange::noderange( $groupname, 1 );
+        @nodes = xCAT::NodeRange::noderange($groupname, 1);
     } else {
         @nodes = xCAT::DBobjUtils->getObjectsOfType('node');
     }
-    
+
     foreach $node (@nodes) {
+
         # If the node has Ganglia
-        if ( $gangliaHash{$node} ) {
+        if ($gangliaHash{$node}) {
             my $lastupdate = $gangliaHash{$node}->{'timestamp'};
 
             # Cannot get monitor data for too long
-            if ( $lastupdate < $timestamp ) {
+            if ($lastupdate < $timestamp) {
                 $retStr .= $node . ':ERROR,Can not get monitor data more than 3 minutes!;';
                 next;
             }
 
-            if ( $gangliaHash{$node}->{'load_one'} >
-                $gangliaHash{$node}->{'cpu_num'} ) {
+            if ($gangliaHash{$node}->{'load_one'} >
+                $gangliaHash{$node}->{'cpu_num'}) {
                 $retStr .= $node . ':WARNING,';
             } else {
                 $retStr .= $node . ':NORMAL,';
             }
-            
+
             $retStr .= $gangliaHash{$node}->{'path'} . ';';
         } else {
             $retStr .= $node . ':UNKNOWN,;';
         }
     }
 
-    $retStr = substr( $retStr, 0, -1 );
-    $callback->( { data => $retStr } );
+    $retStr = substr($retStr, 0, -1);
+    $callback->({ data => $retStr });
 }
 
 sub web_gangliaXmlEnd {
-        # XML parser end function, do noting here
+
+    # XML parser end function, do noting here
 }
 
 sub web_gangliaGridXmlStart {
-        # XML parser start function
-        
-    my ( $parseinst, $elementname, %attrs ) = @_;
+
+    # XML parser start function
+
+    my ($parseinst, $elementname, %attrs) = @_;
     my $metricname = '';
 
     # Only parse grid information
     if ($ganglia_return_flag) {
         return;
     }
-    
-    if ( 'METRICS' eq $elementname ) {
+
+    if ('METRICS' eq $elementname) {
         $metricname                        = $attrs{'NAME'};
         $gangliaHash{$metricname}->{'SUM'} = $attrs{'SUM'};
         $gangliaHash{$metricname}->{'NUM'} = $attrs{'NUM'};
-    } elsif ( 'CLUSTER' eq $elementname ) {
+    } elsif ('CLUSTER' eq $elementname) {
         $ganglia_return_flag = 1;
         return;
     } else {
@@ -1005,35 +1015,36 @@ sub web_gangliaGridXmlStart {
 }
 
 sub web_gangliaNodeXmlStart {
+
     # XML parser start function for node current status
-    
-    my ( $parseinst, $elementname, %attrs ) = @_;
+
+    my ($parseinst, $elementname, %attrs) = @_;
     my $metricname = '';
 
     # Save cluster name
-    if ( 'CLUSTER' eq $elementname ) {
+    if ('CLUSTER' eq $elementname) {
         $gangliaclustername = $attrs{'NAME'};
         return;
-    } elsif ( 'HOST' eq $elementname ) {
-        if ( $attrs{'NAME'} =~ /(\S+?)\.(.*)/ ) {
+    } elsif ('HOST' eq $elementname) {
+        if ($attrs{'NAME'} =~ /(\S+?)\.(.*)/) {
             $ganglianodename = $1;
         } else {
             $ganglianodename = $attrs{'NAME'};
         }
-        
+
         $gangliaHash{$ganglianodename}->{'path'} =
           $gangliaclustername . '/' . $attrs{'NAME'};
         $gangliaHash{$ganglianodename}->{'timestamp'} = $attrs{'REPORTED'};
-    } elsif ( 'METRIC' eq $elementname ) {
+    } elsif ('METRIC' eq $elementname) {
         $metricname = $attrs{'NAME'};
-        if ( ( 'load_one' eq $metricname ) || ( 'cpu_num' eq $metricname ) ) {
+        if (('load_one' eq $metricname) || ('cpu_num' eq $metricname)) {
             $gangliaHash{$ganglianodename}->{$metricname} = $attrs{'VAL'};
         }
     }
 }
 
 sub web_rmcmonStart {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $nodeRange = $request->{arg}->[1];
     my $table;
     my $retData = "";
@@ -1041,13 +1052,13 @@ sub web_rmcmonStart {
 
     # Check running status
     $table = xCAT::Table->new('monitoring');
-    my $rmcWorkingStatus = $table->getAttribs( { name => 'rmcmon' }, 'disable' );
+    my $rmcWorkingStatus = $table->getAttribs({ name => 'rmcmon' }, 'disable');
     $table . close();
 
     # RMC monitoring is running so return
     if ($rmcWorkingStatus) {
-        if ( $rmcWorkingStatus->{disable} =~ /0|No|no|NO|N|n/ ) {
-            $callback->( { info => 'RMC Monitoring is running now.' } );
+        if ($rmcWorkingStatus->{disable} =~ /0|No|no|NO|N|n/) {
+            $callback->({ info => 'RMC Monitoring is running now.' });
             return;
         }
     }
@@ -1057,28 +1068,28 @@ sub web_rmcmonStart {
     # Check monsetting table to see if rmc's montype contains performance
     $table = xCAT::Table->new('monsetting');
     my $rmcmonType =
-      $table->getAttribs( { name => 'rmcmon', key => 'montype' }, 'value' );
+      $table->getAttribs({ name => 'rmcmon', key => 'montype' }, 'value');
     $table . close();
 
     # RMC monitoring is not configured right, we should configure it again
     # There is no rmcmon in monsetting table
-    if ( !$rmcmonType ) {
-        $output = xCAT::Utils->runcmd( 'monadd rmcmon -s [montype=perf]', -1, 1 );
+    if (!$rmcmonType) {
+        $output = xCAT::Utils->runcmd('monadd rmcmon -s [montype=perf]', -1, 1);
         foreach (@$output) {
-            $retData .= ( $_ . "\n" );
+            $retData .= ($_ . "\n");
         }
-        
+
         $retData .= "Adding rmcmon to the monsetting table complete.\n";
     }
 
     # Configure before but there is no performance monitoring, so change the table
     else {
-        if ( !( $rmcmonType->{value} =~ /perf/ ) ) {
-            $output = xCAT::Utils->runcmd('chtab name=rmcmon,key=montype monsetting.value=perf', -1, 1 );
+        if (!($rmcmonType->{value} =~ /perf/)) {
+            $output = xCAT::Utils->runcmd('chtab name=rmcmon,key=montype monsetting.value=perf', -1, 1);
             foreach (@$output) {
-                $retData .= ( $_ . "\n" );
+                $retData .= ($_ . "\n");
             }
-            
+
             $retData .= "Change the rmcmon configure in monsetting table finish.\n";
         }
     }
@@ -1086,27 +1097,27 @@ sub web_rmcmonStart {
     # Run the rmccfg command to add all nodes into local RMC configuration
     $output = xCAT::Utils->runcmd("moncfg rmcmon $nodeRange", -1, 1);
     foreach (@$output) {
-        $retData .= ( $_ . "\n" );
+        $retData .= ($_ . "\n");
     }
 
     # Run the rmccfg command to add all nodes into remote RMC configuration
-    $output = xCAT::Utils->runcmd( "moncfg rmcmon $nodeRange -r", -1, 1 );
+    $output = xCAT::Utils->runcmd("moncfg rmcmon $nodeRange -r", -1, 1);
     foreach (@$output) {
-        $retData .= ( $_ . "\n" );
+        $retData .= ($_ . "\n");
     }
 
     # Start the RMC monitor
-    $output = xCAT::Utils->runcmd( "monstart rmcmon", -1, 1 );
+    $output = xCAT::Utils->runcmd("monstart rmcmon", -1, 1);
     foreach (@$output) {
-        $retData .= ( $_ . "\n" );
+        $retData .= ($_ . "\n");
     }
 
-    $callback->( { info => $retData } );
+    $callback->({ info => $retData });
     return;
 }
 
 sub web_rmcmonShow() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $nodeRange = $request->{arg}->[1];
     my $attr      = $request->{arg}->[2];
     my @nodes;
@@ -1116,34 +1127,35 @@ sub web_rmcmonShow() {
     my $temp = "";
 
     # Only get the system RMC info
-    if ( 'summary' eq $nodeRange ) {
-        $output = xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -o p -a " . $attr, -1, 1 );
+    if ('summary' eq $nodeRange) {
+        $output = xCAT::Utils->runcmd("monshow rmcmon -s -t 60 -o p -a " . $attr, -1, 1);
         foreach $temp (@$output) {
+
             # The attribute name
-            if ( $temp =~ /Pct/ ) {
+            if ($temp =~ /Pct/) {
                 $temp =~ s/ //g;
 
                 # The first one
-                if ( "" eq $retInfo ) {
-                    $retInfo .= ( $temp . ':' );
+                if ("" eq $retInfo) {
+                    $retInfo .= ($temp . ':');
                 } else {
                     $retInfo =~ s/,$/;/;
-                    $retInfo .= ( $temp . ':' );
+                    $retInfo .= ($temp . ':');
                 }
-                
+
                 next;
             }
 
             # The content of the attribute
             $temp =~ m/\s+(\d+\.\d{4})/;
-            if ( defined($1) ) {
-                $retInfo .= ( $1 . ',' );
+            if (defined($1)) {
+                $retInfo .= ($1 . ',');
             }
         }
 
         # Return the RMC info
         $retInfo =~ s/,$//;
-        $callback->( { info => $retInfo } );
+        $callback->({ info => $retInfo });
         return;
     }
 
@@ -1152,10 +1164,10 @@ sub web_rmcmonShow() {
 
         @nodes = xCAT::NodeRange::noderange($nodeRange);
         for $node (@nodes) {
-            if ( -e "/var/rrd/$node" ) {
-                push( @{ $retHash->{node} }, { name => $node, data => 'OK' } );
+            if (-e "/var/rrd/$node") {
+                push(@{ $retHash->{node} }, { name => $node, data => 'OK' });
             } else {
-                push( @{ $retHash->{node} }, { name => $node, data => 'UNKNOWN' } );
+                push(@{ $retHash->{node} }, { name => $node, data => 'UNKNOWN' });
             }
         }
 
@@ -1164,124 +1176,127 @@ sub web_rmcmonShow() {
     }
 
     my $attrName = "";
-    my @attrs = split( /,/, $attr );
+    my @attrs = split(/,/, $attr);
     for $attrName (@attrs) {
         my @attrValue = ();
-        $output = xCAT::Utils->runcmd( "rrdtool fetch /var/rrd/${nodeRange}/${attrName}.rrd -r 60 -s e-1h AVERAGE", -1, 1 );
+        $output = xCAT::Utils->runcmd("rrdtool fetch /var/rrd/${nodeRange}/${attrName}.rrd -r 60 -s e-1h AVERAGE", -1, 1);
         foreach (@$output) {
             $temp = $_;
-            if ( $temp eq '' ) {
+            if ($temp eq '') {
                 next;
             }
 
-            if ( lc($temp) =~ /[nanq|nan]/ ) {
+            if (lc($temp) =~ /[nanq|nan]/) {
                 next;
             }
 
-            if ( $temp =~ /^(\d+): (\S+) (\S+)/ ) {
-                push( @attrValue, ( sprintf "%.2f", $2 ) );
+            if ($temp =~ /^(\d+): (\S+) (\S+)/) {
+                push(@attrValue, (sprintf "%.2f", $2));
             }
         }
 
-        if ( scalar(@attrValue) > 1 ) {
-            push( @{ $retHash->{node} }, { name => $attrName, data => join( ',', @attrValue ) } );
+        if (scalar(@attrValue) > 1) {
+            push(@{ $retHash->{node} }, { name => $attrName, data => join(',', @attrValue) });
         } else {
             $retHash->{node} = { name => $attrName, data => '' };
             last;
         }
     }
-    
+
     $callback->($retHash);
 }
 
 sub web_monls() {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $retInfo = xCAT::Utils->runcmd( "monls", -1, 1 );
+    my ($request, $callback, $sub_req) = @_;
+    my $retInfo = xCAT::Utils->runcmd("monls", -1, 1);
     my $ret = '';
     foreach my $line (@$retInfo) {
-        my @temp = split( /\s+/, $line );
+        my @temp = split(/\s+/, $line);
         $ret .= @temp[0];
-        if ( 'not-monitored' eq @temp[1] ) {
+        if ('not-monitored' eq @temp[1]) {
             $ret .= ':Off;';
         } else {
             $ret .= ':On;';
         }
     }
-    
-    if ( '' eq $ret ) {
+
+    if ('' eq $ret) {
         return;
     }
 
-    $ret = substr( $ret, 0, length($ret) - 1 );
-    $callback->( { data => $ret } );
+    $ret = substr($ret, 0, length($ret) - 1);
+    $callback->({ data => $ret });
 }
 
 sub web_dynamiciprange {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $iprange = $request->{arg}->[1];
 
-    open( TEMPFILE, '>/tmp/iprange.conf' );
+    open(TEMPFILE, '>/tmp/iprange.conf');
     print TEMPFILE "xcat-service-lan:\n";
     print TEMPFILE "dhcp-dynamic-range = " . $iprange . "\n";
     close(TEMPFILE);
 
     # Run xcatsetup command to change the dynamic IP range
-    xCAT::Utils->runcmd( "xcatsetup /tmp/iprange.conf", -1, 1 );
+    xCAT::Utils->runcmd("xcatsetup /tmp/iprange.conf", -1, 1);
     unlink('/tmp/iprange.conf');
-    xCAT::Utils->runcmd( "makedhcp -n", -1, 1 );
+    xCAT::Utils->runcmd("makedhcp -n", -1, 1);
 
     # Restart the DHCP server
-    if ( xCAT::Utils->isLinux() ) {
+    if (xCAT::Utils->isLinux()) {
+
         # xCAT::Utils->runcmd("service dhcpd restart", -1, 1);
     } else {
+
         # xCAT::Utils->runcmd("startsrc -s dhcpsd", -1, 1);
     }
 }
 
 sub web_discover {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $type = uc( $request->{arg}->[1] );
+    my ($request, $callback, $sub_req) = @_;
+    my $type = uc($request->{arg}->[1]);
 
-    my $retStr  = '';
-    my $retInfo = xCAT::Utils->runcmd( "lsslp -m -s $type 2>/dev/null | grep -i $type | awk '{print \$1\":\" \$2\"-\"\$3}'", -1, 1 );
-    if ( scalar(@$retInfo) < 1 ) {
+    my $retStr = '';
+    my $retInfo = xCAT::Utils->runcmd("lsslp -m -s $type 2>/dev/null | grep -i $type | awk '{print \$1\":\" \$2\"-\"\$3}'", -1, 1);
+    if (scalar(@$retInfo) < 1) {
         $retStr = 'Error: Can not discover frames in cluster!';
     } else {
         foreach my $line (@$retInfo) {
             $retStr .= $line . ';';
         }
-        
-        $retStr = substr( $retStr, 0, -1 );
+
+        $retStr = substr($retStr, 0, -1);
     }
-    
-    $callback->( { data => $retStr } );
+
+    $callback->({ data => $retStr });
 }
 
 sub web_updatevpd {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $harwareMtmsPair = $request->{arg}->[1];
-    my @hardware        = split( /:/, $harwareMtmsPair );
+    my @hardware = split(/:/, $harwareMtmsPair);
 
     my $vpdtab = xCAT::Table->new('vpd');
     unless ($vpdtab) {
         return;
     }
-    
+
     foreach my $hard (@hardware) {
+
         # The sequence must be object name, mtm, serial
-        my @temp = split( /,/, $hard );
-        $vpdtab->setAttribs( { 'node' => @temp[0] }, { 'serial' => @temp[2], 'mtm' => @temp[1] } );
+        my @temp = split(/,/, $hard);
+        $vpdtab->setAttribs({ 'node' => @temp[0] }, { 'serial' => @temp[2], 'mtm' => @temp[1] });
     }
 
     $vpdtab->close();
 }
 
 sub web_writeconfigfile {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $filename = $request->{arg}->[1];
     my $content  = $request->{arg}->[2];
 
-    open( TEMPFILE, '>' . $filename );
+    open(TEMPFILE, '>' . $filename);
     print TEMPFILE $content;
 
     close(TEMPFILE);
@@ -1289,12 +1304,12 @@ sub web_writeconfigfile {
 }
 
 sub web_createimage {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $ostype    = $request->{arg}->[1];
-    my $osarch    = lc( $request->{arg}->[2] );
+    my $osarch    = lc($request->{arg}->[2]);
     my $profile   = $request->{arg}->[3];
     my $bootif    = $request->{arg}->[4];
-    my $imagetype = lc( $request->{arg}->[5] );
+    my $imagetype = lc($request->{arg}->[5]);
     my @softArray;
     my $netdriver  = '';
     my $installdir = xCAT::TableUtils->getInstallDir();
@@ -1305,102 +1320,105 @@ sub web_createimage {
     my $ret      = '';
     my $cmdPath  = '';
 
-    if ( $request->{arg}->[6] ) {
-        @softArray = split( ',', $request->{arg}->[6] );
+    if ($request->{arg}->[6]) {
+        @softArray = split(',', $request->{arg}->[6]);
 
         # Check the custom package, if the directory does not exist, create the directory first
-        if ( -e "$installdir/custom/netboot/$ostype/" ) {
+        if (-e "$installdir/custom/netboot/$ostype/") {
+
             # The path exist, so archive all file under this path
-            opendir( TEMPDIR, "$installdir/custom/netboot/$ostype/" );
+            opendir(TEMPDIR, "$installdir/custom/netboot/$ostype/");
             my @fileArray = readdir(TEMPDIR);
             closedir(TEMPDIR);
-            if ( 2 < scalar(@fileArray) ) {
+            if (2 < scalar(@fileArray)) {
                 $archFlag = 1;
-                unless ( -e "/tmp/webImageArch/" ) {
+                unless (-e "/tmp/webImageArch/") {
                     system("mkdir -p /tmp/webImageArch/");
                 }
-                
+
                 system("mv $installdir/custom/netboot/$ostype/*.* /tmp/webImageArch/");
             } else {
                 $archFlag = 0;
             }
         } else {
+
             # No need to archive
             $archFlag = 0;
             system("mkdir -p $installdir/custom/netboot/$ostype/");
         }
 
         # Write pkglist
-        open( $CONFILE, ">$installdir/custom/netboot/$ostype/$profile.pkglist" );
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.pkglist");
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.ppc64.pkglist# \n";
         close($CONFILE);
 
         # Write otherpkglist
-        open( $CONFILE, ">$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
         print $CONFILE "\n";
         close($CONFILE);
 
         # Write exlist for stateless
-        open( $CONFILE, ">$installdir/custom/netboot/$ostype/$profile.exlist" );
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.exlist");
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.$osarch.exlist#\n";
         close($CONFILE);
 
         # Write postinstall
-        open( $CONFILE, ">$installdir/custom/netboot/$ostype/$profile.postinstall" );
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.postinstall");
         print $CONFILE "/opt/xcat/share/xcat/IBMhpc/IBMhpc.$tempos.postinstall \$1 \$2 \$3 \$4 \$5 \n";
         close($CONFILE);
 
         for my $soft (@softArray) {
             $soft = lc($soft);
-            if ( 'gpfs' eq $soft ) {
-                web_gpfsConfigure( $ostype, $profile, $osarch, $installdir );
-            } elsif ( 'rsct' eq $soft ) {
-                web_rsctConfigure( $ostype, $profile, $osarch, $installdir );
-            } elsif ( 'pe' eq $soft ) {
-                web_peConfigure( $ostype, $profile, $osarch, $installdir );
-            } elsif ( 'essl' eq $soft ) {
-                web_esslConfigure( $ostype, $profile, $osarch, $installdir );
-            } elsif ( 'ganglia' eq $soft ) {
-                web_gangliaConfig( $ostype, $profile, $osarch, 'netboot', $installdir );
+            if ('gpfs' eq $soft) {
+                web_gpfsConfigure($ostype, $profile, $osarch, $installdir);
+            } elsif ('rsct' eq $soft) {
+                web_rsctConfigure($ostype, $profile, $osarch, $installdir);
+            } elsif ('pe' eq $soft) {
+                web_peConfigure($ostype, $profile, $osarch, $installdir);
+            } elsif ('essl' eq $soft) {
+                web_esslConfigure($ostype, $profile, $osarch, $installdir);
+            } elsif ('ganglia' eq $soft) {
+                web_gangliaConfig($ostype, $profile, $osarch, 'netboot', $installdir);
             }
         }
 
         system("chmod 755 $installdir/custom/netboot/$ostype/*.*");
     }
 
-    if ( $bootif =~ /hf/i ) {
+    if ($bootif =~ /hf/i) {
         $netdriver = 'hf_if';
     } else {
         $netdriver = 'ibmveth';
     }
 
-    if ( $tempos =~ /rh/i ) {
+    if ($tempos =~ /rh/i) {
         $cmdPath = "/opt/xcat/share/xcat/netboot/rh";
     } else {
         $cmdPath = "/opt/xcat/share/xcat/netboot/sles";
     }
 
     # For stateless only run packimage
-    if ( 'stateless' eq $imagetype ) {
-        my $retInfo = xCAT::Utils->runcmd( "${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1 );
-        $ret = join( "\n", @$retInfo );
+    if ('stateless' eq $imagetype) {
+        my $retInfo = xCAT::Utils->runcmd("${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1);
+        $ret = join("\n", @$retInfo);
 
         if ($::RUNCMD_RC) {
-            web_restoreChange( $request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir );
-            $callback->( { data => $ret } );
+            web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
+            $callback->({ data => $ret });
             return;
         }
 
         $ret .= "\n";
-        my $retInfo = xCAT::Utils->runcmd( "packimage -o $ostype -p $profile -a $osarch", -1, 1 );
-        $ret .= join( "\n", @$retInfo );
+        my $retInfo = xCAT::Utils->runcmd("packimage -o $ostype -p $profile -a $osarch", -1, 1);
+        $ret .= join("\n", @$retInfo);
     } else {
+
         # For statelist we should check the litefile table
         # Step 1: Save the old litefile table content into litefilearchive.csv
         system('tabdump litefile > /tmp/litefilearchive.csv');
 
         # Step 2: Write the new litefile.csv for this lite image
-        open( $CONFILE, ">/tmp/litefile.csv" );
+        open($CONFILE, ">/tmp/litefile.csv");
         print $CONFILE "#image,file,options,comments,disable\n";
         print $CONFILE '"ALL","/etc/lvm/","tmpfs",,' . "\n";
         print $CONFILE '"ALL","/etc/ntp.conf","tmpfs",,' . "\n";
@@ -1414,7 +1432,7 @@ sub web_createimage {
         print $CONFILE '"ALL","/opt/xcat/","tmpfs",,' . "\n";
         print $CONFILE '"ALL","/xcatpost/","tmpfs",,' . "\n";
 
-        if ( 'rhels' eq $tempos ) {
+        if ('rhels' eq $tempos) {
             print $CONFILE '"ALL","/etc/adjtime","tmpfs",,' . "\n";
             print $CONFILE '"ALL","/etc/securetty","tmpfs",,' . "\n";
             print $CONFILE '"ALL","/etc/rsyslog.conf","tmpfs",,' . "\n";
@@ -1434,7 +1452,7 @@ sub web_createimage {
         # Write the HPC software litefile into temp litefile.csv
         for my $soft (@softArray) {
             $soft = lc($soft);
-            if ( -e "/opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv" ) {
+            if (-e "/opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv") {
                 system("grep '^[^#]' /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv >> /tmp/litefile.csv");
             }
         }
@@ -1443,130 +1461,130 @@ sub web_createimage {
 
         # Create the image
         my $retInfo = xCAT::Utils->runcmd("${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1);
-        $ret = join( "\n", @$retInfo );
+        $ret = join("\n", @$retInfo);
         if ($::RUNCMD_RC) {
-            web_restoreChange( $request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir );
-            $callback->( { data => $ret } );
+            web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
+            $callback->({ data => $ret });
             return;
         }
-        
+
         $ret .= "\n";
-        my $retInfo = xCAT::Utils->runcmd( "liteimg -o $ostype -p $profile -a $osarch", -1, 1 );
-        $ret .= join( "\n", @$retInfo );
+        my $retInfo = xCAT::Utils->runcmd("liteimg -o $ostype -p $profile -a $osarch", -1, 1);
+        $ret .= join("\n", @$retInfo);
     }
 
-    web_restoreChange( $request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir );
-    $callback->( { data => $ret } );
+    web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
+    $callback->({ data => $ret });
     return;
 }
 
 sub web_gpfsConfigure {
-    my ( $ostype, $profile, $osarch, $installdir ) = @_;
+    my ($ostype, $profile, $osarch, $installdir) = @_;
     my $CONFILE;
 
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/gpfs");
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.otherpkgs.pkglist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.exlist#\n";
     close($CONFILE);
 
     system('cp /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_mmsdrfs $installdir/postscripts/gpfs_mmsdrfs');
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE "NODESETSTATE=genimage installroot=\$1 /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates\n";
     print $CONFILE "installroot=\$1 $installdir/postscripts/gpfs_mmsdrfs\n";
     close($CONFILE);
 }
 
 sub web_rsctConfigure {
-    my ( $ostype, $profile, $osarch, $installdir ) = @_;
+    my ($ostype, $profile, $osarch, $installdir) = @_;
     my $CONFILE;
 
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/rsct");
 
-    if ( $ostype =~ /sles/i ) {
-        open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
+    if ($ostype =~ /sles/i) {
+        open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.pkglist# \n";
         close($CONFILE);
     }
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.exlist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE "installroot=\$1 rsctdir=$installdir/post/otherpkgs/rhels6/ppc64/rsct NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/rsct/rsct_install\n";
     close($CONFILE);
 }
 
 sub web_peConfigure {
-    my ( $ostype, $profile, $osarch, $installdir ) = @_;
+    my ($ostype, $profile, $osarch, $installdir) = @_;
     my $CONFILE;
 
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/pe");
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/compilers");
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
-    if ( $ostype =~ /rh/i ) {
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
+    if ($ostype =~ /rh/i) {
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.$ostype.pkglist#\n";
     } else {
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.pkglist#\n";
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.pkglist#\n";
     }
-    
+
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.otherpkgs.pkglist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#\n";
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE "installroot=\$1 NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/compilers/compilers_license";
     print $CONFILE "installroot=\$1 pedir=$installdir/post/otherpkgs/rhels6/ppc64/pe NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_install";
     close($CONFILE);
 }
 
 sub web_esslConfigure {
-    my ( $ostype, $profile, $osarch, $installdir ) = @_;
+    my ($ostype, $profile, $osarch, $installdir) = @_;
     my $CONFILE;
 
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/essl");
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
-    if ( $ostype =~ /rh/i ) {
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
+    if ($ostype =~ /rh/i) {
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.rhels6.pkglist#\n";
     } else {
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#\n";
     }
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#\n";
     close($CONFILE);
 
-    open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall" );
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE, "installroot=\$1 essldir=$installdir/post/otherpkgs/rhels6/ppc64/essl NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/essl/essl_install";
     close($CONFILE);
 }
 
 sub web_gangliaConfig {
-    my ( $ostype, $profile, $osarch, $provtype, $installdir ) = @_;
+    my ($ostype, $profile, $osarch, $provtype, $installdir) = @_;
     my $CONFILE;
 
     system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/ganglia");
 
-    open( $CONFILE, ">>$installdir/custom/$provtype/$ostype/$profile.otherpkgs.pkglist" );
+    open($CONFILE, ">>$installdir/custom/$provtype/$ostype/$profile.otherpkgs.pkglist");
     print $CONFILE "#created by xCAT Web Gui.\n";
     print $CONFILE "ganglia/ganglia\n";
     print $CONFILE "ganglia/ganglia-gmond\n";
@@ -1576,18 +1594,18 @@ sub web_gangliaConfig {
 }
 
 sub web_gangliaRpmCheck {
-    my ( $ostype, $profile, $osarch, $installdir ) = @_;
-    my @rpmnames = ( "rrdtool", "ganglia", "ganglia-gmond", "ganglia-gmetad" );
+    my ($ostype, $profile, $osarch, $installdir) = @_;
+    my @rpmnames = ("rrdtool", "ganglia", "ganglia-gmond", "ganglia-gmetad");
     my %temphash;
     my $rpmdir   = "$installdir/post/otherpkgs/$ostype/$osarch/ganglia";
     my $errorstr = '';
-    unless ( -e $rpmdir ) {
+    unless (-e $rpmdir) {
         return "Put rrdtool,ganglia,ganglia-gmond,ganglia-gmetad rpms into $rpmdir.";
     }
 
-    opendir( DIRHANDLE, $rpmdir );
-    foreach my $filename ( readdir(DIRHANDLE) ) {
-        if ( $filename =~ /(\D+)-(\d+)\..*\.rpm$/ ) {
+    opendir(DIRHANDLE, $rpmdir);
+    foreach my $filename (readdir(DIRHANDLE)) {
+        if ($filename =~ /(\D+)-(\d+)\..*\.rpm$/) {
             $temphash{$1} = 1;
         }
     }
@@ -1595,13 +1613,13 @@ sub web_gangliaRpmCheck {
 
     # Check if all RPMs are in the array
     foreach (@rpmnames) {
-        unless ( $temphash{$_} ) {
+        unless ($temphash{$_}) {
             $errorstr .= $_ . ',';
         }
     }
 
     if ($errorstr) {
-        $errorstr = substr( $errorstr, 0, -1 );
+        $errorstr = substr($errorstr, 0, -1);
         return "Put $errorstr rpms into $rpmdir.";
     } else {
         return "";
@@ -1609,7 +1627,7 @@ sub web_gangliaRpmCheck {
 }
 
 sub web_restoreChange {
-    my ( $software, $archFlag, $imagetype, $ostype, $installdir ) = @_;
+    my ($software, $archFlag, $imagetype, $ostype, $installdir) = @_;
 
     # Recover all file in the $installdir/custom/netboot/$ostype/
     if ($software) {
@@ -1621,58 +1639,59 @@ sub web_restoreChange {
     }
 
     # Recover the litefile table for statelite image
-    if ( 'statelite' == $imagetype ) {
+    if ('statelite' == $imagetype) {
         system("rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv");
     }
 }
 
 sub web_provision_preinstall {
-    my ( $ostype, $profile, $arch, $installdir, $softwarenames ) = @_;
+    my ($ostype, $profile, $arch, $installdir, $softwarenames) = @_;
     my $checkresult = '';
     my $errorstr    = '';
-    my @software    = split( ',', $softwarenames );
+    my @software    = split(',', $softwarenames);
     my $softwarenum = scalar(@software);
 
-    if ( -e "$installdir/custom/install/$ostype/" ) {
-        opendir( DIRHANDLE, "$installdir/custom/install/$ostype/" );
-        foreach my $filename ( readdir(DIRHANDLE) ) {
-            if ( '.' eq $filename || '..' eq $filename ) {
+    if (-e "$installdir/custom/install/$ostype/") {
+        opendir(DIRHANDLE, "$installdir/custom/install/$ostype/");
+        foreach my $filename (readdir(DIRHANDLE)) {
+            if ('.' eq $filename || '..' eq $filename) {
                 next;
             }
-            
+
             $filename = "$installdir/custom/install/$ostype/" . $filename;
-            if ( $filename =~ /(.*)\.guibak$/ ) {
-                if ( $softwarenum < 1 ) {
+            if ($filename =~ /(.*)\.guibak$/) {
+                if ($softwarenum < 1) {
                     system("mv $filename $1");
                 }
                 next;
             }
-            
+
             `/bin/grep 'xCAT Web Gui' $filename`;
             if ($?) {
+
                 # Backup the original config file
-                if ( $softwarenum > 0 ) {
+                if ($softwarenum > 0) {
                     system("mv $filename ${filename}.guibak");
                 }
             } else {
                 unlink($filename);
             }
         }
-        
+
         closedir(DIRHANDLE);
     } else {
         `mkdir -p $installdir/custom/install/$ostype -m 0755`;
     }
 
-    if ( $softwarenum < 1 ) {
+    if ($softwarenum < 1) {
         return '';
     }
 
     foreach (@software) {
-        if ( 'ganglia' eq $_ ) {
-            $checkresult = web_gangliaRpmCheck( $ostype, $profile, $arch, $installdir );
+        if ('ganglia' eq $_) {
+            $checkresult = web_gangliaRpmCheck($ostype, $profile, $arch, $installdir);
         }
-        
+
         if ($checkresult) {
             $errorstr .= $checkresult . "\n";
         }
@@ -1683,53 +1702,53 @@ sub web_provision_preinstall {
     }
 
     foreach (@software) {
-        if ( 'ganglia' eq $_ ) {
-            web_gangliaConfig( $ostype, $profile, $arch, 'install', $installdir );
+        if ('ganglia' eq $_) {
+            web_gangliaConfig($ostype, $profile, $arch, 'install', $installdir);
         }
     }
     return '';
 }
 
 sub web_provision {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $nodes     = $request->{arg}->[1];
     my $imageName = $request->{arg}->[2];
-    my ( $arch, $inic, $pnic, $master, $tftp, $nfs ) = split( /,/, $request->{arg}->[3] );
+    my ($arch, $inic, $pnic, $master, $tftp, $nfs) = split(/,/, $request->{arg}->[3]);
     my $line = '';
     my %imageattr;
-    my $retinfo = xCAT::Utils->runcmd( "lsdef -t osimage -l $imageName", -1, 1 );
+    my $retinfo = xCAT::Utils->runcmd("lsdef -t osimage -l $imageName", -1, 1);
     my $installdir = xCAT::TableUtils->getInstallDir();
 
     # Parse output, get the OS name and type
     foreach $line (@$retinfo) {
-        if ( $line =~ /(\w+)=(\S*)/ ) {
+        if ($line =~ /(\w+)=(\S*)/) {
             $imageattr{$1} = $2;
         }
     }
 
     # Check the output
-    unless ( $imageattr{'osname'} ) {
-        web_infomsg( "Image infomation error. Check the image first.\nprovision stop.", $callback );
+    unless ($imageattr{'osname'}) {
+        web_infomsg("Image infomation error. Check the image first.\nprovision stop.", $callback);
         return;
     }
 
-    if ( 'install' eq $imageattr{'provmethod'} ) {
-        my $prepareinfo = web_provision_preinstall( $imageattr{'osvers'}, $imageattr{'profile'}, $arch, $installdir, $request->{arg}->[4] );
+    if ('install' eq $imageattr{'provmethod'}) {
+        my $prepareinfo = web_provision_preinstall($imageattr{'osvers'}, $imageattr{'profile'}, $arch, $installdir, $request->{arg}->[4]);
         if ($prepareinfo) {
-            web_infomsg( "$prepareinfo \nprovision stop.", $callback );
+            web_infomsg("$prepareinfo \nprovision stop.", $callback);
             return;
         }
     }
 
-    if ( $imageattr{'osname'} =~ /aix/i ) {
-        web_provisionaix( $nodes, $imageName, $imageattr{'nimtype'}, $inic, $pnic, $master, $tftp, $nfs, $callback );
+    if ($imageattr{'osname'} =~ /aix/i) {
+        web_provisionaix($nodes, $imageName, $imageattr{'nimtype'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
     } else {
         web_provisionlinux(
-            $nodes,                $arch,
+            $nodes, $arch,
             $imageattr{'osvers'},  $imageattr{'provmethod'},
             $imageattr{'profile'}, $inic,
-            $pnic,                 $master,
-            $tftp,                 $nfs,
+            $pnic, $master,
+            $tftp, $nfs,
             $callback
         );
     }
@@ -1740,75 +1759,75 @@ sub web_provisionlinux {
     my $outputMessage = '';
     my $retvalue      = 0;
     my $netboot       = '';
-    
-    if ( $arch =~ /ppc/i ) {
+
+    if ($arch =~ /ppc/i) {
         $netboot = 'yaboot';
-    } elsif ( $arch =~ /x.*86/i ) {
+    } elsif ($arch =~ /x.*86/i) {
         $netboot = 'xnba';
     }
-    
+
     $outputMessage =
-        "Do provison : $nodes \n"
+      "Do provison : $nodes \n"
       . " Arch:$arch\n OS:$os\n Provision:$provmethod\n Profile:$profile\n Install NIC:$inic\n Primary NIC:$pnic\n"
       . " xCAT Master:$master\n TFTP Server:$tftp\n NFS Server:$nfs\n Netboot:$netboot\n";
 
-    web_infomsg( $outputMessage, $callback );
+    web_infomsg($outputMessage, $callback);
 
     # Change the node attribute
     my $cmd = "chdef -t node -o $nodes arch=$arch os=$os provmethod=$provmethod profile=$profile installnic=$inic tftpserver=$tftp nfsserver=$nfs netboot=$netboot" . " xcatmaster=$master primarynic=$pnic";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Configure nodes' attributes error.\nProvision stop.", $callback );
+        web_infomsg("Configure nodes' attributes error.\nProvision stop.", $callback);
         return;
     }
 
     $cmd = "makedhcp $nodes";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Make DHCP error.\nProvision stop.", $callback );
+        web_infomsg("Make DHCP error.\nProvision stop.", $callback);
         return;
     }
 
     # Restart DHCP
     $cmd = "service dhcpd restart";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
 
     # Conserver
     $cmd = "makeconservercf $nodes";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Configure conserver error.\nProvision stop.", $callback );
+        web_infomsg("Configure conserver error.\nProvision stop.", $callback);
         return;
     }
 
     # For system x, should configure boot sequence first
-    if ( $arch =~ /x.*86/i ) {
+    if ($arch =~ /x.*86/i) {
         $cmd = "rbootseq $nodes net,hd";
-        web_runcmd( $cmd, $callback );
+        web_runcmd($cmd, $callback);
         if ($::RUNCMD_RC) {
-            web_infomsg( "Set boot sequence error.\nProvision stop.",
-                $callback );
+            web_infomsg("Set boot sequence error.\nProvision stop.",
+                $callback);
             return;
         }
     }
 
     # Nodeset
     $cmd = "nodeset $nodes $provmethod";
-    web_runcmd( $cmd, $callback );
-    if ($::RUNCMD_RC) { web_infomsg( "Set nodes provision method error.\nprovision stop.", $callback );
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC) { web_infomsg("Set nodes provision method error.\nprovision stop.", $callback);
         return;
     }
 
     # Reboot the node fro provision
-    if ( $arch =~ /ppc/i ) {
+    if ($arch =~ /ppc/i) {
         $cmd = "rnetboot $nodes";
     } else {
         $cmd = "rpower $nodes boot";
     }
-    
-    web_runcmd( $cmd, $callback );
+
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Boot nodes error.\nProvision stop.", $callback );
+        web_infomsg("Boot nodes error.\nProvision stop.", $callback);
         return;
     }
 
@@ -1818,9 +1837,9 @@ sub web_provisionlinux {
 
 sub web_provisionaix {
     my (
-        $nodes,  $imagename, $nimtype, $inic, $pnic,
-        $master, $tftp,      $nfs,     $callback
-      ) = @_;
+        $nodes, $imagename, $nimtype, $inic, $pnic,
+        $master, $tftp, $nfs, $callback
+    ) = @_;
     my $outputMessage = '';
     my $retinfo;
     my %nimhash;
@@ -1831,69 +1850,69 @@ sub web_provisionaix {
 
     # Set attributes
     $cmd = "chdef -t node -o $nodes installnic=$inic tftpserver=$tftp nfsserver=$nfs xcatmaster=$master primarynic=$pnic";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Change nodes' attributes error.\nprovision stop.", $callback );
+        web_infomsg("Change nodes' attributes error.\nprovision stop.", $callback);
         return;
     }
 
     # Get all NIM resource to filter nodes
-    $retinfo = xCAT::Utils->runcmd( "lsnim -c machines", -1, 1 );
+    $retinfo = xCAT::Utils->runcmd("lsnim -c machines", -1, 1);
     foreach $line (@$retinfo) {
-        if ( $line =~ /(\S+)\s+\S+/ ) {
+        if ($line =~ /(\S+)\s+\S+/) {
             $nimhash{$1} = 1;
         }
     }
 
-    foreach my $node ( split( /,/, $nodes ) ) {
-        if ( $nimhash{$node} ) {
-            push( @updatenodes, $node );
+    foreach my $node (split(/,/, $nodes)) {
+        if ($nimhash{$node}) {
+            push(@updatenodes, $node);
         } else {
-            push( @addnodes, $node );
+            push(@addnodes, $node);
         }
     }
 
-    if ( 0 < scalar(@addnodes) ) {
-        $cmd = "xcat2nim -t node -o " . join( ",", @addnodes );
-        web_runcmd( $cmd, $callback );
+    if (0 < scalar(@addnodes)) {
+        $cmd = "xcat2nim -t node -o " . join(",", @addnodes);
+        web_runcmd($cmd, $callback);
         if ($::RUNCMD_RC) {
-            web_infomsg( "xcat2nim command error.\nprovision stop.", $callback );
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
             return;
         }
     }
 
-    if ( 0 < scalar(@updatenodes) ) {
-        $cmd = "xcat2nim -u -t node -o " . join( ",", @updatenodes );
-        web_runcmd( $cmd, $callback );
+    if (0 < scalar(@updatenodes)) {
+        $cmd = "xcat2nim -u -t node -o " . join(",", @updatenodes);
+        web_runcmd($cmd, $callback);
         if ($::RUNCMD_RC) {
-            web_infomsg( "xcat2nim command error.\nprovision stop.", $callback );
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
             return;
         }
     }
 
     $cmd = "makeconservercf $nodes";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Configure conserver error.\nprovision stop.", $callback );
+        web_infomsg("Configure conserver error.\nprovision stop.", $callback);
         return;
     }
 
-    if ( $nimtype =~ /diskless/ ) {
+    if ($nimtype =~ /diskless/) {
         $cmd = "mkdsklsnode -i $imagename $nodes";
     } else {
         $cmd = "nimnodeset -i $imagename $nodes";
     }
-    
-    web_runcmd( $cmd, $callback );
+
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Set node install method error.\nprovision stop.", $callback );
+        web_infomsg("Set node install method error.\nprovision stop.", $callback);
         return;
     }
 
     $cmd = "rnetboot $nodes";
-    web_runcmd( $cmd, $callback );
+    web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC) {
-        web_infomsg( "Reboot nodes error.\nprovision stop.", $callback );
+        web_infomsg("Reboot nodes error.\nprovision stop.", $callback);
         return;
     }
 
@@ -1904,28 +1923,28 @@ sub web_runcmd {
     my $cmd      = shift;
     my $callback = shift;
     my $showstr  = "\n" . $cmd . "\n";
-    
-    web_infomsg( $showstr, $callback );
-    
-    my $retvalue = xCAT::Utils->runcmd( $cmd, -1, 1 );
-    $showstr = join( "\n", @$retvalue );
+
+    web_infomsg($showstr, $callback);
+
+    my $retvalue = xCAT::Utils->runcmd($cmd, -1, 1);
+    $showstr = join("\n", @$retvalue);
     $showstr .= "\n";
-    
-    web_infomsg( $showstr, $callback );
+
+    web_infomsg($showstr, $callback);
 }
 
 sub web_infomsg {
     my $msg      = shift;
     my $callback = shift;
     my %rsp;
-    
+
     push @{ $rsp{info} }, $msg;
-    xCAT::MsgUtils->message( 'I', \%rsp, $callback );
+    xCAT::MsgUtils->message('I', \%rsp, $callback);
     return;
 }
 
 sub web_summary {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $groupName = $request->{arg}->[1];
     my @nodes;
     my $nodetypeTab;
@@ -1939,7 +1958,7 @@ sub web_summary {
     my $retHash = {};
     my $temp;
 
-    if ( defined($groupName) ) {
+    if (defined($groupName)) {
         @nodes = xCAT::NodeRange::noderange($groupName);
     } else {
         @nodes = xCAT::DBobjUtils->getObjectsOfType('node');
@@ -1955,74 +1974,74 @@ sub web_summary {
         return;
     }
 
-    $attrs = $nodetypeTab->getNodesAttribs( \@nodes, [ 'os', 'arch', 'provmethod', 'nodetype' ] );
+    $attrs = $nodetypeTab->getNodesAttribs(\@nodes, [ 'os', 'arch', 'provmethod', 'nodetype' ]);
     unless ($attrs) {
         return;
     }
 
-    while ( my ( $key, $value ) = each( %{$attrs} ) ) {
-        web_attrcount( $value->[0]->{'os'},          \%oshash );
-        web_attrcount( $value->[0]->{'arch'},        \%archhash );
-        web_attrcount( $value->[0]->{'provmethod'},, \%provhash );
-        web_attrcount( $value->[0]->{'nodetype'},,   \%typehash );
+    while (my ($key, $value) = each(%{$attrs})) {
+        web_attrcount($value->[0]->{'os'},          \%oshash);
+        web_attrcount($value->[0]->{'arch'},        \%archhash);
+        web_attrcount($value->[0]->{'provmethod'},, \%provhash);
+        web_attrcount($value->[0]->{'nodetype'},,   \%typehash);
     }
 
-    $attrs = $nodelistTab->getNodesAttribs( \@nodes, ['status'] );
-    while ( my ( $key, $value ) = each( %{$attrs} ) ) {
-        web_attrcount( $value->[0]->{'status'}, \%statushash );
+    $attrs = $nodelistTab->getNodesAttribs(\@nodes, ['status']);
+    while (my ($key, $value) = each(%{$attrs})) {
+        web_attrcount($value->[0]->{'status'}, \%statushash);
     }
 
     # Status
     $temp = '';
-    while ( my ( $key, $value ) = each(%statushash) ) {
-        $temp .= ( $key . ':' . $value . ';' );
+    while (my ($key, $value) = each(%statushash)) {
+        $temp .= ($key . ':' . $value . ';');
     }
-    $temp = substr( $temp, 0, -1 );
-    push( @{ $retHash->{'data'} }, 'Status=' . $temp );
+    $temp = substr($temp, 0, -1);
+    push(@{ $retHash->{'data'} }, 'Status=' . $temp);
 
     # OS
     $temp = '';
-    while ( my ( $key, $value ) = each(%oshash) ) {
-        $temp .= ( $key . ':' . $value . ';' );
+    while (my ($key, $value) = each(%oshash)) {
+        $temp .= ($key . ':' . $value . ';');
     }
-    $temp = substr( $temp, 0, -1 );
-    push( @{ $retHash->{'data'} }, 'Operating System=' . $temp );
+    $temp = substr($temp, 0, -1);
+    push(@{ $retHash->{'data'} }, 'Operating System=' . $temp);
 
     # Architecture
     $temp = '';
-    while ( my ( $key, $value ) = each(%archhash) ) {
-        $temp .= ( $key . ':' . $value . ';' );
+    while (my ($key, $value) = each(%archhash)) {
+        $temp .= ($key . ':' . $value . ';');
     }
-    $temp = substr( $temp, 0, -1 );
-    push( @{ $retHash->{'data'} }, 'Architecture=' . $temp );
+    $temp = substr($temp, 0, -1);
+    push(@{ $retHash->{'data'} }, 'Architecture=' . $temp);
 
     # Provision method
     $temp = '';
-    while ( my ( $key, $value ) = each(%provhash) ) {
-        $temp .= ( $key . ':' . $value . ';' );
+    while (my ($key, $value) = each(%provhash)) {
+        $temp .= ($key . ':' . $value . ';');
     }
-    $temp = substr( $temp, 0, -1 );
-    push( @{ $retHash->{'data'} }, 'Provision Method=' . $temp );
+    $temp = substr($temp, 0, -1);
+    push(@{ $retHash->{'data'} }, 'Provision Method=' . $temp);
 
     # Nodetype
     $temp = '';
-    while ( my ( $key, $value ) = each(%typehash) ) {
-        $temp .= ( $key . ':' . $value . ';' );
+    while (my ($key, $value) = each(%typehash)) {
+        $temp .= ($key . ':' . $value . ';');
     }
-    $temp = substr( $temp, 0, -1 );
-    push( @{ $retHash->{'data'} }, 'Node Type=' . $temp );
+    $temp = substr($temp, 0, -1);
+    push(@{ $retHash->{'data'} }, 'Node Type=' . $temp);
 
     # Return data
     $callback->($retHash);
 }
 
 sub web_attrcount {
-    my ( $key, $container ) = @_;
-    unless ( defined($key) ) {
+    my ($key, $container) = @_;
+    unless (defined($key)) {
         $key = 'unknown';
     }
 
-    if ( $container->{$key} ) {
+    if ($container->{$key}) {
         $container->{$key}++;
     } else {
         $container->{$key} = 1;
@@ -2030,7 +2049,7 @@ sub web_attrcount {
 }
 
 sub web_rinstall {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $os      = $request->{arg}->[1];
     my $profile = $request->{arg}->[2];
     my $arch    = $request->{arg}->[3];
@@ -2039,30 +2058,30 @@ sub web_rinstall {
     # Begin installation
     my $out = `rinstall -o $os -p $profile -a $arch $node`;
 
-    $callback->( { data => $out } );
+    $callback->({ data => $out });
 }
 
 sub web_addnode {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $nodetype  = $request->{arg}->[1];
-    my @tempArray = split( ',', $request->{arg}->[2] );
+    my ($request, $callback, $sub_req) = @_;
+    my $nodetype = $request->{arg}->[1];
+    my @tempArray = split(',', $request->{arg}->[2]);
 
     my $hcpname = shift(@tempArray);
-    if ( 'node' ne $nodetype ) {
+    if ('node' ne $nodetype) {
         my $username = $tempArray[0];
         my $passwd   = $tempArray[1];
         my $ip       = $tempArray[2];
         `/bin/grep '$hcpname' /etc/hosts`;
         if ($?) {
-            open( OUTPUTFILE, '>>/etc/hosts' );
+            open(OUTPUTFILE, '>>/etc/hosts');
             print OUTPUTFILE "$ip $hcpname\n";
             close(OUTPUTFILE);
         }
-        
-        if ( 'hmc' eq $nodetype ) {
-            `/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype ip=$ip groups=all`;
+
+        if ('hmc' eq $nodetype) {
+`/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype ip=$ip groups=all`;
         } else {
-            `/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`;
+`/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`;
         }
         return;
     }
@@ -2075,22 +2094,22 @@ sub web_addnode {
     foreach (@tempArray) {
         $temphash{$_} = 1;
     }
-    
-    for ( my $i = 0 ; $i < scalar(@tempArray) ; $i = $i + 2 ) {
+
+    for (my $i = 0 ; $i < scalar(@tempArray) ; $i = $i + 2) {
         $temphash{ $tempArray[$i] } = $tempArray[ $i + 1 ];
     }
-    
+
     `/opt/xcat/bin/rscan $hcpname -z > /tmp/rscanall.tmp`;
 
-    unless ( -e '/tmp/rscanall.tmp' ) {
+    unless (-e '/tmp/rscanall.tmp') {
         return;
     }
 
-    open( INPUTFILE,  '/tmp/rscanall.tmp' );
-    open( OUTPUTFILE, '>/tmp/webrscan.tmp' );
-    while ( $line = <INPUTFILE> ) {
-        if ( $line =~ /(\S+):$/ ) {
-            if ( $temphash{$1} ) {
+    open(INPUTFILE,  '/tmp/rscanall.tmp');
+    open(OUTPUTFILE, '>/tmp/webrscan.tmp');
+    while ($line = <INPUTFILE>) {
+        if ($line =~ /(\S+):$/) {
+            if ($temphash{$1}) {
                 $writeflag = 1;
                 print OUTPUTFILE $temphash{$1} . ":\n";
             } else {
@@ -2112,7 +2131,7 @@ sub web_addnode {
 }
 
 sub web_graphinfo {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
     my $nodetypeTab;
     my @nodes;
     my @parray;
@@ -2138,30 +2157,30 @@ sub web_graphinfo {
     }
 
     # Get all nodetype and seperate nodes into different group
-    $result = $nodetypeTab->getNodesAttribs( \@nodes, ['nodetype'] );
-    while ( my ( $key, $value ) = each(%$result) ) {
+    $result = $nodetypeTab->getNodesAttribs(\@nodes, ['nodetype']);
+    while (my ($key, $value) = each(%$result)) {
         my $temptype = $value->[0]->{'nodetype'};
-        if ( $temptype =~ /(ppc|lpar|cec|frame)/i ) {
-            push( @parray, $key );
-        } elsif ( $temptype =~ /blade/i ) {
-            push( @bladearray, $key );
-        } elsif ( $temptype =~ /osi/i ) {
-            push( @xarray, $key );
+        if ($temptype =~ /(ppc|lpar|cec|frame)/i) {
+            push(@parray, $key);
+        } elsif ($temptype =~ /blade/i) {
+            push(@bladearray, $key);
+        } elsif ($temptype =~ /osi/i) {
+            push(@xarray, $key);
         } else {
-            push( @unsupportarray, $key );
+            push(@unsupportarray, $key);
         }
     }
     $nodetypeTab->close();
 
     # Get all information for System p node
-    if ( scalar(@parray) > 0 ) {
+    if (scalar(@parray) > 0) {
         my $ppctab = xCAT::Table->new('ppc');
 
-        $result = $ppctab->getNodesAttribs( \@parray, ['parent'] );
-        my $typehash = xCAT::DBobjUtils->getnodetype( \@parray );
+        $result = $ppctab->getNodesAttribs(\@parray, ['parent']);
+        my $typehash = xCAT::DBobjUtils->getnodetype(\@parray);
         foreach (@parray) {
             my $value = $result->{$_};
-            if ( $value->[0] ) {
+            if ($value->[0]) {
                 $phash{$_} = $$typehash{$_} . ':' . $value->[0]->{'parent'} . ':';
             } else {
                 $phash{$_} = $$typehash{$_} . '::';
@@ -2172,10 +2191,11 @@ sub web_graphinfo {
         undef @parray;
         @parray = keys %phash;
     }
-    if ( scalar(@parray) > 0 ) {
+    if (scalar(@parray) > 0) {
+
         # mtm
         my $vpdtab = xCAT::Table->new('vpd');
-        $result = $vpdtab->getNodesAttribs( \@parray, ['mtm'] );
+        $result = $vpdtab->getNodesAttribs(\@parray, ['mtm']);
         foreach (@parray) {
             my $value = $result->{$_};
             $phash{$_} = $phash{$_} . $value->[0]->{'mtm'} . ':';
@@ -2184,75 +2204,78 @@ sub web_graphinfo {
 
         # Status
         my $nodelisttab = xCAT::Table->new('nodelist');
-        $result = $nodelisttab->getNodesAttribs( \@parray, ['status'] );
+        $result = $nodelisttab->getNodesAttribs(\@parray, ['status']);
         foreach (@parray) {
             my $value = $result->{$_};
             $phash{$_} = $phash{$_} . $value->[0]->{'status'};
         }
         $nodelisttab->close();
 
-        while ( my ( $key, $value ) = each(%phash) ) {
+        while (my ($key, $value) = each(%phash)) {
             $pretstr = $pretstr . $key . ':' . $value . ';';
         }
     }
 
     # Get all information for blade node
-    if ( scalar(@bladearray) > 0 ) {
+    if (scalar(@bladearray) > 0) {
         my $mptab = xCAT::Table->new('mp');
-        $result = $mptab->getNodesAttribs( \@bladearray, [ 'mpa', 'id' ] );
+        $result = $mptab->getNodesAttribs(\@bladearray, [ 'mpa', 'id' ]);
         foreach (@bladearray) {
             my $value = $result->{$_};
-            if ( $value->[0]->{'mpa'} ) {
+            if ($value->[0]->{'mpa'}) {
                 $bladehash{$_} = 'blade:' . $value->[0]->{'mpa'} . ':' . $value->[0]->{'id'} . ':';
             } else {
-                push( @missinfoarray, $_ );
+                push(@missinfoarray, $_);
             }
         }
-        
+
         $mptab->close();
 
         undef @bladearray;
         @bladearray = keys %bladehash;
     }
-    
-    if ( scalar(@bladearray) > 0 ) {
+
+    if (scalar(@bladearray) > 0) {
+
         # Status
         my $nodelisttab = xCAT::Table->new('nodelist');
-        $result = $nodelisttab->getNodesAttribs( \@bladearray, ['status'] );
+        $result = $nodelisttab->getNodesAttribs(\@bladearray, ['status']);
         foreach (@bladearray) {
             my $value = $result->{$_};
             $bladehash{$_} = $bladehash{$_} . $value->[0]->{'status'};
         }
         $nodelisttab->close();
-        while ( my ( $key, $value ) = each(%bladehash) ) {
+        while (my ($key, $value) = each(%bladehash)) {
             $bladeretstr = $bladeretstr . $key . ':' . $value . ';';
         }
     }
 
     # Get all information for System x node
-    if ( scalar(@xarray) > 0 ) {
+    if (scalar(@xarray) > 0) {
+
         # Rack and unit
         my $nodepostab = xCAT::Table->new('nodepos');
-        $result = $nodepostab->getNodesAttribs( \@xarray, [ 'rack', 'u' ] );
+        $result = $nodepostab->getNodesAttribs(\@xarray, [ 'rack', 'u' ]);
         foreach (@xarray) {
             my $value = $result->{$_};
-            if ( $value->[0]->{'rack'} ) {
+            if ($value->[0]->{'rack'}) {
                 $xhash{$_} = 'systemx:' . $value->[0]->{'rack'} . ':' . $value->[0]->{'u'} . ':';
             } else {
-                push( @missinfoarray, $_ );
+                push(@missinfoarray, $_);
             }
         }
-        
+
         $nodepostab->close();
 
         undef @xarray;
         @xarray = keys %xhash;
     }
-    
-    if ( scalar(@xarray) > 0 ) {
+
+    if (scalar(@xarray) > 0) {
+
         # mtm
         my $vpdtab = xCAT::Table->new('vpd');
-        $result = $vpdtab->getNodesAttribs( \@xarray, ['mtm'] );
+        $result = $vpdtab->getNodesAttribs(\@xarray, ['mtm']);
         foreach (@xarray) {
             my $value = $result->{$_};
             $xhash{$_} = $xhash{$_} . $value->[0]->{'mtm'} . ':';
@@ -2261,13 +2284,13 @@ sub web_graphinfo {
 
         # Status
         my $nodelisttab = xCAT::Table->new('nodelist');
-        $result = $nodelisttab->getNodesAttribs( \@xarray, ['status'] );
+        $result = $nodelisttab->getNodesAttribs(\@xarray, ['status']);
         foreach (@xarray) {
             my $value = $result->{$_};
             $xhash{$_} = $xhash{$_} . $value->[0]->{'status'};
         }
-        
-        while ( my ( $key, $value ) = each(%xhash) ) {
+
+        while (my ($key, $value) = each(%xhash)) {
             $xretstr = $xretstr . $key . ':' . $value . ';';
         }
     }
@@ -2276,43 +2299,43 @@ sub web_graphinfo {
     foreach (@missinfoarray) {
         $missretstr = $missretstr . $_ . ':linux:other;';
     }
-    
+
     # Combine all information into a string
     my $retstr = $pretstr . $bladeretstr . $xretstr . $missretstr;
     if ($retstr) {
-        $retstr = substr( $retstr, 0, -1 );
+        $retstr = substr($retstr, 0, -1);
     }
 
-    $callback->( { data => $retstr } );
+    $callback->({ data => $retstr });
 }
 
 sub web_getdefaultuserentry {
 
     # Get default user entry
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
     my $profile = $request->{arg}->[1];
 
-    if ( !$profile ) {
+    if (!$profile) {
         $profile = 'default';
     }
 
     my $entry;
-    if ( !(`test -e /var/opt/xcat/profiles/$profile.direct && echo 'File exists'`) ) {
+    if (!(`test -e /var/opt/xcat/profiles/$profile.direct && echo 'File exists'`)) {
         $entry = `cat /var/opt/xcat/profiles/default.direct`;
     } else {
         $entry = `cat /var/opt/xcat/profiles/$profile.direct`;
     }
 
-    $callback->( { data => $entry } );
+    $callback->({ data => $entry });
 }
 
 sub web_passwd() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get current and new passwords
-    my $user = $request->{arg}->[1];
+    my $user     = $request->{arg}->[1];
     my $password = $request->{arg}->[2];
 
     # Generate encrypted password
@@ -2320,34 +2343,34 @@ sub web_passwd() {
     my $encrypted = `perl -e "print crypt($password, $random)"`;
 
     # Save in xCAT passwd table
-    `/opt/xcat/sbin/chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
+`/opt/xcat/sbin/chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
 
     my $info = "User password successfully updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_policy() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get user attributes
     my $priority = $request->{arg}->[1];
-    my $args = $request->{arg}->[2];
+    my $args     = $request->{arg}->[2];
 
     # Save in xCAT passwd and policy tables
     my $out = `/opt/xcat/sbin/chtab priority=$priority $args`;
 
     my $info = "User policy successfully updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_deleteuser() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get user attributes
-    my $user  = $request->{arg}->[1];
-    my @users = split( ',', $user );
+    my $user = $request->{arg}->[1];
+    my @users = split(',', $user);
 
     # Delete user from xCAT passwd and policy tables
     foreach (@users) {
@@ -2356,36 +2379,36 @@ sub web_deleteuser() {
     }
 
     my $info = "User successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
     return;
 }
 
 sub web_getzdiskinfo() {
 
     # Get default disk info
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
     my $profile = $request->{arg}->[1];
 
-    if ( !$profile ) {
+    if (!$profile) {
         $profile = 'default';
     }
 
     my $info;
-    if ( !(`test -e /var/opt/xcat/profiles/$profile.conf && echo 'File exists'`)) {
+    if (!(`test -e /var/opt/xcat/profiles/$profile.conf && echo 'File exists'`)) {
         $info = `cat /var/opt/xcat/profiles/default.conf`;
     } else {
         $info = `cat /var/opt/xcat/profiles/$profile.conf`;
     }
 
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_mkzprofile() {
 
     # Create default profile
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
     my $profile = $request->{arg}->[1];
@@ -2401,21 +2424,21 @@ sub web_mkzprofile() {
     $var = $profile . "_eckd_size";
     `echo "$var=$size" >> /var/opt/xcat/profiles/$profile.conf`;
 
-    # Move directory entry into /var/opt/xcat/profiles from /var/tmp    
+    # Move directory entry into /var/opt/xcat/profiles from /var/tmp
     `mv /var/tmp/$profile.direct /var/opt/xcat/profiles`;
 
     my $info = "Profile successfully created/updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_rmzprofile() {
 
     # Delete default profile
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
-    my $profile  = $request->{arg}->[1];
-    my @profiles = split( ',', $profile );
+    my $profile = $request->{arg}->[1];
+    my @profiles = split(',', $profile);
 
     # Delete profile under /var/opt/xcat/profiles
     foreach (@profiles) {
@@ -2424,13 +2447,13 @@ sub web_rmzprofile() {
     }
 
     my $info = "Profile successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_mkippool() {
 
     # Create group IP pool
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
     my $group = $request->{arg}->[1];
@@ -2440,17 +2463,17 @@ sub web_mkippool() {
     `mv /var/tmp/$group.pool /var/opt/xcat/ippool`;
 
     my $info = "IP pool successfully created/updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_rmippool() {
 
     # Delete group IP pool
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
-    my $group  = $request->{arg}->[1];
-    my @groups = split( ',', $group );
+    my $group = $request->{arg}->[1];
+    my @groups = split(',', $group);
 
     # Delete IP pool under /var/opt/xcat/ippool
     foreach (@groups) {
@@ -2458,33 +2481,34 @@ sub web_rmippool() {
     }
 
     my $info = "IP pool successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_lsippool() {
 
     # List IP pool
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get profile
-    my $group  = $request->{arg}->[1];
-    
+    my $group = $request->{arg}->[1];
+
     # IP pool contained in /var/opt/xcat/ippool where a file exists per group
     my $entries;
-    if ( !(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`) ) {
+    if (!(`test -e /var/opt/xcat/ippool/$group.pool && echo Exists`)) {
         $entries = "No IP pool found!";
     } else {
-        # List IP pool under /var/opt/xcat/ippool   
+
+        # List IP pool under /var/opt/xcat/ippool
         $entries = `cat /var/opt/xcat/ippool/$group.pool`;
     }
-    
-    $callback->( { info => $entries } );
+
+    $callback->({ info => $entries });
 }
 
 sub web_updateosimage() {
 
     # Add OS image to xCAT table
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     my $name       = $request->{arg}->[1];
     my $type       = $request->{arg}->[2];
@@ -2496,18 +2520,18 @@ sub web_updateosimage() {
     my $comments   = $request->{arg}->[8];
 
     `/opt/xcat/sbin/chtab -d imagename=$name osimage`;
-    `/opt/xcat/sbin/chtab osimage.imagename=$name osimage.imagetype=$type osimage.osarch=$arch osimage.osname=$osName osimage.osvers=$osVersion osimage.profile=$profile osimage.provmethod=$provMethod osimage.comments=$comments`;
+`/opt/xcat/sbin/chtab osimage.imagename=$name osimage.imagetype=$type osimage.osarch=$arch osimage.osname=$osName osimage.osvers=$osVersion osimage.profile=$profile osimage.provmethod=$provMethod osimage.comments=$comments`;
     my $info = "Image successfully updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_rmosimage() {
 
     # Delete OS image from xCAT table
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
-    my $name  = $request->{arg}->[1];
-    my @names = split( ',', $name );
+    my $name = $request->{arg}->[1];
+    my @names = split(',', $name);
 
     # Delete user from xCAT passwd and policy tables
     foreach (@names) {
@@ -2515,13 +2539,13 @@ sub web_rmosimage() {
     }
 
     my $info = "Image successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_updategroup() {
 
     # Add group to xCAT table
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     my $name = $request->{arg}->[1];
     my $ip   = $request->{arg}->[2];
@@ -2534,19 +2558,19 @@ sub web_updategroup() {
     $comments =~ s/'//g;
 
     `/opt/xcat/sbin/chtab -d node=$name hosts`;
-    `/opt/xcat/sbin/chtab node=$name hosts.ip="$ip" hosts.hostnames="$hostnames" hosts.comments="$comments"`;
+`/opt/xcat/sbin/chtab node=$name hosts.ip="$ip" hosts.hostnames="$hostnames" hosts.comments="$comments"`;
 
     my $info = "Group successfully updated";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_rmgroup() {
 
     # Delete group from xCAT table
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
-    my $name  = $request->{arg}->[1];
-    my @names = split( ',', $name );
+    my $name = $request->{arg}->[1];
+    my @names = split(',', $name);
 
     # Delete user from xCAT passwd and policy tables
     foreach (@names) {
@@ -2555,132 +2579,141 @@ sub web_rmgroup() {
     }
 
     my $info = "Group successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_framesetup() {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $adminpasswd = $request->{arg}->[1];
+    my ($request, $callback, $sub_req) = @_;
+    my $adminpasswd   = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
-    my $hmcpasswd = $request->{arg}->[3];
-    my $configphase = $request->{arg}->[4];
-    my @tempnode = 'bpa';
-    
-    if ($configphase == 1){
+    my $hmcpasswd     = $request->{arg}->[3];
+    my $configphase   = $request->{arg}->[4];
+    my @tempnode      = 'bpa';
+
+    if ($configphase == 1) {
+
         #run makedhcp
         xCAT::Utils->runcmd('makedhcp bpa', -1, 1);
         sleep(10);
+
         #run makehosts
         xCAT::Utils->runcmd('makehosts bpa', -1, 1);
-        $callback->( { info => 'FRAMEs DHCP, DNS configured.' } );
-    } elsif ($configphase == 2){
+        $callback->({ info => 'FRAMEs DHCP, DNS configured.' });
+    } elsif ($configphase == 2) {
+
         #run chtab command
         xCAT::Utils->runcmd('chtab key=bpa,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=bpa,username=admin passwd.password=' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=bpa,username=general passwd.password=' . $generalpasswd, -1, 1);
-    
+
         #mkhwconn
         xCAT::Utils->runcmd('mkhwconn frame -t', -1, 1);
+
         #rspconfig
         xCAT::Utils->runcmd('rspconfig frame general_passwd=general,' . $generalpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig frame admin_passwd=admin,' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig frame HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-        $callback->( { info => 'Hardware connection and configure password created.' } );
+        $callback->({ info => 'Hardware connection and configure password created.' });
     }
 }
 
 sub web_cecsetup() {
-    my ( $request, $callback, $sub_req ) = @_;
-    my $adminpasswd = $request->{arg}->[1];
+    my ($request, $callback, $sub_req) = @_;
+    my $adminpasswd   = $request->{arg}->[1];
     my $generalpasswd = $request->{arg}->[2];
-    my $hmcpasswd = $request->{arg}->[3];
-    my $configphase = $request->{arg}->[4];
-    my @tempnode = 'bpa';
+    my $hmcpasswd     = $request->{arg}->[3];
+    my $configphase   = $request->{arg}->[4];
+    my @tempnode      = 'bpa';
 
-    if ($configphase == 1){
+    if ($configphase == 1) {
+
         # Run makedhcp
         xCAT::Utils->runcmd('makedhcp fsp', -1, 1);
         sleep(10);
+
         # Run makehosts
         xCAT::Utils->runcmd('makehosts fsp', -1, 1);
-        $callback->( { info => 'CEC DHCP, DNS configured.' } );
-    } elsif ($configphase == 2){
+        $callback->({ info => 'CEC DHCP, DNS configured.' });
+    } elsif ($configphase == 2) {
+
         # Run chtab command
         xCAT::Utils->runcmd('chtab key=fsp,username=HMC passwd.password=' . $hmcpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=fsp,username=admin passwd.password=' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('chtab key=fsp,username=general passwd.password=' . $generalpasswd, -1, 1);
+
         # Run mkhwconn
         xCAT::Utils->runcmd('mkhwconn cec -t', -1, 1);
+
         # Run rspconfig
         xCAT::Utils->runcmd('rspconfig cec general_passwd=general,' . $generalpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig cec admin_passwd=admin,' . $adminpasswd, -1, 1);
         xCAT::Utils->runcmd('rspconfig cec HMC_passwd=,' . $hmcpasswd, -1, 1);
 
-        $callback->( { info => 'Hardware connection and configure password created.' } );
+        $callback->({ info => 'Hardware connection and configure password created.' });
     }
 }
 
 sub web_deletefile() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get file location
     my $file = $request->{arg}->[1];
-    
+
     my $info;
     if (substr($file, 0, 9) ne "/install/") {
         $info = "(Error) Files are restricted to those in /install";
-        $callback->( { info => $info } );
+        $callback->({ info => $info });
         return;
     }
-    
+
     unless (-e $file) {
         $info = "(Error) File does not exist";
-        $callback->( { info => $info } );
+        $callback->({ info => $info });
         return;
     }
-    
+
     # Escape spaces
     $file =~ s/ /\\ /g;
     my $out = `/bin/rm -rf $file`;
-    
+
     $info = "File successfully deleted";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_createfolder() {
-    my ( $request, $callback, $sub_req ) = @_;
+    my ($request, $callback, $sub_req) = @_;
 
     # Get folder location
     my $folder = $request->{arg}->[1];
-    
+
     my $info;
     if (substr($folder, 0, 9) ne "/install/") {
         $info = "(Error) Folders are restricted to those in /install";
-        $callback->( { info => $info } );
+        $callback->({ info => $info });
         return;
     }
-        
+
     # Escape spaces
     $folder =~ s/ /\\ /g;
     my $out = `/bin/mkdir -p $folder`;
     $out = `chown apache:apache $folder`;
-    
+
     $info = "Folder successfully created";
-    $callback->( { info => $info } );
+    $callback->({ info => $info });
 }
 
 sub web_getrepospace() {
-        my ( $request, $callback, $sub_req ) = @_;
-        
-        # Query repository space. Output is: size, used, available, used %, mount
-        # remove trailing / from /install so this query also works on CMO which uses cmo-data on /data
-        my $space = `/bin/df -h /install | egrep -i "/install"`;
-        $space =~ s/\s+/ /g;
+    my ($request, $callback, $sub_req) = @_;
+
+    # Query repository space. Output is: size, used, available, used %, mount
+    # remove trailing / from /install so this query also works on CMO which uses cmo-data on /data
+    my $space = `/bin/df -h /install | egrep -i "/install"`;
+    $space =~ s/\s+/ /g;
     $space =~ s/\s*$//;
     $space =~ s/^\s*//;
-                
-        $callback->( { info => $space } );
+
+    $callback->({ info => $space });
 }
 
 1;

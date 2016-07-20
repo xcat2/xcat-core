@@ -1,34 +1,36 @@
 package xCAT::SPD;
+
 #This module provides the ability to decode DIMM SPD data to human readable format
 use strict;
+
 #use Data::Dumper;
 require Exporter;
-our @ISA=qw/Exporter/;
-our @EXPORT_OK=qw/decode_spd/;
+our @ISA       = qw/Exporter/;
+our @EXPORT_OK = qw/decode_spd/;
 
 sub do_crc16 {
-	my @data = @_;
-	my $crc = 0;
-	while (@data) {
-		my $byte = shift @data;
-		$crc = $crc ^ $byte<<8;
-		my $loopcount=8;
-		while ($loopcount--) {
-			if ($crc & 0x8000) {
-				$crc = $crc <<1 ^ 0x1021;
-			} else {
-				$crc = $crc << 1;
-			}
-		}
-	}
-	return $crc & 0xffff;;;;
+    my @data = @_;
+    my $crc  = 0;
+    while (@data) {
+        my $byte = shift @data;
+        $crc = $crc ^ $byte << 8;
+        my $loopcount = 8;
+        while ($loopcount--) {
+            if ($crc & 0x8000) {
+                $crc = $crc << 1 ^ 0x1021;
+            } else {
+                $crc = $crc << 1;
+            }
+        }
+    }
+    return $crc & 0xffff;
 }
-			
+
 
 
 sub decode_manufacturer {
-        my $jedec_ids = [
-          {
+    my $jedec_ids = [
+        {
             0x01 => "AMD",
             0x02 => "AMI",
             0x83 => "Fairchild",
@@ -155,8 +157,8 @@ sub decode_manufacturer {
             0x7c => "Dialog",
             0xfd => "Media Vision",
             0xfe => "Level One Communication",
-          },
-          {
+        },
+        {
             0x01 => "Cirrus Logic",
             0x02 => "National Instruments",
             0x83 => "ILC Data Device",
@@ -283,8 +285,8 @@ sub decode_manufacturer {
             0x7C => "FOXCONN",
             0xFD => "Quadratics Superconductor",
             0xFE => "3COM",
-          },
-          {
+        },
+        {
             0x01 => "Camintonn Corporation",
             0x02 => "ISOA Incorporated",
             0x83 => "Agate Semiconductor",
@@ -307,7 +309,7 @@ sub decode_manufacturer {
             0x94 => "Delkin Devices",
             0x15 => "Symagery Microsystems",
             0x16 => "C-Port Corporation",
-            0x97 => "SiberCore Technologies", 
+            0x97 => "SiberCore Technologies",
             0x98 => "Southland Microsystems",
             0x19 => "Malleable Technologies",
             0x1A => "Kendin Communications",
@@ -625,35 +627,35 @@ sub decode_manufacturer {
         return "Malformed SPD";
     }
     if (defined $jedec_ids->[$arr_index]->{$code}) {
-    	return $jedec_ids->[$arr_index]->{$code};
+        return $jedec_ids->[$arr_index]->{$code};
     } else {
-    	return "Unrecognized manufacturer: $arr_index, $code";
+        return "Unrecognized manufacturer: $arr_index, $code";
     }
 }
 
 
 
-            
 
-                                                       
+
+
 
 
 sub decode_spd {
     my %memtypes = (
-        1 => "STD FPM DRAM",
-        2 => "EDO",
-        3 => "Pipelined Nibble", 
-        4 => "SDRAM",
-        5 => "ROM",
-        6 => "DDR SGRAM",
-        7 => "DDR SDRAM",
-        8 => "DDR2 SDRAM",
-        9 => "DDR2 SDRAM FB-DIMM",
+        1  => "STD FPM DRAM",
+        2  => "EDO",
+        3  => "Pipelined Nibble",
+        4  => "SDRAM",
+        5  => "ROM",
+        6  => "DDR SGRAM",
+        7  => "DDR SDRAM",
+        8  => "DDR2 SDRAM",
+        9  => "DDR2 SDRAM FB-DIMM",
         10 => "DDR2 SDRAM FB-DIMM PROBE",
         11 => "DDR3 SDRAM",
         12 => "DDR4 SDRAM",
     );
-    
+
     my %modtypes = (
         1 => "RDIMM",
         2 => "UDIMM",
@@ -664,7 +666,7 @@ sub decode_spd {
     );
 
     my %speedfromclock = (
-        800 => 6400,
+        800  => 6400,
         1066 => 8500,
         1333 => 10600,
         1600 => 12800,
@@ -706,131 +708,136 @@ sub decode_spd {
 
     my @spd = @_;
     my $rethash;
+
     #print Dumper(@spd);
-    if (($spd[0] & 0xf) > 3) { #TODO: Remove workaround for buggy SPD
-        $rethash->{product}->{extra}=[{value=>'Malformed SPD (missing leading byte)',encoding=>3}];
-        unshift @spd,3;
+    if (($spd[0] & 0xf) > 3) {    #TODO: Remove workaround for buggy SPD
+        $rethash->{product}->{extra} = [ { value => 'Malformed SPD (missing leading byte)', encoding => 3 } ];
+        unshift @spd, 3;
     }
-    $rethash->{product}->{name}=$memtypes{$spd[2]};
-    if  ($spd[2] == 11) { #DDR3 spec applies
+    $rethash->{product}->{name} = $memtypes{ $spd[2] };
+    if ($spd[2] == 11) {          #DDR3 spec applies
         my $ftbdividend = $spd[9] >> 4;
-        my $ftbdivisor = $spd[9] & 0xf;
-        my $ftb = $ftbdividend/$ftbdivisor;
-        my $fineoffset = $spd[34];
+        my $ftbdivisor  = $spd[9] & 0xf;
+        my $ftb         = $ftbdividend / $ftbdivisor;
+        my $fineoffset  = $spd[34];
         if ($fineoffset & 0b10000000) {
+
             #negative value, twos complement
-            $fineoffset = 0-(($fineoffset ^ 0xff) + 1);
+            $fineoffset = 0 - (($fineoffset ^ 0xff) + 1);
         }
         $fineoffset = ($ftb * $fineoffset) * 10**-3;
-        my $mtb = $spd[10]/$spd[11];
-        my $clock = int(2/(($mtb*$spd[12]+$fineoffset)*10**-3));
+        my $mtb   = $spd[10] / $spd[11];
+        my $clock = int(2 / (($mtb * $spd[12] + $fineoffset) * 10**-3));
         my $speed = $speedfromclock{$clock};
         unless ($speed) { $speed = "UNKNOWN"; }
-        $rethash->{product}->{name}="PC3-".$speed." ($clock MT/s)";
-        if ($spd[8]&0b11000) {
+        $rethash->{product}->{name} = "PC3-" . $speed . " ($clock MT/s)";
+        if ($spd[8] & 0b11000) {
             $rethash->{product}->{name} .= " ECC";
         }
-        $rethash->{product}->{name}.=" ".$modtypes{$spd[3]&0x0f};
-        my $sdramcap=$ddrmodcap{$spd[4]&0xf};
-        my $buswidth=$ddrbuswidth{$spd[8]&0b111};
-        my $sdramwidth=$ddrdevwidth{$spd[7]&0b111};
-        my $ranks = $ddrranks{($spd[7]&0b111000)>>3};
+        $rethash->{product}->{name} .= " " . $modtypes{ $spd[3] & 0x0f };
+        my $sdramcap   = $ddrmodcap{ $spd[4] & 0xf };
+        my $buswidth   = $ddrbuswidth{ $spd[8] & 0b111 };
+        my $sdramwidth = $ddrdevwidth{ $spd[7] & 0b111 };
+        my $ranks      = $ddrranks{ ($spd[7] & 0b111000) >> 3 };
 
 
-        my $capacity = $sdramcap/8*$buswidth/$sdramwidth*$ranks;
+        my $capacity = $sdramcap / 8 * $buswidth / $sdramwidth * $ranks;
         if ($capacity < 1024) {
-            $capacity = $capacity."MB";
+            $capacity = $capacity . "MB";
         } else {
-            $capacity = ($capacity/1024)."GB";
+            $capacity = ($capacity / 1024) . "GB";
         }
-        $rethash->{product}->{name} = $capacity." ".$rethash->{product}->{name};
+        $rethash->{product}->{name} = $capacity . " " . $rethash->{product}->{name};
 
-        $rethash->{product}->{manufacturer} = decode_manufacturer($spd[117],$spd[118]);
-        $rethash->{product}->{buildlocation} = sprintf("%02x",$spd[119]);
+        $rethash->{product}->{manufacturer} = decode_manufacturer($spd[117], $spd[118]);
+        $rethash->{product}->{buildlocation} = sprintf("%02x", $spd[119]);
         if ($spd[120] != 0 or $spd[121] != 0) {
-            $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x",$spd[121],$spd[120]);
+            $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x", $spd[121], $spd[120]);
         }
-        foreach (@spd[128..145]) {
+        foreach (@spd[ 128 .. 145 ]) {
             if ($_ & 0b10000000) {
-                $rethash->{product}->{model}="Malformed SPD";
+                $rethash->{product}->{model} = "Malformed SPD";
             }
         }
         unless ($rethash->{product}->{model}) {
-            $rethash->{product}->{model}=pack("C*",@spd[128..145]);
+            $rethash->{product}->{model} = pack("C*", @spd[ 128 .. 145 ]);
         }
-        if ($spd[0] & 0b10000000) { #crc is to exclude 117-125, crc 0 to 116
-		unless (do_crc16(@spd[0..116]) == ($spd[126]+($spd[127]<<8))) {
-			push @{$rethash->{product}->{extra}},"SPD CRC Invalid!";
-		}
-	} else { #crc for 0 to 125
-		unless (do_crc16(@spd[0..125]) == ($spd[126]+($spd[127]<<8))) {
-				push @{$rethash->{product}->{extra}},"CRC Invalid!";
-		}
-	}
-	#my $rawspd="SPD Dump: ";
-	#foreach (@spd) {
-	#	$rawspd .= sprintf("%02X ",$_);
-	#}
-	#push @{$rethash->{product}->{extra}},$rawspd;
-    } elsif  ($spd[2] == 12) { #DDR4 spec applies
-        # spd[125] spd[18] spd[18is sdram min cycle time .. spd125 is fine offset for min time
-        # mtb and ftb are fixed in ddr4 spd spec.. mtb is always 0.125 ns and ftb is always 0.001 ns
+        if ($spd[0] & 0b10000000) {    #crc is to exclude 117-125, crc 0 to 116
+            unless (do_crc16(@spd[ 0 .. 116 ]) == ($spd[126] + ($spd[127] << 8))) {
+                push @{ $rethash->{product}->{extra} }, "SPD CRC Invalid!";
+            }
+        } else {                       #crc for 0 to 125
+            unless (do_crc16(@spd[ 0 .. 125 ]) == ($spd[126] + ($spd[127] << 8))) {
+                push @{ $rethash->{product}->{extra} }, "CRC Invalid!";
+            }
+        }
+
+        #my $rawspd="SPD Dump: ";
+        #foreach (@spd) {
+        #	$rawspd .= sprintf("%02X ",$_);
+        #}
+        #push @{$rethash->{product}->{extra}},$rawspd;
+    } elsif ($spd[2] == 12) {    #DDR4 spec applies
+         # spd[125] spd[18] spd[18is sdram min cycle time .. spd125 is fine offset for min time
+         # mtb and ftb are fixed in ddr4 spd spec.. mtb is always 0.125 ns and ftb is always 0.001 ns
         my $speed;
         my $clock;
         if ($spd[17] == 0) {
             my $fineoffset = $spd[125];
             if ($fineoffset & 0b10000000) {
+
                 #negative value, twos complement
-                $fineoffset = 0-(($fineoffset ^ 0xff) + 1);
+                $fineoffset = 0 - (($fineoffset ^ 0xff) + 1);
             }
-            $clock = int(2/((0.125*$spd[18] + $fineoffset*0.001)*0.001));
+            $clock = int(2 / ((0.125 * $spd[18] + $fineoffset * 0.001) * 0.001));
             $speed = $speedfromclock{$clock};
             unless ($speed) { $speed = "UNKNOWN"; }
         } else { # this would mean a different MTB and FTB than spec indicated..
             $clock = "UNKNOWN";
             $speed = "UNKNOWN";
         }
-        $rethash->{product}->{name}="PC4-".$speed." ($clock MT/s)";
-        if ($spd[13]&0b11000 == 0b1000) {
+        $rethash->{product}->{name} = "PC4-" . $speed . " ($clock MT/s)";
+        if ($spd[13] & 0b11000 == 0b1000) {
             $rethash->{product}->{name} .= " ECC";
         }
-        $rethash->{product}->{name}.=" ".$modtypes{$spd[3]&0x0f};
-        my $sdramcap=$ddrmodcap{$spd[4]&0xf};
-        my $buswidth=$ddrbuswidth{$spd[13]&0b111};
-        my $sdramwidth=$ddrdevwidth{$spd[12]&0b111};
-        my $ranks = $ddrranks{($spd[12]&0b111000)>>3};
+        $rethash->{product}->{name} .= " " . $modtypes{ $spd[3] & 0x0f };
+        my $sdramcap   = $ddrmodcap{ $spd[4] & 0xf };
+        my $buswidth   = $ddrbuswidth{ $spd[13] & 0b111 };
+        my $sdramwidth = $ddrdevwidth{ $spd[12] & 0b111 };
+        my $ranks      = $ddrranks{ ($spd[12] & 0b111000) >> 3 };
 
 
-        my $capacity = $sdramcap/8*$buswidth/$sdramwidth*$ranks;
+        my $capacity = $sdramcap / 8 * $buswidth / $sdramwidth * $ranks;
         if ($capacity < 1024) {
-            $capacity = $capacity."MB";
+            $capacity = $capacity . "MB";
         } else {
-            $capacity = ($capacity/1024)."GB";
+            $capacity = ($capacity / 1024) . "GB";
         }
-        $rethash->{product}->{name} = $capacity." ".$rethash->{product}->{name};
+        $rethash->{product}->{name} = $capacity . " " . $rethash->{product}->{name};
 
-        $rethash->{product}->{manufacturer} = decode_manufacturer($spd[320],$spd[321]);
-        $rethash->{product}->{buildlocation} = sprintf("%02x",$spd[322]);
+        $rethash->{product}->{manufacturer} = decode_manufacturer($spd[320], $spd[321]);
+        $rethash->{product}->{buildlocation} = sprintf("%02x", $spd[322]);
         if ($spd[323] != 0 or $spd[324] != 0) {
-            $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x",$spd[323],$spd[324]);
+            $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x", $spd[323], $spd[324]);
         }
-        foreach (@spd[329..348]) {
+        foreach (@spd[ 329 .. 348 ]) {
             if ($_ > 126 or $_ < 32) {
-                $rethash->{product}->{model}="Malformed SPD";
+                $rethash->{product}->{model} = "Malformed SPD";
             }
         }
         unless ($rethash->{product}->{model}) {
-            $rethash->{product}->{model}=pack("C*",@spd[329..348]);
+            $rethash->{product}->{model} = pack("C*", @spd[ 329 .. 348 ]);
         }
-	#my $rawspd="SPD Dump: ";
-	#foreach (@spd) {
-	#	$rawspd .= sprintf("%02X ",$_);
-	#}
-	#push @{$rethash->{product}->{extra}},$rawspd;
+
+        #my $rawspd="SPD Dump: ";
+        #foreach (@spd) {
+        #	$rawspd .= sprintf("%02X ",$_);
+        #}
+        #push @{$rethash->{product}->{extra}},$rawspd;
     } else {
-        $rethash->{product}->{model}="Unrecognized SPD";
-    } 
+        $rethash->{product}->{model} = "Unrecognized SPD";
+    }
     return $rethash;
 }
-        
+
 1;

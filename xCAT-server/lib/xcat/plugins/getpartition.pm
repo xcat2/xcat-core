@@ -28,7 +28,7 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return {'getpartition' => "getpartition"};
+    return { 'getpartition' => "getpartition" };
 }
 
 
@@ -49,16 +49,16 @@ sub process_request
 
     my $client;
     if ($request->{'_xcat_clienthost'}) {
-      $client = $request->{'_xcat_clienthost'}->[0];
+        $client = $request->{'_xcat_clienthost'}->[0];
     }
 
-    if ($client) { ($client) = noderange($client) };
-    unless ($client) { #Not able to do identify the host in question
-       xCAT::MsgUtils->message("S","Received syncfiles from $client, which couldn't be correlated to a node (domain mismatch?)");
-      return;
+    if ($client) { ($client) = noderange($client) }
+    unless ($client) {    #Not able to do identify the host in question
+        xCAT::MsgUtils->message("S", "Received syncfiles from $client, which couldn't be correlated to a node (domain mismatch?)");
+        return;
     }
 
-    parsepartition($client,$callback,$subreq);
+    parsepartition($client, $callback, $subreq);
 }
 
 
@@ -77,10 +77,10 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-sub parsepartition{
-    my $node = shift;
+sub parsepartition {
+    my $node     = shift;
     my $callback = shift;
-    my $subreq = shift;
+    my $subreq   = shift;
 
     # get the partition file from linuximage.partitionfile
     my $partfile;
@@ -89,20 +89,20 @@ sub parsepartition{
     my $provmethod;
     my ($os, $arch, $profile);
 
-    my $nttab = xCAT::Table->new('nodetype', -create=>1);
+    my $nttab = xCAT::Table->new('nodetype', -create => 1);
     if ($nttab) {
-        my $ntent = $nttab->getNodeAttribs($node, ['provmethod', 'os', 'arch', 'profile']);
+        my $ntent = $nttab->getNodeAttribs($node, [ 'provmethod', 'os', 'arch', 'profile' ]);
         unless ($ntent) {
-            push @{$rsp->{data}}, "Error: No entry in nodetype table";
+            push @{ $rsp->{data} }, "Error: No entry in nodetype table";
             $callback->($rsp);
             return;
         }
         $provmethod = $ntent->{'provmethod'};
-        $os = $ntent->{'os'};
-        $arch = $ntent->{'arch'};
-        $profile = $ntent->{'profile'};
+        $os         = $ntent->{'os'};
+        $arch       = $ntent->{'arch'};
+        $profile    = $ntent->{'profile'};
     } else {
-        push @{$rsp->{data}}, "Error: Could not open nodetype table";
+        push @{ $rsp->{data} }, "Error: Could not open nodetype table";
         $callback->($rsp);
         return;
     }
@@ -113,40 +113,42 @@ sub parsepartition{
     } else {
         $imagename = "$os-$arch-$provmethod-$profile";
     }
-	    
-    my $linuximagetab = xCAT::Table->new('linuximage', -create=>1);
+
+    my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
     if ($linuximagetab) {
-        my $lient = $linuximagetab->getAttribs({imagename => $imagename}, ['partitionfile']);
-        unless  ($lient) {
-            push @{$rsp->{data}}, "Error: No entry in linuximage table";
+        my $lient = $linuximagetab->getAttribs({ imagename => $imagename }, ['partitionfile']);
+        unless ($lient) {
+            push @{ $rsp->{data} }, "Error: No entry in linuximage table";
             $callback->($rsp);
             return;
         }
         $partfile = $lient->{'partitionfile'};
     } else {
-        push @{$rsp->{data}}, "Error: Could not open linuximage table";
+        push @{ $rsp->{data} }, "Error: Could not open linuximage table";
         $callback->($rsp);
         return;
     }
 
     my $cfgfile;
     if ($partfile =~ /s:(.*)/) {
+
         # It's a script that could be run directly to do the partition configuring
         $cfgfile = $1;
-        push @{$rsp->{data}}, "type=script";
+        push @{ $rsp->{data} }, "type=script";
+
         #push @{$rsp->{data}}, "enable=yes";
     } else {
         $cfgfile = $partfile;
-        push @{$rsp->{data}}, "type=format";
+        push @{ $rsp->{data} }, "type=format";
     }
 
     unless (-r $cfgfile) {
-        push @{$rsp->{data}}, "Error: Could not read the file $1";
+        push @{ $rsp->{data} }, "Error: Could not read the file $1";
         $callback->($rsp);
         return;
     }
-    open (FILE, "<$cfgfile");
-    push @{$rsp->{data}}, <FILE>;
+    open(FILE, "<$cfgfile");
+    push @{ $rsp->{data} }, <FILE>;
     $callback->($rsp);
     return;
 

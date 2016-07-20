@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::DSHCLI;
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -39,18 +40,18 @@ $::CONTEXT_DIR = "/opt/xcat/xdsh/Context/";
 $::__DCP_DELIM = 'Xcat,DELIMITER,Xcat';
 
 our @dsh_valid_env = (
-                      'DCP_NODE_OPTS',       'DCP_NODE_RCP',
-                      'DSH_ENVIRONMENT',     'DSH_FANOUT',
-                      'DSH_LOG',             'DSH_NODEGROUP_PATH',
-                      'DSH_NODE_LIST',       'DSH_NODE_OPTS',
-                      'DSH_NODE_RCP',        'DSH_NODE_RSH',
-                      'DSH_OUTPUT',          'DSH_PATH',
-                      'DSH_SYNTAX',          'DSH_TIMEOUT',
-                      'DSH_REMOTE_PASSWORD', 'DSH_TO_USERID',
-                      'DSH_FROM_USERID',     'DEVICETYPE',
-                      'RSYNCSN',             'DSH_RSYNC_FILE',
-                      'RSYNCSNONLY',
-                      );
+    'DCP_NODE_OPTS',       'DCP_NODE_RCP',
+    'DSH_ENVIRONMENT',     'DSH_FANOUT',
+    'DSH_LOG',             'DSH_NODEGROUP_PATH',
+    'DSH_NODE_LIST',       'DSH_NODE_OPTS',
+    'DSH_NODE_RCP',        'DSH_NODE_RSH',
+    'DSH_OUTPUT',          'DSH_PATH',
+    'DSH_SYNTAX',          'DSH_TIMEOUT',
+    'DSH_REMOTE_PASSWORD', 'DSH_TO_USERID',
+    'DSH_FROM_USERID',     'DEVICETYPE',
+    'RSYNCSN',             'DSH_RSYNC_FILE',
+    'RSYNCSNONLY',
+);
 select(STDERR);
 $| = 1;
 select(STDOUT);
@@ -101,7 +102,7 @@ sub execute_dcp
     my %unresolved_targets = ();
     my %context_targets    = ();
     xCAT::DSHCLI->resolve_targets($options, \%resolved_targets,
-                                  \%unresolved_targets, \%context_targets);
+        \%unresolved_targets, \%context_targets);
 
     if (!scalar(%resolved_targets))
     {
@@ -147,11 +148,11 @@ sub execute_dcp
     !$$options{'silent'} && push @error_files, *STDERR;
 
     xCAT::DSHCLI->fork_fanout_dcp(
-                                  $options,          \%resolved_targets,
-                                  \%forked_process,  \%pid_targets,
-                                  \%outfh_targets,   \%errfh_targets,
-                                  \@targets_waiting, \%targets_active
-                                  );
+        $options, \%resolved_targets,
+        \%forked_process,  \%pid_targets,
+        \%outfh_targets,   \%errfh_targets,
+        \@targets_waiting, \%targets_active
+    );
 
     while (keys(%targets_active))
     {
@@ -165,7 +166,7 @@ sub execute_dcp
             my @active_list = keys(%targets_active);
             my $rsp         = {};
             $rsp->{error}->[0] =
-              " Timed out waiting for response from child processes for the following nodes.";
+" Timed out waiting for response from child processes for the following nodes.";
             $rsp->{error}->[1] = " @active_list";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             kill 'INT', keys(%pid_targets);
@@ -178,26 +179,26 @@ sub execute_dcp
 
         (@select_out_fhs)
           && xCAT::DSHCLI->buffer_output(
-                     $options,           \%resolved_targets, \%targets_active,
-                     \@targets_finished, \@targets_failed,   \%targets_buffered,
-                     \%pid_targets,      \%forked_process,   \%outfh_targets,
-                     \%output_buffers,   \%error_buffers,    \@output_files,
-                     \@error_files,      \@select_out_fhs
-                     );
+            $options, \%resolved_targets, \%targets_active,
+            \@targets_finished, \@targets_failed, \%targets_buffered,
+            \%pid_targets,      \%forked_process, \%outfh_targets,
+            \%output_buffers,   \%error_buffers,  \@output_files,
+            \@error_files,      \@select_out_fhs
+          );
 
         my @select_err_fhs =
           xCAT::DSHCLI->util_bit_indexes($rout & $errfh_targets{'bitmap'}, 1);
 
         (@select_err_fhs)
           && xCAT::DSHCLI->buffer_error(
-                                        $options,         \%resolved_targets,
-                                        \%targets_active, \@targets_finished,
-                                        \@targets_failed, \%targets_buffered,
-                                        \%pid_targets,    \%forked_process,
-                                        \%errfh_targets,  \%output_buffers,
-                                        \%error_buffers,  \@output_files,
-                                        \@error_files,    \@select_err_fhs
-                                        );
+            $options, \%resolved_targets,
+            \%targets_active, \@targets_finished,
+            \@targets_failed, \%targets_buffered,
+            \%pid_targets,    \%forked_process,
+            \%errfh_targets,  \%output_buffers,
+            \%error_buffers,  \@output_files,
+            \@error_files,    \@select_err_fhs
+          );
 
         my @targets_buffered_keys = sort keys(%targets_buffered);
 
@@ -210,13 +211,13 @@ sub execute_dcp
                 if ($::DCP_API)
                 {
                     $::DCP_API_MESSAGE .=
-                        join("", @{$output_buffers{$user_target}})
-                      . join("", @{$error_buffers{$user_target}});
+                      join("", @{ $output_buffers{$user_target} })
+                      . join("", @{ $error_buffers{$user_target} });
                 }
                 else
                 {
-                    print STDOUT @{$output_buffers{$user_target}};
-                    print STDERR @{$error_buffers{$user_target}};
+                    print STDOUT @{ $output_buffers{$user_target} };
+                    print STDERR @{ $error_buffers{$user_target} };
                 }
             }
 
@@ -224,65 +225,65 @@ sub execute_dcp
             delete $error_buffers{$user_target};
 
             my $exit_code = $targets_buffered{$user_target}{'exit-code'};
-            
+
             if ($exit_code != 0)
             {
                 # report error status  --nodestatus
                 # Note the message below for node status must
-                # not be NLS translated.  Code depends on the English. 
+                # not be NLS translated.  Code depends on the English.
                 if ($$options{'nodestatus'}) {
-                   my $rsp={};
-                  $rsp->{data}->[0] =
-                  "$user_target: Remote_command_failed, error_code=$exit_code";
-                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$exit_code";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
                 push @targets_failed, $user_target;
-                push @{$dsh_target_status{'failed'}}, $user_target;
+                push @{ $dsh_target_status{'failed'} }, $user_target;
 
             }
 
             else
             {
                 # Note the message below for node status must
-                # not be NLS translated.  Code depends on the English. 
+                # not be NLS translated.  Code depends on the English.
                 if ($$options{'nodestatus'}) {
-                   my $rsp={};
-                  $rsp->{data}->[0] =
-                  "$user_target: Remote_command_successful";
-                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "$user_target: Remote_command_successful";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
                 push @targets_finished, $user_target;
             }
-            
+
             # return list of   badnodes and goodnodes
             if ($$options{'monitor'}) {
-              foreach my $badnode (@targets_failed) {
-                 my $rsp={};
-                 $rsp->{data}->[0] =
-                 "dsh>  Remote_command_failed $badnode";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              }
-              foreach my $goodnode (@targets_finished) {
-                 my $rsp={};
-                 $rsp->{data}->[0] =
-                 "dsh>  Remote_command_successful $goodnode";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-              }
+                foreach my $badnode (@targets_failed) {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "dsh>  Remote_command_failed $badnode";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
+                foreach my $goodnode (@targets_finished) {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "dsh>  Remote_command_successful $goodnode";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                }
             }
             delete $targets_buffered{$user_target};
         }
 
         (@targets_waiting)
           && xCAT::DSHCLI->fork_fanout_dcp(
-                        $options,          \%resolved_targets, \%forked_process,
-                        \%pid_targets,     \%outfh_targets,    \%errfh_targets,
-                        \@targets_waiting, \%targets_active
-                        );
+            $options, \%resolved_targets, \%forked_process,
+            \%pid_targets, \%outfh_targets, \%errfh_targets,
+            \@targets_waiting, \%targets_active
+          );
     }
     if (scalar(@targets_failed) > 0)
     {
-          #$::DCP_NODES_FAILED = join ",", @targets_failed;
-          @::DCP_NODES_FAILED =  @targets_failed;
+        #$::DCP_NODES_FAILED = join ",", @targets_failed;
+        @::DCP_NODES_FAILED = @targets_failed;
     }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
@@ -345,7 +346,7 @@ sub execute_dsh
     $dsh_unresolved_targets = \%unresolved_targets;
     my %context_targets = ();
     xCAT::DSHCLI->resolve_targets($options, \%resolved_targets,
-                                  \%unresolved_targets, \%context_targets);
+        \%unresolved_targets, \%context_targets);
     my @canceled_targets = ();
     $dsh_target_status{'canceled'} = \@canceled_targets;
     my $rsp = {};
@@ -395,11 +396,11 @@ sub execute_dsh
     $dsh_target_status{'failed'} = \@targets_failed;
     @targets_failed =
       xCAT::DSHCLI->_execute_dsh($options, \%resolved_targets,
-                                 \%unresolved_targets, \%context_targets);
+        \%unresolved_targets, \%context_targets);
     if (scalar(@targets_failed) > 0)
     {
-         # $::DSH_NODES_FAILED = join ",", @targets_failed;
-          @::DSH_NODES_FAILED = @targets_failed;
+        # $::DSH_NODES_FAILED = join ",", @targets_failed;
+        @::DSH_NODES_FAILED = @targets_failed;
     }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
@@ -473,11 +474,11 @@ sub _execute_dsh
     $dsh_exec_state++;
 
     xCAT::DSHCLI->fork_fanout_dsh(
-                                  $options,          $resolved_targets,
-                                  \%forked_process,  \%pid_targets,
-                                  \%outfh_targets,   \%errfh_targets,
-                                  \@targets_waiting, \%targets_active
-                                  );
+        $options, $resolved_targets,
+        \%forked_process,  \%pid_targets,
+        \%outfh_targets,   \%errfh_targets,
+        \@targets_waiting, \%targets_active
+    );
 
     while (keys(%targets_active))
     {
@@ -490,9 +491,9 @@ sub _execute_dsh
         if ($fh_count == 0)
         {
             my @active_list = keys(%targets_active);
-            my $rsp = {};
+            my $rsp         = {};
             $rsp->{error}->[0] =
-              " Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
+" Timed out waiting for response from child processes for the following nodes. Terminating the child processes. ";
             $rsp->{error}->[1] = " @active_list";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             @targets_failed = keys(%targets_active);
@@ -511,22 +512,22 @@ sub _execute_dsh
             if ($$options{'streaming'})
             {
                 xCAT::DSHCLI->stream_output(
-                        $options,           $resolved_targets, \%targets_active,
-                        \@targets_finished, \@targets_failed,  \%pid_targets,
-                        \%forked_process,   \%outfh_targets,   \%output_buffers,
-                        \@output_files,     \@select_out_fhs
-                        );
+                    $options, $resolved_targets, \%targets_active,
+                    \@targets_finished, \@targets_failed, \%pid_targets,
+                    \%forked_process,   \%outfh_targets,  \%output_buffers,
+                    \@output_files,     \@select_out_fhs
+                );
             }
 
             else
             {
                 xCAT::DSHCLI->buffer_output(
-                      $options,           $resolved_targets, \%targets_active,
-                      \@targets_finished, \@targets_failed,  \%targets_buffered,
-                      \%pid_targets,      \%forked_process,  \%outfh_targets,
-                      \%output_buffers,   \%error_buffers,   \@output_files,
-                      \@error_files,      \@select_out_fhs
-                      );
+                    $options, $resolved_targets, \%targets_active,
+                    \@targets_finished, \@targets_failed, \%targets_buffered,
+                    \%pid_targets,      \%forked_process, \%outfh_targets,
+                    \%output_buffers,   \%error_buffers,  \@output_files,
+                    \@error_files,      \@select_out_fhs
+                );
             }
         }
 
@@ -538,24 +539,25 @@ sub _execute_dsh
             if ($$options{'streaming'})
             {
                 xCAT::DSHCLI->stream_error(
-                        $options,           $resolved_targets, \%targets_active,
-                        \@targets_finished, \@targets_failed,  \%pid_targets,
-                        \%forked_process,   \%errfh_targets,   \%error_buffers,
-                        \@error_files,      \@select_err_fhs
-                        );
+                    $options, $resolved_targets, \%targets_active,
+                    \@targets_finished, \@targets_failed, \%pid_targets,
+                    \%forked_process,   \%errfh_targets,  \%error_buffers,
+                    \@error_files,      \@select_err_fhs
+                );
             }
 
             else
             {
                 xCAT::DSHCLI->buffer_error(
-                      $options,           $resolved_targets, \%targets_active,
-                      \@targets_finished, \@targets_failed,  \%targets_buffered,
-                      \%pid_targets,      \%forked_process,  \%errfh_targets,
-                      \%output_buffers,   \%error_buffers,   \@output_files,
-                      \@error_files,      \@select_err_fhs
-                      );
+                    $options, $resolved_targets, \%targets_active,
+                    \@targets_finished, \@targets_failed, \%targets_buffered,
+                    \%pid_targets,      \%forked_process, \%errfh_targets,
+                    \%output_buffers,   \%error_buffers,  \@output_files,
+                    \@error_files,      \@select_err_fhs
+                );
             }
         }
+
         # This is only if you are not streaming ( -s)
         my @targets_buffered_keys = sort keys(%targets_buffered);
 
@@ -573,24 +575,24 @@ sub _execute_dsh
                 if ($::DSH_API)
                 {
                     $::DSH_API_MESSAGE =
-                        $::DSH_API_MESSAGE
-                      . join("", @{$output_buffers{$user_target}})
-                      . join("", @{$error_buffers{$user_target}});
+                      $::DSH_API_MESSAGE
+                      . join("", @{ $output_buffers{$user_target} })
+                      . join("", @{ $error_buffers{$user_target} });
                 }
                 else
                 {
                     # HERE: This is where the output shows up
                     #print STDOUT @{$output_buffers{$user_target}};
                     #print STDERR @{$error_buffers{$user_target}};
-                    chomp(@{$output_buffers{$user_target}});
-                    chomp(@{$error_buffers{$user_target}});
+                    chomp(@{ $output_buffers{$user_target} });
+                    chomp(@{ $error_buffers{$user_target} });
                     my $rsp = {};
-                    push @{$rsp->{data}}, @{$output_buffers{$user_target}};
+                    push @{ $rsp->{data} }, @{ $output_buffers{$user_target} };
                     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
                     $rsp = {};
-                    push @{$rsp->{error}}, @{$error_buffers{$user_target}};
+                    push @{ $rsp->{error} }, @{ $error_buffers{$user_target} };
                     $rsp->{NoErrorPrefix} = 1;
-                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 0);
 
                 }
             }
@@ -606,14 +608,15 @@ sub _execute_dsh
             {
 
                 # Note the message below for node status must
-                # not be NLS translated.  Code depends on the English. 
+                # not be NLS translated.  Code depends on the English.
                 # report error status  --nodestatus
                 if ($$options{'nodestatus'}) {
-                   my $rsp={};
-                  $rsp->{data}->[0] =
-                  "$user_target: Remote_command_failed, error_code=$exit_code";
-                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$exit_code";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
+
                 # for monitoring -m
                 my $rsp = {};
                 $rsp->{error}->[0] = "dsh>  Remote_command_failed $user_target";
@@ -624,7 +627,7 @@ sub _execute_dsh
 
                     push @targets_failed, $user_target;
                 }
-                push @{$dsh_target_status{'failed'}}, $user_target
+                push @{ $dsh_target_status{'failed'} }, $user_target
                   if !$signal_interrupt_flag;
 
             }
@@ -633,42 +636,43 @@ sub _execute_dsh
             {
                 if ($target_rc != 0)
                 {
-                  # Note the message below for node status must
-                  # not be NLS translated.  Code depends on the English. 
-                   # report error status  --nodestatus
-                   if ($$options{'nodestatus'}) {
-                     my $rsp={};
-                     $rsp->{data}->[0] =
-                   "$user_target: Remote_command_failed, error_code=$target_rc";
-                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                   }
+                    # Note the message below for node status must
+                    # not be NLS translated.  Code depends on the English.
+                    # report error status  --nodestatus
+                    if ($$options{'nodestatus'}) {
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$target_rc";
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
+
                     # if monitoring
-                    $rsp={};
+                    $rsp = {};
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_failed $user_target";
                     $$options{'monitor'}
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 1);
 
                     push @targets_failed, $user_target;
-                    push @{$dsh_target_status{'failed'}}, $user_target
+                    push @{ $dsh_target_status{'failed'} }, $user_target
                       if !$signal_interrupt_flag;
                 }
 
-                elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH==0) && ($$options{'devicetype'}!~ /EthSwitch/))
+                elsif (!defined($target_rc) && !$dsh_cmd_background && ($::DSH_MELLANOX_SWITCH == 0) && ($$options{'devicetype'} !~ /EthSwitch/))
                 {
-                   # report error status  --nodestatus
-                  # Note the message below for node status must
-                  # not be NLS translated.  Code depends on the English. 
-                   if ($$options{'nodestatus'}) {
-                     my $rsp={};
-                     $rsp->{data}->[0] =
-                   "$user_target: Remote_command_failed, error_code=???";
-                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                   }
+                    # report error status  --nodestatus
+                    # Note the message below for node status must
+                    # not be NLS translated.  Code depends on the English.
+                    if ($$options{'nodestatus'}) {
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+                          "$user_target: Remote_command_failed, error_code=???";
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    }
 
-                    $rsp={};
+                    $rsp = {};
                     $rsp->{error}->[0] =
-                      " A return code for the command run on the host $user_target was not received.";
+" A return code for the command run on the host $user_target was not received.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
                     my $rsp = {};
@@ -678,21 +682,21 @@ sub _execute_dsh
                       && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                     push @targets_failed, $user_target;
-                    push @{$dsh_target_status{'failed'}}, $user_target
+                    push @{ $dsh_target_status{'failed'} }, $user_target
                       if !$signal_interrupt_flag;
                 }
 
-                else   # it worked
+                else    # it worked
                 {
-                  # Note the message below for node status must
-                  # not be NLS translated.  Code depends on the English. 
-                   if ($$options{'nodestatus'}) {
-                    my $rsp={};
-                    $rsp->{data}->[0] =
-                    "$user_target: Remote_command_successful";
-                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    # Note the message below for node status must
+                    # not be NLS translated.  Code depends on the English.
+                    if ($$options{'nodestatus'}) {
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+                          "$user_target: Remote_command_successful";
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                     }
-                    $rsp={};
+                    $rsp = {};
                     $rsp->{data}->[0] =
                       "dsh>  Remote_command_successful $user_target";
                     $$options{'monitor'}
@@ -707,10 +711,10 @@ sub _execute_dsh
 
         (@targets_waiting)
           && xCAT::DSHCLI->fork_fanout_dsh(
-                         $options,          $resolved_targets, \%forked_process,
-                         \%pid_targets,     \%outfh_targets,   \%errfh_targets,
-                         \@targets_waiting, \%targets_active
-                         );
+            $options, $resolved_targets, \%forked_process,
+            \%pid_targets, \%outfh_targets, \%errfh_targets,
+            \@targets_waiting, \%targets_active
+          );
 
     }
 
@@ -724,7 +728,7 @@ sub _execute_dsh
           && ($dsh_stats{'successful-targets'} = \@targets_finished);
         if (scalar(@targets_failed))
         {
-            if (scalar(@{$dsh_target_status{'failed'}}))
+            if (scalar(@{ $dsh_target_status{'failed'} }))
             {
                 $dsh_stats{'failed-targets'} = $dsh_target_status{'failed'};
             }
@@ -733,7 +737,7 @@ sub _execute_dsh
                 $dsh_stats{'failed-targets'} = \@targets_failed;
             }
         }
-        scalar(@{$dsh_target_status{'canceled'}})
+        scalar(@{ $dsh_target_status{'canceled'} })
           && ($dsh_stats{'canceled-targets'} = $dsh_target_status{'canceled'});
     }
     my $rsp = {};
@@ -790,7 +794,7 @@ sub fork_fanout_dcp
       = @_;
 
     while (@$targets_waiting
-           && (keys(%$targets_active) < $$options{'fanout'}))
+        && (keys(%$targets_active) < $$options{'fanout'}))
     {
         my $user_target       = shift @$targets_waiting;
         my $target_properties = $$resolved_targets{$user_target};
@@ -798,7 +802,7 @@ sub fork_fanout_dcp
         my @dcp_command;
         my $rsyncfile;
 
-        if (!$$target_properties{'localhost'})  # this is to a remote host
+        if (!$$target_properties{'localhost'})    # this is to a remote host
         {
             my $target_type = $$target_properties{'type'};
 
@@ -810,17 +814,17 @@ sub fork_fanout_dcp
             if ($target_type eq 'node')
             {
                 $remote_copy =
-                     $$options{'node-rcp'}{$$target_properties{'context'}}
+                  $$options{'node-rcp'}{ $$target_properties{'context'} }
                   || $$target_properties{'remote-copy'};
                 ($remote_copy =~ /\/scp$/)   && ($rsh_extension = 'SSH');
                 ($remote_copy =~ /\/rsync$/) && ($rsh_extension = 'RSYNC');
                 $rcp_config{'options'} =
-                  $$options{'node-options'}{$$target_properties{'context'}};
+                  $$options{'node-options'}{ $$target_properties{'context'} };
             }
 
             $rcp_config{'preserve'}  = $$options{'preserve'};
             $rcp_config{'recursive'} = $$options{'recursive'};
-            $rcp_config{'sudo'} = $$options{'sudo'};
+            $rcp_config{'sudo'}      = $$options{'sudo'};
 
             if ($$options{'pull'})
             {
@@ -831,7 +835,7 @@ sub fork_fanout_dcp
 
                 my @target_file = split '/', $$options{'source'};
                 $rcp_config{'dest-file'} =
-                  "$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
+"$$options{'target'}/$target_file[$#target_file]._$$target_properties{'hostname'}";
 
             }
 
@@ -849,63 +853,66 @@ sub fork_fanout_dcp
             #eval "require RemoteShell::$rsh_extension";
             eval "require xCAT::$rsh_extension";
             my $remoteshell = "xCAT::$rsh_extension";
+
             # HERE: Build the dcp command based on the arguments
-            my $localhost=0;   # this is from the MN to another node 
+            my $localhost = 0;    # this is from the MN to another node
             @dcp_command =
               $remoteshell->remote_copy_command(\%rcp_config, $remote_copy);
+
             # add sudo  for non-root users
             if ($$options{'sudo'}) {
-                  unshift (@dcp_command,'sudo'); 
+                unshift(@dcp_command, 'sudo');
             }
 
         }
-        else  # this is the local host ( running on the Management Node)
+        else    # this is the local host ( running on the Management Node)
         {
             if ($$options{'destDir_srcFile'}{$user_target})
             {
-             my $target_type = $$target_properties{'type'};
+                my $target_type = $$target_properties{'type'};
 
-             my %rcp_config = ();
+                my %rcp_config = ();
 
-             my $remote_copy;
-             my $rsh_extension = 'RSH';
+                my $remote_copy;
+                my $rsh_extension = 'RSH';
 
-             if ($target_type eq 'node')
-             {
-                $remote_copy =
-                     $$options{'node-rcp'}{$$target_properties{'context'}}
-                  || $$target_properties{'remote-copy'};
-                ($remote_copy =~ /\/scp$/)   && ($rsh_extension = 'SSH');
-                ($remote_copy =~ /\/rsync$/) && ($rsh_extension = 'RSYNC');
-                $rcp_config{'options'} =
-                  $$options{'node-options'}{$$target_properties{'context'}};
-             }
+                if ($target_type eq 'node')
+                {
+                    $remote_copy =
+                      $$options{'node-rcp'}{ $$target_properties{'context'} }
+                      || $$target_properties{'remote-copy'};
+                    ($remote_copy =~ /\/scp$/)   && ($rsh_extension = 'SSH');
+                    ($remote_copy =~ /\/rsync$/) && ($rsh_extension = 'RSYNC');
+                    $rcp_config{'options'} =
+                      $$options{'node-options'}{ $$target_properties{'context'} };
+                }
 
-             $rcp_config{'preserve'}  = $$options{'preserve'};
-             $rcp_config{'recursive'} = $$options{'recursive'};
+                $rcp_config{'preserve'}  = $$options{'preserve'};
+                $rcp_config{'recursive'} = $$options{'recursive'};
 
 
-             $rcp_config{'src-file'}  = $$options{'source'};
-             $rcp_config{'dest-host'} = $$target_properties{'hostname'};
-             $rcp_config{'dest-file'} = $$options{'target'};
-             $rcp_config{'dest-user'} = $$target_properties{'user'}
+                $rcp_config{'src-file'}  = $$options{'source'};
+                $rcp_config{'dest-host'} = $$target_properties{'hostname'};
+                $rcp_config{'dest-file'} = $$options{'target'};
+                $rcp_config{'dest-user'} = $$target_properties{'user'}
                   || $$options{'user'};
-             $rcp_config{'destDir_srcFile'} =
+                $rcp_config{'destDir_srcFile'} =
                   $$options{'destDir_srcFile'}{$user_target};
 
-             eval "require xCAT::$rsh_extension";
-             my $remoteshell = "xCAT::$rsh_extension";
-             # HERE: Build the dcp command based on the arguments
-             my $localhost=1;   # this is on the MN to the MN
-             @dcp_command =
-              $remoteshell->remote_copy_command(\%rcp_config, $remote_copy,$localhost);
-                
-             }
-             else    # just a copy not a sync
-             {
+                eval "require xCAT::$rsh_extension";
+                my $remoteshell = "xCAT::$rsh_extension";
+
+                # HERE: Build the dcp command based on the arguments
+                my $localhost = 1;    # this is on the MN to the MN
+                @dcp_command =
+                  $remoteshell->remote_copy_command(\%rcp_config, $remote_copy, $localhost);
+
+            }
+            else                      # just a copy not a sync
+            {
                 @dcp_command =
                   ('/bin/cp', '-r', $$options{'source'}, $$options{'target'});
-             }
+            }
         }
 
         my $rsp = {};
@@ -917,12 +924,12 @@ sub fork_fanout_dcp
           xCAT::DSHCore->fork_output($user_target, @dcp_command);
         vec($$outfh_targets{'bitmap'}, fileno($process_info[1]), 1) = 1;
         vec($$errfh_targets{'bitmap'}, fileno($process_info[2]), 1) = 1;
-        $$outfh_targets{fileno($process_info[1])} = $user_target;
-        $$errfh_targets{fileno($process_info[2])} = $user_target;
+        $$outfh_targets{ fileno($process_info[1]) } = $user_target;
+        $$errfh_targets{ fileno($process_info[2]) } = $user_target;
 
         $$forked_process{$user_target} = \@process_info;
         $$targets_active{$user_target}++;
-        $$pid_targets{$process_info[0]} = $user_target;
+        $$pid_targets{ $process_info[0] } = $user_target;
     }
 }
 
@@ -977,73 +984,77 @@ sub fork_fanout_dsh
         if (@$targets_waiting > 0) {
             if ($ENV{'DSH_REMOTE_PASSWORD'}) {
                 foreach my $t (keys(%$resolved_targets)) {
-                    $resolved_targets->{$t}->{'password'}=$ENV{'DSH_REMOTE_PASSWORD'};
-                    $resolved_targets->{$t}->{'user'}=$$options{'user'};
+                    $resolved_targets->{$t}->{'password'} = $ENV{'DSH_REMOTE_PASSWORD'};
+                    $resolved_targets->{$t}->{'user'} = $$options{'user'};
                 }
             } else {
+
                 #get user name and password  from the switches table
-				my $passwdtab=xCAT::Table->new('passwd',-create=>1);
-				my @passwd_ent = $passwdtab->getAttribs({key => "switch"}, ['username', 'password', 'comments']);
-				my $switchestab=xCAT::Table->new('switches',-create=>0);
-				my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword protocol/]);
-				foreach my $entry (values %$switchents) {
-                    my $switch=$entry->[0]->{switch};
-					my $username;
-					my $password;
+                my $passwdtab = xCAT::Table->new('passwd', -create => 1);
+                my @passwd_ent = $passwdtab->getAttribs({ key => "switch" }, [ 'username', 'password', 'comments' ]);
+                my $switchestab = xCAT::Table->new('switches', -create => 0);
+                my $switchents = $switchestab->getNodesAttribs($targets_waiting, [qw/switch sshusername sshpassword protocol/]);
+                foreach my $entry (values %$switchents) {
+                    my $switch = $entry->[0]->{switch};
+                    my $username;
+                    my $password;
                     my $protocol;
-                     
+
                     # use switches table first
-					if (defined($entry->[0]->{sshusername})) { 
-						$username = $entry->[0]->{sshusername};
+                    if (defined($entry->[0]->{sshusername})) {
+                        $username = $entry->[0]->{sshusername};
                     }
-					if (defined($entry->[0]->{sshpassword})) {
-						$password = $entry->[0]->{sshpassword};
-					}
-					if (defined($entry->[0]->{protocol})) {
-						$protocol = $entry->[0]->{protocol};
-					}
-					if ((!$username) && (!$password) && (!$protocol)) { #use passwd table as default  
-					    if (defined($passwd_ent[0]->{username})) { 
-						    $username=$passwd_ent[0]->{username};
+                    if (defined($entry->[0]->{sshpassword})) {
+                        $password = $entry->[0]->{sshpassword};
+                    }
+                    if (defined($entry->[0]->{protocol})) {
+                        $protocol = $entry->[0]->{protocol};
+                    }
+                    if ((!$username) && (!$password) && (!$protocol)) { #use passwd table as default
+                        if (defined($passwd_ent[0]->{username})) {
+                            $username = $passwd_ent[0]->{username};
                         }
-						if (defined($passwd_ent[0]->{password})) {
-							$password = $passwd_ent[0]->{password};
-						}
-						if (defined($passwd_ent[0]->{comments}) && ($passwd_ent[0]->{comments} eq "telnet")) {
-							$protocol = $passwd_ent[0]->{comments};
-						}
-					}
-					
-					if ($username) {
-						$resolved_targets->{$switch}->{'user'} = $username;
-					}
-					if ($password) {
-						$resolved_targets->{$switch}->{'password'} = $password;
-					}
-					if ($protocol) {
-						$resolved_targets->{$switch}->{'remotecmdproto'} = $protocol;
-					}
-					#print "username=$username, password=$password, protocol=$protocol\n";
-				}
+                        if (defined($passwd_ent[0]->{password})) {
+                            $password = $passwd_ent[0]->{password};
+                        }
+                        if (defined($passwd_ent[0]->{comments}) && ($passwd_ent[0]->{comments} eq "telnet")) {
+                            $protocol = $passwd_ent[0]->{comments};
+                        }
+                    }
+
+                    if ($username) {
+                        $resolved_targets->{$switch}->{'user'} = $username;
+                    }
+                    if ($password) {
+                        $resolved_targets->{$switch}->{'password'} = $password;
+                    }
+                    if ($protocol) {
+                        $resolved_targets->{$switch}->{'remotecmdproto'} = $protocol;
+                    }
+
+                    #print "username=$username, password=$password, protocol=$protocol\n";
+                }
             }
         }
     }
+
     # save the original exports,  we are going to add the unique node name below
-    my $firstpass=0;
+    my $firstpass = 0;
     while (@$targets_waiting
-           && (keys(%$targets_active) < $$options{'fanout'}))
+        && (keys(%$targets_active) < $$options{'fanout'}))
     {
-        my $user_target       = shift @$targets_waiting;
+        my $user_target = shift @$targets_waiting;
+
         # now add export NODE=nodename to the pre-command, if not a device;
         my $exportnode;
         if (($$options{'devicetype'})) {
-            $exportnode="";
-        } else{
-         $exportnode="export NODE=$user_target; ";
+            $exportnode = "";
+        } else {
+            $exportnode = "export NODE=$user_target; ";
         }
         my $target_properties = $$resolved_targets{$user_target};
         my @commands;
-        my $localShell        =
+        my $localShell =
           ($$options{'syntax'} eq 'csh') ? '/bin/csh' : '/bin/sh';
         my @dsh_command = ($localShell, '-c');
         $$options{'command'} =~ s/\s*$//;
@@ -1056,40 +1067,41 @@ sub fork_fanout_dsh
         }
         if ($$options{'environment'})
         {
-          if ($firstpass ==0) {   # do the servicenode stuff only once
-            # if we are on a servicenode need to get the environment file
-            # from the SNsyncfiledir, not local
-            if (xCAT::Utils->isServiceNode()) {
-              my $newenvfile;
-              my $synfiledir = "/var/xcat/syncfiles"; #default
+            if ($firstpass == 0) {    # do the servicenode stuff only once
+                   # if we are on a servicenode need to get the environment file
+                   # from the SNsyncfiledir, not local
+                if (xCAT::Utils->isServiceNode()) {
+                    my $newenvfile;
+                    my $synfiledir = "/var/xcat/syncfiles";    #default
 
-              # get the directory on the servicenode to and add to filepath 
-              my @syndir= xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
-              if ($syndir[0])
-              {
-                $synfiledir = $syndir[0];
-              }
-              $newenvfile = $synfiledir;
-              $newenvfile .= $$options{'environment'};
-              $$options{'environment'} =  $newenvfile;
+                    # get the directory on the servicenode to and add to filepath
+                    my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
+                    if ($syndir[0])
+                    {
+                        $synfiledir = $syndir[0];
+                    }
+                    $newenvfile = $synfiledir;
+                    $newenvfile .= $$options{'environment'};
+                    $$options{'environment'} = $newenvfile;
+                }
+                if (!(-e $$options{'environment'}))
+                {
+                    my $rsp = {};
+                    $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                }
+                $firstpass = 1;
             }
-            if (!(-e $$options{'environment'}))
-            {
-              my $rsp={};
-               $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
-               xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            }
-            $firstpass=1;
-           }
-           # build the xdsh command
-           push @dsh_command,
-              "$exportnode$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
+
+            # build the xdsh command
+            push @dsh_command,
+"$exportnode$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
         }
 
         else
         {
             push @dsh_command,
-              "$exportnode$$options{'pre-command'}$$options{'command'}$$options{'post-command'}";
+"$exportnode$$options{'pre-command'}$$options{'command'}$$options{'post-command'}";
         }
 
         if ($$target_properties{'localhost'})
@@ -1122,22 +1134,22 @@ sub fork_fanout_dsh
             if ($target_type eq 'node')
             {
                 my $context = $$target_properties{'context'};
-                     $remote_shell = $$options{'node-rsh'}{$context}
+                $remote_shell = $$options{'node-rsh'}{$context}
                   || $$options{'node-rsh'}{'none'}
                   || $$target_properties{'remote-shell'}
                   || $$options{'node-rsh-defaults'}{$context};
                 ($remote_shell =~ /\/ssh$/) && ($rsh_extension = 'SSH');
 
                 if ($$options{'devicetype'} =~ /EthSwitch/) {
-                    $remote_shell = "$::XCATROOT/sbin/rshell_api";
-                    $rsh_extension='RShellAPI';
-                    $rsh_config{'password'}=$$target_properties{'password'};
-		            if ($$target_properties{'remotecmdproto'}) {
-			            $rsh_config{'remotecmdproto'}=$$target_properties{'remotecmdproto'};
-		            }
-                  if ($$options{'trace'}) {
-	         		  $rsh_config{'trace'}=1;
-		            }
+                    $remote_shell           = "$::XCATROOT/sbin/rshell_api";
+                    $rsh_extension          = 'RShellAPI';
+                    $rsh_config{'password'} = $$target_properties{'password'};
+                    if ($$target_properties{'remotecmdproto'}) {
+                        $rsh_config{'remotecmdproto'} = $$target_properties{'remotecmdproto'};
+                    }
+                    if ($$options{'trace'}) {
+                        $rsh_config{'trace'} = 1;
+                    }
                 }
 
                 # will not set -n for any command,  causing problems
@@ -1146,7 +1158,7 @@ sub fork_fanout_dsh
                 #if  (($$options{'devicetype'})) {
 
                 $rsh_config{'options'} =
-                  $$options{'node-options'}{$$target_properties{'context'}};
+                  $$options{'node-options'}{ $$target_properties{'context'} };
 
                 #} else { # not a device
                 #  $rsh_config{'options'} = "-n "
@@ -1159,11 +1171,12 @@ sub fork_fanout_dsh
 
             $rsh_config{'command'} = "$exportnode$$options{'pre-command'}";
             my $tmp_env_file;
+
             # for the -E flag here we build and copy the -E env variable
             # file to the nodes
             if ($$options{'environment'})
             {
-                
+
                 my $rsp = {};
                 $rsp->{data}->[0] = "TRACE: Environment option specified";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
@@ -1193,7 +1206,7 @@ sub fork_fanout_dsh
 
                 #eval "require RemoteShell::$env_rcp_extension";
                 eval "require xCAT::$env_rcp_extension";
-                my $rcp             = "xCAT::$env_rcp_extension";
+                my $rcp = "xCAT::$env_rcp_extension";
                 my @env_rcp_command =
                   $rcp->remote_copy_command(\%env_rcp_config);
 
@@ -1201,31 +1214,34 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] =
                   "TRACE:Environment: Exporting File.@env_rcp_command ";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
+
                 # copy the Env Variable input file to the nodes
                 my @env_rcp_process =
                   xCAT::DSHCore->fork_no_output($user_target, @env_rcp_command);
                 waitpid($env_rcp_process[0], undef);
+
                 #push @commands, \@env_rcp_command;
             }
             my $tmp_cmd_file;
             if ($$options{'execute'})
             {
                 # first build the scp command to copy the file to execute
-                # down to the node into /tmp/*.dsh 
+                # down to the node into /tmp/*.dsh
                 my $rsp = {};
                 $rsp->{data}->[0] = "TRACE: Execute option specified.";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
 
                 my %exe_rcp_config = ();
-                $tmp_cmd_file = POSIX::tmpnam . ".dsh"; 
+                $tmp_cmd_file = POSIX::tmpnam . ".dsh";
 
-                my ($exe_cmd, @args) = @{$$options{'execute'}};
+                my ($exe_cmd, @args) = @{ $$options{'execute'} };
                 my $chmod_cmd = "";
+
                 # now build the xdsh of the file buffer
                 # add sudo  for non-root users
                 if ($$options{'sudo'}) {
-                  $rsh_config{'command'} .= "sudo ";
-                  $rsh_config{'sudo'} = "sudo ";
+                    $rsh_config{'command'} .= "sudo ";
+                    $rsh_config{'sudo'} = "sudo ";
                 }
                 $rsh_config{'command'} .=
                   "$chmod_cmd $tmp_cmd_file @args$$options{'post-command'}";
@@ -1251,7 +1267,7 @@ sub fork_fanout_dsh
 
                 #eval "require RemoteShell::$exe_rcp_extension";
                 eval "require xCAT::$exe_rcp_extension";
-                my $rcp             = "xCAT::$exe_rcp_extension";
+                my $rcp = "xCAT::$exe_rcp_extension";
                 my @exe_rcp_command =
                   $rcp->remote_copy_command(\%exe_rcp_config);
 
@@ -1259,6 +1275,7 @@ sub fork_fanout_dsh
                 $rsp->{data}->[0] =
                   "TRACE:Execute: Exporting File:@exe_rcp_command";
                 $dsh_trace && (xCAT::MsgUtils->message("I", $rsp, $::CALLBACK));
+
                 #my @exe_rcp_process =
                 #  xCAT::DSHCore->fork_no_output($user_target, @exe_rcp_command);
                 #waitpid($exe_rcp_process[0], undef);
@@ -1268,10 +1285,10 @@ sub fork_fanout_dsh
             else
             {
                 # add sudo  for non-root users
-               if ($$options{'sudo'}) {
-                $rsh_config{'command'} .= "sudo ";
-                $rsh_config{'sudo'} = "sudo ";
-               }
+                if ($$options{'sudo'}) {
+                    $rsh_config{'command'} .= "sudo ";
+                    $rsh_config{'sudo'} = "sudo ";
+                }
                 $rsh_config{'command'} .=
                   "$$options{'command'}$$options{'post-command'}";
             }
@@ -1281,7 +1298,7 @@ sub fork_fanout_dsh
             }
             if ($$options{'execute'})
             {
-                $rsh_config{'command'} .= ";rm $tmp_cmd_file"; 
+                $rsh_config{'command'} .= ";rm $tmp_cmd_file";
             }
 
             #eval "require RemoteShell::$rsh_extension";
@@ -1301,19 +1318,19 @@ sub fork_fanout_dsh
         my $rsp = {};
         $rsp->{data}->[0] = "dsh>  Remote_command_started $user_target";
         $$options{'monitor'} && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        
+
         #  execute and remove the /tmp file build which is a copy of the
         # input -E file
         #print "Command=@dsh_command\n";
 
         #@process_info = xCAT::DSHCore->fork_output($user_target, @dsh_command);
-        push (@commands, \@dsh_command);  #print Dumper(\@commands);
-        @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands); 
+        push(@commands, \@dsh_command);    #print Dumper(\@commands);
+        @process_info = xCAT::DSHCore->fork_output_for_commands($user_target, @commands);
         if ($process_info[0] == -2)
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "$user_target could not execute this command $dsh_command[0] - $$options{'command'} ,  $! ";
+"$user_target could not execute this command $dsh_command[0] - $$options{'command'} ,  $! ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }
 
@@ -1337,12 +1354,12 @@ sub fork_fanout_dsh
 
         vec($$outfh_targets{'bitmap'}, fileno($process_info[1]), 1) = 1;
         vec($$errfh_targets{'bitmap'}, fileno($process_info[2]), 1) = 1;
-        $$outfh_targets{fileno($process_info[1])} = $user_target;
-        $$errfh_targets{fileno($process_info[2])} = $user_target;
+        $$outfh_targets{ fileno($process_info[1]) } = $user_target;
+        $$errfh_targets{ fileno($process_info[2]) } = $user_target;
 
         $$forked_process{$user_target} = \@process_info;
         $$targets_active{$user_target}++;
-        $$pid_targets{$process_info[0]} = $user_target;
+        $$pid_targets{ $process_info[0] } = $user_target;
     }
 }
 
@@ -1420,11 +1437,11 @@ sub buffer_output
 
         my $eof_output =
           xCAT::DSHCore->pipe_handler_buffer(
-                                         $target_properties, $output_fh, 4096,
-                                         "$user_target: ",
-                                         $$output_buffers{"${user_target}_tmp"},
-                                         $$output_buffers{$user_target}
-                                         );
+            $target_properties, $output_fh, 4096,
+            "$user_target: ",
+            $$output_buffers{"${user_target}_tmp"},
+            $$output_buffers{$user_target}
+          );
 
         if ($eof_output)
         {
@@ -1447,26 +1464,26 @@ sub buffer_output
                 {    # check return code
                     $exit_code = $? >> 8;
                 }
-                if (scalar(@{$$output_buffers{$user_target}}) == 1)
+                if (scalar(@{ $$output_buffers{$user_target} }) == 1)
                 {
                     ($$output_buffers{$user_target}[0] eq '')
-                      && (@{$$output_buffers{$user_target}} = ());
+                      && (@{ $$output_buffers{$user_target} } = ());
                 }
 
-                if (scalar(@{$$error_buffers{$user_target}}) == 1)
+                if (scalar(@{ $$error_buffers{$user_target} }) == 1)
                 {
                     ($$error_buffers{$user_target}[0] eq '')
-                      && (@{$$error_buffers{$user_target}} = ());
+                      && (@{ $$error_buffers{$user_target} } = ());
                 }
 
                 my %exit_status = (
-                                 'exit-code' => $exit_code,
-                                 'target-rc' => $$target_properties{'target-rc'}
-                                 );
+                    'exit-code' => $exit_code,
+                    'target-rc' => $$target_properties{'target-rc'}
+                );
                 $$targets_buffered{$user_target} = \%exit_status;
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$$forked_process{$user_target}[0]};
+                delete $$pid_targets{ $$forked_process{$user_target}[0] };
 
                 close $output_fh;
                 close $error_fh;
@@ -1549,11 +1566,11 @@ sub buffer_error
 
         my $eof_error =
           xCAT::DSHCore->pipe_handler_buffer(
-                                          $target_properties, $error_fh, 4096,
-                                          "$user_target: ",
-                                          $$error_buffers{"${user_target}_tmp"},
-                                          $$error_buffers{$user_target}
-                                          );
+            $target_properties, $error_fh, 4096,
+            "$user_target: ",
+            $$error_buffers{"${user_target}_tmp"},
+            $$error_buffers{$user_target}
+          );
 
         if ($eof_error)
         {
@@ -1576,26 +1593,26 @@ sub buffer_error
                     $exit_code = $? >> 8;
                 }
 
-                if (scalar(@{$$output_buffers{$user_target}}) == 1)
+                if (scalar(@{ $$output_buffers{$user_target} }) == 1)
                 {
                     ($$output_buffers{$user_target}[0] eq '')
-                      && (@{$$output_buffers{$user_target}} = ());
+                      && (@{ $$output_buffers{$user_target} } = ());
                 }
 
-                if (scalar(@{$$error_buffers{$user_target}}) == 1)
+                if (scalar(@{ $$error_buffers{$user_target} }) == 1)
                 {
                     ($$error_buffers{$user_target}[0] eq '')
-                      && (@{$$error_buffers{$user_target}} = ());
+                      && (@{ $$error_buffers{$user_target} } = ());
                 }
 
                 my %exit_status = (
-                                 'exit-code' => $exit_code,
-                                 'target-rc' => $$target_properties{'target-rc'}
-                                 );
+                    'exit-code' => $exit_code,
+                    'target-rc' => $$target_properties{'target-rc'}
+                );
                 $$targets_buffered{$user_target} = \%exit_status;
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$$forked_process{$user_target}[0]};
+                delete $$pid_targets{ $$forked_process{$user_target}[0] };
 
                 close $output_fh;
                 close $error_fh;
@@ -1668,14 +1685,14 @@ sub stream_output
 
         my $eof_output =
           xCAT::DSHCore->pipe_handler(
-                                      $options,
-                                      $target_properties,
-                                      $output_fh,
-                                      4096,
-                                      "$user_target: ",
-                                      $$output_buffers{$user_target},
-                                      @$output_files
-                                      );
+            $options,
+            $target_properties,
+            $output_fh,
+            4096,
+            "$user_target: ",
+            $$output_buffers{$user_target},
+            @$output_files
+          );
 
         if ($eof_output)
         {
@@ -1704,12 +1721,12 @@ sub stream_output
                 {
                     # report error status  --nodestatus
                     # Note the message below for node status must
-                    # not be NLS translated.  Code depends on the English. 
+                    # not be NLS translated.  Code depends on the English.
                     if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_failed, error_code=$exit_code";
-                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$exit_code";
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                     }
                     my $rsp = {};
                     $rsp->{error}->[0] =
@@ -1724,7 +1741,7 @@ sub stream_output
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
                     push @$targets_failed, $user_target;
-                    push @{$dsh_target_status{'failed'}}, $user_target
+                    push @{ $dsh_target_status{'failed'} }, $user_target
                       if !$signal_interrupt_flag;
 
                 }
@@ -1733,19 +1750,19 @@ sub stream_output
                 {
                     if ($target_rc != 0)
                     {
-                       # report error status  --nodestatus
-                       # Note the message below for node status must
-                       # not be NLS translated.  Code depends on the English. 
-                       if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
-                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                       }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          " $user_target remote Command had return code: $$target_properties{'target-rc'} ";
+" $user_target remote Command had return code: $$target_properties{'target-rc'} ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
@@ -1759,20 +1776,20 @@ sub stream_output
 
                     elsif (!defined($target_rc))
                     {
-                       # report error status  --nodestatus
-                       # Note the message below for node status must
-                       # not be NLS translated.  Code depends on the English. 
-                       if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_failed, error_code=???";
-                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                       }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=???";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          " $user_target a return code run on this host was not received. ";
+" $user_target a return code run on this host was not received. ";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
@@ -1784,17 +1801,17 @@ sub stream_output
                         push @$targets_failed, $user_target;
                     }
 
-                    else   #  xdsh -s worked
+                    else    #  xdsh -s worked
                     {
-                       # report error status  --nodestatus
-                       # Note the message below for node status must
-                       # not be NLS translated.  Code depends on the English. 
-                       if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_successful";
-                          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                       }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+                              "$user_target: Remote_command_successful";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
 
                         my $rsp = {};
@@ -1808,7 +1825,7 @@ sub stream_output
                 }
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$$forked_process{$user_target}[0]};
+                delete $$pid_targets{ $$forked_process{$user_target}[0] };
             }
 
             close $output_fh;
@@ -1880,14 +1897,14 @@ sub stream_error
 
         my $eof_error =
           xCAT::DSHCore->pipe_handler(
-                                      $options,
-                                      $target_properties,
-                                      $error_fh,
-                                      4096,
-                                      "$user_target: ",
-                                      $$error_buffers{$user_target},
-                                      @$error_files
-                                      );
+            $options,
+            $target_properties,
+            $error_fh,
+            4096,
+            "$user_target: ",
+            $$error_buffers{$user_target},
+            @$error_files
+          );
 
         if ($eof_error)
         {
@@ -1914,14 +1931,14 @@ sub stream_error
 
                 if ($exit_code != 0)
                 {
-                   # report error status  --nodestatus
-                   # Note the message below for node status must
-                   # not be NLS translated.  Code depends on the English. 
-                   if ($$options{'nodestatus'}) {
-                      my $rsp={};
-                      $rsp->{data}->[0] =
-                      "$user_target: Remote_command_failed, error_code=$exit_code";
-                      xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    # report error status  --nodestatus
+                    # Note the message below for node status must
+                    # not be NLS translated.  Code depends on the English.
+                    if ($$options{'nodestatus'}) {
+                        my $rsp = {};
+                        $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$exit_code";
+                        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                     }
                     my $rsp = {};
                     $rsp->{error}->[0] =
@@ -1936,7 +1953,7 @@ sub stream_error
                       && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                     push @$targets_failed, $user_target;
-                    push @{$dsh_target_status{'failed'}}, $user_target
+                    push @{ $dsh_target_status{'failed'} }, $user_target
                       if !$signal_interrupt_flag;
 
                 }
@@ -1945,15 +1962,15 @@ sub stream_error
                 {
                     if ($target_rc != 0)
                     {
-                      # report error status  --nodestatus
-                      # Note the message below for node status must
-                      # not be NLS translated.  Code depends on the English. 
-                      if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
-                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                       }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=$$target_properties{'target-rc'}";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
                         #my $rsp = {};
                         #$rsp->{error}->[0] =
@@ -1969,22 +1986,22 @@ sub stream_error
                         push @$targets_failed, $user_target;
                     }
 
-                    elsif (!defined($target_rc) && ($::DSH_MELLANOX_SWITCH==0))
+                    elsif (!defined($target_rc) && ($::DSH_MELLANOX_SWITCH == 0))
                     {
-                      # report error status  --nodestatus
-                      # Note the message below for node status must
-                      # not be NLS translated.  Code depends on the English. 
-                      if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_failed, error_code=???}";
-                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                       }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+"$user_target: Remote_command_failed, error_code=???}";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
 
                         my $rsp = {};
                         $rsp->{data}->[0] =
-                          "A return code for the command run on $user_target was not received.";
+"A return code for the command run on $user_target was not received.";
                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
                         my $rsp = {};
@@ -1998,15 +2015,15 @@ sub stream_error
 
                     else
                     {
-                      # report error status  --nodestatus
-                      # Note the message below for node status must
-                      # not be NLS translated.  Code depends on the English. 
-                      if ($$options{'nodestatus'}) {
-                         my $rsp={};
-                         $rsp->{data}->[0] =
-                         "$user_target: Remote_command_successful";
-                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                      }
+                        # report error status  --nodestatus
+                        # Note the message below for node status must
+                        # not be NLS translated.  Code depends on the English.
+                        if ($$options{'nodestatus'}) {
+                            my $rsp = {};
+                            $rsp->{data}->[0] =
+                              "$user_target: Remote_command_successful";
+                            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                        }
 
 
                         my $rsp = {};
@@ -2020,7 +2037,7 @@ sub stream_error
                 }
 
                 delete $$targets_active{$user_target};
-                delete $$pid_targets{$$forked_process{$user_target}[0]};
+                delete $$pid_targets{ $$forked_process{$user_target}[0] };
             }
 
             close $error_fh;
@@ -2123,13 +2140,13 @@ sub config_dcp
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     !$$options{'node-rcp'}
-      && (   $$options{'node-rcp'} = $ENV{'DCP_NODE_RCP'}
-          || $ENV{'DCP_COPY_CMD'}
-          || undef);
+      && ($$options{'node-rcp'} = $ENV{'DCP_NODE_RCP'}
+        || $ENV{'DCP_COPY_CMD'}
+        || undef);
 
     if ($$options{'node-rcp'})
     {
-        my %node_rcp        = ();
+        my %node_rcp = ();
         my @remotecopy_list = split ',', $$options{'node-rcp'};
 
         foreach my $context_remotecopy (@remotecopy_list)
@@ -2171,7 +2188,7 @@ sub config_dcp
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    if (   (!$$options{'nodes'})
+    if ((!$$options{'nodes'})
         && ($ENV{'DSH_NODE_LIST'} || $ENV{'DSH_LIST'}))
     {
         require Context::DSH;
@@ -2198,7 +2215,7 @@ sub config_dcp
 
     if ($$options{'node-options'})
     {
-        my %node_options    = ();
+        my %node_options = ();
         my @remoteopts_list = split ',', $$options{'node-options'};
 
         foreach my $context_remoteopts (@remoteopts_list)
@@ -2230,7 +2247,7 @@ sub config_dcp
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Cannot copy to target $$options{'target'}. Directory does not exist.";
+"Cannot copy to target $$options{'target'}. Directory does not exist.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return ++$result;
     }
@@ -2285,7 +2302,7 @@ sub config_dsh
         $dsh_stats{'report-status-messages'} = ();
         $dsh_stats{'specified-targets'}      = ();
         scalar(@dsh_valid_contexts) || xCAT::DSHCLI->get_valid_contexts;
-        push @{$dsh_stats{'valid-contexts'}}, @dsh_valid_contexts;
+        push @{ $dsh_stats{'valid-contexts'} }, @dsh_valid_contexts;
 
         foreach my $context (@dsh_valid_contexts)
         {
@@ -2320,7 +2337,7 @@ sub config_dsh
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    # Check devicetype attr and build command based on type 
+    # Check devicetype attr and build command based on type
     $$options{'devicetype'} = $$options{'devicetype'}
       || $ENV{'DEVICETYPE'}
       || undef;
@@ -2336,43 +2353,44 @@ sub config_dsh
 
         # process the config file. check /var/opt/xcat/... first, if the config
         # file is not found, goto /opt/xcat/share/devicetype
-	my $devicepath = "/var/opt/xcat/" . $devicename . "/config"; 
-	if (! -e $devicepath) {
-	    $devicepath="$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
-	}
-	# Get configuration from $::XCATDEVCFGDIR
-	# used for QLogic and Mellanox
-	if (-e $devicepath)
-	{
-	    my $deviceconf = get_config($devicepath);
-	    
-	    # Get all dsh section configuration
-	    foreach my $entry (keys %{$$deviceconf{'xdsh'}})
-	    {
+        my $devicepath = "/var/opt/xcat/" . $devicename . "/config";
+        if (!-e $devicepath) {
+            $devicepath = "$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
+        }
+
+        # Get configuration from $::XCATDEVCFGDIR
+        # used for QLogic and Mellanox
+        if (-e $devicepath)
+        {
+            my $deviceconf = get_config($devicepath);
+
+            # Get all dsh section configuration
+            foreach my $entry (keys %{ $$deviceconf{'xdsh'} })
+            {
                 my $value = $$deviceconf{'xdsh'}{$entry};
                 if ($value)
                 {
                     $$options{$entry} = $value;
                 }
-		
-	    }
-	}
-	else
 
-	{
-          # if not Mellanox, it does not need a config file
-          if (!($$options{'devicetype'}  =~ /IBSwitch::Mellanox/i)) {
-            my $rsp = {};
-            $rsp->{error}->[0] = "The config file: $devicepath is missing";
-             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
-          }
-	}
+            }
+        }
+        else
+
+        {
+            # if not Mellanox, it does not need a config file
+            if (!($$options{'devicetype'} =~ /IBSwitch::Mellanox/i)) {
+                my $rsp = {};
+                $rsp->{error}->[0] = "The config file: $devicepath is missing";
+                xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+            }
+        }
     }
 
     !$$options{'node-rsh'}
-      && (   $$options{'node-rsh'} = $ENV{'DSH_NODE_RSH'}
-          || $ENV{'DSH_REMOTE_CMD'}
-          || undef);
+      && ($$options{'node-rsh'} = $ENV{'DSH_NODE_RSH'}
+        || $ENV{'DSH_REMOTE_CMD'}
+        || undef);
 
     my $rsp = {};
     $rsp->{data}->[0] = "TRACE:Node RSH is $$options{'node-rsh'}";
@@ -2432,7 +2450,7 @@ sub config_dsh
     }
 
     $$options{'fanout'} = $$options{'fanout'} || $ENV{'DSH_FANOUT'} || 64;
-    $rsp={};
+    $rsp = {};
     $rsp->{data}->[0] = "TRACE: Fanout value is $$options{'fanout'}.";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -2441,7 +2459,7 @@ sub config_dsh
 
     if (
         defined($$options{'syntax'})
-        && (   ($$options{'syntax'} ne 'csh')
+        && (($$options{'syntax'} ne 'csh')
             && ($$options{'syntax'} ne 'ksh'))
       )
     {
@@ -2520,12 +2538,12 @@ sub config_dsh
     }
     else
     {
-       # if entry NULL then remove
-       if ($$options{'pre-command'} =~ /NULL/i) {
-          $$options{'pre-command'} = '';
-       } else {   #add space between pre-command and command
-          $$options{'pre-command'} .=" ";
-       } 
+        # if entry NULL then remove
+        if ($$options{'pre-command'} =~ /NULL/i) {
+            $$options{'pre-command'} = '';
+        } else {    #add space between pre-command and command
+            $$options{'pre-command'} .= " ";
+        }
     }
 
     # Check if $$options{'post-command'} has been overwritten.
@@ -2534,18 +2552,18 @@ sub config_dsh
         if ($$options{'syntax'} eq 'csh')
         {
             $$options{'post-command'} =
-              "; $env_set DSH_TARGET_RC$env_assign\$status; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
+"; $env_set DSH_TARGET_RC$env_assign\$status; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
         }
 
         else
         {
             $$options{'post-command'} =
-              "; $env_set DSH_TARGET_RC$env_assign\$?; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
+"; $env_set DSH_TARGET_RC$env_assign\$?; echo \":DSH_TARGET_RC=\${DSH_TARGET_RC}:\"";
         }
 
         $$options{'exit-status'}
           && ($$options{'post-command'} .=
-              ' ; echo "Remote_command_rc = $DSH_TARGET_RC"');
+            ' ; echo "Remote_command_rc = $DSH_TARGET_RC"');
     }
     else
     {
@@ -2572,7 +2590,7 @@ sub config_dsh
 
     if (
         !$$options{'nodes'}
-        && (   $ENV{'DSH_NODE_LIST'}
+        && ($ENV{'DSH_NODE_LIST'}
             || $ENV{'DSH_LIST'})
       )
     {
@@ -2600,7 +2618,7 @@ sub config_dsh
 
     if ($$options{'node-options'})
     {
-        my %node_options    = ();
+        my %node_options = ();
         my @remoteopts_list = split ',', $$options{'node-options'};
 
         foreach my $context_remoteopts (@remoteopts_list)
@@ -2635,7 +2653,7 @@ sub config_dsh
 
         if (!(-e $exe_command[0]))
         {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "File $exe_command[0] does not exist";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2644,7 +2662,7 @@ sub config_dsh
         if (-z $exe_command[0])
         {
 
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "File $exe_command[0] is empty.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2653,7 +2671,7 @@ sub config_dsh
         if (!(-x $exe_command[0]))
         {
 
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "File $exe_command[0] is not executable.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return ++$result;
@@ -2719,7 +2737,7 @@ sub config_signals_dsh
     foreach my $signal (@ignore_signals)
     {
 
-        if (   ($signal ne 'STOP')
+        if (($signal ne 'STOP')
             && ($signal ne 'CONT')
             && ($signal ne 'TSTP'))
         {
@@ -2774,7 +2792,7 @@ sub handle_signal_dsh
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Command execution ended prematurely due to a previous error or stop request from the user.";
+"Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit(1);
     }
@@ -2783,7 +2801,7 @@ sub handle_signal_dsh
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Command execution ended prematurely due to a previous error or stop request from the user.";
+"Command execution ended prematurely due to a previous error or stop request from the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
         exit(1);
@@ -2797,16 +2815,16 @@ sub handle_signal_dsh
             $dsh_stats{'end-time'}   = localtime();
         }
 
-        if (@{$dsh_target_status{'waiting'}})
+        if (@{ $dsh_target_status{'waiting'} })
         {
-            foreach my $user_target (@{$dsh_target_status{'waiting'}})
+            foreach my $user_target (@{ $dsh_target_status{'waiting'} })
             {
                 if ($fatal_error)
                 {
 
                     my $rsp = {};
                     $rsp->{error}->[0] =
-                      "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
+"Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
 
@@ -2820,13 +2838,13 @@ sub handle_signal_dsh
                       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
 
-                push @{$dsh_target_status{'canceled'}}, $user_target;
+                push @{ $dsh_target_status{'canceled'} }, $user_target;
             }
         }
 
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Running commands have been cancelled due to unrecoverable error or stop request by user.";
+"Running commands have been cancelled due to unrecoverable error or stop request by user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
         if ($$dsh_options{'stats'})
@@ -2855,16 +2873,16 @@ sub handle_signal_dsh
             $dsh_stats{'end-time'}   = localtime();
         }
 
-        if (@{$dsh_target_status{'waiting'}})
+        if (@{ $dsh_target_status{'waiting'} })
         {
-            foreach my $user_target (@{$dsh_target_status{'waiting'}})
+            foreach my $user_target (@{ $dsh_target_status{'waiting'} })
             {
                 if ($fatal_error)
                 {
 
                     my $rsp = {};
                     $rsp->{error}->[0] =
-                      "$user_target: running of the command on this host has been cancelled due to unrecoverable error.\n The command was never sent to the host.";
+"$user_target: running of the command on this host has been cancelled due to unrecoverable error.\n The command was never sent to the host.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
 
@@ -2873,7 +2891,7 @@ sub handle_signal_dsh
 
                     my $rsp = {};
                     $rsp->{error}->[0] =
-                      "$user_target: running of the command on this host has been cancelled due to unrecoverable error or stop request by user.\n The command was never sent to the host.";
+"$user_target: running of the command on this host has been cancelled due to unrecoverable error or stop request by user.\n The command was never sent to the host.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                     my $rsp = {};
@@ -2883,15 +2901,15 @@ sub handle_signal_dsh
                       && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
 
-                push @{$dsh_target_status{'canceled'}}, $user_target;
+                push @{ $dsh_target_status{'canceled'} }, $user_target;
             }
         }
 
-        @{$dsh_target_status{'waiting'}} = ();
+        @{ $dsh_target_status{'waiting'} } = ();
 
         my $rsp = {};
         $rsp->{data}->[0] =
-          "Command execution ended prematurely due to a previous unrecoverable error or stop by user.\n No commands were executed on any host.";
+"Command execution ended prematurely due to a previous unrecoverable error or stop by user.\n No commands were executed on any host.";
 
         if ($$dsh_options{'stats'})
         {
@@ -2949,7 +2967,7 @@ sub handle_signal_dsh
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          "Running the command on $user_target has been interrupted due to unrecoverable error.  The command may not have completed successfully.";
+"Running the command on $user_target has been interrupted due to unrecoverable error.  The command may not have completed successfully.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
@@ -2958,14 +2976,14 @@ sub handle_signal_dsh
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          "Running the command on $user_target has been interrupted due to unrecoverable error or stop request by the user.  The command may not have completed successfully.";
+"Running the command on $user_target has been interrupted due to unrecoverable error or stop request by the user.  The command may not have completed successfully.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
                 }
 
                 my $target_pid = $$dsh_forked_process{$user_target}[0];
                 kill $target_signal, $target_pid;
-                push @{$dsh_target_status{'failed'}}, $user_target;
+                push @{ $dsh_target_status{'failed'} }, $user_target;
                 $signal_interrupt_flag = 1;
             }
 
@@ -2976,16 +2994,16 @@ sub handle_signal_dsh
         # not want to remove all the rest
         if ($fatal_error != 2)
         {    # remove the waiting processes
-            if (@{$dsh_target_status{'waiting'}})
+            if (@{ $dsh_target_status{'waiting'} })
             {
-                foreach my $user_target (@{$dsh_target_status{'waiting'}})
+                foreach my $user_target (@{ $dsh_target_status{'waiting'} })
                 {
                     if ($fatal_error)
                     {
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          "Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
+"Running the command on $user_target has been cancelled due to unrecoverable error.  The command was never sent to the host.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
@@ -2994,7 +3012,7 @@ sub handle_signal_dsh
 
                         my $rsp = {};
                         $rsp->{error}->[0] =
-                          "Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
+"Running the command on $user_target has been cancelled due to unrecoverable error or stop request by the user.  The command was never sent to the host.";
                         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
                         my $rsp = {};
@@ -3004,15 +3022,15 @@ sub handle_signal_dsh
                           && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     }
 
-                    push @{$dsh_target_status{'canceled'}}, $user_target;
+                    push @{ $dsh_target_status{'canceled'} }, $user_target;
                 }
             }
 
-            @{$dsh_target_status{'waiting'}} = ();
+            @{ $dsh_target_status{'waiting'} } = ();
 
             my $rsp = {};
             $rsp->{error}->[0] =
-              "Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
+"Command execution ended prematurely due to a previous unrecoverable error or stop request by the user.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         }    #end fatal_error != 2
         if ($$dsh_options{'stats'})
@@ -3037,7 +3055,7 @@ sub handle_signal_dsh
 
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Running the command  stopped due to unrecoverable error or stop request by the user.";
+"Running the command  stopped due to unrecoverable error or stop request by the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
         return;
@@ -3047,7 +3065,7 @@ sub handle_signal_dsh
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Running the command  stopped due to unrecoverable error or stop request by the user.";
+"Running the command  stopped due to unrecoverable error or stop request by the user.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         exit(1);
     }
@@ -3092,8 +3110,8 @@ sub resolve_targets
       = @_;
 
     $$options{'nodes'}
-      && xCAT::DSHCLI->resolve_nodes($options,            $resolved_targets,
-                                     $unresolved_targets, $context_targets);
+      && xCAT::DSHCLI->resolve_nodes($options, $resolved_targets,
+        $unresolved_targets, $context_targets);
 }
 
 #----------------------------------------------------------------------------
@@ -3141,12 +3159,12 @@ sub resolve_nodes
         !$node
           && (($node = $context) && ($context = $$options{'context'}));
 
-        push @{$dsh_stats{'specified-targets'}{$context}{'nodes'}}, $node;
+        push @{ $dsh_stats{'specified-targets'}{$context}{'nodes'} }, $node;
     }
 
     xCAT::DSHCLI->_resolve_nodes($options, $resolved_targets,
-                                 $unresolved_targets, $context_targets,
-                                 @node_list);
+        $unresolved_targets, $context_targets,
+        @node_list);
 }
 
 #----------------------------------------------------------------------------
@@ -3251,16 +3269,16 @@ sub bld_resolve_nodes_hash
     # find out if we have an MN in the list, local cp and sh will be used
     # not remote shell
     # find out the names for the Management Node
-    my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
-    my $mname   = pop @MNnodeinfo;                  # hostname
-    my $cmd="hostname";
-    my $localhostname = xCAT::Utils->runcmd($cmd,0);
+    my @MNnodeinfo    = xCAT::NetworkUtils->determinehostname;
+    my $mname         = pop @MNnodeinfo;                         # hostname
+    my $cmd           = "hostname";
+    my $localhostname = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-       my $rsp = {};
-       $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
-       xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-    } 
+        my $rsp = {};
+        $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    }
     foreach my $target (@target_list)
     {
 
@@ -3269,18 +3287,19 @@ sub bld_resolve_nodes_hash
         my $localhost;
         my $user;
         my $context = "XCAT";
+
         # check to see if this node is the Management Node we are on,  can run local commands (sh,cp)
-        if (($mname eq $target) || ($localhostname eq $target)){
-            $localhost=$target;
+        if (($mname eq $target) || ($localhostname eq $target)) {
+            $localhost = $target;
         }
         my %properties = (
-                          'hostname'   => $hostname,
-                          'ip-address' => $ip_address,
-                          'localhost'  => $localhost,
-                          'user'       => $user,
-                          'context'    => $context,
-                          'unresolved' => $target
-                          );
+            'hostname'   => $hostname,
+            'ip-address' => $ip_address,
+            'localhost'  => $localhost,
+            'user'       => $user,
+            'context'    => $context,
+            'unresolved' => $target
+        );
 
         $$resolved_targets{"$target"} = \%properties;
     }
@@ -3345,16 +3364,17 @@ sub verify_targets
             {
                 my $rsp = {};
                 $rsp->{error}->[0] =
-                  "$user_target is not responding. No command will be issued to this host.";
+"$user_target is not responding. No command will be issued to this host.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
                 # report error status  --nodestatus
                 # Note the message below for node status must
                 # not be NLS translated.  Code depends on the English.
                 if ($$options{'nodestatus'}) {
-                   my $rsp={};
-                  $rsp->{data}->[0] =
-                  "$user_target: Remote_command_failed";
-                   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+                      "$user_target: Remote_command_failed";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                 }
 
                 my $rsp = {};
@@ -3363,7 +3383,7 @@ sub verify_targets
                 $$dsh_options{'monitor'}
                   && xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-                push @{$dsh_target_status{'canceled'}}, $user_target;
+                push @{ $dsh_target_status{'canceled'} }, $user_target;
                 $$dsh_unresolved_targets{$user_target} =
                   $$resolved_targets{$user_target};
                 delete $$resolved_targets{$user_target};
@@ -3567,7 +3587,7 @@ sub util_bit_indexes
     my ($class, $vector, $bit) = @_;
 
     my @bit_indexes = ();
-    my @bits        = split(//, unpack("b*", $vector));
+    my @bits = split(//, unpack("b*", $vector));
 
     my $index = 0;
     while (@bits)
@@ -3608,23 +3628,23 @@ sub check_valid_options
     {
         my @invalid_opts;
         my @valid_longnames = (
-                               "continue",           "execute",
-                               "fanout",             "help",
-                               "user",               "monitor",
-                               "nodes",              "node-options",
-                               "node-rsh",           "stream",
-                               "timeout",            "verify",
-                               "exit-status",        "context",
-                               "environment",        "ignore-sig",
-                               "ignoresig",          "no-locale",
-                               "nodegroups",         "silent",
-                               "syntax",             "trace",
-                               "version",            "command-name",
-                               "commandName",        "command-description",
-                               "commandDescription", "noFileWriting",
-                               "preserve",           "node-rcp",
-                               "pull",               "recursive"
-                               );
+            "continue",           "execute",
+            "fanout",             "help",
+            "user",               "monitor",
+            "nodes",              "node-options",
+            "node-rsh",           "stream",
+            "timeout",            "verify",
+            "exit-status",        "context",
+            "environment",        "ignore-sig",
+            "ignoresig",          "no-locale",
+            "nodegroups",         "silent",
+            "syntax",             "trace",
+            "version",            "command-name",
+            "commandName",        "command-description",
+            "commandDescription", "noFileWriting",
+            "preserve",           "node-rcp",
+            "pull",               "recursive"
+        );
 
         foreach my $opt (@$options)
         {
@@ -3941,8 +3961,8 @@ sub parse_and_run_dsh
             'V|version'                => \$options{'version'},
 
             'devicetype|devicetype=s'    => \$options{'devicetype'},
-            'nodestatus|nodestatus' => \$options{'nodestatus'},            
-            'sudo|sudo' => \$options{'sudo'},            
+            'nodestatus|nodestatus'      => \$options{'nodestatus'},
+            'sudo|sudo'                  => \$options{'sudo'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -3983,7 +4003,7 @@ sub parse_and_run_dsh
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "Remote command: $remotecommand should be used with the dcp command. ";
+"Remote command: $remotecommand should be used with the dcp command. ";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return;
     }
@@ -3996,25 +4016,27 @@ sub parse_and_run_dsh
     # this was determined in the xdsh client code, because non-root user
     # actions must be taken there.  For those calling xdsh plugin, default
     # is root
-    if (!($ENV{'DSH_TO_USERID'})) # env first
+    if (!($ENV{'DSH_TO_USERID'}))    # env first
     {
-       if (!($options{'user'})) {  # -l second
-        $options{'user'} = "root";   # default
-       }
+        if (!($options{'user'})) {    # -l second
+            $options{'user'} = "root";    # default
+        }
     }
     else
     {
         $options{'user'} = $ENV{'DSH_TO_USERID'};
     }
     if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
-    {    #  no nodes and not -i option, error
+    {                                     #  no nodes and not -i option, error
         my $rsp = ();
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
+
     # Determine switch type, processing Mellanox not the same as QLogic
     my $switchtype = $options{'devicetype'};
+
     #$switchtype =~ s/::/\//g;
 
     #
@@ -4024,16 +4046,16 @@ sub parse_and_run_dsh
     if (defined($options{'rootimg'}))
     {    # running against local host
             # diskless image
-        # need directory for Linux,  just osimage name for AIX
+            # need directory for Linux,  just osimage name for AIX
         if (xCAT::Utils->isLinux()) {
-         if (!(-e ($options{'rootimg'})))
-         {    # directory does not exist
-            my $rsp = {};
-            $rsp->{error}->[0] =
-              "Input image directory $options{'rootimg'} does not exist.";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-            return;
-         }
+            if (!(-e ($options{'rootimg'})))
+            {    # directory does not exist
+                my $rsp = {};
+                $rsp->{error}->[0] =
+                  "Input image directory $options{'rootimg'} does not exist.";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                return;
+            }
         }
 
         # since we have no input nodes for running xdsh against the image
@@ -4049,7 +4071,7 @@ sub parse_and_run_dsh
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
+"Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4066,29 +4088,29 @@ sub parse_and_run_dsh
 
     # get the actual xdsh command from the argument list
     $options{'command'} = join ' ', @ARGV;
-    
+
 
     # if a Mellanox switch command we have to build
-    # the command xdsh will send special 
+    # the command xdsh will send special
     # input will look something like this
     # xdsh mswitch -l admin --devicetype IBSwitch::Mellanox
     #  enable;configure terminal;show ssh server host-keys
     # We will build
     #  ssh admin@mswitch cli
-    #     "enable" "configure terminal" "show ssh server host-keys" 
+    #     "enable" "configure terminal" "show ssh server host-keys"
     my @melcmds;
     if ($switchtype =~ /IBSwitch::Mellanox/i) {
-      $::DSH_MELLANOX_SWITCH=1;
-      @melcmds = split (/;/, $options{'command'});
-      my $newcmd;
-      foreach my $cmd (@melcmds) {
-       $newcmd .= "\"";
-       $newcmd .= $cmd;
-       $newcmd .= "\" ";
-      }
-      $options{'command'} = $newcmd;  
+        $::DSH_MELLANOX_SWITCH = 1;
+        @melcmds = split(/;/, $options{'command'});
+        my $newcmd;
+        foreach my $cmd (@melcmds) {
+            $newcmd .= "\"";
+            $newcmd .= $cmd;
+            $newcmd .= "\" ";
+        }
+        $options{'command'} = $newcmd;
     } else {
-      $::DSH_MELLANOX_SWITCH=0;
+        $::DSH_MELLANOX_SWITCH = 0;
     }
     #
     # -K option just sets up the ssh keys on the nodes and exits
@@ -4096,23 +4118,24 @@ sub parse_and_run_dsh
 
     if (defined $options{'ssh-setup'})
     {
-        # check if any node in the noderange is the Management Node and exit 
+        # check if any node in the noderange is the Management Node and exit
         # with error, if the Management Node is in the Database and in the
         # noderange
-        my @mname = xCAT::Utils->noderangecontainsMn(@nodelist); 
-        if (@mname) {  # MN in the nodelist
-            my $nodes=join(',', @mname);
+        my @mname = xCAT::Utils->noderangecontainsMn(@nodelist);
+        if (@mname) {    # MN in the nodelist
+            my $nodes = join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
               "You must not run -K option against the Management Node:$nodes.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
-        } 
+        }
+
         # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
         if ($switchtype =~ /IBSwitch::Mellanox/i) {
-           my $rsp = {};
-           $rsp->{error}->[0] = 
-            "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
+            my $rsp = {};
+            $rsp->{error}->[0] =
+"You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4131,13 +4154,13 @@ sub parse_and_run_dsh
         #  This is checked for in the client code.
         #  DSH_REMOTE_PASSWORD env variable must be set to the correct
         #  password for the key update.  This was setup in xdsh client
-        #  frontend.  
+        #  frontend.
 
         if (!($ENV{'DSH_REMOTE_PASSWORD'}))
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "User password for ssh key exchange has not been supplied.\n Cannot complete the -K command\n";
+"User password for ssh key exchange has not been supplied.\n Cannot complete the -K command\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -4147,7 +4170,7 @@ sub parse_and_run_dsh
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "Current Userid has not been supplied.\n Cannot complete the -K command.\n";
+"Current Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -4158,7 +4181,7 @@ sub parse_and_run_dsh
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "Logon  Userid has not been supplied.\n Cannot complete the -K command.\n";
+"Logon  Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -4169,12 +4192,12 @@ sub parse_and_run_dsh
 
         # if current_userid ne touserid then current_userid
         # must be root
-        if (   ($current_userid ne $to_userid)
+        if (($current_userid ne $to_userid)
             && ($current_userid ne "root"))
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "When touserid:$to_userid is not the same as the current user:$current_userid. The command must be run by root id.";
+"When touserid:$to_userid is not the same as the current user:$current_userid. The command must be run by root id.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4188,12 +4211,13 @@ sub parse_and_run_dsh
             my $devicename = $options{'devicetype'};
             $devicename =~ s/::/\//g;
             my $devicepath = "/var/opt/xcat/" . $devicename . "/config";
-            # go to backup directory if the config file 
+
+            # go to backup directory if the config file
             # cannot be found under /var/opt/xcat/...
-            if (! -e $devicepath) { 
-		$devicepath="$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
-	    }
-	    if (-e $devicepath) 
+            if (!-e $devicepath) {
+                $devicepath = "$::XCATROOT/share/xcat/devicetype/" . $devicename . "/config";
+            }
+            if (-e $devicepath)
             {
                 my $deviceconf = get_config($devicepath);
 
@@ -4206,7 +4230,7 @@ sub parse_and_run_dsh
         #
         # setup ssh keys on the nodes or ib switch
         #
-        my $rc      = xCAT::TableUtils->setupSSH($options{'nodes'},$options{'timeout'});
+        my $rc = xCAT::TableUtils->setupSSH($options{'nodes'}, $options{'timeout'});
         my @results = "return code = $rc";
         return (@results);
     }
@@ -4287,7 +4311,7 @@ sub usage_dcp
     my $usagemsg5c = " xdcp <-i imagepath> -F <rsyncfile> ";
     my $usagemsg5d = "[-o options]";
 
-    my $usagemsg .= $usagemsg1 .= $usagemsg2 .= $usagemsg3 .= $usagemsg4 .=
+    my $usagemsg .= $usagemsg1  .= $usagemsg2  .= $usagemsg3  .= $usagemsg4 .=
       $usagemsg5 .= $usagemsg5a .= $usagemsg5b .= $usagemsg5c .= $usagemsg5d;
 
     if ($::CALLBACK)
@@ -4365,29 +4389,29 @@ sub parse_and_run_dcp
     }
     if (
         !GetOptions(
-                    'f|fanout=i'       => \$options{'fanout'},
-                    'F|File=s'         => \$options{'File'},
-                    'h|help'           => \$options{'help'},
-                    'l|user=s'         => \$options{'user'},
-                    'm|monitor'                => \$options{'monitor'},
-                    'o|node-options=s' => \$options{'node-options'},
-                    'q|show-config'    => \$options{'show-config'},
-                    'p|preserve'       => \$options{'preserve'},
-                    'r|c|node-rcp=s'   => \$options{'node-rcp'},
-                    'i|rootimg=s'      => \$options{'rootimg'},
-                    's'                => \$options{'rsyncSN'},
-                    't|timeout=i'      => \$options{'timeout'},
-                    'v|verify'         => \$options{'verify'},
-                    'B|bypass'         => \$options{'bypass'},
-                    'Q|silent'         => \$options{'silent'},
-                    'P|pull'           => \$options{'pull'},
-                    'R|recursive'      => \$options{'recursive'},
-                    'T|trace'          => \$options{'trace'},
-                    'V|version'        => \$options{'version'},
-                    'devicetype=s'     => \$options{'devicetype'},
-                    'nodestatus|nodestatus' => \$options{'nodestatus'},        
-                    'sudo|sudo' => \$options{'sudo'},            
-                    'X:s'              => \$options{'ignore_env'}
+            'f|fanout=i'            => \$options{'fanout'},
+            'F|File=s'              => \$options{'File'},
+            'h|help'                => \$options{'help'},
+            'l|user=s'              => \$options{'user'},
+            'm|monitor'             => \$options{'monitor'},
+            'o|node-options=s'      => \$options{'node-options'},
+            'q|show-config'         => \$options{'show-config'},
+            'p|preserve'            => \$options{'preserve'},
+            'r|c|node-rcp=s'        => \$options{'node-rcp'},
+            'i|rootimg=s'           => \$options{'rootimg'},
+            's'                     => \$options{'rsyncSN'},
+            't|timeout=i'           => \$options{'timeout'},
+            'v|verify'              => \$options{'verify'},
+            'B|bypass'              => \$options{'bypass'},
+            'Q|silent'              => \$options{'silent'},
+            'P|pull'                => \$options{'pull'},
+            'R|recursive'           => \$options{'recursive'},
+            'T|trace'               => \$options{'trace'},
+            'V|version'             => \$options{'version'},
+            'devicetype=s'          => \$options{'devicetype'},
+            'nodestatus|nodestatus' => \$options{'nodestatus'},
+            'sudo|sudo'             => \$options{'sudo'},
+            'X:s'                   => \$options{'ignore_env'}
         )
       )
     {
@@ -4420,7 +4444,7 @@ sub parse_and_run_dcp
         {
             my $rsp = {};
             $rsp->{error}->[0] =
-              "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
+"Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4436,7 +4460,7 @@ sub parse_and_run_dcp
     if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
-        my $rsp = {};
+        my $rsp     = {};
         $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return (0);
@@ -4462,7 +4486,7 @@ sub parse_and_run_dcp
         {    # File not given
             my $rsp = {};
             $rsp->{error}->[0] =
-              "If -i option is use, then the -F option must input the file list.\nThe file will contain the list of files to rsync to the image.";
+"If -i option is use, then the -F option must input the file list.\nThe file will contain the list of files to rsync to the image.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
@@ -4473,7 +4497,7 @@ sub parse_and_run_dcp
     {
         my $rsp = {};
         $rsp->{error}->[0] =
-          "If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
+"If -F option is use, then -r is invalid. The command will always the rsync using ssh.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -4511,10 +4535,10 @@ sub parse_and_run_dcp
     my $remotecopycommand = $options{'node-rcp'};
     if ($options{'node-rcp'}
         && (!-f $options{'node-rcp'} || !-x $options{'node-rcp'}))
-    {   
-        my $rsp={};
+    {
+        my $rsp = {};
         $rsp->{error}->[0] =
-          "Remote command: $remotecopycommand does not exist or is not executable.";
+"Remote command: $remotecopycommand does not exist or is not executable.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
         return;
     }
@@ -4566,36 +4590,38 @@ sub parse_and_run_dcp
     }
     my $synfiledir;
     my $nodesyncfiledir;
+
     # set default sync dir on service node  and node
     # right now setting the nodes and sn syncfiledir the same, leaving
-    # the possibility that one day we may want them to be different 
-    $synfiledir = "/var/xcat/syncfiles";
+    # the possibility that one day we may want them to be different
+    $synfiledir      = "/var/xcat/syncfiles";
     $nodesyncfiledir = "/var/xcat/node/syncfiles";
 
     # get the directory on the servicenode to put the rsync files in
     my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
     if ($syndir[0])
     {
-            $synfiledir = $syndir[0];
+        $synfiledir = $syndir[0];
     }
+
     # get the directory on the node to put the rsync files in
     my @syndir = xCAT::TableUtils->get_site_attribute("nodesyncfiledir");
     if ($syndir[0])
     {
-          $nodesyncfiledir = $syndir[0]; 
+        $nodesyncfiledir = $syndir[0];
     }
 
     my $rc;
     my $syncfile;
     if ($options{'File'}) {
-     $syncfile = $options{'File'};
-     if (!-f $options{'File'}) 
-     {
+        $syncfile = $options{'File'};
+        if (!-f $options{'File'})
+        {
             my $rsp = ();
             $rsp->{error}->[0] = "File:$syncfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
-     }
+        }
     }
 
     # if rsyncing the nodes or service nodes
@@ -4609,38 +4635,41 @@ sub parse_and_run_dcp
             $::SYNCSN = 1;
         }
 
-        # the parsing of the file will fill in an array of postscripts 
+        # the parsing of the file will fill in an array of postscripts
         # need to be run if the associated file is updated
-        @::postscripts=();
-        @::alwayspostscripts=();
-        @::appendlines=();
-        @::mergelines=();
+        @::postscripts       = ();
+        @::alwayspostscripts = ();
+        @::appendlines       = ();
+        @::mergelines        = ();
         if (xCAT::Utils->isServiceNode())
         {    # running on service node
             $rc =
               &parse_rsync_input_file_on_SN(\@nodelist, \%options, $syncfile,
-                                            $synfiledir,$nodesyncfiledir);
+                $synfiledir, $nodesyncfiledir);
         }
         else
         {    # running on MN
             $rc =
               &parse_rsync_input_file_on_MN(\@nodelist, \%options, $syncfile,
-                      $::SYNCSN, $synfiledir,$nodesyncfiledir);
-                           # build a temporary syncfile for the node's synclist
-              if ($::SYNCSN ==1) {  # syncing a servicenode
-                # we need to make sure the latest is on the servicenode
-                # for running of the syncfiles postscript, which only pulls
-                # from the service node
-                my $tmpsyncfile="/tmp/xdcpsynclist.$$";
-                my $syncline = "$syncfile -> $syncfile";
+                $::SYNCSN, $synfiledir, $nodesyncfiledir);
+
+            # build a temporary syncfile for the node's synclist
+            if ($::SYNCSN == 1) {    # syncing a servicenode
+                    # we need to make sure the latest is on the servicenode
+                    # for running of the syncfiles postscript, which only pulls
+                    # from the service node
+                my $tmpsyncfile = "/tmp/xdcpsynclist.$$";
+                my $syncline    = "$syncfile -> $syncfile";
                 open(FILE, ">$tmpsyncfile")
                   or die "cannot open file $tmpsyncfile\n";
                 print FILE " $syncline";
                 close FILE;
+
                 # now put the original syncfile on the queue to sync to the SN's
                 $rc =
-                &parse_rsync_input_file_on_MN(\@nodelist, \%options,$tmpsyncfile,
-                   $::SYNCSN, $synfiledir,$nodesyncfiledir);
+                  &parse_rsync_input_file_on_MN(\@nodelist, \%options, $tmpsyncfile,
+                    $::SYNCSN, $synfiledir, $nodesyncfiledir);
+
                 # cleanup
                 my $cmd = "rm $tmpsyncfile";
                 my @output = xCAT::Utils->runcmd($cmd, 0);
@@ -4650,12 +4679,12 @@ sub parse_and_run_dcp
                     $rsp->{error}->[0] = "Command: $cmd failed.";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 }
-              }
+            }
 
         }
         if ($rc == 1)
         {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "Error parsing the rsync file:$syncfile.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4666,7 +4695,7 @@ sub parse_and_run_dcp
     {
         if (@ARGV < 1)
         {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "Missing file arguments";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4676,7 +4705,7 @@ sub parse_and_run_dcp
         {
             if ($options{'pull'})
             {
-                my $rsp={};
+                my $rsp = {};
                 $rsp->{error}->[0] = "Missing target_path";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
                 return;
@@ -4687,7 +4716,7 @@ sub parse_and_run_dcp
                 # HERE:only one line of input source and target in that line
                 # such as xdcp -R " /test/* /test"
                 my $tmparg = pop @ARGV;
-                my ($src,$tgt) = split " ", $tmparg;
+                my ($src, $tgt) = split " ", $tmparg;
                 $options{'target'} = $tgt;
                 $options{'source'} = join $::__DCP_DELIM, $src;
             }
@@ -4695,7 +4724,7 @@ sub parse_and_run_dcp
 
         elsif ($options{'pull'} && (@ARGV > 2))
         {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{error}->[0] = "Cannot pull more than one file from targets.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
@@ -4703,7 +4732,7 @@ sub parse_and_run_dcp
 
         else
         {
-            # Get the source and the target 
+            # Get the source and the target
             $options{'target'} = pop @ARGV;
             $options{'source'} = join $::__DCP_DELIM, @ARGV;
         }
@@ -4714,49 +4743,51 @@ sub parse_and_run_dcp
     # HERE:  Run xdcp  LKV
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
     $::FAILED_NODES = $::RUNCMD_RC;
-    
+
     # if not just syncing the service node SNsyncfiledir directory,
     #  @::postscripts should be empty in this case anyway
-    # if postscripts to run after rsync, process the output and 
+    # if postscripts to run after rsync, process the output and
     # create the xdsh command to run the ones needed
-    my  @results2;
-    my  @results3;
-    my  @results4;
-    my  @results5;
+    my @results2;
+    my @results3;
+    my @results4;
+    my @results5;
     my $ranpostscripts;
     my $ranappendscripts;
     my $ranmergescripts;
 
     # if we were called with runxcmd, like by updatenode
-    # need to save the runxcmd buffer 
+    # need to save the runxcmd buffer
     # $::xcmd_outref
     my $save_xcmd_outref;
-    if ($::xcmd_outref) { # this means we were called with runxcmd
-     $save_xcmd_outref = $::xcmd_outref;
+    if ($::xcmd_outref) {    # this means we were called with runxcmd
+        $save_xcmd_outref = $::xcmd_outref;
     }
 
     if ((@::postscripts) && ($::SYNCSN == 0)) {
-       @results2 = &run_rsync_postscripts(\@results,$synfiledir,\%options); 
-       $ranpostscripts=1;
+        @results2 = &run_rsync_postscripts(\@results, $synfiledir, \%options);
+        $ranpostscripts = 1;
     }
     if ((@::alwayspostscripts) && ($::SYNCSN == 0)) {
-       @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir,\%options); 
+        @results3 = &run_always_rsync_postscripts(\@nodelist, $synfiledir, \%options);
     }
     if (($::appendscript) && ($::SYNCSN == 0)) {
-       @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir,\%options); 
-       $ranappendscripts=1;
+        @results4 = &bld_and_run_append(\@nodelist, \@results, $synfiledir, $nodesyncfiledir, \%options);
+        $ranappendscripts = 1;
     }
     if (($::mergescript) && ($::SYNCSN == 0)) {
-       @results5 = &bld_and_run_merge(\@nodelist,\@results,$synfiledir,$nodesyncfiledir,\%options); 
-       $ranmergescripts=1;
+        @results5 = &bld_and_run_merge(\@nodelist, \@results, $synfiledir, $nodesyncfiledir, \%options);
+        $ranmergescripts = 1;
     }
+
     # restore the runxcmd buffer
-    if ($save_xcmd_outref) { # this means we were called with runxcmd
-     $::xcmd_outref = $save_xcmd_outref;
+    if ($save_xcmd_outref) {    # this means we were called with runxcmd
+        $::xcmd_outref = $save_xcmd_outref;
     }
+
     # TODO, will we ever need to merge
     # if we ran a postscript and we were run
-    # using runxcmd, and there was previous output in the 
+    # using runxcmd, and there was previous output in the
     # runxcmd buffer and we have output from the postscript
     # then we have to merge the outputs
     #if (($ranaps == 1) && ($save_xcmd_outref) && ($::xcmd_outref) ) {
@@ -4764,32 +4795,33 @@ sub parse_and_run_dcp
     #}
     my @newresults;
     if (@results2) {
-      @newresults = (@results2);
+        @newresults = (@results2);
     }
     if (@results3) {
-      @newresults = (@newresults,@results3);
+        @newresults = (@newresults, @results3);
     }
     if (@results4) {
-      @newresults = (@newresults,@results3,@results4);
+        @newresults = (@newresults, @results3, @results4);
     }
     if (@results5) {
-      @newresults = (@newresults,@results3,@results4,@results5);
+        @newresults = (@newresults, @results3, @results4, @results5);
     }
     if (@newresults) {
-      if ($save_xcmd_outref) { # this means we were called with runxcmd
-        foreach my $line (@newresults) {
-         push @$::xcmd_outref,$line;
+        if ($save_xcmd_outref) {    # this means we were called with runxcmd
+            foreach my $line (@newresults) {
+                push @$::xcmd_outref, $line;
+            }
         }
-      }
-      return (@newresults);
+        return (@newresults);
     } else {
-      # don't report other results for postscripts,appendscripts,mergescripts because
-      # you get all the rsync returned lines
-      if (($ranpostscripts == 0 ) && ($ranappendscripts == 0) 
-         && ($ranmergescripts == 0)) { 
-        return (@results);
-      }    
-    }    
+
+        # don't report other results for postscripts,appendscripts,mergescripts because
+        # you get all the rsync returned lines
+        if (($ranpostscripts == 0) && ($ranappendscripts == 0)
+            && ($ranmergescripts == 0)) {
+            return (@results);
+        }
+    }
 }
 
 #-------------------------------------------------------------------------------
@@ -4848,12 +4880,12 @@ sub rsync_to_image
         }
 
         # process no more lines, do not exec
-        # do not execute postscripts when syncing images 
-        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/) 
-           || ($line =~ /APPEND:/) || ($line =~ /MERGE:/))
-        { # process no more lines
-			last;
-	}
+        # do not execute postscripts when syncing images
+        if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
+            || ($line =~ /APPEND:/) || ($line =~ /MERGE:/))
+        {    # process no more lines
+            last;
+        }
         if ($line =~ /(.+) -> (.+)/)
         {
             my $imageupdatedir  = $image;
@@ -4987,203 +5019,212 @@ sub rsync_to_image
 sub parse_rsync_input_file_on_MN
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $rsyncSN, $syncdir,$nodesyncfiledir) = @_;
-    my @dest_host    = @$nodes;
+    my ($nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir) = @_;
+    my @dest_host = @$nodes;
     $::process_line = 0;
     my $destfileisdir;
-    my $clause=0;
-    my $addmergescript =0;
-    my $addappendscript =0;
+    my $clause          = 0;
+    my $addmergescript  = 0;
+    my $addappendscript = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
+
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
-        if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
+        if (($line =~ /^#/) || ($line =~ /^\s*$/))
+
+          # skip commments  and blanks
         {
             next;
         }
-        # Determine if processing a clause or the synclist 
+
+        # Determine if processing a clause or the synclist
         if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
-                 || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) { 
-             $clause=$line;
-             next;   # get the content of the clause
+            || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) {
+            $clause = $line;
+            next;    # get the content of the clause
         }
+
         # processing a clause
         if (($clause =~ /APPEND:/) || ($clause =~ /EXECUTEALWAYS:/)
             || ($clause =~ /EXECUTE:/) || ($clause =~ /MERGE:/)) {
             if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
-                  ($clause =~ /EXECUTE:/))) {  
-               # for EXECUTE and EXECUTEALWAYS skip, if syncing SN only
-         	next;
-            } else {   # process the clause
-               if ($clause =~ /EXECUTE:/) {
-                  push @::postscripts,$line;
-               }
-               if ($clause =~ /EXECUTEALWAYS:/) {
-                  push @::alwayspostscripts,$line;
-               }
-               if ($clause =~ /APPEND:/) {
-                 # location of the base append script
-                 # for APPEND we have to sync the appendscript and the
-                 # append file to the SN
-                  my $onServiceNode=0;
-                  my $syncappendscript=0;
-                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-                if ($::SYNCSN == 0) {
-                  # this triggers the running of the appendscript
-                  $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                    ($clause =~ /EXECUTE:/))) {
+
+                # for EXECUTE and EXECUTEALWAYS skip, if syncing SN only
+                next;
+            } else {    # process the clause
+                if ($clause =~ /EXECUTE:/) {
+                    push @::postscripts, $line;
+                }
+                if ($clause =~ /EXECUTEALWAYS:/) {
+                    push @::alwayspostscripts, $line;
+                }
+                if ($clause =~ /APPEND:/) {
+
+                    # location of the base append script
+                    # for APPEND we have to sync the appendscript and the
+                    # append file to the SN
+                    my $onServiceNode    = 0;
+                    my $syncappendscript = 0;
+                    &build_append_rsync($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncappendscript);
+                    if ($::SYNCSN == 0) {
+
+                        # this triggers the running of the appendscript
+                        $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                    }
+
+                    # add the append script to the sync
+                    if ($addappendscript == 0) {    # only add once
+                        my $appscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                        my $appendscriptline = "$appscript -> $appscript";
+                        $syncappendscript = 1; # syncing the xdcpappend.sh script
+                        &build_append_rsync($appendscriptline, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncappendscript);
+                        $addappendscript = 1;
+                    }
+                }    # end APPEND clause
+                if ($clause =~ /MERGE:/) {
+
+                    # location of the base merge script
+                    # for MERGE we have to sync the mergescript and the
+                    # merge file to the SN
+                    my $onServiceNode   = 0;
+                    my $syncmergescript = 0;
+                    &build_merge_rsync($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncmergescript);
+                    if ($::SYNCSN == 0) {
+
+                        # this triggers the running of the mergescript
+                        $::mergescript = "/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                    }
+
+                    # add the merge script to the sync
+                    if ($addmergescript == 0) {    # only add once
+                        my $mergescript = "/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                        my $mergescriptline = "$mergescript -> $mergescript";
+                        $syncmergescript = 1;  # syncing the xdcpmerge.sh script
+                        &build_merge_rsync($mergescriptline, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncmergescript);
+                        $addmergescript = 1;
+                    }
+                }    # end MERGE clause
+
+            }
+        } else {    # not processing EXECUTE, EXECUTEALWAYS or APPEND
+                    # otherwise it is just the synclist
+                    # xCAT supports the syncfile format:
+                    #   file -> file
+                    #   file -> (noderange for permitted nodes) file
+            if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) {
+                $::process_line = 1;
+                my $src_file;
+                my $dest_file;
+                my $dest_node;
+                my @dest_nodes;
+                if ($line =~ /(.+) -> +\((.+)\) +(.+)/) {
+                    $src_file  = $1;
+                    $dest_node = $2;
+                    $dest_file = $3;
+                } elsif ($line =~ /(.+) -> (.+)/) {
+                    $src_file  = $1;
+                    $dest_file = $2;
                 }
 
-                # add the append script to the sync
-                if ($addappendscript == 0) {  # only add once
-                  my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                  my $appendscriptline = "$appscript -> $appscript"; 
-                  $syncappendscript=1;  # syncing the xdcpappend.sh script
-                   &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-                   $addappendscript=1;
-                 } 
-               }  # end APPEND clause
-               if ($clause =~ /MERGE:/) {
-                 # location of the base merge script
-                 # for MERGE we have to sync the mergescript and the
-                 # merge file to the SN
-                  my $onServiceNode=0;
-                  my $syncmergescript=0;
-                 &build_merge_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-                if ($::SYNCSN == 0) {
-                  # this triggers the running of the mergescript
-                  $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                # get all the permitted nodes for the line
+                $dest_node =~ s/\s//g;
+                if ($dest_node) {
+                    @dest_nodes = noderange($dest_node);
                 }
-                
-                # add the merge script to the sync
-                if ($addmergescript == 0) {  # only add once
-                  my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
-                  my $mergescriptline = "$mergescript -> $mergescript"; 
-                  $syncmergescript=1;  # syncing the xdcpmerge.sh script
-                  &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-                  $addmergescript=1;
+                $dest_file =~ s/[\s;]//g;
+                my @srcfiles = (split ' ', $src_file);
+                my $arraysize = scalar @srcfiles;  # of source files on the line
+                my $dest_dir;
+                $destfileisdir = 0;
+                if ($dest_file =~ /\/$/)
+                {                                  #  ends in /
+                    $destfileisdir = 1;
                 }
-               }  # end MERGE clause
-           
-           }
-         } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
-          # otherwise it is just the synclist
-          # xCAT supports the syncfile format:
-          #   file -> file
-          #   file -> (noderange for permitted nodes) file
-          if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) {
-            $::process_line = 1;
-            my $src_file;
-            my $dest_file;
-            my $dest_node;
-            my @dest_nodes;
-            if ($line =~ /(.+) -> +\((.+)\) +(.+)/) {
-                $src_file  = $1;
-                $dest_node = $2;
-                $dest_file = $3;
-            } elsif ($line =~ /(.+) -> (.+)/) {
-                $src_file  = $1;
-                $dest_file = $2;
-            }
 
-            # get all the permitted nodes for the line
-            $dest_node =~ s/\s//g;
-            if ($dest_node) {
-                @dest_nodes = noderange($dest_node);
-            }
-            $dest_file =~ s/[\s;]//g;
-            my @srcfiles = (split ' ', $src_file);
-            my $arraysize = scalar @srcfiles;    # of source files on the line
-            my $dest_dir;
-            $destfileisdir = 0;
-            if ($dest_file =~ /\/$/)
-            {    #  ends in /
-                $destfileisdir = 1;
-            }
-
-            # if more than one file on the line then
-            # or the destination file ends in /
-            #  /tmp/file1 -> /tmp/
-            # the destination  is a directory
-            # else assume a file
-            if (($arraysize > 1) || ($destfileisdir == 1))
-            {
-                $dest_dir      = $dest_file;
-                $destfileisdir = 1;
-            }
-            else    # get the directory name
-            {       # strip off the file
-                $dest_dir = dirname($dest_file);
-            }
-            $dest_dir =~ s/\s*//g;    #remove blanks
-
-            foreach my $target_node (@dest_host)
-            {
-                # skip the node if it's NOT in the permitted list
-                if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
-                    next;
-                }
-                $$options{'destDir_srcFile'}{$target_node} ||= {};
-
-                # for each file on the line
-                foreach my $srcfile (@srcfiles)
+                # if more than one file on the line then
+                # or the destination file ends in /
+                #  /tmp/file1 -> /tmp/
+                # the destination  is a directory
+                # else assume a file
+                if (($arraysize > 1) || ($destfileisdir == 1))
                 {
+                    $dest_dir      = $dest_file;
+                    $destfileisdir = 1;
+                }
+                else    # get the directory name
+                {       # strip off the file
+                    $dest_dir = dirname($dest_file);
+                }
+                $dest_dir =~ s/\s*//g;    #remove blanks
 
-                    #  if syncing the Service Node, file goes to the same place
-                    #  where it was on the MN off the syncdir on the service
-                    # node
-                    if ($rsyncSN == 1)
-                    {    #  syncing the SN
-                        $dest_dir = $syncdir;    # the SN sync dir
-                        $dest_dir .= dirname($srcfile);
-                        $dest_dir =~ s/\s*//g;    #remove blanks
+                foreach my $target_node (@dest_host)
+                {
+                    # skip the node if it's NOT in the permitted list
+                    if ($dest_node && !grep /^$target_node$/, @dest_nodes) {
+                        next;
                     }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      {};
+                    $$options{'destDir_srcFile'}{$target_node} ||= {};
 
-                    # can be full file name for destination or just the
-                    # directory name
-                    my $src_basename = basename($srcfile);    # get file name
-
-                    my $dest_basename;    # destination file name
-                                          # determine path to the file
-                    if ($destfileisdir == 1)    # if a directory
+                    # for each file on the line
+                    foreach my $srcfile (@srcfiles)
                     {
-                        $dest_basename = $src_basename;
-                    }
-                    else
-                    {
-                        $dest_basename = basename($dest_file);
-                    }
-                    if ($rsyncSN == 1)    # dest file will be the same as src
-                    {                     #  syncing the SN
-                        $dest_basename = $src_basename;
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      $dest_basename =~ s/[\s;]//g;
 
-                    # if the filename will be the same at the destination
-                    if ($src_basename eq $dest_basename)
-                    {
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'same_dest_name'} ||= [];
-                        push @{$$options{'destDir_srcFile'}{$target_node}
-                              {$dest_dir}{'same_dest_name'}}, $srcfile;
-                    }
-                    else    # changing file names
-                    {
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'diff_dest_name'} ||= {};
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'diff_dest_name'}{$srcfile} = $dest_basename;
-                    }
+                        #  if syncing the Service Node, file goes to the same place
+                        #  where it was on the MN off the syncdir on the service
+                        # node
+                        if ($rsyncSN == 1)
+                        {    #  syncing the SN
+                            $dest_dir = $syncdir;    # the SN sync dir
+                            $dest_dir .= dirname($srcfile);
+                            $dest_dir =~ s/\s*//g;    #remove blanks
+                        }
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                          {};
 
-                } # end of each srcfile
-            }   # end of each node
-          } # if synclist line
-        } # end processing clauses EXECUTE, APPEND, etc 
-    } #end while processing file
+                        # can be full file name for destination or just the
+                        # directory name
+                        my $src_basename = basename($srcfile);   # get file name
+
+                        my $dest_basename;    # destination file name
+                                              # determine path to the file
+                        if ($destfileisdir == 1)    # if a directory
+                        {
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {
+                            $dest_basename = basename($dest_file);
+                        }
+                        if ($rsyncSN == 1)   # dest file will be the same as src
+                        {                    #  syncing the SN
+                            $dest_basename = $src_basename;
+                        }
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                          $dest_basename =~ s/[\s;]//g;
+
+                        # if the filename will be the same at the destination
+                        if ($src_basename eq $dest_basename)
+                        {
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'same_dest_name'} ||= [];
+                            push @{ $$options{'destDir_srcFile'}{$target_node}
+                                  {$dest_dir}{'same_dest_name'} }, $srcfile;
+                        }
+                        else    # changing file names
+                        {
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'diff_dest_name'} ||= {};
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'diff_dest_name'}{$srcfile} = $dest_basename;
+                        }
+
+                    }    # end of each srcfile
+                }    # end of each node
+            }    # if synclist line
+        }    # end processing clauses EXECUTE, APPEND, etc
+    }    #end while processing file
     close INPUTFILE;
     if ($::process_line == 0)
     {    # no valid lines in the file
@@ -5194,10 +5235,11 @@ sub parse_rsync_input_file_on_MN
     }
     else
     {
-        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+        $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5231,72 +5273,74 @@ sub parse_rsync_input_file_on_MN
 
 #-------------------------------------------------------------------------------
 
-sub build_append_rsync 
+sub build_append_rsync
 {
     use File::Basename;
-    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript) = @_;
+    my ($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncappendscript) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
+
     # add append directory to the base nodesyncfiledir
     $nodesyncfiledir .= "/append";
-    
+
     if ($line =~ /(.+) -> (.+)/)
     {
 
-            $::process_line = 1;
-            if ($syncappendscript == 0) { # don't add the xdcpappend.sh line 
-              push @::appendlines,$line;
+        $::process_line = 1;
+        if ($syncappendscript == 0) {    # don't add the xdcpappend.sh line
+            push @::appendlines, $line;
+        }
+        my $src_file      = $1;          # append file left of arror
+        my $orig_src_file = $1;          # append file left of arror
+             # it will be sync'd to $nodesyncfiledir/$append_file
+        my $dest_file = $nodesyncfiledir;
+        $dest_file .= $src_file;
+        $dest_file =~ s/[\s;]//g;
+        my $dest_dir = dirname($dest_file);
+        $dest_dir =~ s/\s*//g;    #remove blanks
+
+        foreach my $target_node (@dest_host)
+        {
+            $$options{'destDir_srcFile'}{$target_node} ||= {};
+
+            #  if syncing the Service Node, file goes to the same place
+            #  where it was on the MN off the syncdir on the service
+            # node
+            if ($rsyncSN == 1)
+            {    #  syncing the SN
+                $dest_dir = $syncdir;    # the SN sync dir
+                $dest_dir .= dirname($src_file);
+                $dest_dir =~ s/\s*//g;    #remove blanks
             }
-            my $src_file  = $1; # append file left of arror
-            my $orig_src_file  = $1; # append file left of arror
-            # it will be sync'd to $nodesyncfiledir/$append_file
-            my $dest_file = $nodesyncfiledir;
-            $dest_file .= $src_file;  
-            $dest_file =~ s/[\s;]//g;
-            my     $dest_dir = dirname($dest_file);
-            $dest_dir =~ s/\s*//g;    #remove blanks
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+              {};
 
-            foreach my $target_node (@dest_host)
-            {
-                $$options{'destDir_srcFile'}{$target_node} ||= {};
+            my $src_basename = basename($src_file);    # get file name
+                 # if this is syncing from the Service Node then we have
+                 # to pick up files from /var/xcat/syncfiles...
+            if ($onServiceNode == 1) {
+                my $newsrcfile = $syncdir;    # add SN syndir on front
+                $newsrcfile .= $orig_src_file;
+                $src_file = $newsrcfile;
+            }
 
-                    #  if syncing the Service Node, file goes to the same place
-                    #  where it was on the MN off the syncdir on the service
-                    # node
-                    if ($rsyncSN == 1)
-                    {    #  syncing the SN
-                        $dest_dir = $syncdir;    # the SN sync dir
-                        $dest_dir .= dirname($src_file);
-                        $dest_dir =~ s/\s*//g;    #remove blanks
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      {};
+            # destination file name
+            my $dest_basename = basename($dest_file);
+            if ($rsyncSN == 1)    # dest file will be the same as src
+            {                     #  syncing the SN
+                $dest_basename = $src_basename;
+            }
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+              $dest_basename =~ s/[\s;]//g;
 
-                    my $src_basename = basename($src_file);    # get file name
-                    # if this is syncing from the Service Node then we have
-                    # to pick up files from /var/xcat/syncfiles...
-                    if ($onServiceNode == 1) {
-                      my $newsrcfile = $syncdir;    # add SN syndir on front
-                      $newsrcfile .= $orig_src_file;
-                      $src_file=$newsrcfile;
-                    }
-                    # destination file name
-                    my  $dest_basename = basename($dest_file);
-                    if ($rsyncSN == 1)    # dest file will be the same as src
-                    {                     #  syncing the SN
-                        $dest_basename = $src_basename;
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      $dest_basename =~ s/[\s;]//g;
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+              {'same_dest_name'} ||= [];
+            push @{ $$options{'destDir_srcFile'}{$target_node}
+                  {$dest_dir}{'same_dest_name'} }, $src_file;
 
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'same_dest_name'} ||= [];
-                    push @{$$options{'destDir_srcFile'}{$target_node}
-                              {$dest_dir}{'same_dest_name'}}, $src_file;
-
-            }   # end of each node
-          } # if synclist line
+        }    # end of each node
+    }    # if synclist line
     if ($::process_line == 0)
     {    # no valid lines in the file
         my $rsp = {};
@@ -5306,10 +5350,11 @@ sub build_append_rsync
     }
     else
     {
-        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+        $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5341,75 +5386,78 @@ sub build_append_rsync
 
 #-------------------------------------------------------------------------------
 
-sub build_merge_rsync 
+sub build_merge_rsync
 {
     use File::Basename;
-    my ($line,$nodes, $options,$input_file, $rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript) = @_;
+    my ($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncmergescript) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
+
     # add merge directory to the base nodesyncfiledir
-    if ($syncmergescript == 1) {  # syncing the xdcpmerge.sh
-      $nodesyncfiledir .= "/merge";
-    } else {   # all the other merge scripts
-       $nodesyncfiledir .= "/merge/mergefiles";
+    if ($syncmergescript == 1) {    # syncing the xdcpmerge.sh
+        $nodesyncfiledir .= "/merge";
+    } else {                        # all the other merge scripts
+        $nodesyncfiledir .= "/merge/mergefiles";
     }
     if ($line =~ /(.+) -> (.+)/)
     {
 
-            $::process_line = 1;
-            if ($syncmergescript == 0) { # don't add the xdcpmerge.sh line 
-              push @::mergelines,$line;
+        $::process_line = 1;
+        if ($syncmergescript == 0) {    # don't add the xdcpmerge.sh line
+            push @::mergelines, $line;
+        }
+        my $src_file      = $1;         # merge file left of arrow
+        my $orig_src_file = $1;
+
+        # it will be sync'd to $nodesyncfiledir/$merge_file
+        my $dest_file = $nodesyncfiledir;
+        $dest_file .= $src_file;
+        $dest_file =~ s/[\s;]//g;
+        my $dest_dir = dirname($dest_file);
+        $dest_dir =~ s/\s*//g;          #remove blanks
+
+        foreach my $target_node (@dest_host)
+        {
+            $$options{'destDir_srcFile'}{$target_node} ||= {};
+
+            #  if syncing the Service Node, file goes to the same place
+            #  where it was on the MN off the syncdir on the service
+            # node
+            if ($rsyncSN == 1)
+            {    #  syncing the SN
+                $dest_dir = $syncdir;    # the SN sync dir
+                $dest_dir .= dirname($src_file);
+                $dest_dir =~ s/\s*//g;    #remove blanks
             }
-            my $src_file  = $1; # merge file left of arrow
-            my $orig_src_file = $1;
-            # it will be sync'd to $nodesyncfiledir/$merge_file
-            my $dest_file = $nodesyncfiledir;
-            $dest_file .= $src_file;  
-            $dest_file =~ s/[\s;]//g;
-            my     $dest_dir = dirname($dest_file);
-            $dest_dir =~ s/\s*//g;    #remove blanks
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+              {};
 
-            foreach my $target_node (@dest_host)
-            {
-                $$options{'destDir_srcFile'}{$target_node} ||= {};
+            my $src_basename = basename($src_file);    # get file name
+                 # if this is syncing from the Service Node then we have
+                 # to pick up files from /var/xcat/syncfiles...
+            if ($onServiceNode == 1) {
+                my $newsrcfile = $syncdir;    # add SN syndir on front
+                $newsrcfile .= $orig_src_file;
+                $src_file = $newsrcfile;
+            }
 
-                    #  if syncing the Service Node, file goes to the same place
-                    #  where it was on the MN off the syncdir on the service
-                    # node
-                    if ($rsyncSN == 1)
-                    {    #  syncing the SN
-                        $dest_dir = $syncdir;    # the SN sync dir
-                        $dest_dir .= dirname($src_file);
-                        $dest_dir =~ s/\s*//g;    #remove blanks
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      {};
+            # destination file name
+            my $dest_basename = basename($dest_file);
+            if ($rsyncSN == 1)    # dest file will be the same as src
+            {                     #  syncing the SN
+                $dest_basename = $src_basename;
+            }
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+              $dest_basename =~ s/[\s;]//g;
 
-                    my $src_basename = basename($src_file);    # get file name
-                    # if this is syncing from the Service Node then we have
-                    # to pick up files from /var/xcat/syncfiles...
-                    if ($onServiceNode == 1) {
-                      my $newsrcfile = $syncdir;    # add SN syndir on front
-                      $newsrcfile .= $orig_src_file; 
-                      $src_file=$newsrcfile;
-                    }
-                    # destination file name
-                    my  $dest_basename = basename($dest_file);
-                    if ($rsyncSN == 1)    # dest file will be the same as src
-                    {                     #  syncing the SN
-                        $dest_basename = $src_basename;
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      $dest_basename =~ s/[\s;]//g;
+            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+              {'same_dest_name'} ||= [];
+            push @{ $$options{'destDir_srcFile'}{$target_node}
+                  {$dest_dir}{'same_dest_name'} }, $src_file;
 
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'same_dest_name'} ||= [];
-                    push @{$$options{'destDir_srcFile'}{$target_node}
-                              {$dest_dir}{'same_dest_name'}}, $src_file;
-
-            }   # end of each node
-          } # if synclist line
+        }    # end of each node
+    }    # if synclist line
     if ($::process_line == 0)
     {    # no valid lines in the file
         my $rsp = {};
@@ -5419,10 +5467,11 @@ sub build_merge_rsync
     }
     else
     {
-        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+        $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5491,156 +5540,164 @@ sub build_merge_rsync
 sub parse_rsync_input_file_on_SN
 {
     use File::Basename;
-    my ($nodes, $options, $input_file, $syncdir,$nodesyncfiledir) = @_;
+    my ($nodes, $options, $input_file, $syncdir, $nodesyncfiledir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
     my $destfileisdir;
     my $rsyncSN;
-    my $clause=0;
+    my $clause = 0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
+
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
-        if (($line =~ /^#/) || ( $line =~ /^\s*$/ ))
-                        # skip commments  and blanks
+        if (($line =~ /^#/) || ($line =~ /^\s*$/))
+
+          # skip commments  and blanks
         {
             next;
         }
+
         # Determine if processing a clause or the synclist
         if (($line =~ /EXECUTE:/) || ($line =~ /EXECUTEALWAYS:/)
-                 || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) {
-             $clause=$line;
-             next;   # get the content of the clause
+            || ($line =~ /APPEND:/) || ($line =~ /MERGE:/)) {
+            $clause = $line;
+            next;    # get the content of the clause
         }
+
         # processing a clause
         if (($clause =~ /APPEND:/) || ($clause =~ /MERGE:/)
             || ($clause =~ /EXECUTEALWAYS:/)
             || ($clause =~ /EXECUTE:/)) {
             if (($::SYNCSN == 1) && (($clause =~ /EXECUTEALWAYS:/) ||
-                  ($clause =~ /EXECUTE:/))) {  # skip, if syncing SN only
-         	next;
-            } else {   # process the clause
-               if ($clause =~ /EXECUTE:/) {
-                  push @::postscripts,$line;
-               }
-               if ($clause =~ /EXECUTEALWAYS:/) {
-                  push @::alwayspostscripts,$line;
-               }
-               if ($clause =~ /APPEND:/) {
-                  $process_line = 1;
-                  my $onServiceNode=1;
-                  my $syncappendscript=0;
-                 &build_append_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-                if ($::SYNCSN == 0) {
-                  # this triggers the running of the appendscript
-                  $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                    ($clause =~ /EXECUTE:/))) {    # skip, if syncing SN only
+                next;
+            } else {                               # process the clause
+                if ($clause =~ /EXECUTE:/) {
+                    push @::postscripts, $line;
                 }
-                # add the append script to the sync
-                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                my $appendscriptline = "$appscript -> $appscript"; 
-                $syncappendscript=1;  # syncing the xdcpappend.sh script
-                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-               }
-               if ($clause =~ /MERGE:/) {
-                  $process_line = 1;
-                  my $onServiceNode=1;
-                  my $syncmergescript=0;
-                 &build_merge_rsync($line,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-                if ($::SYNCSN == 0) {
-                  # this triggers the running of the mergescript
-                  $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                if ($clause =~ /EXECUTEALWAYS:/) {
+                    push @::alwayspostscripts, $line;
                 }
-                # add the merge script to the sync
-                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
-                my $mergescriptline = "$appscript -> $appscript"; 
-                $syncmergescript=1;  # syncing the xdcpmerge.sh script
-                 &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-               }
-           
-           }
-         } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
-          # otherwise it is just the synclist
+                if ($clause =~ /APPEND:/) {
+                    $process_line = 1;
+                    my $onServiceNode    = 1;
+                    my $syncappendscript = 0;
+                    &build_append_rsync($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncappendscript);
+                    if ($::SYNCSN == 0) {
 
-        if ($line =~ /(.+) -> (.+)/)
-        {
-            $process_line = 1;
-            my $src_file  = $1;
-            my $dest_file = $2;
-            $dest_file =~ s/[\s;]//g;    # remove blanks
+                        # this triggers the running of the appendscript
+                        $::appendscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                    }
 
-            # see if destination is a directory
-            $destfileisdir = 0;
-            if ($dest_file =~ /\/$/)
-            {                            #  ends in /
-                $destfileisdir = 1;
+                    # add the append script to the sync
+                    my $appscript = "/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                    my $appendscriptline = "$appscript -> $appscript";
+                    $syncappendscript = 1;    # syncing the xdcpappend.sh script
+                    &build_append_rsync($appendscriptline, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncappendscript);
+                }
+                if ($clause =~ /MERGE:/) {
+                    $process_line = 1;
+                    my $onServiceNode   = 1;
+                    my $syncmergescript = 0;
+                    &build_merge_rsync($line, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncmergescript);
+                    if ($::SYNCSN == 0) {
+
+                        # this triggers the running of the mergescript
+                        $::mergescript = "/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                    }
+
+                    # add the merge script to the sync
+                    my $appscript = "/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                    my $mergescriptline = "$appscript -> $appscript";
+                    $syncmergescript = 1;    # syncing the xdcpmerge.sh script
+                    &build_merge_rsync($mergescriptline, $nodes, $options, $input_file, $rsyncSN, $syncdir, $nodesyncfiledir, $onServiceNode, $syncmergescript);
+                }
+
             }
-            my @srcfiles = (split ' ', $src_file);
-            my $arraysize = scalar @srcfiles;    # of source files on the line
-            my $dest_dir;
+        } else {    # not processing EXECUTE, EXECUTEALWAYS or APPEND
+                    # otherwise it is just the synclist
 
-            # if only more than one file on the line or ends in /
-            # then the destination  is a directory
-            # else a file,
-            if (($arraysize > 1) || ($destfileisdir == 1))
+            if ($line =~ /(.+) -> (.+)/)
             {
-                $dest_dir      = $dest_file;
-                $destfileisdir = 1;
-            }
-            else    # a file path
-            {
-                $dest_dir = dirname($dest_file);
-            }
-            $dest_dir =~ s/\s*//g;    #remove blanks
+                $process_line = 1;
+                my $src_file  = $1;
+                my $dest_file = $2;
+                $dest_file =~ s/[\s;]//g;    # remove blanks
 
-            foreach my $target_node (@dest_host)
-            {
-                $$options{'destDir_srcFile'}{$target_node} ||= {};
+                # see if destination is a directory
+                $destfileisdir = 0;
+                if ($dest_file =~ /\/$/)
+                {                            #  ends in /
+                    $destfileisdir = 1;
+                }
+                my @srcfiles = (split ' ', $src_file);
+                my $arraysize = scalar @srcfiles;  # of source files on the line
+                my $dest_dir;
 
-                # for each file on the line
-                foreach my $srcfile (@srcfiles)
+                # if only more than one file on the line or ends in /
+                # then the destination  is a directory
+                # else a file,
+                if (($arraysize > 1) || ($destfileisdir == 1))
                 {
-                    my $newsrcfile = $syncdir;    # add syndir on front
-                    $newsrcfile .= $srcfile;
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      {};
+                    $dest_dir      = $dest_file;
+                    $destfileisdir = 1;
+                }
+                else    # a file path
+                {
+                    $dest_dir = dirname($dest_file);
+                }
+                $dest_dir =~ s/\s*//g;    #remove blanks
 
-                    # can be full file name for destination or just the
-                    # directory name. For source must be full path
-                    my $src_basename = basename($newsrcfile);    # get file name
+                foreach my $target_node (@dest_host)
+                {
+                    $$options{'destDir_srcFile'}{$target_node} ||= {};
 
-                    my $dest_basename;    # destination file name
-                    if ($destfileisdir == 1)    # is a directory
+                    # for each file on the line
+                    foreach my $srcfile (@srcfiles)
                     {
-                        $dest_basename = $src_basename;
-                    }
-                    else
-                    {
-                        $dest_basename = basename($dest_file);
-                    }
-                    $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
-                      $dest_basename =~ s/[\s;]//g;
+                        my $newsrcfile = $syncdir;    # add syndir on front
+                        $newsrcfile .= $srcfile;
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                          {};
 
-                    # if the filename will be the same at the destination
-                    if ($src_basename eq $dest_basename)
-                    {
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'same_dest_name'} ||= [];
-                        push @{$$options{'destDir_srcFile'}{$target_node}
-                              {$dest_dir}{'same_dest_name'}}, $newsrcfile;
-                    }
-                    else    # changing file names
-                    {
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'diff_dest_name'} ||= {};
-                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'diff_dest_name'}{$newsrcfile} = $dest_basename;
-                    }
+                        # can be full file name for destination or just the
+                        # directory name. For source must be full path
+                        my $src_basename = basename($newsrcfile); # get file name
 
-                } # end of srcfile
-            } # end of each node
-        } # end of synclist
-      }# end processing clauses EXECUTE, APPEND, etc
-    } #end of processing file
+                        my $dest_basename;    # destination file name
+                        if ($destfileisdir == 1)    # is a directory
+                        {
+                            $dest_basename = $src_basename;
+                        }
+                        else
+                        {
+                            $dest_basename = basename($dest_file);
+                        }
+                        $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
+                          $dest_basename =~ s/[\s;]//g;
+
+                        # if the filename will be the same at the destination
+                        if ($src_basename eq $dest_basename)
+                        {
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'same_dest_name'} ||= [];
+                            push @{ $$options{'destDir_srcFile'}{$target_node}
+                                  {$dest_dir}{'same_dest_name'} }, $newsrcfile;
+                        }
+                        else    # changing file names
+                        {
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'diff_dest_name'} ||= {};
+                            $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
+                              {'diff_dest_name'}{$newsrcfile} = $dest_basename;
+                        }
+
+                    }    # end of srcfile
+                }    # end of each node
+            }    # end of synclist
+        }    # end processing clauses EXECUTE, APPEND, etc
+    }    #end of processing file
     close INPUTFILE;
     if ($process_line == 0)
     {    # no valid lines in the file
@@ -5651,10 +5708,11 @@ sub parse_rsync_input_file_on_SN
     }
     else
     {
-        $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
+        $$options{'nodes'} = join ',', keys %{ $$options{'destDir_srcFile'} };
     }
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5688,75 +5746,79 @@ sub parse_rsync_input_file_on_SN
 
 #-------------------------------------------------------------------------------
 
-sub run_rsync_postscripts 
+sub run_rsync_postscripts
 {
-    my ($rsyncoutput,$syncdir,$options) = @_;
-    my @rsync_output   = @$rsyncoutput;
-    my @newoutput= (); 
-    my $dshparms; 
-    my $firstpass=1;
+    my ($rsyncoutput, $syncdir, $options) = @_;
+    my @rsync_output = @$rsyncoutput;
+    my @newoutput    = ();
+    my $dshparms;
+    my $firstpass = 1;
     foreach my $postsfile (@::postscripts) {
-        my $tmppostfile = $postsfile ;
+        my $tmppostfile = $postsfile;
 
         # if service node need to add the SNsyncfiledir to the path
         if (xCAT::Utils->isServiceNode()) {
-            my $tmpp=$syncdir . $tmppostfile;
+            my $tmpp = $syncdir . $tmppostfile;
             $tmppostfile = $tmpp;
         }
+
         # remove  first character for the compare, we have to do this because the
         # return from rsync is tmp/file1  not /tmp/file1
-        substr($tmppostfile,0,1)=""; 
+        substr($tmppostfile, 0, 1) = "";
 
         foreach my $line (@rsync_output) {
-            my($hostname,$ps) = split(/: /, $line);
+            my ($hostname, $ps) = split(/: /, $line);
             chomp $ps;
             chomp $hostname;
-            if ($ps eq "rsync") {  # this is a line that is not an update 
-                # save output , if firstpass through output
+            if ($ps eq "rsync") {    # this is a line that is not an update
+                                     # save output , if firstpass through output
                 if ($firstpass == 1) {
                     push @newoutput, $line;
                     $firstpass = 0;
                 }
                 next;
             }
-            if ($tmppostfile eq $ps) { 
-                # build xdsh queue 
+            if ($tmppostfile eq $ps) {
+
+                # build xdsh queue
                 # build host and all scripts to execute
-                push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
+                push(@{ $dshparms->{'postscripts'}{$postsfile} }, $hostname);
             }
         }
     }
+
     # now if we have postscripts to run, run xdsh
     my $out;
 
     # my $ranaps=0;   # did we run a postscript
 
-    foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
+    foreach my $ps (keys %{ $$dshparms{'postscripts'} }) {
         my @nodes;
-        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
-        my @args=();
+        push(@nodes, @{ $$dshparms{'postscripts'}{$ps} });
+        my @args = ();
         if ($$options{'nodestatus'}) {
-            push @args,"--nodestatus" ;
+            push @args, "--nodestatus";
         }
-        push @args,"-e";
+        push @args, "-e";
         #
         # if on the service node need to add the $syncdir directory to the path
         #
         if (xCAT::Utils->isServiceNode()) {
-            my $tmpp=$syncdir . $ps;
-            $ps=$tmpp;
+            my $tmpp = $syncdir . $ps;
+            $ps = $tmpp;
         }
-        push @args,$ps;
-        $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                     node    => \@nodes,
-                                     arg     => \@args, 
-                                   }, $::SUBREQ, 0,1);
+        push @args, $ps;
+        $out = xCAT::Utils->runxcmd({ command => ['xdsh'],
+                node => \@nodes,
+                arg  => \@args,
+        }, $::SUBREQ, 0, 1);
         foreach my $r (@$out) {
             push(@newoutput, $r);
         }
     }
     return @newoutput;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5792,100 +5854,110 @@ sub run_rsync_postscripts
 
 sub bld_and_run_append
 {
-    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir,$options) = @_;
-    my @hosts   = @$hostnames;
-    my @rsync_output   = @$rsyncoutput;
-    my @newoutput= (); 
-    my $dshparms; 
-    my $firstpass=1;
-    my $headeradded=0;
-    my $processappend=0;
-    
+    my ($hostnames, $rsyncoutput, $syncdir, $nodesyncfiledir, $options) = @_;
+    my @hosts        = @$hostnames;
+    my @rsync_output = @$rsyncoutput;
+    my @newoutput    = ();
+    my $dshparms;
+    my $firstpass     = 1;
+    my $headeradded   = 0;
+    my $processappend = 0;
+
     $::xdcpappendparms = "$nodesyncfiledir ";
 
     # directory to save the original file to append
-    my $nodesaveorgfiledir=$nodesyncfiledir;
-    $nodesaveorgfiledir .="/org";
+    my $nodesaveorgfiledir = $nodesyncfiledir;
+    $nodesaveorgfiledir .= "/org";
+
     # add append directory to the base nodesyncfiledir
     $nodesyncfiledir .= "/append";
+
     # build the input appendfile:orgfile parsm
     foreach my $appendline (@::appendlines) {
-      if ($appendline =~ /(.+) -> (.+)/)
-      {
-         my $appendfile  = $1; # append file left of arrow 
-         my $filetoappend = $2; # file to append right of arrow
-         my $tmpappendfile = $appendfile;
-         # if service node need to add the syncdir to the path
-         # for the match
-         if (xCAT::Utils->isServiceNode()) {
-             my $tmpp=$syncdir . $tmpappendfile;
-             $tmpappendfile = $tmpp;
-         }
-         # remove first char for the compare, we have to do this because the
-         # return from rsync is tmp/file1  not /tmp/file1
-         substr($tmpappendfile,0,1)="";
-         # check to see if this file was rsync'd and to which hosts
-         foreach my $line (@rsync_output) {
-           my($hostname,$ps) = split(/: /, $line);
-           chomp $ps;
-           chomp $hostname;
-           if ($ps eq "rsync") {  # this is a line that is not an update
-                # save output , if firstpass through output
-                if ($firstpass == 1) {
-                   push @newoutput, $line;
-                  $firstpass = 0;
-                }
-                next;
-            }
-            # build the append script (xdcpappend.sh) parameter list,
-            # based on all the append files
-            # that were rsyn'd to at least one node
-            if ($tmpappendfile eq $ps) { 
-               my $parm="$appendfile:$filetoappend ";
-               # check to see if the parameter is already in the list
-               if (!($::xdcpappendparms =~ /$parm/)) {
-                  $::xdcpappendparms .= $parm;
-               }
-               $processappend=1;
+        if ($appendline =~ /(.+) -> (.+)/)
+        {
+            my $appendfile    = $1;            # append file left of arrow
+            my $filetoappend  = $2;            # file to append right of arrow
+            my $tmpappendfile = $appendfile;
 
+            # if service node need to add the syncdir to the path
+            # for the match
+            if (xCAT::Utils->isServiceNode()) {
+                my $tmpp = $syncdir . $tmpappendfile;
+                $tmpappendfile = $tmpp;
             }
-         }
-      }
-      
-    }  # end for each append line
-    #  add append script to each host to execute.  
-    if ($::appendscript && ($processappend==1)) { 
-       #  the append script has been sync'd to the site.nodesynfiledir
-       my $nodeappendscript = $nodesyncfiledir;
-       $nodeappendscript .= $::appendscript;
-       foreach my $host (@hosts) {
-        push (@{$dshparms->{'appendscripts'} {$nodeappendscript}}, $host);
-       }
-       # now run xdsh
-       my $out;
-       foreach  my $ps ( keys %{$$dshparms{'appendscripts'}}) {
-         my @nodes;
-         push (@nodes, @{$$dshparms{'appendscripts'}{$ps}}); 
-         my @args=();
-         if ($$options{'nodestatus'}) {
-           push @args,"--nodestatus" ;
-         }
-         push @args,$ps;
-         push @args,$::xdcpappendparms;
-         
-         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
-                                    arg     => \@args, 
-                             }, $::SUBREQ, 0,1);
-         foreach my $r (@$out){
+
+            # remove first char for the compare, we have to do this because the
+            # return from rsync is tmp/file1  not /tmp/file1
+            substr($tmpappendfile, 0, 1) = "";
+
+            # check to see if this file was rsync'd and to which hosts
+            foreach my $line (@rsync_output) {
+                my ($hostname, $ps) = split(/: /, $line);
+                chomp $ps;
+                chomp $hostname;
+                if ($ps eq "rsync") {    # this is a line that is not an update
+                        # save output , if firstpass through output
+                    if ($firstpass == 1) {
+                        push @newoutput, $line;
+                        $firstpass = 0;
+                    }
+                    next;
+                }
+
+                # build the append script (xdcpappend.sh) parameter list,
+                # based on all the append files
+                # that were rsyn'd to at least one node
+                if ($tmpappendfile eq $ps) {
+                    my $parm = "$appendfile:$filetoappend ";
+
+                    # check to see if the parameter is already in the list
+                    if (!($::xdcpappendparms =~ /$parm/)) {
+                        $::xdcpappendparms .= $parm;
+                    }
+                    $processappend = 1;
+
+                }
+            }
+        }
+
+    }    # end for each append line
+         #  add append script to each host to execute.
+    if ($::appendscript && ($processappend == 1)) {
+
+        #  the append script has been sync'd to the site.nodesynfiledir
+        my $nodeappendscript = $nodesyncfiledir;
+        $nodeappendscript .= $::appendscript;
+        foreach my $host (@hosts) {
+            push(@{ $dshparms->{'appendscripts'}{$nodeappendscript} }, $host);
+        }
+
+        # now run xdsh
+        my $out;
+        foreach my $ps (keys %{ $$dshparms{'appendscripts'} }) {
+            my @nodes;
+            push(@nodes, @{ $$dshparms{'appendscripts'}{$ps} });
+            my @args = ();
+            if ($$options{'nodestatus'}) {
+                push @args, "--nodestatus";
+            }
+            push @args, $ps;
+            push @args, $::xdcpappendparms;
+
+            $out = xCAT::Utils->runxcmd({ command => ['xdsh'],
+                    node => \@nodes,
+                    arg  => \@args,
+            }, $::SUBREQ, 0, 1);
+            foreach my $r (@$out) {
                 push(@newoutput, $r);
 
-         }
-       }
+            }
+        }
 
     }
     return @newoutput;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -5922,111 +5994,121 @@ sub bld_and_run_append
 
 sub bld_and_run_merge
 {
-    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir,$options) = @_;
-    my @hosts   = @$hostnames;
-    my @rsync_output   = @$rsyncoutput;
-    my @newoutput= (); 
-    my $dshparms; 
-    my $firstpass=1;
-    my $headeradded=0;
-    my $processmerge=0;
-    
+    my ($hostnames, $rsyncoutput, $syncdir, $nodesyncfiledir, $options) = @_;
+    my @hosts        = @$hostnames;
+    my @rsync_output = @$rsyncoutput;
+    my @newoutput    = ();
+    my $dshparms;
+    my $firstpass    = 1;
+    my $headeradded  = 0;
+    my $processmerge = 0;
+
     $::xdcpmergeparms = "$nodesyncfiledir ";
 
-    # directory to save the original file to merge 
-    my $nodesaveorgfiledir=$nodesyncfiledir;
-    $nodesaveorgfiledir .="/org";
+    # directory to save the original file to merge
+    my $nodesaveorgfiledir = $nodesyncfiledir;
+    $nodesaveorgfiledir .= "/org";
+
     # add merge directory to the base nodesyncfiledir
     $nodesyncfiledir .= "/merge";
+
     # build the input mergefile:orgfile parsm
     foreach my $mergeline (@::mergelines) {
-      if ($mergeline =~ /(.+) -> (.+)/)
-      {
-         my $mergefile  = $1; # merge file left of arrow 
-         my $filetomerge = $2; # file to merge right of arrow
-         if (($filetomerge ne "/etc/passwd")
-            && ($filetomerge ne "/etc/group")
-            && ($filetomerge ne "/etc/shadow")) {
+        if ($mergeline =~ /(.+) -> (.+)/)
+        {
+            my $mergefile   = $1;    # merge file left of arrow
+            my $filetomerge = $2;    # file to merge right of arrow
+            if (($filetomerge ne "/etc/passwd")
+                && ($filetomerge ne "/etc/group")
+                && ($filetomerge ne "/etc/shadow")) {
                 my $rsp = {};
                 $rsp->{error}->[0] = "$filetomerge is not either /etc/passwd, /etc/group or /etc/shadow. Those are the only supported files for MERGE";
-                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-                 return 1;
-            
-         }
-         my $tmpmergefile = $mergefile;
-         # if service node need to add the syncdir to the path
-         # for the match
-         if (xCAT::Utils->isServiceNode()) {
-             my $tmpp=$syncdir . $tmpmergefile;
-             $tmpmergefile = $tmpp;
-         }
-         # remove first char for the compare, we have to do this because the
-         # return from rsync is tmp/file1  not /tmp/file1
-         substr($tmpmergefile,0,1)="";
-         # check to see if this file was rsync'd and to which hosts
-         foreach my $line (@rsync_output) {
-           my($hostname,$ps) = split(/: /, $line);
-           chomp $ps;
-           chomp $hostname;
-           if ($ps eq "rsync") {  # this is a line that is not an update
-                # save output , if firstpass through output
-                if ($firstpass == 1) {
-                   push @newoutput, $line;
-                  $firstpass = 0;
-                }
-                next;
-            }
-            # build the merge script (xdcpmerge.sh) parameter list,
-            # based on all the merge files
-            # that were rsyn'd to at least one node
-            if ($tmpmergefile eq $ps) { 
-               my $parm="$mergefile:$filetomerge ";
-               # check to see if the parameter is already in the list
-               if (!($::xdcpmergeparms =~ /$parm/)) {
-                 $::xdcpmergeparms .= $parm;
-               }
-               $processmerge=1;
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+                return 1;
 
             }
-         }
-      }
-      
-    }  # end for each merge line
-    #  add merge script to each host to execute. If we need to run anything 
-    if ($::mergescript && ($processmerge==1)) { 
-       #  the merge script has been sync'd to the site.nodesynfiledir
-       my $nodemergescript = $nodesyncfiledir;
-       $nodemergescript .= $::mergescript;
-       foreach my $host (@hosts) {
-        push (@{$dshparms->{'mergescripts'} {$nodemergescript}}, $host);
-       }
-       # now run xdsh
-       my $out;
-       foreach  my $ps ( keys %{$$dshparms{'mergescripts'}}) {
-         my @nodes;
-         push (@nodes, @{$$dshparms{'mergescripts'}{$ps}}); 
-         
-         # build the argument list
-         my @args=();
-   
-         if ($$options{'nodestatus'}) {
-            push @args,"--nodestatus" ;
-         }
-         push @args, $ps;
-         push @args, $::xdcpmergeparms;
-         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
-                                    arg     => \@args, 
-                             }, $::SUBREQ, 0,1);
-         foreach my $r (@$out){
+            my $tmpmergefile = $mergefile;
+
+            # if service node need to add the syncdir to the path
+            # for the match
+            if (xCAT::Utils->isServiceNode()) {
+                my $tmpp = $syncdir . $tmpmergefile;
+                $tmpmergefile = $tmpp;
+            }
+
+            # remove first char for the compare, we have to do this because the
+            # return from rsync is tmp/file1  not /tmp/file1
+            substr($tmpmergefile, 0, 1) = "";
+
+            # check to see if this file was rsync'd and to which hosts
+            foreach my $line (@rsync_output) {
+                my ($hostname, $ps) = split(/: /, $line);
+                chomp $ps;
+                chomp $hostname;
+                if ($ps eq "rsync") {    # this is a line that is not an update
+                        # save output , if firstpass through output
+                    if ($firstpass == 1) {
+                        push @newoutput, $line;
+                        $firstpass = 0;
+                    }
+                    next;
+                }
+
+                # build the merge script (xdcpmerge.sh) parameter list,
+                # based on all the merge files
+                # that were rsyn'd to at least one node
+                if ($tmpmergefile eq $ps) {
+                    my $parm = "$mergefile:$filetomerge ";
+
+                    # check to see if the parameter is already in the list
+                    if (!($::xdcpmergeparms =~ /$parm/)) {
+                        $::xdcpmergeparms .= $parm;
+                    }
+                    $processmerge = 1;
+
+                }
+            }
+        }
+
+    }    # end for each merge line
+         #  add merge script to each host to execute. If we need to run anything
+    if ($::mergescript && ($processmerge == 1)) {
+
+        #  the merge script has been sync'd to the site.nodesynfiledir
+        my $nodemergescript = $nodesyncfiledir;
+        $nodemergescript .= $::mergescript;
+        foreach my $host (@hosts) {
+            push(@{ $dshparms->{'mergescripts'}{$nodemergescript} }, $host);
+        }
+
+        # now run xdsh
+        my $out;
+        foreach my $ps (keys %{ $$dshparms{'mergescripts'} }) {
+            my @nodes;
+            push(@nodes, @{ $$dshparms{'mergescripts'}{$ps} });
+
+            # build the argument list
+            my @args = ();
+
+            if ($$options{'nodestatus'}) {
+                push @args, "--nodestatus";
+            }
+            push @args, $ps;
+            push @args, $::xdcpmergeparms;
+            $out = xCAT::Utils->runxcmd({ command => ['xdsh'],
+                    node => \@nodes,
+                    arg  => \@args,
+            }, $::SUBREQ, 0, 1);
+            foreach my $r (@$out) {
                 push(@newoutput, $r);
 
-         }
-       }
+            }
+        }
 
     }
     return @newoutput;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -6040,55 +6122,59 @@ sub bld_and_run_merge
 #-------------------------------------------------------------------------------
 
 
-sub run_always_rsync_postscripts 
+sub run_always_rsync_postscripts
 {
-    my ($hostnames,$syncdir,$options) = @_;
-    my @hosts   = @$hostnames;
-    my @newoutput= (); 
-    my $dshparms; 
+    my ($hostnames, $syncdir, $options) = @_;
+    my @hosts     = @$hostnames;
+    my @newoutput = ();
+    my $dshparms;
     foreach my $postsfile (@::alwayspostscripts) {
-       my $tmppostfile = $postsfile ;
- 
-       # if service node need to add the SNsyncfiledir to the path
-       if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $tmppostfile;
-         $tmppostfile = $tmpp;
-       }
+        my $tmppostfile = $postsfile;
 
-       foreach my $host (@hosts) {
-         # build xdsh queue 
-         # build host and all scripts to execute
-         push (@{$dshparms->{'postscripts'} {$postsfile}}, $host);
-       }
+        # if service node need to add the SNsyncfiledir to the path
+        if (xCAT::Utils->isServiceNode()) {
+            my $tmpp = $syncdir . $tmppostfile;
+            $tmppostfile = $tmpp;
+        }
+
+        foreach my $host (@hosts) {
+
+            # build xdsh queue
+            # build host and all scripts to execute
+            push(@{ $dshparms->{'postscripts'}{$postsfile} }, $host);
+        }
     }
+
     # now if we have postscripts to run, run xdsh
     my $out;
 
 
-    foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
+    foreach my $ps (keys %{ $$dshparms{'postscripts'} }) {
         my @nodes;
+
         # build the argument list
-        my @args=();
+        my @args = ();
         if ($$options{'nodestatus'}) {
-          push @args,"--nodestatus" ;
+            push @args, "--nodestatus";
         }
-        push @args,"-e";
-        # if on the service node need to add the $syncdir directory 
+        push @args, "-e";
+
+        # if on the service node need to add the $syncdir directory
         # to the path
         if (xCAT::Utils->isServiceNode()) {
-         my $tmps=$syncdir . $ps;
-         push @args, $tmps;
-        } else{
-          push @args, $ps;
+            my $tmps = $syncdir . $ps;
+            push @args, $tmps;
+        } else {
+            push @args, $ps;
         }
-        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
-         
-        $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
-                                    arg     => \@args, 
-                             }, $::SUBREQ, 0,1);
-        foreach my $r (@$out){
-                push(@newoutput, $r);
+        push(@nodes, @{ $$dshparms{'postscripts'}{$ps} });
+
+        $out = xCAT::Utils->runxcmd({ command => ['xdsh'],
+                node => \@nodes,
+                arg  => \@args,
+        }, $::SUBREQ, 0, 1);
+        foreach my $r (@$out) {
+            push(@newoutput, $r);
 
         }
 
@@ -6096,6 +6182,7 @@ sub run_always_rsync_postscripts
     }
     return @newoutput;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -6120,10 +6207,10 @@ sub runlocal_on_rootimg
 {
     my ($class, $options, $imagename) = @_;
     my $cmd;
-    if (xCAT::Utils->isAIX()) {   # use xcatchroot
-     $cmd = "$::XCATROOT/bin/xcatchroot -i $$options{'rootimg'} \"$$options{'command'}\"";
+    if (xCAT::Utils->isAIX()) {    # use xcatchroot
+        $cmd = "$::XCATROOT/bin/xcatchroot -i $$options{'rootimg'} \"$$options{'command'}\"";
     } else {
-     $cmd = "chroot $$options{'rootimg'} $$options{'command'}";
+        $cmd = "chroot $$options{'rootimg'} $$options{'command'}";
     }
     my @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -6237,8 +6324,8 @@ sub runDsh_api
             {
                 xCAT::MsgUtils->message(
                     "E",
-                    "xdsh command: $$optionsRef{'command'} failed on  nodes:$::DSH_API_NODES_FAILED."
-                    );
+"xdsh command: $$optionsRef{'command'} failed on  nodes:$::DSH_API_NODES_FAILED."
+                );
             }
         }
 
@@ -6316,7 +6403,7 @@ sub runDcp_api
     elsif (ref($optionsRef->{'source'} eq "ARRAY"))
     {
         $optionsRef->{'source'} = join $::__DCP_DELIM,
-          @{$optionsRef->{'source'}};
+          @{ $optionsRef->{'source'} };
     }
 
     $::RUNCMD_RC = xCAT::DSHCLI->execute_dcp($optionsRef);
@@ -6359,7 +6446,7 @@ sub runDcp_api
             if (!$DSHCLI::NO_MESSAGES)
             {
                 xCAT::MsgUtils->message("E",
-                               "dcp command failed, Return code=$::RUNCMD_RC.");
+                    "dcp command failed, Return code=$::RUNCMD_RC.");
             }
         }
 

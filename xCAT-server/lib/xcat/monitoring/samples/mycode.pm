@@ -3,6 +3,7 @@ package xCAT_monitoring::mycode;
 1;
 
 #--------------------------------------------------------------------------------
+
 =head3   processTableChanges
   This subroutine get called when new nodes are added into the cluster
    or nodes are removed from the cluster, or a row is modified.
@@ -27,67 +28,68 @@ package xCAT_monitoring::mycode;
         3. Then change the nodelist table (add node, remove node, or change status column).
         4. Watch /var/log/mycode.log for output.
 =cut
+
 #-------------------------------------------------------------------------------
 sub processTableChanges {
-  my $action=shift;
-  if ($action =~ /xCAT_monitoring::mycode/){
-    $action=shift;
-  }
-
-  my $tablename=shift;
-  my $old_data=shift;
-  my $new_data=shift;
-
-  my @nodenames=();
-  open(FILE, ">>/var/log/mycode.log") or dir ("cannot open the file\n");
-  ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-  printf FILE "\n-----------%2d-%02d-%04d %02d:%02d:%02d-----------\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;  
-  if ($action eq "a") { #nodes added in the cluster
-    if ($new_data) {
-      push(@nodenames, $new_data->{node});
-      $noderange=join(',', @nodenames);
-      print (FILE "new nodes in the cluster are: $noderange\n"); 
+    my $action = shift;
+    if ($action =~ /xCAT_monitoring::mycode/) {
+        $action = shift;
     }
-  }
-  elsif ($action eq "d") { #nodes removed from the cluster
-    #find out the index of "node" column
-    if ($old_data->[0]) {
-      $colnames=$old_data->[0];
-      my $i;
-      for ($i=0; $i<@$colnames; ++$i) {
-        if ($colnames->[$i] eq "node") {last;}
-      }
 
-      for (my $j=1; $j<@$old_data; ++$j) {
-        push(@nodenames, $old_data->[$j]->[$i]);
-      }
+    my $tablename = shift;
+    my $old_data  = shift;
+    my $new_data  = shift;
 
-      if (@nodenames > 0) {
-         $noderange=join(',', @nodenames);
-         print (FILE "nodes leaving the cluster are: $noderange\n");
-      }
+    my @nodenames = ();
+    open(FILE, ">>/var/log/mycode.log") or dir("cannot open the file\n");
+    ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    printf FILE "\n-----------%2d-%02d-%04d %02d:%02d:%02d-----------\n", $mon + 1, $mday, $year + 1900, $hour, $min, $sec;
+    if ($action eq "a") {    #nodes added in the cluster
+        if ($new_data) {
+            push(@nodenames, $new_data->{node});
+            $noderange = join(',', @nodenames);
+            print(FILE "new nodes in the cluster are: $noderange\n");
+        }
     }
-  } else { #update case, assuminmg monitoring nodelist.status
-    $newstatus;
-    if ($new_data) {
-      $newstatus=$new_data->{status};
-    }
-    if ($old_data->[0]) {
-      $colnames=$old_data->[0];
-      my $m;
-      my $k;
-      for ($i=0; $i<@$colnames; ++$i) {
-        if ($colnames->[$i] eq "node") {$m=$i}
-        if ($colnames->[$i] eq "status") {$k=$i; }
-      }
+    elsif ($action eq "d") {    #nodes removed from the cluster
+                                #find out the index of "node" column
+        if ($old_data->[0]) {
+            $colnames = $old_data->[0];
+            my $i;
+            for ($i = 0 ; $i < @$colnames ; ++$i) {
+                if ($colnames->[$i] eq "node") { last; }
+            }
 
-      for (my $j=1; $j<@$old_data; ++$j) {
-        print FILE "node=". $old_data->[$j]->[$m] . " ,";
-        print FILE "old_status=". $old_data->[$j]->[$k] . " ,";
-        print FILE "new_status=$newstatus\n";
-      }
+            for (my $j = 1 ; $j < @$old_data ; ++$j) {
+                push(@nodenames, $old_data->[$j]->[$i]);
+            }
+
+            if (@nodenames > 0) {
+                $noderange = join(',', @nodenames);
+                print(FILE "nodes leaving the cluster are: $noderange\n");
+            }
+        }
+    } else {    #update case, assuminmg monitoring nodelist.status
+        $newstatus;
+        if ($new_data) {
+            $newstatus = $new_data->{status};
+        }
+        if ($old_data->[0]) {
+            $colnames = $old_data->[0];
+            my $m;
+            my $k;
+            for ($i = 0 ; $i < @$colnames ; ++$i) {
+                if ($colnames->[$i] eq "node")   { $m = $i }
+                if ($colnames->[$i] eq "status") { $k = $i; }
+            }
+
+            for (my $j = 1 ; $j < @$old_data ; ++$j) {
+                print FILE "node=" . $old_data->[$j]->[$m] . " ,";
+                print FILE "old_status=" . $old_data->[$j]->[$k] . " ,";
+                print FILE "new_status=$newstatus\n";
+            }
+        }
     }
-  }
-  close(FILE);
-  return 0;
+    close(FILE);
+    return 0;
 }

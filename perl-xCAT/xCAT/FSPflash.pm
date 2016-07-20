@@ -12,12 +12,13 @@ use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use xCAT::PPCrflash;
+
 #use Data::Dumper;
 use xCAT::FSPUtils;
 
-my $packages_dir= ();
-my $activate	= ();
-my $verbose	= 0;
+my $packages_dir = ();
+my $activate     = ();
+my $verbose      = 0;
 my $release_level;
 my $active_level;
 my @dirlist;
@@ -32,19 +33,19 @@ my $housekeeping = undef;
 #For -V|--verbose,put the $msg into @value
 ###################################
 sub dpush {
-	my $value = shift;
-	my $msg = shift;
+    my $value = shift;
+    my $msg   = shift;
 
-	if($verbose == 1) {
-		push(@$value,$msg);
-	}
+    if ($verbose == 1) {
+        push(@$value, $msg);
+    }
 }
 
 ##########################################################################
-# Parse the command line for options and operands 
+# Parse the command line for options and operands
 ##########################################################################
 sub parse_args {
-    my $req = shift; 
+    my $req = shift;
     $req->{mgt} = __PACKAGE__;
     my $opt = xCAT::PPCrflash::parse_args($req);
     delete($req->{mgt});
@@ -52,7 +53,7 @@ sub parse_args {
 }
 
 ##########################################################################
-# Invokes the callback with the specified message                    
+# Invokes the callback with the specified message
 ##########################################################################
 sub send_msg {
 
@@ -63,23 +64,23 @@ sub send_msg {
     #################################################
     # Called from child process - send to parent
     #################################################
-    if ( exists( $request->{pipe} )) {
+    if (exists($request->{pipe})) {
         my $out = $request->{pipe};
 
         $output{errorcode} = $ecode;
-        $output{data} = \@_;
-        print $out freeze( [\%output] );
+        $output{data}      = \@_;
+        print $out freeze([ \%output ]);
         print $out "\nENDOFFREEZE6sK4ci\n";
     }
     #################################################
     # Called from parent - invoke callback directly
     #################################################
-    elsif ( exists( $request->{callback} )) {
+    elsif (exists($request->{callback})) {
         my $callback = $request->{callback};
 
         $output{errorcode} = $ecode;
-        $output{data} = \@_;
-        $callback->( \%output );
+        $output{data}      = \@_;
+        $callback->(\%output);
     }
 }
 
@@ -90,84 +91,88 @@ sub send_msg {
 #-------------------------------------------------------------------------#
 #
 sub get_lic_filenames {
-	my $mtms = shift;
-	my $upgrade_required = 0;	
-	my $msg = undef;
-	my $filename;
+    my $mtms             = shift;
+    my $upgrade_required = 0;
+    my $msg              = undef;
+    my $filename;
 
-	if(! -d $packages_dir) {
-              $msg = "The directory $packages_dir doesn't exist!";
-              return ("","","", $msg, -1);
+    if (!-d $packages_dir) {
+        $msg = "The directory $packages_dir doesn't exist!";
+        return ("", "", "", $msg, -1);
+    }
+
+    #print "opening directory and reading names\n";
+    opendir DIRHANDLE, $packages_dir;
+    @dirlist = readdir DIRHANDLE;
+    closedir DIRHANDLE;
+
+    @dirlist = File::Spec->no_upwards(@dirlist);
+
+    # Make sure we have some files to process
+    #
+    if (!scalar(@dirlist)) {
+        $msg = "directory $packages_dir is empty";
+        return ("", "", "", $msg, -1);
+    }
+
+    $release_level =~ /(\w{4})(\d{3})/;
+    my $pns = $1;
+    my $fff = $2;
+
+    #Find the latest version lic file
+    @dirlist = grep /\.rpm$/, @dirlist;
+    @dirlist = grep /$1/,     @dirlist;
+    if (!scalar(@dirlist)) {
+        $msg = "There isn't a package suitable for $mtms";
+        return ("", "", "", $msg, -1);
+    }
+    if (scalar(@dirlist) > 1) {
+
+        # Need to find the latest version package.
+        @dirlist = reverse sort(@dirlist);
+        my $t = "\n";
+        foreach $t (@dirlist) {
+            $msg = $msg . "$t\t";
         }
-        
-	#print "opening directory and reading names\n";
-        opendir DIRHANDLE, $packages_dir;
-        @dirlist= readdir DIRHANDLE;
-        closedir DIRHANDLE;
+    }
 
-        @dirlist = File::Spec->no_upwards( @dirlist );
+    $filename = File::Spec->catfile($packages_dir, $dirlist[0]);
+    $dirlist[0] =~ /(\w{4})(\d{3})_(\w{3})_(\d{3}).rpm$/;
+    ##############
+    #If the release levels are different, it will be upgrade_required.
+    #############
+    if ($fff ne $2) {
+        $upgrade_required = 1;
+    } else {
 
-        # Make sure we have some files to process
-        #
-        if( !scalar( @dirlist ) ) {
-        	$msg = "directory $packages_dir is empty";
-                return ("","","",$msg, -1);
+        if (($pns eq $1) && ($4 <= $active_level)) {
+            $msg = $msg . "Upgrade $mtms $activate!";
+
+            #	if($activate ne "concurrent") {
+            #		$msg = "Option --actviate's value should be disruptive";
+            #		return ("", "","", $msg, -1);
+            #	}
+        } else {
+            $msg = $msg . "Upgrade $mtms!";
+            if ($activate !~ /^(disruptive|deferred)$/) {
+                $msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
+                return ("", "", "", $msg, -1);
+            }
         }
+    }
 
-        $release_level =~/(\w{4})(\d{3})/;
-        my $pns = $1;
-	my $fff = $2;
-		
-	#Find the latest version lic file
-        @dirlist = grep /\.rpm$/, @dirlist;
-        @dirlist = grep /$1/, @dirlist;
-        if( !scalar( @dirlist ) ) {
-		$msg = "There isn't a package suitable for $mtms";
-                return ("","","",$msg, -1);
-	}
-        if( scalar(@dirlist) > 1) {
-         # Need to find the latest version package.
-        	@dirlist =reverse sort(@dirlist);
-                my $t = "\n";
-                foreach $t(@dirlist) {
-                       $msg =$msg."$t\t";
-                }
-         }
+    #print "filename is $filename\n";
+    my $xml_file_name = $filename;
+    $xml_file_name =~ s/(.+\.)rpm/\1xml/;
 
-         $filename = File::Spec->catfile( $packages_dir, $dirlist[0] );
-         $dirlist[0] =~ /(\w{4})(\d{3})_(\w{3})_(\d{3}).rpm$/;
-    	##############
-    	#If the release levels are different, it will be upgrade_required.
-    	#############
-    	if($fff ne $2) {
-	    	$upgrade_required = 1;
-    	} else {
+    #print "check_licdd_update: source xml file is $xml_file_name\n";
 
-       	 if(($pns eq $1) && ($4 <= $active_level)) {
-    		$msg = $msg. "Upgrade $mtms $activate!";
-	#	if($activate ne "concurrent") {
-	#		$msg = "Option --actviate's value should be disruptive";
-	#		return ("", "","", $msg, -1);
-	#	}
-	  } else {
-		$msg = $msg . "Upgrade $mtms!";
-           if($activate !~ /^(disruptive|deferred)$/) {
-	    		$msg = "Option --activate's value shouldn't be $activate, and it must be disruptive or deferred";
-			return ("", "","", $msg, -1);
-		}
-       	 } 
-	}
-        #print "filename is $filename\n";
-	my $xml_file_name = $filename;
-	$xml_file_name =~ s/(.+\.)rpm/\1xml/;
-	#print "check_licdd_update: source xml file is $xml_file_name\n";
+    if ((-z $filename) || (-z $xml_file_name)) {
+        $msg = "The package $filename or xml $xml_file_name is empty";
+        return ("", "", "", $msg, -1);
+    }
 
-	if( ( -z $filename)|| ( -z $xml_file_name) ) {
-		$msg = "The package $filename or xml $xml_file_name is empty" ;
-		return ("", "", "", $msg, -1);
-	}
-		
-	return ($filename, $xml_file_name ,$upgrade_required, $msg, 0);
+    return ($filename, $xml_file_name, $upgrade_required, $msg, 0);
 
 }
 
@@ -184,38 +189,38 @@ sub rflash {
     my $subreq  = $request->{subreq};
     my $hwtype  = @$exp[2];
     my @result;
-    my $timeout    = $request->{ppctimeout};
+    my $timeout      = $request->{ppctimeout};
     my $housekeeping = $request->{housekeeping};
     $packages_dir = $request->{opt}->{p};
-    $activate = $request->{opt}->{activate};	
+    $activate     = $request->{opt}->{activate};
     print "housekeeping:$housekeeping\n";
     my $mtms;
     my $h;
     my $user;
     my $action;
 
-    my $tmp_file; #the file handle of the stanza
+    my $tmp_file;    #the file handle of the stanza
     my $rpm_file;
     my $xml_file;
     my @rpm_files;
     my @xml_files;
     my $upgrade_required;
     my $stanza = undef;
-    my $mtms_t;	
+    my $mtms_t;
     my @value;
     my %infor;
-    my $role ; #0x01: BPC A, BPC B; 0x01: Primary or only FSP, 0x02: Backup FSP
- 
+    my $role;   #0x01: BPC A, BPC B; 0x01: Primary or only FSP, 0x02: Backup FSP
+
     #print "in Directflash \n";
     #print Dumper($request);
     #print Dumper($hash);
 
     ####################################
     # Power commands are grouped by hardware control point
-    # In Direct attach support, the hcp is the related fsp.  
+    # In Direct attach support, the hcp is the related fsp.
     ####################################
-    
-    # Example of $hash.    
+
+    # Example of $hash.
     #VAR1 = {
     #	          '9110-51A*1075ECF' => {
     #                                   'Server-9110-51A-SN1075ECF' => [
@@ -228,145 +233,148 @@ sub rflash {
     #									  ]
     #					 }
     # 	   };
-    my $flag = 0;
+    my $flag  = 0;
     my $flag2 = 0;
-    while (my ($mtms,$h) = each(%$hash) ) {
-	#
-	#For one mtms, it just needs to do the operation one time.
-	#
+    while (my ($mtms, $h) = each(%$hash)) {
+        #
+        #For one mtms, it just needs to do the operation one time.
+        #
         $flag += 1;
-	if($flag > 1) {
-	    last;	
-	}	
-	
-	$mtms =~ /(\w+)-(\w+)\*(\w+)/;
-	my $mtm    = "$1-$2";
-	my $serial = $3;
-		
-	
-        while (my ($name,$d) = each(%$h) ) {
-       	    $flag2 += 1;
-	    if($flag2 > 1) {
-	        last;	
- 	    }
+        if ($flag > 1) {
+            last;
+        }
 
-            if( !defined($housekeeping) && ($$d[4] =~ /^fsp$/ || $$d[4] =~ /^lpar$/ || $$d[4] =~ /^cec$/)) {
-                $action  =  "get_compatible_version_from_rpm";
-	        my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d} );
-		my $Rc =  @$values[2];
-		my $v = @$values[1];
-		if ($Rc != 0) {
-                    push @value, [$name, $v, -1];
-		    return (\@value);
-		}
-                            
-                #if( $v !~ "nocheckversion") {
-		my @levels = split(/,/, $v);
-	       	
-	        my $frame = $$d[5];
-                my $type = xCAT::DBobjUtils->getnodetype($frame);
-                if ( ( $frame ne $name ) && ( $type eq "frame" ) && $activate !~ /^deferred$/){
-                    
-                    my @frame_d = (0, 0, 0, $frame, "frame", 0);
-	            $action = "list_firmware_level";
-	            $values = xCAT::FSPUtils::fsp_api_action($request, $frame, \@frame_d, $action );	
-	            $Rc =  @$values[2];
-	            my $frame_firmware_level = @$values[1];
-		    if ($Rc != 0) {
-                        push @value, [$frame, $frame_firmware_level, -1];
-		        return (\@value);
-		    }
-                
-	            my $level_a;
-		    my $level_b;
-		    if( $frame_firmware_level =~ /curr_level_a=(\d{3}),curr_ecnumber_a=02(\w{5})/) {
-		        $level_a = "$2_$1";
-		    }
-	
-                   if( $frame_firmware_level =~ /curr_level_b=(\d{3}),curr_ecnumber_b=02(\w{5})/) {
-   		       $level_b = "$2_$1";
-		   }
-		   
-                   #print "frame_firmware_level=$frame_firmware_level,level_a=$level_a,level_b=$level_b\n";
-	           foreach my $l (@levels) {
-	                #print "rpm requires: $l\n"	;
-	                if( (defined($level_a) && (  $l gt $level_a )) ||  (defined($level_b) && (  $l gt $level_b )) ) {
-		            my $res = "New Managed System level for $name is not compatible with current Power Subsystem level 02$level_a on $frame.\nPower Subsystem level 02$l or later is required.";
-		       	
-                            push @value, [$name, $res, -1];
-		            return (\@value);
-		        }	
-		
-		   }
-                 }
-               #} 
-	    
+        $mtms =~ /(\w+)-(\w+)\*(\w+)/;
+        my $mtm    = "$1-$2";
+        my $serial = $3;
+
+
+        while (my ($name, $d) = each(%$h)) {
+            $flag2 += 1;
+            if ($flag2 > 1) {
+                last;
             }
 
-	   if(!defined($housekeeping)) {	   
-               my $values  = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "list_firmware_level"); 
-               my $Rc = @$values[2];
-	       my $level = @$values[1];
-	       #####################################
-	       # Return error
-      	       #####################################
-               if ( $Rc != SUCCESS ) {
-                   push @value, [$name,$level,$Rc];
-                   next;
-               }
-            
-	       if ( $level =~ /ecnumber=(\w+)/ ) {
-                   $release_level = $1;
-                   &dpush( \@value, [$name,"$mtms :release level:$1"]);
-	       }
-				
-               if ( $level =~ /activated_level=(\w+)/ ) {
-                   $active_level = $1;
-                   &dpush( \@value, [$name,"$mtms :activated level:$1"]);
-	        }	
+            if (!defined($housekeeping) && ($$d[4] =~ /^fsp$/ || $$d[4] =~ /^lpar$/ || $$d[4] =~ /^cec$/)) {
+                $action = "get_compatible_version_from_rpm";
+                my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d});
+                my $Rc = @$values[2];
+                my $v  = @$values[1];
+                if ($Rc != 0) {
+                    push @value, [ $name, $v, -1 ];
+                    return (\@value);
+                }
 
-	   } 
-	    
-	    
-    	  
-           if($housekeeping =~ /^commit$/) { $action = "code_commit"}
-           if($housekeeping =~ /^recover$/) { $action = "code_reject"}
-           if($housekeeping =~ /^bpa_acdl$/) { $action = "acdl"}
-           if($activate eq "disruptive") { 
-               $action = "code_update";
-           } elsif ($activate eq "deferred") {
-               $action = "code_updateD";
-           } elsif (defined($activate)){
-               #if($activate =~ /^concurrent$/) {
-               my $res = "\'$activate\' option not supported in FSPflash. Please use disruptive or deferred mode";
-               push @value, [$name, $res, -1];
-	       next;
-          }
-	   
-	   my $msg;	
-	   if(!defined($housekeeping)) {	   
-	       my $flag = 0;	
-	       ($rpm_file, $xml_file, $upgrade_required,$msg, $flag) = &get_lic_filenames($mtms);
-	        if( $flag == -1) {
-		    push (@value, [$name,"$mtms: $msg"]);
-	            push (@value, [$name,"Failed to upgrade the firmware of $name"]);
-		    return (\@value);
-	        }
-	       dpush ( \@value, [$name, $msg]);
-	   }
+                #if( $v !~ "nocheckversion") {
+                my @levels = split(/,/, $v);
 
-           my $res = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d} );
-           if ($action eq "acdl" && @$res[2] eq '0') {
-               push(@value, [$name, "Success", '0']);
-           } else {
-               push(@value,[$name, @$res[1], @$res[2]]);
-           }
-           return (\@value);
-	         
+                my $frame = $$d[5];
+                my $type  = xCAT::DBobjUtils->getnodetype($frame);
+                if (($frame ne $name) && ($type eq "frame") && $activate !~ /^deferred$/) {
+
+                    my @frame_d = (0, 0, 0, $frame, "frame", 0);
+                    $action = "list_firmware_level";
+                    $values = xCAT::FSPUtils::fsp_api_action($request, $frame, \@frame_d, $action);
+                    $Rc = @$values[2];
+                    my $frame_firmware_level = @$values[1];
+                    if ($Rc != 0) {
+                        push @value, [ $frame, $frame_firmware_level, -1 ];
+                        return (\@value);
+                    }
+
+                    my $level_a;
+                    my $level_b;
+                    if ($frame_firmware_level =~ /curr_level_a=(\d{3}),curr_ecnumber_a=02(\w{5})/) {
+                        $level_a = "$2_$1";
+                    }
+
+                    if ($frame_firmware_level =~ /curr_level_b=(\d{3}),curr_ecnumber_b=02(\w{5})/) {
+                        $level_b = "$2_$1";
+                    }
+
+                    #print "frame_firmware_level=$frame_firmware_level,level_a=$level_a,level_b=$level_b\n";
+                    foreach my $l (@levels) {
+
+                        #print "rpm requires: $l\n"	;
+                        if ((defined($level_a) && ($l gt $level_a)) || (defined($level_b) && ($l gt $level_b))) {
+                            my $res = "New Managed System level for $name is not compatible with current Power Subsystem level 02$level_a on $frame.\nPower Subsystem level 02$l or later is required.";
+
+                            push @value, [ $name, $res, -1 ];
+                            return (\@value);
+                        }
+
+                    }
+                }
+
+                #}
+
+            }
+
+            if (!defined($housekeeping)) {
+                my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "list_firmware_level");
+                my $Rc    = @$values[2];
+                my $level = @$values[1];
+                #####################################
+                # Return error
+                #####################################
+                if ($Rc != SUCCESS) {
+                    push @value, [ $name, $level, $Rc ];
+                    next;
+                }
+
+                if ($level =~ /ecnumber=(\w+)/) {
+                    $release_level = $1;
+                    &dpush(\@value, [ $name, "$mtms :release level:$1" ]);
+                }
+
+                if ($level =~ /activated_level=(\w+)/) {
+                    $active_level = $1;
+                    &dpush(\@value, [ $name, "$mtms :activated level:$1" ]);
+                }
+
+            }
+
+
+
+            if ($housekeeping =~ /^commit$/)   { $action = "code_commit" }
+            if ($housekeeping =~ /^recover$/)  { $action = "code_reject" }
+            if ($housekeeping =~ /^bpa_acdl$/) { $action = "acdl" }
+            if ($activate eq "disruptive") {
+                $action = "code_update";
+            } elsif ($activate eq "deferred") {
+                $action = "code_updateD";
+            } elsif (defined($activate)) {
+
+                #if($activate =~ /^concurrent$/) {
+                my $res = "\'$activate\' option not supported in FSPflash. Please use disruptive or deferred mode";
+                push @value, [ $name, $res, -1 ];
+                next;
+            }
+
+            my $msg;
+            if (!defined($housekeeping)) {
+                my $flag = 0;
+                ($rpm_file, $xml_file, $upgrade_required, $msg, $flag) = &get_lic_filenames($mtms);
+                if ($flag == -1) {
+                    push(@value, [ $name, "$mtms: $msg" ]);
+                    push(@value, [ $name, "Failed to upgrade the firmware of $name" ]);
+                    return (\@value);
+                }
+                dpush(\@value, [ $name, $msg ]);
+            }
+
+            my $res = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $request->{opt}->{d});
+            if ($action eq "acdl" && @$res[2] eq '0') {
+                push(@value, [ $name, "Success", '0' ]);
+            } else {
+                push(@value, [ $name, @$res[1], @$res[2] ]);
+            }
+            return (\@value);
+
         }
     }
     push(@value, @result);
-    return (\@value);	
+    return (\@value);
 
 
 }

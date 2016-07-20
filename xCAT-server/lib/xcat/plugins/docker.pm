@@ -11,7 +11,7 @@ package xCAT_plugin::docker;
 
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -43,6 +43,7 @@ my $subreq;
 my $async;
 
 #-------------------------------------------------------
+
 =head3  The hash variable to store node related http request id 
 
  The structure is like this
@@ -51,11 +52,13 @@ my $async;
  );
 
 =cut
+
 #-------------------------------------------------------
 
 my %http_session_variable = ();
 
 #-------------------------------------------------------
+
 =head3  The hash variable to store node parameters to access docker container
 
  The structure is like this
@@ -82,6 +85,7 @@ my %http_session_variable = ();
  );
 
 =cut
+
 #-------------------------------------------------------
 
 my %node_hash_variable = ();
@@ -100,12 +104,12 @@ my $http_requests_in_progress = 0;
 
 #-------------------------------------------------------
 sub handled_commands {
-    return( {docker=>"docker",
-            rpower => 'nodehm:mgt',
+    return ({ docker => "docker",
+            rpower   => 'nodehm:mgt',
             mkdocker => 'nodehm:mgt',
             rmdocker => 'nodehm:mgt',
             lsdocker => 'nodehm:mgt=docker|ipmi|kvm',
-           } );
+    });
 }
 
 
@@ -128,103 +132,103 @@ sub handled_commands {
 
 my %command_states = (
 
-# For rpower start/stop/restart/pause/unpause/state
-#    return error_msg if failed or corresponding msg if success
+    # For rpower start/stop/restart/pause/unpause/state
+    #    return error_msg if failed or corresponding msg if success
     rpower => {
         start => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/#NODE#/start",
-            init_state => "INIT_TO_WAIT_FOR_START_DONE",
-        }, 
+            init_method          => "POST",
+            init_url             => "/containers/#NODE#/start",
+            init_state           => "INIT_TO_WAIT_FOR_START_DONE",
+        },
         stop => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/#NODE#/stop",
-            init_state => "INIT_TO_WAIT_FOR_STOP_DONE",
-        },        
+            init_method          => "POST",
+            init_url             => "/containers/#NODE#/stop",
+            init_state           => "INIT_TO_WAIT_FOR_STOP_DONE",
+        },
         restart => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/#NODE#/restart",
-        },        
+            init_method          => "POST",
+            init_url             => "/containers/#NODE#/restart",
+        },
         pause => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/#NODE#/pause",
+            init_method          => "POST",
+            init_url             => "/containers/#NODE#/pause",
         },
         unpause => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/#NODE#/unpause",
+            init_method          => "POST",
+            init_url             => "/containers/#NODE#/unpause",
         },
         state => {
             state_machine_engine => \&default_state_engine,
-            init_method => "GET",
-            init_url => "/containers/#NODE#/json",
-            init_state => "INIT_TO_WAIT_FOR_QUERY_STATE_DONE",
+            init_method          => "GET",
+            init_url             => "/containers/#NODE#/json",
+            init_state           => "INIT_TO_WAIT_FOR_QUERY_STATE_DONE",
         },
     },
 
-# The state changing graphic for mkdocker
-#                                                             error
-#    init-----------> INIT_TO_WAIT_FOR_CREATE_DONE -----------------> error_msg
-#              ^                   /         |
-#              |       404 and    /          |
-#           20x|  'No such image'/           |
-#              |                v            |                error
-#  CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE ------------------------------> error_msg
-#                                            |
-#                                            |
-#                                         20x|
-#                                            v
-#                                      create done
-#
+    # The state changing graphic for mkdocker
+    #                                                             error
+    #    init-----------> INIT_TO_WAIT_FOR_CREATE_DONE -----------------> error_msg
+    #              ^                   /         |
+    #              |       404 and    /          |
+    #           20x|  'No such image'/           |
+    #              |                v            |                error
+    #  CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE ------------------------------> error_msg
+    #                                            |
+    #                                            |
+    #                                         20x|
+    #                                            v
+    #                                      create done
+    #
     mkdocker => {
         default => {
-            genreq_ptr => \&genreq_for_mkdocker,
+            genreq_ptr           => \&genreq_for_mkdocker,
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/containers/create?name=#NODE#",
-            init_state => "INIT_TO_WAIT_FOR_CREATE_DONE"
+            init_method          => "POST",
+            init_url             => "/containers/create?name=#NODE#",
+            init_state           => "INIT_TO_WAIT_FOR_CREATE_DONE"
         },
         pullimage => {
             state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/images/create?fromImage=#DOCKER_IMAGE#",
-            init_state => "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE",
+            init_method          => "POST",
+            init_url             => "/images/create?fromImage=#DOCKER_IMAGE#",
+            init_state           => "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE",
         },
     },
 
-# For rmdocker
-#    return error_msg if failed or success if done
+    # For rmdocker
+    #    return error_msg if failed or success if done
     rmdocker => {
         force => {
             state_machine_engine => \&default_state_engine,
-            init_method => "DELETE",
-            init_url => "/containers/#NODE#?force=1",
+            init_method          => "DELETE",
+            init_url             => "/containers/#NODE#?force=1",
         },
         default => {
             state_machine_engine => \&default_state_engine,
-            init_method => "DELETE",
-            init_url => "/containers/#NODE#",
+            init_method          => "DELETE",
+            init_url             => "/containers/#NODE#",
         },
     },
 
-# For lsdocker [-l|--logs]
-#    return error_msg if failed or corresponding msg if success
+    # For lsdocker [-l|--logs]
+    #    return error_msg if failed or corresponding msg if success
     lsdocker => {
         default => {
             state_machine_engine => \&default_state_engine,
-            init_method => "GET",
-            init_url => "/containers/#NODE#/json?",
-            init_state => "INIT_TO_WAIT_FOR_QUERY_DOCKER_DONE",
+            init_method          => "GET",
+            init_url             => "/containers/#NODE#/json?",
+            init_state           => "INIT_TO_WAIT_FOR_QUERY_DOCKER_DONE",
         },
         log => {
             state_machine_engine => \&default_state_engine,
-            init_method => "GET",
-            init_url => "/containers/#NODE#/logs?stderr=1&stdout=1",
-            init_state => "INIT_TO_WAIT_FOR_QUERY_LOG_DONE",
+            init_method          => "GET",
+            init_url             => "/containers/#NODE#/logs?stderr=1&stdout=1",
+            init_state           => "INIT_TO_WAIT_FOR_QUERY_LOG_DONE",
         },
     },
 );
@@ -247,35 +251,36 @@ my %command_states = (
 #-------------------------------------------------------
 
 sub http_state_code_info {
-    my $state_code = shift;
+    my $state_code  = shift;
     my $curr_status = shift;
     if ($state_code =~ /20\d/) {
-        return [0, "success"];
+        return [ 0, "success" ];
     }
-    elsif ($state_code eq '304')  {
-        if (defined $curr_status)  {
+    elsif ($state_code eq '304') {
+        if (defined $curr_status) {
             if ($curr_status eq "INIT_TO_WAIT_FOR_START_DONE") {
-                return [0, "container already started"];
+                return [ 0, "container already started" ];
             }
             else {
-                return [0, "container already stopped"];
+                return [ 0, "container already stopped" ];
             }
         }
         else {
-            return [1, "unknown http status code $state_code"];
+            return [ 1, "unknown http status code $state_code" ];
         }
     }
     elsif ($state_code eq '404') {
-        return [1, "no such container"];
+        return [ 1, "no such container" ];
     }
     elsif ($state_code eq '406') {
-        return [1, "impossible to attach (container not running)"];
+        return [ 1, "impossible to attach (container not running)" ];
     }
     elsif ($state_code eq '500') {
-        return [1, "server error"];
+        return [ 1, "server error" ];
     }
-    return [1, "unknown http status code $state_code"];
+    return [ 1, "unknown http status code $state_code" ];
 }
+
 #-------------------------------------------------------
 
 =head3 modify_node_state_hash
@@ -291,14 +296,14 @@ sub http_state_code_info {
 #-------------------------------------------------------
 
 sub modify_node_state_hash {
-    my $node = shift;
+    my $node          = shift;
     my $to_state_hash = shift;
-    my $node_hash = $node_hash_variable{$node};
-    $node_hash->{http_req_method} = $to_state_hash->{init_method};
-    $node_hash->{http_req_url} = $to_state_hash->{init_url};
-    $node_hash->{node_app_state} = $to_state_hash->{init_state};
+    my $node_hash     = $node_hash_variable{$node};
+    $node_hash->{http_req_method}      = $to_state_hash->{init_method};
+    $node_hash->{http_req_url}         = $to_state_hash->{init_url};
+    $node_hash->{node_app_state}       = $to_state_hash->{init_state};
     $node_hash->{state_machine_engine} = $to_state_hash->{state_machine_engine};
-    $node_hash->{genreq_ptr} = $to_state_hash->{genreq_ptr};
+    $node_hash->{genreq_ptr}           = $to_state_hash->{genreq_ptr};
     if (!defined($node_hash->{genreq_ptr})) {
         $node_hash->{genreq_ptr} = \&genreq;
     }
@@ -352,23 +357,23 @@ sub change_node_state {
 #-------------------------------------------------------
 
 sub default_state_engine {
-    my $id = shift;
+    my $id   = shift;
     my $data = shift;
     my $node = $http_session_variable{$id};
     if (!defined($node)) {
         return;
     }
-    my $node_hash = $node_hash_variable{$node};
+    my $node_hash  = $node_hash_variable{$node};
     my $curr_state = $node_hash->{node_app_state};
-    my $info_flag = 'data';
+    my $info_flag  = 'data';
 
-    if ($data->is_error or (defined($data->header("connection")) and $data->header("connection") =~ /close/)) { 
+    if ($data->is_error or (defined($data->header("connection")) and $data->header("connection") =~ /close/)) {
         $http_requests_in_progress--;
-        delete($http_session_variable{$id}); 
+        delete($http_session_variable{$id});
     }
 
     my $content = $data->decoded_content;
-    my @msg = ();
+    my @msg     = ();
     $msg[0] = &http_state_code_info($data->code, $curr_state);
     if ($data->is_error) {
         if ($content ne '') {
@@ -378,7 +383,7 @@ sub default_state_engine {
             $msg[0]->[1] = $data->message;
         }
     }
-    my $content_type = $data->header("content-type"); 
+    my $content_type = $data->header("content-type");
     my $content_hash = undef;
     if (defined($content_type) and $content_type =~ /json/i) {
         if ($curr_state ne "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE") {
@@ -390,7 +395,7 @@ sub default_state_engine {
             }
             elsif ($content =~ /\"error\":\"([^\"]*)\"/) {
                 @msg = ();
-                $msg[0] = [1, $1];
+                $msg[0] = [ 1, $1 ];
             }
         }
     }
@@ -398,31 +403,31 @@ sub default_state_engine {
         $content_type = "undefined";
     }
 
-    if ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_STATE_DONE")  {
+    if ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_STATE_DONE") {
         if ($data->is_success) {
             if ($content_type =~ /json/i) {
                 my $node_state = $content_hash->{'State'}->{'Status'};
                 if (defined($node_state)) {
-                    $msg[0] = [0, $node_state];
+                    $msg[0] = [ 0, $node_state ];
                 }
                 else {
-                    $msg[0] = [1, "Can not get status"];
+                    $msg[0] = [ 1, "Can not get status" ];
                 }
-            } 
+            }
             else {
-                $msg[0] = [1, "The content type: $content_type is unable to be parsed."];
+                $msg[0] = [ 1, "The content type: $content_type is unable to be parsed." ];
             }
         }
-    } 
+    }
     elsif ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_LOG_DONE") {
         if ($data->is_success) {
             $info_flag = "base64_data";
-            @msg = ();
+            @msg       = ();
             if ($content_type =~ /text\/plain/i) {
-                $msg[0] = [0,encode_base64($content)];
+                $msg[0] = [ 0, encode_base64($content) ];
             }
             else {
-                $msg[0] = [1, "The content type: $content_type is unable to be parsed."];
+                $msg[0] = [ 1, "The content type: $content_type is unable to be parsed." ];
             }
         }
     }
@@ -432,47 +437,48 @@ sub default_state_engine {
             if ($content_type =~ /json/i) {
                 if (ref($content_hash) eq 'ARRAY') {
                     foreach (@$content_hash) {
-                        push @msg, [0, parse_docker_list_info($_, 1)];
+                        push @msg, [ 0, parse_docker_list_info($_, 1) ];
                     }
                 }
                 else {
-                    push @msg, [0, parse_docker_list_info($content_hash, 0)];
+                    push @msg, [ 0, parse_docker_list_info($content_hash, 0) ];
                 }
             }
             if (!scalar(@msg)) {
-                @msg = [0, "No running docker"];
+                @msg = [ 0, "No running docker" ];
             }
         }
     }
     elsif ($curr_state eq 'INIT_TO_WAIT_FOR_CREATE_DONE') {
         if ($data->code eq '404' and $msg[0]->[1] =~ /image:/i) {
+
             # To avoid pulling image loop
             if (defined($node_hash->{have_pulled_image})) {
                 return;
             }
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} start"]}]});
+            $global_callback->({ node => [ { name => [$node], "$info_flag" => ["Pull image $node_hash->{image} start"] } ] });
             change_node_state($node, $command_states{mkdocker}{pullimage});
             return;
         }
     }
     elsif ($curr_state eq 'CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE') {
         if ($data->is_success and !$msg[0]->[0]) {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} done"]}]});
+            $global_callback->({ node => [ { name => [$node], "$info_flag" => ["Pull image $node_hash->{image} done"] } ] });
             $node_hash->{have_pulled_image} = 1;
             change_node_state($node, $command_states{mkdocker}{default});
             return;
         }
     }
- 
+
     foreach my $tmp (@msg) {
         if ($tmp->[0]) {
-            $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"],errorcode=>["$tmp->[0]"]}]});
-        } 
-        else {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["$tmp->[1]"]}]});
+            $global_callback->({ node => [ { name => [$node], error => ["$tmp->[1]"], errorcode => ["$tmp->[0]"] } ] });
         }
-    } 
-    
+        else {
+            $global_callback->({ node => [ { name => [$node], "$info_flag" => ["$tmp->[1]"] } ] });
+        }
+    }
+
     return;
 }
 
@@ -493,7 +499,7 @@ sub default_state_engine {
 #-------------------------------------------------------
 
 sub deal_with_space_in_array_entry {
-    my $array = shift;
+    my $array     = shift;
     my @ret_array = ();
     push @ret_array, shift @$array;
     foreach (@$array) {
@@ -526,18 +532,18 @@ sub deal_with_space_in_array_entry {
 
 sub parse_docker_list_info {
     my $docker_info_hash = shift;
-    my $flag = shift; # Use the flag to check whether need to cut command
-    my ($id,$image,$command,$created,$status,$names);
+    my $flag = shift;    # Use the flag to check whether need to cut command
+    my ($id, $image, $command, $created, $status, $names);
     $id = substr($docker_info_hash->{'Id'}, 0, 12);
     if ($flag) {
-        $image = $docker_info_hash->{'Image'};
+        $image   = $docker_info_hash->{'Image'};
         $command = $docker_info_hash->{'Command'};
         $created = $docker_info_hash->{'Created'};
-        $status = $docker_info_hash->{'Status'};
+        $status  = $docker_info_hash->{'Status'};
 
         $names = $docker_info_hash->{'Names'}->[0];
-        my ($sec,$min,$hour,$day,$mon,$year) = localtime($created);
-        $mon += 1;
+        my ($sec, $min, $hour, $day, $mon, $year) = localtime($created);
+        $mon  += 1;
         $year += 1900;
         $created = "$year-$mon-$day - $hour:$min:$sec";
     }
@@ -546,17 +552,17 @@ sub parse_docker_list_info {
         my @cmd = ();
         push @cmd, $docker_info_hash->{Path};
         if (defined($docker_info_hash->{Args})) {
-            push @cmd, @{$docker_info_hash->{Args}};
+            push @cmd, @{ $docker_info_hash->{Args} };
         }
         $command = deal_with_space_in_array_entry(\@cmd);
-        $names = $docker_info_hash->{'Name'};
+        $names   = $docker_info_hash->{'Name'};
         $created = $docker_info_hash->{'Created'};
-        $status = $docker_info_hash->{'State'}->{'Status'};
+        $status  = $docker_info_hash->{'State'}->{'Status'};
         $created =~ s/\..*$//;
     }
     my $cmd = sprintf("\"%.20s\"", $command);
     my $string = sprintf("%-12s   %-30.30s %-22s %-20s %-10s %s", $id, $image, $cmd, $created, $status, $names);
-    return($string);
+    return ($string);
 }
 
 #-------------------------------------------------------
@@ -576,11 +582,11 @@ sub parse_docker_list_info {
 
 sub deal_with_rsp
 {
-    my %args = @_;
+    my %args    = @_;
     my $timeout = 0;
     if (defined($args{timeout})) {
         $timeout = $args{timeout};
-    } 
+    }
     my $deal_num = 0;
     while (my ($response, $id) = $async->wait_for_next_response($timeout)) {
         my $node = $http_session_variable{$id};
@@ -604,70 +610,70 @@ sub deal_with_rsp
 #-------------------------------------------------------
 sub parse_args {
 
-    my $request  = shift;
-    my $args     = $request->{arg};
-    my $cmd      = $request->{command}->[0];
+    my $request = shift;
+    my $args    = $request->{arg};
+    my $cmd     = $request->{command}->[0];
     my %opt;
     #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
-        return( [$_[0], $usage_string] );
+        return ([ $_[0], $usage_string ]);
     };
     #############################################
     # No command-line arguments - use defaults
     #############################################
-    if ( !defined( $args )) {
+    if (!defined($args)) {
         if ($cmd eq "rpower") {
-            return ([1, "No option specified for rpower"]);
+            return ([ 1, "No option specified for rpower" ]);
         }
-        return(0);
+        return (0);
     }
     #############################################
     # Checks case in GetOptions, allows opts
     # to be grouped (e.g. -vx), and terminates
     # at the first unrecognized option.
     #############################################
-    @ARGV = @$args;
+    @ARGV                     = @$args;
     $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
+    Getopt::Long::Configure("bundling");
 
     #############################################
     # Process command-line flags
     #############################################
-    if (!GetOptions( \%opt,
+    if (!GetOptions(\%opt,
             qw(h|help V|Verbose v|version))) {
-        return( usage() );
+        return (usage());
     }
 
     #############################################
     # Option -V for verbose output
     #############################################
-    if ( exists( $opt{V} )) {
+    if (exists($opt{V})) {
         $verbose = 1;
     }
     if ($cmd eq "rpower") {
-        if (scalar (@ARGV) > 1) {
-            return ( [1, "Only one option is supportted at the same time"]);
+        if (scalar(@ARGV) > 1) {
+            return ([ 1, "Only one option is supportted at the same time" ]);
         }
-        elsif (!defined ($command_states{$cmd}{$ARGV[0]})) {
-            return ( [1, "The option $ARGV[0] not support for $cmd"]);
+        elsif (!defined($command_states{$cmd}{ $ARGV[0] })) {
+            return ([ 1, "The option $ARGV[0] not support for $cmd" ]);
         }
         else {
             $request->{mapping_option} = $ARGV[0];
         }
-    } 
+    }
     elsif ($cmd eq 'mkdocker') {
         my ($image, $command);
         foreach my $op (@ARGV) {
-            my ($key,$value) = split /=/,$op;
+            my ($key, $value) = split /=/, $op;
             if ($key !~ /image|command|dockerflag/) {
-                return ( [1, "Option $key is not supported for $cmd"]);
+                return ([ 1, "Option $key is not supported for $cmd" ]);
             }
             elsif (!defined($value)) {
-                return ( [1, "Must set value for $key"]);
-            }  
+                return ([ 1, "Must set value for $key" ]);
+            }
             else {
                 if ($key eq 'image') {
                     $image = $value;
@@ -678,13 +684,13 @@ sub parse_args {
             }
         }
         if (!defined($image) and defined($command)) {
-            return ( [1, "Must set 'image' if use 'command'"]);
+            return ([ 1, "Must set 'image' if use 'command'" ]);
         }
     }
     elsif ($cmd eq 'rmdocker') {
         foreach my $op (@ARGV) {
             if ($op ne '-f' and $op ne '--force') {
-                return ( [1, "Option $op is not supported for $cmd"]);
+                return ([ 1, "Option $op is not supported for $cmd" ]);
             }
         }
         $request->{mapping_option} = "force";
@@ -692,7 +698,7 @@ sub parse_args {
     elsif ($cmd eq 'lsdocker') {
         foreach my $op (@ARGV) {
             if ($op ne '-l' and $op ne '--logs') {
-                return ( [1, "Option $op is not supported for $cmd"]);
+                return ([ 1, "Option $op is not supported for $cmd" ]);
             }
         }
         $request->{mapping_option} = "log";
@@ -715,30 +721,30 @@ sub parse_args {
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-    my $callback=shift;
-    my $command = $req->{command}->[0];
+    my $callback = shift;
+    my $command  = $req->{command}->[0];
     my $extrargs = $req->{arg};
-    my @exargs=($req->{arg});
+    my @exargs   = ($req->{arg});
     if (ref($extrargs)) {
-        @exargs=@$extrargs;
+        @exargs = @$extrargs;
     }
-    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    my $usage_string = xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
-        $callback->({data=>[$usage_string]});
+        $callback->({ data => [$usage_string] });
         $req = {};
         return;
     }
     ####################################
     # Process command-specific options
     ####################################
-    my $parse_result = parse_args( $req );
+    my $parse_result = parse_args($req);
     ####################################
     # Return error
     ####################################
-    if ( ref($parse_result) eq 'ARRAY' ) {
-        $callback->({error=>$parse_result->[1], errorcode=>$parse_result->[0]});
+    if (ref($parse_result) eq 'ARRAY') {
+        $callback->({ error => $parse_result->[1], errorcode => $parse_result->[0] });
         $req = {};
-        return ;
+        return;
     }
 
     my @result = ();
@@ -759,21 +765,21 @@ sub preprocess_request {
 sub process_request {
     my $req      = shift;
     my $callback = shift;
-    $subreq      = shift;
+    $subreq = shift;
     my $noderange = $req->{node};
-    my $command = $req->{command}->[0];
-    my $args = $req->{arg};
+    my $command   = $req->{command}->[0];
+    my $args      = $req->{arg};
     $global_callback = $callback;
 
     # For docker create, the attributes needed are
-    #    vm.host,cpus,memory,othersettings 
+    #    vm.host,cpus,memory,othersettings
     #    nodetype.provmethod     -- the image and command the docker will use
-    #    mac.mac 
+    #    mac.mac
     # For other command, get docker host is enough to do operation
 
     my $mapping_hash = undef;
     if (defined($req->{mapping_option})) {
-        $mapping_hash = $command_states{$command}{$req->{mapping_option}};
+        $mapping_hash = $command_states{$command}{ $req->{mapping_option} };
     }
     else {
         $mapping_hash = $command_states{$command}{default};
@@ -781,32 +787,32 @@ sub process_request {
     my $max_concur_session_allow = 20; # A variable can be set by caculated in the future
     if ($command eq 'lsdocker') {
         my @new_noderange = ();
-        my $nodehm = xCAT::Table->new('nodehm');
+        my $nodehm        = xCAT::Table->new('nodehm');
         if ($nodehm) {
             my $nodehmhash = $nodehm->getNodesAttribs($noderange, ['mgt']);
             foreach my $node (@$noderange) {
                 if (defined($nodehmhash->{$node}->[0]->{mgt}) and $nodehmhash->{$node}->[0]->{mgt} =~ /ipmi|kvm/) {
-                     
+
                     if (defined($args) and $args->[0] ne '') {
-                        $callback->({error=>[" $args->[0] is not support for $node"], errorcode=>1});
+                        $callback->({ error => [" $args->[0] is not support for $node"], errorcode => 1 });
                         return;
                     }
-                    ${$node_hash_variable{$node}}{hostinfo} = {name=>$node,port=>'2375'};
+                    ${ $node_hash_variable{$node} }{hostinfo} = { name => $node, port => '2375' };
                     $mapping_hash->{init_url} =~ s/#NODE#\///;
                     modify_node_state_hash($node, $mapping_hash);
-                } 
+                }
                 else {
                     push @new_noderange, $node;
                 }
             }
         }
         $noderange = \@new_noderange;
-    }  
+    }
 
     # The dockerhost is mapped to vm.host, so open vm table here
     my $vmtab = xCAT::Table->new('vm');
     if ($vmtab) {
-        my $vmhashs = $vmtab->getNodesAttribs($noderange, ['host','nics']);
+        my $vmhashs = $vmtab->getNodesAttribs($noderange, [ 'host', 'nics' ]);
         if ($vmhashs) {
             my @errornodes = ();
             foreach my $node (@$noderange) {
@@ -814,9 +820,9 @@ sub process_request {
                 if (!defined($vmhash) or !defined($vmhash->{host})) {
                     delete $node_hash_variable{$node};
                     push @errornodes, $node;
-                    next; 
+                    next;
                 }
-                my ($host, $port) = split /:/,$vmhash->{host};
+                my ($host, $port) = split /:/, $vmhash->{host};
                 if (!defined($host)) {
                     delete $node_hash_variable{$node};
                     push @errornodes, $node;
@@ -825,7 +831,7 @@ sub process_request {
                 if (!defined($port)) {
                     $port = 2375;
                 }
-                ${$node_hash_variable{$node}}{hostinfo} = {name=>$host,port=>$port};
+                ${ $node_hash_variable{$node} }{hostinfo} = { name => $host, port => $port };
                 if (defined($vmhash->{nics})) {
                     $node_hash_variable{$node}->{nics} = $vmhash->{nics};
                 } else {
@@ -834,7 +840,7 @@ sub process_request {
                 if ($command eq 'rmdocker') {
                     if (defined($args->[0])) {
                         $node_hash_variable{$node}->{opt} = "force";
-                    } 
+                    }
                     else {
                         $node_hash_variable{$node}->{opt} = "default";
                     }
@@ -842,81 +848,81 @@ sub process_request {
                 modify_node_state_hash($node, $mapping_hash);
             }
             if (scalar(@errornodes)) {
-                $callback->({error=>["Docker host not set correct for @errornodes"], errorcode=>1});
+                $callback->({ error => ["Docker host not set correct for @errornodes"], errorcode => 1 });
                 return;
             }
         }
-    } 
+    }
     else {
-        $callback->({error=>["Open table 'vm' failed"], errorcode=>1});
+        $callback->({ error => ["Open table 'vm' failed"], errorcode => 1 });
         return;
-    } 
-    
+    }
+
     #parse parameters for mkdocker
     if ($command eq 'mkdocker') {
         my ($imagearg, $cmdarg, $flagarg);
         foreach (@$args) {
             if (/image=(.*)$/) {
                 $imagearg = $1;
-            }            
+            }
             elsif (/command=(.*)$/) {
                 $cmdarg = $1;
             }
             elsif (/dockerflag=(.*)$/) {
                 $flagarg = $1;
             }
-        } 
+        }
         my $nodetypetab = xCAT::Table->new('nodetype');
         if (!defined($nodetypetab)) {
-            $callback->({error=>["Open table 'nodetype' failed"], errorcode=>1});
+            $callback->({ error => ["Open table 'nodetype' failed"], errorcode => 1 });
             return;
         }
         my $mactab = xCAT::Table->new('mac');
-        if (!defined($mactab)) { 
-            $callback->({error=>["Open table 'mac' failed"], errorcode=>1});
+        if (!defined($mactab)) {
+            $callback->({ error => ["Open table 'mac' failed"], errorcode => 1 });
             return;
         }
         my ($ret, $netcfg_hash) = xCAT::NetworkUtils->getNodesNetworkCfg($noderange);
-        if ($ret)  {
-            $callback->({error=>[$netcfg_hash], errorcode=>1});
+        if ($ret) {
+            $callback->({ error => [$netcfg_hash], errorcode => 1 });
             return;
         }
         my $nodetypehash = $nodetypetab->getNodesAttribs($noderange, ['provmethod']);
         my $machash = $mactab->getNodesAttribs($noderange, ['mac']);
-        my $vmhash = $vmtab->getNodesAttribs($noderange, ['cpus', 'memory', 'othersettings']);
- 
+        my $vmhash = $vmtab->getNodesAttribs($noderange, [ 'cpus', 'memory', 'othersettings' ]);
+
         my %errornodes = ();
-        foreach my $node (@$noderange)  {
+        foreach my $node (@$noderange) {
             if ($imagearg) {
                 $node_hash_variable{$node}->{image} = $imagearg;
                 if ($cmdarg) {
                     $node_hash_variable{$node}->{cmd} = $cmdarg;
-                    $nodetypetab->setNodeAttribs($node,{provmethod=>"$imagearg!$cmdarg"});
+                    $nodetypetab->setNodeAttribs($node, { provmethod => "$imagearg!$cmdarg" });
                 }
                 else {
-                    $nodetypetab->setNodeAttribs($node,{provmethod=>"$imagearg"});
+                    $nodetypetab->setNodeAttribs($node, { provmethod => "$imagearg" });
                 }
             }
             else {
                 if (!defined($nodetypehash->{$node}->[0]->{provmethod})) {
                     delete $node_hash_variable{$node};
-                    push @{$errornodes{Image}}, $node;
+                    push @{ $errornodes{Image} }, $node;
                     next;
                 }
                 else {
-                    my ($tmp_img,$tmp_cmd) = split /!/, $nodetypehash->{$node}->[0]->{provmethod};
+                    my ($tmp_img, $tmp_cmd) = split /!/, $nodetypehash->{$node}->[0]->{provmethod};
                     if (!defined($tmp_img)) {
                         delete $node_hash_variable{$node};
-                        push @{$errornodes{Image}}, $node;
+                        push @{ $errornodes{Image} }, $node;
                         next;
                     }
                     $node_hash_variable{$node}->{image} = $tmp_img;
-                    $node_hash_variable{$node}->{cmd} = $tmp_cmd;
+                    $node_hash_variable{$node}->{cmd}   = $tmp_cmd;
                 }
-            } 
+            }
             if ($flagarg) {
                 $node_hash_variable{$node}->{flag} = $flagarg;
-                $vmtab->setNodeAttribs($node,{othersettings=>$flagarg});
+                $vmtab->setNodeAttribs($node, { othersettings => $flagarg });
             }
             if (defined($machash->{$node}->[0]->{mac})) {
                 $node_hash_variable{$node}->{mac} = $machash->{$node}->[0]->{mac};
@@ -936,7 +942,7 @@ sub process_request {
             my $netcfg_info = $netcfg_hash->{$node};
             if (!defined($netcfg_info) or !defined($netcfg_info->{'ip'})) {
                 delete $node_hash_variable{$node};
-                push @{$errornodes{Network}}, $node;
+                push @{ $errornodes{Network} }, $node;
                 next;
             }
             else {
@@ -946,24 +952,24 @@ sub process_request {
         $nodetypetab->close;
         $mactab->close;
         foreach (keys %errornodes) {
-            $callback->({error=>["$_ not set correct for @{$errornodes{$_}}"], errorcode=>1});
+            $callback->({ error => ["$_ not set correct for @{$errornodes{$_}}"], errorcode => 1 });
         }
     }
     $vmtab->close;
 
-    if (my $res = init_async(slots=>$max_concur_session_allow)) {
-        $callback->({error=>[$res], errorcode=>1});
+    if (my $res = init_async(slots => $max_concur_session_allow)) {
+        $callback->({ error => [$res], errorcode => 1 });
         return;
     }
     my @nodeargs = keys(%node_hash_variable);
 
-    while (1)  {
+    while (1) {
         while ((scalar @nodeargs) and $http_requests_in_progress < $max_concur_session_allow) {
             deal_with_rsp();
             my $node = shift @nodeargs;
             sendreq($node, $node_hash_variable{$node});
         }
-        if ($async->empty)  {
+        if ($async->empty) {
             last;
         }
         deal_with_rsp();
@@ -988,22 +994,22 @@ sub process_request {
 
 sub init_async {
     my %args = @_;
-    eval {require HTTP::Async};
+    eval { require HTTP::Async };
     if ($@) {
-        return ("Can't find HTTP/Async.pm, please make sure the package have been installed");  
+        return ("Can't find HTTP/Async.pm, please make sure the package have been installed");
     }
-    my @user = getpwuid($>);
-    my $homedir = $user[7];
-    my $ssl_ca_file = $homedir . "/.xcat/ca.pem";
+    my @user          = getpwuid($>);
+    my $homedir       = $user[7];
+    my $ssl_ca_file   = $homedir . "/.xcat/ca.pem";
     my $ssl_cert_file = $homedir . "/.xcat/client-cred.pem";
-    my $key_file = $homedir . "/.xcat/client-cred.pem";
+    my $key_file      = $homedir . "/.xcat/client-cred.pem";
     $async = HTTP::Async->new(
-        slots => $args{slots},
+        slots       => $args{slots},
         ssl_options => {
             SSL_verify_mode => SSL_VERIFY_PEER,
-            SSL_ca_file => $ssl_ca_file,
-            SSL_cert_file => $ssl_cert_file,
-            SSL_key_file => $key_file,
+            SSL_ca_file     => $ssl_ca_file,
+            SSL_cert_file   => $ssl_cert_file,
+            SSL_key_file    => $key_file,
         },
     );
     return undef;
@@ -1032,23 +1038,24 @@ sub init_async {
 
 #-------------------------------------------------------
 sub genreq {
-    my $node = shift;
+    my $node       = shift;
     my $dockerhost = shift;
-    my $method = shift;
-    my $api = shift;
-    my $content = shift;
+    my $method     = shift;
+    my $api        = shift;
+    my $content    = shift;
 
-    if (! defined($content)) { $content = ""; }
+    if (!defined($content)) { $content = ""; }
     my $header = HTTP::Headers->new('content-type' => 'application/json',
-                             'Accept' => 'application/json',
-                             #'Connection' => 'keep-alive',
-                             'Host' => $dockerhost->{name}.":".$dockerhost->{port});
-    $header->authorization_basic($dockerhost->{user}.'@internal', $dockerhost->{pw});
+        'Accept' => 'application/json',
+
+        #'Connection' => 'keep-alive',
+        'Host' => $dockerhost->{name} . ":" . $dockerhost->{port});
+    $header->authorization_basic($dockerhost->{user} . '@internal', $dockerhost->{pw});
 
     my $ctlen = length($content);
     $header->push_header('Content-Length' => $ctlen);
 
-    my $url = "https://".$dockerhost->{name}.":".$dockerhost->{port}.$api;
+    my $url = "https://" . $dockerhost->{name} . ":" . $dockerhost->{port} . $api;
     my $request = HTTP::Request->new($method, $url, $header, $content);
     $request->protocol('HTTP/1.1');
     return $request;
@@ -1075,23 +1082,24 @@ sub genreq {
 #-------------------------------------------------------
 
 sub genreq_for_mkdocker {
-    my ($node, $dockerhost, $method, $api) = @_; 
+    my ($node, $dockerhost, $method, $api) = @_;
     my $dockerinfo = $node_hash_variable{$node};
-    my %info_hash = ();
+    my %info_hash  = ();
     if (defined($dockerinfo->{flag})) {
         my $flag_hash = decode_json($dockerinfo->{flag});
         %info_hash = %$flag_hash;
     }
+
     #$info_hash{name} = '/'.$node;
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
     $info_hash{Image} = "$dockerinfo->{image}";
-    @{$info_hash{Cmd}} = split/,/, $dockerinfo->{cmd};
-    $info_hash{Memory} = $dockerinfo->{mem};
-    $info_hash{MacAddress} = $dockerinfo->{mac};
-    $info_hash{CpusetCpus} = $dockerinfo->{cpus};
+    @{ $info_hash{Cmd} } = split /,/, $dockerinfo->{cmd};
+    $info_hash{Memory}                    = $dockerinfo->{mem};
+    $info_hash{MacAddress}                = $dockerinfo->{mac};
+    $info_hash{CpusetCpus}                = $dockerinfo->{cpus};
     $info_hash{HostConfig}->{NetworkMode} = $dockerinfo->{nics};
-    $info_hash{NetworkDisabled} = JSON::false;
+    $info_hash{NetworkDisabled}           = JSON::false;
     $info_hash{NetworkingConfig}->{EndpointsConfig}->{"$dockerinfo->{nics}"}->{IPAMConfig}->{IPv4Address} = $dockerinfo->{ip};
     my $content = encode_json \%info_hash;
     return genreq($node, $dockerhost, $method, $api, $content);
@@ -1119,6 +1127,7 @@ sub genreq_for_mkdocker {
 sub sendreq {
     my ($node, $node_hash) = @_;
     my $http_req = $node_hash->{genreq_ptr}->($node, $node_hash->{hostinfo}, $node_hash->{http_req_method}, $node_hash->{http_req_url});
+
     # Need to Dumper to log file later
     # print Dumper($http_req);
     my $http_session_id = $async->add_with_opts($http_req, {});

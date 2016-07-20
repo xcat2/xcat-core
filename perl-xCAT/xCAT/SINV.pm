@@ -16,9 +16,10 @@ the sinv command.
 #------------------------------------------------------------------------------
 
 package xCAT::SINV;
+
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use strict;
 use xCAT::MsgUtils;
@@ -27,6 +28,7 @@ use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
+
 #use Data::Dumper;
 my $tempfile;
 my $errored = 0;
@@ -54,14 +56,14 @@ sub usage
 ## usage message
 
     my $usagemsg1 =
-      "The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
+"The sinv command is designed to check the configuration of nodes in a cluster.\nRun man sinv for more information.\n\nInput parameters are as follows:\n";
     my $usagemsg1a = "sinv -h \nsinv -v \nsinv";
-    my $usagemsg3  =
+    my $usagemsg3 =
       " -p <template path> [-o output file ] [-t <template count>]\n";
-    my $usagemsg4 = "      [-r remove templates] [-s <seednode>]\n";
-    my $usagemsg5 = "      [-e exactmatch] [-i ignore] [-V verbose]\n";
+    my $usagemsg4  = "      [-r remove templates] [-s <seednode>]\n";
+    my $usagemsg5  = "      [-e exactmatch] [-i ignore] [-V verbose]\n";
     my $usagemsg5A = "      [-l userid] [--devicetype type_of_device]\n";
-    my $usagemsg6 = "      {-c <command>  | -f <command file>}";
+    my $usagemsg6  = "      {-c <command>  | -f <command file>}";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg3 .= $usagemsg4 .=
       $usagemsg5 .= $usagemsg5A .= $usagemsg6;
 ###  end usage mesage
@@ -91,7 +93,7 @@ sub parse_and_run_sinv
     if (!($args)) {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "No arguments have been supplied to the sinv command. Check the sinv man page for appropriate input. \n";
+"No arguments have been supplied to the sinv command. Check the sinv man page for appropriate input. \n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
@@ -103,20 +105,20 @@ sub parse_and_run_sinv
 
     if (
         !GetOptions(
-                    'h|help'        => \$options{'help'},
-                    't|tc=s'        => \$options{'template_cnt'},
-                    'p|tp=s'        => \$options{'template_path'},
-                    'r|remove'      => \$options{'remove_template'},
-                    'o|output=s'    => \$options{'output_file'},
-                    's|seed=s'      => \$options{'seed_node'},
-                    'e|exactmatch'  => \$options{'exactmatch'},
-                    'i|ignorefirst' => \$options{'ignorefirst'},
-                    'l|user=s'      => \$options{'user'},
-                    'devicetype|devicetype=s'    => \$options{'devicetype'}, 
-                    'c|cmd=s'       => \$options{'sinv_cmd'},
-                    'f|file=s'      => \$options{'sinv_cmd_file'},
-                    'v|version'     => \$options{'version'},
-                    'V|Verbose'     => \$options{'verbose'},
+            'h|help'                  => \$options{'help'},
+            't|tc=s'                  => \$options{'template_cnt'},
+            'p|tp=s'                  => \$options{'template_path'},
+            'r|remove'                => \$options{'remove_template'},
+            'o|output=s'              => \$options{'output_file'},
+            's|seed=s'                => \$options{'seed_node'},
+            'e|exactmatch'            => \$options{'exactmatch'},
+            'i|ignorefirst'           => \$options{'ignorefirst'},
+            'l|user=s'                => \$options{'user'},
+            'devicetype|devicetype=s' => \$options{'devicetype'},
+            'c|cmd=s'                 => \$options{'sinv_cmd'},
+            'f|file=s'                => \$options{'sinv_cmd_file'},
+            'v|version'               => \$options{'version'},
+            'V|Verbose'               => \$options{'verbose'},
         )
       )
     {
@@ -148,7 +150,7 @@ sub parse_and_run_sinv
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "Neither the sinv command, nor the sinv command file have been supplied.\n";
+"Neither the sinv command, nor the sinv command file have been supplied.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
@@ -158,18 +160,18 @@ sub parse_and_run_sinv
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "Both the sinv command, and the sinv command file have been supplied. Only one or the other is allowed.\n";
+"Both the sinv command, and the sinv command file have been supplied. Only one or the other is allowed.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         exit 1;
     }
 
-    if ( defined( $options{template_path} ) && ($options{template_path} !~ /^\//) ) {#relative path
+    if (defined($options{template_path}) && ($options{template_path} !~ /^\//)) { #relative path
         $options{template_path} = xCAT::Utils->full_path($options{template_path}, $request->{cwd}->[0]);
     }
-    if ( defined( $options{output_file} ) && ($options{output_file} !~ /^\//) ) {#relative path
+    if (defined($options{output_file}) && ($options{output_file} !~ /^\//)) { #relative path
         $options{output_file} = xCAT::Utils->full_path($options{output_file}, $request->{cwd}->[0]);
     }
-    if ( defined( $options{sinv_cmd_file} ) && ($options{sinv_cmd_file} !~ /^\//) ) {#relative path
+    if (defined($options{sinv_cmd_file}) && ($options{sinv_cmd_file} !~ /^\//)) { #relative path
         $options{sinv_cmd_file} = xCAT::Utils->full_path($options{sinv_cmd_file}, $request->{cwd}->[0]);
     }
     #
@@ -200,43 +202,47 @@ sub parse_and_run_sinv
     # the command can be either xdsh or rinv for now
     # strip off the program and the noderange
     #
-    my @nodelist  = ();
-    my @cmdparts  = ();
-    my $devicecommand =0;
-    if ($options{'devicetype'}) {  
-      # must split different because devices have commands with spaces
-      @cmdparts  = split(' ', $cmd,3);
-      $devicecommand =1;
+    my @nodelist      = ();
+    my @cmdparts      = ();
+    my $devicecommand = 0;
+    if ($options{'devicetype'}) {
+
+        # must split different because devices have commands with spaces
+        @cmdparts = split(' ', $cmd, 3);
+        $devicecommand = 1;
     } else {
-      @cmdparts  = split(' ', $cmd);
+        @cmdparts = split(' ', $cmd);
     }
     my $cmdtype   = shift @cmdparts;
     my $noderange = shift @cmdparts;
     my @cmd       = ();
-    if ($noderange =~ /^-/)  # if imageupdate not node
-    {    # no noderange
+    if ($noderange =~ /^-/)    # if imageupdate not node
+    {                          # no noderange
         push @cmd, $noderange;    #  put flag back on command
     }
+
     # root is sending the command
     my @envs;
+
     # if -l user id supplied
     if ($options{'user'}) {
-       push @cmd,"-l";
-       push @cmd,$options{'user'};
-       push @envs,"DSH_TO_USERID=$options{'user'}";
+        push @cmd,  "-l";
+        push @cmd,  $options{'user'};
+        push @envs, "DSH_TO_USERID=$options{'user'}";
     }
+
     # if device type supplied
     if ($options{'devicetype'}) {
-       push @cmd,"--devicetype";
-       my $switchtype = $options{'devicetype'};
-       $switchtype =~ s/::/\//g;
-       push @cmd,$switchtype;
+        push @cmd, "--devicetype";
+        my $switchtype = $options{'devicetype'};
+        $switchtype =~ s/::/\//g;
+        push @cmd, $switchtype;
     }
- 
+
     foreach my $part (@cmdparts)
     {
 
-        push @cmd, $part;         # build rest of command
+        push @cmd, $part;    # build rest of command
     }
     if (($cmdtype ne "xdsh") && ($cmdtype ne "rinv"))
     {
@@ -248,11 +254,11 @@ sub parse_and_run_sinv
     }
     my $cmdoutput;
     if ($cmdtype eq "xdsh")
-    {                             # choose output routine to run
+    {                        # choose output routine to run
         $cmdoutput = "xdshoutput";
     }
     else
-    {                             # rinv
+    {                        # rinv
         $cmdoutput = "rinvoutput";
     }
 
@@ -260,14 +266,14 @@ sub parse_and_run_sinv
     #  install image ( -i) for xdsh, only case where noderange is not required
 
     if ($noderange =~ /^-/)
-    {                             # no noderange, it is a flag
+    {    # no noderange, it is a flag
         @nodelist = "NO_NODE_RANGE";
 
         # add flag back to arguments
         $args .= $noderange;
     }
     else
-    {                             # get noderange
+    {    # get noderange
         @nodelist = noderange($noderange);    # expand noderange
         if (nodesmissed)
         {
@@ -402,7 +408,7 @@ sub parse_and_run_sinv
             {                                # error cannot default
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "No template or seed node supplied and no noderange to choose a default.\n";
+"No template or seed node supplied and no noderange to choose a default.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback, 1);
                 exit 1;
             }
@@ -495,17 +501,17 @@ sub parse_and_run_sinv
         @errresult  = ();
         @cmdresult  = ();
         $sub_req->(
-                   {
-                    command => [$cmdtype],
-                    node    => \@seed,
-                    env     => [@envs],
-                    arg     => [@cmd]
-                   },
-                   \&$cmdoutput
-                   );
+            {
+                command => [$cmdtype],
+                node    => \@seed,
+                env     => [@envs],
+                arg     => [@cmd]
+            },
+            \&$cmdoutput
+        );
 
         #  write the results to the tempfile after running through xdshcoll
-        $rc = &storeresults($callback,$devicecommand);
+        $rc = &storeresults($callback, $devicecommand);
 
     }
     $processflg = "node";
@@ -525,18 +531,18 @@ sub parse_and_run_sinv
     @errresult = ();
     @cmdresult = ();
     $sub_req->(
-               {
-                command => [$cmdtype],
-                node    => \@nodelist,
-                env     => [@envs],
-                arg     => [@cmd]
-               },
-               \&$cmdoutput
-               );
+        {
+            command => [$cmdtype],
+            node    => \@nodelist,
+            env     => [@envs],
+            arg     => [@cmd]
+        },
+        \&$cmdoutput
+    );
 
 
     #  write the results to the tempfile after running through xdshcoll
-    $rc = &storeresults($callback,$devicecommand);
+    $rc = &storeresults($callback, $devicecommand);
 
     #  Build report and write to output file
     #  if file exist and has something in it
@@ -549,12 +555,12 @@ sub parse_and_run_sinv
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         xCAT::SINV->buildreport(
-                                $outputfile,   $tempfile,
-                                $templatepath, $templatecnt,
-                                $rmtemplate,   \@nodelist,
-                                $callback,     $ignorefirsttemplate,
-                                $exactmatch,   $admintemplate
-                                );
+            $outputfile,   $tempfile,
+            $templatepath, $templatecnt,
+            $rmtemplate,   \@nodelist,
+            $callback,     $ignorefirsttemplate,
+            $exactmatch,   $admintemplate
+        );
     }
     else
     {
@@ -707,19 +713,19 @@ sub buildreport
                 {                                  # output matches exactly
                     @info =
                       xCAT::SINV->diffoutput($outputfile, \@templatearray,
-                                     \@processNodearray, \%nodehash, $callback);
+                        \@processNodearray, \%nodehash, $callback);
                 }
                 else
                 {    # output is contained in the template
                     @info =
                       xCAT::SINV->compareoutput($outputfile, \@templatearray,
-                                     \@processNodearray, \%nodehash, $callback);
+                        \@processNodearray, \%nodehash, $callback);
                 }
                 $nodename = pop @info;
                 $template = pop @info;
                 if ($nodename ne "UNKNOWN")
                 {
-                    push @{$nodehash{$template}}, $nodename;    # add node name
+                    push @{ $nodehash{$template} }, $nodename;   # add node name
                 }    # to template hash
 
             }
@@ -744,25 +750,25 @@ sub buildreport
         {    # output matches exactly
             @info =
               xCAT::SINV->diffoutput(
-                                     $outputfile, \@templatearray,
-                                     \@Nodearray, \%nodehash,
-                                     $callback
-                                     );
+                $outputfile, \@templatearray,
+                \@Nodearray, \%nodehash,
+                $callback
+              );
         }
         else
         {    # output is contained in the template
             @info =
               xCAT::SINV->compareoutput(
-                                        $outputfile, \@templatearray,
-                                        \@Nodearray, \%nodehash,
-                                        $callback
-                                        );
+                $outputfile, \@templatearray,
+                \@Nodearray, \%nodehash,
+                $callback
+              );
         }
         $nodename = pop @info;
         $template = pop @info;
         if ($nodename ne "UNKNOWN")
         {
-            push @{$nodehash{$template}}, $nodename;
+            push @{ $nodehash{$template} }, $nodename;
         }
     }
 
@@ -771,7 +777,7 @@ sub buildreport
     #
 
     xCAT::SINV->writereport($outputfile, \%nodehash, \@nodelist, $callback,
-                            $ignorefirsttemplate);
+        $ignorefirsttemplate);
 
     #
     # Cleanup  the template files if the remove option was yes
@@ -1067,7 +1073,7 @@ sub diffoutput
                     next;
                 }
                 if ($templateline =~ /UNKNOWN/)
-                {                                # skip UNKNOWN HEADER 
+                {                                # skip UNKNOWN HEADER
                     next;
                 }
                 if ($skiphostline == 1)
@@ -1170,8 +1176,8 @@ sub writereport
     #
     my $rsp = {};
     $ignorefirsttemplate =~ tr/a-z/A-Z/;    # convert to upper
-    my $firstpass = 0;
-    my @allnodearray=();
+    my $firstpass    = 0;
+    my @allnodearray = ();
     foreach my $template (sort keys %nodehash)
     {
 
@@ -1187,9 +1193,9 @@ sub writereport
         }
 
         #print list of nodes
-        @nodenames = @{$nodehash{$template}};
+        @nodenames = @{ $nodehash{$template} };
         my $nodelist = "";
-        @nodearray=();
+        @nodearray = ();
         foreach my $nodenameline (@nodenames)
         {
 
@@ -1198,22 +1204,23 @@ sub writereport
             foreach my $node (@longnodenames)
             {
                 my @shortnodename = split(/\./, $node);
-                push @nodearray, $shortnodename[0];    # add to process list
-                push @allnodearray, $shortnodename[0];  # add to total list
-                $nodelist .= $shortnodename[0];        # add to print list
+                push @nodearray,    $shortnodename[0];    # add to process list
+                push @allnodearray, $shortnodename[0];    # add to total list
+                $nodelist .= $shortnodename[0];           # add to print list
                 $nodelist .= ',';
             }
         }
-      
+
         chop $nodelist;
+
         # convert to noderanges if possible
         my $nodearray;
         $nodearray->{0} = \@nodearray;
-        my $newnodelist = abbreviate_noderange($nodearray->{0});        
+        my $newnodelist = abbreviate_noderange($nodearray->{0});
         if ($ignorefirsttemplate ne "YES")
-        {                                              #  report first template
-                $rsp->{data}->[0] = "$newnodelist\n";
-            
+        {    #  report first template
+            $rsp->{data}->[0] = "$newnodelist\n";
+
             if ($::OUTPUT_FILE_HANDLE)
             {
                 print $::OUTPUT_FILE_HANDLE $rsp->{data}->[0];
@@ -1252,12 +1259,12 @@ sub writereport
     foreach my $dshnodename (@dshnodearray)
     {
         if (($dshnodename ne "NO_NODE_RANGE") && ($dshnodename ne "UNKNOWN"))
-        {                               # skip it
+        {    # skip it
             my @shortdshnodename;
             my @shortnodename;
             chomp $dshnodename;
             $dshnodename =~ s/\s*//g;    # remove blanks
-            #foreach my $nodename (@nodearray)
+                                         #foreach my $nodename (@nodearray)
             foreach my $nodename (@allnodearray)
             {
                 @shortdshnodename = split(/\./, $dshnodename);
@@ -1322,7 +1329,7 @@ sub xdshoutput
     # Handle info structure, like xdsh returns
     if ($rsp->{warning})
     {
-        foreach (@{$rsp->{warning}})
+        foreach (@{ $rsp->{warning} })
         {
             my $line = $_;
             $line .= "\n";
@@ -1331,7 +1338,7 @@ sub xdshoutput
     }
     if ($rsp->{error})
     {
-        foreach (@{$rsp->{error}})
+        foreach (@{ $rsp->{error} })
         {
             my $line = $_;
             $line .= "\n";
@@ -1340,7 +1347,7 @@ sub xdshoutput
     }
     if ($rsp->{info})
     {
-        foreach (@{$rsp->{info}})
+        foreach (@{ $rsp->{info} })
         {
             my $line = $_;
             $line .= "\n";
@@ -1349,7 +1356,7 @@ sub xdshoutput
     }
     if ($rsp->{data})
     {
-        foreach (@{$rsp->{data}})
+        foreach (@{ $rsp->{data} })
         {
             my $line = $_;
             $line .= "\n";
@@ -1373,8 +1380,9 @@ sub xdshoutput
 sub rinvoutput
 {
     my $rsp = shift;
-    #print "I am here \n"; 
-    #print Dumper($rsp); 
+
+    #print "I am here \n";
+    #print Dumper($rsp);
     # Handle node structure, like rinv returns
     my $errflg = 0;
 
@@ -1391,7 +1399,7 @@ sub rinvoutput
             {
                 if (ref($node->{errorcode}) eq 'ARRAY')
                 {
-                    foreach my $ecode (@{$node->{errorcode}})
+                    foreach my $ecode (@{ $node->{errorcode} })
                     {
                         $xCAT::Client::EXITCODE |= $ecode;
                     }
@@ -1452,8 +1460,9 @@ sub rinvoutput
 
 sub storeresults
 {
-    my $callback = shift;
-    my $devicecommand= shift;
+    my $callback      = shift;
+    my $devicecommand = shift;
+
     # open file to write results of xdsh or rinv command
     my $newtempfile = $tempfile;
     $newtempfile .= "temp";
@@ -1510,29 +1519,30 @@ sub storeresults
     close NEWOUTFILE;
 
     system("/bin/rm  $newtempfile");
-    # is device command, we get false errors from the Switch, check for  
+
+    # is device command, we get false errors from the Switch, check for
     # blank error output lines and remove them.  If there is nothing left
     # then there really were no errors
-    my @newerrresult=();
-    my $processerrors =1;
-    if ($devicecommand==1) {
+    my @newerrresult  = ();
+    my $processerrors = 1;
+    if ($devicecommand == 1) {
         foreach my $line (@errresult)
         {
-          my @newline =  (split(/:/, $line));
-          if ($newline[1] !~ /^\s*$/) { # Not blank, then save it 
-            push @newerrresult,$line;  
-          } 
-          
-        } 
-        my $arraysize=@newerrresult;
+            my @newline = (split(/:/, $line));
+            if ($newline[1] !~ /^\s*$/) {    # Not blank, then save it
+                push @newerrresult, $line;
+            }
+
+        }
+        my $arraysize = @newerrresult;
         if ($arraysize < 1) {
-            $processerrors =0;
+            $processerrors = 0;
         }
     }
 
     # capture errors
     #
-    if ((@errresult) && ($processerrors ==1))
+    if ((@errresult) && ($processerrors == 1))
     {    # if errors
         my $rsp = {};
         my $i   = 0;

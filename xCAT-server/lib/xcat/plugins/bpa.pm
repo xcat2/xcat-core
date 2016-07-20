@@ -9,16 +9,16 @@ use xCAT::PPC;
 # Command handler method from tables
 ##########################################################################
 sub handled_commands {
-  return {
-      rpower      => 'nodehm:power,mgt',
-      rspconfig   => 'nodehm:mgt',
-      mkhwconn    => 'nodehm:mgt',
-      rmhwconn    => 'nodehm:mgt',
-      lshwconn    => 'nodehm:mgt',
-      rinv        => 'nodehm:mgt',
-      rflash      => 'nodehm:mgt',
-      rvitals     => 'nodehm:mgt'
-  };
+    return {
+        rpower    => 'nodehm:power,mgt',
+        rspconfig => 'nodehm:mgt',
+        mkhwconn  => 'nodehm:mgt',
+        rmhwconn  => 'nodehm:mgt',
+        lshwconn  => 'nodehm:mgt',
+        rinv      => 'nodehm:mgt',
+        rflash    => 'nodehm:mgt',
+        rvitals   => 'nodehm:mgt'
+    };
 }
 
 ##########################################################################
@@ -42,19 +42,19 @@ sub preprocess_request {
     #######################################################
     $IO::Socket::SSL::VERSION = undef;
     eval { require Net::SSL };
-    if ( $@ ) {
+    if ($@) {
         my $callback = $_[1];
-        $callback->( {errorcode=>1,data=>[$@]} );
-        return(1);
+        $callback->({ errorcode => 1, data => [$@] });
+        return (1);
     }
-    xCAT::PPC::preprocess_request(__PACKAGE__,@_);
+    xCAT::PPC::preprocess_request(__PACKAGE__, @_);
 }
 
 ##########################################################################
 # Process request from xCat daemon
 ##########################################################################
 sub process_request {
-    xCAT::PPC::process_request(__PACKAGE__,@_);
+    xCAT::PPC::process_request(__PACKAGE__, @_);
 }
 
 

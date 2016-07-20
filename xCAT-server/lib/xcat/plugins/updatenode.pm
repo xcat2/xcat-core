@@ -59,11 +59,11 @@ my $RERUNPS4SECURITY;
 sub handled_commands
 {
     return {
-            updatenode           => "updatenode",
-            updatenodestat       => "updatenode",
-            updatemynodestat     => "updatenode",
-            updatenodeappstat    => "updatenode",
-            };
+        updatenode        => "updatenode",
+        updatenodestat    => "updatenode",
+        updatemynodestat  => "updatenode",
+        updatenodeappstat => "updatenode",
+    };
 }
 
 #-------------------------------------------------------
@@ -189,7 +189,7 @@ sub preprocess_updatenode
     my @requests = ();
 
     my $installdir = xCAT::TableUtils->getInstallDir();
-    my $localhost = hostname();
+    my $localhost  = hostname();
 
     # subroutine to display the usage
     sub updatenode_usage
@@ -197,7 +197,7 @@ sub preprocess_updatenode
         my $cb           = shift;
         my $rsp          = {};
         my $usage_string = xCAT::Usage->getUsage("updatenode");
-        push @{$rsp->{data}}, $usage_string;
+        push @{ $rsp->{data} }, $usage_string;
 
         $cb->($rsp);
     }
@@ -209,29 +209,29 @@ sub preprocess_updatenode
     }
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
+    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'A|updateallsw' => \$ALLSW,
-                    'c|cmdlineonly' => \$CMDLINE,
-                    'd=s'           => \$ALTSRC,
-                    'h|help'        => \$HELP,
-                    'v|version'     => \$VERSION,
-                    'V|verbose'     => \$VERBOSE,
-                    'F|sync'        => \$FILESYNC,
-                    'g|genmypost'   => \$GENMYPOST,
-                    'l|user=s'      => \$USER,
-                    'f|snsync'      => \$SNFILESYNC,
-                    'S|sw'          => \$SWMAINTENANCE,
-                    's|sn'          => \$SETSERVER,
-                    'P|scripts:s'   => \$RERUNPS,
-                    'k|security'    => \$SECURITY,
-                    'o|os=s'        => \$OS,
-                    'fanout=i'      => \$fanout,
-                    't|timetout=i'  => \$timeout,
-                    'n|noverify'    => \$NOVERIFY, 
+            'A|updateallsw' => \$ALLSW,
+            'c|cmdlineonly' => \$CMDLINE,
+            'd=s'           => \$ALTSRC,
+            'h|help'        => \$HELP,
+            'v|version'     => \$VERSION,
+            'V|verbose'     => \$VERBOSE,
+            'F|sync'        => \$FILESYNC,
+            'g|genmypost'   => \$GENMYPOST,
+            'l|user=s'      => \$USER,
+            'f|snsync'      => \$SNFILESYNC,
+            'S|sw'          => \$SWMAINTENANCE,
+            's|sn'          => \$SETSERVER,
+            'P|scripts:s'   => \$RERUNPS,
+            'k|security'    => \$SECURITY,
+            'o|os=s'        => \$OS,
+            'fanout=i'      => \$fanout,
+            't|timetout=i'  => \$timeout,
+            'n|noverify'    => \$NOVERIFY,
 
         )
       )
@@ -239,54 +239,55 @@ sub preprocess_updatenode
         &updatenode_usage($callback);
         return;
     }
+
     # These globals are used in the updatenode subroutines,
     #  need to undefine them if not defined in GetOpts
     # to make updatenode be able to be called multiple times in one process.
-    # $RERUNPS can be set later in the logic based on other input 
+    # $RERUNPS can be set later in the logic based on other input
     if (defined($VERBOSE)) {
-       $::VERBOSE=$VERBOSE;
+        $::VERBOSE = $VERBOSE;
     } else {
-       undef $::VERBOSE;
+        undef $::VERBOSE;
     }
     if (defined($timeout)) {
-       $::timeout=$timeout;
+        $::timeout = $timeout;
     } else {
-       undef $::timeout;
+        undef $::timeout;
     }
     if (defined($NOVERIFY)) {
-       $::NOVERIFY=$NOVERIFY;
+        $::NOVERIFY = $NOVERIFY;
     } else {
-       undef $::NOVERIFY;
+        undef $::NOVERIFY;
     }
     if (defined($fanout)) {
-       $::fanout=$fanout;
+        $::fanout = $fanout;
     } else {
-       undef $::fanout;
+        undef $::fanout;
     }
     if (defined($USER)) {
-       $::USER=$USER;
+        $::USER = $USER;
     } else {
-       undef $::USER;
+        undef $::USER;
     }
     if (defined($ALTSRC)) {
-       $::ALTSRC=$ALTSRC;
+        $::ALTSRC = $ALTSRC;
     } else {
-       undef $::ALTSRC;
+        undef $::ALTSRC;
     }
     if (defined($ALLSW)) {
-       $::ALLSW=$ALLSW;
+        $::ALLSW = $ALLSW;
     } else {
-       undef $::ALLSW;
+        undef $::ALLSW;
     }
     if (defined($SETSERVER)) {
-       $::SETSERVER=$SETSERVER;
+        $::SETSERVER = $SETSERVER;
     } else {
-       undef $::SETSERVER;
+        undef $::SETSERVER;
     }
     if (defined($OS)) {
-       $::OS=$OS;
+        $::OS = $OS;
     } else {
-       undef $::OS;
+        undef $::OS;
     }
 
     # display the usage if -h or --help is specified
@@ -312,49 +313,51 @@ sub preprocess_updatenode
     if ($GENMYPOST)
     {
         # precreatemypostscript has to be yes/1 or do nothing
-        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
-        if ($entries[0] ) {
-          $entries[0] =~ tr/a-z/A-Z/;
-          if ($entries[0] =~ /^(1|YES)$/ ) {
-            # now check if sharedtftp = 0, if it is we need to broadcast to all the servicenode
-            # if there are service nodes
-            my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
-            my $t_entry = $entries[0];
-            if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
-              # see if there are any servicenodes.  If so then run updatenode -g on all of them
-               my @SN;
-               my @CN;
-               my $nodes = $request->{node};
-               xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
-               if (@CN >0 ) { # if compute nodes broadcast to all servicenodes
-                    return xCAT::Scope->get_broadcast_scope($request,@_);
-               }
-            } else {  # sharedtftp=yes, just run on MN
-              my $notmpfiles=1;
-              my $nofiles=0;
-              xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
-              my $rsp = {};
-              $rsp->{data}->[0] = "Generated new mypostscript files on $localhost";
-              $callback->($rsp);
-              return 0;
+        my @entries = xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0]) {
+            $entries[0] =~ tr/a-z/A-Z/;
+            if ($entries[0] =~ /^(1|YES)$/) {
+
+                # now check if sharedtftp = 0, if it is we need to broadcast to all the servicenode
+                # if there are service nodes
+                my @entries = xCAT::TableUtils->get_site_attribute("sharedtftp");
+                my $t_entry = $entries[0];
+                if (defined($t_entry) and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
+
+                    # see if there are any servicenodes.  If so then run updatenode -g on all of them
+                    my @SN;
+                    my @CN;
+                    my $nodes = $request->{node};
+                    xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+                    if (@CN > 0) { # if compute nodes broadcast to all servicenodes
+                        return xCAT::Scope->get_broadcast_scope($request, @_);
+                    }
+                } else {    # sharedtftp=yes, just run on MN
+                    my $notmpfiles = 1;
+                    my $nofiles    = 0;
+                    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq, $notmpfiles, $nofiles);
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Generated new mypostscript files on $localhost";
+                    $callback->($rsp);
+                    return 0;
+                }
+            } else {    # not valid unless precreatemypostscripts enabled
+                my $rsp = {};
+                $rsp->{error}->[0] =
+"This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+                $rsp->{errorcode}->[0] = 1;
+                $callback->($rsp);
+                return;
             }
-          } else {  # not valid unless precreatemypostscripts enabled
+        } else {    # precreatemypostscripts not in the site table
             my $rsp = {};
             $rsp->{error}->[0] =
-              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
+"This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] = 1;
             $callback->($rsp);
-            return ;
-          }
-        } else { # precreatemypostscripts not in the site table
-            my $rsp = {};
-            $rsp->{error}->[0] =
-             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
-            $callback->($rsp);
-            return ;
+            return;
         }
-    }  # end GENMYPOST
+    }    # end GENMYPOST
 
 
 
@@ -368,39 +371,42 @@ sub preprocess_updatenode
         return;
     }
 
-    # -s must not be with any other flag, this updates xcatinfo and run setuppostbootscripts 
+    # -s must not be with any other flag, this updates xcatinfo and run setuppostbootscripts
     if ($SETSERVER && ($SWMAINTENANCE || $RERUNPS || $SECURITY))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you specify the -s flag you must not specify either the -S or -k or -P
+"If you specify the -s flag you must not specify either the -S or -k or -P
  flags";
         $callback->($rsp);
         return;
-    } 
+    }
+
     # For -s flag just run this one script
     if ($SETSERVER) {
-       $RERUNPS            = "setuppostbootscripts";
+        $RERUNPS = "setuppostbootscripts";
     }
+
     # -f or -F not both
     if (($FILESYNC) && ($SNFILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "You can not specify both the -f and -F flags.";
-        $rsp->{errorcode}->[0] =1;
+        $rsp->{errorcode}->[0] = 1;
         $callback->($rsp);
         return;
     }
-    # -f must not be with any other flag, this updates service nodes syncfiles 
+
+    # -f must not be with any other flag, this updates service nodes syncfiles
     if ($SNFILESYNC && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $SECURITY || $FILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
-        $rsp->{errorcode}->[0] =1;
+"If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
+        $rsp->{errorcode}->[0] = 1;
         $callback->($rsp);
         return;
-    } 
+    }
 
     # --security cannot work with -S -P -F -f
     if ($SECURITY
@@ -408,8 +414,8 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
-        $rsp->{errorcode}->[0] =1;
+"If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
+        $rsp->{errorcode}->[0] = 1;
         $callback->($rsp);
         return;
     }
@@ -424,11 +430,11 @@ sub preprocess_updatenode
         if (
             $#ARGV == 0
             && !(
-                    $FILESYNC
-                 || $SNFILESYNC
-                 || $SWMAINTENANCE
-                 || defined($RERUNPS)
-                 || $SECURITY
+                $FILESYNC
+                || $SNFILESYNC
+                || $SWMAINTENANCE
+                || defined($RERUNPS)
+                || $SECURITY
             )
           )
         {
@@ -453,14 +459,14 @@ sub preprocess_updatenode
             # no flags and no operands, set defaults
             if (
                 !(
-                      $FILESYNC
-                   || $SWMAINTENANCE
-                   || defined($RERUNPS)
-                   || $SECURITY
+                    $FILESYNC
+                    || $SWMAINTENANCE
+                    || defined($RERUNPS)
+                    || $SECURITY
                 )
               )
             {
-                $FILESYNC      = 1;   # these are the defaults when no flags input to updatenode 
+                $FILESYNC = 1; # these are the defaults when no flags input to updatenode
                 $SWMAINTENANCE = 1;
                 $RERUNPS       = "";
             }
@@ -485,7 +491,7 @@ sub preprocess_updatenode
         my @mname = xCAT::Utils->noderangecontainsMn(@$nodes);
         if (@mname)
         {    # MN in the nodelist
-            my $nodes=join(',', @mname);
+            my $nodes = join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
               "You must not run -k option against a management node: $nodes.";
@@ -509,7 +515,7 @@ sub preprocess_updatenode
         {
             $request->{node}      = \@CN;
             $request->{noderange} = \@CN;
-            $RERUNPS            = "remoteshell";
+            $RERUNPS              = "remoteshell";
         }
         else
         {    # no more nodes
@@ -587,7 +593,7 @@ sub preprocess_updatenode
                     {
                         my $rsp = {};
                         $rsp->{data}->[0] =
-                          "The postscript $installdir/postscripts/$aa[0] does not exist.";
+"The postscript $installdir/postscripts/$aa[0] does not exist.";
                         $callback->($rsp);
                         return;
                     }
@@ -603,7 +609,7 @@ sub preprocess_updatenode
                 {    # invalid
                     my $rsp = {};
                     $rsp->{data}->[0] =
-                      "Only one internal postscript can be used with -P. Postscripts input were as follows:$postscripts";
+"Only one internal postscript can be used with -P. Postscripts input were as follows:$postscripts";
                     $callback->($rsp);
                     return;
                 }
@@ -640,7 +646,7 @@ sub preprocess_updatenode
         {
             my $rsp = {};
             $rsp->{data}->[0] =
-              "The call to CFMUtils to build synclist returned an errorcode=$rc.";
+"The call to CFMUtils to build synclist returned an errorcode=$rc.";
             $callback->($rsp);
             return;
 
@@ -666,143 +672,145 @@ sub preprocess_updatenode
             return undef;
         }
     }
-    
+
     #  Determine if we are dealing with hierarchy
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
         $rsp->{data}->[0] =
-         "Could not get list of xCAT service nodes";
+          "Could not get list of xCAT service nodes";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
 
     }
 
     # Get the MN names
-    my @MNip = xCAT::NetworkUtils->determinehostname;
+    my @MNip         = xCAT::NetworkUtils->determinehostname;
     my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
-    my $MNnodename   = pop @MNnodeinfo;                  # hostname
-    my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
+    my $MNnodename   = pop @MNnodeinfo;                         # hostname
+    my @MNnodeipaddr = @MNnodeinfo;                             # ipaddresses
 
     # if no service nodes, or I am on a Service Node, then no hierarchy to deal with
 
-    my @sns  = ();
-    if (! (xCAT::Utils->isServiceNode())) {  # not on a servicenode
-       if ($sn)
-       {
-         foreach my $snkey (keys %$sn)
-         {
-           if (!grep(/$snkey/, @MNnodeipaddr))  # don't put the MN in the array
-           {     # if not the MN
+    my @sns = ();
+    if (!(xCAT::Utils->isServiceNode())) {    # not on a servicenode
+        if ($sn)
+        {
+            foreach my $snkey (keys %$sn)
+            {
+                if (!grep(/$snkey/, @MNnodeipaddr)) # don't put the MN in the array
+                {                                   # if not the MN
                     push @sns, $snkey;
 
-           }
-         }
-       }
+                }
+            }
+        }
     }
+
     # check if no servicenodes for noderange and using the -f flag
     if ($SNFILESYNC) {
-      if (!(scalar(@sns))) {
-        my $rsp;
-        $rsp->{data}->[0] =
-         "There are no servicenodes to process for the noderange in the updatenode -f command.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return;
-      }
+        if (!(scalar(@sns))) {
+            my $rsp;
+            $rsp->{data}->[0] =
+"There are no servicenodes to process for the noderange in the updatenode -f command.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
     }
-    # process the -F or -f flags 
+
+    # process the -F or -f flags
     if (($FILESYNC) || ($SNFILESYNC))
     {
-       # If it is only -F or -f  in the command, which are always run on the MN, 
-       # then run it now and you are
-       # finished.
-       if ((!defined($SWMAINTENANCE))  && (!defined($RERUNPS))) {
-        $request->{_xcatpreprocessed}->[0] = 1;
-        &updatenode($request, $callback, $subreq);
-        return;
-       } else {  
-         if (@sns)  {  # if servicenodes
-           # We have a command with -F and -S and/or -P 
-           # if hierarchical we need to run -f now from the managment node 
-           # to sync the service nodes
-           my $reqcopy ;
-           $reqcopy->{arg}->[0] = "-f";
-           $reqcopy->{_xcatpreprocessed}->[0] = 1;
-           $reqcopy->{SNFileSyncing}->[0] = "yes";
-           $reqcopy->{command}->[0] = $request->{command}->[0];
-           $reqcopy->{environment} = $request->{environment};
-           $reqcopy->{node} = $request->{node};
-           $reqcopy->{noderange} = $request->{noderange};
-           $reqcopy->{username} = $request->{username};
-           $reqcopy->{clienttype} = $request->{clientype};
-           $reqcopy->{cwd} = $request->{cwd};
-           &updatenodesyncfiles($reqcopy, $subreq, $callback);
-         }
-      }
+        # If it is only -F or -f  in the command, which are always run on the MN,
+        # then run it now and you are
+        # finished.
+        if ((!defined($SWMAINTENANCE)) && (!defined($RERUNPS))) {
+            $request->{_xcatpreprocessed}->[0] = 1;
+            &updatenode($request, $callback, $subreq);
+            return;
+        } else {
+            if (@sns) {    # if servicenodes
+                 # We have a command with -F and -S and/or -P
+                 # if hierarchical we need to run -f now from the managment node
+                 # to sync the service nodes
+                my $reqcopy;
+                $reqcopy->{arg}->[0]               = "-f";
+                $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                $reqcopy->{SNFileSyncing}->[0]     = "yes";
+                $reqcopy->{command}->[0]           = $request->{command}->[0];
+                $reqcopy->{environment}            = $request->{environment};
+                $reqcopy->{node}                   = $request->{node};
+                $reqcopy->{noderange}              = $request->{noderange};
+                $reqcopy->{username}               = $request->{username};
+                $reqcopy->{clienttype}             = $request->{clientype};
+                $reqcopy->{cwd}                    = $request->{cwd};
+                &updatenodesyncfiles($reqcopy, $subreq, $callback);
+            }
+        }
     }
 
-    
+
     if (defined($SWMAINTENANCE))
     {
-            $request->{swmaintenance}->[0] = "yes";
+        $request->{swmaintenance}->[0] = "yes";
 
-            # send along the update info and osimage defs
-            if ($imagedef)
-            {
-                xCAT::InstUtils->taghash($imagedef);
-                $request->{imagedef} = [$imagedef];
-            }
-            if ($updateinfo)
-            {
-                xCAT::InstUtils->taghash($updateinfo);
-                $request->{updateinfo} = [$updateinfo];
-            }
-     }
-     if (defined($RERUNPS))
-     {
-            $request->{rerunps}->[0] = "yes";
-            $request->{postscripts} = [$postscripts];
-            if (defined($::SECURITY))
-            {
-                $request->{rerunps4security}->[0] = "yes";
-            }
-     }
+        # send along the update info and osimage defs
+        if ($imagedef)
+        {
+            xCAT::InstUtils->taghash($imagedef);
+            $request->{imagedef} = [$imagedef];
+        }
+        if ($updateinfo)
+        {
+            xCAT::InstUtils->taghash($updateinfo);
+            $request->{updateinfo} = [$updateinfo];
+        }
+    }
+    if (defined($RERUNPS))
+    {
+        $request->{rerunps}->[0] = "yes";
+        $request->{postscripts} = [$postscripts];
+        if (defined($::SECURITY))
+        {
+            $request->{rerunps4security}->[0] = "yes";
+        }
+    }
 
-     if (defined($SECURITY))
-     {
-            $request->{security}->[0] = "yes";
-     }
+    if (defined($SECURITY))
+    {
+        $request->{security}->[0] = "yes";
+    }
 
-     #
-     # Handle updating OS
-     #
-     if (defined($OS))
-     {
-            $request->{os}->[0] = "yes";
-     }
+    #
+    # Handle updating OS
+    #
+    if (defined($OS))
+    {
+        $request->{os}->[0] = "yes";
+    }
 
 
     #
     # if hierarchy,  then build the request for the service nodes
     #
-    if (@sns)  {  # if servicenodes
-      # build each request for each servicenode 
-      foreach my $snkey (keys %$sn)
-      {
+    if (@sns) {    # if servicenodes
+                   # build each request for each servicenode
+        foreach my $snkey (keys %$sn)
+        {
 
 
-        # build request
+            # build request
 
-        my $reqcopy = {%$request};
-        $reqcopy->{node}                   = $sn->{$snkey};
-        $reqcopy->{'_xcatdest'}            = $snkey;
-        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            my $reqcopy = {%$request};
+            $reqcopy->{node}                   = $sn->{$snkey};
+            $reqcopy->{'_xcatdest'}            = $snkey;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
-        push @requests, $reqcopy;
+            push @requests, $reqcopy;
 
-      }
-    } else { # no hierarchy, process it right now , here on the MN
+        }
+    } else {    # no hierarchy, process it right now , here on the MN
         $request->{_xcatpreprocessed}->[0] = 1;
         &updatenode($request, $callback, $subreq);
         return;
@@ -837,7 +845,7 @@ sub update_SN_security
     if ($::ERROR_RC)
     {
         my $rsp;
-        push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+        push @{ $rsp->{data} }, "Could not get list of xCAT service nodes.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
 
@@ -894,8 +902,8 @@ sub update_SN_security
             {
                 next;
             }
-            if (   (grep /ps ok/, @{$::NODEOUT->{$sn}})
-                && (grep /ssh ok/, @{$::NODEOUT->{$sn}}))
+            if ((grep /ps ok/, @{ $::NODEOUT->{$sn} })
+                && (grep /ssh ok/, @{ $::NODEOUT->{$sn} }))
             {
                 push @::good_sns, $sn;
             }
@@ -904,10 +912,10 @@ sub update_SN_security
         if ($::VERBOSE)
         {
             my $rsp;
-            push @{$rsp->{data}},
+            push @{ $rsp->{data} },
               "Update security for following service nodes: @sns.";
-            push @{$rsp->{data}},
-              "  Following service nodes have been updated successfully: @::good_sns";
+            push @{ $rsp->{data} },
+"  Following service nodes have been updated successfully: @::good_sns";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
 
@@ -938,47 +946,48 @@ sub security_update_sshkeys
 
     # remove the host key from known_hosts
     xCAT::Utils->runxcmd(
-                         {
-                          command => ['makeknownhosts'],
-                          node    => \@$nodes,
-                          arg     => ['-r'],
-                         },
-                         $subreq, 0, 1
-                         );
+        {
+            command => ['makeknownhosts'],
+            node    => \@$nodes,
+            arg     => ['-r'],
+        },
+        $subreq, 0, 1
+    );
 
     if ($::VERBOSE)
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "  $localhostname: run makeknownhosts to clean known_hosts file for nodes: @$nodes";
+"  $localhostname: run makeknownhosts to clean known_hosts file for nodes: @$nodes";
         $callback->($rsp);
     }
 
     # call the xdsh -K to set up the ssh keys
-    my @envs = @{$request->{environment}};
+    my @envs = @{ $request->{environment} };
     my $args;
-    push @$args,"-K"; 
-    if (defined($::timeout))  {  # timeout 
-       push @$args,"-t" ;
-       push @$args,$::timeout;
+    push @$args, "-K";
+    if (defined($::timeout)) {    # timeout
+        push @$args, "-t";
+        push @$args, $::timeout;
     }
-    my $res  =
+    my $res =
       xCAT::Utils->runxcmd(
-                           {
-                            command => ['xdsh'],
-                            node    => \@$nodes,
-                            arg     => $args,
-                            env     => \@envs,
-                           },
-                           $subreq, 0, 1
-                           );
+        {
+            command => ['xdsh'],
+            node    => \@$nodes,
+            arg     => $args,
+            env     => \@envs,
+        },
+        $subreq, 0, 1
+      );
 
     if ($::VERBOSE)
     {
         my $rsp = {};
+
         # not display password in verbose mode.
         $rsp->{data}->[0] =
-          "  $localhostname: Internal call command: xdsh  @$nodes " . join(' ', @$args);
+"  $localhostname: Internal call command: xdsh  @$nodes " . join(' ', @$args);
         $rsp->{data}->[1] =
           "  $localhostname: return messages of last command: @$res";
         $callback->($rsp);
@@ -1004,11 +1013,11 @@ sub security_update_sshkeys
     {
         if (grep /^$node$/, @failednodes)
         {
-            push @{$rsp->{data}}, "$node: Setup ssh keys failed.";
+            push @{ $rsp->{data} }, "$node: Setup ssh keys failed.";
         }
         else
         {
-            push @{$rsp->{data}}, "$node: Setup ssh keys has completed.";
+            push @{ $rsp->{data} }, "$node: Setup ssh keys has completed.";
         }
     }
     $callback->($rsp);
@@ -1036,24 +1045,29 @@ sub updatenode
     my $request  = shift;
     my $callback = shift;
     my $subreq   = shift;
-    @::SUCCESSFULLNODES=();
-    @::FAILEDNODES=();
+    @::SUCCESSFULLNODES = ();
+    @::FAILEDNODES      = ();
+
     #print Dumper($request);
-    my $nodes         = $request->{node};
+    my $nodes = $request->{node};
+
     #$request->{status}= "yes";  # for testing
     my $localhostname = hostname();
-    $::CALLERCALLBACK=$callback;
+    $::CALLERCALLBACK = $callback;
+
     # if status return requested
     my $numberofnodes;
+
     # This is an internal call from another plugin requesting status
     # currently this is not displayed is only returned and not displayed
-    # by updatenode. 
-    if ((defined($request->{status})) && ($request->{status} eq "yes")) {  
-      $numberofnodes = @$nodes;
-      my $rsp = {};
-      $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes";
-      $callback->($rsp); 
+    # by updatenode.
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+        $numberofnodes = @$nodes;
+        my $rsp = {};
+        $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes";
+        $callback->($rsp);
     }
+
     # in a mixed cluster we could potentially have both AIX and Linux
     #	nodes provided on the command line ????
     my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes($nodes);
@@ -1091,80 +1105,81 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
+    my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'A|updateallsw' => \$ALLSW,
-                    'c|cmdlineonly' => \$CMDLINE,
-                    'd=s'           => \$ALTSRC,
-                    'g|genmypost'   => \$GENMYPOST,
-                    'h|help'        => \$HELP,
-                    'v|version'     => \$VERSION,
-                    'V|verbose'     => \$VERBOSE,
-                    'F|sync'        => \$FILESYNC,
-                    'l|user=s'      => \$USER,
-                    'f|snsync'      => \$SNFILESYNC,
-                    'S|sw'          => \$SWMAINTENANCE,
-                    's|sn'          => \$SETSERVER,
-                    'P|scripts:s'   => \$RERUNPS,
-                    'k|security'    => \$SECURITY,
-                    'o|os=s'        => \$OS,
-                    'fanout=i'      => \$fanout,
-                    't|timetout=i'  => \$timeout,
-                    'n|noverify'    => \$NOVERIFY,
+            'A|updateallsw' => \$ALLSW,
+            'c|cmdlineonly' => \$CMDLINE,
+            'd=s'           => \$ALTSRC,
+            'g|genmypost'   => \$GENMYPOST,
+            'h|help'        => \$HELP,
+            'v|version'     => \$VERSION,
+            'V|verbose'     => \$VERBOSE,
+            'F|sync'        => \$FILESYNC,
+            'l|user=s'      => \$USER,
+            'f|snsync'      => \$SNFILESYNC,
+            'S|sw'          => \$SWMAINTENANCE,
+            's|sn'          => \$SETSERVER,
+            'P|scripts:s'   => \$RERUNPS,
+            'k|security'    => \$SECURITY,
+            'o|os=s'        => \$OS,
+            'fanout=i'      => \$fanout,
+            't|timetout=i'  => \$timeout,
+            'n|noverify'    => \$NOVERIFY,
         )
       )
     {
     }
+
     # These globals are used in the updatenode subroutines,
     #  need to undefine them if not defined in GetOpts
     # to make updatenode be able to be called multiple times in one process.
     if (defined($VERBOSE)) {
-       $::VERBOSE=$VERBOSE;
+        $::VERBOSE = $VERBOSE;
     } else {
-       undef $::VERBOSE;
+        undef $::VERBOSE;
     }
     if (defined($timeout)) {
-       $::timeout=$timeout;
+        $::timeout = $timeout;
     } else {
-       undef $::timeout;
+        undef $::timeout;
     }
     if (defined($NOVERIFY)) {
-       $::NOVERIFY=$NOVERIFY;
+        $::NOVERIFY = $NOVERIFY;
     } else {
-       undef $::NOVERIFY;
+        undef $::NOVERIFY;
     }
     if (defined($fanout)) {
-       $::fanout=$fanout;
+        $::fanout = $fanout;
     } else {
-       undef $::fanout;
+        undef $::fanout;
     }
     if (defined($USER)) {
-       $::USER=$USER;
+        $::USER = $USER;
     } else {
-       undef $::USER;
+        undef $::USER;
     }
     if (defined($ALTSRC)) {
-       $::ALTSRC=$ALTSRC;
+        $::ALTSRC = $ALTSRC;
     } else {
-       undef $::ALTSRC;
+        undef $::ALTSRC;
     }
     if (defined($ALLSW)) {
-       $::ALLSW=$ALLSW;
+        $::ALLSW = $ALLSW;
     } else {
-       undef $::ALLSW;
+        undef $::ALLSW;
     }
     if (defined($SETSERVER)) {
-       $::SETSERVER=$SETSERVER;
+        $::SETSERVER = $SETSERVER;
     } else {
-       undef $::SETSERVER;
+        undef $::SETSERVER;
     }
     if (defined($OS)) {
-       $::OS=$OS;
+        $::OS = $OS;
     } else {
-       undef $::OS;
+        undef $::OS;
     }
 
     #
@@ -1191,35 +1206,36 @@ sub updatenode
             $::attrres{$attr} = $value;
         }
     }
-    # Just generate mypostscripts file and get out 
+
+    # Just generate mypostscripts file and get out
     if ($GENMYPOST)
     {
-        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
-        if ($entries[0] ) {
-          $entries[0] =~ tr/a-z/A-Z/;
-          if ($entries[0] =~ /^(1|YES)$/ ) {
+        my @entries = xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0]) {
+            $entries[0] =~ tr/a-z/A-Z/;
+            if ($entries[0] =~ /^(1|YES)$/) {
 
-            my $notmpfiles=1;
-            my $nofiles=0;
-            xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
-            my $rsp = {};
-            $rsp->{data}->[0] = "Generated new mypostscript files on $localhostname";
-            $callback->($rsp);
-          } else {  # not valid unless precreatemypostscripts enabled
+                my $notmpfiles = 1;
+                my $nofiles    = 0;
+                xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq, $notmpfiles, $nofiles);
+                my $rsp = {};
+                $rsp->{data}->[0] = "Generated new mypostscript files on $localhostname";
+                $callback->($rsp);
+            } else {    # not valid unless precreatemypostscripts enabled
+                my $rsp = {};
+                $rsp->{error}->[0] =
+"This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+                $rsp->{errorcode}->[0] = 1;
+                $callback->($rsp);
+                return;
+            }
+        } else {    # not in the site table
             my $rsp = {};
             $rsp->{error}->[0] =
-              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
+"This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] = 1;
             $callback->($rsp);
-            return ;
-          }
-        } else { # not in the site table
-            my $rsp = {};
-            $rsp->{error}->[0] =
-             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
-            $callback->($rsp);
-            return ;
+            return;
         }
         return 0;
     }
@@ -1227,24 +1243,25 @@ sub updatenode
     #create each /tftpboot/mypostscript/mypostscript.<nodename> for each node
     # This first removes the old one if precreatemypostscripts =0 or undefined
     # call create files but no tmp files
-    my $notmpfiles=1;
-    my $nofiles=0;
+    my $notmpfiles = 1;
+    my $nofiles    = 0;
+
     #my $nofiles=1;
-    my @exclude_nodes = xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+    my @exclude_nodes = xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq, $notmpfiles, $nofiles);
 
     # exclude_nodes list contains nodes which have some attributes missing from node definition, like arch or os.
     # remove those nodes from the request node list so that updatenode will not be executes on those nodes
     foreach my $exclude_node (@exclude_nodes) {
-       my $index = 0;
-       $index++ until @{$request->{node}}[$index] eq $exclude_node;
-       splice(@{$request->{node}}, $index, 1);
+        my $index = 0;
+        $index++ until @{ $request->{node} }[$index] eq $exclude_node;
+        splice(@{ $request->{node} }, $index, 1);
     }
     if (@exclude_nodes > 0) {
-       my $rsp = {};
-       $rsp->{error}->[0] =
-       "Following nodes will be ignored bacause they are missing some attributes or have incorrect configuration: @exclude_nodes";
-       $rsp->{errorcode}->[0] =1;
-       $callback->($rsp);
+        my $rsp = {};
+        $rsp->{error}->[0] =
+"Following nodes will be ignored bacause they are missing some attributes or have incorrect configuration: @exclude_nodes";
+        $rsp->{errorcode}->[0] = 1;
+        $callback->($rsp);
     }
 
     # convert the hashes back to the way they were passed in
@@ -1260,22 +1277,22 @@ sub updatenode
         $updates = $flatreq->{updateinfo};
     }
 
-    # if not just using the -k flag, then set all nodes to syncing in 
+    # if not just using the -k flag, then set all nodes to syncing in
     # nodelist updatestatus  for the other updatenode options
     if (!($::SECURITY)) {
-     my $stat="syncing";
-     xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        my $stat = "syncing";
+        xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
     }
 
-    
-       
+
+
     #
     #  handle file synchronization
     #
     if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
         || (
-            (   $request->{SNFileSyncing}
-             && $request->{SNFileSyncing}->[0] eq "yes")))
+            ($request->{SNFileSyncing}
+                && $request->{SNFileSyncing}->[0] eq "yes")))
     {
         &updatenodesyncfiles($request, $subreq, $callback);
     }
@@ -1288,16 +1305,16 @@ sub updatenode
             # mixed cluster enviornment, Linux MN=>AIX node
             # linux nfs client can not mount AIX nfs directory with default settings.
             # settting nfs_use_reserved_ports=1 could solve the problem
-            my $cmd    = qq~nfso -o nfs_use_reserved_ports=1~;
+            my $cmd = qq~nfso -o nfs_use_reserved_ports=1~;
             my $output =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $AIXnodes, $cmd,
-                                    0);
+                0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}},
-                  "Could not set nfs_use_reserved_ports=1 on nodes. Error message is:\n";
-                push @{$rsp->{data}}, "$output\n";
+                push @{ $rsp->{data} },
+"Could not set nfs_use_reserved_ports=1 on nodes. Error message is:\n";
+                push @{ $rsp->{data} }, "$output\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
@@ -1324,13 +1341,14 @@ sub updatenode
         my @mname = xCAT::Utils->noderangecontainsMn(@$nodes);
         if (@mname)
         {    # MN in the nodelist
-            my $nodes=join(',', @mname);
+            my $nodes = join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
               "You must not run -k option against a management node: $nodes.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
+
         # setup the root ssh keys ( runs xdsh -k)
 
         &security_update_sshkeys($request, $callback, $subreq, \@$nodes);
@@ -1394,54 +1412,57 @@ sub updatenode
             waitpid($_, 0);
         }
     }
+
     # if immediate return of status not requested (PCM), then update the DB here
     # in one transaction, otherwise it is updated in getdata callback and buildnodestatus
     if (!(defined($request->{status})) || ($request->{status} ne "yes")) {
-         # update the node status, this is done when -F -S -P are run
-         # make sure the nodes only appear in one array good or bad 
-           &cleanstatusarrays;  
-	   if(@::SUCCESSFULLNODES)
-	   {
-                my $stat="synced";
-                xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
-                      
-	   }
-	   if(@::FAILEDNODES)
-	   {
-                my $stat="failed";
-                xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
-                      
-	   }
-           # -P -S are not run
-           # -F is run, but there is no syncfiles
-           if(!(@::SUCCESSFULLNODES || @::FAILEDNODES) && $::NOSYNCFILE)
-           {
-                my $stat="synced";
-                xCAT::TableUtils->setUpdateStatus(\@$nodes,$stat);
-           }
+
+        # update the node status, this is done when -F -S -P are run
+        # make sure the nodes only appear in one array good or bad
+        &cleanstatusarrays;
+        if (@::SUCCESSFULLNODES)
+        {
+            my $stat = "synced";
+            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
+
+        }
+        if (@::FAILEDNODES)
+        {
+            my $stat = "failed";
+            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
+
+        }
+
+        # -P -S are not run
+        # -F is run, but there is no syncfiles
+        if (!(@::SUCCESSFULLNODES || @::FAILEDNODES) && $::NOSYNCFILE)
+        {
+            my $stat = "synced";
+            xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        }
     }
 
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
     # node files in the noderange in  /tftpboot/mypostscripts
-     my $removeentries=0;
-     my @entries = 
-         xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
-     if ($entries[0] ) {  # not 1 or yes and defined
-       $entries[0] =~ tr/a-z/A-Z/;
-       if ($entries[0] !~ /^(1|YES)$/ ) {
-         $removeentries=1; 
-       }
-     } else {  # or not defined
-         $removeentries=1; 
-     }
- 
-     if ($removeentries ==1) { 
-         my $tftpdir = xCAT::TableUtils::getTftpDir();
-         foreach my $n (@$nodes ) {
-               unlink("$tftpdir/mypostscripts/mypostscript.$n");
-         }
-     }
+    my $removeentries = 0;
+    my @entries =
+      xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+    if ($entries[0]) {    # not 1 or yes and defined
+        $entries[0] =~ tr/a-z/A-Z/;
+        if ($entries[0] !~ /^(1|YES)$/) {
+            $removeentries = 1;
+        }
+    } else {              # or not defined
+        $removeentries = 1;
+    }
+
+    if ($removeentries == 1) {
+        my $tftpdir = xCAT::TableUtils::getTftpDir();
+        foreach my $n (@$nodes) {
+            unlink("$tftpdir/mypostscripts/mypostscript.$n");
+        }
+    }
 
     return 0;
 }
@@ -1461,174 +1482,179 @@ sub updatenode
 sub updatenoderunps
 
 {
-    my $request       = shift;
-    my $subreq        = shift;
-    my $callback      = shift;
-    my $nodes         = $request->{node};
-    my $localhostname = hostname();
-    my $installdir    = xCAT::TableUtils->getInstallDir();
-    my $tftpdir       = xCAT::TableUtils->getTftpDir();
+    my $request          = shift;
+    my $subreq           = shift;
+    my $callback         = shift;
+    my $nodes            = $request->{node};
+    my $localhostname    = hostname();
+    my $installdir       = xCAT::TableUtils->getInstallDir();
+    my $tftpdir          = xCAT::TableUtils->getTftpDir();
     my $postscripts      = "";
     my $orig_postscripts = "";
+
     # For AIX nodes check NFS
     my $nfsv4;
     my @nfsv4 =
       xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
-      if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/)) {
-         $nfsv4 = "yes";
-      } else {
-         $nfsv4 = "no";
-      }
-      my $flowcontrol = 0;
-      my @fc =
+    if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/)) {
+        $nfsv4 = "yes";
+    } else {
+        $nfsv4 = "no";
+    }
+    my $flowcontrol = 0;
+    my @fc =
       xCAT::TableUtils->get_site_attribute("useflowcontrol");
-      if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
-         $flowcontrol = 1;
-      }
-      # if running postscript report status here, if requested.     
-      if ((defined($request->{status})) && ($request->{status} eq "yes")) {  
-        $::REPORTSTATUS="Y";
-      }
+    if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
+        $flowcontrol = 1;
+    }
 
-      # this drives getdata to report status complete for postscripts
-      $::TYPECALL ="P";
-      if (($request->{postscripts}) && ($request->{postscripts}->[0]))
-      {
+    # if running postscript report status here, if requested.
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+        $::REPORTSTATUS = "Y";
+    }
+
+    # this drives getdata to report status complete for postscripts
+    $::TYPECALL = "P";
+    if (($request->{postscripts}) && ($request->{postscripts}->[0]))
+    {
         $orig_postscripts = $request->{postscripts}->[0];
-      }
-        $postscripts = $orig_postscripts;
+    }
+    $postscripts = $orig_postscripts;
 
-        my $cmd;
+    my $cmd;
 
-        # get server names as known by the nodes
-        my %servernodes =
-          %{xCAT::InstUtils->get_server_nodes($callback, \@$nodes)};
+    # get server names as known by the nodes
+    my %servernodes =
+      %{ xCAT::InstUtils->get_server_nodes($callback, \@$nodes) };
 
-        # it's possible that the nodes could have diff server names
-        # do all the nodes for a particular server at once
+    # it's possible that the nodes could have diff server names
+    # do all the nodes for a particular server at once
 
-        foreach my $snkey (keys %servernodes)
+    foreach my $snkey (keys %servernodes)
+    {
+        if ((!defined($snkey)) or ($snkey eq "")) { # if we could not find the xcatmaster
+
+            my $rsp = {};
+            $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
+            $callback->($rsp);
+            next;
+        }
+        my $nodestring = join(',', @{ $servernodes{$snkey} });
+        my $args;
+        my $mode;
+
+        #now build the actual updatenode command
+
+        if ($request->{rerunps4security}
+            && $request->{rerunps4security}->[0] eq "yes")
         {
-            if ((!defined($snkey)) or ($snkey eq "")) {  # if we could not find the xcatmaster 
-                
-                my $rsp = {};
-                $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
-                $callback->($rsp);
-                next;
-            }
-            my $nodestring = join(',', @{$servernodes{$snkey}});
-            my $args;
-            my $mode;
 
-            #now build the actual updatenode command
-           
-            if (   $request->{rerunps4security}
-                && $request->{rerunps4security}->[0] eq "yes")
-            {
+            # for updatenode --security
+            $mode = "5";
+        }
+        else
+        {
 
-                # for updatenode --security
-                $mode = "5";
-            }
-            else
-            {
+            # for updatenode -P
+            $mode = "1";
+        }
+        my $args1;
 
-                # for updatenode -P
-                $mode = "1";
-            }
-            my $args1;
-            # Note order of parameters to xcatdsklspost 
-            #is important and cannot be changed  and calls in this routine and updatenodesoftware
-            # should be kept the same.
-            my $runpscmd;
-            
-            if ($::SETSERVER){  # update the xcatinfo file on the node and run setuppostbootscripts
-               $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
-            } else {
-               $runpscmd  =
-                    "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
-            }
-            # add flowcontrol flag
-            if ($flowcontrol == 1){
-               $runpscmd .= " -F";
-            }
+        # Note order of parameters to xcatdsklspost
+        #is important and cannot be changed  and calls in this routine and updatenodesoftware
+        # should be kept the same.
+        my $runpscmd;
 
-            # add verbose flag
-            if ($::VERBOSE){
-               $runpscmd .= " -V";
-            }
-
-            push @$args1,"--nodestatus"; # return nodestatus
-            if (defined($::fanout))  {  # fanout
-               push @$args1,"-f" ;
-               push @$args1,$::fanout;
-            }
-            if (defined($::timeout))  {  # timeout 
-               push @$args1,"-t" ;
-               push @$args1,$::timeout;
-            }
-            if (defined($::USER))  {  # -l contains sudo user
-               push @$args1,"--sudo" ;
-               push @$args1,"-l" ;
-               push @$args1,"$::USER" ;
-            }
-            push @$args1,"-s";  # streaming
-            if (!defined($::NOVERIFY))  {  # NOVERIFY
-               push @$args1,"-v";  # streaming
-            }
-            push @$args1,"-e";  # execute 
-            push @$args1,"$runpscmd"; # the command 
-
-
-            if ($::VERBOSE)
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] =
-                  "  $localhostname: Internal call command: xdsh $nodestring "
-                  . join(' ', @$args1);
-                $callback->($rsp);
-            }
-
-            $CALLBACK = $callback;
-            if ($request->{rerunps4security})
-            {
-                $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
-            }
-            else
-            {
-                $RERUNPS4SECURITY = "";
-            }
-            $subreq->(
-                      {
-                       command           => ["xdsh"],
-                       node              => $servernodes{$snkey},
-                       arg               => $args1,
-                       _xcatpreprocessed => [1]
-                      },
-                      \&getdata
-                      );
+        if ($::SETSERVER) { # update the xcatinfo file on the node and run setuppostbootscripts
+            $runpscmd =
+"$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+        } else {
+            $runpscmd =
+"$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
         }
 
+        # add flowcontrol flag
+        if ($flowcontrol == 1) {
+            $runpscmd .= " -F";
+        }
 
-    if (   $request->{rerunps4security}
+        # add verbose flag
+        if ($::VERBOSE) {
+            $runpscmd .= " -V";
+        }
+
+        push @$args1, "--nodestatus";    # return nodestatus
+        if (defined($::fanout)) {        # fanout
+            push @$args1, "-f";
+            push @$args1, $::fanout;
+        }
+        if (defined($::timeout)) {       # timeout
+            push @$args1, "-t";
+            push @$args1, $::timeout;
+        }
+        if (defined($::USER)) {          # -l contains sudo user
+            push @$args1, "--sudo";
+            push @$args1, "-l";
+            push @$args1, "$::USER";
+        }
+        push @$args1, "-s";              # streaming
+        if (!defined($::NOVERIFY)) {     # NOVERIFY
+            push @$args1, "-v";          # streaming
+        }
+        push @$args1, "-e";              # execute
+        push @$args1, "$runpscmd";       # the command
+
+
+        if ($::VERBOSE)
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "  $localhostname: Internal call command: xdsh $nodestring "
+              . join(' ', @$args1);
+            $callback->($rsp);
+        }
+
+        $CALLBACK = $callback;
+        if ($request->{rerunps4security})
+        {
+            $RERUNPS4SECURITY = $request->{rerunps4security}->[0];
+        }
+        else
+        {
+            $RERUNPS4SECURITY = "";
+        }
+        $subreq->(
+            {
+                command           => ["xdsh"],
+                node              => $servernodes{$snkey},
+                arg               => $args1,
+                _xcatpreprocessed => [1]
+            },
+            \&getdata
+        );
+    }
+
+
+    if ($request->{rerunps4security}
         && $request->{rerunps4security}->[0] eq "yes")
     {
 
         # clean the know_hosts
         xCAT::Utils->runxcmd(
-                             {
-                              command => ['makeknownhosts'],
-                              node    => \@$nodes,
-                              arg     => ['-r'],
-                             },
-                             $subreq, 0, 1
-                             );
+            {
+                command => ['makeknownhosts'],
+                node    => \@$nodes,
+                arg     => ['-r'],
+            },
+            $subreq, 0, 1
+        );
     }
+
     # report final status PCM
     if ((defined($request->{status})) && ($request->{status} eq "yes")) {
-       my $rsp = {};
-       $rsp->{status}->[0] = "Running of postscripts has completed.";
-       $callback->($rsp);
+        my $rsp = {};
+        $rsp->{status}->[0] = "Running of postscripts has completed.";
+        $callback->($rsp);
     }
     return;
 }
@@ -1654,143 +1680,147 @@ sub updatenodesyncfiles
     my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
-    
+
     # $::NOSYNCFILE default value is 0
     # if there is no syncfiles, set $::NOSYNCFILE=1
-    $::NOSYNCFILE=0;
+    $::NOSYNCFILE = 0;
+
     # if running -P or -S do not report  or no status requested
-    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested 
-      if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||  
-        ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes")){
-          $::REPORTSTATUS="N";
-      } else {   # report at sync time (-F)
-          $::REPORTSTATUS="Y";
-      }   
-    }   
-        
-    my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested
+        if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||
+            ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes")) {
+            $::REPORTSTATUS = "N";
+        } else {    # report at sync time (-F)
+            $::REPORTSTATUS = "Y";
+        }
+    }
+
+    my $node_syncfile = xCAT::SvrUtils->getsynclistfile($nodes);
     foreach my $node (@$nodes)
     {
         my $synclist = $$node_syncfile{$node};
 
         if ($synclist)
         {
-        
+
             # this can be a comma separated list of multiple
             # syncfiles
             my @sl = split(',', $synclist);
             foreach my $s (@sl)
             {
-                push @{$syncfile_node{$s}}, $node;
+                push @{ $syncfile_node{$s} }, $node;
             }
         }
     }
 
-    my $numberofsynclists=0; 
+    my $numberofsynclists = 0;
     if (%syncfile_node)
     {    # there are files to sync defined
-        # Check the existence of the synclist file , if running from the Management Node
-        # other wise rely on xdcp
+         # Check the existence of the synclist file , if running from the Management Node
+         # other wise rely on xdcp
         if (xCAT::Utils->isMN()) {
-          foreach my $synclist (keys %syncfile_node)
-          {
-            if (!(-r $synclist))
+            foreach my $synclist (keys %syncfile_node)
             {
-                my $rsp = {};
-                $rsp->{data}->[0] =
-                  "The file $synclist which is specified to be sync'd to the node does NOT exist.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
+                if (!(-r $synclist))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] =
+"The file $synclist which is specified to be sync'd to the node does NOT exist.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
             }
-          }
         }
 
         # Sync files to the target nodes
-        my $output; 
+        my $output;
         foreach my $synclist (keys %syncfile_node)
         {
-            $numberofsynclists++; 
+            $numberofsynclists++;
             my $args;
             my $env;
-            if ($request->{SNFileSyncing}->[0] eq "yes") { 
-              push @$args,"-s" ;   # add xdcp -s flag to only sync SN  ( updatenode -f option)
-              $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
-            } else {   # else this is updatenode -F
-              $env = ["DSH_RSYNC_FILE=$synclist"];
+            if ($request->{SNFileSyncing}->[0] eq "yes") {
+                push @$args, "-s"; # add xdcp -s flag to only sync SN  ( updatenode -f option)
+                $env = [ "DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1" ];
+            } else {               # else this is updatenode -F
+                $env = ["DSH_RSYNC_FILE=$synclist"];
             }
-            push @$args,"--nodestatus" ;
-            if (defined($::fanout))  {  # fanout
-             push @$args,"-f" ;
-             push @$args,$::fanout;
+            push @$args, "--nodestatus";
+            if (defined($::fanout)) {    # fanout
+                push @$args, "-f";
+                push @$args, $::fanout;
             }
-            if (defined($::timeout))  {  # timeout 
-             push @$args,"-t" ;
-             push @$args,$::timeout;
+            if (defined($::timeout)) {    # timeout
+                push @$args, "-t";
+                push @$args, $::timeout;
             }
-            if (defined($::USER))  {  # -l must sudo
-             push @$args,"--sudo" ;
-             push @$args,"-l" ;
-             push @$args,"$::USER" ;
+            if (defined($::USER)) {       # -l must sudo
+                push @$args, "--sudo";
+                push @$args, "-l";
+                push @$args, "$::USER";
             }
-            push @$args,"-F" ;
-            push @$args,"$synclist" ;
-            my $nodestring = join(',', @{$syncfile_node{$synclist}});
+            push @$args, "-F";
+            push @$args, "$synclist";
+            my $nodestring = join(',', @{ $syncfile_node{$synclist} });
 
             if ($::VERBOSE)
             {
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "  $localhostname: Internal call command: xdcp $nodestring " . join(' ', @$args);
+"  $localhostname: Internal call command: xdcp $nodestring " . join(' ', @$args);
                 $callback->($rsp);
             }
 
             $CALLBACK = $callback;
 
 
-           $output =
-             xCAT::Utils->runxcmd(
-                   {
-                     command => ["xdcp"],
-                     node    => $syncfile_node{$synclist},
-                     arg     => $args,
-                     env     => $env
-                   },
-                   $subreq, -1,1);
+            $output =
+              xCAT::Utils->runxcmd(
+                {
+                    command => ["xdcp"],
+                    node    => $syncfile_node{$synclist},
+                    arg     => $args,
+                    env     => $env
+                },
+                $subreq, -1, 1);
 
-           # build the list of good and bad nodes
-           &buildnodestatus(\@$output,$callback);
-	     }
-   	
-       if ($request->{SNFileSyncing}->[0] eq "yes") { 
-          my $rsp = {};
-          $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
-          $callback->($rsp);
-       }
-       if ($request->{FileSyncing}->[0] eq "yes") { 
-          my $rsp = {};
-          $rsp->{data}->[0] = "File synchronization has completed for nodes.";
-          $callback->($rsp);
-       }
+            # build the list of good and bad nodes
+            &buildnodestatus(\@$output, $callback);
+        }
+
+        if ($request->{SNFileSyncing}->[0] eq "yes") {
+            my $rsp = {};
+            $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
+            $callback->($rsp);
+        }
+        if ($request->{FileSyncing}->[0] eq "yes") {
+            my $rsp = {};
+            $rsp->{data}->[0] = "File synchronization has completed for nodes.";
+            $callback->($rsp);
+        }
     }
     else
-    {   # no syncfiles defined
+    {    # no syncfiles defined
         my $rsp = {};
         $rsp->{data}->[0] =
-          "There were no syncfiles defined to process. File synchronization has completed.";
+"There were no syncfiles defined to process. File synchronization has completed.";
         $callback->($rsp);
-        $::NOSYNCFILE=1;
+        $::NOSYNCFILE = 1;
 
     }
+
     # report final status PCM
     if ((defined($request->{status})) && ($request->{status} eq "yes")) {
-       my $rsp = {};
-       $rsp->{status}->[0] = "File synchronization has completed.";
-       $callback->($rsp);
+        my $rsp = {};
+        $rsp->{status}->[0] = "File synchronization has completed.";
+        $callback->($rsp);
     }
 
     return;
 }
+
 #-------------------------------------------------------------------------------
+
 =head3  buildnodestatus - Takes the output of the updatenode run
         and builds a global array of successfull nodes  and one of failed nodes
         and then outputs the remaining user info
@@ -1805,77 +1835,84 @@ sub updatenodesyncfiles
 #-----------------------------------------------------------------------------
 sub buildnodestatus
 {
-    my $output       = shift;
-    my $callback      = shift;
-    my @userinfo=();
+    my $output   = shift;
+    my $callback = shift;
+    my @userinfo = ();
+
     # determine if the sync was successful or not
-	 foreach my $line (@$output) {
-	   if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
-	   {
-         my ($node,$info) = split (/:/, $line);
-         if ($::REPORTSTATUS eq "Y" ) { # return status NOW
-           if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
-              my $rsp2 = {};  # report failed
-              $rsp2->{status}->[0] = "$node: FAILED";
-              $::CALLERCALLBACK->($rsp2); 
-              # update the nodelist table updatestatus flag for the node
-              my $stat="failed";
-              my @nodearray=();
-              push @nodearray,$node;
-              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-           } else {  # completely successful
-              my $rsp2 = {};
-              $rsp2->{status}->[0] = "$node: SUCCEEDED";
-              $::CALLERCALLBACK->($rsp2); 
-              # update the nodelist table updatestatus flag for the node
-              my $stat="synced";
-              my @nodearray=();
-              push @nodearray,$node;
-              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-           }
-         }
-         if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
-		     next; 
-         } else {
-		     push(@::SUCCESSFULLNODES,$node); 
-         }
-	   }
-      elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
-	   {
-         my ($node,$info)= split (/:/, $line);
-         if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
-              my $rsp2 = {};
-              $rsp2->{status}->[0] = "$node: FAILED";
-              $::CALLERCALLBACK->($rsp2); 
-              # update the nodelist table updatestatus flag for the node
-              my $stat="failed";
-              my @nodearray=();
-              push @nodearray,$node;
-              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-         }
-         if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
-		     next; 
-         } else {
-	         push(@::FAILEDNODES,$node);
-	      }	
-	   }	
-      else  
-	   {
-	      push(@userinfo,$line);   # user data
-	   }	
-	 }
-    # output user data 
+    foreach my $line (@$output) {
+        if ($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+        {
+            my ($node, $info) = split(/:/, $line);
+            if ($::REPORTSTATUS eq "Y") {    # return status NOW
+                if (grep(/^$node$/, @::FAILEDNODES)) { # already on the fail buffer
+                    my $rsp2 = {};                     # report failed
+                    $rsp2->{status}->[0] = "$node: FAILED";
+                    $::CALLERCALLBACK->($rsp2);
+
+                    # update the nodelist table updatestatus flag for the node
+                    my $stat      = "failed";
+                    my @nodearray = ();
+                    push @nodearray, $node;
+                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                } else {                               # completely successful
+                    my $rsp2 = {};
+                    $rsp2->{status}->[0] = "$node: SUCCEEDED";
+                    $::CALLERCALLBACK->($rsp2);
+
+                    # update the nodelist table updatestatus flag for the node
+                    my $stat      = "synced";
+                    my @nodearray = ();
+                    push @nodearray, $node;
+                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                }
+            }
+            if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+                next;
+            } else {
+                push(@::SUCCESSFULLNODES, $node);
+            }
+        }
+        elsif ($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+        {
+            my ($node, $info) = split(/:/, $line);
+            if ($::REPORTSTATUS eq "Y") {                # return status NOW
+                my $rsp2 = {};
+                $rsp2->{status}->[0] = "$node: FAILED";
+                $::CALLERCALLBACK->($rsp2);
+
+                # update the nodelist table updatestatus flag for the node
+                my $stat      = "failed";
+                my @nodearray = ();
+                push @nodearray, $node;
+                xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+            }
+            if (grep(/^$node$/, @::FAILEDNODES)) {       # already on the buffer
+                next;
+            } else {
+                push(@::FAILEDNODES, $node);
+            }
+        }
+        else
+        {
+            push(@userinfo, $line);                      # user data
+        }
+    }
+
+    # output user data
     if (@userinfo) {
         foreach my $line (@userinfo) {
-           my $rsp = {};
-           $rsp->{data}->[0] = $line;
-           $callback->($rsp);
-	     }
-	 }
+            my $rsp = {};
+            $rsp->{data}->[0] = $line;
+            $callback->($rsp);
+        }
+    }
 
-  return;
+    return;
 }
+
 #-------------------------------------------------------------------------------
+
 =head3  cleanstatusarrays
     Makes sure no Failed nodes are in the successfull nodes list
     Removes dups
@@ -1885,22 +1922,23 @@ sub buildnodestatus
 
 
 #-----------------------------------------------------------------------------
-sub cleanstatusarrays 
+sub cleanstatusarrays
 {
-    my %m=();
-    my %n=();
+    my %m = ();
+    my %n = ();
 
-    for(@::FAILEDNODES)
+    for (@::FAILEDNODES)
     {
-       $m{$_}++;
+        $m{$_}++;
     }
-    for(@::SUCCESSFULLNODES)
+    for (@::SUCCESSFULLNODES)
     {
         $m{$_}++ || $n{$_}++;
     }
-    @::SUCCESSFULLNODES=keys %n;
-  return;
+    @::SUCCESSFULLNODES = keys %n;
+    return;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  updatenodesoftware  - software updates  updatenode -S
@@ -1925,28 +1963,29 @@ sub updatenodesoftware
     my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my $localhostname = hostname();
     my $rsp;
-    my $nfsv4 = "no";  # AIX only but set to keep the xcatdsklspost call the same for -F and -S
-    # Determine when to report status, do not report it here if -P is to run
-    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # if status requested 
-      if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {  # (-P) running postscripts
-        $::REPORTSTATUS="N";
-      } else {
-        $::REPORTSTATUS="Y";
-      }   
-    }   
+    my $nfsv4 = "no"; # AIX only but set to keep the xcatdsklspost call the same for -F and -S
+        # Determine when to report status, do not report it here if -P is to run
+
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # if status requested
+        if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") { # (-P) running postscripts
+            $::REPORTSTATUS = "N";
+        } else {
+            $::REPORTSTATUS = "Y";
+        }
+    }
     my $flowcontrol = 0;
     my @fc =
-    xCAT::TableUtils->get_site_attribute("useflowcontrol");
+      xCAT::TableUtils->get_site_attribute("useflowcontrol");
     if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
         $flowcontrol = 1;
     }
 
-    # this drives getdata to report status complete for software updatees 
-    $::TYPECALL ="S";
+    # this drives getdata to report status complete for software updatees
+    $::TYPECALL = "S";
 
     $CALLBACK = $callback;
-    push @{$rsp->{data}},
-      "Performing software maintenance operations. This could take a while, if there are packages to install.\n";
+    push @{ $rsp->{data} },
+"Performing software maintenance operations. This could take a while, if there are packages to install.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
@@ -1961,50 +2000,52 @@ sub updatenodesoftware
 
         # get server names as known by the nodes
         my %servernodes =
-          %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
+          %{ xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd) };
 
         # it's possible that the nodes could have diff server names
         # do all the nodes for a particular server at once
-        # Note order of parameters to xcatdsklspost 
+        # Note order of parameters to xcatdsklspost
         #is important and cannot be changed  and calls in this routine and updatenoderunps
         # should be kept the same.
         foreach my $snkey (keys %servernodes)
         {
-            my $nodestring = join(',', @{$servernodes{$snkey}});
+            my $nodestring = join(',', @{ $servernodes{$snkey} });
             my $cmd;
             my $args1;
             $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+"$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+
             # add flowcontrol flag
-            if ($flowcontrol == 1){
-               $cmd .= " -F";
+            if ($flowcontrol == 1) {
+                $cmd .= " -F";
             }
+
             # add verbose flag
-            if ($::VERBOSE){
-               $cmd .= " -V";
+            if ($::VERBOSE) {
+                $cmd .= " -V";
             }
-    
+
             # build xdsh command
-            push @$args1,"--nodestatus"; # return nodestatus
-            if (defined($::fanout))  {  # fanout
-               push @$args1,"-f" ;
-               push @$args1,$::fanout;
+            push @$args1, "--nodestatus";    # return nodestatus
+            if (defined($::fanout)) {        # fanout
+                push @$args1, "-f";
+                push @$args1, $::fanout;
             }
-            if (defined($::timeout))  {  # timeout 
-               push @$args1,"-t" ;
-               push @$args1,$::timeout;
+            if (defined($::timeout)) {       # timeout
+                push @$args1, "-t";
+                push @$args1, $::timeout;
             }
-            if (defined($::USER))  {  # -l contains sudo user
-               push @$args1,"--sudo" ;
-               push @$args1,"-l" ;
-               push @$args1,"$::USER" ;
+            if (defined($::USER)) {          # -l contains sudo user
+                push @$args1, "--sudo";
+                push @$args1, "-l";
+                push @$args1, "$::USER";
             }
-            push @$args1,"-s";  # streaming
-            if (!defined($::NOVERIFY))  {  # NOVERIFY
-               push @$args1,"-v";  # streaming
+            push @$args1, "-s";              # streaming
+            if (!defined($::NOVERIFY)) {     # NOVERIFY
+                push @$args1, "-v";          # streaming
             }
-            push @$args1,"-e";  # execute 
-            push @$args1,"$cmd"; # the command 
+            push @$args1, "-e";              # execute
+            push @$args1, "$cmd";            # the command
 
 
 
@@ -2017,14 +2058,14 @@ sub updatenodesoftware
                 $callback->($rsp);
             }
             $subreq->(
-                      {
-                       command           => ["xdsh"],
-                       node              => $servernodes{$snkey},
-                       arg               => $args1,
-                       _xcatpreprocessed => [1]
-                      },
-                      \&getdata
-                      );
+                {
+                    command           => ["xdsh"],
+                    node              => $servernodes{$snkey},
+                    arg               => $args1,
+                    _xcatpreprocessed => [1]
+                },
+                \&getdata
+            );
 
 
         }
@@ -2041,8 +2082,8 @@ sub updatenodesoftware
         # update the software on an AIX node
         if (
             &updateAIXsoftware(
-                               $callback, \%::attrres,  $imgdefs,
-                               $updates,  $AIXnodes_nd, $subreq
+                $callback, \%::attrres, $imgdefs,
+                $updates, $AIXnodes_nd, $subreq
             ) != 0
           )
         {
@@ -2053,15 +2094,17 @@ sub updatenodesoftware
             return 1;
         }
     }
+
     # report final status PCM
     if ((defined($request->{status})) && ($request->{status} eq "yes")) {
-       my $rsp = {};
-       $rsp->{status}->[0] = "Running of Software maintenance has completed.";
-       $callback->($rsp);
+        my $rsp = {};
+        $rsp->{status}->[0] = "Running of Software maintenance has completed.";
+        $callback->($rsp);
     }
 
     return;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3  getdata  - This is the local callback that handles the response from
@@ -2072,6 +2115,7 @@ sub updatenodesoftware
                          routine  to the $::CALLERCALLBACK ( PCM)
 
 =cut
+
 #-------------------------------------------------------------------------------
 sub getdata
 {
@@ -2080,125 +2124,131 @@ sub getdata
     my $rsp;
     foreach my $type (keys %$response)
     {
-        my $alreadyinstalled=0;
-        foreach my $output (@{$response->{$type}})
+        my $alreadyinstalled = 0;
+        foreach my $output (@{ $response->{$type} })
         {
             chomp($output);
             $output =~ s/\\cM//;
-            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
+            if ($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
             {
-              my ($node,$info) = split (/:/, $output);
-              if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
-               if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
-                  my $rsp2 = {};  # report failed
-                  $rsp2->{status}->[0] = "$node: FAILED";
-                  $::CALLERCALLBACK->($rsp2); 
-                  # update the nodelist table updatestatus flag for the node
-                  my $stat="failed";
-                  my @nodearray=();
-                  push @nodearray,$node;
-                  xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-               } else {  # completely successful
-                   my $rsp2 = {};
-                   $rsp2->{status}->[0] = "$node: SUCCEEDED";
-                   $::CALLERCALLBACK->($rsp2); 
-                   # update the nodelist table updatestatus flag for the node
-                   my $stat="synced";
-                   my @nodearray=();
-                   push @nodearray,$node;
-                   xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-               }
-              }
-              if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
-		            next; 
-              } else {
-		           push(@::SUCCESSFULLNODES,$node); 
-              }
-            }
-            # check for already installed on software updates, this is not an error
-            if($output =~ /^\s*(\S+)\s*:\s*already installed/)
-            {
-              $alreadyinstalled = 1;
+                my ($node, $info) = split(/:/, $output);
+                if ($::REPORTSTATUS eq "Y") {    # return status NOW
+                    if (grep(/^$node$/, @::FAILEDNODES)) { # already on the fail buffer
+                        my $rsp2 = {};                     # report failed
+                        $rsp2->{status}->[0] = "$node: FAILED";
+                        $::CALLERCALLBACK->($rsp2);
+
+                        # update the nodelist table updatestatus flag for the node
+                        my $stat      = "failed";
+                        my @nodearray = ();
+                        push @nodearray, $node;
+                        xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                    } else {    # completely successful
+                        my $rsp2 = {};
+                        $rsp2->{status}->[0] = "$node: SUCCEEDED";
+                        $::CALLERCALLBACK->($rsp2);
+
+                        # update the nodelist table updatestatus flag for the node
+                        my $stat      = "synced";
+                        my @nodearray = ();
+                        push @nodearray, $node;
+                        xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                    }
+                }
+                if (grep(/^$node$/, @::SUCCESSFULLNODES)) { # already on the buffer
+                    next;
+                } else {
+                    push(@::SUCCESSFULLNODES, $node);
+                }
             }
 
-            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+            # check for already installed on software updates, this is not an error
+            if ($output =~ /^\s*(\S+)\s*:\s*already installed/)
             {
-              my ($node,$info) = split (/:/, $output);
-              if ($alreadyinstalled == 0) { # not an already install error, then real error 
-                if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
-                    my $rsp2 = {};
-                    $rsp2->{status}->[0] = "$node: FAILED";
-                    $::CALLERCALLBACK->($rsp2); 
-                    # update the nodelist table updatestatus flag for the node
-                    my $stat="failed";
-                    my @nodearray=();
-                    push @nodearray,$node;
-                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                $alreadyinstalled = 1;
+            }
+
+            if ($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
+            {
+                my ($node, $info) = split(/:/, $output);
+                if ($alreadyinstalled == 0) { # not an already install error, then real error
+                    if ($::REPORTSTATUS eq "Y") {    # return status NOW
+                        my $rsp2 = {};
+                        $rsp2->{status}->[0] = "$node: FAILED";
+                        $::CALLERCALLBACK->($rsp2);
+
+                        # update the nodelist table updatestatus flag for the node
+                        my $stat      = "failed";
+                        my @nodearray = ();
+                        push @nodearray, $node;
+                        xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                    }
+                    if (grep(/^$node$/, @::FAILEDNODES)) { # already on the buffer
+                        next;
+                    } else {
+                        push(@::FAILEDNODES, $node);
+                    }
+                } else {    # already installed is ok
+                    if ($::REPORTSTATUS eq "Y") {    # return status NOW
+                        if (grep(/^$node$/, @::FAILEDNODES)) { # already on the fail buffer
+                            my $rsp2 = {};                     # report failed
+                            $rsp2->{status}->[0] = "$node: FAILED";
+                            $::CALLERCALLBACK->($rsp2);
+
+                            # update the nodelist table updatestatus flag for the node
+                            my $stat      = "failed";
+                            my @nodearray = ();
+                            push @nodearray, $node;
+                            xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                        } else {    # completely successful
+                            my $rsp2 = {};
+                            $rsp2->{status}->[0] = "$node: SUCCEEDED";
+                            $::CALLERCALLBACK->($rsp2);
+
+                            # update the nodelist table updatestatus flag for the node
+                            my $stat      = "synced";
+                            my @nodearray = ();
+                            push @nodearray, $node;
+                            xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                        }
+                    }
+                    if (grep(/^$node$/, @::SUCCESSFULLNODES)) { # already on the buffer
+                        next;
+                    } else {
+                        push(@::SUCCESSFULLNODES, $node);
+                    }
                 }
-                if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
-		            next; 
-                } else {
-                  push(@::FAILEDNODES,$node);
-                }
-              } else {   # already installed is ok
-                  if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
-                    if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
-                      my $rsp2 = {};  # report failed
-                      $rsp2->{status}->[0] = "$node: FAILED";
-                      $::CALLERCALLBACK->($rsp2); 
-                      # update the nodelist table updatestatus flag for the node
-                      my $stat="failed";
-                      my @nodearray=();
-                      push @nodearray,$node;
-                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-                   } else {  # completely successful
-                      my $rsp2 = {};
-                      $rsp2->{status}->[0] = "$node: SUCCEEDED";
-                      $::CALLERCALLBACK->($rsp2); 
-                      # update the nodelist table updatestatus flag for the node
-                      my $stat="synced";
-                      my @nodearray=();
-                      push @nodearray,$node;
-                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
-                   }
-                  }
-                  if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
-	                   next; 
-                  } else {
-		               push(@::SUCCESSFULLNODES,$node); 
-                 }
-              }
             }
 
 
             if ($output =~ /returned from postscript/)
             {
-              if ($::TYPECALL eq "P") {  # -P flag
-                $output =~
-                  s/returned from postscript/Running of postscripts has completed./;
-              } else {  # should be -S flag 
-                $output =~
-                   s/returned from postscript/Running of Software Maintenance has completed./;
-              }
+                if ($::TYPECALL eq "P") {                       # -P flag
+                    $output =~
+s/returned from postscript/Running of postscripts has completed./;
+                } else {    # should be -S flag
+                    $output =~
+s/returned from postscript/Running of Software Maintenance has completed./;
+                }
             }
             if ($RERUNPS4SECURITY && $RERUNPS4SECURITY eq "yes")
             {
                 if ($output =~ /Running of postscripts has completed/)
                 {
                     $output =~
-                      s/Running of postscripts has completed/Redeliver security files has completed/;
-                    push @{$rsp->{$type}}, $output;
+s/Running of postscripts has completed/Redeliver security files has completed/;
+                    push @{ $rsp->{$type} }, $output;
                 } else {
-                   if (($output !~ (/Running postscript/)) && ($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
-                   {
-                    push @{$rsp->{$type}}, "$output";
-                   }
+                    if (($output !~ (/Running postscript/)) && ($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+                    {
+                        push @{ $rsp->{$type} }, "$output";
+                    }
                 }
-            } else{  # for non -k option then get the rest of the output
-              if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
-              {
-                push @{$rsp->{$type}}, "$output";
-              }
+            } else {    # for non -k option then get the rest of the output
+                if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+                {
+                    push @{ $rsp->{$type} }, "$output";
+                }
             }
         }
     }
@@ -2225,7 +2275,7 @@ sub updatenodestat
     my @args     = ();
     if (ref($request->{node}))
     {
-        @nodes = @{$request->{node}};
+        @nodes = @{ $request->{node} };
     }
     else
     {
@@ -2236,12 +2286,12 @@ sub updatenodestat
             {
                 return;
             }    #TODO: log an attempt without credentials?
-            @nodes = @{$request->{username}};
+            @nodes = @{ $request->{username} };
         }
     }
     if (ref($request->{arg}))
     {
-        @args = @{$request->{arg}};
+        @args = @{ $request->{arg} };
     }
     else
     {
@@ -2315,12 +2365,12 @@ sub doAIXcopy
     {
         %attrvals = %{$av};
     }
-    if (defined($::USER)){ # not supported on AIX
-     		my $rsp;
-         $rsp->{error}->[0] = " The -l option is not supported on AIX";
-     		xCAT::MsgUtils->message("E", $rsp, $callback);;
-         return 1;
-    } 
+    if (defined($::USER)) {    # not supported on AIX
+        my $rsp;
+        $rsp->{error}->[0] = " The -l option is not supported on AIX";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
 
     # get the NIM primary server name
     my $nimprime = xCAT::InstUtils->getnimprime();
@@ -2337,7 +2387,7 @@ sub doAIXcopy
     if ($::ERROR_RC)
     {
         my $rsp;
-        push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+        push @{ $rsp->{data} }, "Could not get list of xCAT service nodes.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
@@ -2370,8 +2420,8 @@ sub doAIXcopy
 
     # get a list of osimage names needed for the nodes
     my $nodetab = xCAT::Table->new('nodetype');
-    my $images  =
-      $nodetab->getNodesAttribs(\@nodelist, ['node', 'provmethod', 'profile']);
+    my $images =
+      $nodetab->getNodesAttribs(\@nodelist, [ 'node', 'provmethod', 'profile' ]);
     my @imagenames;
     my @noimage;
     foreach my $node (@nodelist)
@@ -2402,8 +2452,8 @@ sub doAIXcopy
     {
         my $rsp;
         my $allnodes = join(',', @noimage);
-        push @{$rsp->{data}},
-          "No osimage specified for the following nodes: $allnodes. You can try to run the nimnodeset command or set the profile|provmethod attributes manually.";
+        push @{ $rsp->{data} },
+"No osimage specified for the following nodes: $allnodes. You can try to run the nimnodeset command or set the profile|provmethod attributes manually.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
@@ -2432,7 +2482,7 @@ sub doAIXcopy
         if (!(%imagedef))
         {
             my $rsp;
-            push @{$rsp->{data}},
+            push @{ $rsp->{data} },
               "Could not get the xCAT osimage definition for \'$img\'.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
@@ -2444,8 +2494,8 @@ sub doAIXcopy
         if ($imagedef{$img}{nimtype} ne "standalone")
         {
             my $rsp;
-            push @{$rsp->{data}},
-              "The osimage \'$img\' is not a standalone type.  \nThe software maintenance function of updatenode command can only be used for standalone (diskfull) type nodes. \nUse the mknimimage comamand to update diskless osimages.";
+            push @{ $rsp->{data} },
+"The osimage \'$img\' is not a standalone type.  \nThe software maintenance function of updatenode command can only be used for standalone (diskfull) type nodes. \nUse the mknimimage comamand to update diskless osimages.";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
@@ -2499,7 +2549,7 @@ sub doAIXcopy
             {
                 $imagedef{$img}{lpp_loc} =
                   xCAT::InstUtils->get_nim_attr_val($imagedef{$img}{lpp_source},
-                                     'location', $callback, $nimprime, $subreq);
+                    'location', $callback, $nimprime, $subreq);
             }
             else
             {
@@ -2591,7 +2641,7 @@ sub doAIXcopy
                 {
                     my ($rc, $list, $loc) =
                       xCAT::InstUtils->readBNDfile($callback, $bnd, $nimprime,
-                                                   $subreq);
+                        $subreq);
                     foreach my $pkg (@$list)
                     {
                         chomp $pkg;
@@ -2629,16 +2679,16 @@ sub doAIXcopy
 
                 # if lpp_source is not defined on SN then next
                 my $scmd =
-                  qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
+qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
                 my $out =
                   xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey,
-                                        $scmd, 0);
+                    $scmd, 0);
 
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
-                    push @{$rsp->{data}},
-                      "The NIM lpp_source resource named $imagedef{$img}{lpp_source} is not defined on $snkey. Cannot copy software to $snkey.\n";
+                    push @{ $rsp->{data} },
+"The NIM lpp_source resource named $imagedef{$img}{lpp_source} is not defined on $snkey. Cannot copy software to $snkey.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     next;
                 }
@@ -2659,25 +2709,25 @@ sub doAIXcopy
             if ($::VERBOSE)
             {
                 my $rsp;
-                push @{$rsp->{data}},
+                push @{ $rsp->{data} },
                   "Copying $srcdir to $dir on service node $snkey.\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
             # make sure the dir exists on the service node
             #  also make sure it's writeable by all
-            my $mkcmd  = qq~/usr/bin/mkdir -p $dir~;
+            my $mkcmd = qq~/usr/bin/mkdir -p $dir~;
             my $output =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $mkcmd,
-                                    0);
+                0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}},
+                push @{ $rsp->{data} },
                   "Could not create directories on $snkey.\n";
                 if ($::VERBOSE)
                 {
-                    push @{$rsp->{data}}, "$output\n";
+                    push @{ $rsp->{data} }, "$output\n";
                 }
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 next;
@@ -2685,16 +2735,16 @@ sub doAIXcopy
 
             # sync source files to SN
             my $cpcmd =
-              qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
+qq~$::XCATROOT/bin/prsync -o "rlHpEAogDz" $srcdir $snkey:$dir 2>/dev/null~;
             $output =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
-                                    $cpcmd, 0);
+                $cpcmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}},
+                push @{ $rsp->{data} },
                   "Could not copy $srcdir to $dir for service node $snkey.\n";
-                push @{$rsp->{data}}, "Output from command: \n\n$output\n\n";
+                push @{ $rsp->{data} }, "Output from command: \n\n$output\n\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return (1);
             }
@@ -2709,14 +2759,14 @@ sub doAIXcopy
             {
                 $installpsrcdir = "$srcdir/installp/ppc";
             }
-            my $icmd   = qq~cd $installpsrcdir; /usr/sbin/inutoc .~;
+            my $icmd = qq~cd $installpsrcdir; /usr/sbin/inutoc .~;
             my $output =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $icmd,
-                                    0);
+                0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}},
+                push @{ $rsp->{data} },
                   "Could not run inutoc for $installpsrcdir on $snkey\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
             }
@@ -2776,23 +2826,23 @@ sub updateAIXsoftware
     }
 
 
-    # this drives getdata to report status complete for software updatees 
-    $::TYPECALL ="S";
+    # this drives getdata to report status complete for software updatees
+    $::TYPECALL = "S";
 
     my %bndloc;
 
     # get the server name for each node - as known by the node
-    my $noderestab  = xCAT::Table->new('noderes');
+    my $noderestab = xCAT::Table->new('noderes');
     my $xcatmasters =
-      $noderestab->getNodesAttribs(\@noderange, ['node', 'xcatmaster']);
+      $noderestab->getNodesAttribs(\@noderange, [ 'node', 'xcatmaster' ]);
 
     # get the NIM primary server name
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-	#
-	# get a list of servers and a hash of the servers name for each node
-	#
+    #
+    # get a list of servers and a hash of the servers name for each node
+    #
     my %server;
     my @servers;
     foreach my $node (@noderange)
@@ -2803,7 +2853,7 @@ sub updateAIXsoftware
         }
         else
         {
-			# if it's not the xcatmaster then default to the NIM primary
+            # if it's not the xcatmaster then default to the NIM primary
             $server{$node} = $nimprime;
         }
 
@@ -2814,69 +2864,69 @@ sub updateAIXsoftware
     }
     $noderestab->close;
 
-	#  need to sort nodes by osimage AND server 
-	#	- each aixswupdate call should go to all nodes with the same server
-	#		and osimage
+    #  need to sort nodes by osimage AND server
+    #	- each aixswupdate call should go to all nodes with the same server
+    #		and osimage
 
-	my %nodeoslist;
-	foreach my $node (@noderange) {
-		my $server = $server{$node};
-		my $osimage = $nodeupdateinfo{$node}{imagename};
-		push(@{$nodeoslist{$server}{$osimage}}, $node);
-	}
+    my %nodeoslist;
+    foreach my $node (@noderange) {
+        my $server  = $server{$node};
+        my $osimage = $nodeupdateinfo{$node}{imagename};
+        push(@{ $nodeoslist{$server}{$osimage} }, $node);
+    }
 
     my $error = 0;
 
-	# process nodes - all that have same serv and osimage go at once
-	foreach my $serv (keys %nodeoslist) {   # for each server
+    # process nodes - all that have same serv and osimage go at once
+    foreach my $serv (keys %nodeoslist) {    # for each server
 
-		foreach my $img (keys %{$nodeoslist{$serv}} ) { # for each osimage
+        foreach my $img (keys %{ $nodeoslist{$serv} }) {    # for each osimage
 
-			my @nodes = @{$nodeoslist{$serv}{$img}};
-			if ( !scalar(@nodes)){
+            my @nodes = @{ $nodeoslist{$serv}{$img} };
+            if (!scalar(@nodes)) {
                 next;
             }
 
-        	# set the location of the software
-        	my $pkgdir = "";
-        	if ($::ALTSRC)
-        	{
-            	$pkgdir = $::ALTSRC;
-        	}
-        	else
-        	{
-            	$pkgdir = $imagedefs{$img}{lpp_loc};
-        	}
+            # set the location of the software
+            my $pkgdir = "";
+            if ($::ALTSRC)
+            {
+                $pkgdir = $::ALTSRC;
+            }
+            else
+            {
+                $pkgdir = $imagedefs{$img}{lpp_loc};
+            }
 
-			# check for pkg dir
-			if ( ! -d $pkgdir ) {
-				my $rsp;
-				push @{$rsp->{data}}, "The source directory $pkgdir does not exist.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				next;
-			}
+            # check for pkg dir
+            if (!-d $pkgdir) {
+                my $rsp;
+                push @{ $rsp->{data} }, "The source directory $pkgdir does not exist.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                next;
+            }
 
-			# create a file in the pkgdir and add the pkg list to it
-			#  the pkgdir is mounted and the pkglist file will be available 
-			#	on the node.
-			#
-			# create a unique name
-			my $thisdate = `date +%s`;
-			my $pkglist_file_name = qq~pkglist_file.$thisdate~;			
-           	chomp $pkglist_file_name;
+            # create a file in the pkgdir and add the pkg list to it
+            #  the pkgdir is mounted and the pkglist file will be available
+            #	on the node.
+            #
+            # create a unique name
+            my $thisdate          = `date +%s`;
+            my $pkglist_file_name = qq~pkglist_file.$thisdate~;
+            chomp $pkglist_file_name;
 
-			@pkglist = split(/,/, $imagedefs{$img}{pkglist});
+            @pkglist = split(/,/, $imagedefs{$img}{pkglist});
 
-           	if (!scalar(@pkglist))
-           	{
-				my $rsp;
-				push @{$rsp->{data}}, "There is no list of packages for nodes: @nodes.\n";		
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				next;
-			}
-			
+            if (!scalar(@pkglist))
+            {
+                my $rsp;
+                push @{ $rsp->{data} }, "There is no list of packages for nodes: @nodes.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                next;
+            }
+
             #  make sure the permissions are correct on pkgdir
             # - we are running on MN
             my $chmcmd = qq~/bin/chmod -R +r $pkgdir~;
@@ -2884,226 +2934,230 @@ sub updateAIXsoftware
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}},
-                    "Could not set permissions for $pkgdir.\n";
+                push @{ $rsp->{data} },
+                  "Could not set permissions for $pkgdir.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				next;
+                $error++;
+                next;
             }
 
-			# create a pkglist file in the pkgdir on MN
-			my $pkglist_file= qq~$pkgdir/$pkglist_file_name~;
+            # create a pkglist file in the pkgdir on MN
+            my $pkglist_file = qq~$pkgdir/$pkglist_file_name~;
 
-           	if (!open(PKGLISTFILE, ">$pkglist_file"))
-           	{
-               	my $rsp;
-               	push @{$rsp->{data}}, "Could not open $pkglist_file_name.\n";
-               	xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				next;
-			}
-			else
-           	{
-               	foreach (@pkglist)
-               	{
-                   	print PKGLISTFILE $_ . "\n";
-               	}
-               	close(PKGLISTFILE);
-			}
+            if (!open(PKGLISTFILE, ">$pkglist_file"))
+            {
+                my $rsp;
+                push @{ $rsp->{data} }, "Could not open $pkglist_file_name.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                next;
+            }
+            else
+            {
+                foreach (@pkglist)
+                {
+                    print PKGLISTFILE $_ . "\n";
+                }
+                close(PKGLISTFILE);
+            }
 
-# ndebug
-# ??? has the whole pkgdir been copied to the SN yet???
+            # ndebug
+            # ??? has the whole pkgdir been copied to the SN yet???
 
-			if (!xCAT::InstUtils->is_me($serv)) {
-				# cp file to SN 
-				# has pkgdir already been copied.             
-				my $rcpcmd = "$::XCATROOT/bin/xdcp $serv $pkglist_file $pkgdir ";
-				my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not copy $pkglist_file to $serv.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				}
-			}
+            if (!xCAT::InstUtils->is_me($serv)) {
 
-			# export the pkgdir on the server
-			my $ecmd;
-			my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
-			if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
-			{
-				$ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
-			}
-			else
-			{
-				$ecmd = qq~exportfs -i $pkgdir~;
-			}
-
-			if (!xCAT::InstUtils->is_me($serv)) {
-				my $output = xCAT::Utils->runxcmd(
-					{
-						command => ["xdsh"],
-						node    => [$serv],	
-						arg     => [$ecmd]
-					},
-					$subreq, -1, 1
-					);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not export $pkgdir on $serv.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
+                # cp file to SN
+                # has pkgdir already been copied.
+                my $rcpcmd = "$::XCATROOT/bin/xdcp $serv $pkglist_file $pkgdir ";
+                my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not copy $pkglist_file to $serv.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
                     next;
-				}
-			} else {
-				my $output = xCAT::Utils->runcmd("$ecmd", -1);
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not export $pkgdir on $serv.\n";
-					push @{$rsp->{data}}, "$output\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				}
-			}
+                }
+            }
 
-			#
-           	# call aixswupdate to install sw on the nodes
-           	#
+            # export the pkgdir on the server
+            my $ecmd;
+            my @nfsv4 = xCAT::TableUtils->get_site_attribute("useNFSv4onAIX");
+            if ($nfsv4[0] && ($nfsv4[0] =~ /1|Yes|yes|YES|Y|y/))
+            {
+                $ecmd = qq~exportfs -i -o vers=4 $pkgdir~;
+            }
+            else
+            {
+                $ecmd = qq~exportfs -i $pkgdir~;
+            }
 
-			# put together the cmd string
-           	my $installcmd = qq~/install/postscripts/aixswupdate -f $pkglist_file ~;
+            if (!xCAT::InstUtils->is_me($serv)) {
+                my $output = xCAT::Utils->runxcmd(
+                    {
+                        command => ["xdsh"],
+                        node    => [$serv],
+                        arg     => [$ecmd]
+                    },
+                    $subreq, -1, 1
+                );
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not export $pkgdir on $serv.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+                }
+            } else {
+                my $output = xCAT::Utils->runcmd("$ecmd", -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not export $pkgdir on $serv.\n";
+                    push @{ $rsp->{data} }, "$output\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+                }
+            }
 
-			# $serv is the name of the nodes server as known by the node
-			$installcmd .= qq~ -s $serv ~;
-		
-			if ($::ALLSW) {
-				$installcmd .= qq~ -a ~;
-			}
+            #
+            # call aixswupdate to install sw on the nodes
+            #
 
-			if ($::ALTSRC) {
-				$installcmd .= qq~ -d ~;
-			}
+            # put together the cmd string
+            my $installcmd = qq~/install/postscripts/aixswupdate -f $pkglist_file ~;
 
-			if ($::NFSV4) {
-				$installcmd .= qq~ -n ~;
-			}
+            # $serv is the name of the nodes server as known by the node
+            $installcmd .= qq~ -s $serv ~;
 
-			# add installp flags
-			if ( $imagedefs{$img}{installp_flags} ) {
-				$installcmd .= qq~ -i $imagedefs{$img}{installp_flags} ~;
-			}
-			# add rpm flags
-			if ( $imagedefs{$img}{rpm_flags} ) {
-               	$installcmd .= qq~ -r $imagedefs{$img}{rpm_flags} ~;
-           	}
-			# add emgr flags
-           	if ( $imagedefs{$img}{emgr_flags} ) {
-               	$installcmd .= qq~ -e $imagedefs{$img}{emgr_flags} ~;
-           	}
+            if ($::ALLSW) {
+                $installcmd .= qq~ -a ~;
+            }
 
-			my $args1;
-			push @$args1,"--nodestatus";
-			push @$args1,"-s";
-			if (!defined($::NOVERIFY))  {  # NOVERIFY
-			    push @$args1,"-v";
-			}
-			push @$args1,"-e";
-			if (defined($::fanout))  {  # fanout input
-			    push @$args1,"-f" ;
-			    push @$args1,$::fanout;
-			}
-         if (defined($::timeout))  {  # timeout 
-            push @$args1,"-t" ;
-            push @$args1,$::timeout;
-         }
-			push @$args1,"$installcmd";
+            if ($::ALTSRC) {
+                $installcmd .= qq~ -d ~;
+            }
 
-			$subreq->(
-				{
-					command           => ["xdsh"],
-					node              => \@nodes,
-					arg               => $args1,
-					_xcatpreprocessed => [1]
-				},
-				\&getdata
-				);
+            if ($::NFSV4) {
+                $installcmd .= qq~ -n ~;
+            }
 
-			# remove pkglist_file from MN - local
-			my $rcmd = qq~/bin/rm -f $pkglist_file~;
+            # add installp flags
+            if ($imagedefs{$img}{installp_flags}) {
+                $installcmd .= qq~ -i $imagedefs{$img}{installp_flags} ~;
+            }
+
+            # add rpm flags
+            if ($imagedefs{$img}{rpm_flags}) {
+                $installcmd .= qq~ -r $imagedefs{$img}{rpm_flags} ~;
+            }
+
+            # add emgr flags
+            if ($imagedefs{$img}{emgr_flags}) {
+                $installcmd .= qq~ -e $imagedefs{$img}{emgr_flags} ~;
+            }
+
+            my $args1;
+            push @$args1, "--nodestatus";
+            push @$args1, "-s";
+            if (!defined($::NOVERIFY)) {    # NOVERIFY
+                push @$args1, "-v";
+            }
+            push @$args1, "-e";
+            if (defined($::fanout)) {       # fanout input
+                push @$args1, "-f";
+                push @$args1, $::fanout;
+            }
+            if (defined($::timeout)) {      # timeout
+                push @$args1, "-t";
+                push @$args1, $::timeout;
+            }
+            push @$args1, "$installcmd";
+
+            $subreq->(
+                {
+                    command           => ["xdsh"],
+                    node              => \@nodes,
+                    arg               => $args1,
+                    _xcatpreprocessed => [1]
+                },
+                \&getdata
+            );
+
+            # remove pkglist_file from MN - local
+            my $rcmd = qq~/bin/rm -f $pkglist_file~;
             my $output = xCAT::Utils->runcmd("$rcmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}}, "Could not remove $pkglist_file.\n";
+                push @{ $rsp->{data} }, "Could not remove $pkglist_file.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
             }
 
 
-			# if not $serv then remove pkglist_file from $serv
-			if (!xCAT::InstUtils->is_me($serv)) {
-				my $output = xCAT::Utils->runxcmd(
-                      	{
-                       		command => ["xdsh"],
-                       		node    => [$serv],
-                          	arg     => [$rcmd]
-                       	},
-                       	$subreq, -1, 1
-                        );
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not remove $pkglist_file on $serv.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			}
+            # if not $serv then remove pkglist_file from $serv
+            if (!xCAT::InstUtils->is_me($serv)) {
+                my $output = xCAT::Utils->runxcmd(
+                    {
+                        command => ["xdsh"],
+                        node    => [$serv],
+                        arg     => [$rcmd]
+                    },
+                    $subreq, -1, 1
+                );
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not remove $pkglist_file on $serv.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+            }
 
-			# unexport pkgdir
-			my $ucmd = qq~exportfs -u -F $pkgdir~;
-			if (xCAT::InstUtils->is_me($serv)) {
+            # unexport pkgdir
+            my $ucmd = qq~exportfs -u -F $pkgdir~;
+            if (xCAT::InstUtils->is_me($serv)) {
                 my $ucmd = qq~exportfs -u -F $pkgdir~;
                 my $output = xCAT::Utils->runcmd("$ucmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
-                    push @{$rsp->{data}}, "Could not unexport $pkgdir.\n";
+                    push @{ $rsp->{data} }, "Could not unexport $pkgdir.\n";
                     if ($::VERBOSE)
                     {
-                        push @{$rsp->{data}}, "$output\n";
-                	}
-                	xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
-			} else {
-				# unexport dirs on SNs
-				my $output = xCAT::Utils->runxcmd(
-                        {
-                            command => ["xdsh"],
-                            node    => [$serv],
-                            arg     => [$ucmd]
-                        },
-                        $subreq, -1, 1
-                        );
+                        push @{ $rsp->{data} }, "$output\n";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                }
+            } else {
+
+                # unexport dirs on SNs
+                my $output = xCAT::Utils->runxcmd(
+                    {
+                        command => ["xdsh"],
+                        node    => [$serv],
+                        arg     => [$ucmd]
+                    },
+                    $subreq, -1, 1
+                );
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
-                    push @{$rsp->{data}}, "Could not unexport $pkgdir on $serv.\n";
+                    push @{ $rsp->{data} }, "Could not unexport $pkgdir on $serv.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
+                    $error++;
                 }
-			}
-		} # for each osimage
-	} # for each server 
+            }
+        }    # for each osimage
+    }    # for each server
 
     if ($error)
     {
         my $rsp;
-        push @{$rsp->{data}},
+        push @{ $rsp->{data} },
           "One or more errors occured while updating node software.\n";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
@@ -3111,7 +3165,7 @@ sub updateAIXsoftware
     else
     {
         my $rsp;
-        push @{$rsp->{data}},
+        push @{ $rsp->{data} },
           "Cluster node software update commands have completed.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
@@ -3143,10 +3197,10 @@ sub updateOS
     # Get HTTP server
     my $http;
     my @httpd = xCAT::NetworkUtils->my_ip_facing($node);
-    unless ($httpd[0]) { $http = $httpd[1];}
+    unless ($httpd[0]) { $http = $httpd[1]; }
     if (!$http)
     {
-        push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
+        push @{ $rsp->{data} }, "$node: (Error) Missing HTTP server";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3154,7 +3208,7 @@ sub updateOS
     # Get OS to update to
     my $update2os = $os;
 
-    push @{$rsp->{data}}, "$node: Upgrading $node to $os. Please wait may take a while";
+    push @{ $rsp->{data} }, "$node: Upgrading $node to $os. Please wait may take a while";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     # Get the OS that is installed on the node
@@ -3165,7 +3219,7 @@ sub updateOS
 
     # Red Hat Linux
     if (
-        `ssh -o ConnectTimeout=5 $node "test -f /etc/redhat-release && echo 'redhat'"`
+`ssh -o ConnectTimeout=5 $node "test -f /etc/redhat-release && echo 'redhat'"`
       )
     {
         $installOS = "rh";
@@ -3176,7 +3230,7 @@ sub updateOS
 
     # SUSE Linux
     elsif (
-        `ssh -o ConnectTimeout=5 $node "test -f /etc/SuSE-release && echo 'SuSE'"`
+`ssh -o ConnectTimeout=5 $node "test -f /etc/SuSE-release && echo 'SuSE'"`
       )
     {
         $installOS = "sles";
@@ -3190,7 +3244,7 @@ sub updateOS
     {
         $installOS = "Unknown";
 
-        push @{$rsp->{data}}, "$node: (Error) Linux distribution not supported";
+        push @{ $rsp->{data} }, "$node: (Error) Linux distribution not supported";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3198,8 +3252,8 @@ sub updateOS
     # Is the installed OS and the update to OS of the same distributor
     if (!($update2os =~ m/$installOS/i))
     {
-        push @{$rsp->{data}},
-          "$node: (Error) Cannot not update $installOS.$version to $os.  Linux distribution does not match";
+        push @{ $rsp->{data} },
+"$node: (Error) Cannot not update $installOS.$version to $os.  Linux distribution does not match";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3214,30 +3268,30 @@ sub updateOS
         $path = "http://$http$installDIR/$os/$arch/1/";
         if (!(-e "$installDIR/$os/$arch/1/"))
         {
-            push @{$rsp->{data}},
-              "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
+            push @{ $rsp->{data} },
+"$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return;
         }
 
         # Add installation source using rug
         $out = `ssh $node "rug sa -t zypp $path $os"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         # Subscribe to catalog
         $out = `ssh $node "rug sub $os"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         # Refresh services
         $out = `ssh $node "rug ref"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         # Update
         $out = `ssh $node "rug up -y"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
@@ -3248,26 +3302,26 @@ sub updateOS
         $path = "http://$http$installDIR/$os/$arch/1/";
         if (!(-e "$installDIR/$os/$arch/1/"))
         {
-            push @{$rsp->{data}},
-              "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
+            push @{ $rsp->{data} },
+"$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return;
         }
 
         # Add installation source using zypper
         $out = `ssh $node "zypper ar $path $installOS$version"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         # Refresh services
         $out = `ssh $node "zypper ref"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
         # Update
         $out =
-          `ssh $node "zypper --non-interactive update --auto-agree-with-licenses"`;
-        push @{$rsp->{data}}, "$node: $out";
+`ssh $node "zypper --non-interactive update --auto-agree-with-licenses"`;
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
@@ -3275,24 +3329,24 @@ sub updateOS
     {
 
         my $verifyOS = $os;
-        $verifyOS =~ s/^\D+([\d.]+)$/$1/; 
-        if(xCAT::Utils->version_cmp($verifyOS,"7.0") < 0){
+        $verifyOS =~ s/^\D+([\d.]+)$/$1/;
+        if (xCAT::Utils->version_cmp($verifyOS, "7.0") < 0) {
             $path = "http://$http$installDIR/$os/$arch/Server/";
             if (!(-e "$installDIR/$os/$arch/Server/"))
             {
-                push @{$rsp->{data}},
-                  "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
+                push @{ $rsp->{data} },
+"$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
                 return;
             }
-        }	
+        }
         else
         {
             $path = "http://$http$installDIR/$os/$arch/";
             if (!(-e "$installDIR/$os/$arch/"))
             {
-                push @{$rsp->{data}},
-                  "$node: (Error) Missing install directory $installDIR/$os/$arch/";
+                push @{ $rsp->{data} },
+"$node: (Error) Missing install directory $installDIR/$os/$arch/";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
                 return;
             }
@@ -3320,13 +3374,13 @@ sub updateOS
 
         # Upgrade
         $out = `ssh $node "yum -y upgrade"`;
-        push @{$rsp->{data}}, "$node: $out";
+        push @{ $rsp->{data} }, "$node: $out";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     else
     {
-        push @{$rsp->{data}},
+        push @{ $rsp->{data} },
           "$node: (Error) Could not update operating system";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
@@ -3356,7 +3410,7 @@ sub updatenodeappstat
     my @args     = ();
     if (ref($request->{node}))
     {
-        @nodes = @{$request->{node}};
+        @nodes = @{ $request->{node} };
     }
     else
     {
@@ -3364,7 +3418,7 @@ sub updatenodeappstat
     }
     if (ref($request->{arg}))
     {
-        @args = @{$request->{arg}};
+        @args = @{ $request->{arg} };
     }
     else
     {
