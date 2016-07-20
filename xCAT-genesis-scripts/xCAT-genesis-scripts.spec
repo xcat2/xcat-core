@@ -101,7 +101,8 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/restart
 %{rpminstallroot}/debian/changelog
 %{rpminstallroot}/debian/compat
-%{rpminstallroot}/debian/control
+%{rpminstallroot}/debian/control-amd64
+%{rpminstallroot}/debian/control-ppc64el
 %{rpminstallroot}/debian/copyright
 #%{rpminstallroot}/debian/dirs
 %{rpminstallroot}/debian/docs
