@@ -18,6 +18,30 @@ if [ $BUILDARCH = "ppc64le" ]; then
     BUILDARCH="ppc64"
 fi
 
+# For xcat-genesis-base-ppc64, we need to update mlx4-en driver for Mellanox ethernet nics. 
+# IF you are sure you have installed newer driver on the build server you can use 'buildrpm -y' to skip the nodification
+if [ -z $1 ]; then
+    HOSTOS="fedora23"
+fi
+if [ $BUILDARCH = 'ppc64' -a $HOSTOS != 'mcp' -a $HOSTOS != '-y' ]; then
+    echo "The steps below is used to installed mlnx driver 3.2-1, if you are sure you have it or newer driver, pls use \"-y\" to skip!"
+    echo "1. Install OS related packages"
+    echo "    yum install kernel-devel-`uname -r`"
+    echo "    yum install kernel-headers-`uname -r`"
+    echo "    yum install gcc-c++"
+    echo "2. Download Mellanox EN Driver for Linux from http://www.mellanox.com/downloads/Drivers/mlnx-en-3.2-1.0.1.1.tgz"
+    echo "3. Extract it and run ./install.sh from the extracted directory"
+    echo "    tar -xvf mlnx-en-3.2-1.0.1.1.tgz"
+    echo "    ./mlnx-en-3.2-1.0.1/install.sh"
+    echo "4. Check whether the mlx4 driver is updated"
+    echo "    modprobe mlx4-en"
+    echo "    modinfo mlx4-en | grep version"
+    echo "    version:        3.2-1.0.1.1 (31 Jan 2016)"
+    echo "5. Once the steps above done, run \"$0 -y\" to build xCAT-genesis-base-ppc64"
+    exit 0
+fi
+
+
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
 # CentOS 7 probably uses /usr/lib/dracut/modules.d also
