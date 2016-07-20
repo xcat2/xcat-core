@@ -2892,6 +2892,47 @@ sub insert_dd {
                 }
               }
             }
+          
+            #insert a dracut pre-pivot hook to update the kernel modules in the stage2 LiveOS image
+            #with the kernel modules inside initrd 
+            if (-d "$dd_dir/initrd_img/usr/lib/dracut/hooks/pre-pivot"){
+                my $hookcopykmod;
+                open($hookcopykmod,">","$dd_dir/initrd_img/usr/lib/dracut/hooks/pre-pivot/01-anaconda-copy-kernelmodules.sh");
+                print $hookcopykmod <<'EOMS';
+#!/bin/sh
+# Copy over kernel module files under /usr/lib/modules/<kernel version> from the initrd to /run before pivot
+
+function mycopytree {
+    SRCPATH=$1
+    DSTPATH=$2
+
+    [ -d "$SRCPATH" ] || return 1
+
+    # avoid overwriting symlinks (e.g. /lib -> /usr/lib) with directories
+    mkdir -p $DSTPATH
+    cd $SRCPATH
+    find . -depth -type d | while read dir; do
+        mkdir -p "$DSTPATH/$dir"
+    done
+    find . -depth \! -type d | while read file; do
+        \cp -a "$file" "$DSTPATH/$file"
+    done
+
+    return 0
+}
+
+KVERSION=$(uname -r)
+if [ -b /dev/mapper/live-rw ] && [ -d "/usr/lib/modules/$KVERSION" ]; then
+    info "Applying updated kernel modules to live image..."
+    mount -o bind /run $NEWROOT/run
+    mycopytree "/usr/lib/modules/$KVERSION" "$NEWROOT/usr/lib/modules/$KVERSION"
+    umount $NEWROOT/run
+fi
+EOMS
+                close($hookcopykmod);
+                chmod(0755,"$dd_dir/initrd_img/usr/lib/dracut/hooks/pre-pivot/01-anaconda-copy-kernelmodules.sh");
+            }        
+ 
         } else {# non dracut mode, for rh5, fedora12 ...
             # For non-dracut mode, the drviers need to be merged into the initrd with the specific format
 
