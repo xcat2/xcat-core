@@ -1230,6 +1230,24 @@ my %URIdef = (
             },
         },
     },
+    
+    ### interface to access local system resource which is not managed by xcat directly
+    ### localres can be looked as a top level non-xcat resource pool
+    ### rest operation will trasfer the target resource to xcatd plugin to handle the non-xcat resource
+    localres => {
+        localres => {
+            desc => "[URI:/localres/*] - The local non-xcat resource.",
+            matcher => '^/localres(/[^/]*)+$',
+            GET => {
+                desc => "List information for the target system resource.",
+                usage => "||For target resource can match any resource type which can be proccssed by the resthelper plugin.|",
+                example => qq(|List adapters on MN machine|GET|/localres/interface/|{\n   \"interfaces\":[\n\"eth0\",\n         \"eth1\",\n]"|),
+                cmd => "localrest",
+                fhandler => \&localreshdl,
+                outhdler => \&localresout,
+            },
+        }
+    }
 );
 
 # supported formats
@@ -1288,6 +1306,7 @@ my @path = split(/\//, $pathInfo);    # The uri path like /nodes/node1/...
 
 # Define the golbal variables which will be used through the handling process
 my $pageContent = '';       # Global var containing the ouptut back to the rest client
+my %header_info;    #Global var containing the extra info to the http header
 my $request     = {clienttype => 'ws'};     # Global var that holds the request to send to xcatd
 my $format = 'json';    # The output format for a request invoke
 my $xmlinstalled;    # Global var to speicfy whether the xml modules have been loaded
@@ -1649,6 +1668,17 @@ sub defout_remove_appended_info {
 }
 
 
+sub localresout {
+    my $data = shift;
+    my $json;
+    if ($data->[0]->{info}->[0] eq 'stream') {
+        $format = 'stream';
+        $header_info{'attachment'} = $data->[0]->{info}->[1];
+        addPageContent($data->[0]->{info}->[2]);
+    } elsif ($data->[0]->{info}->[0] eq 'json') {
+        addPageContent($data->[0]->{info}->[1]);
+    }
+}
 
 # hanlde the output which has the node irrelevant message (e.g. the output for updatenode command)
 # handle the input like  
@@ -2145,6 +2175,39 @@ sub actionhdl {
     my $req = genRequest();
     my $responses = sendRequest($req);
 
+    return $responses;
+}
+
+sub localreshdl {
+    my $params = shift;
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+
+    if (isGET() && scalar(@urilayers) > 1 && $urilayers[-1] eq "detail") {
+        push @args, "show";
+    } elsif (isGET() && scalar(@urilayers) > 1 && $urilayers[-1] eq "file") {
+        push @args, "download";
+    } elsif (isGET()) {
+        push @args, "list";
+    } elsif (isPost()) {
+        push @args, "create";
+    } elsif (isPut()) {
+        push @args, "update";
+    } elsif (isDelete()) {
+        push @args, "delete";
+    }
+    shift @urilayers;
+    foreach my $item (@urilayers) {
+        push @args, $item if $item ne 'detail' && $item ne 'file';
+    }
+    push @{$request->{arg}}, @args;
+    # localrest is single plugin handler, use sequntial to avoid of multi-level processes    
+    $request->{'sequential'}->[0] = 1;
+    my $req = genRequest();
+    my $responses = sendRequest($req);
     return $responses;
 }
 
@@ -2965,11 +3028,22 @@ sub sendResponseMsg {
     elsif ('xml' eq $format) {
         $tempFormat = 'text/xml';
     }
+    elsif ('stream' eq $format) {
+        $tempFormat = 'application/octet-stream';
+    }
     else {
         $tempFormat = 'text/html';
     }
-    print $q->header(-status => $code, -type => $tempFormat);
-    if ($pageContent) { $pageContent .= "\n"; }     # if there is any content, append a newline
+
+    if ($header_info{attachment}) {
+        print $q->header(-status => $code,
+                         -type => $tempFormat,
+                         -attachment => $header_info{attachment},
+                         -Content_length => length($pageContent));
+    } else {
+        print $q->header(-status => $code, -type => $tempFormat);
+        if ($pageContent) { $pageContent .= "\n"; }     # if there is any content, append a newline
+    }
     print $pageContent;
     exit(0);
 }

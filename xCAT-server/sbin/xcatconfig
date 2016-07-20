@@ -448,12 +448,6 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     }
     else
     {
-        #since the xcatd service unit file is updated on xcat upgrade
-        #"systemctl daemon-reload" need to be run to update the service unit
-        if ($::UPDATEINSTALL){
-            $xcmd="type systemctl >/dev/null 2>&1 && systemctl daemon-reload";
-            xCAT::Utils->runcmd("$xcmd", 0);
-        }
         #$xcmd = "/etc/init.d/xcatd restart";
         xCAT::Utils->restartservice("xcatd");
     }
@@ -1507,8 +1501,30 @@ sub checkotherpkgs
 #-----------------------------------------------------------------------------
 
 sub genCredentials
-
 {
+    my $add_user_func = sub {
+        my $user = shift;
+        my ($cmd, $outref, $rc);
+        $rc = getgrnam($user);
+        if (!$rc) {
+            $cmd = "groupadd $user";
+            $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->message('E',"$cmd failed");
+                return;
+            }
+        }
+        $rc = getpwnam($user);
+        if (!$rc) {
+            $cmd = "useradd -g $user -s /bin/bash -d /home/$user -m $user";
+            $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0) {
+               xCAT::MsgUtils->message('E',"$cmd failed");
+               return;
+            }
+        }
+    };
+
     my $hname = `hostname`;
     chomp $hname;
     if ((!-d "/etc/xcat/ca") || $::FORCE || $::genCredentials)
@@ -1609,6 +1625,24 @@ sub genCredentials
         {
             xCAT::MsgUtils->message('E',
                  "Could not create xCAT certificate in /.xcat/client-key.pem.");
+        }
+        else
+        {
+            xCAT::MsgUtils->message('I', "Created xCAT certificate.");
+        }
+    }
+
+    if ((!-r "/home/conserver/.xcat/client-key.pem") || $::FORCE || $::genCredentials)
+    {
+        $add_user_func->('conserver');
+        my $cmd =
+          "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-local-client.sh conserver";
+        verbose("Running $cmd");
+        my $rc = system($cmd);
+        if ($rc >> 8)
+        {
+            xCAT::MsgUtils->message('E',
+                 "Could not create xCAT certificate in /home/conserver/.xcat/client-key.pem.");
         }
         else
         {
