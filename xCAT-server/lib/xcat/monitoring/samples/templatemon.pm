@@ -2,9 +2,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT_monitoring::templatemon;
+
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -12,7 +13,9 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::Utils;
 
 1;
+
 #-------------------------------------------------------------------------------
+
 =head1  xCAT_monitoring:templatemon  
 =head2    Package Description
    This is a xCAT monitoring plugin template. 
@@ -49,9 +52,11 @@ use xCAT::Utils;
    Use monrm templatemon [noderange] [-r] to remove it from the monitoring table. 
 
 =cut
+
 #-------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
+
 =head3    start
       This function gets called by the monitorctrl module
       when xcatd starts and when monstart command is issued by the user.
@@ -69,69 +74,73 @@ use xCAT::Utils;
       (return code, message) 
       if the callback is set, use callback to display the status and error. 
 =cut
+
 #--------------------------------------------------------------------------------
 sub start {
-  print "templatemon::start called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;  #2 when -r flag is specified for monstart command, otherwise 0. 
-  my $callback=shift; #null when it is called by 'service xcatd start' command.
- 
+    print "templatemon::start called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope = shift; #2 when -r flag is specified for monstart command, otherwise 0.
+    my $callback = shift; #null when it is called by 'service xcatd start' command.
 
-  #TODO: start up the monitoring on the local host
 
-  #demo how to do output
-  my $result="I am ok";
-  if ($callback) { #this is the case when monstart is called, 
-                   # the $result will be diplayed to STDIN
-    my $rsp={};
-    $rsp->{data}->[0]="$result";
-    $callback->($rsp);
-  } else {  #if this function is invoked by xcatd when xcatd starts, $callback is null
-            #we have to store the result into syslog
-    xCAT::MsgUtils->message('S', "[mon]: $result\n"); 
-  } 
+    #TODO: start up the monitoring on the local host
 
-  if ($scope) {
-    #demo how to get the children
-    my @hostinfo=xCAT::NetworkUtils->determinehostname();
-    my $isSV=xCAT::Utils->isServiceNode();
-    my %iphash=();
-    foreach(@hostinfo) {$iphash{$_}=1;}
-    if (!$isSV) { $iphash{'noservicenode'}=1;}
-    my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-    if (ref($pPairHash) eq 'ARRAY') {
-	if ($callback) {
-	    my $resp={};
-	    $resp->{data}->[0]=$pPairHash->[1];
-	    $callback->($resp);
-	} else {
-	    xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
-	}
-	return (1, "");	
+    #demo how to do output
+    my $result = "I am ok";
+    if ($callback) {    #this is the case when monstart is called,
+                        # the $result will be diplayed to STDIN
+        my $rsp = {};
+        $rsp->{data}->[0] = "$result";
+        $callback->($rsp);
+    } else { #if this function is invoked by xcatd when xcatd starts, $callback is null
+             #we have to store the result into syslog
+        xCAT::MsgUtils->message('S', "[mon]: $result\n");
     }
 
-    foreach my $key (keys(%$pPairHash)) {
-      my @key_a=split(':', $key);
-      if (! $iphash{$key_a[0]}) {  next; }
-      my $mon_nodes=$pPairHash->{$key};
+    if ($scope) {
 
-      foreach(@$mon_nodes) {
-        my $node_info=$_;
-        print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-        #TODO: use xdsh command to reach to the child to perform startup process.
-      }
+        #demo how to get the children
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $isSV     = xCAT::Utils->isServiceNode();
+        my %iphash   = ();
+        foreach (@hostinfo) { $iphash{$_} = 1; }
+        if (!$isSV) { $iphash{'noservicenode'} = 1; }
+        my $pPairHash = xCAT_monitoring::monitorctrl->getMonServer($noderef);
+        if (ref($pPairHash) eq 'ARRAY') {
+            if ($callback) {
+                my $resp = {};
+                $resp->{data}->[0] = $pPairHash->[1];
+                $callback->($resp);
+            } else {
+                xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+            }
+            return (1, "");
+        }
+
+        foreach my $key (keys(%$pPairHash)) {
+            my @key_a = split(':', $key);
+            if (!$iphash{ $key_a[0] }) { next; }
+            my $mon_nodes = $pPairHash->{$key};
+
+            foreach (@$mon_nodes) {
+                my $node_info = $_;
+                print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+
+                #TODO: use xdsh command to reach to the child to perform startup process.
+            }
+        }
     }
-  }
- 
-  return (0, "started");
+
+    return (0, "started");
 }
 
 
 
 #--------------------------------------------------------------------------------
+
 =head3    stop
       This function gets called when monstop command is issued by the user.
       It should stop the daemons and do the necessary backup process 
@@ -148,60 +157,64 @@ sub start {
       (return code, message) 
       if the callback is set, use callback to display the status and error. 
 =cut
+
 #--------------------------------------------------------------------------------
 sub stop {
-  print "templatemon::stop called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;
-  my $callback=shift;
- 
-
-  #TODO: stop the monitoring on the local host
+    print "templatemon::stop called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope    = shift;
+    my $callback = shift;
 
 
-  if ($scope) {
-    #demo how to get the children
-    my @hostinfo=xCAT::NetworkUtils->determinehostname();
-    my $isSV=xCAT::Utils->isServiceNode();
-    my %iphash=();
-    foreach(@hostinfo) {$iphash{$_}=1;}
-    if (!$isSV) { $iphash{'noservicenode'}=1;}
-    my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-    if (ref($pPairHash) eq 'ARRAY') {
-	if ($callback) {
-	    my $resp={};
-	    $resp->{data}->[0]=$pPairHash->[1];
-	    $callback->($resp);
-	} else {
-	    xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
-	}
-	return (1, "");	
+    #TODO: stop the monitoring on the local host
+
+
+    if ($scope) {
+
+        #demo how to get the children
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $isSV     = xCAT::Utils->isServiceNode();
+        my %iphash   = ();
+        foreach (@hostinfo) { $iphash{$_} = 1; }
+        if (!$isSV) { $iphash{'noservicenode'} = 1; }
+        my $pPairHash = xCAT_monitoring::monitorctrl->getMonServer($noderef);
+        if (ref($pPairHash) eq 'ARRAY') {
+            if ($callback) {
+                my $resp = {};
+                $resp->{data}->[0] = $pPairHash->[1];
+                $callback->($resp);
+            } else {
+                xCAT::MsgUtils->message('S', "[mon]: " . $pPairHash->[1]);
+            }
+            return (1, "");
+        }
+
+        foreach my $key (keys(%$pPairHash)) {
+            my @key_a = split(':', $key);
+            if (!$iphash{ $key_a[0] }) { next; }
+            my $mon_nodes = $pPairHash->{$key};
+
+            foreach (@$mon_nodes) {
+                my $node_info = $_;
+                print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
+
+                #TODO: use xdsh command to reach to the child to perform the stop process.
+            }
+        }
     }
 
-    foreach my $key (keys(%$pPairHash)) {
-      my @key_a=split(':', $key); 
-      if (! $iphash{$key_a[0]}) {  next; }
-      my $mon_nodes=$pPairHash->{$key};
 
-      foreach(@$mon_nodes) {
-        my $node_info=$_;
-        print "    node=$node_info->[0], nodetype=$node_info->[1], status=$node_info->[2]\n";
-        #TODO: use xdsh command to reach to the child to perform the stop process.
-      }
-    }
-  }
- 
-  
-  return (0, "stopped");
+    return (0, "stopped");
 }
 
 
 
 
 #--------------------------------------------------------------------------------
+
 =head3    supportNodeStatusMon
     This function is called by the monitorctrl module to check
     if this product can help monitoring and returning the node status.
@@ -212,15 +225,18 @@ sub stop {
            0 means not support. 
            1 means yes.
 =cut
+
 #--------------------------------------------------------------------------------
 sub supportNodeStatusMon {
-  #TODO: change the return value here.
-  return 1;
+
+    #TODO: change the return value here.
+    return 1;
 }
 
 
 
 #--------------------------------------------------------------------------------
+
 =head3   startNodeStatusMon
     This function is called by the monitorctrl module when monstart gets called and
     when xcatd starts. It starts monitoring the node status and feed them back
@@ -235,23 +251,25 @@ sub supportNodeStatusMon {
       (return code, message) 
       if the callback is set, use callback to display the status and error. 
 =cut
+
 #--------------------------------------------------------------------------------
 sub startNodeStatusMon {
-  print "templatemon::startNodeStatusMon called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;
-  my $callback=shift;
- 
-  #TODO: turn on the node status monitoring. use nodech command to feed the new status
+    print "templatemon::startNodeStatusMon called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope    = shift;
+    my $callback = shift;
 
-  return (0, "");
+    #TODO: turn on the node status monitoring. use nodech command to feed the new status
+
+    return (0, "");
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   stopNodeStatusMon
     This function is called by the monitorctrl module when monstop command is issued.
     It stops feeding the node status info back to xCAT. 
@@ -266,21 +284,24 @@ sub startNodeStatusMon {
       (return code, message) 
       if the callback is set, use callback to display the status and error.  
 =cut
+
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMon {
-  print "templatemon::stopNodeStatusMon called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;
-  my $callback=shift;
-  #TODO: turn off the node status monitoring. 
-  return (0, "");
+    print "templatemon::stopNodeStatusMon called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope    = shift;
+    my $callback = shift;
+
+    #TODO: turn off the node status monitoring.
+    return (0, "");
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    config
       This function configures the cluster for the given nodes.  
       This function is called by when monconfig command is issued or when xcatd starts
@@ -295,21 +316,23 @@ sub stopNodeStatusMon {
     Returns:
        (error code, error message)
 =cut
+
 #--------------------------------------------------------------------------------
 sub config {
-  print "templatemon::config called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;
-  my $callback=shift;
+    print "templatemon::config called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope    = shift;
+    my $callback = shift;
 
 
-  return (0, "");
+    return (0, "");
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    deconfig
       This function is called by when mondeconfig command is issued.
       It will deconfigure the cluster to remove the given nodes from the monitoring doamin. 
@@ -322,21 +345,23 @@ sub config {
     Returns:
        (error code, error message)
 =cut
+
 #--------------------------------------------------------------------------------
 sub deconfig {
-  print "templatemon::deconfig called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $scope=shift;
-  my $callback=shift;
+    print "templatemon::deconfig called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $scope    = shift;
+    my $callback = shift;
 
-  return (0, "");
+    return (0, "");
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    processSettingChanges
       This optional function gets called when the setting for this monitoring plugin 
       has been changed in the monsetting table.
@@ -346,14 +371,17 @@ sub deconfig {
         0 for successful.
         non-0 for not successful.
 =cut
+
 #--------------------------------------------------------------------------------
 sub processSettingChanges {
-  #get latest settings for this plugin and do something about it
-  my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("templatemon");
-  return 0;
+
+    #get latest settings for this plugin and do something about it
+    my %settings = xCAT_monitoring::monitorctrl->getPluginSettings("templatemon");
+    return 0;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    getDiscription
       This function returns the detailed description of the plugin inluding the
      valid values for its settings in the monsetting tabel. 
@@ -362,10 +390,11 @@ sub processSettingChanges {
     Returns:
         The description.
 =cut
+
 #--------------------------------------------------------------------------------
 sub getDescription {
-  return 
-"  Description:
+    return
+      "  Description:
     templatemon description goes here. 
   Settings:
     key:  explaination. default value etc.\n";
@@ -373,6 +402,7 @@ sub getDescription {
 
 
 #--------------------------------------------------------------------------------
+
 =head3    getNodesMonServers
       When monitoring commands get called, the default process is to dispatch the command
     to all the monserves of the given nodes. The monserver for a node is defined
@@ -396,19 +426,21 @@ sub getDescription {
       for that node. In this case the second one is the site master. 
       It returns a pointer to an array if there is an error. Format is [code, message].
 =cut
+
 #--------------------------------------------------------------------------------
 sub getNodesMonServers
 {
-  print "templatemon.getNodesMonServer called\n";
-  my $noderef=shift;
-  if ($noderef =~ /xCAT_monitoring::templatemon/) {
-    $noderef=shift;
-  }
-  my $callback=shift;
+    print "templatemon.getNodesMonServer called\n";
+    my $noderef = shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+        $noderef = shift;
+    }
+    my $callback = shift;
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    getPostscripts
       This optional function returns the postscripts needed for configuring the the nodes
       for monitoring.  The postscripts get downloaded from mn to the nodes and
@@ -422,16 +454,19 @@ sub getNodesMonServers
     {service=>"cmd1,cmd2", xcatdefaults=>"cmd3,cmd4"} where xcatdefults is a group
     of all nodes including the service nodes.
 =cut
+
 #--------------------------------------------------------------------------------
 sub getPostscripts {
-  #Sample
-  my $ret={};
-  $ret->{xcatdefaults}="cmd1";
-  return $ret;
+
+    #Sample
+    my $ret = {};
+    $ret->{xcatdefaults} = "cmd1";
+    return $ret;
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    getNodeConfData
      This optional function gets called during the node deployment process before
      the postscripts are invoked. It gets a list of environmental variables for 
@@ -448,18 +483,19 @@ sub getPostscripts {
         }
                 
 =cut
+
 #--------------------------------------------------------------------------------
 sub getNodeConfData {
-    my $noderef=shift;
+    my $noderef = shift;
     if ($noderef =~ /xCAT_monitoring::templatemon/) {
-	$noderef=shift;
+        $noderef = shift;
     }
-    
+
     #sample
     my $ref_ret;
-    foreach my $node (@$noderef) {  
-	$ref_ret->{$node}->{MY_ENV1}="abcde";
-	$ref_ret->{$node}->{MY_ENV2}="abcde2";
+    foreach my $node (@$noderef) {
+        $ref_ret->{$node}->{MY_ENV1} = "abcde";
+        $ref_ret->{$node}->{MY_ENV2} = "abcde2";
     }
     return $ref_ret;
 }

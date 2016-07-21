@@ -6,6 +6,7 @@ use strict;
 use File::Path;
 use File::Copy;
 use Socket;
+
 #-----------------------------------------
 
 =head3
@@ -226,19 +227,20 @@ sub is_firewall_open {
     my $output;
     my $rst = 0;
 
-    my $output =`iptables -nvL -t filter 2>&1`;
+    my $output = `iptables -nvL -t filter 2>&1`;
 
     `echo "$output" |grep "Chain INPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     `echo "$output" |grep "Chain FORWARD (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     `echo "$output" |grep "Chain OUTPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     return $rst;
 }
+
 #------------------------------------------
 
 =head3
@@ -352,16 +354,16 @@ sub is_dns_ready {
 =cut
 
 #------------------------------------------
-sub get_ip_from_hostname{
+sub get_ip_from_hostname {
     my $hostname = shift;
-    $hostname=shift if(($hostname) && ($hostname =~ /probe_utils/));
+    $hostname = shift if (($hostname) && ($hostname =~ /probe_utils/));
     my $ip = "";
 
     my @output = `ping -c 1 $hostname 2>&1`;
-    if(!$?){
-       if($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/){
-           $ip=$1;
-       }
+    if (!$?) {
+        if ($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/) {
+            $ip = $1;
+        }
     }
     return $ip;
 }
@@ -379,17 +381,17 @@ sub get_ip_from_hostname{
 =cut
 
 #------------------------------------------
-sub get_network{
+sub get_network {
     my $ip = shift;
-    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+    $ip = shift if (($ip) && ($ip =~ /probe_utils/));
     my $mask = shift;
-    my $net="";
+    my $net  = "";
 
     return $net if (!is_ip_addr($ip));
     return $net if ($mask !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
 
     my $bin_mask = unpack("N", inet_aton($mask));
-    my $bin_ip = unpack("N", inet_aton($ip));;
+    my $bin_ip   = unpack("N", inet_aton($ip));
     my $net_int32 = $bin_mask & $bin_ip;
     $net = ($net_int32 >> 24) . "." . (($net_int32 >> 16) & 0xff) . "." . (($net_int32 >> 8) & 0xff) . "." . ($net_int32 & 0xff);
     return "$net/$mask";
@@ -407,31 +409,31 @@ sub get_network{
 =cut
 
 #------------------------------------------
-sub get_hostname_from_ip{
-    my  $ip = shift;
-    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+sub get_hostname_from_ip {
+    my $ip = shift;
+    $ip = shift if (($ip) && ($ip =~ /probe_utils/));
     my $dns_server = shift;
-    my $hostname="";
-    my $output="";
+    my $hostname   = "";
+    my $output     = "";
 
     `which nslookup > /dev/null 2>&1`;
-    if(!$?){ 
+    if (!$?) {
         $output = `nslookup $ip  $dns_server 2>&1`;
         if (!$?) {
             chomp($output);
             my $rc = $hostname = `echo "$output"|awk -F" " '/name =/ {print \$4}'|awk -F"." '{print \$1}'`;
             chomp($hostname);
             return $hostname if (!$rc);
-        }    
-    }
-    if(($hostname eq "") && (-e "/etc/hosts")){
-        $output = `cat /etc/hosts 2>&1 |grep $ip`;
-        if(!$?){
-            my @splitoutput = split(" ", $output);
-            $hostname = $splitoutput[1]; 
         }
     }
-    return $hostname; 
+    if (($hostname eq "") && (-e "/etc/hosts")) {
+        $output = `cat /etc/hosts 2>&1 |grep $ip`;
+        if (!$?) {
+            my @splitoutput = split(" ", $output);
+            $hostname = $splitoutput[1];
+        }
+    }
+    return $hostname;
 }
 
 1;

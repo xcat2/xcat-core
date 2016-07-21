@@ -38,10 +38,10 @@ sub parse_nettarget {
 }
 
 sub _verify {
-    my $self = shift;
-    my $peername = shift;
+    my $self           = shift;
+    my $peername       = shift;
     my $addfingerprint = shift;
-    my $coreverified = shift;
+    my $coreverified   = shift;
     if ($coreverified) {
         return $coreverified;
     }
@@ -63,54 +63,55 @@ sub _verify {
 sub ssl_connect {
     my $self = shift;
     my ($peer, $port) = parse_nettarget(shift);
-    my %args = @_;
+    my %args           = @_;
     my $addfingerprint = undef;
     if ($args{fingerprint}) {
         $addfingerprint = $args{fingerprint};
     }
+
     # TODO: support typical X509 style when CA present
     my %sslargs = (
-        PeerAddr => $peer,
-        PeerPort => $port,
+        PeerAddr        => $peer,
+        PeerPort        => $port,
         SSL_verify_mode => SSL_VERIFY_PEER,
         SSL_verify_callback =>
-            sub { $self->_verify($port."@".$peer, $addfingerprint, @_); },
+          sub { $self->_verify($port . "@" . $peer, $addfingerprint, @_); },
         SSL_verifycn_scheme => 'none',
     );
-    if (1) { # TODO: check for ca location
-        # we would do 'undef'.  However, older IO::Socket::SSL doesn't do
-        # for now, go ahead and tell it to check in a futile manner for
-        # certificates before failing into our callback to do knownhosts
-        # style
+    if (1) {    # TODO: check for ca location
+            # we would do 'undef'.  However, older IO::Socket::SSL doesn't do
+            # for now, go ahead and tell it to check in a futile manner for
+            # certificates before failing into our callback to do knownhosts
+            # style
         $sslargs{SSL_ca_path} = '/';
     } else {
     }
     $self->{handle} = IO::Socket::SSL->new(%sslargs);
     unless ($self->{handle}) {
-        return undef; 
+        return undef;
     }
 }
 
 sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
-    my $self = {};
+    my $self  = {};
     bless($self, $class);
     my $serverlocation = shift;
-    my %args = @_;
+    my %args           = @_;
     if (not $serverlocation) {
         $serverlocation = "/var/run/confluent/api.sock";
     }
     if (-S $serverlocation) {
         $self->{handle} = IO::Socket::UNIX->new($serverlocation);
-    } else {  # assume a remote network connection
+    } else {    # assume a remote network connection
         $self->{handle} = $self->ssl_connect($serverlocation, @_);
     }
     unless ($self->{handle}) {
-        return undef; 
+        return undef;
     }
     $self->{server} = Confluent::TLV->new($self->{handle});
-    my $banner = $self->{server}->recv();
+    my $banner   = $self->{server}->recv();
     my $authdata = $self->{server}->recv();
     $self->{authenticated} = 0;
     if ($authdata->{authpassed}) {
@@ -125,8 +126,8 @@ sub new {
 sub authenticate {
     my $self = shift;
     my %args = @_;
-    $self->{server}->send({username=>$args{username},
-                           passphrase=>$args{passphrase}});
+    $self->{server}->send({ username => $args{username},
+            passphrase => $args{passphrase} });
 
     my $authdata = $self->{server}->recv();
     if ($authdata->{authpassed}) {
@@ -137,27 +138,27 @@ sub authenticate {
 sub create {
     my $self = shift;
     my $path = shift;
-    return $self->send_request(operation=>'create', path=>$path, @_);
+    return $self->send_request(operation => 'create', path => $path, @_);
 }
 
 sub update {
     my $self = shift;
     my $path = shift;
-    return $self->send_request(operation=>'update', path=>$path, @_);
+    return $self->send_request(operation => 'update', path => $path, @_);
 }
 
 sub read {
     my $self = shift;
     my $path = shift;
     my %args = @_;
-    return $self->send_request(operation=>'retrieve', path=>$path);
+    return $self->send_request(operation => 'retrieve', path => $path);
 }
 
 sub delete {
     my $self = shift;
     my $path = shift;
     my %args = @_;
-    return $self->send_request(operation=>'delete', path=>$path);
+    return $self->send_request(operation => 'delete', path => $path);
 }
 
 sub send_request {
@@ -169,10 +170,10 @@ sub send_request {
         die "Cannot submit multiple requests to same object concurrently";
     }
     $self->{pending} = 1;
-    my %args = @_;
+    my %args    = @_;
     my %payload = (
         operation => $args{operation},
-        path => $args{path},
+        path      => $args{path},
     );
     if ($args{parameters}) {
         $payload{parameters} = $args{parameters};

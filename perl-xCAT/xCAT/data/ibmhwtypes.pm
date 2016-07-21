@@ -3,24 +3,24 @@
 
 package xCAT::data::ibmhwtypes;
 require Exporter;
-@EXPORT_OK=qw(parse_group mt2group);
+@EXPORT_OK = qw(parse_group mt2group);
 use Data::Dumper;
 my %groups2mtm = (
-    "x3250" => ["2583","4251","4252"],
-    "x3550" => ["7914","7944","7946"],
-    "x3650" => ["7915","7945"],
+    "x3250" => [ "2583", "4251", "4252" ],
+    "x3550" => [ "7914", "7944", "7946" ],
+    "x3650" => [ "7915", "7945" ],
     "dx360" => [],
     "x220"  => ["7906"],
-    "x240"  => ["8737","7863"],
-    "x440"  => ["7917"],
-    "p260"  => ["7895"], #789522X, 789523X
-    "p460"  => [],       #789542X
-    "p470"  => ["7954"],
+    "x240" => [ "8737", "7863" ],
+    "x440" => ["7917"],
+    "p260" => ["7895"],    #789522X, 789523X
+    "p460" => [],          #789542X
+    "p470" => ["7954"],
 );
 
 %mt2group = ();
 foreach my $group (keys %groups2mtm) {
-    foreach my $mtm (@{$groups2mtm{$group}}) {
+    foreach my $mtm (@{ $groups2mtm{$group} }) {
         $mt2group{$mtm} = $group;
     }
 }

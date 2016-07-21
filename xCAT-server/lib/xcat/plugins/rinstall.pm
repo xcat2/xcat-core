@@ -46,9 +46,9 @@ sub handled_commands {
 
 #-------------------------------------------------------
 sub process_request {
-    my $request = shift;
+    my $request  = shift;
     my $callback = shift;
-    my $subreq = shift;
+    my $subreq   = shift;
 
     rinstall($request, $callback, $subreq);
 }
@@ -64,7 +64,7 @@ sub process_request {
 #-------------------------------------------------------
 sub rinstall {
     my ($req, $callback, $subreq) = @_;
-    $::CALLBACK=$callback;
+    $::CALLBACK = $callback;
     my $CONSOLE;
     my $OSIMAGE;
     my $STATES;
@@ -73,12 +73,14 @@ sub rinstall {
     my $HELP;
     my $VERSION;
     my $UEFIMODE;
+
     # Could be rinstall or winstall
     my $command = $req->{command}->[0];
 
     my $nodes;
     my @nodes;
     my %nodes;
+
     # There are nodes
     if (defined($req->{node})) {
         $nodes = $req->{node};
@@ -86,6 +88,7 @@ sub rinstall {
     }
 
     my $args;
+
     # There are arguments
     if (defined($req->{arg})) {
         $args = $req->{arg};
@@ -95,20 +98,20 @@ sub rinstall {
     if (($command =~ /rinstall/) or ($command =~ /winstall/)) {
         my $state = $ARGV[0];
         my $reststates;
-        ($state, $reststates) = split (/,/, $state, 2);
+        ($state, $reststates) = split(/,/, $state, 2);
         chomp($state);
         if ($state eq "image" or $state eq "winshell" or $state =~ /^osimage/) {
             my $target;
             my $action;
             if ($state =~ /=/) {
-                ($state,$target) = split '=',$state,2;
+                ($state, $target) = split '=', $state, 2;
                 if ($target =~ /:/) {
-                    ($target, $action) = split ':',$target,2;
+                    ($target, $action) = split ':', $target, 2;
                 }
             }
             else {
                 if ($state =~ /:/) {
-                    ($state, $action) = split ':',$state,2;
+                    ($state, $action) = split ':', $state, 2;
                 }
             }
             if ($state eq 'osimage') {
@@ -124,31 +127,31 @@ sub rinstall {
         Getopt::Long::Configure("bundling");
         Getopt::Long::Configure("no_pass_through");
         unless (
-            GetOptions ('O|osimage=s' => \$OSIMAGE,
-                        'ignorekernelchk' => \$ignorekernelchk,
-                        'V|verbose'   => \$VERBOSE,
-                        'h|help'      => \$HELP,
-                        'v|version'   => \$VERSION,
-                        'u|uefimode'  => \$UEFIMODE,
-                        'c|console'   => \$CONSOLE)
-        ) {
-            &usage($command,$callback);
+            GetOptions('O|osimage=s' => \$OSIMAGE,
+                'ignorekernelchk' => \$ignorekernelchk,
+                'V|verbose'       => \$VERBOSE,
+                'h|help'          => \$HELP,
+                'v|version'       => \$VERSION,
+                'u|uefimode'      => \$UEFIMODE,
+                'c|console'       => \$CONSOLE)
+          ) {
+            &usage($command, $callback);
             return 1;
         }
     }
     if ($HELP) {
-        &usage($command,$callback);
+        &usage($command, $callback);
         return 0;
     }
     if ($VERSION) {
         my $version = xCAT::Utils->Version();
-        my $rsp = {};
+        my $rsp     = {};
         $rsp->{data}->[0] = "$version";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
     }
     if (scalar(@nodes) == 0) {
-        &usage($command,$callback);
+        &usage($command, $callback);
         return 1;
     }
 
@@ -172,8 +175,9 @@ sub rinstall {
         my $nodetypecache = $nodetypetable->getNodesAttribs(\@nodes, ['arch']);
         $nodetypetable->close();
         my $osimagetable = xCAT::Table->new("osimage");
-        (my $ref) = $osimagetable->getAttribs({imagename => $OSIMAGE}, 'osvers', 'osarch','imagetype');
+        (my $ref) = $osimagetable->getAttribs({ imagename => $OSIMAGE }, 'osvers', 'osarch', 'imagetype');
         $osimagetable->close();
+
         unless (defined($ref->{osarch})) {
             my $rsp = {};
             $rsp->{error}->[0] = "$OSIMAGE 'osarch' attribute not defined in 'osimage' table.";
@@ -182,15 +186,15 @@ sub rinstall {
             return 1;
         }
         my $osimagearch = $ref->{osarch};
-        my $netbootval = xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch},$ref->{imagetype});
+        my $netbootval = xCAT::Utils->lookupNetboot($ref->{osvers}, $ref->{osarch}, $ref->{imagetype});
         my @validnodes;
         foreach my $node (@nodes) {
-            unless ($noderescache) { next; }
+            unless ($noderescache)  { next; }
             unless ($nodetypecache) { next; }
-            unless ($nodehmcache) { next; }
-            my $noderesattribs = $noderescache->{$node}->[0];
+            unless ($nodehmcache)   { next; }
+            my $noderesattribs  = $noderescache->{$node}->[0];
             my $nodetypeattribs = $nodetypecache->{$node}->[0];
-            my $nodehmattribs = $nodehmcache->{$node}->[0];
+            my $nodehmattribs   = $nodehmcache->{$node}->[0];
             unless (defined($noderesattribs) and defined($noderesattribs->{'netboot'})) {
                 my $rsp = {};
                 $rsp->{error}->[0] = "$node: Missing the 'netboot' attribute.";
@@ -199,8 +203,8 @@ sub rinstall {
                 next;
             }
             else {
-                unless($netbootval =~ /$noderesattribs->{'netboot'}/i){
-                    $callback->({warning=> [$node.": $noderesattribs->{'netboot'} might be invalid when provisioning $OSIMAGE,valid options: \"$netbootval\". For more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
+                unless ($netbootval =~ /$noderesattribs->{'netboot'}/i) {
+                    $callback->({ warning => [ $node . ": $noderesattribs->{'netboot'} might be invalid when provisioning $OSIMAGE,valid options: \"$netbootval\". For more details see the 'netboot' description in the output of \"tabdump -d noderes\"." ] });
                     next;
                 }
             }
@@ -232,16 +236,17 @@ sub rinstall {
             }
             push @validnodes, $node;
         }
+
         #only provision the normal nodes
         @nodes = @validnodes;
 
-        push @parameter,"osimage=$OSIMAGE";
+        push @parameter, "osimage=$OSIMAGE";
         if ($ignorekernelchk) {
-            push @parameter," --ignorekernelchk";
+            push @parameter, " --ignorekernelchk";
         }
     }
     elsif ($STATES) {
-        push @parameter,"$STATES";
+        push @parameter, "$STATES";
     }
     else {
 
@@ -267,7 +272,7 @@ sub rinstall {
                 next;
             }
             else {
-                push(@{$tphash{$nodetypeattribs->{'provmethod'}}}, $node);
+                push(@{ $tphash{ $nodetypeattribs->{'provmethod'} } }, $node);
             }
         }
 
@@ -275,7 +280,8 @@ sub rinstall {
         my @validnodes;
         foreach my $key (keys %tphash) {
             $::RUNCMD_RC = 0;
-            my @pnnodes = @{$tphash{$key}};
+            my @pnnodes = @{ $tphash{$key} };
+
             # If nodetype.provmethod = [install|netboot|statelite]
             if ($key =~ /^(install|netboot|statelite)$/) {
                 my $rsp = {};
@@ -284,11 +290,13 @@ sub rinstall {
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 next;
             }
+
             # If nodetype.provmethod != [install|netboot|statelite]
             else {
                 push @validnodes, @pnnodes;
             }
         }
+
         #only provision the normal nodes
         @nodes = @validnodes;
 
@@ -297,21 +305,21 @@ sub rinstall {
 
     if (scalar(@nodes) == 0) {
         my $rsp = {};
-        $rsp->{error}->[0] = "No available nodes for provision.";
+        $rsp->{error}->[0]     = "No available nodes for provision.";
         $rsp->{errorcode}->[0] = 1;
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
     else {
         my $rsp = {};
-        $rsp->{data} ->[0] = "Provision node(s): @nodes";
+        $rsp->{data}->[0] = "Provision node(s): @nodes";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     %nodes = map { $_, 1 } @nodes;
 
     # Run nodeset $noderange $parameter
     my $res =
-        xCAT::Utils->runxcmd(
+      xCAT::Utils->runxcmd(
         {
             command => ["nodeset"],
             node    => \@nodes,
@@ -323,26 +331,27 @@ sub rinstall {
     my $rsp = {};
     if ($VERBOSE) {
         my @cmd = "Run command: nodeset @nodes @parameter";
-        push @{$rsp->{data}}, @cmd;
-        push @{$rsp->{data}}, @$res;
+        push @{ $rsp->{data} }, @cmd;
+        push @{ $rsp->{data} }, @$res;
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     unless ($rc == 0) {
+
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
         foreach my $line (@$res) {
-            $rsp->{data} ->[0] = $line;
+            $rsp->{data}->[0] = $line;
             if (($line =~ /: install/) or ($line =~ /: netboot/)) {
                 my $successnode;
                 my $restline;
-                ($successnode, $restline) = split (/:/, $line, 2);
+                ($successnode, $restline) = split(/:/, $line, 2);
                 $nodes{$successnode} = 0;
                 push @successnodes, $successnode;
             }
             if ($line =~ /dhcp server is not running/) {
                 my $rsp = {};
-                $rsp->{error}->[0] = "Fatal error";
+                $rsp->{error}->[0]     = "Fatal error";
                 $rsp->{errorcode}->[0] = 1;
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
@@ -366,13 +375,13 @@ sub rinstall {
     foreach my $node (@nodes) {
         unless ($nodehmcache) { next; }
         my $nodehmattribs = $nodehmcache->{$node}->[0];
-        push(@{$hmhash{$nodehmattribs->{'mgt'}}}, $node);
+        push(@{ $hmhash{ $nodehmattribs->{'mgt'} } }, $node);
     }
 
     # Now for each group based on mgt
     foreach my $hmkey (keys %hmhash) {
         $::RUNCMD_RC = 0;
-        my @nodes = @{$hmhash{$hmkey}};
+        my @nodes = @{ $hmhash{$hmkey} };
         unless (($hmkey =~ /^ipmi$/) or ($hmkey =~ /^blade$/) or ($hmkey =~ /^hmc$/) or ($hmkey =~ /^ivm$/) or ($hmkey =~ /^fsp$/) or ($hmkey =~ /^kvm$/) or ($hmkey =~ /^esx$/) or ($hmkey =~ /^rhevm$/)) {
             my $rsp = {};
             $rsp->{error}->[0] = "@nodes: rinstall only support nodehm.mgt type 'ipmi', 'blade', 'hmc', 'ivm', 'fsp', 'kvm', 'esx', 'rhevm'.";
@@ -382,9 +391,10 @@ sub rinstall {
         }
         if (($hmkey =~ /^ivm$/) or ($hmkey =~ /^fsp$/) or ($hmkey =~ /^hmc$/)) {
             %nodes = map { $_, 1 } @nodes;
+
             # Run rnetboot $noderange
             my $res =
-                xCAT::Utils->runxcmd(
+              xCAT::Utils->runxcmd(
                 {
                     command => ["rnetboot"],
                     node    => \@nodes
@@ -395,19 +405,20 @@ sub rinstall {
             my $rsp = {};
             if ($VERBOSE) {
                 my @cmd = "Run command: rnetboot @nodes";
-                push @{$rsp->{data}}, @cmd;
-                push @{$rsp->{data}}, @$res;
+                push @{ $rsp->{data} }, @cmd;
+                push @{ $rsp->{data} }, @$res;
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
             unless ($rc == 0) {
+
                 # We got an error with the rnetboot
                 my @failurenodes;
                 foreach my $line (@$res) {
-                    $rsp->{data} ->[0] = $line;
+                    $rsp->{data}->[0] = $line;
                     if ($line =~ /: Success/) {
                         my $successnode;
                         my $restline;
-                        ($successnode, $restline) = split (/:/, $line, 2);
+                        ($successnode, $restline) = split(/:/, $line, 2);
                         $nodes{$successnode} = 0;
                     }
                     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -427,6 +438,7 @@ sub rinstall {
             # Call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes
             if ($hmkey =~ /^ipmi$/) {
                 %nodes = map { $_, 1 } @nodes;
+
                 # Run rsetboot $noderange net
                 my @rsetbootarg;
                 push @rsetbootarg, "net";
@@ -434,7 +446,7 @@ sub rinstall {
                     push @rsetbootarg, "-u";
                 }
                 my $res =
-                    xCAT::Utils->runxcmd(
+                  xCAT::Utils->runxcmd(
                     {
                         command => ["rsetboot"],
                         node    => \@nodes,
@@ -446,20 +458,21 @@ sub rinstall {
                 my $rsp = {};
                 if ($VERBOSE) {
                     my @cmd = "Run command: rsetboot @nodes @rsetbootarg";
-                    push @{$rsp->{data}}, @cmd;
-                    push @{$rsp->{data}}, @$res;
+                    push @{ $rsp->{data} }, @cmd;
+                    push @{ $rsp->{data} }, @$res;
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 unless ($rc == 0) {
+
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
                     foreach my $line (@$res) {
-                        $rsp->{data} ->[0] = $line;
+                        $rsp->{data}->[0] = $line;
                         if ($line =~ /: Network/) {
                             my $successnode;
                             my $restline;
-                            ($successnode, $restline) = split (/:/, $line, 2);
+                            ($successnode, $restline) = split(/:/, $line, 2);
                             $nodes{$successnode} = 0;
                             push @successnodes, $successnode;
                         }
@@ -477,13 +490,15 @@ sub rinstall {
                     @nodes = @successnodes;
                 }
             }
+
             # Call "rpower" to start the node provision process
             %nodes = map { $_, 1 } @nodes;
+
             # Run rpower $noderange boot
             my @rpowerarg;
             push @rpowerarg, "boot";
             my $res =
-                xCAT::Utils->runxcmd(
+              xCAT::Utils->runxcmd(
                 {
                     command => ["rpower"],
                     node    => \@nodes,
@@ -495,19 +510,20 @@ sub rinstall {
             my $rsp = {};
             if ($VERBOSE) {
                 my @cmd = "Run command: rpower @nodes @rpowerarg";
-                push @{$rsp->{data}}, @cmd;
-                push @{$rsp->{data}}, @$res;
+                push @{ $rsp->{data} }, @cmd;
+                push @{ $rsp->{data} }, @$res;
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
             unless ($rc == 0) {
+
                 # We got an error with the rpower
                 my @failurenodes;
                 foreach my $line (@$res) {
-                    $rsp->{data} ->[0] = $line;
+                    $rsp->{data}->[0] = $line;
                     if (($line =~ /: on reset/) or ($line =~ /: off on/)) {
                         my $successnode;
                         my $restline;
-                        ($successnode, $restline) = split (/:/, $line, 2);
+                        ($successnode, $restline) = split(/:/, $line, 2);
                         $nodes{$successnode} = 0;
                     }
                     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -528,6 +544,7 @@ sub rinstall {
     # Check if they asked to bring up a console (-c) from rinstall always for winstall
     $req->{startconsole}->[0] = 0;
     if ($command =~ /rinstall/) {
+
         # For rinstall, the -c|--console option can provide the remote console for only 1 node
         if ($CONSOLE) {
             if (scalar @nodes != 1) {
@@ -544,6 +561,7 @@ sub rinstall {
         }
     }
     elsif ($command =~ /winstall/) {
+
         # Command winstall can start a wcons command to multiple nodes for monitoring the provision cycle
         $req->{startconsole}->[0] = 1;
     }
@@ -559,9 +577,9 @@ sub rinstall {
 
 #-------------------------------------------------------
 sub usage {
-    my $command = shift;
+    my $command  = shift;
     my $callback = shift;
-    my $rsp = {};
+    my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
     $rsp->{data}->[1] = "   $command <noderange> boot | shell | runcmd=bmcsetup [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[2] = "   $command <noderange> osimage=<imagename> | -O <imagename> [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";

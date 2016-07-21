@@ -16,11 +16,11 @@ use File::Basename;
 use File::Path;
 use strict;
 use Exporter;
-our @ISA = qw/Exporter/;
+our @ISA       = qw/Exporter/;
 our @EXPORT_OK = qw/sendmsg/;
 
 #-------------------------------------------------------------------------------
-  
+
 
 =head3   getNodesetStates
        get current nodeset stat for the given nodes 
@@ -48,13 +48,13 @@ sub getNodesetStates
         my $tab = xCAT::Table->new('noderes');
         if (!$tab) { return (1, "Unable to open noderes table."); }
 
-        my @aixnodes    = ();
-        my @pxenodes    = ();
-        my @yabootnodes = ();
-        my @xnbanodes= ();
-        my @grub2nodes = ();
+        my @aixnodes       = ();
+        my @pxenodes       = ();
+        my @yabootnodes    = ();
+        my @xnbanodes      = ();
+        my @grub2nodes     = ();
         my @petitbootnodes = ();
-        my $tabdata     = $tab->getNodesAttribs(\@nodes, ['node', 'netboot']);
+        my $tabdata = $tab->getNodesAttribs(\@nodes, [ 'node', 'netboot' ]);
         foreach my $node (@nodes)
         {
             my $nb   = "aixinstall";
@@ -155,7 +155,7 @@ sub getNodesetStates
         if (@petitbootnodes > 0)
         {
             require xCAT_plugin::petitboot;
-            @retarray = xCAT_plugin::petitboot::getNodesetStates(\@petitbootnodes,  $hashref);
+            @retarray = xCAT_plugin::petitboot::getNodesetStates(\@petitbootnodes, $hashref);
             if ($retarray[0])
             {
                 $retcode = $retarray[0];
@@ -186,32 +186,33 @@ sub get_nodeset_state
     {
         $node = shift;
     }
-    my %options=@_;
+    my %options = @_;
     my %gnopts;
-    if ($options{prefetchcache}) { $gnopts{prefetchcache}=1; }
-    my $tab_hash; 
+    if ($options{prefetchcache}) { $gnopts{prefetchcache} = 1; }
+    my $tab_hash;
     if ($options{global_tab_hash}) { $tab_hash = $options{global_tab_hash}; }
- 
+
     my $state = "undefined";
     my $tftpdir;
     my $boottype;
-    if( defined($tab_hash) && defined($tab_hash->{noderes}) && defined($tab_hash->{noderes}->{$node}) ) {
-        $tftpdir = $tab_hash->{noderes}->{$node}->{tftpdir};
+    if (defined($tab_hash) && defined($tab_hash->{noderes}) && defined($tab_hash->{noderes}->{$node})) {
+        $tftpdir  = $tab_hash->{noderes}->{$node}->{tftpdir};
         $boottype = $tab_hash->{noderes}->{$node}->{netboot};
 
     } else {
+
         #get boot type (pxe, yaboot or aixinstall)  for the node
         my $noderestab = xCAT::Table->new('noderes', -create => 0);
-        my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)],%gnopts);
+        my $ent = $noderestab->getNodeAttribs($node, [qw(netboot tftpdir)], %gnopts);
 
         #get tftpdir from the noderes table, if not defined get it from site talbe
         if ($ent && $ent->{tftpdir}) {
-	    $tftpdir=$ent->{tftpdir};
+            $tftpdir = $ent->{tftpdir};
         }
         if (!$tftpdir) {
-	    if ($::XCATSITEVALS{tftpdir}) { 
-	        $tftpdir=$::XCATSITEVALS{tftpdir};
-	    }
+            if ($::XCATSITEVALS{tftpdir}) {
+                $tftpdir = $::XCATSITEVALS{tftpdir};
+            }
         }
 
         if ($ent && $ent->{netboot})
@@ -222,7 +223,7 @@ sub get_nodeset_state
 
     }
 
-    if ( defined($boottype) )
+    if (defined($boottype))
     {
         #my $boottype = $ent->{netboot};
 
@@ -259,12 +260,12 @@ sub get_nodeset_state
         require xCAT_plugin::aixinstall;
         $state = xCAT_plugin::aixinstall::getNodesetState($node);
     }
-    
+
     #get the nodeset state from the chain table as a backup.
     if ($state eq "undefined")
     {
         my $chaintab = xCAT::Table->new('chain');
-        my $stref = $chaintab->getNodeAttribs($node, ['currstate'],%gnopts);
+        my $stref = $chaintab->getNodeAttribs($node, ['currstate'], %gnopts);
         if ($stref and $stref->{currstate}) { $state = $stref->{currstate}; }
     }
 
@@ -303,153 +304,157 @@ sub get_nodeset_state
 
 sub getsynclistfile()
 {
-  my $nodes = shift;
-  if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
-  {
-    $nodes = shift;
-  }
-
-  my ($os, $arch, $profile, $inst_type, $imgname) = @_;
-
-  my $installdir = xCAT::TableUtils->getInstallDir();
-
-  # for aix node, use the node figure out the profile, then use the value of
-  # profile (osimage name) to get the synclist file path (osimage.synclists)
-  if (xCAT::Utils->isAIX()) {
-    my %node_syncfile = ();
-    my %osimage_syncfile = ();
-    my @profiles = ();
-
-    if ($nodes) {
-	# get the profile attributes for the nodes
-	my $nodetype_t = xCAT::Table->new('nodetype');
-	unless ($nodetype_t) {
-	    return ;
-	}
-	my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile', 'provmethod']);
-	
-	# the vaule of profile for AIX node is the osimage name
-	foreach my $node (@$nodes) {
-	    my $profile = $nodetype_v->{$node}->[0]->{'profile'};
-	    my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-	    if ($provmethod) {
-		$profile=$provmethod;
-	    }
-	    
-	    $node_syncfile{$node} = $profile;
-	    
-	    if (! grep /$profile/, @profiles) {
-		push @profiles, $profile;
-	    }
-	}
+    my $nodes = shift;
+    if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
+    {
+        $nodes = shift;
     }
 
-    # get the syncfiles base on the osimage
-    my $osimage_t = xCAT::Table->new('osimage');
-    unless ($osimage_t) {
-      return ;
-    }
-    foreach my $osimage (@profiles) {
-      my $synclist = $osimage_t->getAttribs({imagename=>"$osimage"}, 'synclists');
-      $osimage_syncfile{$osimage} = $synclist->{'synclists'};
-    }
+    my ($os, $arch, $profile, $inst_type, $imgname) = @_;
 
-    # set the syncfiles to the nodes
-    foreach my $node (@$nodes) {
-      $node_syncfile{$node} = $osimage_syncfile{$node_syncfile{$node}};
-    }
+    my $installdir = xCAT::TableUtils->getInstallDir();
 
-    return \%node_syncfile;
-  } # end isAIX
+    # for aix node, use the node figure out the profile, then use the value of
+    # profile (osimage name) to get the synclist file path (osimage.synclists)
+    if (xCAT::Utils->isAIX()) {
+        my %node_syncfile    = ();
+        my %osimage_syncfile = ();
+        my @profiles         = ();
 
-  # if does not specify the $node param, default consider for genimage command
-  if ($nodes) {
-    my %node_syncfile = ();
+        if ($nodes) {
 
-    # get the os,arch,profile attributes for the nodes
-    my $nodetype_t = xCAT::Table->new('nodetype');
-    unless ($nodetype_t) {
-      return ;
-    }
-    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['profile','os','arch','provmethod']);
+            # get the profile attributes for the nodes
+            my $nodetype_t = xCAT::Table->new('nodetype');
+            unless ($nodetype_t) {
+                return;
+            }
+            my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, [ 'profile', 'provmethod' ]);
 
-	  my $osimage_t = xCAT::Table->new('osimage');
-	  unless ($osimage_t) {
-	      return ;
-	  }
-    foreach my $node (@$nodes) {
-      my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
-	  # get the syncfiles base on the osimage
-	  my $synclist = $osimage_t->getAttribs({imagename=>$provmethod}, 'synclists');
-	  if ($synclist && $synclist->{'synclists'}) {
-	      $node_syncfile{$node} = $synclist->{'synclists'};
-	  }  
-      } else {
-	  $inst_type = "install";
-	  if ($provmethod eq "netboot" || $provmethod eq "diskless" || $provmethod eq "statelite") {
-	      $inst_type = "netboot";
-	  } 
-	  
-	  $profile = $nodetype_v->{$node}->[0]->{'profile'};
-	  $os = $nodetype_v->{$node}->[0]->{'os'};
-	  $arch = $nodetype_v->{$node}->[0]->{'arch'};
-	  my $platform = "";
-	  if ($os) {
-	      if ($os =~ /rh.*/)    { $platform = "rh"; }
-	      elsif ($os =~ /centos.*/) { $platform = "centos"; }
-	      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
-	      elsif ($os =~ /sles.*/) { $platform = "sles"; }
-	      elsif ($os =~ /SL.*/) { $platform = "SL"; }
-	      elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
-	      elsif ($os =~ /debian.*/) { $platform = "debian"; }
-	      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
-	  }
+            # the vaule of profile for AIX node is the osimage name
+            foreach my $node (@$nodes) {
+                my $profile    = $nodetype_v->{$node}->[0]->{'profile'};
+                my $provmethod = $nodetype_v->{$node}->[0]->{'provmethod'};
+                if ($provmethod) {
+                    $profile = $provmethod;
+                }
 
-	  my $base =  "$installdir/custom/$inst_type/$platform";
-	  $node_syncfile{$node} = xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);	 
-      }
-    }
+                $node_syncfile{$node} = $profile;
 
-    return \%node_syncfile;
-  } else {
-    if ($imgname) {
+                if (!grep /$profile/, @profiles) {
+                    push @profiles, $profile;
+                }
+            }
+        }
+
+        # get the syncfiles base on the osimage
         my $osimage_t = xCAT::Table->new('osimage');
         unless ($osimage_t) {
-            return ;
+            return;
         }
-        my $synclist = $osimage_t->getAttribs({imagename=>$imgname}, 'synclists');
-        if ($synclist && $synclist->{'synclists'}) {
-            return $synclist->{'synclists'};
+        foreach my $osimage (@profiles) {
+            my $synclist = $osimage_t->getAttribs({ imagename => "$osimage" }, 'synclists');
+            $osimage_syncfile{$osimage} = $synclist->{'synclists'};
         }
-    }
 
-    my $platform = "";
-    if ($os) {
-      if ($os =~ /rh.*/)    { $platform = "rh"; }
-      elsif ($os =~ /centos.*/) { $platform = "centos"; }
-      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
-      elsif ($os =~ /sles.*/) { $platform = "sles"; }
-      elsif ($os =~ /SL.*/) { $platform = "SL"; }
-      elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
-      elsif ($os =~ /debian.*/) { $platform = "debian"; }
-      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
-      elsif ($os =~ /win/)  {$platform = "windows"; }
-    }
+        # set the syncfiles to the nodes
+        foreach my $node (@$nodes) {
+            $node_syncfile{$node} = $osimage_syncfile{ $node_syncfile{$node} };
+        }
 
-    my $base = "$installdir/custom/$inst_type/$platform";
-    return xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);
-  }
+        return \%node_syncfile;
+    }    # end isAIX
+
+    # if does not specify the $node param, default consider for genimage command
+    if ($nodes) {
+        my %node_syncfile = ();
+
+        # get the os,arch,profile attributes for the nodes
+        my $nodetype_t = xCAT::Table->new('nodetype');
+        unless ($nodetype_t) {
+            return;
+        }
+        my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, [ 'profile', 'os', 'arch', 'provmethod' ]);
+
+        my $osimage_t = xCAT::Table->new('osimage');
+        unless ($osimage_t) {
+            return;
+        }
+        foreach my $node (@$nodes) {
+            my $provmethod = $nodetype_v->{$node}->[0]->{'provmethod'};
+            if (($provmethod) && ($provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
+
+                # get the syncfiles base on the osimage
+                my $synclist = $osimage_t->getAttribs({ imagename => $provmethod }, 'synclists');
+                if ($synclist && $synclist->{'synclists'}) {
+                    $node_syncfile{$node} = $synclist->{'synclists'};
+                }
+            } else {
+                $inst_type = "install";
+                if ($provmethod eq "netboot" || $provmethod eq "diskless" || $provmethod eq "statelite") {
+                    $inst_type = "netboot";
+                }
+
+                $profile = $nodetype_v->{$node}->[0]->{'profile'};
+                $os      = $nodetype_v->{$node}->[0]->{'os'};
+                $arch    = $nodetype_v->{$node}->[0]->{'arch'};
+                my $platform = "";
+                if ($os) {
+                    if    ($os =~ /rh.*/)     { $platform = "rh"; }
+                    elsif ($os =~ /centos.*/) { $platform = "centos"; }
+                    elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+                    elsif ($os =~ /sles.*/)   { $platform = "sles"; }
+                    elsif ($os =~ /SL.*/)     { $platform = "SL"; }
+                    elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
+                    elsif ($os =~ /debian.*/) { $platform = "debian"; }
+                    elsif ($os =~ /AIX.*/)    { $platform = "AIX"; }
+                }
+
+                my $base = "$installdir/custom/$inst_type/$platform";
+                $node_syncfile{$node} = xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);
+            }
+        }
+
+        return \%node_syncfile;
+    } else {
+        if ($imgname) {
+            my $osimage_t = xCAT::Table->new('osimage');
+            unless ($osimage_t) {
+                return;
+            }
+            my $synclist = $osimage_t->getAttribs({ imagename => $imgname }, 'synclists');
+            if ($synclist && $synclist->{'synclists'}) {
+                return $synclist->{'synclists'};
+            }
+        }
+
+        my $platform = "";
+        if ($os) {
+            if    ($os =~ /rh.*/)     { $platform = "rh"; }
+            elsif ($os =~ /centos.*/) { $platform = "centos"; }
+            elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+            elsif ($os =~ /sles.*/)   { $platform = "sles"; }
+            elsif ($os =~ /SL.*/)     { $platform = "SL"; }
+            elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
+            elsif ($os =~ /debian.*/) { $platform = "debian"; }
+            elsif ($os =~ /AIX.*/)    { $platform = "AIX"; }
+            elsif ($os =~ /win/)      { $platform = "windows"; }
+        }
+
+        my $base = "$installdir/custom/$inst_type/$platform";
+        return xCAT::SvrUtils::get_file_name($base, "synclist", $profile, $os, $arch);
+    }
 
 }
 
 sub get_file_name {
     my ($searchpath, $extension, $profile, $os, $arch, $genos) = @_;
+
     #usally there're only 4 arguments passed for this function
     #the $genos is only used for the Redhat family
 
     my $dotpos = rindex($os, ".");
     my $osbase = substr($os, 0, $dotpos);
+
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-r "$searchpath/$profile.$os.$arch.$extension") {
@@ -482,42 +487,43 @@ sub get_file_name {
 }
 
 sub get_tmpl_file_name {
-    my $searchpath=shift;
+    my $searchpath = shift;
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
-	$searchpath = shift;
+        $searchpath = shift;
     }
     return xCAT::SvrUtils::get_file_name($searchpath, "tmpl", @_);
 }
 
 
 sub get_pkglist_file_name {
-    my $searchpath=shift;
+    my $searchpath = shift;
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
-	$searchpath = shift;
+        $searchpath = shift;
     }
     return xCAT::SvrUtils::get_file_name($searchpath, "pkglist", @_);
 }
 
 sub get_otherpkgs_pkglist_file_name {
-    my $searchpath=shift;
+    my $searchpath = shift;
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
-	$searchpath = shift;
+        $searchpath = shift;
     }
     return xCAT::SvrUtils::get_file_name($searchpath, "otherpkgs.pkglist", @_);
 }
 
 
 sub get_postinstall_file_name {
-    my $searchpath=shift;
+    my $searchpath = shift;
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
-	$searchpath = shift;
+        $searchpath = shift;
     }
-    my $profile=shift;
-    my $os=shift;
-    my $arch=shift;
-    my $extension="postinstall";
-    my $dotpos = rindex($os, ".");
-    my $osbase = substr($os, 0, $dotpos);
+    my $profile   = shift;
+    my $os        = shift;
+    my $arch      = shift;
+    my $extension = "postinstall";
+    my $dotpos    = rindex($os, ".");
+    my $osbase    = substr($os, 0, $dotpos);
+
     #handle the following ostypes: sles10.2, sles11.1, rhels5.3, rhels5.4, etc
 
     if (-x "$searchpath/$profile.$os.$arch.$extension") {
@@ -545,9 +551,9 @@ sub get_postinstall_file_name {
 
 
 sub get_exlist_file_name {
-    my $searchpath=shift;
+    my $searchpath = shift;
     if (($searchpath) && ($searchpath =~ /xCAT::SvrUtils/)) {
-	$searchpath = shift;
+        $searchpath = shift;
     }
     return xCAT::SvrUtils::get_file_name($searchpath, "exlist", @_);
 }
@@ -579,49 +585,50 @@ sub get_imgcapture_exlist_file_name {
 =cut
 
 #-------------------------------------------------------------------------------
-sub  update_tables_with_templates
+sub update_tables_with_templates
 {
-    my $osver = shift;  #like sle11, rhel5.3 
+    my $osver = shift;    #like sle11, rhel5.3
     if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
-	$osver = shift;
+        $osver = shift;
     }
     my $shortosver = $osver;
     $shortosver =~ s/\..*//;
-    my $arch = shift;  #like ppc64, x86, x86_64
-    my $ospkgdir=shift;      
-    my $osdistroname=shift;
-    my %args = @_;
+    my $arch         = shift;    #like ppc64, x86, x86_64
+    my $ospkgdir     = shift;
+    my $osdistroname = shift;
+    my %args         = @_;
 
-    my $osname=$osver;;  #like sles, rh, centos, windows
-    my $ostype="Linux";  #like Linux, Windows
-    my $imagetype="linux";
+    my $osname    = $osver;;     #like sles, rh, centos, windows
+    my $ostype    = "Linux";     #like Linux, Windows
+    my $imagetype = "linux";
     if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
-	$osname="windows";
-	$ostype="Windows";
-        $imagetype="windows";
+        $osname    = "windows";
+        $ostype    = "Windows";
+        $imagetype = "windows";
     } elsif ($osver =~ /^hyperv/) {
-	$osname="hyperv";
-	$ostype="Windows";
-        $imagetype="windows";
+        $osname    = "hyperv";
+        $ostype    = "Windows";
+        $imagetype = "windows";
     } else {
-	until (-r  "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
-	    chop($osname);
+        until (-r "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
+            chop($osname);
         }
         unless ($osname) {
-	    return (1, "Unable to find $::XCATROOT/share/xcat/install directory for $osver");
-	}  
-    } 
-      
+            return (1, "Unable to find $::XCATROOT/share/xcat/install directory for $osver");
+        }
+    }
+
     #for rhels5.1  genos=rhel5
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-	$genos = "rhel$1";
+        $genos = "rhel$1";
     }
 
-  
+
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
+
     #my $sitetab = xCAT::Table->new('site');
     #if ($sitetab) {
     #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
@@ -630,139 +637,146 @@ sub  update_tables_with_templates
     #	}
     #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
-    my $tmp = $installdirs[0];
-    if ( defined($tmp)) {
-       $installroot = $tmp; 
+    my $tmp         = $installdirs[0];
+    if (defined($tmp)) {
+        $installroot = $tmp;
     }
-    my $cuspath="$installroot/custom/install/$osname";
-    my $defpath="$::XCATROOT/share/xcat/install/$osname"; 
-    
+    my $cuspath = "$installroot/custom/install/$osname";
+    my $defpath = "$::XCATROOT/share/xcat/install/$osname";
+
     #now get all the profile names for full installation
-    my %profiles=();
-    my @tmplfiles=glob($cuspath."/{compute,service}.*tmpl");
+    my %profiles  = ();
+    my @tmplfiles = glob($cuspath . "/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
-	my $tmpf=basename($_); 
-	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
-	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
-		unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
-	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
-		unless ($1 eq $osver or $1 eq $shortosver or $2 eq $arch) { next; }
-	}
-	$tmpf =~ /^([^\.]*)\..*$/;
-	$tmpf = $1;
-	#print "$tmpf\n";
-	$profiles{$tmpf}=1;
+        my $tmpf = basename($_);
+
+        #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+        if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
+            unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
+        } elsif ($tmpf =~ /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
+            unless ($1 eq $osver or $1 eq $shortosver or $2 eq $arch) { next; }
+        }
+        $tmpf =~ /^([^\.]*)\..*$/;
+        $tmpf = $1;
+
+        #print "$tmpf\n";
+        $profiles{$tmpf} = 1;
     }
-    @tmplfiles=glob($defpath."/{compute,service}.*tmpl");
+    @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
-	my $tmpf=basename($_); 
-	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
-	if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
-		unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
-	} elsif ($tmpf =~  /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
-		unless ($1 eq $osver or $1 eq $shortosver or $1 eq $arch) { next; }
-	}
-	$tmpf =~ /^([^\.]*)\..*$/;
-	$tmpf = $1;
-	$profiles{$tmpf}=1;
+        my $tmpf = basename($_);
+
+        #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+        if ($tmpf =~ /[^\.]*\.([^\.]*)\.([^\.]*)\./) { # osver *and* arch specific, make sure they match
+            unless (($1 eq $osver or $1 eq $shortosver) and $2 eq $arch) { next; }
+        } elsif ($tmpf =~ /[^\.]*\.([^\.]*)\./) { #osver *or* arch specific, make sure one matches
+            unless ($1 eq $osver or $1 eq $shortosver or $1 eq $arch) { next; }
+        }
+        $tmpf =~ /^([^\.]*)\..*$/;
+        $tmpf = $1;
+        $profiles{$tmpf} = 1;
     }
-    
+
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
     my $winimagetab;
     if ($args{checkonly}) {
-    	if (keys %profiles) {
-		return (0,"");
-	} else {
-		return (1,"Missing template files");
-	}
+        if (keys %profiles) {
+            return (0, "");
+        } else {
+            return (1, "Missing template files");
+        }
     }
     foreach my $profile (keys %profiles) {
-	#print "profile=$profile\n";
-	#get template file
-	my $tmplfile=get_tmpl_file_name ($cuspath, $profile, $osver, $arch, $genos);
-	if (!$tmplfile) { $tmplfile=get_tmpl_file_name ($defpath, $profile, $osver, $arch, $genos);}
-	if (!$tmplfile) { next; }
-	
-	#get otherpkgs.pkglist file
-	my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-	if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
-	
-	#get synclist file
-	my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-	
-	#get the pkglist file
-	my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-	if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch,$genos);}
 
-	#now update the db
-	if (!$osimagetab) { 
-	    $osimagetab=xCAT::Table->new('osimage',-create=>1); 
-	}
+        #print "profile=$profile\n";
+        #get template file
+        my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
+        if (!$tmplfile) { next; }
 
-	if ($osimagetab) {    
-	    #check if the image is already in the table
-	    if ($osimagetab) {
-		my $found=0;
-		my $tmp1=$osimagetab->getAllEntries();
-		if (defined($tmp1) && (@$tmp1 > 0)) {
-		    foreach my $rowdata(@$tmp1) {
-			if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})){
-			    $found=1;
-			    last;
-			}
-		    }
-		}
-#		if ($found) { next; } 
+        #get otherpkgs.pkglist file
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
 
-		my $imagename=$osver . "-" . $arch . "-install-" . $profile;
+        #get synclist file
+        my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+
+        #get the pkglist file
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch, $genos); }
+
+        #now update the db
+        if (!$osimagetab) {
+            $osimagetab = xCAT::Table->new('osimage', -create => 1);
+        }
+
+        if ($osimagetab) {
+
+            #check if the image is already in the table
+            if ($osimagetab) {
+                my $found = 0;
+                my $tmp1  = $osimagetab->getAllEntries();
+                if (defined($tmp1) && (@$tmp1 > 0)) {
+                    foreach my $rowdata (@$tmp1) {
+                        if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})) {
+                            $found = 1;
+                            last;
+                        }
+                    }
+                }
+
+                #		if ($found) { next; }
+
+                my $imagename = $osver . "-" . $arch . "-install-" . $profile;
+
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
-		my %key_col = (imagename=>$imagename);
-		my %tb_cols=(imagetype=>$imagetype,
-			     provmethod=>"install",
-			     profile=>$profile, 
-			     osname=>$ostype,
-			     osvers=>$osver,
-			     osarch=>$arch,
-			     synclists=>$synclistfile,
-			     osdistroname=>$osdistroname);
+                my %key_col = (imagename => $imagename);
+                my %tb_cols = (imagetype => $imagetype,
+                    provmethod   => "install",
+                    profile      => $profile,
+                    osname       => $ostype,
+                    osvers       => $osver,
+                    osarch       => $arch,
+                    synclists    => $synclistfile,
+                    osdistroname => $osdistroname);
                 if ($args{description}) {
-			$tb_cols{description} = $args{description};
-		}
-		$osimagetab->setAttribs(\%key_col, \%tb_cols);
-                
-		if ($osname =~ /^win/) {
-		    if (!$winimagetab) { $winimagetab=xCAT::Table->new('winimage',-create=>1); }
-		    if ($winimagetab) {
-		        my %key_col = (imagename=>$imagename);
-			    my %tb_cols=(template=>$tmplfile);
-			    $winimagetab->setAttribs(\%key_col, \%tb_cols);
-		    } else {
-			    return (1, "Cannot open the winimage table.");
-		    }
-		} else {
-		    if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
-		    if ($linuximagetab) {
-			my %key_col = (imagename=>$imagename);
-			my %tb_cols=(template=>$tmplfile, 
-				     pkgdir=>$ospkgdir,
-				     pkglist=>$pkglistfile,
-				     otherpkglist=>$otherpkgsfile,
-				     otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch");
-			$linuximagetab->setAttribs(\%key_col, \%tb_cols);
-			
-		    } else {
-			return (1, "Cannot open the linuximage table.");
-		    }
-		}
-	    } else {
-		return (1, "Cannot open the osimage table."); 
-	    }
-	}  
+                    $tb_cols{description} = $args{description};
+                }
+                $osimagetab->setAttribs(\%key_col, \%tb_cols);
+
+                if ($osname =~ /^win/) {
+                    if (!$winimagetab) { $winimagetab = xCAT::Table->new('winimage', -create => 1); }
+                    if ($winimagetab) {
+                        my %key_col = (imagename => $imagename);
+                        my %tb_cols = (template  => $tmplfile);
+                        $winimagetab->setAttribs(\%key_col, \%tb_cols);
+                    } else {
+                        return (1, "Cannot open the winimage table.");
+                    }
+                } else {
+                    if (!$linuximagetab) { $linuximagetab = xCAT::Table->new('linuximage', -create => 1); }
+                    if ($linuximagetab) {
+                        my %key_col = (imagename => $imagename);
+                        my %tb_cols = (template => $tmplfile,
+                            pkgdir       => $ospkgdir,
+                            pkglist      => $pkglistfile,
+                            otherpkglist => $otherpkgsfile,
+                            otherpkgdir => "$installroot/post/otherpkgs/$osver/$arch");
+                        $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+
+                    } else {
+                        return (1, "Cannot open the linuximage table.");
+                    }
+                }
+            } else {
+                return (1, "Cannot open the osimage table.");
+            }
+        }
     }
-    if ($osimagetab) { $osimagetab->close(); }
+    if ($osimagetab)    { $osimagetab->close(); }
     if ($linuximagetab) { $linuximagetab->close(); }
     return (0, "");
 }
@@ -781,41 +795,41 @@ sub  update_tables_with_templates
 =cut
 
 #-------------------------------------------------------------------------------
-sub  update_tables_with_mgt_image
+sub update_tables_with_mgt_image
 {
-    my $osver = shift;  #like sle11, rhel5.3
+    my $osver = shift;    #like sle11, rhel5.3
     if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
         $osver = shift;
     }
-    my $arch = shift;  #like ppc64, x86, x86_64
-    my $ospkgdir=shift;
-    my $osdistroname=shift;
+    my $arch         = shift;    #like ppc64, x86, x86_64
+    my $ospkgdir     = shift;
+    my $osdistroname = shift;
 
-    my $osname=$osver;;  #like sles, rh, centos, windows
-    my $ostype="Linux";  #like Linux, Windows
-    my $imagetype="linux";
+    my $osname    = $osver;;     #like sles, rh, centos, windows
+    my $ostype    = "Linux";     #like Linux, Windows
+    my $imagetype = "linux";
     if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
-        $osname="windows";
-        $ostype="Windows";
-        $imagetype="windows";
+        $osname    = "windows";
+        $ostype    = "Windows";
+        $imagetype = "windows";
     } elsif ($osver =~ /^hyperv/) {
-        $osname="hyperv";
-        $ostype="Windows";
-        $imagetype="windows";
+        $osname    = "hyperv";
+        $ostype    = "Windows";
+        $imagetype = "windows";
     } else {
-        until (-r  "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
+        until (-r "$::XCATROOT/share/xcat/install/$osname/" or not $osname) {
             chop($osname);
         }
         unless ($osname) {
             return (1, "Unable to find $::XCATROOT/share/xcat/install directory for $osver");
         }
     }
-   
+
     #if the arch of osimage does not match the arch of MN,return
-    my $myarch=qx(uname -i);
+    my $myarch = qx(uname -i);
     chop $myarch;
-    if($arch ne $myarch){
-       return 0;
+    if ($arch ne $myarch) {
+        return 0;
     }
 
 
@@ -829,106 +843,113 @@ sub  update_tables_with_mgt_image
     #if the osver does not match the osver of MN, return
     my $myosver = xCAT::Utils->osver("all");
     $myosver =~ s/,//;
-    if(xCAT::Utils->version_cmp("$osver","$myosver")!=0){
+    if (xCAT::Utils->version_cmp("$osver", "$myosver") != 0) {
         return 0;
     }
 
     my $installroot = xCAT::TableUtils->getInstallDir();
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
-    my $tmp = $installdirs[0];
-    if ( defined($tmp)) {
-       $installroot = $tmp;
+    my $tmp         = $installdirs[0];
+    if (defined($tmp)) {
+        $installroot = $tmp;
     }
-    my $cuspath="$installroot/custom/install/$osname";
-    my $defpath="$::XCATROOT/share/xcat/install/$osname";
+    my $cuspath = "$installroot/custom/install/$osname";
+    my $defpath = "$::XCATROOT/share/xcat/install/$osname";
 
     #now get all the profile names for full installation
-    my %profiles=();
-    my @tmplfiles=glob($cuspath."/{compute,service}.*tmpl");
+    my %profiles  = ();
+    my @tmplfiles = glob($cuspath . "/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
-        my $tmpf=basename($_);
+        my $tmpf = basename($_);
+
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
+
         #print "$tmpf\n";
-        $profiles{$tmpf}=1;
+        $profiles{$tmpf} = 1;
     }
-    @tmplfiles=glob($defpath."/{compute,service}.*tmpl");
+    @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
-        my $tmpf=basename($_);
+        my $tmpf = basename($_);
+
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-        if ( $tmpf eq "compute" ) {
-            $profiles{$tmpf}=1;
+        if ($tmpf eq "compute") {
+            $profiles{$tmpf} = 1;
         }
     }
+
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
-    my $imagename=$osver . "-" . $arch . "-stateful" . "-mgmtnode";
+    my $imagename = $osver . "-" . $arch . "-stateful" . "-mgmtnode";
     foreach my $profile (keys %profiles) {
+
         #print "profile=$profile\n";
         #get template file
-        my $tmplfile=get_tmpl_file_name ($cuspath, $profile, $osver, $arch, $genos);
-        if (!$tmplfile) { $tmplfile=get_tmpl_file_name ($defpath, $profile, $osver, $arch, $genos);}
+        my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
+        if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
         if (!$tmplfile) { next; }
 
         #get otherpkgs.pkglist file
-        my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
 
         #get synclist file
-        my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+        my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
 
         #get the pkglist file
-        my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch); }
 
         #now update the db
         if (!$osimagetab) {
-            $osimagetab=xCAT::Table->new('osimage',-create=>1);
+            $osimagetab = xCAT::Table->new('osimage', -create => 1);
         }
 
 
         if ($osimagetab) {
+
             #check if the image is already in the table
             if ($osimagetab) {
-                my $found=0;
-                my $tmp1=$osimagetab->getAllEntries();
+                my $found = 0;
+                my $tmp1  = $osimagetab->getAllEntries();
                 if (defined($tmp1) && (@$tmp1 > 0)) {
-                    foreach my $rowdata(@$tmp1) {
-                        if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})){
-                            $found=1;
+                    foreach my $rowdata (@$tmp1) {
+                        if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "install") && ($profile eq $rowdata->{profile})) {
+                            $found = 1;
                             last;
                         }
                     }
                 }
-#               if ($found) { next; }
+
+                #               if ($found) { next; }
 
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
-                my %key_col = (imagename=>$imagename);
-                my %tb_cols=(imagetype=>$imagetype,
-                             provmethod=>"install",
-                             profile=>$profile,
-                             osname=>$ostype,
-                             osvers=>$osver,
-                             osarch=>$arch,
-                             synclists=>$synclistfile,
-                             osdistroname=>$osdistroname);
+                my %key_col = (imagename => $imagename);
+                my %tb_cols = (imagetype => $imagetype,
+                    provmethod   => "install",
+                    profile      => $profile,
+                    osname       => $ostype,
+                    osvers       => $osver,
+                    osarch       => $arch,
+                    synclists    => $synclistfile,
+                    osdistroname => $osdistroname);
                 $osimagetab->setAttribs(\%key_col, \%tb_cols);
 
                 if ($osname !~ /^win/) {
-                    if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
+                    if (!$linuximagetab) { $linuximagetab = xCAT::Table->new('linuximage', -create => 1); }
                     if ($linuximagetab) {
-                        my %key_col = (imagename=>$imagename);
-                        my %tb_cols=(template=>$tmplfile,
-                                     pkgdir=>$ospkgdir,
-                                     pkglist=>$pkglistfile,
-                                     otherpkglist=>$otherpkgsfile,
-                                     otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch");
+                        my %key_col = (imagename => $imagename);
+                        my %tb_cols = (template => $tmplfile,
+                            pkgdir       => $ospkgdir,
+                            pkglist      => $pkglistfile,
+                            otherpkglist => $otherpkgsfile,
+                            otherpkgdir => "$installroot/post/otherpkgs/$osver/$arch");
                         $linuximagetab->setAttribs(\%key_col, \%tb_cols);
 
                     } else {
@@ -938,32 +959,32 @@ sub  update_tables_with_mgt_image
             } else {
                 return (1, "Cannot open the osimage table.");
             }
-        } 
+        }
     }
-    if ($osimagetab) { $osimagetab->close(); }
+    if ($osimagetab)    { $osimagetab->close(); }
     if ($linuximagetab) { $linuximagetab->close(); }
- 
+
     #set nodetype.provmethod to the new created osimage if it is not set
-    my @mgtnodes=xCAT::NodeRange::noderange('__mgmtnode');
-    if(scalar @mgtnodes){
-        my $nttab=xCAT::Table->new('nodetype', -create=>1);
-        unless($nttab){
-           return(1, "Cannot open the nodetype table.");
+    my @mgtnodes = xCAT::NodeRange::noderange('__mgmtnode');
+    if (scalar @mgtnodes) {
+        my $nttab = xCAT::Table->new('nodetype', -create => 1);
+        unless ($nttab) {
+            return (1, "Cannot open the nodetype table.");
         }
 
-        my $ntents=$nttab->getNodesAttribs(\@mgtnodes, ['provmethod']);
+        my $ntents = $nttab->getNodesAttribs(\@mgtnodes, ['provmethod']);
         my %ent;
-        foreach my $node (@mgtnodes){
-           print "$node\n";
-           unless($ntents->{$node} and $ntents->{$node}->['provmethod']){
-                 $ent{$node}{'provmethod'}=$imagename;
-           }
+        foreach my $node (@mgtnodes) {
+            print "$node\n";
+            unless ($ntents->{$node} and $ntents->{$node}->['provmethod']) {
+                $ent{$node}{'provmethod'} = $imagename;
+            }
         }
-        
-        $nttab->setNodesAttribs(\%ent);  
 
-               
-        if($nttab){ $nttab->close(); }
+        $nttab->setNodesAttribs(\%ent);
+
+
+        if ($nttab) { $nttab->close(); }
     }
 
 
@@ -987,46 +1008,47 @@ sub  update_tables_with_mgt_image
 =cut
 
 #-------------------------------------------------------------------------------
-sub  update_tables_with_diskless_image
+sub update_tables_with_diskless_image
 {
-    my $osver = shift;  #like sle11, rhel5.3 
+    my $osver = shift;    #like sle11, rhel5.3
     if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
-	$osver = shift;
+        $osver = shift;
     }
-    my $arch = shift;  #like ppc64, x86, x86_64
-    my $profile = shift;
-    my $mode=shift;
-    my $ospkgdir=shift;
-    my $osdistroname=shift; 
+    my $arch         = shift;    #like ppc64, x86, x86_64
+    my $profile      = shift;
+    my $mode         = shift;
+    my $ospkgdir     = shift;
+    my $osdistroname = shift;
 
-    my $provm="netboot";
-    if ($mode) { $provm = $mode; } 
-    
-    my $osname=$osver;;  #like sles, rh, centos, windows
-    my $ostype="Linux";  #like Linux, Windows
-    my $imagetype="linux";
+    my $provm = "netboot";
+    if ($mode) { $provm = $mode; }
+
+    my $osname    = $osver;;     #like sles, rh, centos, windows
+    my $ostype    = "Linux";     #like Linux, Windows
+    my $imagetype = "linux";
     if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
-	$osname="windows";
-	$ostype="Windows";
-	$imagetype="windows";
+        $osname    = "windows";
+        $ostype    = "Windows";
+        $imagetype = "windows";
     } else {
-	until (-r  "$::XCATROOT/share/xcat/netboot/$osname/" or not $osname) {
-	    chop($osname);
+        until (-r "$::XCATROOT/share/xcat/netboot/$osname/" or not $osname) {
+            chop($osname);
         }
         unless ($osname) {
-	    return (1, "Unable to find $::XCATROOT/share/xcat/netboot directory for $osver");
-	}  
-    } 
-      
+            return (1, "Unable to find $::XCATROOT/share/xcat/netboot directory for $osver");
+        }
+    }
+
     #for rhels5.1  genos=rhel5
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
-	$genos = "rhel$1";
+        $genos = "rhel$1";
     }
-  
+
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
+
     #my $sitetab = xCAT::Table->new('site');
     #if ($sitetab) {
     #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
@@ -1035,119 +1057,126 @@ sub  update_tables_with_diskless_image
     #	}
     #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
-    my $tmp = $installdirs[0];
-    if ( defined($tmp)) {
-       $installroot = $tmp; 
+    my $tmp         = $installdirs[0];
+    if (defined($tmp)) {
+        $installroot = $tmp;
     }
-    my $cuspath="$installroot/custom/netboot/$osname";
-    my $defpath="$::XCATROOT/share/xcat/netboot/$osname"; 
+    my $cuspath = "$installroot/custom/netboot/$osname";
+    my $defpath = "$::XCATROOT/share/xcat/netboot/$osname";
     my $osimagetab;
     my $linuximagetab;
 
-    my %profiles=();
+    my %profiles = ();
     if ($profile) {
         $profiles{$profile} = 1;
     } else {
-        my @tmplfiles=glob($cuspath."/compute.*pkglist");
+        my @tmplfiles = glob($cuspath . "/compute.*pkglist");
         foreach (@tmplfiles) {
-            my $tmpf=basename($_); 
+            my $tmpf = basename($_);
+
             #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
             $tmpf =~ /^([^\.]*)\..*$/;
             $tmpf = $1;
-            $profiles{$tmpf}=1;
+            $profiles{$tmpf} = 1;
         }
-        @tmplfiles=glob($defpath."/compute.*pkglist");
+        @tmplfiles = glob($defpath . "/compute.*pkglist");
         foreach (@tmplfiles) {
-            my $tmpf=basename($_); 
+            my $tmpf = basename($_);
+
             #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
             $tmpf =~ /^([^\.]*)\..*$/;
             $tmpf = $1;
-            $profiles{$tmpf}=1;
+            $profiles{$tmpf} = 1;
         }
     }
     foreach my $profile (keys %profiles) {
+
         #get the pkglist file
-        my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+        my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch); }
+
         #print "pkglistfile=$pkglistfile\n";
-        if (!$pkglistfile) { next;}
-        
+        if (!$pkglistfile) { next; }
+
         #get otherpkgs.pkglist file
-        my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
-        
+        my $otherpkgsfile = get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$otherpkgsfile) { $otherpkgsfile = get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch); }
+
         #get synclist file
-        my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-        
+        my $synclistfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+
         #get the exlist file
-        my $exlistfile=get_exlist_file_name($cuspath, $profile, $osver, $arch);
-        if (!$exlistfile) {  $exlistfile=get_exlist_file_name($defpath, $profile, $osver, $arch); }
-    
+        my $exlistfile = get_exlist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$exlistfile) { $exlistfile = get_exlist_file_name($defpath, $profile, $osver, $arch); }
+
         #get postinstall script file name
-        my $postfile=get_postinstall_file_name($cuspath, $profile, $osver, $arch);
-        if (!$postfile) {  $postfile=get_postinstall_file_name($defpath, $profile, $osver, $arch); }
-    
-    
+        my $postfile = get_postinstall_file_name($cuspath, $profile, $osver, $arch);
+        if (!$postfile) { $postfile = get_postinstall_file_name($defpath, $profile, $osver, $arch); }
+
+
         #now update the db
-        if (!$osimagetab) { 
-    	$osimagetab=xCAT::Table->new('osimage',-create=>1); 
+        if (!$osimagetab) {
+            $osimagetab = xCAT::Table->new('osimage', -create => 1);
         }
-        
-        if ($osimagetab) {    
-    	#check if the image is already in the table
-    	if ($osimagetab) {
-    	    my $found=0;
-    	    my $tmp1=$osimagetab->getAllEntries();
-    	    if (defined($tmp1) && (@$tmp1 > 0)) {
-    		foreach my $rowdata(@$tmp1) {
-    		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq $provm) && ($profile eq $rowdata->{profile})){
-    			$found=1;
-    			last;
-    		    }
-    		}
-    	    }
-           if ($found) { 
-                           print "The image is already in the db.\n"; 
- #                         next; 
-                         } 
-    	    
-    	    my $imagename=$osver . "-" . $arch . "-$provm-" . $profile;
-    	    #TODO: check if there happen to be a row that has the same imagename but with different contents
-    	    #now we can wirte the info into db
-    	    my %key_col = (imagename=>$imagename);
-    	    my %tb_cols=(imagetype=>$imagetype, 
-    			 provmethod=>$provm,
-    			 profile=>$profile, 
-    			 osname=>$ostype,
-    			 osvers=>$osver,
-    			 osarch=>$arch,
-    			 synclists=>$synclistfile,
-			 osdistroname=>$osdistroname);
-    	    $osimagetab->setAttribs(\%key_col, \%tb_cols);
-    	    
-    	    if ($osname !~ /^win/) {
-    		if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
-    		if ($linuximagetab) {
-    		    my %key_col = (imagename=>$imagename);
-    		    my %tb_cols=(pkglist=>$pkglistfile, 
-				 pkgdir=>$ospkgdir,    				 
-				 otherpkglist=>$otherpkgsfile,
-    				 otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch",
-    				 exlist=>$exlistfile,
-    				 postinstall=>$postfile,
-    				 rootimgdir=>"$installroot/netboot/$osver/$arch/$profile");
-    		    $linuximagetab->setAttribs(\%key_col, \%tb_cols);
-    		    
-    		} else {
-    		    return (1, "Cannot open the linuximage table.");
-    		}
-    	    }
-    	} else {
-    	    return (1, "Cannot open the osimage table."); 
-    	}
-        }  
+
+        if ($osimagetab) {
+
+            #check if the image is already in the table
+            if ($osimagetab) {
+                my $found = 0;
+                my $tmp1  = $osimagetab->getAllEntries();
+                if (defined($tmp1) && (@$tmp1 > 0)) {
+                    foreach my $rowdata (@$tmp1) {
+                        if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq $provm) && ($profile eq $rowdata->{profile})) {
+                            $found = 1;
+                            last;
+                        }
+                    }
+                }
+                if ($found) {
+                    print "The image is already in the db.\n";
+
+                    #                         next;
+                }
+
+                my $imagename = $osver . "-" . $arch . "-$provm-" . $profile;
+
+                #TODO: check if there happen to be a row that has the same imagename but with different contents
+                #now we can wirte the info into db
+                my %key_col = (imagename => $imagename);
+                my %tb_cols = (imagetype => $imagetype,
+                    provmethod   => $provm,
+                    profile      => $profile,
+                    osname       => $ostype,
+                    osvers       => $osver,
+                    osarch       => $arch,
+                    synclists    => $synclistfile,
+                    osdistroname => $osdistroname);
+                $osimagetab->setAttribs(\%key_col, \%tb_cols);
+
+                if ($osname !~ /^win/) {
+                    if (!$linuximagetab) { $linuximagetab = xCAT::Table->new('linuximage', -create => 1); }
+                    if ($linuximagetab) {
+                        my %key_col = (imagename => $imagename);
+                        my %tb_cols = (pkglist => $pkglistfile,
+                            pkgdir       => $ospkgdir,
+                            otherpkglist => $otherpkgsfile,
+                            otherpkgdir => "$installroot/post/otherpkgs/$osver/$arch",
+                            exlist      => $exlistfile,
+                            postinstall => $postfile,
+                            rootimgdir => "$installroot/netboot/$osver/$arch/$profile");
+                        $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+
+                    } else {
+                        return (1, "Cannot open the linuximage table.");
+                    }
+                }
+            } else {
+                return (1, "Cannot open the osimage table.");
+            }
+        }
     }
-    if ($osimagetab) { $osimagetab->close(); }
+    if ($osimagetab)    { $osimagetab->close(); }
     if ($linuximagetab) { $linuximagetab->close(); }
     return (0, "");
 }
@@ -1183,11 +1212,11 @@ sub get_mac_by_arp ()
 
     my $node;
     my $data;
-    my %ret = ();
+    my %ret               = ();
     my $unreachable_nodes = "";
-    my $noderange = join (',', @$nodes);
-    
-    if ( $nopping ne "nopping" ) {
+    my $noderange         = join(',', @$nodes);
+
+    if ($nopping ne "nopping") {
         my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
         foreach my $line (@output) {
             my ($hostname, $result) = split ':', $line;
@@ -1199,14 +1228,14 @@ sub get_mac_by_arp ()
         }
     }
 
-    foreach my $n ( @$nodes ) {
-        if ( ( $node->{$n}->{reachable} ) || ( $nopping eq "nopping" ) ){
+    foreach my $n (@$nodes) {
+        if (($node->{$n}->{reachable}) || ($nopping eq "nopping")) {
             my $output;
-            my $IP = xCAT::NetworkUtils::toIP( $n );
-            if ( xCAT::Utils->isAIX() ) {
+            my $IP = xCAT::NetworkUtils::toIP($n);
+            if (xCAT::Utils->isAIX()) {
                 $output = `/usr/sbin/arp -a`;
             } else {
-                if ( -x "/usr/sbin/arp" ) {
+                if (-x "/usr/sbin/arp") {
                     $output = `/usr/sbin/arp -n`;
                 }
                 else {
@@ -1216,40 +1245,40 @@ sub get_mac_by_arp ()
 
             my ($ip, $mac);
             my @lines = split /\n/, $output;
-            foreach my $line ( @lines ) {
-                if ( xCAT::Utils->isAIX() && $line =~ /\((\S+)\)\s+at\s+(\S+)/ ) {
-                    ($ip, $mac) = ($1,$2);
+            foreach my $line (@lines) {
+                if (xCAT::Utils->isAIX() && $line =~ /\((\S+)\)\s+at\s+(\S+)/) {
+                    ($ip, $mac) = ($1, $2);
                     ######################################################
                     # Change mac format to be same as linux, but without ':'
                     # For example: '0:d:60:f4:f8:22' to '000d60f4f822'
                     ######################################################
-                    if ( $mac)
+                    if ($mac)
                     {
                         my @mac_sections = split /:/, $mac;
                         for my $m (@mac_sections)
                         {
-                            $m = "0$m" if ( length($m) == 1);
+                            $m = "0$m" if (length($m) == 1);
                         }
                         $mac = join '', @mac_sections;
                     }
-                } elsif ( $line =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
-                    ($ip, $mac) = ($1,$2);
+                } elsif ($line =~ /^(\S+)+\s+\S+\s+(\S+)\s/) {
+                    ($ip, $mac) = ($1, $2);
                 } else {
-                    ($ip, $mac) = (undef,undef);
+                    ($ip, $mac) = (undef, undef);
                 }
-                if ( @$IP[1] !~ $ip ) {
-                    ($ip, $mac) = (undef,undef);
+                if (@$IP[1] !~ $ip) {
+                    ($ip, $mac) = (undef, undef);
                 } else {
                     last;
                 }
             }
-            if ( $ip && $mac ) {
-                if ( $display ne "yes" ) {
+            if ($ip && $mac) {
+                if ($display ne "yes") {
                     #####################################
                     # Write adapter mac to database
                     #####################################
-                    my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
-                    $mactab->setNodeAttribs( $n,{mac=>$mac} );
+                    my $mactab = xCAT::Table->new("mac", -create => 1, -autocommit => 1);
+                    $mactab->setNodeAttribs($n, { mac => $mac });
                     $mactab->close();
                 }
                 $ret{$n} = "MAC Address: $mac";
@@ -1257,7 +1286,7 @@ sub get_mac_by_arp ()
                 $ret{$n} = "Cannot find MAC Address in arp table, please make sure target node and management node are in same network.";
             }
         } else {
-                $ret{$n} = "Unreachable.";
+            $ret{$n} = "Unreachable.";
         }
     }
 
@@ -1289,11 +1318,11 @@ sub get_mac_by_arp ()
 sub get_nodename_from_request()
 {
     my $request = shift;
-    if($request->{node}){
+    if ($request->{node}) {
         return $request->{node};
-    }elsif($request->{'_xcat_clienthost'}){
-         my @nodenames = noderange($request->{'_xcat_clienthost'}->[0].",".$request->{'_xcat_clientfqdn'}->[0]);
-         return \@nodenames;
+    } elsif ($request->{'_xcat_clienthost'}) {
+        my @nodenames = noderange($request->{'_xcat_clienthost'}->[0] . "," . $request->{'_xcat_clientfqdn'}->[0]);
+        return \@nodenames;
     }
 
     return undef;
@@ -1305,124 +1334,137 @@ sub get_nodename_from_request()
 # we do this sparingly...  We don't like tons of hits
 # to the database.
 sub subVars {
-  my $dir = shift;
-  if (($dir) && ($dir =~ /xCAT::SvrUtils/))
-  {
-    $dir = shift;
-  }
+    my $dir = shift;
+    if (($dir) && ($dir =~ /xCAT::SvrUtils/))
+    {
+        $dir = shift;
+    }
 
-        my $node = shift;
-        my $type = shift;
-        my $callback = shift;
-        # parse all the dollar signs...
-        # if its a directory then it has a / in it, so you have to parse it.
-        # if its a server, it won't have one so don't worry about it.
-        my @arr = split("/", $dir);
-        my $fdir = "";
-        foreach my $p (@arr){
-                # have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
-                if($p =~ /\$/){
-                        my $pre;
-                        my $suf;
-                        my @fParts;
-                        if($p =~ /([^\$]*)([^# ]*)(.*)/){
-                                $pre= $1;
-                                $p = $2;
-                                $suf = $3;
-                        }
-                        # have to sub here:
-                        # get rid of the $ sign.
-                        foreach my $part (split('\$',$p)){
-                                if($part eq ''){ next; }
-                                #$callback->({error=>["part is $part"],errorcode=>[1]});
-                                # check if p is just the node name:
-                                if($part eq 'node'){
-                                        # it is so, just return the node.
-                                        #$fdir .= "/$pre$node$suf";
-                                        push @fParts, $node;
-                                }else{
-                                        # ask the xCAT DB what the attribute is.
-                                        my ($table, $col) = split('\.', $part);
-                                        unless($col){ $col = 'UNDEFINED' };
-                                        my $tab = xCAT::Table->new($table);
-                                        unless($tab){
-                                                $callback->({error=>["$table does not exist"],errorcode=>[1]});
-                                                return;
-                                        }
-                                        my $ent;
-                                        my $val;
-                                        if($table eq 'site'){
-                                                #$val = $tab->getAttribs( { key => "$col" }, 'value' );
-                                                #$val = $val->{'value'};
-                                                my @vals = xCAT::TableUtils->get_site_attribute($col);
-                                                $val = $vals[0];
-                                        }else{
-                                                $ent = $tab->getNodeAttribs($node,[$col]);
-                                                $val = $ent->{$col};
-                                        }
-                                        unless($val){
-                                                # couldn't find the value!!
-                                                $val = "UNDEFINED"
-                                        }
-                                        push @fParts, $val;
-                                }
-                        }
-                        my $val = join('.', @fParts);
-                        if($type eq 'dir'){
-                                        $fdir .= "/$pre$val$suf";
-                        }else{
-                                        $fdir .= $pre . $val . $suf;
-                        }
-                }else{
-                        # no substitution here
-                        $fdir .= "/$p";
-                }
-        }
-        # now that we've processed variables, process commands
-        # this isn't quite rock solid.  You can't name directories with #'s in them.
-        if($fdir =~ /#CMD=/){
-                my $dir;
-                foreach my $p (split(/#/,$fdir)){
-                        if($p =~ /CMD=/){
-                                $p =~ s/CMD=//;
-                                my $cmd = $p;
-                                #$callback->({info=>[$p]});
-                                $p = `$p 2>&1`;
-                                chomp($p);
-                                #$callback->({info=>[$p]});
-                                unless($p){
-                                        $p = "#CMD=$p did not return output#";
-                                }
-                        }
-                        $dir .= $p;
-                }
-                $fdir = $dir;
-        }
+    my $node     = shift;
+    my $type     = shift;
+    my $callback = shift;
 
-        return $fdir;
+    # parse all the dollar signs...
+    # if its a directory then it has a / in it, so you have to parse it.
+    # if its a server, it won't have one so don't worry about it.
+    my @arr = split("/", $dir);
+    my $fdir = "";
+    foreach my $p (@arr) {
+
+        # have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
+        if ($p =~ /\$/) {
+            my $pre;
+            my $suf;
+            my @fParts;
+            if ($p =~ /([^\$]*)([^# ]*)(.*)/) {
+                $pre = $1;
+                $p   = $2;
+                $suf = $3;
+            }
+
+            # have to sub here:
+            # get rid of the $ sign.
+            foreach my $part (split('\$', $p)) {
+                if ($part eq '') { next; }
+
+                #$callback->({error=>["part is $part"],errorcode=>[1]});
+                # check if p is just the node name:
+                if ($part eq 'node') {
+
+                    # it is so, just return the node.
+                    #$fdir .= "/$pre$node$suf";
+                    push @fParts, $node;
+                } else {
+
+                    # ask the xCAT DB what the attribute is.
+                    my ($table, $col) = split('\.', $part);
+                    unless ($col) { $col = 'UNDEFINED' }
+                    my $tab = xCAT::Table->new($table);
+                    unless ($tab) {
+                        $callback->({ error => ["$table does not exist"], errorcode => [1] });
+                        return;
+                    }
+                    my $ent;
+                    my $val;
+                    if ($table eq 'site') {
+
+                        #$val = $tab->getAttribs( { key => "$col" }, 'value' );
+                        #$val = $val->{'value'};
+                        my @vals = xCAT::TableUtils->get_site_attribute($col);
+                        $val = $vals[0];
+                    } else {
+                        $ent = $tab->getNodeAttribs($node, [$col]);
+                        $val = $ent->{$col};
+                    }
+                    unless ($val) {
+
+                        # couldn't find the value!!
+                        $val = "UNDEFINED"
+                    }
+                    push @fParts, $val;
+                }
+            }
+            my $val = join('.', @fParts);
+            if ($type eq 'dir') {
+                $fdir .= "/$pre$val$suf";
+            } else {
+                $fdir .= $pre . $val . $suf;
+            }
+        } else {
+
+            # no substitution here
+            $fdir .= "/$p";
+        }
+    }
+
+    # now that we've processed variables, process commands
+    # this isn't quite rock solid.  You can't name directories with #'s in them.
+    if ($fdir =~ /#CMD=/) {
+        my $dir;
+        foreach my $p (split(/#/, $fdir)) {
+            if ($p =~ /CMD=/) {
+                $p =~ s/CMD=//;
+                my $cmd = $p;
+
+                #$callback->({info=>[$p]});
+                $p = `$p 2>&1`;
+                chomp($p);
+
+                #$callback->({info=>[$p]});
+                unless ($p) {
+                    $p = "#CMD=$p did not return output#";
+                }
+            }
+            $dir .= $p;
+        }
+        $fdir = $dir;
+    }
+
+    return $fdir;
 }
 
 sub setupNFSTree {
-  my $node = shift;
-  if (($node) && ($node =~ /xCAT::SvrUtils/))
-  {
-    $node = shift;
-  }
+    my $node = shift;
+    if (($node) && ($node =~ /xCAT::SvrUtils/))
+    {
+        $node = shift;
+    }
 
-    my $sip = shift;
+    my $sip      = shift;
     my $callback = shift;
 
     my $cmd = "XCATBYPASS=Y litetree $node";
     my @uris = xCAT::Utils->runcmd($cmd, 0);
 
     foreach my $uri (@uris) {
+
         # parse the result
         # the result looks like "nodename: nfsserver:directory";
         $uri =~ m/\Q$node\E:\s+(.+):(.+)$/;
-        my $nfsserver = $1;
+        my $nfsserver    = $1;
         my $nfsdirectory = $2;
 
-        if($nfsserver eq $sip) { # on the service node
+        if ($nfsserver eq $sip) {    # on the service node
 
             unless (-d $nfsdirectory) {
                 if (-e $nfsdirectory) {
@@ -1430,25 +1472,28 @@ sub setupNFSTree {
                 }
                 mkpath $nfsdirectory;
             }
-        
+
             $cmd = "showmount -e $nfsserver";
             my @entries = xCAT::Utils->runcmd($cmd, 0);
             shift @entries;
-            if(grep /\Q$nfsdirectory\E/, @entries) {
-                $callback->({data=>["$nfsdirectory has been exported already!"]});
+            if (grep /\Q$nfsdirectory\E/, @entries) {
+                $callback->({ data => ["$nfsdirectory has been exported already!"] });
+
                 # nothing to do
-            }else {
+            } else {
                 $cmd = "/usr/sbin/exportfs :$nfsdirectory";
                 xCAT::Utils->runcmd($cmd, 0);
+
                 # exportfs can export this directory immediately
-                $callback->({data=>["now $nfsdirectory is exported!"]});
+                $callback->({ data => ["now $nfsdirectory is exported!"] });
                 $cmd = "cat /etc/exports";
                 @entries = xCAT::Utils->runcmd($cmd, 0);
                 unless (my $entry = grep /\Q$nfsdirectory\E/, @entries) {
+
                     #if there's no entry in /etc/exports, one with default options will be added
                     $cmd = qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports};
                     xCAT::Utils->runcmd($cmd, 0);
-                    $callback->({data=>["$nfsdirectory is added to /etc/exports with default option"]});
+                    $callback->({ data => ["$nfsdirectory is added to /etc/exports with default option"] });
                 }
             }
         }
@@ -1457,48 +1502,49 @@ sub setupNFSTree {
 
 sub setupStatemnt {
     my $sip = shift;
-    if (($sip) && ($sip=~ /xCAT::SvrUtils/))
+    if (($sip) && ($sip =~ /xCAT::SvrUtils/))
     {
-      $sip = shift;
+        $sip = shift;
     }
 
     my $statemnt = shift;
     my $callback = shift;
 
     $statemnt =~ m/^(.+):(.+)$/;
-    my $nfsserver = $1;
+    my $nfsserver    = $1;
     my $nfsdirectory = $2;
-    if($sip eq xCAT::NetworkUtils->getipaddr($nfsserver)) {
+    if ($sip eq xCAT::NetworkUtils->getipaddr($nfsserver)) {
         unless (-d $nfsdirectory) {
             if (-e $nfsdirectory) {
                 unlink $nfsdirectory;
-            } 
+            }
             mkpath $nfsdirectory;
         }
 
         my $cmd = "showmount -e $nfsserver";
         my @entries = xCAT::Utils->runcmd($cmd, 0);
         shift @entries;
-        if(grep /\Q$nfsdirectory\E/, @entries) {
-            $callback->({data=>["$nfsdirectory has been exported already!"]});
+        if (grep /\Q$nfsdirectory\E/, @entries) {
+            $callback->({ data => ["$nfsdirectory has been exported already!"] });
         } else {
             $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check";
             xCAT::Utils->runcmd($cmd, 0);
-            $callback->({data=>["now $nfsdirectory is exported!"]});
+            $callback->({ data => ["now $nfsdirectory is exported!"] });
+
             # add the directory into /etc/exports if not exist
             $cmd = "cat /etc/exports";
             @entries = xCAT::Utils->runcmd($cmd, 0);
-            if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
+            if (my $entry = grep /\Q$nfsdirectory\E/, @entries) {
                 unless ($entry =~ m/rw/) {
-                    $callback->({data=>["The $nfsdirectory should be with rw option in /etc/exports"]});
+                    $callback->({ data => ["The $nfsdirectory should be with rw option in /etc/exports"] });
                 }
-            }else {
+            } else {
                 xCAT::Utils->runcmd(qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >>/etc/exports}, 0);
-                $callback->({data => ["$nfsdirectory is added into /etc/exports with default options"]});
+                $callback->({ data => ["$nfsdirectory is added into /etc/exports with default options"] });
             }
         }
     }
-    
+
 }
 
 #-------------------------------------------------------------------------------------------
@@ -1508,52 +1554,54 @@ sub setupStatemnt {
 #
 #--------------------------------------------------------------------------------------------
 sub sendmsg {
-    my $text = shift;
-    my $callback = shift;
-    my $node = shift;
+    my $text          = shift;
+    my $callback      = shift;
+    my $node          = shift;
     my %allerrornodes = shift;
     my $descr;
     my $rc;
     if (ref $text eq 'HASH') {
         die "not right now";
     } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
+        $rc   = $text->[0];
         $text = $text->[1];
     }
     if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
+        ($descr, $text) = split /:/, $text, 2;
     }
     $text =~ s/^ *//;
     $text =~ s/ *$//;
     my $msg;
     my $curptr;
     if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
+        $msg->{node} = [ { name => [$node] } ];
+        $curptr = $msg->{node}->[0];
     } else {
-        $msg = {};
+        $msg    = {};
         $curptr = $msg;
     }
     if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
+        $curptr->{errorcode} = [$rc];
+        $curptr->{error}     = [$text];
+        $curptr              = $curptr->{error}->[0];
         if (defined $node && %allerrornodes) {
-            $allerrornodes{$node}=1;
+            $allerrornodes{$node} = 1;
         }
     } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
+        $curptr->{data} = [ { contents => [$text] } ];
+        $curptr = $curptr->{data}->[0];
+        if ($descr) { $curptr->{desc} = [$descr]; }
     }
-#        print $outfd freeze([$msg]);
-#        print $outfd "\nENDOFFREEZE6sK4ci\n";
-#        yield;
-#        waitforack($outfd);
+
+    #        print $outfd freeze([$msg]);
+    #        print $outfd "\nENDOFFREEZE6sK4ci\n";
+    #        yield;
+    #        waitforack($outfd);
     $callback->($msg);
 }
 
 #-------------------------------------------------------------------------------
+
 =head3  build_deps
     Look up the "deps" table to generate the dependencies for the nodes
     Arguments:
@@ -1576,41 +1624,44 @@ sub build_deps()
     my ($class, $nodes, $cmd) = @_;
     my %depshash = ();
 
-    my $depstab  = xCAT::Table->new('deps');
+    my $depstab = xCAT::Table->new('deps');
     if (!defined($depstab)) {
         return undef;
     }
 
-    my $depset = $depstab->getNodesAttribs($nodes,[qw(nodedep msdelay cmd)]);
+    my $depset = $depstab->getNodesAttribs($nodes, [qw(nodedep msdelay cmd)]);
     if (!defined($depset))
     {
         return undef;
     }
     foreach my $node (@$nodes) {
+
         # Delete the nodes without dependencies from the hash
         if (!defined($depset->{$node}[0])) {
             delete($depset->{$node});
-        } 
+        }
     }
 
     # the deps hash does not check the 'cmd',
     # use the realdeps to reflect the 'cmd' also
     my $realdep;
     foreach my $node (@$nodes) {
-            foreach my $depent (@{$depset->{$node}}){
-                my @depcmd = split(/,/, $depent->{'cmd'});
-                #dependency match
-                if (grep(/^$cmd$/, @depcmd)) {
-                    #expand the noderange
-                    my @nodedep = xCAT::NodeRange::noderange($depent->{'nodedep'},1);
-                    my $depsnode = join(',', @nodedep);
-                    if ($depsnode) {
-                        $depent->{'nodedep'} = $depsnode;
-                        push @{$realdep->{$node}}, $depent;
-                    }
+        foreach my $depent (@{ $depset->{$node} }) {
+            my @depcmd = split(/,/, $depent->{'cmd'});
+
+            #dependency match
+            if (grep(/^$cmd$/, @depcmd)) {
+
+                #expand the noderange
+                my @nodedep = xCAT::NodeRange::noderange($depent->{'nodedep'}, 1);
+                my $depsnode = join(',', @nodedep);
+                if ($depsnode) {
+                    $depent->{'nodedep'} = $depsnode;
+                    push @{ $realdep->{$node} }, $depent;
                 }
             }
         }
+    }
     return $realdep;
 }
 
@@ -1659,24 +1710,24 @@ sub handle_deps()
     #  DB<3> x $deps
     #0  HASH(0x239db47c)
     #   'aixcn1' => ARRAY(0x23a26be0)
-    #      0  HASH(0x23a21968) 
-    #         'cmd' => 'off' 
-    #         'msdelay' => 10000 
-    #         'node' => 'aixcn1' 
-    #         'nodedep' => 'aixmn2' 
+    #      0  HASH(0x23a21968)
+    #         'cmd' => 'off'
+    #         'msdelay' => 10000
+    #         'node' => 'aixcn1'
+    #         'nodedep' => 'aixmn2'
     #   'aixsn1' => ARRAY(0x23a2219c)
-    #      0  HASH(0x23a21728) 
-    #         'cmd' => 'off' 
-    #         'msdelay' => 10000 
-    #         'node' => 'aixsn1' 
-    #         'nodedep' => 'aixcn1' 
+    #      0  HASH(0x23a21728)
+    #         'cmd' => 'off'
+    #         'msdelay' => 10000
+    #         'node' => 'aixsn1'
+    #         'nodedep' => 'aixcn1'
 
     #copy the dephash, do not manipulate the subroutine argument $dephash
     my $deps;
     foreach my $node (keys %{$dephash}) {
         my $i = 0;
-        for ($i = 0; $i < scalar(@{$dephash->{$node}}); $i++) {
-            foreach my $attr (keys %{$dephash->{$node}->[$i]}) {
+        for ($i = 0 ; $i < scalar(@{ $dephash->{$node} }) ; $i++) {
+            foreach my $attr (keys %{ $dephash->{$node}->[$i] }) {
                 $deps->{$node}->[$i]->{$attr} = $dephash->{$node}->[$i]->{$attr};
             }
         }
@@ -1693,16 +1744,17 @@ sub handle_deps()
     # check if any depnode is not in the nodelist,
     # print warning message
     my $depsnotinargs;
-    foreach my $node (keys %{$deps}){
+    foreach my $node (keys %{$deps}) {
         my $keepnode = 0;
-        foreach my $depent (@{$deps->{$node}}){
+        foreach my $depent (@{ $deps->{$node} }) {
+
             # an autonomy dependency group?
             foreach my $dep (split(/,/, $depent->{'nodedep'})) {
                 if (!defined($nodelist{$dep})) {
-                   $depsnotinargs->{$dep} = 1; 
-                   $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $dep);
-                }       
-            }       
+                    $depsnotinargs->{$dep} = 1;
+                    $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $dep);
+                }
+            }
             if ($depent->{'nodedep'}) {
                 $keepnode = 1;
             }
@@ -1713,53 +1765,57 @@ sub handle_deps()
     }
     if (scalar(keys %{$depsnotinargs}) > 0) {
         my $n = join(',', keys %{$depsnotinargs});
-  
+
         my %output;
-        $output{data} = ["The following nodes are dependencies for some nodes passed in through arguments, but not in the command arguments: $n, make sure these nodes are in correct state"]; 
-        $callback->( \%output );
-    }                                                            
-                                                                             
+        $output{data} = ["The following nodes are dependencies for some nodes passed in through arguments, but not in the command arguments: $n, make sure these nodes are in correct state"];
+        $callback->(\%output);
+    }
 
 
-    my $arrayindex = 0;                                                      
-    my $nodeseq;                                                             
+
+    my $arrayindex = 0;
+    my $nodeseq;
+
     #handle all the nodes
-    while (keys %nodelist) {                                                 
+    while (keys %nodelist) {
 
-       my @curnodes;
-       foreach my $node (keys %nodelist) {                                  
-            #no dependency                                                  
-           if (!defined($deps->{$node})) {                                  
-               $nodeseq->[$arrayindex]->{$node} = 1;                        
-               delete($nodelist{$node});                                    
-               push @curnodes, $node;
-           }                                                                
-       }                                                                    
-                                                                             
-       if (scalar(@curnodes) == 0) {
-           # no nodes in this loop at all,
-           # means infinite loop???
-           my %output;
-           my $nodesinlist = join(',', keys %nodelist);
-           $output{errorcode}=1;
-           $output{data} = ["Loop dependency, check your deps table, may be related to the following nodes: $nodesinlist"];
-           $callback->( \%output );
-           return 1;
-       }
+        my @curnodes;
+        foreach my $node (keys %nodelist) {
 
-       # update deps for the next loop                              
-       # remove the node from the 'nodedep' attribute               
-       my $keepnode = 0;                                            
-       foreach my $nodeindeps (keys %{$deps}) {
-           my $keepnode = 0;
-           foreach my $depent (@{$deps->{$nodeindeps}}){                      
-                 #remove the curnodes from the 'nodedep'
-                 foreach my $nodetoremove (@curnodes) {
-                     $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $nodetoremove);
-                 }
-                 if ($depent->{'nodedep'}) {
-                     $keepnode = 1;
-                 }
+            #no dependency
+            if (!defined($deps->{$node})) {
+                $nodeseq->[$arrayindex]->{$node} = 1;
+                delete($nodelist{$node});
+                push @curnodes, $node;
+            }
+        }
+
+        if (scalar(@curnodes) == 0) {
+
+            # no nodes in this loop at all,
+            # means infinite loop???
+            my %output;
+            my $nodesinlist = join(',', keys %nodelist);
+            $output{errorcode} = 1;
+            $output{data} = ["Loop dependency, check your deps table, may be related to the following nodes: $nodesinlist"];
+            $callback->(\%output);
+            return 1;
+        }
+
+        # update deps for the next loop
+        # remove the node from the 'nodedep' attribute
+        my $keepnode = 0;
+        foreach my $nodeindeps (keys %{$deps}) {
+            my $keepnode = 0;
+            foreach my $depent (@{ $deps->{$nodeindeps} }) {
+
+                #remove the curnodes from the 'nodedep'
+                foreach my $nodetoremove (@curnodes) {
+                    $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $nodetoremove);
+                }
+                if ($depent->{'nodedep'}) {
+                    $keepnode = 1;
+                }
             }
             if (!$keepnode) {
                 delete($deps->{$nodeindeps});
@@ -1767,9 +1823,9 @@ sub handle_deps()
         }
 
         # the round is over, jump to the next arrary entry
-        $arrayindex++;  
-    }                                                                  
-    return $nodeseq; 
+        $arrayindex++;
+    }
+    return $nodeseq;
 }
 
 
@@ -1793,14 +1849,14 @@ sub handle_deps()
 #-------------------------------------------------------------------------------
 sub parseosver
 {
-  my $osver=shift;
+    my $osver = shift;
 
-  if($osver =~ (/(\D+)(\d*)\.*(\d*)/))
-  {
-        return ($1,$2,$3);
-  }
+    if ($osver =~ (/(\D+)(\d*)\.*(\d*)/))
+    {
+        return ($1, $2, $3);
+    }
 
-  return ();
+    return ();
 }
 
 #-------------------------------------------------------------------------------
@@ -1820,85 +1876,86 @@ sub parseosver
 #-------------------------------------------------------------------------------
 
 sub update_osdistro_table
-{ 
-    my $osver = shift;  #like sle11, rhel5.3 
+{
+    my $osver = shift;    #like sle11, rhel5.3
     if (($osver) && ($osver =~ /xCAT::SvrUtils/)) {
         $osver = shift;
     }
-    my $arch = shift;  #like ppc64, x86, x86_64
-    my $path=shift;
-    my $distname=shift;
- 
-    my $basename=undef;
-    my $majorversion=undef;
-    my $minorversion=undef;
-	
-    my %keyhash=();
-    my %updates=();
+    my $arch     = shift;    #like ppc64, x86, x86_64
+    my $path     = shift;
+    my $distname = shift;
 
-    my $ostype="Linux";  #like Linux, Windows
+    my $basename     = undef;
+    my $majorversion = undef;
+    my $minorversion = undef;
+
+    my %keyhash = ();
+    my %updates = ();
+
+    my $ostype = "Linux";    #like Linux, Windows
     if (($osver =~ /^win/) || ($osver =~ /^imagex/)) {
-	if ($osver =~ /^win\d/) {
-		$osver =~ s/^win/windows/;
-	} elsif ($osver =~ /^imagex/) {
-        	$osver="windows";
-	}
-        $ostype="Windows";
+        if ($osver =~ /^win\d/) {
+            $osver =~ s/^win/windows/;
+        } elsif ($osver =~ /^imagex/) {
+            $osver = "windows";
+        }
+        $ostype = "Windows";
     }
     if ($osver =~ /hyperv/) {
-	$ostype = "Windows";
+        $ostype = "Windows";
     }
 
 
-   unless($distname){
-	$distname=$osver."-".$arch;
-   }
-     
-    $keyhash{osdistroname}    = $distname;
-
-    $updates{type}=$ostype;
-    if($arch){
-             $updates{arch}    = $arch;
-    }
-#split $osver to basename,majorversion,minorversion 
-    if($osver){
-              ($updates{basename},$updates{majorversion},$updates{minorversion}) = &parseosver($osver);
+    unless ($distname) {
+        $distname = $osver . "-" . $arch;
     }
 
+    $keyhash{osdistroname} = $distname;
 
-    my $tab = xCAT::Table->new('osdistro',-create=>1);
+    $updates{type} = $ostype;
+    if ($arch) {
+        $updates{arch} = $arch;
+    }
 
-    unless($tab)
+    #split $osver to basename,majorversion,minorversion
+    if ($osver) {
+        ($updates{basename}, $updates{majorversion}, $updates{minorversion}) = &parseosver($osver);
+    }
+
+
+    my $tab = xCAT::Table->new('osdistro', -create => 1);
+
+    unless ($tab)
     {
-          return(1,"failed to open table 'osdistro'!");
+        return (1, "failed to open table 'osdistro'!");
     }
 
-    if($path)
+    if ($path)
+    {
+        $path =~ s/\/+$//;
+        (my $ref) = $tab->getAttribs(\%keyhash, 'dirpaths');
+        if ($ref and $ref->{dirpaths})
         {
-              $path =~ s/\/+$//;
-              (my $ref) = $tab->getAttribs(\%keyhash, 'dirpaths');
-              if ($ref and $ref->{dirpaths} )
-               {
-#if $path does not exits in "dirpaths" of osdistro,append the $path delimited with a ",";otherwise keep the original value
-                    unless($ref->{dirpaths} =~ /^($path)\/*,|,($path)\/*,|,($path)\/*$|^($path)\/*$/)
-                    {
-                           $updates{dirpaths}=$ref->{dirpaths}.','.$path;
-                    }
-                }else
-                {
-                        $updates{dirpaths}   = $path;
-                }
-        }
-
-
-        if(%updates)
+            #if $path does not exits in "dirpaths" of osdistro,append the $path delimited with a ",";otherwise keep the original value
+            unless ($ref->{dirpaths} =~ /^($path)\/*,|,($path)\/*,|,($path)\/*$|^($path)\/*$/)
+            {
+                $updates{dirpaths} = $ref->{dirpaths} . ',' . $path;
+            }
+        } else
         {
-                $tab->setAttribs( \%keyhash,\%updates );
-                $tab->commit;
+            $updates{dirpaths} = $path;
         }
-        $tab->close;
+    }
 
-        return(0,"osdistro $distname update success");
+
+    if (%updates)
+    {
+        $tab->setAttribs(\%keyhash, \%updates);
+        $tab->commit;
+    }
+    $tab->close;
+
+    return (0, "osdistro $distname update success");
 
 
 }
@@ -1929,41 +1986,42 @@ sub update_osdistro_table
 
 sub getpostbootscripts()
 {
-  my $nodes = shift;
-  if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
-  {
-    $nodes = shift;
-  }
-  my %node_postbootscript = ();
-  my %osimage_postbootscript = ();
+    my $nodes = shift;
+    if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
+    {
+        $nodes = shift;
+    }
+    my %node_postbootscript    = ();
+    my %osimage_postbootscript = ();
 
 
 
-	# get the profile attributes for the nodes
-	my $nodetype_t = xCAT::Table->new('nodetype');
-	unless ($nodetype_t) {
-	    return ;
-   }
-	my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['provmethod']);
-   my @osimages;	
-   my $osimage_t = xCAT::Table->new('osimage');
-   unless ($osimage_t) {
-      return ;
-   }
-	foreach my $node (@$nodes) {
-	    my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-	    if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
-       # then get the postbootscripts from the osimage
-          my $postbootscripts = $osimage_t->getAttribs({imagename=>$provmethod}, 'postbootscripts');
-          if ($postbootscripts && $postbootscripts->{'postbootscripts'}) {
-           $node_postbootscript{$node} = $postbootscripts->{'postbootscripts'};
-          }
+    # get the profile attributes for the nodes
+    my $nodetype_t = xCAT::Table->new('nodetype');
+    unless ($nodetype_t) {
+        return;
+    }
+    my $nodetype_v = $nodetype_t->getNodesAttribs($nodes, ['provmethod']);
+    my @osimages;
+    my $osimage_t = xCAT::Table->new('osimage');
+    unless ($osimage_t) {
+        return;
+    }
+    foreach my $node (@$nodes) {
+        my $provmethod = $nodetype_v->{$node}->[0]->{'provmethod'};
+        if (($provmethod) && ($provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
+
+            # then get the postbootscripts from the osimage
+            my $postbootscripts = $osimage_t->getAttribs({ imagename => $provmethod }, 'postbootscripts');
+            if ($postbootscripts && $postbootscripts->{'postbootscripts'}) {
+                $node_postbootscript{$node} = $postbootscripts->{'postbootscripts'};
+            }
         }
 
-	    
-   }
-   return \%node_postbootscript;
-  }
+
+    }
+    return \%node_postbootscript;
+}
 
 #-------------------------------------------------------------------------------
 
@@ -1982,39 +2040,39 @@ sub getpostbootscripts()
 #-------------------------------------------------------------------------------
 
 sub getplatform {
-    my $os = shift;  #like sles11.1, rhels6.3
+    my $os = shift;    #like sles11.1, rhels6.3
     if (($os) && ($os =~ /xCAT::SvrUtils/)) {
         $os = shift;
     }
 
     my $platform;
-    if ($os =~ /rh.*/) 
+    if ($os =~ /rh.*/)
     {
-	$platform = "rh";
+        $platform = "rh";
     }
-    elsif ($os =~ /sles.*/) 
+    elsif ($os =~ /sles.*/)
     {
-	$platform = "sles";
+        $platform = "sles";
     }
-    elsif ($os =~ /suse.*/) 
+    elsif ($os =~ /suse.*/)
     {
-	$platform = "suse";
+        $platform = "suse";
     }
     elsif ($os =~ /centos.*/)
     {
-	$platform = "centos";
+        $platform = "centos";
     }
     elsif ($os =~ /fedora.*/)
     {
-	$platform = "fedora";
+        $platform = "fedora";
     }
     elsif ($os =~ /esxi.*/)
     {
-	$platform = "esxi";
+        $platform = "esxi";
     }
     elsif ($os =~ /esx.*/)
     {
-	$platform = "esx";
+        $platform = "esx";
     }
     elsif ($os =~ /SL.*/)
     {
@@ -2027,7 +2085,7 @@ sub getplatform {
     elsif ($os =~ /debian.*/) {
         $platform = "debian";
     }
-    elsif ($os =~ /ubuntu.*/){
+    elsif ($os =~ /ubuntu.*/) {
         $platform = "ubuntu";
     }
     elsif ($os =~ /AIX.*/)

@@ -8,6 +8,7 @@
 #####################################################
 
 package xCAT_plugin::DBobjectdefs;
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -34,15 +35,15 @@ $Getopt::Long::ignorecase = 0;
 # %::CLIATTRS;      # attr=values provided on the command line
 #%::FILEATTRS;     # attr=values provided in an input file
 #%::FINALATTRS;    # final set of attr=values that are used to set
-                  #    the object
+#    the object
 
 #%::objfilehash;   #  hash of objects/types based of "-f" option
-                  #    (list in file)
+#    (list in file)
 
 #%::WhereHash;     # hash of attr=val from "-w" option
 #@::AttrList;      # list of attrs from "-i" option
 #%::NicsAttrHash;  # hash of nics attributes specified with "-i" option
-                  # e.g. $::NicsAttrHash{'nicips'} = ("eth0","eth1");
+# e.g. $::NicsAttrHash{'nicips'} = ("eth0","eth1");
 
 # object type lists
 #@::clobjtypes;      # list of object types derived from the command line.
@@ -102,11 +103,11 @@ If adding to this file, please take a moment to ensure that:
 sub handled_commands
 {
     return {
-            mkdef => "DBobjectdefs",
-            lsdef => "DBobjectdefs",
-            chdef => "DBobjectdefs",
-            rmdef => "DBobjectdefs"
-            };
+        mkdef => "DBobjectdefs",
+        lsdef => "DBobjectdefs",
+        chdef => "DBobjectdefs",
+        rmdef => "DBobjectdefs"
+    };
 }
 
 #----------------------------------------------------------------------------
@@ -141,6 +142,7 @@ sub process_request
     my $msg;
 
     &initialize_variables();
+
     # globals used by all subroutines.
     $::command  = $::request->{command}->[0];
     $::args     = $::request->{arg};
@@ -175,8 +177,8 @@ sub process_request
     $::callback->($rsp);
 }
 
-sub parse_attr_for_osimage{
-    my $command = shift;
+sub parse_attr_for_osimage {
+    my $command   = shift;
     my $attr_hash = shift;
     if (!exists($attr_hash->{profile}) or !exists($attr_hash->{provmethod})) {
         my $rsp;
@@ -184,7 +186,7 @@ sub parse_attr_for_osimage{
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return -1;
     } else {
-        my $tmp_profile = $attr_hash->{profile};
+        my $tmp_profile    = $attr_hash->{profile};
         my $tmp_provmethod = $attr_hash->{provmethod};
         if ($tmp_provmethod !~ /install|netboot|statelite/) {
             my $rsp;
@@ -192,13 +194,13 @@ sub parse_attr_for_osimage{
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return -1;
         }
-        my ($tmp_imagetype, $tmp_arch, $tmp_osname,$tmp_ostype,$tmp_osvers);
+        my ($tmp_imagetype, $tmp_arch, $tmp_osname, $tmp_ostype, $tmp_osvers);
         if (!exists($attr_hash->{osvers})) {
             $tmp_osvers = xCAT::Utils->osver("all");
             $tmp_osvers =~ s/,//;
             $attr_hash->{osvers} = $tmp_osvers;
         } else {
-            $tmp_osvers =$attr_hash->{osvers};
+            $tmp_osvers = $attr_hash->{osvers};
         }
 
         if (!exists($attr_hash->{osarch})) {
@@ -211,25 +213,25 @@ sub parse_attr_for_osimage{
         }
 
         #for ubuntu,the the arch attribute "ppc64le" should be modified to "ppc64el"
-        if(($tmp_osvers =~ /^ubuntu/i) && ($tmp_arch =~ /^ppc64le/i)){
-            $tmp_arch="ppc64el";
+        if (($tmp_osvers =~ /^ubuntu/i) && ($tmp_arch =~ /^ppc64le/i)) {
+            $tmp_arch = "ppc64el";
             $attr_hash->{osarch} = "ppc64el";
         }
 
-        $tmp_osname = $tmp_osvers;
-        $tmp_ostype="Linux";  #like Linux, Windows
-        $tmp_imagetype="linux";
+        $tmp_osname    = $tmp_osvers;
+        $tmp_ostype    = "Linux";       #like Linux, Windows
+        $tmp_imagetype = "linux";
         my $prov_dir = ($tmp_provmethod eq "install") ? "install" : "netboot";
         if (($tmp_osvers =~ /^win/) || ($tmp_osvers =~ /^imagex/)) {
-            $tmp_osname="windows";
-            $tmp_ostype="Windows";
-            $tmp_imagetype="windows";
+            $tmp_osname    = "windows";
+            $tmp_ostype    = "Windows";
+            $tmp_imagetype = "windows";
         } elsif ($tmp_osvers =~ /^hyperv/) {
-            $tmp_osname="hyperv";
-            $tmp_ostype="Windows";
-            $tmp_imagetype="windows";
+            $tmp_osname    = "hyperv";
+            $tmp_ostype    = "Windows";
+            $tmp_imagetype = "windows";
         } else {
-            until (-r  "$::XCATROOT/share/xcat/$prov_dir/$tmp_osname/" or not $tmp_osname) {
+            until (-r "$::XCATROOT/share/xcat/$prov_dir/$tmp_osname/" or not $tmp_osname) {
                 chop($tmp_osname);
             }
             unless ($tmp_osname) {
@@ -239,6 +241,7 @@ sub parse_attr_for_osimage{
                 return -1;
             }
         }
+
         #for rhels5.1  genos=rhel5
         my $tmp_genos = $tmp_osvers;
         $tmp_genos =~ s/\..*//;
@@ -261,11 +264,13 @@ sub parse_attr_for_osimage{
         } elsif (!exists($attr_hash->{osname})) {
             $attr_hash->{osname} = $tmp_ostype;
         }
+
         #if (!exists($attr_hash->{osdistroname})) {
-            $attr_hash->{osdistroname} = "$tmp_osvers-$tmp_arch";
+        $attr_hash->{osdistroname} = "$tmp_osvers-$tmp_arch";
+
         #}
         if (!exists($attr_hash->{synclists}) || $command eq "chdef") {
-            my $tmp_synclist=xCAT::SvrUtils->getsynclistfile(undef, $tmp_osvers, $tmp_arch, $tmp_profile, "netboot");
+            my $tmp_synclist = xCAT::SvrUtils->getsynclistfile(undef, $tmp_osvers, $tmp_arch, $tmp_profile, "netboot");
             if ($tmp_synclist) {
                 $attr_hash->{synclists} = $tmp_synclist;
             }
@@ -288,23 +293,23 @@ sub parse_attr_for_osimage{
             my $installroot = xCAT::TableUtils->getInstallDir();
             my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
             my $tmp = $installdirs[0];
-            if ( defined($tmp)) {
+            if (defined($tmp)) {
                 $installroot = $tmp;
             }
-            my $cuspath="$installroot/custom/$prov_dir/$tmp_osname";
-            my $defpath="$::XCATROOT/share/xcat/$prov_dir/$tmp_osname";
+            my $cuspath = "$installroot/custom/$prov_dir/$tmp_osname";
+            my $defpath = "$::XCATROOT/share/xcat/$prov_dir/$tmp_osname";
             if ($tmp_provmethod eq "install") {
-                $attr_hash->{exlist} = '';
+                $attr_hash->{exlist}      = '';
                 $attr_hash->{postinstall} = '';
-                $attr_hash->{rootimgdir} = '';
+                $attr_hash->{rootimgdir}  = '';
                 if ((!exists($attr_hash->{template})) || ($command eq "chdef")) {
-                my $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
-                if (!$tmp_tmplfile) {
-                    $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
-                }
-                if ($tmp_tmplfile) {
-                    $attr_hash->{template} = $tmp_tmplfile;
-                }
+                    my $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
+                    if (!$tmp_tmplfile) {
+                        $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
+                    }
+                    if ($tmp_tmplfile) {
+                        $attr_hash->{template} = $tmp_tmplfile;
+                    }
                 }
             }
             if ($tmp_provmethod ne "install") {
@@ -328,7 +333,7 @@ sub parse_attr_for_osimage{
                     }
                 }
                 if (!exists($attr_hash->{rootimgdir})) {
-                    $attr_hash->{rootimgdir}="$installroot/netboot/$tmp_osvers/$tmp_arch/$tmp_profile";
+                    $attr_hash->{rootimgdir} = "$installroot/netboot/$tmp_osvers/$tmp_arch/$tmp_profile";
                 }
             }
             if (!exists($attr_hash->{pkglist})) {
@@ -350,15 +355,16 @@ sub parse_attr_for_osimage{
                 }
             }
             if (!exists($attr_hash->{otherpkgdir})) {
-                $attr_hash->{otherpkgdir}="$installroot/post/otherpkgs/$tmp_osvers/$tmp_arch";
+                $attr_hash->{otherpkgdir} = "$installroot/post/otherpkgs/$tmp_osvers/$tmp_arch";
             }
             if (!exists($attr_hash->{pkgdir})) {
-                $attr_hash->{pkgdir}="$installroot/$tmp_osvers/$tmp_arch";
+                $attr_hash->{pkgdir} = "$installroot/$tmp_osvers/$tmp_arch";
             }
         }
     }
     return 0;
 }
+
 #----------------------------------------------------------------------------
 
 =head3   processArgs
@@ -388,7 +394,7 @@ sub parse_attr_for_osimage{
 sub processArgs
 {
     my $gotattrs = 0;
-    if ( defined ($::args) && @{$::args} ) {
+    if (defined($::args) && @{$::args}) {
         @ARGV = @{$::args};
     } else {
         if ($::command eq "lsdef") {
@@ -399,8 +405,8 @@ sub processArgs
             return 2;
         }
     }
-    if ( defined ($::args) && @{$::args} ) {
-        if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+    if (defined($::args) && @{$::args}) {
+        if (scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
         {
             if ($::command eq "lsdef") {
                 push @ARGV, "-t";
@@ -413,7 +419,7 @@ sub processArgs
     }
 
     if ($::command eq "lsdef") {
-        if (scalar(@ARGV) == 2 && (($ARGV[0] eq "-l" && $ARGV[1] eq "-S") || ($ARGV[0] eq "-S" && $ARGV[1] eq "-l"))){
+        if (scalar(@ARGV) == 2 && (($ARGV[0] eq "-l" && $ARGV[1] eq "-S") || ($ARGV[0] eq "-S" && $ARGV[1] eq "-l"))) {
             push @ARGV, "-t";
             push @ARGV, "node";
         }
@@ -463,30 +469,30 @@ sub processArgs
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'all|a'     => \$::opt_a,
-                    'compress|c'=> \$::opt_c,
-                    'dynamic|d' => \$::opt_d,
-                    'f|force'   => \$::opt_f,
-                    'i=s'       => \$::opt_i,
-                    'help|h|?'    => \$::opt_h,
-                    'long|l'    => \$::opt_l,
-                    'short|s'    => \$::opt_s,
-                    'm|minus'   => \$::opt_m,
-                    'n=s'       => \$::opt_n,
-                    'o=s'       => \$::opt_o,
-                    'p|plus'    => \$::opt_p,
-                    't=s'       => \$::opt_t,
-                    'verbose|V' => \$::opt_V,
-                    'version|v' => \$::opt_v,
-                    'w=s@'       => \$::opt_w,
-                    'x|xml'     => \$::opt_x,
-                    'z|stanza'  => \$::opt_z,
-                    'nocache'  => \$::opt_nc,
-                    'S'        => \$::opt_S,
-                    'osimage'  => \$::opt_osimg,
-                    'nics'  => \$::opt_nics,
-                    'u'     => \$::opt_setattr,
-                    'template:s' => \$::opt_template,
+            'all|a'      => \$::opt_a,
+            'compress|c' => \$::opt_c,
+            'dynamic|d'  => \$::opt_d,
+            'f|force'    => \$::opt_f,
+            'i=s'        => \$::opt_i,
+            'help|h|?'   => \$::opt_h,
+            'long|l'     => \$::opt_l,
+            'short|s'    => \$::opt_s,
+            'm|minus'    => \$::opt_m,
+            'n=s'        => \$::opt_n,
+            'o=s'        => \$::opt_o,
+            'p|plus'     => \$::opt_p,
+            't=s'        => \$::opt_t,
+            'verbose|V'  => \$::opt_V,
+            'version|v'  => \$::opt_v,
+            'w=s@'       => \$::opt_w,
+            'x|xml'      => \$::opt_x,
+            'z|stanza'   => \$::opt_z,
+            'nocache'    => \$::opt_nc,
+            'S'          => \$::opt_S,
+            'osimage'    => \$::opt_osimg,
+            'nics'       => \$::opt_nics,
+            'u'          => \$::opt_setattr,
+            'template:s' => \$::opt_template,
         )
       )
     {
@@ -498,7 +504,7 @@ sub processArgs
 
     if (defined($::opt_setattr) && ($::command ne "chdef") && ($::command ne "mkdef")) {
         my $rsp;
-        $rsp->{data}->[0]="Option \'-u\' can not work with $::command.";
+        $rsp->{data}->[0] = "Option \'-u\' can not work with $::command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -508,11 +514,12 @@ sub processArgs
             $::opt_t = 'osimage';
         } elsif ($::opt_t ne "osimage") {
             my $rsp;
-            $rsp->{data}->[0]="Option \'-u\' only work for objtype \'osimage\'.";
+            $rsp->{data}->[0] = "Option \'-u\' only work for objtype \'osimage\'.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
     }
+
     # -t node is the default value
     if (!$::opt_t && !$::opt_a && !$::opt_h && ($::command eq "lsdef"))
     {
@@ -522,7 +529,7 @@ sub processArgs
     # Initialize some global arrays in case this is being called twice in the same process.
     # Currently only doing this when --nocache is specified, but i think it should be done all of the time.
     if ($::opt_nc) {
-            &initialize_variables();
+        &initialize_variables();
     }
 
     #  opt_x not yet supported
@@ -577,7 +584,7 @@ sub processArgs
 
     # --nics is the equivalent of -i nicips,nichostnamesuffixes...
     if ($::opt_nics) {
-        $::opt_i="nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases,nicextraparams,nicdevices";
+        $::opt_i = "nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases,nicextraparams,nicdevices";
     }
 
     # -i and -s cannot be used together
@@ -605,94 +612,98 @@ sub processArgs
     }
 
     #"--template" can only be used with "mkdef" and "lsdef" command
-    if(defined $::opt_template && ($::command ne "mkdef" && $::command ne "lsdef")){
+    if (defined $::opt_template && ($::command ne "mkdef" && $::command ne "lsdef")) {
         my $rsp;
         $rsp->{data}->[0] = "The option \'--template\' can not be used with \'$::command\'.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
 
-    #it is illegal to specify no object template for "mkdef --template", 
-    if($::command eq "mkdef" and defined $::opt_template and !$::opt_template){
+    #it is illegal to specify no object template for "mkdef --template",
+    if ($::command eq "mkdef" and defined $::opt_template and !$::opt_template) {
         my $rsp;
         $rsp->{data}->[0] = "no object definition template specified for mkdef --template!";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return 2;             
+        return 2;
     }
 
-    if($::opt_template){
-        #for mkdef --template <object templates>, multiple template/nodes are illegal  
-        if($::opt_template =~ /,/ and $::command eq "mkdef"){
+    if ($::opt_template) {
+
+        #for mkdef --template <object templates>, multiple template/nodes are illegal
+        if ($::opt_template =~ /,/ and $::command eq "mkdef") {
             my $rsp;
             $rsp->{data}->[0] = "Only 1 template object definition should be specified for mkdef!";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
-   
-        #when --template is specified, 
-        #the piped stdin, such as "cat xx.stanza|mkdef -z -t node --template ...." is not supported  
-        if($::filedata){
+
+        #when --template is specified,
+        #the piped stdin, such as "cat xx.stanza|mkdef -z -t node --template ...." is not supported
+        if ($::filedata) {
             my $rsp;
             $rsp->{data}->[0] = "The file input can not be used with --template option!";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
     }
-   
 
-    if (defined $::opt_template and ($::command eq "mkdef" or $::command eq "lsdef")){
-        #all the xCAT shipped object definition templates are installed 
-        #under directory /opt/xcat/share/xcat/templates/objects/<object-type>/ 
-        my $objtmpldir="$::XCATROOT/share/xcat/templates/objects/";
-        
-        #the path list to search the object definition templates 
+
+    if (defined $::opt_template and ($::command eq "mkdef" or $::command eq "lsdef")) {
+
+        #all the xCAT shipped object definition templates are installed
+        #under directory /opt/xcat/share/xcat/templates/objects/<object-type>/
+        my $objtmpldir = "$::XCATROOT/share/xcat/templates/objects/";
+
+        #the path list to search the object definition templates
         #for specified object types,the path is like /opt/xcat/share/xcat/templates/objects/<object-type>/
         #for "-a" option, the path is /opt/xcat/share/xcat/templates/objects/
         my @tmpldirlist;
-        if($::command eq "lsdef"){
-            if (!$::opt_a){
-                if($::opt_t){
-                    my @tmpltypelist=split(",",$::opt_t);
-                    foreach my $objtype (@tmpltypelist){
-                        push(@tmpldirlist,$objtmpldir.$objtype);
+        if ($::command eq "lsdef") {
+            if (!$::opt_a) {
+                if ($::opt_t) {
+                    my @tmpltypelist = split(",", $::opt_t);
+                    foreach my $objtype (@tmpltypelist) {
+                        push(@tmpldirlist, $objtmpldir . $objtype);
                     }
                 }
-            }else{
-                #if "-a" is specified, read all the object templates 
+            } else {
+
+                #if "-a" is specified, read all the object templates
                 #under /opt/xcat/share/xcat/templates/objects/
-                push(@tmpldirlist,$objtmpldir);
+                push(@tmpldirlist, $objtmpldir);
             }
-        }elsif($::command eq "mkdef"){
-            if($::opt_t){
-                push(@tmpldirlist,$objtmpldir.$::opt_t);
-            }else{
-                #if "-t" is not specified, take the object type as "node" 
-                push(@tmpldirlist,$objtmpldir."node");
+        } elsif ($::command eq "mkdef") {
+            if ($::opt_t) {
+                push(@tmpldirlist, $objtmpldir . $::opt_t);
+            } else {
+
+                #if "-t" is not specified, take the object type as "node"
+                push(@tmpldirlist, $objtmpldir . "node");
             }
         }
-        
-        #walk through the path list and get all the object templates file content; 
-        #for "lsdef -a --template" read all the content of template files 
+
+        #walk through the path list and get all the object templates file content;
+        #for "lsdef -a --template" read all the content of template files
         #under "/opt/xcat/share/xcat/templates/objects/";
-        #if "-a" is not specified, read the template files content 
+        #if "-a" is not specified, read the template files content
         #under "/opt/xcat/share/xcat/templates/objects/<object type>"
         my $objfiledata;
-        my $wanted= sub {
-            if (-f $_){
+        my $wanted = sub {
+            if (-f $_) {
                 my $line;
-                open(FH,$_);
-                while($line=<FH>){
-                    $objfiledata.=$line;
+                open(FH, $_);
+                while ($line = <FH>) {
+                    $objfiledata .= $line;
                 }
                 close(FH)
             }
         };
-        find($wanted,@tmpldirlist);
+        find($wanted, @tmpldirlist);
 
-         
-        #save the template definitions in global variable $::filedata 
-        #for the later parse 
-        $::filedata=$objfiledata;
+
+        #save the template definitions in global variable $::filedata
+        #for the later parse
+        $::filedata = $objfiledata;
     }
 
     # can get object names in many ways - easier to keep track
@@ -724,13 +735,14 @@ sub processArgs
                 return 2;
             }
             $noderangespace++;
+
             # the first arg could be a noderange or a list of args
             if (($::opt_t) && ($::opt_t ne 'node'))
             {
 
                 # if we know the type isn't "node" then set the object list
-                @::clobjnames = split(',', $a);
-                @::noderange = @::clobjnames;
+                @::clobjnames       = split(',', $a);
+                @::noderange        = @::clobjnames;
                 $::objectsfrom_args = 1;
             }
             elsif (!$::opt_t || ($::opt_t eq 'node'))
@@ -808,8 +820,8 @@ sub processArgs
     if ($::command eq 'rmdef')
     {
         if (defined($::opt_d) || defined($::opt_i) || defined($::opt_l)
-           || defined($::opt_m) || defined($::opt_p) || defined($::opt_w)
-           || defined($::opt_x) || defined($::opt_z) || defined($::opt_s))
+            || defined($::opt_m) || defined($::opt_p) || defined($::opt_w)
+            || defined($::opt_x) || defined($::opt_z) || defined($::opt_s))
         {
             my $rsp;
             $rsp->{data}->[0] = "Invalid flag specified, see rmdef manpage for details.";
@@ -829,8 +841,8 @@ sub processArgs
     if (defined($::opt_v))
     {
         my $rsp;
-        my $version=xCAT::Utils->Version();
-        push @{$rsp->{data}}, "$::command - $version";
+        my $version = xCAT::Utils->Version();
+        push @{ $rsp->{data} }, "$::command - $version";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         return 1;    # no usage - just exit
     }
@@ -850,9 +862,9 @@ sub processArgs
     #
     if ($::filedata)
     {
-           
+
         #parse the $::filedata and initialize the following global variables
-        # %::FILEATTRS        : a global hash with the strcture <node>=>{<attributes>=><values>} 
+        # %::FILEATTRS        : a global hash with the strcture <node>=>{<attributes>=><values>}
         # @::fileobjtypes     : a list of the object types in %::FILEATTRS
         # @::fileobjnames     : a list of the object names in %::FILEATTRS
         my $rc = xCAT::DBobjUtils->readFileInput($::filedata);
@@ -865,21 +877,22 @@ sub processArgs
             return 3;
         }
 
-        if($::opt_template){
+        if ($::opt_template) {
+
             #some xCAT shipped object definition templates are specified
             #like "lsdef/mkdef --template xxxx"
             #filter out the keys(template name) which are not specified from %::FILEATTRS
             my %tmpfileattr;
             my @tmpfileobjtypes;
             my @tmpfileobjnames;
-            my @tmplobjlist=split(",",$::opt_template);
-            foreach my $key (@tmplobjlist){
-                if(exists $::FILEATTRS{$key}){
-                    $tmpfileattr{$key}=\%{$::FILEATTRS{$key}};
-                    push(@tmpfileobjnames,$key);
-                    push(@tmpfileobjtypes,$tmpfileattr{$key}{objtype});
-                }else{
-                    if($::command eq "lsdef"){
+            my @tmplobjlist = split(",", $::opt_template);
+            foreach my $key (@tmplobjlist) {
+                if (exists $::FILEATTRS{$key}) {
+                    $tmpfileattr{$key} = \%{ $::FILEATTRS{$key} };
+                    push(@tmpfileobjnames, $key);
+                    push(@tmpfileobjtypes, $tmpfileattr{$key}{objtype});
+                } else {
+                    if ($::command eq "lsdef") {
                         my $rsp;
                         $rsp->{data}->[0] = "Could not find $key in xCAT templates.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -887,20 +900,23 @@ sub processArgs
                     }
                 }
             }
-            
-            if(@tmpfileobjnames){
+
+            if (@tmpfileobjnames) {
+
                 #flag: some template object definitions are parsed from $::filedata
-                %::FILEATTRS=%tmpfileattr;
-                @::fileobjtypes=@tmpfileobjtypes;
-                @::fileobjnames=@tmpfileobjnames;
+                %::FILEATTRS        = %tmpfileattr;
+                @::fileobjtypes     = @tmpfileobjtypes;
+                @::fileobjnames     = @tmpfileobjnames;
                 $::objectsfrom_file = 1;
-            }else{
+            } else {
+
                 #the specified template can not be found in the pared $::filedata
-                %::FILEATTRS=();
-                @::fileobjtypes=();
-                @::fileobjnames=(); 
-            }    
-        }else{
+                %::FILEATTRS    = ();
+                @::fileobjtypes = ();
+                @::fileobjnames = ();
+            }
+        } else {
+
             #flag: some object definitions are parsed from $::filedata
             $::objectsfrom_file = 1;
         }
@@ -968,7 +984,8 @@ sub processArgs
         push(@::clobjtypes, 'node');
 
         my $rsp;
-        if ( !$::opt_z && !$::opt_x) {
+        if (!$::opt_z && !$::opt_x) {
+
             # don't want this msg in stanza or xml output
             #$rsp->{data}->[0] = "Assuming an object type of \'node\'.";
             #xCAT::MsgUtils->message("I", $rsp, $::callback);
@@ -1018,8 +1035,8 @@ sub processArgs
 
             my @alreadydone;    # the same attr may appear more then once
             my @attrlist;
-            my $outstr = "";
-            my @dispattrs = ();
+            my $outstr       = "";
+            my @dispattrs    = ();
             my %dispattrhash = ();
             if ($::opt_i)
             {
@@ -1027,16 +1044,17 @@ sub processArgs
                 foreach my $dattr (@dispattrs)
                 {
                     # lsdef -t node -h -i nicips.eth0
-                    if($dattr =~ /^(nic\w+)\..*$/)
+                    if ($dattr =~ /^(nic\w+)\..*$/)
                     {
                         $dattr = $1;
                     }
                     $dispattrhash{$dattr} = 1;
                 }
             }
-            foreach my $this_attr (@{$datatype->{'attrs'}})
+            foreach my $this_attr (@{ $datatype->{'attrs'} })
             {
                 my $attr = $this_attr->{attr_name};
+
                 # Only display the specified attributes
                 if ($::opt_i)
                 {
@@ -1047,6 +1065,7 @@ sub processArgs
                 }
                 my $desc = $this_attr->{description};
                 if (!defined($desc)) {
+
                     # description key not there, so go to the corresponding
                     #    entry in tabspec to get the description
                     my ($tab, $at) = split(/\./, $this_attr->{tabentry});
@@ -1060,7 +1079,7 @@ sub processArgs
 
                 if (!grep(/^$attr$/, @alreadydone))
                 {
-                    my $space = (length($attr)<7 ? "\t\t" : "\t");
+                    my $space = (length($attr) < 7 ? "\t\t" : "\t");
                     push(@attrlist, "$attr:$space$desc\n\n");
                 }
                 push(@alreadydone, $attr);
@@ -1070,7 +1089,7 @@ sub processArgs
             foreach my $a (sort @attrlist) {
                 $outstr .= "$a";
             }
-            chop($outstr);  chop($outstr);
+            chop($outstr); chop($outstr);
             $rsp->{data}->[2] = $outstr;
 
             # the monitoring table is  special
@@ -1146,11 +1165,11 @@ sub processArgs
     #    find all the object names for the specified types
     #   Do NOT do this for rmdef
     if ($::opt_t
-        && !(   $::opt_o
-             || $::filedata
-             || $::opt_a
-             || @::noderange
-             || @::clobjnames))
+        && !($::opt_o
+            || $::filedata
+            || $::opt_a
+            || @::noderange
+            || @::clobjnames))
     {
         my @tmplist;
 
@@ -1161,6 +1180,7 @@ sub processArgs
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
+
         # also ne chdef ????????
         if ($::command ne 'mkdef')
         {
@@ -1187,6 +1207,7 @@ sub processArgs
                     {
                         my $rsp;
                         $rsp->{data}->[0] = "Could not get objects of type \'$t\'.";
+
                         #$rsp->{data}->[1] = "Skipping to the next type.\n";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return 3;
@@ -1206,7 +1227,7 @@ sub processArgs
 
     # can't have -a with other obj sources
     if ($::opt_a
-        && ($::opt_o || ($::filedata && ! defined $::opt_template ) || @::noderange))
+        && ($::opt_o || ($::filedata && !defined $::opt_template) || @::noderange))
     {
 
         my $rsp;
@@ -1219,7 +1240,7 @@ sub processArgs
     if ($::opt_a)
     {
 
-        if(!defined $::opt_template){
+        if (!defined $::opt_template) {
             my @tmplist;
 
             # for every type of data object get the list of defined objects
@@ -1246,10 +1267,10 @@ sub processArgs
                 }
             }
         }
-        else{
-            foreach my $fileobj (@::fileobjnames){
-                $::AllObjTypeHash{$fileobj}=$::FILEATTRS{$fileobj}{objtype};
-            } 
+        else {
+            foreach my $fileobj (@::fileobjnames) {
+                $::AllObjTypeHash{$fileobj} = $::FILEATTRS{$fileobj}{objtype};
+            }
         }
     }
 
@@ -1287,12 +1308,13 @@ sub processArgs
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 3;
         }
+
         # For dynamic node groups, check the selection string
         if (($::opt_t eq 'group') && ($::opt_d))
         {
-            my $datatype = $xCAT::Schema::defspec{'node'};
+            my $datatype  = $xCAT::Schema::defspec{'node'};
             my @nodeattrs = ();
-            foreach my $this_attr (@{$datatype->{'attrs'}})
+            foreach my $this_attr (@{ $datatype->{'attrs'} })
             {
                 push @nodeattrs, $this_attr->{attr_name};
             }
@@ -1309,9 +1331,10 @@ sub processArgs
         }
     }
 
-    if ($::opt_template && ($::command eq 'mkdef') )
+    if ($::opt_template && ($::command eq 'mkdef'))
     {
-        unless($::objectsfrom_file){
+        unless ($::objectsfrom_file) {
+
             #"mkdef --template" specifies an existing object as the template to create new object definition
             my @myobjlist = xCAT::DBobjUtils->getObjectsOfType($::clobjtypes[0]);
             unless (@myobjlist)
@@ -1322,47 +1345,52 @@ sub processArgs
                 return 3;
             }
 
-            unless(grep(/^$::opt_template$/,@myobjlist)){
+            unless (grep(/^$::opt_template$/, @myobjlist)) {
                 my $rsp;
                 $rsp->{data}->[0] = "Could not find the template object named \'$::opt_template\' of type \'$::clobjtypes[0]\'.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 3;
             }
 
-            if(grep(/^$::opt_template$/,@::allobjnames)){
+            if (grep(/^$::opt_template$/, @::allobjnames)) {
                 my $rsp;
                 $rsp->{data}->[0] = "The template node cannot be the same as the node to create.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 3;
             }
-             
+
             my %objtypehash;
             $objtypehash{$::opt_template} = $::clobjtypes[0];
-            $::ATTRLIST="all";
+            $::ATTRLIST = "all";
+
             #the template object is an existing object, get the object definition
             my %objattrhash = xCAT::DBobjUtils->getobjdefs(\%objtypehash);
+
             #the object attributes specified in the arguments of "mkdef" has been saved in %::ATTRS
             #inherit the attributes not specified in arguments of "mkdef" from the template object definition
-            foreach my $key(keys %{$objattrhash{$::opt_template}}){
-                if($key ne "objtype" and not $::ATTRS{$key}){
-                    $::ATTRS{$key}=$objattrhash{$::opt_template}{$key};
+            foreach my $key (keys %{ $objattrhash{$::opt_template} }) {
+                if ($key ne "objtype" and not $::ATTRS{$key}) {
+                    $::ATTRS{$key} = $objattrhash{$::opt_template}{$key};
                 }
             }
-        }else{
+        } else {
+
             #the object attribute specified in the arguments of "mkdef" has been saved in %::ATTRS
             #the specified object template definition shipped by xCAT is save in %::FILEATTRS
             #inherit the attributes which are not specified in arguments of "mkdef" from template
-            #"objtype" is not an object attribite, it is a field in stanza file  
-            foreach my $key(keys %{$::FILEATTRS{$::opt_template}}){
-                if($key ne "objtype"){
-                    my $temlattr=$::FILEATTRS{$::opt_template}{$key};
-                    if($temlattr =~ /^OPTIONAL:/){
+            #"objtype" is not an object attribite, it is a field in stanza file
+            foreach my $key (keys %{ $::FILEATTRS{$::opt_template} }) {
+                if ($key ne "objtype") {
+                    my $temlattr = $::FILEATTRS{$::opt_template}{$key};
+                    if ($temlattr =~ /^OPTIONAL:/) {
+
                         #the attributes with "(OPTIONAL)" in the template
                         #can be specified on mkdef
-                        $temlattr ="";
+                        $temlattr = "";
                     }
-                    elsif($temlattr =~ /^MANDATORY:/){
-                        unless($::ATTRS{$key}){
+                    elsif ($temlattr =~ /^MANDATORY:/) {
+                        unless ($::ATTRS{$key}) {
+
                             #the attributes with "(MANDATORY)" in the template
                             #must be specified on mkdef
                             my $rsp;
@@ -1370,19 +1398,19 @@ sub processArgs
                             xCAT::MsgUtils->message("E", $rsp, $::callback);
                             return 3;
                         }
-                        $temlattr ="";
+                        $temlattr = "";
                     }
-         
-                    unless($::ATTRS{$key}){
-                        $::ATTRS{$key}=$temlattr;
+
+                    unless ($::ATTRS{$key}) {
+                        $::ATTRS{$key} = $temlattr;
                     }
                 }
             }
 
             #delete the template definition from %::FILEATTRS
             delete $::FILEATTRS{$::opt_template};
-            @::fileobjtypes=();
-            @::fileobjnames=(); 
+            @::fileobjtypes = ();
+            @::fileobjnames = ();
         }
     }
 
@@ -1399,14 +1427,15 @@ sub processArgs
     if ($::opt_i)
     {
         @::AttrList = split(',', $::opt_i);
+
         # nicips.<nic> should be changed to nicips
         my $i = 0;
-        for ($i=0; $i < (scalar @::AttrList) ; $i++ )
+        for ($i = 0 ; $i < (scalar @::AttrList) ; $i++)
         {
-            if($::AttrList[$i] =~ /^(nic\w+)\.(.*)$/)
+            if ($::AttrList[$i] =~ /^(nic\w+)\.(.*)$/)
             {
                 $::AttrList[$i] = $1;
-                push @{$::NicsAttrHash{$::AttrList[$i]}}, $2;
+                push @{ $::NicsAttrHash{ $::AttrList[$i] } }, $2;
             }
         }
     }
@@ -1546,7 +1575,7 @@ sub defmk
             # get the data type definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$::objtype};
             my @list;
-            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            foreach my $this_attr (sort @{ $datatype->{'attrs'} })
             {
                 my $a = $this_attr->{attr_name};
                 push(@list, $a);
@@ -1556,6 +1585,7 @@ sub defmk
             foreach my $attr (keys %::ATTRS)
             {
                 my $attrorig = $attr;
+
                 # nicips.eth0 => nicips
                 if ($attr =~ /^(nic\w+)\..*$/)
                 {
@@ -1603,12 +1633,12 @@ sub defmk
         # special case for site table !!!!!!!!!!!!!!!!!!!!
         if ($t eq 'site')
         {
-            @{$objTypeLists{$t}} = 'clustersite';
+            @{ $objTypeLists{$t} } = 'clustersite';
         }
         else
         {
 
-            @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
+            @{ $objTypeLists{$t} } = xCAT::DBobjUtils->getObjectsOfType($t);
         }
         if ($::verbose)
         {
@@ -1624,12 +1654,12 @@ sub defmk
     my %objTypeListsHash;
     foreach my $objk (keys %objTypeLists)
     {
-        foreach my $obj (@{$objTypeLists{$objk}}) {
+        foreach my $obj (@{ $objTypeLists{$objk} }) {
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
 
-    OBJ: foreach my $obj (keys %::FINALATTRS)
+  OBJ: foreach my $obj (keys %::FINALATTRS)
     {
 
         my $type = $::FINALATTRS{$obj}{objtype};
@@ -1658,7 +1688,7 @@ sub defmk
             }
             my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
             foreach my $o (keys %nethash) {
-                if ( ($nethash{$o}{net} eq $::FINALATTRS{$obj}{net})  && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}) ) {
+                if (($nethash{$o}{net} eq $::FINALATTRS{$obj}{net}) && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask})) {
                     my $rsp;
                     $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -1716,7 +1746,7 @@ sub defmk
                     # For dynamic node group,
                     # can not assign attributes for inherit
                     # only the 'objtype' in %::FINALATTRS
-                    if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
+                    if (scalar(keys %{ $::FINALATTRS{$obj} }) > 1)
                     {
                         my $rsp;
                         $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
@@ -1741,7 +1771,8 @@ sub defmk
                 {
                     if ($::opt_w)
                     {
-                        $::FINALATTRS{$obj}{wherevals} = join ('::', @{$::opt_w});
+                        $::FINALATTRS{$obj}{wherevals} = join('::', @{$::opt_w});
+
                         #$::FINALATTRS{$obj}{wherevals} = $::opt_w;
                     }
                     else
@@ -1822,7 +1853,7 @@ sub defmk
 
                 # mkdef -t group should not create new nodes
                 my @tmpmemlist = ();
-                my @allnodes = xCAT::DBobjUtils->getObjectsOfType('node');
+                my @allnodes   = xCAT::DBobjUtils->getObjectsOfType('node');
                 foreach my $tmpnode (@memberlist)
                 {
                     if (!grep(/^$tmpnode$/, @allnodes))
@@ -1843,7 +1874,7 @@ sub defmk
                   xCAT::Table->new('nodelist', -create => 1, -autocommit => 0);
 
                 my $newgroups;
-                my $changed=0;
+                my $changed = 0;
                 foreach my $n (@memberlist)
                 {
                     if ($::verbose)
@@ -1880,14 +1911,14 @@ sub defmk
                     #       the nodelist table
                     if ($newgroups)
                     {
-                        $tab->setNodeAttribs($n, {groups => $newgroups});
-            $changed=1;
+                        $tab->setNodeAttribs($n, { groups => $newgroups });
+                        $changed = 1;
                     }
 
                 }
-        if ($changed) {
-            $tab->commit;
-        }
+                if ($changed) {
+                    $tab->commit;
+                }
 
 
             }
@@ -1904,6 +1935,7 @@ sub defmk
             $error = 1;
             next;
         }
+
         # Removed the code to handle the nodegroup table with mkdef -t node groups=xxx
         # Only dynamic groups should be in nodegroup table
         # Do not try to add static group into the nodegroup table
@@ -1916,7 +1948,7 @@ sub defmk
             }
         }
 
-    } # end of each obj
+    }    # end of each obj
 
     #
     #  write each object into the tables in the xCAT database
@@ -1996,8 +2028,8 @@ sub defch
 
     @::allobjnames = [];
 
-    my $rc    = 0;
-    my $error = 0;
+    my $rc        = 0;
+    my $error     = 0;
     my $firsttime = 1;
 
     my %objTypeLists;
@@ -2031,6 +2063,7 @@ sub defch
     # check options unique to this command
     #
     if ($::opt_n) {
+
         # check the option for changing object name
         if ($::opt_n && ($::opt_d || $::opt_p || $::opt_m || $::opt_z || $::opt_w)) {
             my $rsp;
@@ -2040,7 +2073,7 @@ sub defch
             return 1;
         }
 
-        if (scalar (@::clobjnames) > 1) {
+        if (scalar(@::clobjnames) > 1) {
             my $rsp;
             $rsp->{data}->[0] = "The \'-n\' option (changing object name) can only work on one object.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -2051,7 +2084,7 @@ sub defch
         my %objhash = ($::clobjnames[0] => $::clobjtypes[0]);
 
         my @validnode = xCAT::DBobjUtils->getObjectsOfType($::clobjtypes[0]);
-        if (! grep /^$::clobjnames[0]$/, @validnode) {
+        if (!grep /^$::clobjnames[0]$/, @validnode) {
             my $rsp;
             $rsp->{data}->[0] = "The $::clobjnames[0] is not a valid object.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -2061,7 +2094,7 @@ sub defch
         # Ensure that the target object doesn't exist
         if (grep /^$::opt_n$/, @validnode) {
             my $rsp;
-            push @{$rsp->{data}}, "Object $::opt_n already exists.";
+            push @{ $rsp->{data} }, "Object $::opt_n already exists.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 1;
         }
@@ -2072,24 +2105,26 @@ sub defch
         xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, undef, \%chnamehash);
 
         foreach my $tb (keys %chnamehash) {
-            my $tab = xCAT::Table->new( $tb);
-            unless ( $tab) {
+            my $tab = xCAT::Table->new($tb);
+            unless ($tab) {
                 my $rsp;
-                push @{$rsp->{data}}, "Unable to open $tb table.";
+                push @{ $rsp->{data} }, "Unable to open $tb table.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 1;
             }
 
             my $index = 0;
-            my @taben = @{$chnamehash{$tb}};
+            my @taben = @{ $chnamehash{$tb} };
+
             # In the @taben, there are several pair of value for
             # changing the key value of a table entry
             my @keystrs = ();
             while ($taben[$index]) {
+
                 # Make a key word string to avoid that changing
                 # one table record multiple times
                 my $keystr;
-                foreach my $key (sort(keys %{$taben[$index]})) {
+                foreach my $key (sort(keys %{ $taben[$index] })) {
                     $keystr .= "$key:$taben[$index]{$key}:";
                 }
                 if (grep /^$keystr$/, @keystrs) {
@@ -2098,14 +2133,14 @@ sub defch
                 }
                 push @keystrs, $keystr;
 
-                my %chname = ($taben[$index+1] => $::opt_n);
+                my %chname = ($taben[ $index + 1 ] => $::opt_n);
                 $tab->setAttribs($taben[$index], \%chname);
                 $index += 2;
             }
         }
 
         my $rsp;
-        push @{$rsp->{data}}, "Changed the object name from $::clobjnames[0] to $::opt_n.";
+        push @{ $rsp->{data} }, "Changed the object name from $::clobjnames[0] to $::opt_n.";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
 
         return 0;
@@ -2182,7 +2217,7 @@ sub defch
             # get the data type definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$::objtype};
             my %list;
-            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            foreach my $this_attr (sort @{ $datatype->{'attrs'} })
             {
                 my $a = $this_attr->{attr_name};
                 $list{$a} = 1;
@@ -2192,6 +2227,7 @@ sub defch
             foreach my $attr (keys %::ATTRS)
             {
                 my $attrorig = $attr;
+
                 # nicips.eth0 => nicips
                 if ($attr =~ /^(nic\w+)\..*$/)
                 {
@@ -2231,11 +2267,11 @@ sub defch
         # special case for site table !!!!!!!!!!!!!!!!!!!!
         if ($t eq 'site')
         {
-            @{$objTypeLists{$t}} = 'clustersite';
+            @{ $objTypeLists{$t} } = 'clustersite';
         }
         else
         {
-            @{$objTypeLists{$t}} = xCAT::DBobjUtils->getObjectsOfType($t);
+            @{ $objTypeLists{$t} } = xCAT::DBobjUtils->getObjectsOfType($t);
         }
         if ($::verbose)
         {
@@ -2245,12 +2281,13 @@ sub defch
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
     }
+
     # Build up a hash for the array in objTypeLists
     # for performance consideration, grep the array is not effective
     my %objTypeListsHash;
     foreach my $objk (keys %objTypeLists)
     {
-        foreach my $obj (@{$objTypeLists{$objk}}) {
+        foreach my $obj (@{ $objTypeLists{$objk} }) {
             $objTypeListsHash{$objk}{$obj} = 1;
         }
     }
@@ -2264,8 +2301,9 @@ sub defch
         my @img_attrs = qw(imagetype provmethod profile osname osvers osarch);
         if ($::opt_setattr && $type eq "osimage") {
             my %tmp_objhash = ();
-            %attrhash = xCAT::DBobjUtils->getobjdefs({$obj=>$type}, $::VERBOSE, \@img_attrs);
+            %attrhash = xCAT::DBobjUtils->getobjdefs({ $obj => $type }, $::VERBOSE, \@img_attrs);
         }
+
         # check to make sure we have type
         if (!$type)
         {
@@ -2324,7 +2362,7 @@ sub defch
                 # For dynamic node group,
                 # can not assign attributes for inherit
                 # only the 'objtype' in %::FINALATTRS
-                if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
+                if (scalar(keys %{ $::FINALATTRS{$obj} }) > 1)
                 {
                     my $rsp;
                     $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
@@ -2337,7 +2375,7 @@ sub defch
             if ($isDefined)
             {
                 $objhash{$obj} = $type;
-                my @finalattrs = keys %{$::FINALATTRS{$obj}};
+                my @finalattrs = keys %{ $::FINALATTRS{$obj} };
                 push @finalattrs, 'grouptype';
                 %grphash = xCAT::DBobjUtils->getobjdefs(\%objhash, 0, \@finalattrs);
                 if (!(%grphash))
@@ -2349,7 +2387,7 @@ sub defch
 
                 }
                 $grptype = $grphash{$obj}{grouptype};
-                if (($grptype eq "dynamic") && (scalar(keys %{$::FINALATTRS{$obj}}) > 1))
+                if (($grptype eq "dynamic") && (scalar(keys %{ $::FINALATTRS{$obj} }) > 1))
                 {
                     my $rsp;
                     $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
@@ -2358,6 +2396,7 @@ sub defch
                     delete($::FINALATTRS{$obj});
                     next;
                 }
+
                 # for now all groups are static
                 #$grptype = 'static';
             }
@@ -2382,7 +2421,8 @@ sub defch
             {
                 if ($::opt_w)
                 {
-                    $::FINALATTRS{$obj}{wherevals} = join ('::', @{$::opt_w});
+                    $::FINALATTRS{$obj}{wherevals} = join('::', @{$::opt_w});
+
                     #$::FINALATTRS{$obj}{wherevals} = $::opt_w;
                 }
             }
@@ -2391,7 +2431,7 @@ sub defch
             #    - if provided - to use below
             #  if the static group is not defined in the nodegroup table
             #  the grptype will be undef
-            if(!$grptype || ($grptype eq 'static'))
+            if (!$grptype || ($grptype eq 'static'))
             {
 
                 # check for bad cmd line options
@@ -2407,6 +2447,7 @@ sub defch
                 if ($::FINALATTRS{$obj}{members})
                 {
                     @memberlist = &noderange($::FINALATTRS{$obj}{members}, 0);
+
                     #  don't list all the nodes in the group table
                     #   set the value to static and we figure out the list
                     #   by looking in the nodelist table
@@ -2462,7 +2503,7 @@ sub defch
 
             # chdef -t group should not create new nodes
             my @tmpmemlist = ();
-            my @allnodes = xCAT::DBobjUtils->getObjectsOfType('node');
+            my @allnodes   = xCAT::DBobjUtils->getObjectsOfType('node');
             foreach my $tmpnode (@memberlist)
             {
                 if (!grep(/^$tmpnode$/, @allnodes))
@@ -2515,7 +2556,7 @@ sub defch
                     foreach my $n (@memberlist)
                     {
 
-                        $membhash{$n}{groups} = $obj;
+                        $membhash{$n}{groups}  = $obj;
                         $membhash{$n}{objtype} = 'node';
                     }
                     $::plus_option  = 1;
@@ -2583,34 +2624,35 @@ sub defch
                     {    # replace the members list altogether
 
                         # this is the default for the chdef command
-                if ($firsttime) {
-                        # get the current members list
+                        if ($firsttime) {
 
-                        $grphash{$obj}{'grouptype'} = "static";
-                        my $list =
-                          xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
-                        my @currentlist = split(',', $list);
+                            # get the current members list
 
-                        # for each node in currentlist - remove group name
-                        #    from groups attr
+                            $grphash{$obj}{'grouptype'} = "static";
+                            my $list =
+                              xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
+                            my @currentlist = split(',', $list);
 
-                        my %membhash;
-                        foreach my $n (@currentlist)
-                        {
-                            $membhash{$n}{groups}  = $obj;
-                            $membhash{$n}{objtype} = 'node';
-                        }
+                            # for each node in currentlist - remove group name
+                            #    from groups attr
 
-                        $::plus_option  = 0;
-                        $::minus_option = 1;
+                            my %membhash;
+                            foreach my $n (@currentlist)
+                            {
+                                $membhash{$n}{groups}  = $obj;
+                                $membhash{$n}{objtype} = 'node';
+                            }
+
+                            $::plus_option  = 0;
+                            $::minus_option = 1;
 
 
-                        if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
-                        {
-                            $error = 1;
-                        }
-                    $firsttime=0;
-                } # end - first time
+                            if (xCAT::DBobjUtils->setobjdefs(\%membhash) != 0)
+                            {
+                                $error = 1;
+                            }
+                            $firsttime = 0;
+                        }    # end - first time
                         $::minus_option = 0;
 
                         # for each node in memberlist add this group
@@ -2642,7 +2684,7 @@ sub defch
         if ($type eq 'osimage' && !$::opt_m && !$::opt_p && $::opt_setattr && exists($attrhash{$obj})) {
             foreach my $tmp_attr (@img_attrs) {
                 if (!exists($::FINALATTRS{$obj}{$tmp_attr}) && exists($attrhash{$obj}{$tmp_attr}) &&
-                                                                 defined($attrhash{$obj}{$tmp_attr})) {
+                    defined($attrhash{$obj}{$tmp_attr})) {
                     $::FINALATTRS{$obj}{$tmp_attr} = $attrhash{$obj}{$tmp_attr};
                 }
             }
@@ -2730,12 +2772,12 @@ sub defch
             if ($nodenum) {
                 $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
             } else {
-               $rsp->{data}->[0] = "No object definitions have been created or modified.";
+                $rsp->{data}->[0] = "No object definitions have been created or modified.";
             }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
-                my $newobj = ();
+                my $newobj          = ();
                 my $invalidnodename = ();
                 foreach my $node (keys %newobjects) {
                     if (($node =~ /[A-Z]/) && ((!$::opt_t) || ($::opt_t eq "node"))) {
@@ -2826,9 +2868,9 @@ sub setFINALattrs
             }
 
             my $datatype =
-              $xCAT::Schema::defspec{$::FILEATTRS{$objname}{objtype}};
+              $xCAT::Schema::defspec{ $::FILEATTRS{$objname}{objtype} };
             my @list;
-            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            foreach my $this_attr (sort @{ $datatype->{'attrs'} })
             {
                 my $a = $this_attr->{attr_name};
                 push(@list, $a);
@@ -2836,7 +2878,7 @@ sub setFINALattrs
             push(@list, "objtype");
 
             # if so then add it to the final hash
-            foreach my $attr (keys %{$::FILEATTRS{$objname}})
+            foreach my $attr (keys %{ $::FILEATTRS{$objname} })
             {
 
                 # see if valid attr
@@ -2865,6 +2907,7 @@ sub setFINALattrs
                 }
 
             }
+
             # need to make sure the node attr is set otherwise nothing
             #    gets set in the nodelist table
             if ($::FINALATTRS{$objname}{objtype} eq "node") {
@@ -2877,7 +2920,7 @@ sub setFINALattrs
     {
         # special case for the nic* attributes
         # merge nic*.eth0, nic*.eth1
-        unless(exists($::CLIATTRS{$objname})) {
+        unless (exists($::CLIATTRS{$objname})) {
             next;
         }
         if (($::CLIATTRS{$objname}{objtype} eq 'node') || ($::CLIATTRS{$objname}{objtype} eq 'group'))
@@ -2886,7 +2929,7 @@ sub setFINALattrs
             # need to read the whole nicips attribute from the nics table,
             # then merge the nicips.eth0 into the nicips attribute,
             my %tmphash = ();
-            foreach my $nodeattr (keys %{$::CLIATTRS{$objname}})
+            foreach my $nodeattr (keys %{ $::CLIATTRS{$objname} })
             {
                 if ($nodeattr =~ /^(nic\w+)\..*$/)
                 {
@@ -2909,6 +2952,7 @@ sub setFINALattrs
                     }
                 }
             }
+
             # $tmphash{nicips} = "eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1"
             foreach my $nicattr (keys %tmphash)
             {
@@ -2930,7 +2974,7 @@ sub setFINALattrs
             xCAT::DBobjUtils->collapsenicsattr($::CLIATTRS{$objname}, $objname);
         }
 
-        foreach my $attr (keys %{$::CLIATTRS{$objname}})
+        foreach my $attr (keys %{ $::CLIATTRS{$objname} })
         {
 
             $::FINALATTRS{$objname}{$attr} = $::CLIATTRS{$objname}{$attr};
@@ -2948,6 +2992,7 @@ sub setFINALattrs
             }
 
         }
+
         # need to make sure the node attr is set otherwise nothing
         #   gets set in the nodelist table
         if ($::FINALATTRS{$objname}{objtype} eq "node") {
@@ -2997,7 +3042,8 @@ sub defls
     my %objhash;
 
     my @objectlist;
-#    @::allobjnames;
+
+    #    @::allobjnames;
     my @displayObjList;
 
     my $numtypes = 0;
@@ -3041,22 +3087,26 @@ sub defls
     # this is a temp hack to help scaling when you only
     #   want a list of nodes - needs to be fully implemented
     if ($::opt_l || $::opt_w) {
+
         # if long or -w then get all the attrs
-        $::ATTRLIST="all";
+        $::ATTRLIST = "all";
     } elsif ($::opt_i) {
+
         # is -i then just get the ones in the list
-        $::ATTRLIST=$::opt_i;
-    } elsif ( @::noderange || $::opt_o) {
+        $::ATTRLIST = $::opt_i;
+    } elsif (@::noderange || $::opt_o) {
+
         # if they gave a list of objects then they must want more
         # than the object names!
         if ($::opt_s) {
-            $::ATTRLIST="none";
+            $::ATTRLIST = "none";
         } else {
-            $::ATTRLIST="all";
+            $::ATTRLIST = "all";
         }
     } else {
+
         # otherwise just get a list of object names
-        $::ATTRLIST="none";
+        $::ATTRLIST = "none";
     }
 
     #
@@ -3076,18 +3126,20 @@ sub defls
             @neededattrs = (@neededattrs, @whereattrs);
         }
     }
-  
-    if (defined $::opt_template){
-        unless ($::opt_template){
+
+    if (defined $::opt_template) {
+        unless ($::opt_template) {
+
             #when the "--template" option is specified, but no object template is specified
-            %myhash=%::FILEATTRS;    
-        }else{
+            %myhash = %::FILEATTRS;
+        } else {
+
             #some object template are specified
-            my @templatelist=split(",",$::opt_template);
-            foreach my $mytemplate (@templatelist){
-                if(exists $::FILEATTRS{$mytemplate}){
-                    $myhash{$mytemplate}= \%{$::FILEATTRS{$mytemplate}};            
-                } 
+            my @templatelist = split(",", $::opt_template);
+            foreach my $mytemplate (@templatelist) {
+                if (exists $::FILEATTRS{$mytemplate}) {
+                    $myhash{$mytemplate} = \%{ $::FILEATTRS{$mytemplate} };
+                }
             }
         }
     }
@@ -3118,7 +3170,7 @@ sub defls
 
 
     #  if just provided type list then find all objects of these types
-    if ( ! defined $::opt_template && $::objectsfrom_optt)
+    if (!defined $::opt_template && $::objectsfrom_optt)
     {
         %objhash = %::ObjTypeHash;
 
@@ -3136,7 +3188,8 @@ sub defls
     # if specify all
     if ($::opt_a)
     {
-        if(! defined $::opt_template){
+        if (!defined $::opt_template) {
+
             # could be modified by type
             if ($::opt_t)
             {
@@ -3190,12 +3243,12 @@ sub defls
                 push(@::clobjtypes, $t);
             }
         }
-        else{
-            #push the unique object types from @::fileobjtypes to @::clobjtypes 
-            my %objtypehash=map { $_ => 1 } @::fileobjtypes;
-            push @::clobjtypes, keys(%objtypehash); 
+        else {
+            #push the unique object types from @::fileobjtypes to @::clobjtypes
+            my %objtypehash = map { $_ => 1 } @::fileobjtypes;
+            push @::clobjtypes, keys(%objtypehash);
         }
-    } # end - if specify all
+    }    # end - if specify all
 
 
     if (!(%myhash))
@@ -3209,7 +3262,7 @@ sub defls
     # need a special case for the node postscripts attribute,
     # The 'xcatdefaults' postscript should be added to the postscripts and postbootscripts attribute
     my $getnodes = 0;
-    if (!$::opt_z) { #if -z flag is specified, do not add the xcatdefaults
+    if (!$::opt_z) {    #if -z flag is specified, do not add the xcatdefaults
         foreach my $objtype (@::clobjtypes)
         {
             if ($objtype eq 'node')
@@ -3224,7 +3277,7 @@ sub defls
     if ($getnodes)
     {
         # Show osimage information
-        if($::opt_osimg)
+        if ($::opt_osimg)
         {
             my %nodeosimgname;
             my %imghash;
@@ -3234,9 +3287,9 @@ sub defls
             # get the site.installdir for osimage searching with nodes prvomethod= install/netboot/statelite
             # it might not be used at all, but should not do this for each node
             my $installroot = "/install";
-            my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+            my @ents     = xCAT::TableUtils->get_site_attribute("installdir");
             my $site_ent = $ents[0];
-            if ( defined($site_ent) )
+            if (defined($site_ent))
             {
                 $installroot = $site_ent;
             }
@@ -3246,9 +3299,10 @@ sub defls
                 if ($myhash{$obj}{'objtype'} eq 'node')
                 {
                     my $osimagename;
+
                     #provmethod can be set to osimage name
-                    if($myhash{$obj}{'provmethod'} && ($myhash{$obj}{'provmethod'} ne 'install')
-                      && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite'))
+                    if ($myhash{$obj}{'provmethod'} && ($myhash{$obj}{'provmethod'} ne 'install')
+                        && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite'))
                     {
                         $osimagename = $myhash{$obj}{'provmethod'};
                     }
@@ -3257,9 +3311,9 @@ sub defls
                         # prvomethod = install/netboot/statelite,
                         # search /opt/xcat/share/xcat/<provmethod/<platform>
                         # and /install/custom/<provmethod/<platform>
-                        my $profile = $myhash{$obj}{'profile'};
-                        my $os = $myhash{$obj}{'os'};
-                        my $arch = $myhash{$obj}{'arch'};
+                        my $profile    = $myhash{$obj}{'profile'};
+                        my $os         = $myhash{$obj}{'os'};
+                        my $arch       = $myhash{$obj}{'arch'};
                         my $provmethod = $myhash{$obj}{'provmethod'};
 
                         # tmp hash for performance considerations,
@@ -3284,7 +3338,7 @@ sub defls
                             next;
                         }
                         if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'}
-                           && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
+                            && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
                         {
                             #$osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
                             my $platform = xCAT::SvrUtils->getplatform($myhash{$obj}{'os'});
@@ -3309,12 +3363,14 @@ sub defls
                             # pkgdir both diskful and diskless
                             $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
                             $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
+
                             # rootimgdir only for diskless
                             if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
                             {
-                               $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
-                               $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                                $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
                             }
+
                             # otherpkgdir for both diskful and diskless
                             $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
                             $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
@@ -3333,6 +3389,7 @@ sub defls
                                     $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'template'} = $tmplfile;
                                 }
                             }
+
                             # pkglist for both diskful and diskless
                             my $pkglistfile = xCAT::SvrUtils->get_pkglist_file_name($custpath, $profile, $os, $arch, $os);
                             if (!$pkglistfile)
@@ -3344,6 +3401,7 @@ sub defls
                                 $nodeosimagehash{$obj}{'pkglist'} = $pkglistfile;
                                 $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkglist'} = $pkglistfile;
                             }
+
                             #otherpkglist for both diskful and diskless
                             my $otherpkgsfile = xCAT::SvrUtils->get_otherpkgs_pkglist_file_name($custpath, $profile, $os, $arch);
                             if (!$otherpkgsfile)
@@ -3355,6 +3413,7 @@ sub defls
                                 $nodeosimagehash{$obj}{'otherpkglist'} = $otherpkgsfile;
                                 $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkglist'} = $otherpkgsfile;
                             }
+
                             # postinstall and exlist only for diskless
                             if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
                             {
@@ -3369,6 +3428,7 @@ sub defls
                                     $nodeosimagehash{$obj}{'postinstall'} = $postfile;
                                     $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'postinstall'} = $postfile;
                                 }
+
                                 # Get exclude list
                                 my $extfile = xCAT::SvrUtils->get_exlist_file_name($custpath, $profile, $os, $arch);
                                 if (!$extfile)
@@ -3381,6 +3441,7 @@ sub defls
                                     $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'extlist'} = $extfile;
                                 }
                             }
+
                             # Get synclist
                             my $synclist = xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $provmethod);
                             if ($synclist)
@@ -3397,11 +3458,12 @@ sub defls
                             next;
                         }
                     }
+
                     # do not call xCAT::DBobjUtils->getobjdefs for each object
                     # for performance consideration
-                    if($osimagename)
+                    if ($osimagename)
                     {
-                        if(!defined($imglist{$osimagename}))
+                        if (!defined($imglist{$osimagename}))
                         {
                             $imglist{$osimagename} = 'osimage';
                         }
@@ -3413,7 +3475,7 @@ sub defls
 
 
             # Get osimage definition info in one invocation
-            if(scalar(keys %imglist) > 0)
+            if (scalar(keys %imglist) > 0)
             {
                 my @attrs = ();
                 %imghash = xCAT::DBobjUtils->getobjdefs(\%imglist, 0, \@attrs);
@@ -3425,9 +3487,9 @@ sub defls
                 if ($myhash{$obj}{'objtype'} eq 'node')
                 {
                     my $imgname = $nodeosimgname{$obj};
-                    if($imgname && defined($imghash{$imgname}))
+                    if ($imgname && defined($imghash{$imgname}))
                     {
-                        my %imgentry = %{$imghash{$imgname}};
+                        my %imgentry = %{ $imghash{$imgname} };
                         foreach my $imgattr (keys %imgentry)
                         {
                             # Only store the attributes that are not in general node attributes
@@ -3435,11 +3497,12 @@ sub defls
                             # like the postscripts and postbootscripts attributes,
                             #if(!defined($myhash{$obj}{$imgattr}) && defined($imgentry{$imgattr}))
                             #{
-                                $nodeosimagehash{$obj}{$imgattr} = $imgentry{$imgattr};
+                            $nodeosimagehash{$obj}{$imgattr} = $imgentry{$imgattr};
+
                             #}
                         }
                     }
-                    if (scalar(keys %{$nodeosimagehash{$obj}}) == 0)
+                    if (scalar(keys %{ $nodeosimagehash{$obj} }) == 0)
                     {
                         my $rsp;
                         $rsp->{data}->[0] = "$obj: could not find information for osimage $nodeosimgname{$obj}";
@@ -3456,9 +3519,9 @@ sub defls
         {
             foreach my $tablerow (@TableRowArray)
             {
-                if(($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
+                if (($tablerow->{node} eq 'xcatdefaults') && !($tablerow->{disable}))
                 {
-                    $xcatdefaultsps = $tablerow->{postscripts};
+                    $xcatdefaultsps  = $tablerow->{postscripts};
                     $xcatdefaultspbs = $tablerow->{postbootscripts};
                     last;
                 }
@@ -3469,7 +3532,7 @@ sub defls
         {
             if ($myhash{$obj}{objtype} eq 'node')
             {
-                if($xcatdefaultsps)
+                if ($xcatdefaultsps)
                 {
                     if ($myhash{$obj}{postscripts})
                     {
@@ -3478,12 +3541,12 @@ sub defls
                     else
                     {
                         $myhash{$obj}{postscripts} = $xcatdefaultsps;
-                        if($::opt_V) {
+                        if ($::opt_V) {
                             $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
                         }
                     }
                 }
-                if($xcatdefaultspbs)
+                if ($xcatdefaultspbs)
                 {
                     if ($myhash{$obj}{postbootscripts})
                     {
@@ -3493,7 +3556,7 @@ sub defls
                     {
                         $myhash{$obj}{postbootscripts} = $xcatdefaultspbs;
                     }
-                    if($::opt_V && ($myhash{$obj}{postbootscripts} eq $xcatdefaultspbs))
+                    if ($::opt_V && ($myhash{$obj}{postbootscripts} eq $xcatdefaultspbs))
                     {
                         $myhash{$obj}{postbootscripts} .= "       (Table:postscripts - Key:node - Column:postbootscripts)";
                     }
@@ -3524,13 +3587,13 @@ sub defls
 
     if ($::opt_z)
     {
-        push (@{$rsp_info->{data}}, "# <xCAT data object stanza file>");
+        push(@{ $rsp_info->{data} }, "# <xCAT data object stanza file>");
     }
 
 
     # group the objects by type to make the output easier to read
     my $numobjects = 0;    # keep track of how many object we want to display
-    # for each type
+                           # for each type
 
     foreach my $type (@::clobjtypes)
     {
@@ -3540,7 +3603,7 @@ sub defls
         if ($::opt_i)
         {
             my $datatype = $xCAT::Schema::defspec{$type};
-            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            foreach my $this_attr (sort @{ $datatype->{'attrs'} })
             {
                 my $a = $this_attr->{attr_name};
                 $validattrslist{$a} = 1;
@@ -3574,7 +3637,7 @@ sub defls
 
         if ($type eq "node") {
             my %newhash;
-            my $listtab  = xCAT::Table->new( 'nodelist' );
+            my $listtab = xCAT::Table->new('nodelist');
             if (!$listtab) {
                 my $rsp;
                 $rsp->{data}->[0] = "Could not open nodelist table.";
@@ -3582,7 +3645,7 @@ sub defls
                 return 1;
             }
 
-            if (!defined($::opt_S) ) {
+            if (!defined($::opt_S)) {
                 my @def_nodes = keys %defhash;
                 my $hidden_nodes = $listtab->getNodesAttribs(\@def_nodes, ['hidden']);
                 foreach my $n (keys %{$hidden_nodes}) {
@@ -3632,12 +3695,13 @@ sub defls
                     }
                 }
             } else {
+
                 # get the list of all attrs for this type object
                 # get the data type  definition from Schema.pm
                 my $datatype =
                   $xCAT::Schema::defspec{$type};
 
-                foreach my $this_attr (@{$datatype->{'attrs'}})
+                foreach my $this_attr (@{ $datatype->{'attrs'} })
                 {
                     if (!grep(/^$this_attr->{attr_name}$/, @attrlist)) {
                         push(@attrlist, $this_attr->{attr_name});
@@ -3659,7 +3723,7 @@ sub defls
             if ($::opt_w)
             {
                 #  just display objects that match -w
-                if (! grep /^$obj$/, @displayObjList)
+                if (!grep /^$obj$/, @displayObjList)
                 {
                     next;
                 }
@@ -3676,12 +3740,12 @@ sub defls
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     next;
                 }
-             }
+            }
 
             # special handling for site table - for now !!!!!!!
             if (($type eq 'site') || ($type eq 'monitoring'))
             {
-                foreach my $a (keys %{$defhash{$obj}})
+                foreach my $a (keys %{ $defhash{$obj} })
                 {
                     push(@attrlist, $a);
                 }
@@ -3701,20 +3765,20 @@ sub defls
                 {
                     if ($::opt_z)
                     {
-                        push (@{$rsp_info->{data}}, "\n$obj:");
-                        push (@{$rsp_info->{data}}, "    objtype=$defhash{$obj}{'objtype'}");
+                        push(@{ $rsp_info->{data} }, "\n$obj:");
+                        push(@{ $rsp_info->{data} }, "    objtype=$defhash{$obj}{'objtype'}");
                     }
                     else
                     {
                         if ($#::clobjtypes > 0)
                         {
-                            push (@{$rsp_info->{data}}, "Object name: $obj  ($defhash{$obj}{'objtype'})");
+                            push(@{ $rsp_info->{data} }, "Object name: $obj  ($defhash{$obj}{'objtype'})");
                         }
                         else
                         {
                             if (!$::opt_c)
                             {
-                                push (@{$rsp_info->{data}}, "Object name: $obj");
+                                push(@{ $rsp_info->{data} }, "Object name: $obj");
                             }
                         }
                     }
@@ -3727,7 +3791,7 @@ sub defls
                         }
 
                         my $attrval;
-                        if ( exists($defhash{$obj}{$showattr}))
+                        if (exists($defhash{$obj}{$showattr}))
                         {
                             $attrval = $defhash{$obj}{$showattr};
                         }
@@ -3738,13 +3802,13 @@ sub defls
                             if (grep (/^$showattr$/, @::AttrList))
                             {
 
-                                if ( ($defhash{$obj}{'objtype'} eq 'group') && ($showattr eq 'members'))
+                                if (($defhash{$obj}{'objtype'} eq 'group') && ($showattr eq 'members'))
                                 {
                                     my $memberlist =
                                       xCAT::DBobjUtils->getGroupMembers(
-                                                                 $obj,
-                                                                 \%defhash);
-                                    push (@{$rsp_info->{data}}, "    $showattr=$memberlist");
+                                        $obj,
+                                        \%defhash);
+                                    push(@{ $rsp_info->{data} }, "    $showattr=$memberlist");
                                 }
                                 else
                                 {
@@ -3755,7 +3819,7 @@ sub defls
                                         my $nicnames;
                                         if (defined($::NicsAttrHash{$showattr}))
                                         {
-                                            $nicnames = join(',', @{$::NicsAttrHash{$showattr}});
+                                            $nicnames = join(',', @{ $::NicsAttrHash{$showattr} });
                                         }
                                         my $nicsstr;
                                         if ($nicnames)
@@ -3766,6 +3830,7 @@ sub defls
                                         {
                                             $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
                                         }
+
                                         # Compress mode, format the output
                                         if ($::opt_c)
                                         {
@@ -3774,7 +3839,7 @@ sub defls
                                         }
                                         if ($nicsstr)
                                         {
-                                            push (@{$rsp_info->{data}}, "$nicsstr");
+                                            push(@{ $rsp_info->{data} }, "$nicsstr");
                                         }
                                     }
                                     else
@@ -3783,11 +3848,11 @@ sub defls
                                         #   show it even if not set
                                         if (!$::opt_c)
                                         {
-                                            push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                            push(@{ $rsp_info->{data} }, "    $showattr=$attrval");
                                         }
                                         else
                                         {
-                                            push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
+                                            push(@{ $rsp_info->{data} }, "$obj: $showattr=$attrval");
 
                                         }
                                     }
@@ -3797,20 +3862,20 @@ sub defls
                         else
                         {
 
-                            if (   ($defhash{$obj}{'objtype'} eq 'group')
+                            if (($defhash{$obj}{'objtype'} eq 'group')
                                 && ($showattr eq 'members'))
 
                             {
                                 #$defhash{$obj}{'grouptype'} = "static";
                                 my $memberlist =
-                                  xCAT::DBobjUtils->getGroupMembers($obj,\%defhash);
-                                push (@{$rsp_info->{data}}, "    $showattr=$memberlist");
+                                  xCAT::DBobjUtils->getGroupMembers($obj, \%defhash);
+                                push(@{ $rsp_info->{data} }, "    $showattr=$memberlist");
                             }
                             else
                             {
 
                                 # don't print unless set
-                                if ( (defined($attrval)) && ($attrval ne '') )
+                                if ((defined($attrval)) && ($attrval ne ''))
                                 {
                                     # nics attributes, like nicips, nichostnamesuffix.
                                     if ($showattr =~ /^nic/)
@@ -3819,27 +3884,28 @@ sub defls
                                         my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
                                         if ($nicsstr)
                                         {
-                                            push (@{$rsp_info->{data}}, "$nicsstr");
+                                            push(@{ $rsp_info->{data} }, "$nicsstr");
                                         }
                                     }
                                     else
                                     {
-                                        push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                        push(@{ $rsp_info->{data} }, "    $showattr=$attrval");
                                     }
                                 }
                             }
                         }
                     }
+
                     # Additional osimage attributes
-                    if(($type eq "node") && $::opt_osimg)
+                    if (($type eq "node") && $::opt_osimg)
                     {
-                        if(defined($nodeosimagehash{$obj}))
+                        if (defined($nodeosimagehash{$obj}))
                         {
-                            foreach my $attr (keys %{$nodeosimagehash{$obj}})
+                            foreach my $attr (keys %{ $nodeosimagehash{$obj} })
                             {
-                                if($nodeosimagehash{$obj}{$attr})
+                                if ($nodeosimagehash{$obj}{$attr})
                                 {
-                                    push (@{$rsp_info->{data}}, "    $attr=$nodeosimagehash{$obj}{$attr}");
+                                    push(@{ $rsp_info->{data} }, "    $attr=$nodeosimagehash{$obj}{$attr}");
                                 }
                             }
                         }
@@ -3852,12 +3918,12 @@ sub defls
                     {
                         if ($::opt_z)
                         {
-                            push (@{$rsp_info->{data}}, "\n$obj:");
+                            push(@{ $rsp_info->{data} }, "\n$obj:");
                         }
                         else
                         {
                             # give the type also
-                            push (@{$rsp_info->{data}}, "$obj ($::AllObjTypeHash{$obj})");
+                            push(@{ $rsp_info->{data} }, "$obj ($::AllObjTypeHash{$obj})");
                         }
                     }
                     else
@@ -3866,28 +3932,28 @@ sub defls
                         # just give the name
                         if ($::opt_z)
                         {
-                            push (@{$rsp_info->{data}}, "\n$obj:");
+                            push(@{ $rsp_info->{data} }, "\n$obj:");
                         }
                         else
                         {
                             if (scalar(@::clobjtypes) > 0)
                             {
-                                push (@{$rsp_info->{data}}, "$obj  ($defhash{$obj}{'objtype'})");
+                                push(@{ $rsp_info->{data} }, "$obj  ($defhash{$obj}{'objtype'})");
                             }
                             else
                             {
-                                push (@{$rsp_info->{data}}, "$obj");
+                                push(@{ $rsp_info->{data} }, "$obj");
                             }
                         }
                     }
                 }
             }
-        } # end - for each object
-    } # end - for each type
+        }    # end - for each object
+    }    # end - for each type
 
 
     # Display the definition of objects
-    if (defined($rsp_info->{data}) && scalar(@{$rsp_info->{data}}) > 0) {
+    if (defined($rsp_info->{data}) && scalar(@{ $rsp_info->{data} }) > 0) {
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
     }
 
@@ -4039,13 +4105,14 @@ sub defrm
         my $objtype = $objhash{$obj};
         if (!defined($objTypeLists{$objtype})) # Do no call getObjectsOfType for the same objtype more than once.
         {
-            @{$objTypeLists{$objtype}} = xCAT::DBobjUtils->getObjectsOfType($objtype);
+            @{ $objTypeLists{$objtype} } = xCAT::DBobjUtils->getObjectsOfType($objtype);
         }
-        if (!grep(/^$obj$/, @{$objTypeLists{$objtype}})) #Object is not in the db, do not need to delete
+        if (!grep(/^$obj$/, @{ $objTypeLists{$objtype} })) #Object is not in the db, do not need to delete
         {
             my $rsp;
             $rsp->{data}->[0] = "Could not find an object named \'$obj\' of type \'$objtype\'.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
+
             # Remove the object we could not find from the hash, this way the count of the objects
             # and the content of the hash (for the verbose option), can be used for printing results at the end
             delete($objhash{$obj});
@@ -4075,6 +4142,7 @@ sub defrm
             {
                 next;
             }
+
             # get the members list
             #  all groups are "static" for now
             $grphash{$obj}{'grouptype'} = "static";
@@ -4086,6 +4154,7 @@ sub defrm
             {
                 next;
             }
+
             # foreach member node of the group
             my %nodehash;
             my %nhash;
@@ -4095,18 +4164,19 @@ sub defrm
                 # get the def of this node
                 $nhash{$m} = 'node';
             }
+
             # Performance: Only call getobjdefs once
             @attrs = ('groups');
             %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash, 0, \@attrs);
-                if (!(%nodehash))
-                {
-                    my $rsp;
+            if (!(%nodehash))
+            {
+                my $rsp;
                 my @nodes = keys %nhash;
                 my $m = join ',', @nodes;
-                    $rsp->{data}->[0] = "Could not get xCAT object definition for \'$m\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
-                    next;
-                }
+                $rsp->{data}->[0] = "Could not get xCAT object definition for \'$m\'.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                next;
+            }
 
             foreach my $m (keys %nodehash)
             {
@@ -4116,7 +4186,7 @@ sub defrm
 
                 # make a new "groups" list for the node without the
                 #      group that is being removed
-                my $first = 1;
+                my $first   = 1;
                 my $newgrps = "";
                 foreach my $grp (@gprslist)
                 {
@@ -4133,7 +4203,7 @@ sub defrm
                         {
                             $newgrps .= ",";
                         }
-                        $newgrps .="$grp";
+                        $newgrps .= "$grp";
                         $first = 0;
 
                     }
@@ -4153,20 +4223,22 @@ sub defrm
             }
         }
     }
+
     # find the children of the node.
-    for my $tob (keys %objhash)  {
-        if ( $objhash{$tob} eq 'node' ) {
+    for my $tob (keys %objhash) {
+        if ($objhash{$tob} eq 'node') {
             my $ntype = xCAT::DBobjUtils->getnodetype($tob);
-            if ( $ntype =~ /^(cec|frame)$/ )  {
+            if ($ntype =~ /^(cec|frame)$/) {
                 my $cnodep = xCAT::DBobjUtils->getchildren($tob);
                 if ($cnodep) {
                     my $cnode = join ',', @$cnodep;
                     $childrenhash{$tob} = $cnode;
-                    $typehash{$tob} = $ntype;
+                    $typehash{$tob}     = $ntype;
                 }
             }
         }
     }
+
     # remove the objects
     if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
     {
@@ -4207,9 +4279,10 @@ sub defrm
                 $rsp->{data}->[0] = "$nodenum object definitions have been removed.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
+
             # Give a warning message to the user to remove the children of the node.
-            for my $tn (keys %objhash)  {
-                if ( $childrenhash{$tn} ) {
+            for my $tn (keys %objhash) {
+                if ($childrenhash{$tn}) {
                     my $rsp;
                     $rsp->{data}->[0] = "You have removed a $typehash{$tn} node, please remove these nodes belongs to it manually: $childrenhash{$tn} .";
                     xCAT::MsgUtils->message("W", $rsp, $::callback);
@@ -4251,7 +4324,7 @@ sub defmk_usage
     my $rsp;
     $rsp->{data}->[0] = "\nUsage: mkdef - Create xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  mkdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] = "  mkdef [-V | --verbose] [-t object-types] [--template template-object-name]"; 
+    $rsp->{data}->[2] = "  mkdef [-V | --verbose] [-t object-types] [--template template-object-name]";
     $rsp->{data}->[3] = "      [-o object-names] [-z|--stanza ]";
     $rsp->{data}->[4] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
     $rsp->{data}->[5] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
@@ -4333,8 +4406,8 @@ sub defls_usage
     my $rsp;
     $rsp->{data}->[0] = "\nUsage: lsdef - List xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  lsdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] = "  lsdef [-l|--long] [-a|--all] [-t *object-types*] [-z|--stanza]"; 
-    $rsp->{data}->[3] = "        [-i attr-list] [--template [template-object-name]] \n"; 
+    $rsp->{data}->[2] = "  lsdef [-l|--long] [-a|--all] [-t *object-types*] [-z|--stanza]";
+    $rsp->{data}->[3] = "        [-i attr-list] [--template [template-object-name]] \n";
     $rsp->{data}->[4] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[5] = "        [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
     $rsp->{data}->[6] = "        [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
@@ -4411,20 +4484,21 @@ sub defrm_usage
 #-----------------------------------------------------------------------------
 sub initialize_variables
 {
-    %::CLIATTRS = ();
-    %::FILEATTRS = ();
+    %::CLIATTRS   = ();
+    %::FILEATTRS  = ();
     %::FINALATTRS = ();
-#    %::objfilehash = ();
-    %::WhereHash = ();
-    @::AttrList = ();
+
+    #    %::objfilehash = ();
+    %::WhereHash    = ();
+    @::AttrList     = ();
     %::NicsAttrHash = ();
-    @::clobjtypes = ();
+    @::clobjtypes   = ();
     @::fileobjtypes = ();
-    @::clobjnames = ();
+    @::clobjnames   = ();
     @::fileobjnames = ();
-    @::objfilelist = ();
-    @::allobjnames = ();
-    @::noderange = ();
+    @::objfilelist  = ();
+    @::allobjnames  = ();
+    @::noderange    = ();
 }
 1;
 

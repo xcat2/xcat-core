@@ -25,36 +25,36 @@ my $usage_string = "Usage:
 
 # Parse the argument
 $Getopt::Long::ignorecase = 0;
-Getopt::Long::Configure( "bundling" );
-if (!GetOptions( 'u=s'   => \$::URL,
-                       'f=s'   => \$::FORMAT,
-                      'h=s'   => \$::HOST,
-                      'o=s'   => \$::OBJ,
-	              'm=s'  => \$::METHOD,
-                       'V'     => \$::VERBOSE )) {
+Getopt::Long::Configure("bundling");
+if (!GetOptions('u=s' => \$::URL,
+        'f=s' => \$::FORMAT,
+        'h=s' => \$::HOST,
+        'o=s' => \$::OBJ,
+        'm=s' => \$::METHOD,
+        'V'   => \$::VERBOSE)) {
     print $usage_string;
     exit 1;
 }
 
 if (defined($::FORMAT)) {
     if ($::FORMAT eq "") {
-      $::FORMAT = "html";
+        $::FORMAT = "html";
     } elsif ($::FORMAT !~ /^(html|json|xml)$/) {
-      print $usage_string;
-      exit 1;
+        print $usage_string;
+        exit 1;
     }
 }
-else{
+else {
     $::FORMAT = "html";
 }
 
-if (defined($::METHOD)){
-    if ($::METHOD !~/^(GET|PUT|POST|DELETE)$/){
-	print $usage_string;
-	exit 1;
+if (defined($::METHOD)) {
+    if ($::METHOD !~ /^(GET|PUT|POST|DELETE)$/) {
+        print $usage_string;
+        exit 1;
     }
 }
-else{
+else {
     print $usage_string;
     exit 1;
 }
@@ -67,11 +67,11 @@ if (!$::URL) {
         exit 1;
     }
 } else {
-    if ($::URL =~ /\?/){
-	$::URL .= "&format=$::FORMAT";
+    if ($::URL =~ /\?/) {
+        $::URL .= "&format=$::FORMAT";
     }
-    else{
-	$::URL .= "?format=$::FORMAT";
+    else {
+        $::URL .= "?format=$::FORMAT";
     }
 }
 
@@ -79,26 +79,26 @@ my @updatearray;
 my $fieldname;
 my $fieldvalue;
 my %entryhash;
-if (scalar(@ARGV) > 0){
-    foreach my $tempstr (@ARGV){
-       push @updatearray, split(/=/,$tempstr);
+if (scalar(@ARGV) > 0) {
+    foreach my $tempstr (@ARGV) {
+        push @updatearray, split(/=/, $tempstr);
     }
 }
-%entryhash=@updatearray;
+%entryhash = @updatearray;
 
 my $request;
 
 my $ua = LWP::UserAgent->new();
 my $response;
-if (($::METHOD eq 'PUT') || ($::METHOD eq 'POST')){
+if (($::METHOD eq 'PUT') || ($::METHOD eq 'POST')) {
     my $tempstr = encode_json \%entryhash;
     $request = HTTP::Request->new($::METHOD => $::URL);
-    $request->header('content-type' => 'text/plain');
+    $request->header('content-type'   => 'text/plain');
     $request->header('content-length' => length($tempstr));
     $request->content($tempstr);
 }
-elsif(($::METHOD eq 'GET'|| ($::METHOD eq 'DELETE'))){
-    $request = HTTP::Request->new($::METHOD=>$::URL);
+elsif (($::METHOD eq 'GET' || ($::METHOD eq 'DELETE'))) {
+    $request = HTTP::Request->new($::METHOD => $::URL);
 }
 
 my $response = $ua->request($request);

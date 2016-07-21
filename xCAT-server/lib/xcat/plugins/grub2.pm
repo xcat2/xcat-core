@@ -78,6 +78,7 @@ sub getstate {
             chomp($headline);
             return $headline;
         } else {
+
             # There is no boot configuration file, node must be offline
             return "offline";
         }
@@ -250,7 +251,7 @@ sub setstate {
             return;
         }
 
-	# write entries to boot config file, but only if not offline directive
+        # write entries to boot config file, but only if not offline directive
         if ($cref and $cref->{currstate} ne "offline") {
             print $pcfg "set default=\"xCAT OS Deployment\"\n";
             print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
@@ -317,6 +318,7 @@ sub setstate {
     foreach $ip (keys %ipaddrs) {
         my @ipa = split(/\./, $ip);
         my $pname = "grub.cfg-" . sprintf("%02x%02x%02x%02x", @ipa);
+
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink($tftpdir . "/boot/grub2/" . $pname);
         if ($cref and $cref->{currstate} ne "offline") {
@@ -331,6 +333,7 @@ sub setstate {
         my $tmp = lc($nodemac);
         $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
         my $pname = "grub.cfg-01-" . $tmp;
+
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink($tftpdir . "/boot/grub2/" . $pname);
         if ($cref and $cref->{currstate} ne "offline") {
@@ -726,15 +729,16 @@ sub process_request {
 
     if ($args[0] eq 'offline') {
         my @rmdhcp_nodes;
+
         # If nodeset directive was offline we need to remove the architecture file link and remove dhcp entries
         foreach my $osimage (keys %osimagenodehash) {
             foreach my $tmp_node (@{ $osimagenodehash{$osimage} }) {
-                unlink( "$tftpdir/boot/grub2/grub2-$tmp_node");
+                unlink("$tftpdir/boot/grub2/grub2-$tmp_node");
                 push(@rmdhcp_nodes, $tmp_node);
             }
         }
-        $sub_req->({ command => ['makedhcp'],arg=>['-d'], node => \@rmdhcp_nodes }, $callback);
-    } 
+        $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@rmdhcp_nodes }, $callback);
+    }
 
     #now run the end part of the prescripts
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')

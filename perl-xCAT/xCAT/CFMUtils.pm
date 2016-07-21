@@ -4,7 +4,7 @@ package xCAT::CFMUtils;
 
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -58,11 +58,11 @@ sub initCFMdir
     # below system files will be synced to all compute nodes
     my @sysfiles = ("/etc/hosts");
 
-    # the /etc/passwd, shadow, group files will be merged 
+    # the /etc/passwd, shadow, group files will be merged
     my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
 
     # create the cfmdir
-    if (! -d $cfmdir)
+    if (!-d $cfmdir)
     {
         mkpath $cfmdir;
     }
@@ -70,20 +70,20 @@ sub initCFMdir
     # backup the OS files and create links under cfmdir
     foreach my $file (@userfiles)
     {
-        my $backup = $file.".OS";
-        if (! -e $backup)
+        my $backup = $file . ".OS";
+        if (!-e $backup)
         {
             copy($file, $backup);
         }
 
-        if (! -e "$cfmdir/".basename($backup))
+        if (!-e "$cfmdir/" . basename($backup))
         {
-            symlink($backup, "$cfmdir/".basename($backup));
+            symlink($backup, "$cfmdir/" . basename($backup));
         }
     }
 
     # Initialize CFM directory and related files
-    if (! -d "$cfmdir/etc")
+    if (!-d "$cfmdir/etc")
     {
         mkpath "$cfmdir/etc";
     }
@@ -93,16 +93,17 @@ sub initCFMdir
     {
         symlink($file, "$cfmdir/$file");
     }
+
     # touch and link the merge files for /etc/passwd, shadow, group
     foreach my $file (@userfiles)
     {
-        my $merge = $file.".merge";
-        if (! -e "$merge")
+        my $merge = $file . ".merge";
+        if (!-e "$merge")
         {
             xCAT::Utils->runcmd("touch $merge", -1);
         }
 
-        if (! -e "$cfmdir/$merge")
+        if (!-e "$cfmdir/$merge")
         {
             symlink($merge, "$cfmdir/$merge");
         }
@@ -143,18 +144,18 @@ sub updateUserInfo {
             $rsp->{data}->[0] = "Skiping the update of the /etc/passwd, shadow, group merge files under the CFM directory.";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
-	return 0;
+        return 0;
     }
 
     foreach my $file (@userfiles)
     {
         my @oldrecords = ();
         my @newrecords = ();
-        my $backup = basename($file).".OS";
+        my $backup     = basename($file) . ".OS";
 
         # get the records from /etc/passwd, shadow, group file and backup files(.OS files)
-        # and all the files from /install/osimages/$imgname/cfmdir directory  
-        foreach my $userinfo ($file, "$cfmdir/$backup") 
+        # and all the files from /install/osimages/$imgname/cfmdir directory
+        foreach my $userinfo ($file, "$cfmdir/$backup")
         {
             my $fp;
             open($fp, $userinfo);
@@ -162,18 +163,18 @@ sub updateUserInfo {
             while (<$fp>)
             {
                 my $line = xCAT::CFMUtils->trim($_);
-                if (($line =~ /^#/) || ($line =~ /^\s*$/ ))
-                { #comment line or blank line
+                if (($line =~ /^#/) || ($line =~ /^\s*$/))
+                {    #comment line or blank line
                     next;
                 } else
-                {    
+                {
                     push @records, $line;
-                }   
+                }
             }
             close($fp);
 
             # check the records from /etc/passwd, shadow, group file or backup
-            if ($userinfo =~ /^\/etc/ )
+            if ($userinfo =~ /^\/etc/)
             {
                 @newrecords = @records;
             } else {
@@ -182,8 +183,9 @@ sub updateUserInfo {
         }
 
         # update the merge file
-        my $mergefile = $cfmdir."/".$file.".merge";
+        my $mergefile = $cfmdir . "/" . $file . ".merge";
         my @diff = xCAT::CFMUtils->arrayops("D", \@newrecords, \@oldrecords);
+
         # output the diff to merge files
         my $fp;
         open($fp, '>', $mergefile);
@@ -199,8 +201,8 @@ sub updateUserInfo {
                 print $fp "$record\n";
             }
         }
-        close ($fp);
-        
+        close($fp);
+
     }
 
     return 0;
@@ -208,6 +210,7 @@ sub updateUserInfo {
 
 
 #-----------------------------------------------------------------------------
+
 =head3 setCFMSynclistFile
     Set osimage synclists attribute for CFM function, the CMF synclist file is:
     /install/osimages/<imagename>/synclist.cfm
@@ -224,6 +227,7 @@ sub updateUserInfo {
       my $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($imagename);
       if ($cfmdir) { # update the CFM synclist file }
 =cut
+
 #-----------------------------------------------------------------------------
 sub setCFMSynclistFile {
     my ($class, $img) = @_;
@@ -234,18 +238,19 @@ sub setCFMSynclistFile {
 
     # get the cfmdir and synclists attributes
     my $osimage_t = xCAT::Table->new('osimage');
-    my $records = $osimage_t->getAttribs({imagename=>$img}, 'cfmdir', 'synclists');
-    if (defined ($records->{'cfmdir'}))
+    my $records = $osimage_t->getAttribs({ imagename => $img }, 'cfmdir', 'synclists');
+    if (defined($records->{'cfmdir'}))
     {
         $cfmdir = $records->{'cfmdir'};
-        if (defined ($records->{'synclists'})) {$synclists = $records->{'synclists'}}
+        if (defined($records->{'synclists'})) { $synclists = $records->{'synclists'} }
     } else {
+
         # no cfmdir defined, return directly
         return 0;
     }
 
     my $found = 0;
-    my $index = 0; 
+    my $index = 0;
     if ($synclists)
     {
         # the synclists is a comma separated list
@@ -253,7 +258,7 @@ sub setCFMSynclistFile {
         foreach my $synclist (@lists)
         {
             # find the synclist configuration for CFM
-            if ($synclist eq $cfmsynclist) 
+            if ($synclist eq $cfmsynclist)
             {
                 $found = 1;
                 last;
@@ -263,17 +268,19 @@ sub setCFMSynclistFile {
         if ($found == 0)
         {
             # the CFM synclist is not defined, append it to $synclists
-            $synclists = "$synclists,$cfmsynclist"; 
-            # set the synclists attribute 
-            $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+            $synclists = "$synclists,$cfmsynclist";
+
+            # set the synclists attribute
+            $osimage_t->setAttribs({ imagename => $img }, { 'synclists' => $synclists });
         }
     } else {
+
         # no synclists defined, set it to CFM synclist file
         if ($cfmdir) { $synclists = $cfmsynclist; }
-        $osimage_t->setAttribs({imagename=>$img}, {'synclists' => $synclists});
+        $osimage_t->setAttribs({ imagename => $img }, { 'synclists' => $synclists });
     }
 
-    return $cfmdir;   
+    return $cfmdir;
 }
 
 
@@ -335,60 +342,62 @@ sub updateCFMSynclistFile {
     {
         my $cfmdir;
         $cfmdir = xCAT::CFMUtils->setCFMSynclistFile($osimg);
-        if ($cfmdir)   # check for /install/osiamges/$osimg/cfmdir
+        if ($cfmdir)    # check for /install/osiamges/$osimg/cfmdir
         {
             my $cfmsynclist = "/install/osimages/$osimg/synclist.cfm";
-            if (! -d $cfmdir)
+            if (!-d $cfmdir)
             {
-                # skip this one go on to the next image, nothing to do for 
+                # skip this one go on to the next image, nothing to do for
                 # CFMUtils in this image
                 next;
             }
+
             # create the parent directory of CFM synclist file
-            if (! -d dirname($cfmsynclist))
+            if (!-d dirname($cfmsynclist))
             {
                 mkpath dirname($cfmsynclist);
             }
 
             # update /etc/passwd, shadow, group merge files
             my $ret = xCAT::CFMUtils->updateUserInfo($cfmdir);
-            if ($ret !=0 )
+            if ($ret != 0)
             {
                 my $rsp = {};
-                $rsp->{error}->[0] = 
-                "Update /etc/passwd, shadow, group merge files failed.";
+                $rsp->{error}->[0] =
+                  "Update /etc/passwd, shadow, group merge files failed.";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
             }
 
-            # recursively list the files under cfm directory 
+            # recursively list the files under cfm directory
             my @files = ();
 
-            find ( { wanted => sub { push @files, $File::Find::name if -f }, follow => 1 }, $cfmdir);
-            if (!@files) # not files under cfm directory, skip to next loop 
+            find({ wanted => sub { push @files, $File::Find::name if -f }, follow => 1 }, $cfmdir);
+            if (!@files)    # not files under cfm directory, skip to next loop
             {
                 next;
             }
 
             my $fp;
             open($fp, '>', $cfmsynclist);
-            my @mergefiles = ();
+            my @mergefiles  = ();
             my @appendfiles = ();
             foreach my $file (@files)
             {
                 my $name = basename($file);
-                #TODO: find a better way to get the suffix 
+
+                #TODO: find a better way to get the suffix
                 my $suffix = ($name =~ m/([^.]+)$/)[0];
                 my $dest = substr($file, length($cfmdir));
-                if ($suffix eq "OS") # skip the backup files
+                if ($suffix eq "OS")    # skip the backup files
                 {
                     next;
-                } elsif ($suffix eq "merge") # merge file
+                } elsif ($suffix eq "merge")    # merge file
                 {
                     push(@mergefiles, $file);
-                } elsif ($suffix eq "append") { # append file
-                    push(@appendfiles, $file); 
-                } else { # output the syncing files maintained by CFM
+                } elsif ($suffix eq "append") {    # append file
+                    push(@appendfiles, $file);
+                } else {    # output the syncing files maintained by CFM
                     print $fp "$file -> $dest\n";
                 }
             }
@@ -398,7 +407,7 @@ sub updateCFMSynclistFile {
                 print $fp "APPEND:\n";
             }
             foreach my $file (@appendfiles)
-            { 
+            {
                 my $dest = substr($file, length($cfmdir), length($file) - length(".append") - length($cfmdir));
                 print $fp "$file -> $dest\n";
             }
@@ -411,21 +420,23 @@ sub updateCFMSynclistFile {
             {
                 my @userfiles = ("/etc/passwd", "/etc/shadow", "/etc/group");
                 my $dest = substr($file, length($cfmdir), length($file) - length(".merge") - length($cfmdir));
+
                 # only /etc/passwd, /etc/shadow, /etc/groups merging is supported
-                if (grep(/$dest/, @userfiles)) {		
+                if (grep(/$dest/, @userfiles)) {
                     print $fp "$file -> $dest\n";
                 }
             }
-            
-            # close the file 
-            close($fp);   
+
+            # close the file
+            close($fp);
         }
     }
- 
+
     return 0;
 }
 
 #-----------------------------------------------------------------------------
+
 =head3 setCFMPkglistFile
     Set the pkglist attribute of linuximage object for CFM function
 
@@ -441,20 +452,21 @@ sub updateCFMSynclistFile {
     Example:
       my $ret = xCAT::CFMUtils->setCFMPkglistFile($imagename);
 =cut
+
 #-----------------------------------------------------------------------------
 sub setCFMPkglistFile {
     my ($class, $img) = @_;
 
-    my $pkglists = "";
+    my $pkglists   = "";
     my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
 
     # get the pkglist files
     my $linuximage_t = xCAT::Table->new('linuximage');
-    my $records = $linuximage_t->getAttribs({imagename => $img}, 'pkglist');
+    my $records = $linuximage_t->getAttribs({ imagename => $img }, 'pkglist');
     if ($records)
     {
         if ($records->{'pkglist'}) { $pkglists = $records->{'pkglist'}; }
-    } else 
+    } else
     {
         if ($::VERBOSE)
         {
@@ -469,27 +481,29 @@ sub setCFMPkglistFile {
     {
         foreach my $pkglist (split(/,/, $pkglists))
         {
-            if ($pkglist eq $cfmpkglist) # the pkglist file for CFM is found, exit the loop 
+            if ($pkglist eq $cfmpkglist) # the pkglist file for CFM is found, exit the loop
             {
                 $found = 1;
                 last;
             }
         }
-        # the pkglist file for CFM is not found, append it to $pkglits 
-        if (!$found) 
+
+        # the pkglist file for CFM is not found, append it to $pkglits
+        if (!$found)
         {
-            $pkglists = "$pkglists,$cfmpkglist"; 
+            $pkglists = "$pkglists,$cfmpkglist";
+
             # set the pkglist attribute for linuximage
-            $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
-        } 
-    } else 
+            $linuximage_t->setAttribs({ imagename => $img }, { 'pkglist' => $pkglists });
+        }
+    } else
     {
         # the pkglist file for linuximage is not defined, set it to $cfmpkglist
         $pkglists = $cfmpkglist;
-        $linuximage_t->setAttribs({imagename => $img}, {'pkglist' => $pkglists});
+        $linuximage_t->setAttribs({ imagename => $img }, { 'pkglist' => $pkglists });
     }
 
-    return 0;   
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
@@ -517,17 +531,19 @@ sub setCFMPkglistFile {
 #-----------------------------------------------------------------------------
 sub updateCFMPkglistFile {
     my ($class, $img, $ospkgs, $mode) = @_;
-    
-    if(defined($mode)){
+
+    if (defined($mode)) {
+
         # Exact Matching
         $mode = 1;
-    }else {
+    } else {
+
         # Fuzzy Matching
         $mode = 0;
     }
-    
+
     my @cur_selected = @$ospkgs;
-    my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
+    my $cfmpkglist   = "/install/osimages/$img/pkglist.cfm";
 
     my $ret = xCAT::CFMUtils->setCFMPkglistFile($img);
     if ($ret)
@@ -539,7 +555,7 @@ sub updateCFMPkglistFile {
     }
 
     # check the parent directory of cfmpkglist file
-    if (! -d dirname($cfmpkglist))
+    if (!-d dirname($cfmpkglist))
     {
         mkpath dirname($cfmpkglist);
     }
@@ -547,10 +563,11 @@ sub updateCFMPkglistFile {
     # get previous selected and removed OS packages list from pkglist file
     my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($cfmpkglist);
     my @pre_selected = @$pre_selected_ref;
-    my @pre_removed = @$pre_removed_ref;
+    my @pre_removed  = @$pre_removed_ref;
 
     # get the #INCLUDE file from cfmpkglist file
     my @incfiles = xCAT::CFMUtils->getIncludefiles($cfmpkglist);
+
     # get the packages list in the #INCLUDE files
     my @basepkgs = ();
     foreach my $inc (@incfiles)
@@ -559,18 +576,18 @@ sub updateCFMPkglistFile {
         my @selected = @$selected_ref;
         @basepkgs = xCAT::CFMUtils->arrayops("U", \@basepkgs, \@selected);
     }
-    
+
     # Fuzzy Matching
-    if (not $mode){
+    if (not $mode) {
         my ($ref1, $ref2, $ref3) = xCAT::CFMUtils->updateSelectedPkgs(\@pre_selected, \@pre_removed, \@cur_selected);
         @pre_selected = @$ref1;
-        @pre_removed = @$ref2;
+        @pre_removed  = @$ref2;
         @cur_selected = @$ref3;
     }
 
-    # get diff between previous and current selected OS packages lists    
+    # get diff between previous and current selected OS packages lists
     my @diff = xCAT::CFMUtils->getPkgsDiff(\@pre_selected, \@cur_selected);
- 
+
     # merge the diff to previous removed OS packages list
     my @all_removed = xCAT::CFMUtils->arrayops("U", \@pre_removed, \@diff);
 
@@ -590,6 +607,7 @@ sub updateCFMPkglistFile {
     {
         print $fp "#INCLUDE:$inc#\n";
     }
+
     # the pacakges be installed
     if (@cur_selected)
     {
@@ -598,6 +616,7 @@ sub updateCFMPkglistFile {
             print $fp "$pkg\n";
         }
     }
+
     # the packages be removed
     if (@cur_removed)
     {
@@ -606,6 +625,7 @@ sub updateCFMPkglistFile {
             print $fp "-$pkg\n";
         }
     }
+
     # close the file
     close($fp);
 
@@ -635,8 +655,8 @@ sub updateCFMPkglistFile {
 #-----------------------------------------------------------------------------
 sub getPreOSpkgsList {
     my ($class, $pkglist) = @_;
-    my @selected = ();
-    my @removed = ();
+    my @selected     = ();
+    my @removed      = ();
     my @pkglistfiles = ();
 
     # get the #INCLUDE file from cfmpkglist file
@@ -645,6 +665,7 @@ sub getPreOSpkgsList {
     {
         push @pkglistfiles, $inc;
     }
+
     # assume the #INCLUDE file includes the BASE packages
     push @pkglistfiles, $pkglist;
 
@@ -655,20 +676,20 @@ sub getPreOSpkgsList {
         while (<$pkglistfp>)
         {
             my $line = xCAT::CFMUtils->trim($_);
-            if (($line =~ /^#/) || ($line =~ /^\s*$/ ) || ($line =~ /^@/))
-            { #comment line or blank line
+            if (($line =~ /^#/) || ($line =~ /^\s*$/) || ($line =~ /^@/))
+            {    #comment line or blank line
                 next;
             } else
             {
                 if ($line =~ /^-/)
-                { # the package be removed
+                {    # the package be removed
                     push @removed, substr($line, 1);
                 } else
-                { # the package be installed
+                {    # the package be installed
                     push @selected, $line;
-                } 
+                }
             }
-        }    
+        }
         close($pkglistfp);
     }
 
@@ -700,21 +721,21 @@ sub getPreOSpkgsList {
 #-----------------------------------------------------------------------------
 sub getPreBaseOSpkgsList {
     my ($class, $pkglist) = @_;
-    
-    my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($pkglist); 
-    
+
+    my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($pkglist);
+
     my %pre_selected_hash = ();
     foreach (@$pre_selected_ref) {
         my @names = split(/\./, $_);
         my $basename = $names[0];
-        
+
         if ($_ =~ /^$basename\.([^\.]+)$/) {
             $pre_selected_hash{$basename} = 1;
-        }else {
+        } else {
             $pre_selected_hash{$_} = 1;
         }
     }
-    
+
     my @pre_selected = keys %pre_selected_hash;
 
     return \@pre_selected;
@@ -749,6 +770,7 @@ sub getPkgsDiff {
 
     # get the difference
     my @diff = xCAT::CFMUtils->arrayops("D", \@$pre, \@tmp);
+
     #print Dumper(@diff);
 
     return @diff;
@@ -783,14 +805,15 @@ sub getIncludefiles {
     {
         my $line = xCAT::CFMUtils->trim($_);
         if ($line =~ /^\s*$/)
-        { # blank line
+        {    # blank line
             next;
         }
+
         # find the #INCLUDE line
         if ($line =~ /^\s*#INCLUDE:[^#^\n]+#/)
         {
             #print "The line is: [$line]\n";
-            my $incfile = substr($line, length("#INCLUDE:"), length($line)-length("#INCLUDE:")-1);
+            my $incfile = substr($line, length("#INCLUDE:"), length($line) - length("#INCLUDE:") - 1);
             push @files, $incfile;
         }
     }
@@ -857,13 +880,13 @@ sub trim {
 sub arrayops {
     my ($class, $ops, $array1, $array2) = @_;
 
-    my @union = ();
+    my @union        = ();
     my @intersection = ();
-    my @difference = ();
-    my %count = ();
-    foreach my $element (@$array1, @$array2) 
-    { 
-        $count{$element}++ 
+    my @difference   = ();
+    my %count        = ();
+    foreach my $element (@$array1, @$array2)
+    {
+        $count{$element}++
     }
 
     foreach my $element (keys %count) {
@@ -872,7 +895,7 @@ sub arrayops {
     }
 
     if ($ops eq "U") { return @union; }
-   
+
     if ($ops eq "I") { return @intersection; }
 
     if ($ops eq "D") { return @difference; }
@@ -903,19 +926,19 @@ sub arrayops {
 
 #-----------------------------------------------------------------------------
 sub updateSelectedPkgs() {
-    my ($class, $pre_selected_ref, $pre_removed_ref, $cur_selected_ref) = @_; 
-    
-    my %pre_selected_hash = map{$_ => 1} @$pre_selected_ref;
-    my %pre_removed_hash = map{$_ => 1} @$pre_removed_ref;
-    my %cur_selected_hash = map{$_ => 1} @$cur_selected_ref;
-    
+    my ($class, $pre_selected_ref, $pre_removed_ref, $cur_selected_ref) = @_;
+
+    my %pre_selected_hash = map { $_ => 1 } @$pre_selected_ref;
+    my %pre_removed_hash  = map { $_ => 1 } @$pre_removed_ref;
+    my %cur_selected_hash = map { $_ => 1 } @$cur_selected_ref;
+
     my %new_pre_selected_hash = %pre_selected_hash;
-    my %new_pre_removed_hash = %pre_removed_hash;
+    my %new_pre_removed_hash  = %pre_removed_hash;
     my %new_cur_selected_hash = %cur_selected_hash;
-    
+
     foreach (keys %cur_selected_hash) {
         my $father = $_;
-        my $flag = 0;
+        my $flag   = 0;
         foreach (keys %pre_selected_hash) {
             my $child = $_;
             if ($child =~ /^$father\.([^\.]+)$/) {
@@ -923,10 +946,10 @@ sub updateSelectedPkgs() {
                 $flag = 1;
             }
         }
-        if ($flag and not exists $pre_selected_hash{$father}){
+        if ($flag and not exists $pre_selected_hash{$father}) {
             delete $new_cur_selected_hash{$father} if exists $new_cur_selected_hash{$father};
         }
-        
+
         foreach (keys %pre_removed_hash) {
             my $child = $_;
             if ($child =~ /^$father\.([^\.]+)$/) {
@@ -934,11 +957,11 @@ sub updateSelectedPkgs() {
             }
         }
     }
-    
+
     my @new_cur_selected = keys %new_cur_selected_hash;
     my @new_pre_selected = keys %new_pre_selected_hash;
-    my @new_pre_removed = keys %new_pre_removed_hash;
-    
-    
-    return (\@new_pre_selected, \@new_pre_removed, \@new_cur_selected);  
+    my @new_pre_removed  = keys %new_pre_removed_hash;
+
+
+    return (\@new_pre_selected, \@new_pre_removed, \@new_cur_selected);
 }

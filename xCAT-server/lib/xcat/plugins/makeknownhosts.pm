@@ -35,7 +35,7 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return {makeknownhosts => "makeknownhosts"};
+    return { makeknownhosts => "makeknownhosts" };
 }
 
 #-------------------------------------------------------
@@ -62,17 +62,17 @@ sub process_request
     my $rc       = 0;
 
     # parse the input
-    if ($request && $request->{arg}) { @ARGV = @{$request->{arg}}; }
-    else { @ARGV = (); }
+    if   ($request && $request->{arg}) { @ARGV = @{ $request->{arg} }; }
+    else                               { @ARGV = (); }
 
     my $usage = "Usage: makeknownhosts <noderange> [-r] [-V]\n       makeknownhosts -h";
 
     # print "argv=@ARGV\n";
     if (!GetOptions(
-                     'h|help'    => \$::opt_h,
-                     'V|verbose' => \$::opt_V,
-                     'r|remove'  => \$::opt_r
-                   )) 
+            'h|help'    => \$::opt_h,
+            'V|verbose' => \$::opt_V,
+            'r|remove'  => \$::opt_r
+        ))
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
@@ -100,7 +100,7 @@ sub process_request
     {    # the key is missing, cannot create known_hosts
         my $rsp = {};
         $rsp->{data}->[0] =
-          "The keyfile:$hostkey is missing. Cannot create the known_hosts file.";
+"The keyfile:$hostkey is missing. Cannot create the known_hosts file.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
@@ -142,7 +142,7 @@ sub process_request
                 return 1;
             }
         }
-     }
+    }
     return 0;
 }
 
@@ -169,7 +169,7 @@ sub backup_known_hosts_file
     {    # ssh has not been setup
         my $rsp = {};
         $rsp->{data}->[0] =
-          "ssh has not been setup on this machine. .ssh directory does not existfor root id";
+"ssh has not been setup on this machine. .ssh directory does not existfor root id";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
@@ -240,7 +240,7 @@ sub add_known_host
         return 1;
     }
     chomp($output[0]);
-    my ($hostname,$ip_address) = xCAT::NetworkUtils->gethostnameandip($node);
+    my ($hostname, $ip_address) = xCAT::NetworkUtils->gethostnameandip($node);
     if (!$hostname || !$ip_address)
     {
         my $rsp = {};
@@ -253,11 +253,11 @@ sub add_known_host
     if (defined $hostname)
     {
         my $hostdomain;
-		my @hosts;
-		push (@hosts, $hostname);
-		my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
-		my %nodedomains = %$nd;
-		$hostdomain = $nodedomains{$hostname};
+        my @hosts;
+        push(@hosts, $hostname);
+        my $nd          = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+        my %nodedomains = %$nd;
+        $hostdomain = $nodedomains{$hostname};
 
         $line = "\"";
         $line .= "$hostname,";
@@ -317,17 +317,17 @@ sub remove_nodes_from_knownhosts
     my ($callback, $ref_nodes) = @_;
     my @node_hostnames = @$ref_nodes;
     my $home           = xCAT::Utils->getHomeDir("root");
-    
+
     my @all_names;
-    
+
     my ($hostname, $ipaddr);
-    
-    # Put all the possible knownhosts entries 
+
+    # Put all the possible knownhosts entries
     # for the nodes into @all_names
     foreach my $node (@node_hostnames)
     {
         if (!grep(/^$node$/, @all_names))
-        { 
+        {
             push @all_names, $node;
         }
         ($hostname, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($node);
@@ -343,7 +343,7 @@ sub remove_nodes_from_knownhosts
         {
             push @all_names, $ipaddr;
         }
-        
+
     }
 
     #create the sed command
