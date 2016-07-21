@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #------------------------------------------------------------------------------
+
 =head1  monaixsyslog
 =head2  
   When first run (by the sensor) this script adds an entry to the AIX ODM
@@ -9,10 +10,11 @@
   it checks for any logged errors. On all subsequent runs this script just
   checks for errors.
 =cut
+
 #------------------------------------------------------------------------------#
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -24,15 +26,15 @@ use xCAT::Utils;
 
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 
 my $dirname = "xcat_err_mon";
-my $vardir = "/var/opt/$dirname";    
+my $vardir  = "/var/opt/$dirname";
 
 my $default_runfile = "$vardir/.monerrorlog_run";
-my $default_fifo = "$vardir/syslog_fifo";
-my $default_pri = "*.warn";
+my $default_fifo    = "$vardir/syslog_fifo";
+my $default_pri     = "*.warn";
 $::MAX_SENSOR_STRING = 65535;
 
 my ($facility_priority, $fifo, $runfile) = &getArgs();
@@ -43,20 +45,20 @@ if (isNg())
     $syslogconf = "/etc/syslog-ng/syslog-ng.conf";
     if (($facility_priority eq $default_pri) && ($fifo eq $default_fifo))
     {
-    	$embedinfo = "destination warn_fifo { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter(f_warn); destination(warn_fifo); };";
+        $embedinfo = "destination warn_fifo { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter(f_warn); destination(warn_fifo); };";
     }
     else
     {
         my $tmp_dest = createRandomName("fifo");
-    	$embedinfo = "destination $tmp_dest { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter($facility_priority); destination($tmp_dest); };";
+        $embedinfo = "destination $tmp_dest { pipe(\\\"$fifo\\\" group(root) perm(0644)); };\nlog { source(src); filter($facility_priority); destination($tmp_dest); };";
     }
 }
 else
 {
-	$syslogconf = "/etc/syslog.conf";
-    $embedinfo = "$facility_priority   |$fifo";
+    $syslogconf = "/etc/syslog.conf";
+    $embedinfo  = "$facility_priority   |$fifo";
 }
-my $odmstanza  = "$vardir/odmstanza";
+my $odmstanza = "$vardir/odmstanza";
 
 if (!-d $vardir) { mkdir($vardir); }
 
@@ -79,170 +81,173 @@ Returns:
 #--------------------------------------------------------------------------------
 sub first_time_run()
 {
-	if($^O =~ /^aix/i)
-	{
-		my $output  = runcmd("/bin/odmget -q \"en_name=xcat_errlog_sen\" errnotify", -1);
-		if (!$output)
-		{
-			return 1;
-		}
-		return 0;
-	}
-	else
-	{
-		if (!-e $runfile)
-		{
-			return 1;
-		}
-		return 0;
-	}
+    if ($^O =~ /^aix/i)
+    {
+        my $output = runcmd("/bin/odmget -q \"en_name=xcat_errlog_sen\" errnotify", -1);
+        if (!$output)
+        {
+            return 1;
+        }
+        return 0;
+    }
+    else
+    {
+        if (!-e $runfile)
+        {
+            return 1;
+        }
+        return 0;
+    }
 
 }
 
 #check to see if this is the first time this script has been run
 if (&first_time_run)
-{      #first time
-	if ($^O =~ /^linux/i)
-	{
-		runcmd("grep \"$embedinfo\" $syslogconf", -1);
-		if ($::RUNCMD_RC == 1)
-		{    #grep did not find dirname
-			    #update syslog.conf
-			if (!-d $vardir) { mkdir($vardir); }
-                        if (!-e $fifo)
-                        {
-  			    runcmd("/usr/bin/mkfifo $fifo");
-                        }
-			runcmd("echo \"$embedinfo\" >> $syslogconf");
-			#my $cmd = service("syslog", "restart");
-			#runcmd($cmd);
-			xCAT::Utils->restartservice("syslog");
-		}
-		touchFile($runfile);
-	}
-	elsif ($^O =~ /^aix/i)
-	{
-		open(ODM, ">$odmstanza") or die $!;
-		print ODM '
+{    #first time
+    if ($^O =~ /^linux/i)
+    {
+        runcmd("grep \"$embedinfo\" $syslogconf", -1);
+        if ($::RUNCMD_RC == 1)
+        {    #grep did not find dirname
+                #update syslog.conf
+            if (!-d $vardir) { mkdir($vardir); }
+            if (!-e $fifo)
+            {
+                runcmd("/usr/bin/mkfifo $fifo");
+            }
+            runcmd("echo \"$embedinfo\" >> $syslogconf");
+
+            #my $cmd = service("syslog", "restart");
+            #runcmd($cmd);
+            xCAT::Utils->restartservice("syslog");
+        }
+        touchFile($runfile);
+    }
+    elsif ($^O =~ /^aix/i)
+    {
+        open(ODM, ">$odmstanza") or die $!;
+        print ODM '
 errnotify:
       en_pid = 0
       en_name = "xcat_errlog_sen"
       en_persistenceflg = 1
       en_method =  "' . "$::XCATROOT/sbin/rmcmon/errmsgque" . ' sequence = $1 error_id = $2 class = $3 type = $4 alert_flags = $5 res_name = $6 res_type = $7 res_class = $8 label = $9"
 ';
-		close ODM or die $!;
-		runcmd("/usr/bin/odmadd $odmstanza");
-	}
-	else
-	{
-		print "unknown platform\n";
-		exit 1;
-	}
+        close ODM or die $!;
+        runcmd("/usr/bin/odmadd $odmstanza");
+    }
+    else
+    {
+        print "unknown platform\n";
+        exit 1;
+    }
 }
 
 #Check for errors
 
 if ($^O =~ /^linux/i)
 {
-	local $SIG{ALRM} = sub { die "alarm\n" };
-	eval {
-		alarm 4;
-		open(PIPE, $fifo) or die 
-                    print "cannot open file$fifo"; 
-		alarm 0;
-	};
-	if ($@ =~ /alarm/) { close PIPE; exit 0; }
+    local $SIG{ALRM} = sub { die "alarm\n" };
+    eval {
+        alarm 4;
+        open(PIPE, $fifo) or die
+          print "cannot open file$fifo";
+        alarm 0;
+    };
+    if ($@ =~ /alarm/) { close PIPE; exit 0; }
 
-	my $allinfo = "";
-	while (1)
-	{
-		my $line;
-		eval {
-			alarm 2;
-			$line = <PIPE>;
-			alarm 0;
-		};
-		if ($@ =~ /alarm/) { 
-				close PIPE; 
-                # send the messages to sensor
-				if ($allinfo)
-				{
-					my $strlen = length($allinfo);
-					# The condition/response can not handle
-					# the long sensor String very well, 
-					# use file to pass messages.
-					# file name: /var/opt/xcat_err_mon/tmplogmsg  
-					if ($strlen > $::MAX_SENSOR_STRING)
-					{
-						srand(time | $$); 
-						my $filename = "$vardir/tmplogmsg_$$";
-						while (-e $filename)
-						{
-							$filename = createRandomName($filename);
-						}
-						if (open(TMPLOG, ">$filename"))
-						{
-							print TMPLOG $allinfo;
-							close TMPLOG;
-							print "XCAT_MONERRORLOG_FILE:$filename";
-						}
-						else
-						{
-							#open failed, why?
-							print "OPEN_FILE_FAILED: $filename";
-						}
-					}
-					else
-					{
-						print $allinfo;
-					}
-				}
+    my $allinfo = "";
+    while (1)
+    {
+        my $line;
+        eval {
+            alarm 2;
+            $line = <PIPE>;
+            alarm 0;
+        };
+        if ($@ =~ /alarm/) {
+            close PIPE;
 
-				exit 0; 
-		}
-		$allinfo .= $line;
-	}
-	close PIPE;
+            # send the messages to sensor
+            if ($allinfo)
+            {
+                my $strlen = length($allinfo);
+
+                # The condition/response can not handle
+                # the long sensor String very well,
+                # use file to pass messages.
+                # file name: /var/opt/xcat_err_mon/tmplogmsg
+                if ($strlen > $::MAX_SENSOR_STRING)
+                {
+                    srand(time | $$);
+                    my $filename = "$vardir/tmplogmsg_$$";
+                    while (-e $filename)
+                    {
+                        $filename = createRandomName($filename);
+                    }
+                    if (open(TMPLOG, ">$filename"))
+                    {
+                        print TMPLOG $allinfo;
+                        close TMPLOG;
+                        print "XCAT_MONERRORLOG_FILE:$filename";
+                    }
+                    else
+                    {
+                        #open failed, why?
+                        print "OPEN_FILE_FAILED: $filename";
+                    }
+                }
+                else
+                {
+                    print $allinfo;
+                }
+            }
+
+            exit 0;
+        }
+        $allinfo .= $line;
+    }
+    close PIPE;
 }
 elsif ($^O =~ /^aix/i)
 {
-	# the monitoring is stopped
-	if ($ENV{'SENSOR_MonitorStatus'} eq '2')
-	{
-		# stopsrc -s IBM.SensorRM will also 
-		# set $ENV{'SENSOR_MonitorStatus'} to 2
-		# should not do clean up when IBM.SensorRM is stopped
-		if (isRMrunning("IBM.SensorRM"))
-		{
-			runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_errlog_sen\"", -1);
-			if (-e $runfile)
-			{
-				unlink($runfile);
-			}
-		}
-		exit 0;
-	}
+    # the monitoring is stopped
+    if ($ENV{'SENSOR_MonitorStatus'} eq '2')
+    {
+        # stopsrc -s IBM.SensorRM will also
+        # set $ENV{'SENSOR_MonitorStatus'} to 2
+        # should not do clean up when IBM.SensorRM is stopped
+        if (isRMrunning("IBM.SensorRM"))
+        {
+            runcmd("/bin/odmdelete -o errnotify -q \" en_name=xcat_errlog_sen\"", -1);
+            if (-e $runfile)
+            {
+                unlink($runfile);
+            }
+        }
+        exit 0;
+    }
 
-	my $m = ord('xcat');
-	my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
-	my $buf;
-	my $msg = new IPC::Msg($key, IPC_CREAT | S_IRUSR | S_IWUSR);
-	local $SIG{ALRM} = sub { die "alarm\n" };
-	while (1)
-	{
-		eval {
-			alarm 2;
-			my $rectype = $msg->rcv($buf, 256);
-			alarm 0;
-		};
-		if ($@ =~ /alarm/) { close PIPE; exit 0; }
-		runcmd(
-			"echo \"/usr/bin/refsensor ErrorLogSensor String=\'$buf\' 1>/dev/null 2>/dev/null\" | at now",
-			0
-		);
-	}
+    my $m = ord('xcat');
+    my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
+    my $buf;
+    my $msg = new IPC::Msg($key, IPC_CREAT | S_IRUSR | S_IWUSR);
+    local $SIG{ALRM} = sub { die "alarm\n" };
+    while (1)
+    {
+        eval {
+            alarm 2;
+            my $rectype = $msg->rcv($buf, 256);
+            alarm 0;
+        };
+        if ($@ =~ /alarm/) { close PIPE; exit 0; }
+        runcmd(
+"echo \"/usr/bin/refsensor ErrorLogSensor String=\'$buf\' 1>/dev/null 2>/dev/null\" | at now",
+            0
+        );
+    }
 
-	exit 0;
+    exit 0;
 }
 
 exit 0;
@@ -266,7 +271,7 @@ sub getArgs()
     print "ENTERING: $routine\n" if $::DEBUG;
 
     my @command_line = ();
-    @command_line   = @ARGV;
+    @command_line = @ARGV;
 
     # Checks case in GetOptions
     $Getopt::Long::ignorecase = 0;
@@ -275,8 +280,8 @@ sub getArgs()
 
     if (
         !GetOptions(
-                    'p=s'      => \$facility_priority,
-                    'f=s'      => \$fifo,
+            'p=s' => \$facility_priority,
+            'f=s' => \$fifo,
         )
       )
     {
@@ -289,7 +294,7 @@ sub getArgs()
     {
         my @para = split '/', $fifo;
         my $newpara = join '-', @para;
-        $runfile = "$vardir/.monerrorlog_run" . "-$facility_priority". "-$newpara";
+        $runfile = "$vardir/.monerrorlog_run" . "-$facility_priority" . "-$newpara";
     }
     else
     {
@@ -298,19 +303,20 @@ sub getArgs()
 
     if (!$fifo)
     {
-        $fifo = $default_fifo; 
+        $fifo = $default_fifo;
     }
 
     if (!$facility_priority)
     {
         $facility_priority = $default_pri;
     }
-    
+
     return ($facility_priority, $fifo, $runfile);
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
@@ -336,72 +342,74 @@ sub getArgs()
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.
 =cut
+
 #--------------------------------------------------------------------------------
 sub runcmd
 {
-  my ($cmd, $exitcode, $refoutput) = @_;
-  $::RUNCMD_RC = 0;
-  if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
-  
-  my $outref = [];
-  @$outref = `$cmd`;
-  if ($?)
-  {
-    $::RUNCMD_RC = $? >> 8;
-    my $displayerror = 1;
-    my $rc;
-    if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+    my ($cmd, $exitcode, $refoutput) = @_;
+    $::RUNCMD_RC = 0;
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
+
+    my $outref = [];
+    @$outref = `$cmd`;
+    if ($?)
     {
-      if ($exitcode > 0)
-      {
-	$rc = $exitcode;
-      }    # if not zero, exit with specified code
-      elsif ($exitcode <= 0)
-      {
-	$rc = '';    # if zero or negative, do not exit
-	if ($exitcode < 0) { $displayerror = 0; }
-      }
+        $::RUNCMD_RC = $? >> 8;
+        my $displayerror = 1;
+        my $rc;
+        if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+        {
+            if ($exitcode > 0)
+            {
+                $rc = $exitcode;
+            }    # if not zero, exit with specified code
+            elsif ($exitcode <= 0)
+            {
+                $rc = '';    # if zero or negative, do not exit
+                if ($exitcode < 0) { $displayerror = 0; }
+            }
+        }
+        else
+        {
+            $rc = $::RUNCMD_RC;
+        }    # if exitcode not specified, use cmd exit code
+        if ($displayerror)
+        {
+            my $errmsg = '';
+            if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
+            {
+                $errmsg = "Segmentation fault  $errmsg";
+            }
+            else
+            {
+                # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
+                filterRmcApiOutput($cmd, $outref);
+                $errmsg = join('', @$outref);
+                chomp $errmsg;
+            }
+            print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+        }
+    }
+    if ($refoutput)
+    {
+        chomp(@$outref);
+        return $outref;
+    }
+    elsif (wantarray)
+    {
+        chomp(@$outref);
+        return @$outref;
     }
     else
     {
-      $rc = $::RUNCMD_RC;
-    }    # if exitcode not specified, use cmd exit code
-    if ($displayerror)
-    {
-      my $errmsg = '';
-      if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
-      {
-        $errmsg = "Segmentation fault  $errmsg";
-      }
-      else
-      {
-        # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
-        filterRmcApiOutput($cmd, $outref);
-        $errmsg = join('', @$outref);
-        chomp $errmsg;
-      }
-      print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+        my $line = join('', @$outref);
+        chomp $line;
+        return $line;
     }
-  }
-  if ($refoutput)
-  {
-    chomp(@$outref);
-    return $outref;
-  }
-  elsif (wantarray)
-  {
-    chomp(@$outref);
-    return @$outref;
-  }
-  else
-  {
-    my $line = join('', @$outref);
-    chomp $line;
-    return $line;
-  }
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    filterRmcApiOutput
     filter RMC Api Output
     Arguments:
@@ -419,26 +427,27 @@ sub runcmd
         The error msgs from the RPM -api cmds are pretty messy.
         This routine cleans them up a little bit.
 =cut
+
 #--------------------------------------------------------------------------------
 sub filterRmcApiOutput
 {
-  my ($cmd, $outref) = @_;
-  if (!($cmd =~ m|^/usr/bin/\S+-api |))  {
-    return;
-  }    # give as much info as possible, if verbose
+    my ($cmd, $outref) = @_;
+    if (!($cmd =~ m|^/usr/bin/\S+-api |)) {
+        return;
+    }    # give as much info as possible, if verbose
 
-  # Figure out the output delimiter
-  my ($d) = $cmd =~ / -D\s+(\S+)/;
-  if (length($d))  {
-    $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
-    # escape any chars perl pattern matching would intepret as special chars
-    $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
-  }
-  else
-  {
-    $d = '::';
-  }    # this is the default output delimiter for the -api cmds
-  $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
+    # Figure out the output delimiter
+    my ($d) = $cmd =~ / -D\s+(\S+)/;
+    if (length($d)) {
+        $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
+         # escape any chars perl pattern matching would intepret as special chars
+        $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
+    }
+    else
+    {
+        $d = '::';
+    }    # this is the default output delimiter for the -api cmds
+    $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
 }
 
 #--------------------------------------------------------------------------------
@@ -452,29 +461,31 @@ sub filterRmcApiOutput
 #--------------------------------------------------------------------------------
 sub touchFile
 {
-  my ($filename, $donotExit) = @_;
-  my $fh;
-  my $rc = 0;
-  if (!-e $filename)  {   
-    #if the file doesn't exist we need to open and close it
-    open($fh, ">>$filename") or $rc++;
-    if ($rc > 0 && !$donotExit)    {
-      print "Touch of file $filename failed with: $!\n";
-      return $rc;
+    my ($filename, $donotExit) = @_;
+    my $fh;
+    my $rc = 0;
+    if (!-e $filename) {
+
+        #if the file doesn't exist we need to open and close it
+        open($fh, ">>$filename") or $rc++;
+        if ($rc > 0 && !$donotExit) {
+            print "Touch of file $filename failed with: $!\n";
+            return $rc;
+        }
+        close($fh) or $rc++;
     }
-    close($fh) or $rc++;
-  }
-  else  { 
-    #if the file does exist we can just utime it (see the perlfunc man page entry on utime)
-    my $now = time;
-    utime($now, $now, $filename);
-  }
-  if ($rc > 0 && !$donotExit)  {
-      print "Touch of file $filename failed with: $!\n";
-    return $rc;
-  }
-  return 0;
+    else {
+        #if the file does exist we can just utime it (see the perlfunc man page entry on utime)
+        my $now = time;
+        utime($now, $now, $filename);
+    }
+    if ($rc > 0 && !$donotExit) {
+        print "Touch of file $filename failed with: $!\n";
+        return $rc;
+    }
+    return 0;
 }
+
 #--------------------------------------------------------------------------------
 
 =head3    createRandomName
@@ -503,13 +514,14 @@ sub createRandomName
     my $nI;
     for ($nI = 0 ; $nI < 8 ; $nI++)
     {
-        my $char = ('a' .. 'z', 'A' .. 'Z')[int(rand(52)) + 1];
+        my $char = ('a' .. 'z', 'A' .. 'Z')[ int(rand(52)) + 1 ];
         $name .= $char;
     }
     $name;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    service
     Send a service request to an init script.
     Arguments:
@@ -526,50 +538,51 @@ sub createRandomName
 #--------------------------------------------------------------------------------
 sub service
 {
-  my ($service, $svcarg) = @_;
-  my $cmd;
-  my $SVCCLI = "/sbin/service";
-  my $SVCDIR = "/etc/init.d";
+    my ($service, $svcarg) = @_;
+    my $cmd;
+    my $SVCCLI = "/sbin/service";
+    my $SVCDIR = "/etc/init.d";
 
-  #  On SLES, nfs server script is "nfsserver".
-  if (((-e "/etc/SuSE-release") || isHMC()) && $service eq "nfs")  {
-    $service = "nfsserver";
-  }
-  if (-f $SVCCLI)  {
-    $cmd = "$SVCCLI $service $svcarg ";
-  }
-  else {
-    $cmd = "$SVCDIR/$service $svcarg";
-  }
-  return $cmd;
+    #  On SLES, nfs server script is "nfsserver".
+    if (((-e "/etc/SuSE-release") || isHMC()) && $service eq "nfs") {
+        $service = "nfsserver";
+    }
+    if (-f $SVCCLI) {
+        $cmd = "$SVCCLI $service $svcarg ";
+    }
+    else {
+        $cmd = "$SVCDIR/$service $svcarg";
+    }
+    return $cmd;
 }
 
 sub isHMC
 {
-  my $hmcfile = "/opt/hsc/data/hmcType.properties";
-  if (-e $hmcfile) { return 1; }
-  else { return 0; }
+    my $hmcfile = "/opt/hsc/data/hmcType.properties";
+    if   (-e $hmcfile) { return 1; }
+    else               { return 0; }
 }
 
 sub isNg {
     if (-f "/etc/SuSE-release") {
-	my $sysconfig="/etc/sysconfig/syslog";
-        my $result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
-	if ($result =~ /syslog-ng/) { return 1; }
+        my $sysconfig = "/etc/sysconfig/syslog";
+        my $result    = `grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`;
+        if ($result =~ /syslog-ng/) { return 1; }
     }
 
     return 0;
 }
 
-sub isRMrunning{
-  my $resMan = $_[0];
-  my @output = runcmd("LANG=C /usr/bin/lssrc -s $resMan", -1);
-  if ($::RUNCMD_RC) { return 0; }   # maybe we should try to catch real errors here
-  my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
-  if (defined($status) && $status eq 'active') { 
-    #now check to see if IBM.AuditRM is up
-    return 1;
-  }
-  return 0;
+sub isRMrunning {
+    my $resMan = $_[0];
+    my @output = runcmd("LANG=C /usr/bin/lssrc -s $resMan", -1);
+    if ($::RUNCMD_RC) { return 0; } # maybe we should try to catch real errors here
+    my ($subsys, $group, $pid, $status) = split(' ', $output[1]);
+    if (defined($status) && $status eq 'active') {
+
+        #now check to see if IBM.AuditRM is up
+        return 1;
+    }
+    return 0;
 }
 

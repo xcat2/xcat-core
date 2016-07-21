@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
@@ -14,20 +14,23 @@ use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 use Socket;
 use Data::Dumper;
+
 #use strict;
 
 
 #-------------------------------------------------------------------------------
+
 =head1  xcat_traphandler  
 =head2   Description
   Script for SNMP trap handling. 
 
 =cut
+
 #-------------------------------------------------------------------------------
 # admin needs to create a mail aliase called alerts
 # put "alerts: emailadd,emailaddr.." to /etc/aliases file
 # then run newaliases command
-my $MAILTO="alerts";
+my $MAILTO = "alerts";
 
 my $message;
 my $briefmsg;
@@ -41,316 +44,326 @@ my $message1;
 my $errsrc;
 
 #get settings
-my $EMAIL=0;
-my $LOG=0;
-my $IGNORE=0;
-my $DB=0;
-my %hashI=();
-my %hashE=();
-my %hashL=();
-my %hashR=();
-my %hashD=(); 
-my %hashRUN=();
-my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("snmpmon");
-my $i=$settings{'ignore'};
-if ($i) { %hashI =parseSettings($i); }
-my $e=$settings{'email'};
-if ($e) { %hashE=parseSettings($e); }
-my $l=$settings{'log'};
-if ($l) { %hashL=parseSettings($l); }
-my $d=$settings{'db'};
-if ($d) { %hashD=parseSettings($d); }
+my $EMAIL    = 0;
+my $LOG      = 0;
+my $IGNORE   = 0;
+my $DB       = 0;
+my %hashI    = ();
+my %hashE    = ();
+my %hashL    = ();
+my %hashR    = ();
+my %hashD    = ();
+my %hashRUN  = ();
+my %settings = xCAT_monitoring::monitorctrl->getPluginSettings("snmpmon");
+my $i        = $settings{'ignore'};
+if ($i) { %hashI = parseSettings($i); }
+my $e = $settings{'email'};
+if ($e) { %hashE = parseSettings($e); }
+my $l = $settings{'log'};
+if ($l) { %hashL = parseSettings($l); }
+my $d = $settings{'db'};
+if ($d) { %hashD = parseSettings($d); }
 
 foreach my $k (keys %settings) {
-    if ($k =~ /runcmd(\d*)/) { 
-	my $r=$settings{$k};
-	my %hashTemp=parseSettings($r);
-	$hashR{$k}=\%hashTemp;
-        $hashRUN{$k}=0;
+    if ($k =~ /runcmd(\d*)/) {
+        my $r        = $settings{$k};
+        my %hashTemp = parseSettings($r);
+        $hashR{$k}   = \%hashTemp;
+        $hashRUN{$k} = 0;
     }
 }
 
 # read host name
-my $host=<STDIN>; 
+my $host = <STDIN>;
 chomp($host);
 
 # read the host ip
-my $ip=<STDIN>;
+my $ip = <STDIN>;
 chomp($ip);
 
 # read uptime
-my $uptimeline=<STDIN>;
+my $uptimeline = <STDIN>;
 chomp($uptimeline);
-my  @a=split(/ /, $uptimeline);
-my  $oid=shift @a;
-my  $value=join(' ', @a);
+my @a     = split(/ /, $uptimeline);
+my $oid   = shift @a;
+my $value = join(' ', @a);
 $message .= "    $oid=$value\n";
 
-# read trapid 
-my $trapidline=<STDIN>;
+# read trapid
+my $trapidline = <STDIN>;
 chomp($trapidline);
-@a=split(/ /, $trapidline);
-$oid=shift @a;
-$value=join(' ', @a);
+@a     = split(/ /, $trapidline);
+$oid   = shift @a;
+$value = join(' ', @a);
 $message .= "    $oid=$value\n";
 checkWithOid($oid, $value);
+
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD D=$DB\n";
-if ($IGNORE) { exit 0;}
+if ($IGNORE) { exit 0; }
 
 #for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x or
 # RFC1155-SMI::enterprises.3183.1.1.0.x, where x is the ipmi trap id.
-my $trapid; 
-if ($value =~ /enterprises\.3183\.1\.1\.0\.(.*)/) { $trapid=$1; }
+my $trapid;
+if ($value =~ /enterprises\.3183\.1\.1\.0\.(.*)/) { $trapid = $1; }
 
 #print "trapid=$trapid\n";
 
 
 
 my $holder;
-my $begin=1;
+my $begin = 1;
 my $pair;
 my $temp;
-while ($temp=<STDIN>) {
-  chomp($temp);
-  my $temp1=$temp; #save the one with quotes
-  $temp1 =~ s/\"//g;
-  my $c1=length($temp);
-  my $c2=length($temp1);
-  
-  
-  if (($c1-$c2)%2 == 0) { 
-    if ($begin==1) { # single line
-      $pair=$temp;
-    }
-    else { # middle multi-line
-      $pair .= " $temp";
-      next;  
-    }
-  } else { # multi line
-    if ($begin==1) {
-      $pair=$temp; #start of multi-line 
-      $begin=0;
-      next;
-    } else { 
-      $pair .= " $temp";  #end of multi-line
-      $begin=1;
-    }
-  }
-   
-  @a=split(/ /, $pair);
-  $oid=shift @a;
-  $value=join(' ', @a);
-  $value =~ s/^"//;
-  $value =~ s/"$//;
-
-  #for BladeCenter MM traps and RSA II traps,  creat a brief message 
-  if ($oid =~ /BLADESPPALT-MIB::spTrapAppId|RSASPPALT-MIB::ibmSpTrapAppId/) {
-    $briefmsg .= "  App ID: $value\n";  
-    $appname=$value;
-  }
-  elsif ($oid =~ /BLADESPPALT-MIB::spTrapAppType|RSASPPALT-MIB::ibmSpTrapAppType/) {
-    $briefmsg .= "  App Alert Type: $value\n";
-    $id=$value;
-  } 
-  elsif ($oid =~ /BLADESPPALT-MIB::spTrapMsgText|RSASPPALT-MIB::ibmSpTrapMsgText/) {
-    $briefmsg .= "  Message: $value\n";  
-    $message1=$value;
-  } 
-  elsif ($oid =~ /BLADESPPALT-MIB::spTrapBladeName/) {
-    my $temp="$value";
-    $temp =~ /^\"(.*)\"/;
-    if ($1) {
-      $briefmsg .= "  Blade Name: $value\n";
-      $node1=$1;
-    }
-  } 
-  elsif (($oid =~ /BLADESPPALT-MIB::spTrapSourceId/)) {
-    $briefmsg .= "  Error Source=$value\n";  
-    $errsrc=$value;     
-  }   
-  elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority|RSASPPALT-MIB::ibmSpTrapPriority/) {
-    # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4), 
-    # Recovery Alert(8), Informational Only Alert(255)
-    if ($value==0) {
-      $severity="Critical Alert";
-      $severity_type="Critical";
-    } elsif ($value==1)  {
-      $severity="Major Alert";
-      $severity_type="Critical";
-    } elsif ($value==2)  {
-      $severity="Non-Critical Alert";
-      $severity_type="Warning";
-    } elsif ($value==4)  {
-      $severity="System Alert";
-      $severity_type="Warning";
-    } elsif ($value==8)  {
-      $severity="Recovery Alert";
-      $severity_type="Informational";
-    } elsif ($value==255)  {
-      $severity="Informational Alert";
-      $severity_type="Informational";
-    }
-  } 
-  elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) { #IPMI PRTs (traps)
-    $node1=$host;
-    #$node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
-
-    my $ip1=$ip;
-    $ip1 =~ /(\d+\.\d+\.\d+\.\d+)/;
-    $ip1=$1;
-
-    # get the host name if it is unknown
-    if ($node1 =~/<UNKNOWN>/) {
-      my $name = xCAT::NetworkUtils->gethostname($ip1);
-      if ($name) {
-        $node1=$name; 
-        $host=$name;
-        my @shorthost = split(/\./, $node1);
-        $node1=$shorthost[0];
-      }
-    }
-
-    #print "node1=$node1\n";
-    #node1 is the bmc name, we need the node that bmc connects to to call xCAT
-    my $realnode;
-    my $ipmitab = xCAT::Table->new('ipmi');
-    if (defined($ipmitab)) {
-      my @tmp1=$ipmitab->getAllNodeAttribs(['node','bmc']);
-      if (@tmp1 && (@tmp1 > 0)) {
-        foreach(@tmp1) {
-          if ($_->{bmc} eq $node1) { $realnode=$_->{node}; last;}
-        }        
-      }
-      $ipmitab->close();
-    }
-    if ($realnode) {$node1=$realnode;}
-    #print "node1=$node1\n";
+while ($temp = <STDIN>) {
+    chomp($temp);
+    my $temp1 = $temp;    #save the one with quotes
+    $temp1 =~ s/\"//g;
+    my $c1 = length($temp);
+    my $c2 = length($temp1);
 
 
-    # make the vlaue into a hex array for decoding
+    if (($c1 - $c2) % 2 == 0) {
+        if ($begin == 1) {    # single line
+            $pair = $temp;
+        }
+        else {                # middle multi-line
+            $pair .= " $temp";
+            next;
+        }
+    } else {    # multi line
+        if ($begin == 1) {
+            $pair  = $temp;    #start of multi-line
+            $begin = 0;
+            next;
+        } else {
+            $pair .= " $temp";    #end of multi-line
+            $begin = 1;
+        }
+    }
+
+    @a     = split(/ /, $pair);
+    $oid   = shift @a;
+    $value = join(' ', @a);
+    $value =~ s/^"//;
+    $value =~ s/"$//;
+
+    #for BladeCenter MM traps and RSA II traps,  creat a brief message
+    if ($oid =~ /BLADESPPALT-MIB::spTrapAppId|RSASPPALT-MIB::ibmSpTrapAppId/) {
+        $briefmsg .= "  App ID: $value\n";
+        $appname = $value;
+    }
+    elsif ($oid =~ /BLADESPPALT-MIB::spTrapAppType|RSASPPALT-MIB::ibmSpTrapAppType/) {
+        $briefmsg .= "  App Alert Type: $value\n";
+        $id = $value;
+    }
+    elsif ($oid =~ /BLADESPPALT-MIB::spTrapMsgText|RSASPPALT-MIB::ibmSpTrapMsgText/) {
+        $briefmsg .= "  Message: $value\n";
+        $message1 = $value;
+    }
+    elsif ($oid =~ /BLADESPPALT-MIB::spTrapBladeName/) {
+        my $temp = "$value";
+        $temp =~ /^\"(.*)\"/;
+        if ($1) {
+            $briefmsg .= "  Blade Name: $value\n";
+            $node1 = $1;
+        }
+    }
+    elsif (($oid =~ /BLADESPPALT-MIB::spTrapSourceId/)) {
+        $briefmsg .= "  Error Source=$value\n";
+        $errsrc = $value;
+    }
+    elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority|RSASPPALT-MIB::ibmSpTrapPriority/) {
+
+        # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4),
+        # Recovery Alert(8), Informational Only Alert(255)
+        if ($value == 0) {
+            $severity      = "Critical Alert";
+            $severity_type = "Critical";
+        } elsif ($value == 1) {
+            $severity      = "Major Alert";
+            $severity_type = "Critical";
+        } elsif ($value == 2) {
+            $severity      = "Non-Critical Alert";
+            $severity_type = "Warning";
+        } elsif ($value == 4) {
+            $severity      = "System Alert";
+            $severity_type = "Warning";
+        } elsif ($value == 8) {
+            $severity      = "Recovery Alert";
+            $severity_type = "Informational";
+        } elsif ($value == 255) {
+            $severity      = "Informational Alert";
+            $severity_type = "Informational";
+        }
+    }
+    elsif ($oid =~ /enterprises\.3183\.1\.1\.1/) {    #IPMI PRTs (traps)
+        $node1 = $host;
+
+        #$node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
+
+        my $ip1 = $ip;
+        $ip1 =~ /(\d+\.\d+\.\d+\.\d+)/;
+        $ip1 = $1;
+
+        # get the host name if it is unknown
+        if ($node1 =~ /<UNKNOWN>/) {
+            my $name = xCAT::NetworkUtils->gethostname($ip1);
+            if ($name) {
+                $node1 = $name;
+                $host  = $name;
+                my @shorthost = split(/\./, $node1);
+                $node1 = $shorthost[0];
+            }
+        }
+
+        #print "node1=$node1\n";
+        #node1 is the bmc name, we need the node that bmc connects to to call xCAT
+        my $realnode;
+        my $ipmitab = xCAT::Table->new('ipmi');
+        if (defined($ipmitab)) {
+            my @tmp1 = $ipmitab->getAllNodeAttribs([ 'node', 'bmc' ]);
+            if (@tmp1 && (@tmp1 > 0)) {
+                foreach (@tmp1) {
+                    if ($_->{bmc} eq $node1) { $realnode = $_->{node}; last; }
+                }
+            }
+            $ipmitab->close();
+        }
+        if ($realnode) { $node1 = $realnode; }
+
+        #print "node1=$node1\n";
+
+
+        # make the vlaue into a hex array for decoding
+        $value =~ s/\"//g;
+        my @varray = split(/\s+/, $value);
+
+        #print "varray=@varray\n";
+        foreach (@varray) { $_ = hex($_); }
+        my $error = xCAT_plugin::ipmi->decodealert($trapid, $node1, @varray);
+        $briefmsg .= $error;
+        $message  .= "    decodedipmialert=$error\n";
+
+        #severity value from decodealert are:
+        #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
+        $severity_type = "Warning";
+        if ($error) {
+            my @tempArray = split(/\:/, $error);
+            $severity = $tempArray[0];
+            if ($severity eq "LOG") {    #in fact this is called "unspecifiled"
+                $severity_type = "Warning";
+            }
+            elsif ($severity eq "INFORMATION") {
+                $severity_type = "Informational";
+            }
+            elsif ($severity eq "OK") {
+                $severity_type = "Informational";
+            }
+            elsif ($severity eq "CRITICAL") {
+                $severity_type = "Critical";
+            }
+            elsif ($severity eq "NON-RECOVERABLE") {
+                $severity_type = "Critical";
+            }
+        }
+    }
+
+
+    $message .= "    $oid=$value\n";
+
+    #check agains the settings
     $value =~ s/\"//g;
-    my @varray=split(/\s+/, $value);
-    #print "varray=@varray\n";
-    foreach (@varray) { $_=hex($_); }
-    my $error = xCAT_plugin::ipmi->decodealert($trapid, $node1, @varray);
-    $briefmsg .= $error;
-    $message .= "    decodedipmialert=$error\n";
+    checkWithOid($oid, $value);
 
-    #severity value from decodealert are: 
-    #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
-    $severity_type="Warning";
-    if ($error) {
-      my @tempArray=split(/\:/, $error);  
-      $severity=$tempArray[0];
-      if ($severity eq "LOG") {#in fact this is called "unspecifiled"
-        $severity_type="Warning";
-      } 
-      elsif($severity eq  "INFORMATION") {
-        $severity_type="Informational";
-      }
-      elsif($severity eq  "OK") {
-        $severity_type="Informational";
-      }
-      elsif($severity eq "CRITICAL") {
-        $severity_type="Critical";
-      }
-      elsif($severity eq "NON-RECOVERABLE") {
-        $severity_type="Critical";
-      }
-    } 
-  }
- 
-  
-  $message .= "    $oid=$value\n";
-
-  #check agains the settings 
-  $value =~ s/\"//g;  
-  checkWithOid($oid, $value);
-  #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
-  if ($IGNORE) { exit 0;} 
+    #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
+    if ($IGNORE) { exit 0; }
 }
 
-if (!$severity_type) { $severity_type="Warning"; }
-if ((!$IGNORE) && exists($hashI{$severity_type})) { 
-  #print "ignore, exit\n"; 
-  exit 0; 
+if (!$severity_type) { $severity_type = "Warning"; }
+if ((!$IGNORE) && exists($hashI{$severity_type})) {
+
+    #print "ignore, exit\n";
+    exit 0;
 }
-if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
-if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
-if ((!$DB) && exists($hashD{$severity_type})) { $DB=1; }
+if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL = 1; }
+if ((!$LOG)   && exists($hashL{$severity_type})) { $LOG   = 1; }
+if ((!$DB)    && exists($hashD{$severity_type})) { $DB    = 1; }
 foreach my $k (keys %hashRUN) {
     if (($hashRUN{$k} == 0) && exists($hashR{$k}->{$severity_type})) { $hashRUN{$k} = 1; }
 }
+
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
 
 #email 'alerts' aliase
-if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) { 
-  #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
-  #$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
-  #my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
-  my $head="SNMP $severity received from $host($ip)\n$briefmsg\n";
-  if ($node1) { $info= getMoreInfo($node1);}
-  my $middle="Trap details:\n$message\n";
+if ($EMAIL || ((keys(%hashE) == 0) && ($severity_type =~ /Critical|Warning/))) {
 
-  #email the full message to the alerts aliase
-  my $cmd="echo \'$info$head\n$middle\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
-  $ENV{'XCATCFG'}="";
-  `$cmd`;
+    #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
+    #$datetime=sprintf "%2d-%02d-%04d %02d:%02d:%02d", $mon+1,$mday,$year+1900,$hour,$min,$sec;
+    #my $head="SNMP $severity received from $host($ip) on $datetime\n$briefmsg\n";
+    my $head = "SNMP $severity received from $host($ip)\n$briefmsg\n";
+    if ($node1) { $info = getMoreInfo($node1); }
+    my $middle = "Trap details:\n$message\n";
+
+    #email the full message to the alerts aliase
+    my $cmd = "echo \'$info$head\n$middle\' \| mail -s \"$severity_type: Cluster SNMP Alert\!\" $MAILTO";
+    $ENV{'XCATCFG'} = "";
+    `$cmd`;
 }
 
 #log to syslog if needed. default is log all
-$ENV{'XCATCFG'}="";
-if ($LOG || (keys(%hashL)==0)) {
-  my $head="SNMP $severity received from $host($ip).";
-  my $body;
-  if ($briefmsg) { $body=$briefmsg;} 
-  else { $body=$message; }
+$ENV{'XCATCFG'} = "";
+if ($LOG || (keys(%hashL) == 0)) {
+    my $head = "SNMP $severity received from $host($ip).";
+    my $body;
+    if   ($briefmsg) { $body = $briefmsg; }
+    else             { $body = $message; }
 
-  openlog("xcat","","local4");  
-  if ($severity_type eq "Informational") {
-    syslog("local4|info", "$head\n$body\n");
-  } else {
-    syslog("local4|err", "$head\n$body\n");
-  }
-  closelog();
+    openlog("xcat", "", "local4");
+    if ($severity_type eq "Informational") {
+        syslog("local4|info", "$head\n$body\n");
+    } else {
+        syslog("local4|err", "$head\n$body\n");
+    }
+    closelog();
 }
 
 #save to eventlog table in xCAT database
 if ($DB) {
-  my $head="SNMP $severity received from $host($ip)\n$briefmsg\n";
-  if (($node1)&& (!$info)) { $info= getMoreInfo($node1);}
-  my $middle="Trap details:\n$message\n";
-  my $event={
-        eventtype => 'event',
-        monitor => 'snmpmon',
-        monnode => $host,
-        node => $node1? $node1:"",
+    my $head = "SNMP $severity received from $host($ip)\n$briefmsg\n";
+    if (($node1) && (!$info)) { $info = getMoreInfo($node1); }
+    my $middle = "Trap details:\n$message\n";
+    my $event  = {
+        eventtype   => 'event',
+        monitor     => 'snmpmon',
+        monnode     => $host,
+        node        => $node1 ? $node1 : "",
         application => $appname,
-        component => $errsrc ,
-        id =>$id,
-        severity => $severity_type,
-        message => $message1,
-        rawdata => "$info$head\n$middle",
+        component   => $errsrc,
+        id          => $id,
+        severity    => $severity_type,
+        message     => $message1,
+        rawdata     => "$info$head\n$middle",
     };
-  my @a=();
-  push(@a, $event);
-  xCAT::TableUtils->logEventsToDatabase(\@a); 
+    my @a = ();
+    push(@a, $event);
+    xCAT::TableUtils->logEventsToDatabase(\@a);
 }
 
 #run user defined commands if needed.
 foreach my $k (keys %hashRUN) {
     if ($hashRUN{$k} == 1) {
-	$k =~ /runcmd(\d*)/;
-	my $scripts=$settings{"cmds$1"};
-	while ($scripts =~ s/^([^,]+)(,)*//) {
-	    my $cmd="echo \'host=$host\nip=$ip\n$message\n\' \| $1";
-	    `$cmd`;   
-	}
+        $k =~ /runcmd(\d*)/;
+        my $scripts = $settings{"cmds$1"};
+        while ($scripts =~ s/^([^,]+)(,)*//) {
+            my $cmd = "echo \'host=$host\nip=$ip\n$message\n\' \| $1";
+            `$cmd`;
+        }
     }
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    getMoreInfo
       This function returns the node module/type, serial number, position etc. 
     Arguments:
@@ -358,71 +371,73 @@ foreach my $k (keys %hashRUN) {
     Returns:
        A string with node info ready to display.
 =cut
+
 #--------------------------------------------------------------------------------
 sub getMoreInfo {
-  my $node=shift; 
-  my $pos;
-  my $vpd; 
-     
-  # get module name and serial number from the xCAT DB.
-  my $ref;
-  my $table=xCAT::Table->new("vpd", -create =>1);
-  if ($table) {
-    my $ref = $table->getNodeAttribs($node, ['serial', 'mtm']);
-    if ($ref) {
-      $vpd .= "  Type/Mudule: ";
-      if ($ref->{mtm}) { $vpd .= $ref->{mtm};}
-      $vpd .= "\n";
-      $vpd .= "  Serial Number: ";
-      if ($ref->{serial}) { $vpd .= $ref->{serial};}
-      $vpd .= "\n";
-    }
-    $table->close();
-  }
+    my $node = shift;
+    my $pos;
+    my $vpd;
 
-  # get the info from rinv command if nothing in the vpd table
-  if (!$vpd) { 
-    my $result=`XCATBYPASS=Y $::XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`; 
-    if ($? == 0) {#success
-        chomp($result);
-        my @b=split(/\n/, $result);
-        foreach (@b) {
-          s/^(.*)\:(.*)\:(.*)$/$2: $3/; 
-	  $vpd .= " $_\n";
+    # get module name and serial number from the xCAT DB.
+    my $ref;
+    my $table = xCAT::Table->new("vpd", -create => 1);
+    if ($table) {
+        my $ref = $table->getNodeAttribs($node, [ 'serial', 'mtm' ]);
+        if ($ref) {
+            $vpd .= "  Type/Mudule: ";
+            if ($ref->{mtm}) { $vpd .= $ref->{mtm}; }
+            $vpd .= "\n";
+            $vpd .= "  Serial Number: ";
+            if ($ref->{serial}) { $vpd .= $ref->{serial}; }
+            $vpd .= "\n";
         }
-     }
-  }
-  if (!$vpd) {
-    $vpd .= "  Type/Mudule: \n";
-    $vpd .= "  Serial Number: \n";
-  }
-    
+        $table->close();
+    }
 
-  #get the position
-  my $table1=xCAT::Table->new("nodepos", -create =>1);
-  if ($table1) {
-    my $ref1 = $table1->getNodeAttribs($node, ['rack', 'u', 'chassis', 'slot',  'room', 'comments']);
-    if (($ref1) && ($ref1->{room})) { $pos .= "  Room: " . $ref1->{room}. "\n"; }
-    if(($ref1) && ($ref1->{rack})) { $pos .= "  Rack: ". $ref1->{rack}. "\n";}
-    if(($ref1) && ($ref1->{u})) { $pos .= "  Unit: " . $ref1->{u} . "\n"; }
-    if(($ref1) && ($ref1->{chassis})) { $pos .= "  Chassis: " . $ref1->{chassis} . "\n";}
-    if(($ref1) && ($ref1->{slot})) { $pos .=  "  Slot: " . $ref1->{slot} . "\n";}
-    if(($ref1) && ($ref1->{comments})) { $pos .=  "  Comments: " . $ref1->{comments} . "\n";}
+    # get the info from rinv command if nothing in the vpd table
+    if (!$vpd) {
+        my $result = `XCATBYPASS=Y $::XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`;
+        if ($? == 0) {    #success
+            chomp($result);
+            my @b = split(/\n/, $result);
+            foreach (@b) {
+                s/^(.*)\:(.*)\:(.*)$/$2: $3/;
+                $vpd .= " $_\n";
+            }
+        }
+    }
+    if (!$vpd) {
+        $vpd .= "  Type/Mudule: \n";
+        $vpd .= "  Serial Number: \n";
+    }
 
-    $pos .= "\n";
 
-    $table1->close();
-  }
+    #get the position
+    my $table1 = xCAT::Table->new("nodepos", -create => 1);
+    if ($table1) {
+        my $ref1 = $table1->getNodeAttribs($node, [ 'rack', 'u', 'chassis', 'slot', 'room', 'comments' ]);
+        if (($ref1) && ($ref1->{room})) { $pos .= "  Room: " . $ref1->{room} . "\n"; }
+        if (($ref1) && ($ref1->{rack})) { $pos .= "  Rack: " . $ref1->{rack} . "\n"; }
+        if (($ref1) && ($ref1->{u})) { $pos .= "  Unit: " . $ref1->{u} . "\n"; }
+        if (($ref1) && ($ref1->{chassis})) { $pos .= "  Chassis: " . $ref1->{chassis} . "\n"; }
+        if (($ref1) && ($ref1->{slot})) { $pos .= "  Slot: " . $ref1->{slot} . "\n"; }
+        if (($ref1) && ($ref1->{comments})) { $pos .= "  Comments: " . $ref1->{comments} . "\n"; }
 
-  if (($pos) || ($vpd)) {
-    return "  Node: $node\n$vpd$pos\n";
-  } 
- 
-  return "";
+        $pos .= "\n";
+
+        $table1->close();
+    }
+
+    if (($pos) || ($vpd)) {
+        return "  Node: $node\n$vpd$pos\n";
+    }
+
+    return "";
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   parseSettings 
       This function takes a setting string which looks like "key1=value1,key2=value2..."
       and returns a hash (key1=>value1, key2=>value2...). 
@@ -431,31 +446,33 @@ sub getMoreInfo {
     Returns:
        A hash. 
 =cut
+
 #--------------------------------------------------------------------------------
 sub parseSettings {
-  my $settings=shift;
-  my %ret=();
-  while (($settings =~ s/^(Informational|Warning|Critical|All|None)()()(,)*//) ||
-         ($settings =~ s/^([^\=]+)(=~)(\"[^\"]+\")(,)*//) || 
-         ($settings =~ s/^([^\=]+)(=~)([^\"\,]+)(,)*//) ||
-         ($settings =~ s/^([^\=]+)(=)(\"[^\"]+\")(,)*//) || 
-         ($settings =~ s/^([^\=]+)(=)([^\"\,]+)(,)*//)) {
-    my $val='eq';
-    if ($2 eq "=~") { $val='=~';}
-    if (exists($ret{$1}{$val})) {
-      my $pa=$ret{$1}{$val};
-      push(@$pa, $3);
+    my $settings = shift;
+    my %ret      = ();
+    while (($settings =~ s/^(Informational|Warning|Critical|All|None)()()(,)*//) ||
+        ($settings =~ s/^([^\=]+)(=~)(\"[^\"]+\")(,)*//) ||
+        ($settings =~ s/^([^\=]+)(=~)([^\"\,]+)(,)*//)   ||
+        ($settings =~ s/^([^\=]+)(=)(\"[^\"]+\")(,)*//)  ||
+        ($settings =~ s/^([^\=]+)(=)([^\"\,]+)(,)*//)) {
+        my $val = 'eq';
+        if ($2 eq "=~") { $val = '=~'; }
+        if (exists($ret{$1}{$val})) {
+            my $pa = $ret{$1}{$val};
+            push(@$pa, $3);
+        }
+        else {
+            $ret{$1}{$val} = [$3];
+        }
     }
-    else {
-      $ret{$1}{$val}=[$3];
-    }
-  }
 
-  #print Dumper(%ret);
-  return %ret;
+    #print Dumper(%ret);
+    return %ret;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3   checkWithOid 
       This function checks the input strings with the setting to see what
       actions need to be done for this event.  
@@ -465,77 +482,79 @@ sub parseSettings {
     Returns:
        none. The variables $EMAIL, $LOG, $IGNORE and $RUNCMD may be changed.
 =cut
+
 #--------------------------------------------------------------------------------
 sub checkWithOid {
-  my $o=shift;
-  my $v=shift;
+    my $o = shift;
+    my $v = shift;
 
-  sub checking {
-    my $hashX=shift;
-    my $o=shift;
-    my $v=shift;
-    
-    if (exists($hashX->{'All'})) { return 1;  }     
-    if (exists($hashX->{'None'})) { return 0;  } 
-    
-    my @a_oid=split('::', $o);
-    my $new_o=$o;
-    if (@a_oid == 2) { $new_o=$a_oid[1]; } 
-    #print "o=$o, new_o=$new_o v=$v\n"; 
+    sub checking {
+        my $hashX = shift;
+        my $o     = shift;
+        my $v     = shift;
 
-    #check for 'contains'
-    if (exists($hashX->{$o})) {
-      my $pa= $hashX->{$o}{'=~'};
-      foreach(@$pa) {
-        if ($v =~ /$_/) {return 1; } 
-      }
+        if (exists($hashX->{'All'}))  { return 1; }
+        if (exists($hashX->{'None'})) { return 0; }
+
+        my @a_oid = split('::', $o);
+        my $new_o = $o;
+        if (@a_oid == 2) { $new_o = $a_oid[1]; }
+
+        #print "o=$o, new_o=$new_o v=$v\n";
+
+        #check for 'contains'
+        if (exists($hashX->{$o})) {
+            my $pa = $hashX->{$o}{'=~'};
+            foreach (@$pa) {
+                if ($v =~ /$_/) { return 1; }
+            }
+        }
+        if (exists($hashX->{$new_o})) {
+            my $pa = $hashX->{$new_o}{'=~'};
+            foreach (@$pa) {
+                if ($v =~ /$_/) { return 1; }
+            }
+        }
+
+        #check for 'equals'
+        if (exists($hashX->{$o})) {
+            my $pa = $hashX->{$o}{'eq'};
+            foreach (@$pa) {
+                if ($_ eq $v) { return 1; }
+            }
+        }
+        if (exists($hashX->{$new_o})) {
+            my $pa = $hashX->{$new_o}{'eq'};
+            foreach (@$pa) {
+                if ($_ eq $v) { return 1; }
+            }
+        }
+
+
+        return 0;
     }
-    if (exists($hashX->{$new_o})) {
-      my $pa= $hashX->{$new_o}{'=~'};
-      foreach(@$pa) {
-        if ($v =~ /$_/) {return 1; } 
-      }
+
+    if ((!$IGNORE) && (keys(%hashI) > 0)) {
+        $IGNORE = checking(\%hashI, $o, $v);
+        if ($IGNORE) { return; }
     }
 
-    #check for 'equals'
-    if (exists($hashX->{$o})) {
-      my $pa= $hashX->{$o}{'eq'};
-      foreach(@$pa) {
-        if ($_ eq $v) { return 1; } 
-      }
-    }
-    if (exists($hashX->{$new_o})) {
-      my $pa= $hashX->{$new_o}{'eq'};
-      foreach(@$pa) {
-        if ($_ eq $v) { return 1; } 
-      }
+    if ((!$EMAIL) && (keys(%hashE) > 0)) {
+        $EMAIL = checking(\%hashE, $o, $v);
     }
 
-    
-    return 0;
-  }
- 
-  if ((!$IGNORE) && (keys(%hashI)>0)) {
-    $IGNORE=checking(\%hashI, $o, $v);
-    if ($IGNORE) { return;}
-  }
+    if ((!$LOG) && (keys(%hashL) > 0)) {
+        $LOG = checking(\%hashL, $o, $v);
+    }
 
-  if ((!$EMAIL) && (keys(%hashE)>0)) {
-    $EMAIL=checking(\%hashE, $o, $v);
-  }
+    if ((!$DB) && (keys(%hashD) > 0)) {
+        $DB = checking(\%hashD, $o, $v);
+    }
 
-  if ((!$LOG) && (keys(%hashL)>0)) {
-    $LOG=checking(\%hashL, $o, $v);
-  }
+    foreach my $k (keys %hashRUN) {
+        if ($hashRUN{$k} == 0) { $hashRUN{$k} = checking($hashR{$k}, $o, $v); }
+    }
 
-  if ((!$DB) && (keys(%hashD)>0)) {
-    $DB=checking(\%hashD, $o, $v);
-  }
-
-  foreach my $k (keys %hashRUN) {
-    if ($hashRUN{$k} == 0) { $hashRUN{$k} = checking($hashR{$k}, $o, $v); }
-  }
- 
 }
 
 

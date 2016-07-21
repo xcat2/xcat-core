@@ -50,7 +50,7 @@ BEGIN
 #    TODO: Remove during FVT should not need because DBD is compiled with
 #    5.8.8 and we require 61J or later which runs with 5.8.8 Perl.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -73,19 +73,20 @@ my $args = join ' ', @ARGV;
 $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
+
 # parse the options
 if (
     !GetOptions(
-                'i|init'    => \$::INIT,
-                'S|Server'  => \$::SERVER,
-                'C|Client'  => \$::CLIENT,
-                'N|nostart'      => \$::NOSTART,
-                'o|odbc'    => \$::SETUPODBC,
-                'h|help'    => \$::HELP,
-                'v|version' => \$::VERSION,
-                'V|verbose' => \$::VERBOSE,
-                'p|passwd' =>  \$::PASSWD,
-                'r|rm'      => \$::RM,
+        'i|init'    => \$::INIT,
+        'S|Server'  => \$::SERVER,
+        'C|Client'  => \$::CLIENT,
+        'N|nostart' => \$::NOSTART,
+        'o|odbc'    => \$::SETUPODBC,
+        'h|help'    => \$::HELP,
+        'v|version' => \$::VERSION,
+        'V|verbose' => \$::VERBOSE,
+        'p|passwd'  => \$::PASSWD,
+        'r|rm'      => \$::RM,
     )
   )
 {
@@ -143,9 +144,9 @@ else
 
 if ($::RM)
 {
-	#&remove;
-       xCAT::MsgUtils->message("I", "Remove is not currently supported");
-	exit(0);
+    #&remove;
+    xCAT::MsgUtils->message("I", "Remove is not currently supported");
+    exit(0);
 }
 
 
@@ -173,7 +174,7 @@ if (($::PASSWD) && ($::VERBOSE))
     &usage;
     exit(1);
 }
-if ((!($::SERVER)) && (!($::CLIENT))&& (!($::PASSWD)))
+if ((!($::SERVER)) && (!($::CLIENT)) && (!($::PASSWD)))
 {
     xCAT::MsgUtils->message("I", "Either -S, -C, or -p flag must be chosen");
     &usage;
@@ -189,7 +190,7 @@ if (($::SERVER) && ($::CLIENT))
 if ((!($::SERVER)) && (!($::CLIENT)) && ($::SETUPODBC))
 {
     xCAT::MsgUtils->message("I",
-                      "Either -S  or -C flag must be chosen with the -o flag.");
+        "Either -S  or -C flag must be chosen with the -o flag.");
     &usage;
     exit(1);
 }
@@ -209,91 +210,93 @@ if ((!($::INIT)) && ($::SETUPODBC))
 if (!(-e ($::installdb2dir)))
 {
     my $message =
-      "\nDB2 is not installed. It should be first obtained and installed into $::installdb2dir.";
+"\nDB2 is not installed. It should be first obtained and installed into $::installdb2dir.";
     xCAT::MsgUtils->message("SE", "$message");
     exit(1);
 }
 
-# check to see if the perl DBD for DB2 is installed 
+# check to see if the perl DBD for DB2 is installed
 #
 my $cmd = "rpm -qa | grep perl-DBD-DB2";
 xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
-        my $message =
-          "\perl-DBD-DB2 is not installed.  It should be first obtained from the xcat dependency tarballs and installed before we can setup DB2";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
-        exit(1);
+    my $message =
+"\perl-DBD-DB2 is not installed.  It should be first obtained from the xcat dependency tarballs and installed before we can setup DB2";
+    xCAT::MsgUtils->message("E", " $cmd failed. $message");
+    exit(1);
 }
 
 # If setting up the Server, check to see if  DB2  is running
 $::db2running     = 0;
-$::xcatrunningdb2 = 0; 
+$::xcatrunningdb2 = 0;
 
 # determine the location of the xcatdb instance
 #
-$::databaseloc            = "/var/lib/db2";    # database location default
-$::databaselocdir         = "/var/lib";       # database path 
+$::databaseloc    = "/var/lib/db2";    # database location default
+$::databaselocdir = "/var/lib";        # database path
+
 # if database location environment variable is set, use it
-if ($ENV{'DATABASELOC'})    # input where xcatdb is located  
+if ($ENV{'DATABASELOC'})               # input where xcatdb is located
 {
-    $::databaseloc = $ENV{'DATABASELOC'};
+    $::databaseloc    = $ENV{'DATABASELOC'};
     $::databaselocdir = $ENV{'DATABASELOC'};
-    $::databaseloc .="\/db2";
-} else { # use site.databaseloc if set
-  if (!($::NOSTART)) {
-    my $cmd = " XCATBYPASS=1  tabdump site | grep databaseloc";
-    my @output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC == 0)    # if there 
-    {
-       (my $attr, my $db) = split(",", $output[0]);
-       (my $q, $::databaseloc) = split("\"", $db);
-       $::databaselocdir = $::databaseloc;
-       $::databaseloc .="\/db2";
-   
+    $::databaseloc .= "\/db2";
+} else {                               # use site.databaseloc if set
+    if (!($::NOSTART)) {
+        my $cmd = " XCATBYPASS=1  tabdump site | grep databaseloc";
+        my @output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC == 0)         # if there
+        {
+            (my $attr, my $db) = split(",", $output[0]);
+            (my $q, $::databaseloc) = split("\"", $db);
+            $::databaselocdir = $::databaseloc;
+            $::databaseloc .= "\/db2";
+
+        }
     }
-  }
 }
 
 
-# If not NOSTART where we are setting up DB2 before xCAT is installed. 
-# check that they have not defined the databaseloc under the site.installoc 
+# If not NOSTART where we are setting up DB2 before xCAT is installed.
+# check that they have not defined the databaseloc under the site.installoc
 # directory, default /install.  This is invalid because this directory
 # is usually mounted on the Service Nodes.  Error out if they do
-# this is really the attribute in installdir which I will check. 
-if (!($::NOSTART)){
-  my @installlocdir;
-  my $cmd = " XCATBYPASS=1  tabdump site | grep installdir";
-  my @installlocation = xCAT::Utils->runcmd($cmd, -1);
-  if ($::RUNCMD_RC == 0)   
-  {
-   (my $attr, my $installoc) = split(",", $installlocation[0]);
-   (my $q,my $installpt) = split("\"", $installoc);  # remove quotes
-   @installlocdir = split '/', $installpt;  # get the base directory
+# this is really the attribute in installdir which I will check.
+if (!($::NOSTART)) {
+    my @installlocdir;
+    my $cmd = " XCATBYPASS=1  tabdump site | grep installdir";
+    my @installlocation = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC == 0)
+    {
+        (my $attr, my $installoc) = split(",", $installlocation[0]);
+        (my $q, my $installpt) = split("\"", $installoc);    # remove quotes
+        @installlocdir = split '/', $installpt;    # get the base directory
 
-  } else { 
-     $installlocdir[1] = "install";   # default
-  }
-  
-  # is it the same as the first directory in databaseloc
-  my @dblocdir = split '/', $::databaselocdir;  # get the base directory
-  $installlocdir[1] =~ s/\s*//g; #remove blanks
-  $dblocdir[1] =~ s/\s*//g; #remove blanks
-  if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
-       xCAT::MsgUtils->message("E", "The site databaseloc  attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.");
-       exit(1);
-  }
+    } else {
+        $installlocdir[1] = "install";             # default
+    }
+
+    # is it the same as the first directory in databaseloc
+    my @dblocdir = split '/', $::databaselocdir;    # get the base directory
+    $installlocdir[1] =~ s/\s*//g;                  #remove blanks
+    $dblocdir[1] =~ s/\s*//g;                       #remove blanks
+    if ($installlocdir[1] eq $dblocdir[1]) {        # if they match,error
+        xCAT::MsgUtils->message("E", "The site databaseloc  attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.");
+        exit(1);
+    }
 }
-if (!(-e $::databaselocdir)){ # if it does not exist, create it
-   my $cmd = "mkdir -p $::databaselocdir";
-   xCAT::Utils->runcmd($cmd, 0);
-   if ($::RUNCMD_RC != 0)
-   {
-       xCAT::MsgUtils->message("E", " $cmd failed.");
-       exit(1);
-   }
+if (!(-e $::databaselocdir)) {    # if it does not exist, create it
+    my $cmd = "mkdir -p $::databaselocdir";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", " $cmd failed.");
+        exit(1);
+    }
 }
-# if we are on the MN ( db2 server) 
+
+# if we are on the MN ( db2 server)
 if ($::SERVER)
 {
     my $cmd = "ps -ef | grep db2";
@@ -307,7 +310,7 @@ if ($::SERVER)
             if ($::INIT)
             {
                 my $message =
-                  "DB2 is running.  Database initialization will not take place.";
+"DB2 is running.  Database initialization will not take place.";
                 xCAT::MsgUtils->message("I", "$message");
             }
             $::db2running = 1;
@@ -322,7 +325,7 @@ if ($::SERVER)
             if ($::INIT)
             {
                 my $message =
-                  "The /etc/xcat/cfgloc file is already configured for DB2. xCAT appears to be already running on DB2.  xcat database configuration will not take place.";
+"The /etc/xcat/cfgloc file is already configured for DB2. xCAT appears to be already running on DB2.  xcat database configuration will not take place.";
                 xCAT::MsgUtils->message("I", "$message");
             }
             $::xcatrunningdb2 = 1;
@@ -331,7 +334,7 @@ if ($::SERVER)
 }
 
 #  if not just odbc update  and xcat MN is not already running on DB2
-#   or if we are setting up the  Client and not just the ODBC 
+#   or if we are setting up the  Client and not just the ODBC
 #   or change password
 #   then Get  instance password
 #
@@ -354,10 +357,11 @@ if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly
         `stty -echo`;
         chop(my $adminpwd2 = <STDIN>);
         `stty echo`;
-        if ($::adminpassword ne $adminpwd2) { # no match
+
+        if ($::adminpassword ne $adminpwd2) {    # no match
             $msg = "Sorry, passwords do not match. ";
-             xCAT::MsgUtils->message('I', "$msg");
-             exit 1;
+            xCAT::MsgUtils->message('I', "$msg");
+            exit 1;
         }
     }
 }
@@ -365,18 +369,18 @@ if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly
 # if we are just changing the password for the instance
 #  do it and exit
 if ($::PASSWD) {
-  my $rc=0;
-  $rc=&updatepasswd;
-  exit $rc;
+    my $rc = 0;
+    $rc = &updatepasswd;
+    exit $rc;
 }
 
 # initial setup request and not already running db2
 if (($::INIT) && ($::xcatrunningdb2 == 0))
 {
-    if (($::SERVER) && (!($::NOSTART))) 
-    {    # setting up db2 server on the MN and not nostart option  
+    if (($::SERVER) && (!($::NOSTART)))
+    {    # setting up db2 server on the MN and not nostart option
 
-        # makesure the daemon is running 
+        # makesure the daemon is running
         &startxcatd;
         #
         # Backup current database
@@ -393,7 +397,8 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         }
 
         &backupxcatdb;
-        # shutdown the xcatd daemon while migrating 
+
+        # shutdown the xcatd daemon while migrating
         &shutdownxcatd;
 
         #
@@ -425,7 +430,7 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         else
         {
             xCAT::MsgUtils->message("E",
-                                    "Hostname resolution for $hname failed.");
+                "Hostname resolution for $hname failed.");
             &startxcatd;
             exit(1);
         }
@@ -456,10 +461,10 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         {
             &db2start;
 
-          #
-          # Setup DB2 to restart on reboot  
-          #
-          &db2reboot;
+            #
+            # Setup DB2 to restart on reboot
+            #
+            &db2reboot;
         }
 
     }
@@ -468,7 +473,7 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     if (($::SERVER) && ($::xcatrunningdb2 == 0))
     {
         #
-        # update DBM config 
+        # update DBM config
         #
         &updateDBM;
 
@@ -490,6 +495,7 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         &catalogServer;
         &createcfgloc;
     }
+
     # add paths to db2 code to roots path.  Need this for LL, but it is
     # convenient
     &adddb2paths;
@@ -499,25 +505,26 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     #
     if ($::SERVER)
     {
-       if ($::xcatrunningdb2 == 0) # if not already running on db2
-       {
-        if (!($::NOSTART)){
-          &restorexcatdb;
+        if ($::xcatrunningdb2 == 0)    # if not already running on db2
+        {
+            if (!($::NOSTART)) {
+                &restorexcatdb;
+            }
         }
-       }
 
         if ($::NOSTART) {
-          xCAT::MsgUtils->message("I",
-                                "xCAT DB2 database is setup.\n");
+            xCAT::MsgUtils->message("I",
+                "xCAT DB2 database is setup.\n");
         } else {
-          xCAT::MsgUtils->message("I",
-                                "xCAT is  running on the DB2 database.\n");
+            xCAT::MsgUtils->message("I",
+                "xCAT is  running on the DB2 database.\n");
         }
-       # add cron entry for table reorg
-       &updatecrontab;
+
+        # add cron entry for table reorg
+        &updatecrontab;
 
     }
-    else  # client
+    else    # client
     {
         #
         # start the daemon
@@ -562,13 +569,14 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\ndb2sqlsetup - Performs the setup of IBM DB2 for xCAT to use as its database. See man db2sqlsetup for more information."
-        );
-  my $msg=
-      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-N|--nostart] [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-p|--passwd> [-S|-C]\n ";
+"Usage:\ndb2sqlsetup - Performs the setup of IBM DB2 for xCAT to use as its database. See man db2sqlsetup for more information."
+    );
+    my $msg =
+"db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-N|--nostart] [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-p|--passwd> [-S|-C]\n ";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    startxcatd 
@@ -579,26 +587,26 @@ sub usage
 
 #-----------------------------------------------------------------------------
 
-sub startxcatd 
+sub startxcatd
 
 {
-   my $xcmd;
-   if ($::osname eq 'AIX')
-   {
-      if ($ENV{'XCATDB2QUIET'} == 1){    # don't show errors
-        $xcmd = "$::XCATROOT/sbin/restartxcatd >/dev/null 2>&1";
-      } else {
-        $xcmd = "$::XCATROOT/sbin/restartxcatd";
-      }
-      system($xcmd);
+    my $xcmd;
+    if ($::osname eq 'AIX')
+    {
+        if ($ENV{'XCATDB2QUIET'} == 1) {    # don't show errors
+            $xcmd = "$::XCATROOT/sbin/restartxcatd >/dev/null 2>&1";
+        } else {
+            $xcmd = "$::XCATROOT/sbin/restartxcatd";
+        }
+        system($xcmd);
 
-   }
-   else
-   {
-     #$xcmd = "service xcatd restart";
-     my $ret=xCAT::Utils->restartservice("xcatd");
-     return $ret;
-   }
+    }
+    else
+    {
+        #$xcmd = "service xcatd restart";
+        my $ret = xCAT::Utils->restartservice("xcatd");
+        return $ret;
+    }
 
 }
 
@@ -627,7 +635,7 @@ sub shutdownxcatd
     else
     {
         #$xcmd = "service xcatd stop";
-        my $ret=xCAT::Utils->stopservice("xcatd");
+        my $ret = xCAT::Utils->stopservice("xcatd");
         return $ret;
     }
 
@@ -648,40 +656,40 @@ sub backupxcatdb
 {
 
 
-        xCAT::MsgUtils->message(
-            "I",
-            "Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
-            );
-        if (!(-e $::backupdir))
-        {    # does not exist, make it
-            my $cmd = "mkdir -p $::backupdir";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
-                exit(1);
-            }
-        }
-        else
-        {    # remove contents
-
-            my $cmd = "rm -rf $::backupdir/*";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
-                exit(1);
-            }
-        }
-
-        # back it up
-        my $cmd = " dumpxCATdb -p $::backupdir";
+    xCAT::MsgUtils->message(
+        "I",
+"Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
+    );
+    if (!(-e $::backupdir))
+    {    # does not exist, make it
+        my $cmd = "mkdir -p $::backupdir";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
         }
+    }
+    else
+    {    # remove contents
+
+        my $cmd = "rm -rf $::backupdir/*";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+            exit(1);
+        }
+    }
+
+    # back it up
+    my $cmd = " dumpxCATdb -p $::backupdir";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("E", " $cmd failed.");
+        exit(1);
+    }
 
 }
 
@@ -709,37 +717,37 @@ sub mkdb2user
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
-          $makeuser =1;  # user does not exist
-        } else {   # user exists but check to see if home directory exist
+            $makeuser = 1;    # user does not exist
+        } else {    # user exists but check to see if home directory exist
             my $homedir = xCAT::Utils->getHomeDir("xcatdb");
-            if (!(-e $homedir)) { # if it does not exist
-              $cmd = "rmuser xcatdb";  # we need to remake the user
-              xCAT::Utils->runcmd($cmd, 0);
-              if ($::RUNCMD_RC != 0)
-              {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
-                exit(1);
-              }
-              $makeuser =1;  
-              
-            } else { # user ok , home dir ok
-              $makeuser =0;  
+            if (!(-e $homedir)) {    # if it does not exist
+                $cmd = "rmuser xcatdb";    # we need to remake the user
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message("SE", " $cmd failed.");
+                    exit(1);
+                }
+                $makeuser = 1;
+
+            } else {                       # user ok , home dir ok
+                $makeuser = 0;
             }
         }
-        if ($makeuser ==1) {
-           $cmd = "lsgroup xcatdb";
-           xCAT::Utils->runcmd($cmd, -1);
-           if ($::RUNCMD_RC != 0)
-           {
+        if ($makeuser == 1) {
+            $cmd = "lsgroup xcatdb";
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0)
+            {
 
-              #group does not exist, need to make it
-              $cmd = "mkgroup xcatdb";
-              xCAT::Utils->runcmd($cmd, 0);
-              if ($::RUNCMD_RC != 0)
-              {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
-                exit(1);
-              }
+                #group does not exist, need to make it
+                $cmd = "mkgroup xcatdb";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message("SE", " $cmd failed.");
+                    exit(1);
+                }
             }
             $cmd = "mkuser pgrp=xcatdb home=$::databaseloc shell=/bin/ksh xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
@@ -748,6 +756,7 @@ sub mkdb2user
                 xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
+
             # touch .profile to makesure it stays owned by xcatd
             $cmd = "touch $::databaseloc/.profile";
             xCAT::Utils->runcmd($cmd, 0);
@@ -767,10 +776,10 @@ sub mkdb2user
         }
 
         # set xcatdb id password
-        my $verboseflg=0;
-        if ($::VERBOSE) {   # do not show commands with password
-          $verboseflg=1;
-          $::VERBOSE=undef;
+        my $verboseflg = 0;
+        if ($::VERBOSE) {    # do not show commands with password
+            $verboseflg = 1;
+            $::VERBOSE  = undef;
         }
         $cmd = qq~echo "xcatdb:$::adminpassword" | /bin/chpasswd -c~;
         xCAT::Utils->runcmd($cmd, 0);
@@ -781,7 +790,7 @@ sub mkdb2user
             exit(1);
         }
         if ($verboseflg == 1) {
-          $::VERBOSE=1;
+            $::VERBOSE = 1;
         }
     }
     else
@@ -791,40 +800,40 @@ sub mkdb2user
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
-          $makeuser =1;  # user does not exist
-        } else {   # user exists but check to see if home directory exist
+            $makeuser = 1;    # user does not exist
+        } else {    # user exists but check to see if home directory exist
             my $homedir = xCAT::Utils->getHomeDir("xcatdb");
-            if (!(-e $homedir)) { # if it does not exist
-              $cmd = "userdel xcatdb";  # we need to remake the user
-              xCAT::Utils->runcmd($cmd, 0);
-              if ($::RUNCMD_RC != 0)
-              {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
-                exit(1);
-              }
-              $makeuser =1;  # user does not exist
-              
-            } else { # user ok , home dir ok
-              $makeuser =0;  
+            if (!(-e $homedir)) {    # if it does not exist
+                $cmd = "userdel xcatdb";    # we need to remake the user
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message("SE", " $cmd failed.");
+                    exit(1);
+                }
+                $makeuser = 1;              # user does not exist
+
+            } else {                        # user ok , home dir ok
+                $makeuser = 0;
             }
         }
-        if ($makeuser ==1) {
-          $cmd = "egrep -i \"^xcatdb:\" /etc/group";
-          xCAT::Utils->runcmd($cmd, -1);
-          if ($::RUNCMD_RC != 0)
-          {
-
-            #group does not exist, need to make it
-            $cmd = "groupadd  xcatdb";
-            xCAT::Utils->runcmd($cmd, 0);
+        if ($makeuser == 1) {
+            $cmd = "egrep -i \"^xcatdb:\" /etc/group";
+            xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
-                exit(1);
-            }
-          }
 
-          #user does not exist, need to make it
+                #group does not exist, need to make it
+                $cmd = "groupadd  xcatdb";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message("SE", " $cmd failed.");
+                    exit(1);
+                }
+            }
+
+            #user does not exist, need to make it
             $cmd = "useradd -d $::databaseloc -g xcatdb -m -s /bin/bash xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -836,10 +845,10 @@ sub mkdb2user
         }
 
         # set xcatdb id password
-        my $verboseflg=0;
-        if ($::VERBOSE) {   # do not show commands with password
-          $verboseflg=1;
-          $::VERBOSE=undef;
+        my $verboseflg = 0;
+        if ($::VERBOSE) {    # do not show commands with password
+            $verboseflg = 1;
+            $::VERBOSE  = undef;
         }
         $cmd = qq~echo $::adminpassword | passwd xcatdb --stdin~;
         xCAT::Utils->runcmd($cmd, 0);
@@ -850,7 +859,7 @@ sub mkdb2user
             exit(1);
         }
         if ($verboseflg == 1) {
-          $::VERBOSE=1;
+            $::VERBOSE = 1;
         }
     }
 
@@ -934,10 +943,11 @@ sub setupinstance
             if ($::RUNCMD_RC != 0)
             {                       # if error exit
                 xCAT::MsgUtils->message("E", " $cmd failed.");
+
                 # start the daemon
                 &startxcatd;
                 exit(1);
-    
+
             }
 
             # setup instance
@@ -967,13 +977,13 @@ sub setupinstance
             }
 
             $cmd = "echo \"EXTSHM=ON\" >> $::databaseloc/sqllib/db2profile ";
-            xCAT::Utils->runcmd($cmd,0);
+            xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
             $cmd = "echo \"export EXTSHM\" >> $::databaseloc/sqllib/db2profile ";
-            xCAT::Utils->runcmd($cmd,0);
+            xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
@@ -1004,21 +1014,22 @@ sub setupinstance
 
         }
     }
+
     # for either client or server update
     # su to xcatdb and run more setup
     $cmd = "export EXTSHM=ON ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("SI", " $cmd warning.");
+        xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
     $cmd = "db2set DB2ENVLIST=EXTSHM  ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("SI", " $cmd warning.");
+        xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
-    
+
 }
 
 #-----------------------------------------------------------------------------
@@ -1102,16 +1113,17 @@ sub setupdb2env
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
+            xCAT::MsgUtils->message("SE", " $cmd failed.");
         }
         $cmd = "chmod 755 /etc/profile.d/xcatdb2.csh";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
+            xCAT::MsgUtils->message("SE", " $cmd failed.");
         }
         my $path = $::installdb2dir;
-        $path .="\/lib64";
+        $path .= "\/lib64";
+
         # add path of db2 libraries to ld.so.conf
         my $cmd = "egrep -i \"V9.7\" /etc/ld.so.conf";
         xCAT::Utils->runcmd($cmd, -1);
@@ -1150,7 +1162,7 @@ sub db2start
         my $db2check = "db2sysc";    # see if really running
         if (grep(/$db2check/, @output))
         {
-          return;
+            return;
         }
     }
     xCAT::MsgUtils->message("I", "Starting the DB2 Server");
@@ -1166,9 +1178,9 @@ sub db2start
         sleep 20;
         $rc = &rundb2cmd($cmd);
         if ($rc != 0) {
-          xCAT::MsgUtils->message("W", " $cmd failed.");
-          &startxcatd;
-          exit(1);
+            xCAT::MsgUtils->message("W", " $cmd failed.");
+            &startxcatd;
+            exit(1);
         }
     }
 
@@ -1196,7 +1208,7 @@ sub catalogServer
     else
     {
         my $msg =
-          "Input the hostname or ip address of the Management Node as known by this Service node.  Should be the same as the site.master attribute: ";
+"Input the hostname or ip address of the Management Node as known by this Service node.  Should be the same as the site.master attribute: ";
 
         xCAT::MsgUtils->message('I', "$msg");
         chop($MN = <STDIN>);
@@ -1215,6 +1227,7 @@ sub catalogServer
     $rc  = &rundb2cmd($cmd);
 
 }
+
 #-----------------------------------------------------------------------------
 
 =head3   updateDBM 
@@ -1226,14 +1239,14 @@ sub catalogServer
 
 #-----------------------------------------------------------------------------
 
-sub updateDBM 
+sub updateDBM
 {
     xCAT::MsgUtils->message("I",
-                 "Updating the DBM.");
+        "Updating the DBM.");
     my $cmd;
     my $rc = 0;
 
-    # su to xcatdb to update the DBM 
+    # su to xcatdb to update the DBM
     $cmd = "db2 -tvf  /opt/xcat/share/xcat/scripts/updateDBM.sql ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
@@ -1258,10 +1271,11 @@ sub updateDBM
 sub createxcatdb
 {
     xCAT::MsgUtils->message("I",
-                 "Creating the xCAT database. This can take several minutes.");
+        "Creating the xCAT database. This can take several minutes.");
     my $cmd;
     my $rc = 0;
-    # need to make sure the createdb.sql script if pointing to the 
+
+    # need to make sure the createdb.sql script if pointing to the
     # correct databaseloc,  the default is /var/lib/db2 in the shipped
     # script but this may have been changed by the admin
     # two lines are affected
@@ -1269,56 +1283,59 @@ sub createxcatdb
     #('/var/lib/db2 /ts16')  BUFFERPOOL BP16K;
     #Create tablespace xcattbs32k pagesize 32k managed by system using
     #  ('/var/lib/db2 /ts32')  BUFFERPOOL BP32K;
-    my $createdb       = "/opt/xcat/share/xcat/scripts/createdb.sql";
+    my $createdb    = "/opt/xcat/share/xcat/scripts/createdb.sql";
     my $createdborg = "/opt/xcat/share/xcat/scripts/createdb.sql.org";
     my $createdbtmp = "/opt/xcat/share/xcat/scripts/createdb.sql.tmp";
     my $cmd;
     my $message;
     if (!(-e $createdborg)) {
-      $cmd = "cp $createdb $createdborg";
-      xCAT::Utils->runcmd($cmd, 0);
-      if ($::RUNCMD_RC != 0)
-      {
+        $cmd = "cp $createdb $createdborg";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit 1;
-      }
+        }
     }
+
     # rm tmp file
-    $cmd = "rm $createdbtmp";  # rm tmp file, ignore errors
+    $cmd = "rm $createdbtmp";    # rm tmp file, ignore errors
     xCAT::Utils->runcmd($cmd, -1);
     $cmd = "touch $createdbtmp";
-    xCAT::Utils->runcmd($cmd,0 );
+    xCAT::Utils->runcmd($cmd, 0);
+
     # now read the orginal file and build the tmp file with the correct info
-    open (CREATEDB," < $createdb");
-    foreach my $line (<CREATEDB>) 
+    open(CREATEDB, " < $createdb");
+    foreach my $line (<CREATEDB>)
     {
-     chop $line;
-     if ($line =~ /^Create tablespace/i) {  # line to change
-      my $newline;
-       if ($line =~ /xcattbs16k/i) {
-         $newline="Create tablespace xcattbs16k pagesize 16k managed by system using('$::databaseloc/ts16') BUFFERPOOL BP16K;";
-         $cmd="echo \"$newline\" >> $createdbtmp"
-       } else {
-         $newline="Create tablespace xcattbs32k pagesize 32k managed by system using('$::databaseloc/ts32') BUFFERPOOL BP32K;";
-         $cmd="echo \"$newline\" >> $createdbtmp"
-       }
-     } else { # just put line in new file
-       $cmd="echo \"$line\" >> $createdbtmp"
-     }
-     xCAT::Utils->runcmd($cmd, 0);
-     if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message("E", " $cmd failed. Could not build createdb.sql");
-        exit 1;
-     }
+        chop $line;
+        if ($line =~ /^Create tablespace/i) {    # line to change
+            my $newline;
+            if ($line =~ /xcattbs16k/i) {
+                $newline = "Create tablespace xcattbs16k pagesize 16k managed by system using('$::databaseloc/ts16') BUFFERPOOL BP16K;";
+                $cmd = "echo \"$newline\" >> $createdbtmp"
+            } else {
+                $newline = "Create tablespace xcattbs32k pagesize 32k managed by system using('$::databaseloc/ts32') BUFFERPOOL BP32K;";
+                $cmd = "echo \"$newline\" >> $createdbtmp"
+            }
+        } else {                                 # just put line in new file
+            $cmd = "echo \"$line\" >> $createdbtmp"
+        }
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E", " $cmd failed. Could not build createdb.sql");
+            exit 1;
+        }
     }
     close CREATEDB;
+
     # copy tmp back to createdb.sql
     $cmd = "cp $createdbtmp $createdb";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit 1;
+        xCAT::MsgUtils->message("E", " $cmd failed.");
+        exit 1;
     }
 
 
@@ -1332,7 +1349,7 @@ sub createxcatdb
 
     # restart the instance to apply the change
     xCAT::MsgUtils->message("I",
-             "Database created. Restarting the instance to apply the change. ");
+        "Database created. Restarting the instance to apply the change. ");
     $cmd = "db2 connect reset ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
@@ -1378,7 +1395,7 @@ sub db2reboot
     xCAT::MsgUtils->message("I", "Setting up DB2 to start on reboot");
     my $cmd;
 
-    # su to xcatdb 
+    # su to xcatdb
     $cmd = "db2iauto -on xcatdb ";
     my $rc = &rundb2cmd($cmd);
     if ($rc != 0)
@@ -1386,79 +1403,83 @@ sub db2reboot
         xCAT::MsgUtils->message("W", " $cmd failed.");
 
     }
+
     # root needs to run the command also
     $cmd = $::installdb2dir;
     $cmd .= "\/bin\/db2iauto -on xcatdb ";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
-    {                       # if error exit
-       xCAT::MsgUtils->message("W", " $cmd failed.");
-    
+    {    # if error exit
+        xCAT::MsgUtils->message("W", " $cmd failed.");
+
     }
+
     # For redhat 6 need to setup upstart for reboot until DB2 does
     # DB2 will shipped this with 9.7  later PTF
     # check to see DB2 has not already implemented a script in /etc/init
-    my $osver=xCAT::Utils->osver;
+    my $osver = xCAT::Utils->osver;
     if ($osver eq 'rhserver6') {
-      # see if left over /etc/init.d/db2xcat then remove it. This was put in
-      # by  xcat db2sqlsetup script in the past
-      if (-e("/etc/init.d/db2xcat")) {
-         $cmd = "chkconfig --del db2xcat";
-          xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {
-            xCAT::MsgUtils->message("E", " $cmd failed.");
 
-          }
-          $cmd = "rm /etc/init.d/db2xcat";
-          xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {
-            xCAT::MsgUtils->message("E", " $cmd failed.");
+        # see if left over /etc/init.d/db2xcat then remove it. This was put in
+        # by  xcat db2sqlsetup script in the past
+        if (-e ("/etc/init.d/db2xcat")) {
+            $cmd = "chkconfig --del db2xcat";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
 
-          }
-      
-      }     
-      $cmd = " fgrep db2fmcd /etc/init/*";
-      xCAT::Utils->runcmd($cmd, -1);
-      if ($::RUNCMD_RC == 0) {
-         my $message = "DB2 /etc/init reboot file already setup";
-         xCAT::MsgUtils->message("I", "$message");
-      } else {
-        $cmd = "cp /opt/xcat/share/xcat/scripts/xcatfmcd.conf /etc/init/xcatfmcd.conf";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message("E", " $cmd failed. DB2 will not automatical
+            }
+            $cmd = "rm /etc/init.d/db2xcat";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
+
+            }
+
+        }
+        $cmd = " fgrep db2fmcd /etc/init/*";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC == 0) {
+            my $message = "DB2 /etc/init reboot file already setup";
+            xCAT::MsgUtils->message("I", "$message");
+        } else {
+            $cmd = "cp /opt/xcat/share/xcat/scripts/xcatfmcd.conf /etc/init/xcatfmcd.conf";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed. DB2 will not automatical
 ly restart on reboot.");
-        } 
-      }
-    }  # end Redhat6
+            }
+        }
+    }    # end Redhat6
 
 
-    # setup for any Linux shmmax attribute 
+    # setup for any Linux shmmax attribute
     if ($::osname eq 'Linux') {
-      # add setup required for DB2 reboot
-      $cmd = " fgrep \"kernel.shmmax = 268435456\" /etc/sysctl.conf";
-      xCAT::Utils->runcmd($cmd, -1); # entry not there
-      if ($::RUNCMD_RC != 0) {
-         $cmd = "echo \"#xcat setup\" >> /etc/sysctl.conf ";
-         xCAT::Utils->runcmd($cmd,0);
-         if ($::RUNCMD_RC != 0)
-         {
-            xCAT::MsgUtils->message("I", " $cmd failed.");
-         }
-         $cmd = "echo \"kernel.shmmax = 268435456\" >> /etc/sysctl.conf ";
-         xCAT::Utils->runcmd($cmd,0);
-         if ($::RUNCMD_RC != 0)
-         {
-            xCAT::MsgUtils->message("I", " $cmd failed. DB2 will not automatically restart on reboot.");
-         }
-      }
-   }
-  
-        
-    
+
+        # add setup required for DB2 reboot
+        $cmd = " fgrep \"kernel.shmmax = 268435456\" /etc/sysctl.conf";
+        xCAT::Utils->runcmd($cmd, -1);    # entry not there
+        if ($::RUNCMD_RC != 0) {
+            $cmd = "echo \"#xcat setup\" >> /etc/sysctl.conf ";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("I", " $cmd failed.");
+            }
+            $cmd = "echo \"kernel.shmmax = 268435456\" >> /etc/sysctl.conf ";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("I", " $cmd failed. DB2 will not automatically restart on reboot.");
+            }
+        }
+    }
+
+
+
 }
 
 #-----------------------------------------------------------------------------
@@ -1485,77 +1506,83 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If Redhat and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
+"\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If Redhat and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
         xCAT::MsgUtils->message("E", " $cmd failed. $message");
         exit(1);
     }
-    # For CNM you  must have the 32 bit version on Unix ODBC, Pam, 
+
+    # For CNM you  must have the 32 bit version on Unix ODBC, Pam,
     # and openssl installed on Redhat.   Put out a warning.
     if ($::linuxos =~ /rh.*/) {
-      $cmd = "rpm -qa | grep unixODBC";
-      my @output=xCAT::Utils->runcmd($cmd, 0);
-      # check for two lines one ppc and one ppc64
-      my $foundppc64 =0;
-      my $foundppc =0;
-      foreach my $line (@output)  {
-        if ($line =~ /\.ppc$/i) {
-         $foundppc=1;
+        $cmd = "rpm -qa | grep unixODBC";
+        my @output = xCAT::Utils->runcmd($cmd, 0);
+
+        # check for two lines one ppc and one ppc64
+        my $foundppc64 = 0;
+        my $foundppc   = 0;
+        foreach my $line (@output) {
+            if ($line =~ /\.ppc$/i) {
+                $foundppc = 1;
+            }
+            if ($line =~ /\.ppc64$/i) {
+                $foundppc64 = 1;
+            }
         }
-        if ($line =~ /\.ppc64$/i) {
-         $foundppc64=1;
+        if (($foundppc64 != 1) || ($foundppc != 1))
+        {
+            my $message =
+"If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed. ";
+            xCAT::MsgUtils->message("I", "$message");
+
         }
-      }
-      if (($foundppc64 !=1) || ($foundppc != 1))
-      {
-        my $message =
-          "If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed. ";
-        xCAT::MsgUtils->message("I", "$message");
-    
-      }
-      # check pam 32 and 64 bit installed
-      @output=();
-      $cmd = "rpm -qa | grep \^pam-";
-      @output=xCAT::Utils->runcmd($cmd, 0);
-      # check for two lines one ppc and one ppc64
-      $foundppc64 =0;
-      $foundppc =0;
-      foreach my $line (@output)  {
-        if ($line =~ /\.ppc$/i) {
-         $foundppc=1;
+
+        # check pam 32 and 64 bit installed
+        @output = ();
+        $cmd    = "rpm -qa | grep \^pam-";
+        @output = xCAT::Utils->runcmd($cmd, 0);
+
+        # check for two lines one ppc and one ppc64
+        $foundppc64 = 0;
+        $foundppc   = 0;
+        foreach my $line (@output) {
+            if ($line =~ /\.ppc$/i) {
+                $foundppc = 1;
+            }
+            if ($line =~ /\.ppc64$/i) {
+                $foundppc64 = 1;
+            }
         }
-        if ($line =~ /\.ppc64$/i) {
-         $foundppc64=1;
+        if (($foundppc64 != 1) || ($foundppc != 1))
+        {
+            my $message =
+"If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed. ";
+            xCAT::MsgUtils->message("I", "$message");
+
         }
-      }
-      if (($foundppc64 !=1) || ($foundppc != 1))
-      {
-        my $message =
-          "If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed. ";
-        xCAT::MsgUtils->message("I", "$message");
-    
-       }
-      # check openssl 32 and 64 bit installed
-      @output=();
-      $cmd = "rpm -qa | grep \^openssl-";
-      @output=xCAT::Utils->runcmd($cmd, 0);
-      # check for two lines one ppc and one ppc64
-      $foundppc64 =0;
-      $foundppc =0;
-      foreach my $line (@output)  {
-        if ($line =~ /\.ppc$/i) {
-         $foundppc=1;
+
+        # check openssl 32 and 64 bit installed
+        @output = ();
+        $cmd    = "rpm -qa | grep \^openssl-";
+        @output = xCAT::Utils->runcmd($cmd, 0);
+
+        # check for two lines one ppc and one ppc64
+        $foundppc64 = 0;
+        $foundppc   = 0;
+        foreach my $line (@output) {
+            if ($line =~ /\.ppc$/i) {
+                $foundppc = 1;
+            }
+            if ($line =~ /\.ppc64$/i) {
+                $foundppc64 = 1;
+            }
         }
-        if ($line =~ /\.ppc64$/i) {
-         $foundppc64=1;
+        if (($foundppc64 != 1) || ($foundppc != 1))
+        {
+            my $message =
+"If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed. ";
+            xCAT::MsgUtils->message("I", "$message");
+
         }
-      }
-      if (($foundppc64 !=1) || ($foundppc != 1))
-      {
-        my $message =
-          "If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed. ";
-        xCAT::MsgUtils->message("I", "$message");
-    
-       }
     }
 
 
@@ -1572,7 +1599,7 @@ sub setupODBC
     if (!(-e ($xcatconfig)) && (!(-e ($xcatconfigbackup))))
     {
         $message =
-          "The $xcatconfig and $xcatconfigbackup files are missing. You need to configure xCAT for DB2 before setting up the ODBC.";
+"The $xcatconfig and $xcatconfigbackup files are missing. You need to configure xCAT for DB2 before setting up the ODBC.";
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
 
@@ -1587,7 +1614,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)    # then try backup
         {
             $message =
-              "Cannot find DB2 info in the cfgloc or cfgloc.db2 file. Configuration of ODBC cannot continue.";
+"Cannot find DB2 info in the cfgloc or cfgloc.db2 file. Configuration of ODBC cannot continue.";
             xCAT::MsgUtils->message("E", " $cmd failed. $message");
             exit(1);
         }
@@ -1599,11 +1626,11 @@ sub setupODBC
 
     # The unixODBC Driver Manager loads the DB2 Driver dynamically
     # so the shared object must be extracted from the driver
-    if  ($::osname eq 'AIX')
+    if ($::osname eq 'AIX')
     {
         if (!(-e "$::databaseloc/sqllib/lib/libdb2.so"))
         {
-            $cmd = "touch db2sql.test"; # see if this is a writable directory
+            $cmd = "touch db2sql.test";    # see if this is a writable directory
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1650,8 +1677,8 @@ sub setupODBC
     if ($::osname eq 'AIX') {
         $sharedlibaix = "$::databaseloc/sqllib/lib/libdb2.so";
     } else {
-        $sharedlib32="$::databaseloc/sqllib/lib32/libdb2.so";
-        $sharedlib64="$::databaseloc/sqllib/lib/libdb2o.so";
+        $sharedlib32 = "$::databaseloc/sqllib/lib32/libdb2.so";
+        $sharedlib64 = "$::databaseloc/sqllib/lib/libdb2o.so";
     }
     $cmd = "fgrep -i  DB2 $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
@@ -1659,27 +1686,27 @@ sub setupODBC
     {
         my $entry;
         if ($::osname eq 'AIX') {
-          $entry =
-          "[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlibaix";
-          $cmd = "echo \"$entry\" >> $odbcinstfile";
-          xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {
-             $message = "$cmd failed. Could not setup ODBC.";
-             xCAT::MsgUtils->message("E", "$message");
-             exit(1);
-          }
-        } else { #RHEL
-          $entry =
-          "[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlib32\nDriver64 = $sharedlib64";
-          $cmd = "echo \"$entry\" >> $odbcinstfile";
-          xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {
-             $message = "$cmd failed. Could not setup ODBC.";
-             xCAT::MsgUtils->message("E", "$message");
-             exit(1);
-          }
+            $entry =
+              "[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlibaix";
+            $cmd = "echo \"$entry\" >> $odbcinstfile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                $message = "$cmd failed. Could not setup ODBC.";
+                xCAT::MsgUtils->message("E", "$message");
+                exit(1);
+            }
+        } else {    #RHEL
+            $entry =
+"[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlib32\nDriver64 = $sharedlib64";
+            $cmd = "echo \"$entry\" >> $odbcinstfile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                $message = "$cmd failed. Could not setup ODBC.";
+                xCAT::MsgUtils->message("E", "$message");
+                exit(1);
+            }
         }
         $entry = "FileUsage = 1";
         $cmd   = "echo \"$entry\" >> $odbcinstfile";
@@ -1742,18 +1769,18 @@ sub setupODBC
     # when accessing through ODBC
     # setup $::databaseloc/sqllib/cfg/db2cli.ini
 
-    my $db2clifile       = "$::databaseloc/sqllib/cfg/db2cli.ini";
-    $cmd = "db2 update cli cfg for section $instance using uid $instance"; 
-    my $rc  = &rundb2cmd($cmd);
+    my $db2clifile = "$::databaseloc/sqllib/cfg/db2cli.ini";
+    $cmd = "db2 update cli cfg for section $instance using uid $instance";
+    my $rc = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("SI", " $cmd warning.");
+        xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
-    $cmd = "db2 update cli cfg for section $instance using pwd $passwd"; 
+    $cmd = "db2 update cli cfg for section $instance using pwd $passwd";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("SI", " $cmd warning.");
+        xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
     $cmd = "chown xcatdb $db2clifile";
     xCAT::Utils->runcmd($cmd, 0);
@@ -1765,29 +1792,29 @@ sub setupODBC
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-       xCAT::MsgUtils->message("E", " $cmd failed.");
+        xCAT::MsgUtils->message("E", " $cmd failed.");
     }
-    my $path= $homedir .= "\/db2cli.ini"; # copy to roots home directory
+    my $path = $homedir .= "\/db2cli.ini";    # copy to roots home directory
     $cmd = "cp $db2clifile $path ";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-       xCAT::MsgUtils->message("E", " $cmd failed.");
+        xCAT::MsgUtils->message("E", " $cmd failed.");
     }
     $cmd = "chmod 0600 $path";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-       xCAT::MsgUtils->message("E", " $cmd failed.");
+        xCAT::MsgUtils->message("E", " $cmd failed.");
     }
-    if ($::SERVER) {  # if on the DB2 Server
-      # set authorization to client so LoadL id can connect
-      $cmd = "db2 update dbm cfg using authentication client immediate"; 
-      $rc  = &rundb2cmd($cmd);
-      if ($rc != 0)
-      {
-        xCAT::MsgUtils->message("SI", " $cmd warning.");
-      }
+    if ($::SERVER) {    # if on the DB2 Server
+                        # set authorization to client so LoadL id can connect
+        $cmd = "db2 update dbm cfg using authentication client immediate";
+        $rc  = &rundb2cmd($cmd);
+        if ($rc != 0)
+        {
+            xCAT::MsgUtils->message("SI", " $cmd warning.");
+        }
     }
 }
 
@@ -1806,18 +1833,18 @@ sub createcfgloc
 
 {
     my $cfgloc       = "/etc/xcat/cfgloc";
-    my $dir = "/etc/xcat";
+    my $dir          = "/etc/xcat";
     my $cfglocbackup = "/etc/xcat/cfgloc.xcat.backup";
     my $cmd;
     my $message;
-    if (!(-e $dir)){ # if it does not exist, create it
-      $cmd = "mkdir -p $dir";
-      xCAT::Utils->runcmd($cmd, 0);
-      if ($::RUNCMD_RC != 0)
-      {
-         xCAT::MsgUtils->message("E", " $cmd failed. Cannot create the cfgloc file");
-         return 1;
-      }
+    if (!(-e $dir)) {    # if it does not exist, create it
+        $cmd = "mkdir -p $dir";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " $cmd failed. Cannot create the cfgloc file");
+            return 1;
+        }
     }
 
     # if they had an old cfgloc , save it
@@ -1830,10 +1857,10 @@ sub createcfgloc
             xCAT::MsgUtils->message("E", " $cmd failed.");
         }
     }
-    my $verboseflg=0;
-    if ($::VERBOSE) {   # do not show commands with password
-          $verboseflg=1;
-          $::VERBOSE=undef;
+    my $verboseflg = 0;
+    if ($::VERBOSE) {    # do not show commands with password
+        $verboseflg = 1;
+        $::VERBOSE  = undef;
     }
     my $db2entry = "DB2:xcatdb|xcatdb|$::adminpassword";
     $cmd = "echo \"$db2entry\" > $cfgloc";
@@ -1846,7 +1873,7 @@ sub createcfgloc
 
     }
     if ($verboseflg == 1) {
-          $::VERBOSE=1;
+        $::VERBOSE = 1;
     }
 
     # allow readonly by root
@@ -1870,7 +1897,7 @@ sub restorexcatdb
     # set the env variable for Table.pm for the new database
     my $xcatcfg;
     my $cfgl;
-    open($cfgl,"<","/etc/xcat/cfgloc");
+    open($cfgl, "<", "/etc/xcat/cfgloc");
     $xcatcfg = <$cfgl>;
     close($cfgl);
     chomp($xcatcfg);
@@ -1878,17 +1905,18 @@ sub restorexcatdb
     # restore the database
     xCAT::MsgUtils->message(
         "I",
-        "Restoring the xCAT Database with $::backupdir to DB2 database.\nThis could take several minutes."
-        );
+"Restoring the xCAT Database with $::backupdir to DB2 database.\nThis could take several minutes."
+    );
     if (!(-d $::backupdir))
     {    # does not exist, error
         xCAT::MsgUtils->message("E",
-                       " $::backupdir is missing. Cannot retore the database.");
+            " $::backupdir is missing. Cannot retore the database.");
         exit(1);
     }
 
     # restore it
     my $cmd = "XCATBYPASS=1 XCATCFG=\"$xcatcfg\" restorexCATdb -p $::backupdir";
+
     # secure passwords in verbose mode
     my $tmpv = $::VERBOSE;
     $::VERBOSE = 0;
@@ -1905,6 +1933,7 @@ sub restorexcatdb
     #
     &startxcatd;
 }
+
 #-----------------------------------------------------------------------------
 
 =head3   updatecrontab 
@@ -1916,17 +1945,18 @@ sub restorexcatdb
 
 #-----------------------------------------------------------------------------
 
-sub  updatecrontab
+sub updatecrontab
 {
-  my $cmd="/opt/xcat/share/xcat/tools/reorgtbls";
-  my $entry="0 0 * * 0 $cmd";
-  my ($code, $msg)=xCAT::Utils::add_cron_job($entry);
-  if ($code==0) {
+    my $cmd   = "/opt/xcat/share/xcat/tools/reorgtbls";
+    my $entry = "0 0 * * 0 $cmd";
+    my ($code, $msg) = xCAT::Utils::add_cron_job($entry);
+    if ($code == 0) {
         xCAT::MsgUtils->message("I", "A crontab entry has been added to run DB2 table reorg once a week on Sunday 12am.\nIf you would like to change this time, use crontab -e to modify the entry for reorgtbls execution.\nYou may also limit the tables to reorg by using the -t parameter on reorgtbls.\nRun reorgtbls -h.");
-  } else {
+    } else {
         xCAT::MsgUtils->message("W", " Failed to add crontab entry for Table reorg.");
-  }
+    }
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    adddb2paths
@@ -1940,12 +1970,12 @@ sub  updatecrontab
 sub adddb2paths
 
 {
-   my $cmd;
-   if ($::osname eq 'AIX')
-   {
+    my $cmd;
+    if ($::osname eq 'AIX')
+    {
         my $profname = "/etc/profile";
-        my $cmd = qq~cat $profname | grep "xCAT DB2 setup"~;
-        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        my $cmd      = qq~cat $profname | grep "xCAT DB2 setup"~;
+        my $outref   = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
         {
 
@@ -1958,51 +1988,51 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
+            my $db2paths = "$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
-             qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
             $outref = xCAT::Utils->runcmd("$eccmd", 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
-        } 
+        }
         my $homedir = xCAT::Utils->getHomeDir();
         $profname = "$homedir/.profile";
-        if (-e ("$profname")) {  # if .profile exists
-          $cmd = qq~cat $profname | grep "xCAT DB2 setup"~;
-          $outref = xCAT::Utils->runcmd("$cmd", -1);
-          if ($::RUNCMD_RC != 0)
-          {
-
-            # make back up file
-            my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
-            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+        if (-e ("$profname")) {    # if .profile exists
+            $cmd = qq~cat $profname | grep "xCAT DB2 setup"~;
+            $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+
+                # make back up file
+                my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
+                my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message('E', "Could not copy $profname.");
+                }
+
+                # add DB2 paths
+                my $db2paths = "$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
+
+                my $eccmd =
+qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+                $outref = xCAT::Utils->runcmd("$eccmd", 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    xCAT::MsgUtils->message('E', "Could not update $profname.");
+                }
             }
+        }
 
-            # add DB2 paths
-            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
-
-            my $eccmd =
-             qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
-            $outref = xCAT::Utils->runcmd("$eccmd", 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message('E', "Could not update $profname.");
-            }
-         }
-       }
-
-   }
-   else   #Linux
-   {
+    }
+    else    #Linux
+    {
         my $profname = "/etc/profile.d/xcatdb2.sh";
-        my $cmd = qq~cat $profname | grep "db2"~;
-        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        my $cmd      = qq~cat $profname | grep "db2"~;
+        my $outref   = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
         {
 
@@ -2015,22 +2045,22 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
+            my $db2paths = "$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
-             qq~echo 'PATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+              qq~echo 'PATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
             $outref = xCAT::Utils->runcmd("$eccmd", 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
-        } 
+        }
         my $profname = "/etc/profile.d/xcatdb2.csh";
-        my $cmd = qq~cat $profname | grep "db2"~;
-        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        my $cmd      = qq~cat $profname | grep "db2"~;
+        my $outref   = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
         {
-         
+
             # make back up file
             my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
             my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
@@ -2040,15 +2070,16 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
+            my $db2paths = "$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
-             qq~echo 'setenv PATH \${PATH}:$db2paths\n' >>$profname~;
+              qq~echo 'setenv PATH \${PATH}:$db2paths\n' >>$profname~;
             $outref = xCAT::Utils->runcmd("$eccmd", 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E', "Could not update $profname.");
             }
+
             # set correct permissions
             $cmd = "chmod 755 /etc/profile.d/xcatdb2.sh";
             xCAT::Utils->runcmd($cmd, 0);
@@ -2062,9 +2093,10 @@ sub adddb2paths
             {
                 xCAT::MsgUtils->message("SE", " $cmd failed.");
             }
-        } 
-   }
+        }
+    }
 }
+
 #-----------------------------------------------------------------------------
 
 =head3   remove
@@ -2079,10 +2111,11 @@ sub adddb2paths
 #-----------------------------------------------------------------------------
 sub remove
 {
-    my $cmd; 
+    my $cmd;
     my @output;
-    my $error = 0;
-    my $retcode=0;
+    my $error   = 0;
+    my $retcode = 0;
+
     #see if DB2 is installed
     if (!(-e ($::installdb2dir)))
     {
@@ -2091,9 +2124,9 @@ sub remove
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
     }
-    
+
     #see if xcat is using DB2
-    my $backupdic = "/xcatbackdb2";
+    my $backupdic  = "/xcatbackdb2";
     my $xcatconfig = "/etc/xcat/cfgloc";
     if (-e ($xcatconfig))
     {
@@ -2101,242 +2134,251 @@ sub remove
         my $cmd = "egrep -i \"^DB2:\" /etc/xcat/cfgloc";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC == 0)
-        {  
+        {
             #if it is management node, need to backup database
             if ($::SERVER)
             {
-            	xCAT::MsgUtils->message("I","Begin to backup database, this would take a while");
-            	
-            	$cmd = "mkdir -p $backupdic";
-            	xCAT::Utils->runcmd($cmd, -1);
-            	if ($::RUNCMD_RC !=0)
-            	{
-            		my $message = "can't make a directory $backupdic, try again";
-            		$error += 1;
-            		xCAT::MsgUtils->message("E", "$message");
-            		$backupdic = "/xCATbackupDB";
-            		xCAT::Utils->runcmd($cmd, -1);
-            		if ($::RUNCMD_RC !=0)
-            		{
-            			my $message = "fail again, can not make a direcorty $backupdic";
-            			xCAT::MsgUtils->message("E", "$message");
-            			$error += 1;
-            			exit(1);
-            		}
-            	}
-            	
-            	my $cmd = "ps -elf|grep xcatd";
+                xCAT::MsgUtils->message("I", "Begin to backup database, this would take a while");
+
+                $cmd = "mkdir -p $backupdic";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $message = "can't make a directory $backupdic, try again";
+                    $error += 1;
+                    xCAT::MsgUtils->message("E", "$message");
+                    $backupdic = "/xCATbackupDB";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $message = "fail again, can not make a direcorty $backupdic";
+                        xCAT::MsgUtils->message("E", "$message");
+                        $error += 1;
+                        exit(1);
+                    }
+                }
+
+                my $cmd = "ps -elf|grep xcatd";
                 my @output = xCAT::Utils->runcmd($cmd, 0);
 
                 if ($::RUNCMD_RC == 0)
-                {      
+                {
                     if ($::osname eq 'AIX')
                     {
-                    	my $cmd = "startsrc -s xcatd";
+                        my $cmd = "startsrc -s xcatd";
                         xCAT::Utils->runcmd($cmd, -1);
-                        $retcode=$::RUNCMD_RC;
+                        $retcode = $::RUNCMD_RC;
                     }
                     else
-                    {           
-                    	#my $cmd = "service xcatd start";
-                    	$retcode=xCAT::Utils->startservice("xcatd");
+                    {
+                        #my $cmd = "service xcatd start";
+                        $retcode = xCAT::Utils->startservice("xcatd");
                     }
+
                     #xCAT::Utils->runcmd($cmd, -1);
-            	    #if ($::RUNCMD_RC !=0)
-            	    if($retcode!=0)
-            	    {
-            	    	my $message = "can't start xcatd";
-            	    	$error += 1;
-            	    	xCAT::MsgUtils->message("E", "$message");
-            	    	exit(1);
-            	    }
-                } 	        	
-            	
-            	
-            	$cmd = "dumpxCATdb -p $backupdic";
-                xCAT::Utils->runcmd($cmd, -1);        	
-            	if ($::RUNCMD_RC !=0)
-            	{        	
-            		my $message = "can't dump xcatdb";
-            		xCAT::MsgUtils->message("E", "$message");  
-            		$error += 1;      			
-            	    exit(1);
-            	}           	            	
+                    #if ($::RUNCMD_RC !=0)
+                    if ($retcode != 0)
+                    {
+                        my $message = "can't start xcatd";
+                        $error += 1;
+                        xCAT::MsgUtils->message("E", "$message");
+                        exit(1);
+                    }
+                }
+
+
+                $cmd = "dumpxCATdb -p $backupdic";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $message = "can't dump xcatdb";
+                    xCAT::MsgUtils->message("E", "$message");
+                    $error += 1;
+                    exit(1);
+                }
             }
-            
+
             if ($::osname eq 'AIX')
             {
-            	my $cmd = "stopsrc -s xcatd";
+                my $cmd = "stopsrc -s xcatd";
                 xCAT::Utils->runcmd($cmd, -1);
-                $retcode=$::RUNCMD_RC;
+                $retcode = $::RUNCMD_RC;
             }
             else
-            {           
-            	#my $cmd = "service xcatd stop";
-            	$retcode=xCAT::Utils->stopservice("xcatd");
+            {
+                #my $cmd = "service xcatd stop";
+                $retcode = xCAT::Utils->stopservice("xcatd");
             }
+
             #xCAT::Utils->runcmd($cmd, -1);
             #if ($::RUNCMD_RC !=0)
-            if($retcode!=0)
+            if ($retcode != 0)
             {
-            	my $message = "can't stop xcatd";
-            	xCAT::MsgUtils->message("E", "$message");
-            	$error += 1;
-            	exit(1);
+                my $message = "can't stop xcatd";
+                xCAT::MsgUtils->message("E", "$message");
+                $error += 1;
+                exit(1);
             }
-                	
-            
+
+
             my $cmd = "rm -rf /etc/xcat/cfgloc";
             xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC !=0)
+            if ($::RUNCMD_RC != 0)
             {
-            	my $message = "can't remove cfgloc file";
-            	xCAT::MsgUtils->message("E", "$message");
-            	$error += 1;
-            	exit(1);
+                my $message = "can't remove cfgloc file";
+                xCAT::MsgUtils->message("E", "$message");
+                $error += 1;
+                exit(1);
             }
-                	
+
             if ($::SERVER)
-            {        	
+            {
                 my $cmd = "XCATBYPASS=1 restorexCATdb -p $backupdic";
-                xCAT::Utils->runcmd($cmd, -1);   
+                xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0)
-                {     	
-                	my $message = "can't restore xcat database";
-                	xCAT::MsgUtils->message("E", "$message");
-                	$error += 1;
-                	exit(1);
+                {
+                    my $message = "can't restore xcat database";
+                    xCAT::MsgUtils->message("E", "$message");
+                    $error += 1;
+                    exit(1);
                 }
-                
+
             }
-            
-            
+
+
             if ($::osname eq 'AIX')
             {
-            	my $cmd = "startsrc -s xcatd";
+                my $cmd = "startsrc -s xcatd";
                 xCAT::Utils->runcmd($cmd, -1);
-                $retcode=$::RUNCMD_RC; 
+                $retcode = $::RUNCMD_RC;
             }
             else
-            {           
-            	#my $cmd = "service xcatd start";
-            	$retcode=xCAT::Utils->startservice("xcatd");
+            {
+                #my $cmd = "service xcatd start";
+                $retcode = xCAT::Utils->startservice("xcatd");
             }
+
             #xCAT::Utils->runcmd($cmd, -1);
             #if ($::RUNCMD_RC !=0)
-            if($retcode!=0)
+            if ($retcode != 0)
             {
-            	my $message = "can't start xcatd";
-            	xCAT::MsgUtils->message("E", "$message");
-            	$error += 1;
+                my $message = "can't start xcatd";
+                xCAT::MsgUtils->message("E", "$message");
+                $error += 1;
             }
 
-            xCAT::MsgUtils->message("I", "Have remove DB2 from xCAT. \n");              
+            xCAT::MsgUtils->message("I", "Have remove DB2 from xCAT. \n");
         }
     }
-            
 
-    xCAT::MsgUtils->message("I", "Begin to remove DB2 \n");  
+
+    xCAT::MsgUtils->message("I", "Begin to remove DB2 \n");
     if ($::SERVER)
-    { 
+    {
         #remove database
         my $cmd = "db2 force application all";
-        my $rc = &rundb2cmd($cmd);
+        my $rc  = &rundb2cmd($cmd);
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed. \n");
             $error += 1;
+
             #exit(1);
         }
-        
+
         $cmd = "db2 drop database xcatdb";
-        $rc = &rundb2cmd($cmd);
+        $rc  = &rundb2cmd($cmd);
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed.\n");
             $error += 1;
+
             #exit(1);
         }
         else
         {
             xCAT::MsgUtils->message("W", "db2 stop \n.");
         }
-        
+
         $cmd = "db2stop";
-        $rc = &rundb2cmd($cmd);
+        $rc  = &rundb2cmd($cmd);
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed. \n");
             $error += 1;
+
             #exit(1);
-        } 
-        
+        }
+
     }
+
     #remove instance
     $cmd = $::installdb2dir;
-    $cmd = $cmd."/instance/db2idrop xcatdb";
+    $cmd = $cmd . "/instance/db2idrop xcatdb";
     xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC !=0) 
+    if ($::RUNCMD_RC != 0)
     {
-   	     my $message = "can't drop DB2 instance \n";
-   	     xCAT::MsgUtils->message("E", "$message");
-   	     exit(1);
+        my $message = "can't drop DB2 instance \n";
+        xCAT::MsgUtils->message("E", "$message");
+        exit(1);
     }
-    
+
     #check if all the instances have been removed
     $cmd = $::installdb2dir;
-    $cmd = $cmd."/instance/db2ilist";
+    $cmd = $cmd . "/instance/db2ilist";
     xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC !=0) 
+    if ($::RUNCMD_RC != 0)
     {
-   	     my $message = "there is still instance, can't uninstall DB2\n";
-   	     xCAT::MsgUtils->message("E", "$message");
-   	     $error += 1;
-    }    
+        my $message = "there is still instance, can't uninstall DB2\n";
+        xCAT::MsgUtils->message("E", "$message");
+        $error += 1;
+    }
     else
     {
         #uninstall DB2
         $cmd = $::installdb2dir;
-        $cmd = $cmd."/install/db2_deinstall -a";        	    
+        $cmd = $cmd . "/install/db2_deinstall -a";
         xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC !=0) 
+        if ($::RUNCMD_RC != 0)
         {
-   	        my $message = "can't uninstall DB2 \n";
-   	        xCAT::MsgUtils->message("E", "$message");
-   	        $error += 1;
-   	        #exit(1);
-        }        	                                 
+            my $message = "can't uninstall DB2 \n";
+            xCAT::MsgUtils->message("E", "$message");
+            $error += 1;
+
+            #exit(1);
+        }
         xCAT::MsgUtils->message("I", "Remove DB2 successfully, begin to cleanup the enviroment. \n");
-    }        
-    
-      
+    }
+
+
     #unconfig enviroment
     $cmd = "egrep -i \"^db2c_xcatdb\" /etc/services";
     xCAT::Utils->runcmd($cmd, -1);
     my $file1 = "/etc/services";
     if ($::RUNCMD_RC == 0)
-    {  
-        open(FH,"+<$file1") or die "cannot open file $file1 \n";   
+    {
+        open(FH, "+<$file1") or die "cannot open file $file1 \n";
         $cmd = "touch /etc/services.back";
         xCAT::Utils->runcmd($cmd, -1);
-        open(DH,"+</etc/services.back") or die "cannot open file services.back \n";  
+        open(DH, "+</etc/services.back") or die "cannot open file services.back \n";
         foreach (<FH>)
         {
-        	my $line = $_;
-            if($line !~ /xcatdb/)
+            my $line = $_;
+            if ($line !~ /xcatdb/)
             {
-                print DH $line;   
-             }
+                print DH $line;
+            }
         }
         close(FH);
         close(DH);
         $cmd = "mv /etc/services.back $file1";
-        xCAT::Utils->runcmd($cmd, -1);          
+        xCAT::Utils->runcmd($cmd, -1);
+
         #$cmd = "cat $file1 | sed s/.*xcatdb.*// > $file1";
-        #xCAT::Utils->runcmd($cmd, -1);        
+        #xCAT::Utils->runcmd($cmd, -1);
     }
-    
-    
+
+
     if ($::osname eq 'AIX')
     {
         $cmd = "rmuser xcatdb";
@@ -2348,10 +2390,10 @@ sub remove
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-   	    my $message = "can't remove user xcatdb \n";
-   	    xCAT::MsgUtils->message("E", "$message");
-   	    $error += 1;
-    }                 	
+        my $message = "can't remove user xcatdb \n";
+        xCAT::MsgUtils->message("E", "$message");
+        $error += 1;
+    }
 
     if ($::osname eq 'AIX')
     {
@@ -2359,110 +2401,111 @@ sub remove
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
-   	        my $message = "can't remove group xcatdb \n";
-   	        xCAT::MsgUtils->message("E", "$message");
-   	        $error += 1;
-        }  
+            my $message = "can't remove group xcatdb \n";
+            xCAT::MsgUtils->message("E", "$message");
+            $error += 1;
+        }
     }
-   
-   
+
+
     $cmd = "rm -rf ";
-    $cmd = $cmd.$::installdb2dir;	
+    $cmd = $cmd . $::installdb2dir;
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-   	    my $message = "can't remove the directory $::installdb2dir  /db2/V9.7 \n";
-   	    xCAT::MsgUtils->message("E", "$message");
-   	    $error += 1;
+        my $message = "can't remove the directory $::installdb2dir  /db2/V9.7 \n";
+        xCAT::MsgUtils->message("E", "$message");
+        $error += 1;
     }
-   
-    $cmd = "rm -rf $::databaseloc/";	
+
+    $cmd = "rm -rf $::databaseloc/";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-   	    my $message = "can't remove the directory $::databaseloc \n*";
-   	    xCAT::MsgUtils->message("E", "$message");
-   	    $error += 1;
+        my $message = "can't remove the directory $::databaseloc \n*";
+        xCAT::MsgUtils->message("E", "$message");
+        $error += 1;
     }
-   
+
     my $file2;
     if ($::osname eq 'AIX')
     {
-    	$file2 = "/etc/profile";
-        open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+        $file2 = "/etc/profile";
+        open(FH, "+<$file2") or die "cannot open file $file2 \n";
         $cmd = "touch /etc/tmp.back";
         xCAT::Utils->runcmd($cmd, -1);
-        open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+        open(DH, "+</etc/tmp.back") or die "cannot open file tmp.back \n";
         foreach (<FH>)
         {
-        	my $line = $_;
-            if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+            my $line = $_;
+            if (($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
             {
                 print DH $line;
-             }
+            }
         }
         close(FH);
         close(DH);
         $cmd = "mv /etc/tmp.back $file2";
-        xCAT::Utils->runcmd($cmd, -1);      	
+        xCAT::Utils->runcmd($cmd, -1);
     }
     else
-    {   
-    	$file2 = "/etc/profile.d/xcat.sh";
-        $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.sh";
+    {
+        $file2 = "/etc/profile.d/xcat.sh";
+        $cmd   = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.sh";
         xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC == 0)   
-        { 	
-            open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+        if ($::RUNCMD_RC == 0)
+        {
+            open(FH, "+<$file2") or die "cannot open file $file2 \n";
             $cmd = "touch /etc/tmp.back";
             xCAT::Utils->runcmd($cmd, -1);
-            open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+            open(DH, "+</etc/tmp.back") or die "cannot open file tmp.back \n";
             foreach (<FH>)
             {
-            	my $line = $_;
-                if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+                my $line = $_;
+                if (($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
                 {
                     print DH $line;
-                 }
+                }
             }
             close(FH);
             close(DH);
             $cmd = "mv /etc/tmp.back $file2";
-            xCAT::Utils->runcmd($cmd, -1);  
-        }  
-        
-    	$file2 = "/etc/profile.d/xcat.csh";
-        $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.csh";
+            xCAT::Utils->runcmd($cmd, -1);
+        }
+
+        $file2 = "/etc/profile.d/xcat.csh";
+        $cmd   = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.csh";
         xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC == 0)   
-        { 	
-            open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+        if ($::RUNCMD_RC == 0)
+        {
+            open(FH, "+<$file2") or die "cannot open file $file2 \n";
             $cmd = "touch /etc/tmp.back";
             xCAT::Utils->runcmd($cmd, -1);
-            open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+            open(DH, "+</etc/tmp.back") or die "cannot open file tmp.back \n";
             foreach (<FH>)
             {
-            	my $line = $_;
-                if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+                my $line = $_;
+                if (($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
                 {
                     print DH $line;
-                 }
+                }
             }
             close(FH);
             close(DH);
             $cmd = "mv /etc/tmp.back $file2";
-            xCAT::Utils->runcmd($cmd, -1);  
-        }           	
-    }  
-    
+            xCAT::Utils->runcmd($cmd, -1);
+        }
+    }
+
     #$cmd = "cat $file2 | sed s/.*xcatdb.*// > $file2";
     #xCAT::Utils->runcmd($cmd, -1);
-    #$cmd = "cat $file2 | sed s/.*EXTSHM.*// > $file2";        
+    #$cmd = "cat $file2 | sed s/.*EXTSHM.*// > $file2";
     #xCAT::Utils->runcmd($cmd, -1);
-        
-    xCAT::MsgUtils->message("I", "Cleanup completely finished. $error errors have got. \n");        
-    
+
+    xCAT::MsgUtils->message("I", "Cleanup completely finished. $error errors have got. \n");
+
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    updatepasswd 
@@ -2475,76 +2518,80 @@ sub remove
 
 #-----------------------------------------------------------------------------
 
-sub updatepasswd 
+sub updatepasswd
 
 {
-  my $rc=0;
-  $ENV{'XCATDB2QUIET'} = 1;
-  my $updateclient=0;
-  my $updateserver=0;
-  if ($::SERVER) {  # going to update the server MN
-    $updateserver=1;
-  }
+    my $rc = 0;
+    $ENV{'XCATDB2QUIET'} = 1;
+    my $updateclient = 0;
+    my $updateserver = 0;
+    if ($::SERVER) {    # going to update the server MN
+        $updateserver = 1;
+    }
 
-  if ($::CLIENT) {  # going to update the clients (SNs)
-    $updateclient=1;
-  }
-  if ((!($::CLIENT)) && (!($::SERVER))) { # update both MN and SNs
-    $updateserver=1;
-    $updateclient=1;
-  }
-  my $snlist;
-  # must read the database before we change the password on the MN
-  # to get the list of Service Nodes
-  if ($updateclient==1) { 
-   if (xCAT::Utils->isMN()) {    # if on Management Node
-     my @allSN=xCAT::Utils->getAllSN;
-     foreach my $nodes (@allSN) {
-       $snlist.=$nodes;
-       $snlist.="\,";
-     }
-     chop $snlist;
-   }
-  }
-  # change password on the MN
-  if ($updateserver==1) {  # we will change the MN
-     # then shutdown xcatd
-     # First change xcatd password
-     # change /etc/xcat/cfgloc
-     # then restart xcatd
-     # change odbc password, if it exists
-     &shutdownxcatd;
-     &mkdb2user;
-     &createcfgloc; 
-     &startxcatd;
-     &setupODBC;
-  }
-  # change password on the Service Nodes
-  # note this routine will be run on the SN's also from xdsh
-  if ($updateclient==1)  {  # Update the clients 
-   if (xCAT::Utils->isMN()) {    # if on Management Node
-     # xdsh <servicenodes>  -v /opt/xcat/bin/db2sqlsetup -C -p
-     my $cmd="xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=$::adminpassword \/opt\/xcat\/bin\/db2sqlsetup -C -p";
-     # secure passwords in verbose mode
-     my $tmpv = $::VERBOSE;
-     $::VERBOSE = 0;
-     xCAT::Utils->runcmd($cmd, 0);
-     if ($::RUNCMD_RC != 0)
-     {
-         my $cmd2="xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=XXXXXX \/opt\/xcat\/bin\/db2sqlsetup -C -p";
-        my $message =
-          "$cmd2 failed.  Could not change password on all the Service Nodes";
-        xCAT::MsgUtils->message("E", "$message");
-     }
-     $::VERBOSE = $tmpv;
-   } else { # on the SN
-     &shutdownxcatd;
-     &mkdb2user;
-     &createcfgloc; 
-     &startxcatd;
-     &setupODBC;
-   }
-  }
- 
-  return $::RUNCMD_RC;
+    if ($::CLIENT) {    # going to update the clients (SNs)
+        $updateclient = 1;
+    }
+    if ((!($::CLIENT)) && (!($::SERVER))) {    # update both MN and SNs
+        $updateserver = 1;
+        $updateclient = 1;
+    }
+    my $snlist;
+
+    # must read the database before we change the password on the MN
+    # to get the list of Service Nodes
+    if ($updateclient == 1) {
+        if (xCAT::Utils->isMN()) {    # if on Management Node
+            my @allSN = xCAT::Utils->getAllSN;
+            foreach my $nodes (@allSN) {
+                $snlist .= $nodes;
+                $snlist .= "\,";
+            }
+            chop $snlist;
+        }
+    }
+
+    # change password on the MN
+    if ($updateserver == 1) {         # we will change the MN
+                                      # then shutdown xcatd
+                                      # First change xcatd password
+                                      # change /etc/xcat/cfgloc
+                                      # then restart xcatd
+                                      # change odbc password, if it exists
+        &shutdownxcatd;
+        &mkdb2user;
+        &createcfgloc;
+        &startxcatd;
+        &setupODBC;
+    }
+
+    # change password on the Service Nodes
+    # note this routine will be run on the SN's also from xdsh
+    if ($updateclient == 1) {    # Update the clients
+        if (xCAT::Utils->isMN()) {    # if on Management Node
+                # xdsh <servicenodes>  -v /opt/xcat/bin/db2sqlsetup -C -p
+            my $cmd = "xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=$::adminpassword \/opt\/xcat\/bin\/db2sqlsetup -C -p";
+
+            # secure passwords in verbose mode
+            my $tmpv = $::VERBOSE;
+            $::VERBOSE = 0;
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $cmd2 = "xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=XXXXXX \/opt\/xcat\/bin\/db2sqlsetup -C -p";
+                my $message =
+"$cmd2 failed.  Could not change password on all the Service Nodes";
+                xCAT::MsgUtils->message("E", "$message");
+            }
+            $::VERBOSE = $tmpv;
+        } else {    # on the SN
+            &shutdownxcatd;
+            &mkdb2user;
+            &createcfgloc;
+            &startxcatd;
+            &setupODBC;
+        }
+    }
+
+    return $::RUNCMD_RC;
 }

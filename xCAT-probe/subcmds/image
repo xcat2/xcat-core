@@ -8,6 +8,7 @@ use probe_utils;
 use File::Basename;
 use Net::Ping;
 use Getopt::Long qw(:config no_ignore_case);
+
 #use Data::Dumper;
 use warnings;
 
@@ -74,7 +75,8 @@ unless (defined($CONSISTENCY_CHECK) || defined($DEFINITION_CHECK)) {
 }
 
 if (scalar(@ARGV) >= 1) {
-    # After processing all the expected flags and arguments, 
+
+    # After processing all the expected flags and arguments,
     # there is still left over stuff on the command line
     probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
     probe_utils->send_msg("$output", "d", "$::USAGE");
@@ -90,20 +92,22 @@ my %node_defined_image_uuid_hash;
 my %node_defined_image_name_hash;
 my %osimage_defined_provmethod_hash;
 
-my $all_nodes_provmethod = `lsdef -i provmethod -c $noderange`;
+my $all_nodes_provmethod   = `lsdef -i provmethod -c $noderange`;
 my $all_osimage_provmethod = `lsdef -t osimage -i provmethod,rootimgdir -c`;
 chomp($all_nodes_provmethod);
-my @all_nodes_provmethod_lines = split("[\n\r]", $all_nodes_provmethod);
+my @all_nodes_provmethod_lines   = split("[\n\r]", $all_nodes_provmethod);
 my @all_osimage_provmethod_lines = split("[\n\r]", $all_osimage_provmethod);
 
 if ($all_nodes_provmethod =~ /Usage:/) {
+
     # lsdef command displayed a Usage message. Must be some noderange formatting problem.
     # Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
     exit 1;
 }
 
-if (scalar(@all_nodes_provmethod_lines) <=0) {
+if (scalar(@all_nodes_provmethod_lines) <= 0) {
+
     # There were no nodes matching the noderange. Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
     exit 1;
@@ -117,22 +121,25 @@ foreach (@all_osimage_provmethod_lines) {
 
 # First, extract diskless nodes
 foreach (@all_nodes_provmethod_lines) {
+
     # Get osimage name for the node
     my ($node_name, $junk, $node_osimage_name) = split "[:=]", $_;
     chomp($node_osimage_name);
-    
+
     if (length($node_osimage_name) > 0) {
+
         # Get provmethod and rootimgdir for the osimage
-        my $osimage_provmethod_type = $osimage_defined_provmethod_hash{$node_osimage_name . ": provmethod"};
-        my $rootimagedir= $osimage_defined_provmethod_hash{$node_osimage_name . ": rootimgdir"};
+        my $osimage_provmethod_type = $osimage_defined_provmethod_hash{ $node_osimage_name . ": provmethod" };
+        my $rootimagedir = $osimage_defined_provmethod_hash{ $node_osimage_name . ": rootimgdir" };
         chomp($osimage_provmethod_type) if ($osimage_provmethod_type);
-        chomp($rootimagedir) if ($rootimagedir);
+        chomp($rootimagedir)            if ($rootimagedir);
 
         # Check if it is netboot, meaning diskless
         if ($osimage_provmethod_type && $osimage_provmethod_type eq 'netboot') {
             push(@diskless_nodes, $node_name);
             probe_utils->send_msg("$output", "o", "$node_name is diskless") if ($VERBOSE);
             if (length($rootimagedir) > 0) {
+
                 # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
                 my $xcatinfo_file = $rootimagedir . "/rootimg/opt/xcat/xcatinfo";
                 if (-r $xcatinfo_file) {
@@ -149,27 +156,29 @@ foreach (@all_nodes_provmethod_lines) {
         }
         else {
             probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.");
-	}
+        }
     }
     else {
         probe_utils->send_msg("$output", "w", "$node_name has no provision method defined. No image consistency verification will be performed.");
     }
 }
 
-if (scalar(@diskless_nodes) <=0) {
+if (scalar(@diskless_nodes) <= 0) {
+
     # There were no diskless nodes found. Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "No diskless compute nodes were found.");
     exit 1;
 }
 
-if (scalar(@diskless_nodes) <=0) {
+if (scalar(@diskless_nodes) <= 0) {
+
     # There were no diskless nodes found. Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "No diskless compute nodes were found");
     exit 1;
 }
 
 # Next, check if all diskless nodes are pingable
-my $ping_hosts = join ",",@diskless_nodes;
+my $ping_hosts = join ",", @diskless_nodes;
 my $pping_output = `pping $ping_hosts`;
 chomp($pping_output);
 my @pping_lines = split("[\n\r]", $pping_output);
@@ -186,13 +195,15 @@ foreach (@pping_lines) {
     }
 }
 
-if (scalar(@pingable_nodes) <=0) {
+if (scalar(@pingable_nodes) <= 0) {
+
     # There were no pingable, diskless nodes found. Issue a warning and exit.
     probe_utils->send_msg("$output", "w", "No diskless, pingable compute nodes were found");
     exit 1;
 }
 
 if ((scalar(@pingable_nodes) == 1) && ($CONSISTENCY_CHECK)) {
+
     # There was only one node in noderange and comparison check was requested.
     # Nothing to compare the single node to.
     probe_utils->send_msg("$output", "w", "Comparison check for a single diskless pingable node will not be performed. Minimum of 2 nodes are needed for that.");
@@ -229,9 +240,9 @@ foreach (@xdsh_UUID_lines) {
 # It is possible that some older version xCAT compute nodes will not have an IMAGEUUID line in
 # the xcatinfo file, for those nodes insert $na as the running UUID value
 foreach (@pingable_nodes) {
-   unless (exists($node_running_image_uuid_hash{$_})) {
+    unless (exists($node_running_image_uuid_hash{$_})) {
         $node_running_image_uuid_hash{$_} = $na;
-   }
+    }
 }
 
 # Build a hash of key="hostname", value="running OS image name"
@@ -277,6 +288,7 @@ if ($DEFINITION_CHECK) {
         probe_utils->send_msg("$output", "f", "$msg");
     }
     if (scalar(@pingable_nodes) eq $success_nodes) {
+
         # All pingable nodes were tested with success
         probe_utils->send_msg("$output", "o", "OS image installed on each diskless compute node matches the image defined for it on management node");
     }

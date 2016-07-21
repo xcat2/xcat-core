@@ -75,7 +75,7 @@ if (!defined($installnic)) {
     exit 1;
 }
 
-my $msg = "NIC $installnic exists on current server";
+my $msg  = "NIC $installnic exists on current server";
 my $nics = `ip addr show $installnic >/dev/null 2>&1`;
 if ($?) {
     probe_utils->send_msg("$output", "f", "$msg");

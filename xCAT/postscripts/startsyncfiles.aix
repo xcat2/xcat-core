@@ -3,7 +3,7 @@
 #####################################################
 #
 #   xCAT post script for AIX nodes
-#   This script will send command "syncfiles" to the xcatd on 
+#   This script will send command "syncfiles" to the xcatd on
 #   management node or service node to initiate the sync file
 #   operation by xdcp command
 #
@@ -11,16 +11,16 @@
 
 use XML::Simple;
 
-my $useSocketSSL=eval { require IO::Socket::SSL; };
+my $useSocketSSL = eval { require IO::Socket::SSL; };
 if ($useSocketSSL) {
-        require IO::Socket::SSL;
+    require IO::Socket::SSL;
 }
 
 my $port = "3001";
-my $remote = IO::Socket::SSL->new( Proto => "tcp", PeerAddr => $ENV{MASTER}, PeerPort  => $port, );
+my $remote = IO::Socket::SSL->new(Proto => "tcp", PeerAddr => $ENV{MASTER}, PeerPort => $port,);
 unless ($remote) {
-  `logger -t xcat -p local4.err "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
-  exit 0;
+`logger -t xcat -p local4.err "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
+    exit 0;
 }
 
 # Send Syncing File request to the xcatd
@@ -29,27 +29,27 @@ print $remote "   <command>syncfiles</command>\n";
 print $remote "</xcatrequest>\n";
 
 
-my $response='';
+my $response = '';
 my $rsp;
 my $rc = 0;
 while (<$remote>) {
-  $response .= $_;
-  if ($response =~ m/<\/xcatresponse>/) {
-    $rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+    $response .= $_;
+    if ($response =~ m/<\/xcatresponse>/) {
+        $rsp = eval { XMLin($response, SuppressEmpty => undef, ForceArray => 1) };
 
-    if ($rsp->{errorcode}) {
-      $rc = $rsp->{errorcode}[0];
-    } elsif ($rsp->{error}) {
-      $rc = $rsp->{error}[0];
-    }
-    if ($rsp->{serverdone}) {
-      close $remote;
-      if ($rc) { $rc = 1; }
-      exit $rc;
-    }
+        if ($rsp->{errorcode}) {
+            $rc = $rsp->{errorcode}[0];
+        } elsif ($rsp->{error}) {
+            $rc = $rsp->{error}[0];
+        }
+        if ($rsp->{serverdone}) {
+            close $remote;
+            if ($rc) { $rc = 1; }
+            exit $rc;
+        }
 
-    $response='';
-  }
+        $response = '';
+    }
 }
 
 

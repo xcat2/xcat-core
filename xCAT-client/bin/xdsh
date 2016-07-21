@@ -3,9 +3,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -73,7 +73,7 @@ if ($arg =~ /^-/)                    # no noderange
     if ($::ROOTIMG != 1)
     {    # if not running against rootimg then noderange required
         xCAT::MsgUtils->message("I",
-                 "Node range not specified, see $bname man page for syntax.\n");
+            "Node range not specified, see $bname man page for syntax.\n");
         exit 1;
     }
 }
@@ -84,7 +84,7 @@ else
     if (!($cmdref->{noderange}->[0]))
     {
         xCAT::MsgUtils->message("I",
-                        "Node range not specified, see man page for syntax.\n");
+            "Node range not specified, see man page for syntax.\n");
         exit 1;
     }
     @ARGV = @SaveARGV;                   # noderange removed for parsing
@@ -100,7 +100,7 @@ else
 
 foreach my $sarg (@SaveARGV)
 {
-    push(@{$cmdref->{arg}}, $sarg);
+    push(@{ $cmdref->{arg} }, $sarg);
 }
 
 #  add environment variables, if they have not already been assigned with
@@ -109,7 +109,7 @@ if (!($::NODE_RSH))
 {
     if ($ENV{'DSH_NODE_RSH'})
     {
-        push(@{$cmdref->{env}}, "DSH_NODE_RSH=$ENV{'DSH_NODE_RSH'}");
+        push(@{ $cmdref->{env} }, "DSH_NODE_RSH=$ENV{'DSH_NODE_RSH'}");
 
     }
 }
@@ -117,7 +117,7 @@ if (!($::NODE_RCP))
 {
     if ($ENV{'DSH_NODE_RCP'})
     {
-        push(@{$cmdref->{env}}, "DSH_NODE_RCP=$ENV{'DSH_NODE_RCP'}");
+        push(@{ $cmdref->{env} }, "DSH_NODE_RCP=$ENV{'DSH_NODE_RCP'}");
 
     }
 }
@@ -125,7 +125,7 @@ if (!($::NODE_OPTS))
 {
     if ($ENV{'DSH_NODE_OPTS'})
     {
-        push(@{$cmdref->{env}}, "DSH_NODE_OPTS=$ENV{'DSH_NODE_OPTS'}");
+        push(@{ $cmdref->{env} }, "DSH_NODE_OPTS=$ENV{'DSH_NODE_OPTS'}");
 
     }
 }
@@ -133,7 +133,7 @@ if (!($::FANOUT))
 {
     if ($ENV{'DSH_FANOUT'})
     {
-        push(@{$cmdref->{env}}, "DSH_FANOUT=$ENV{'DSH_FANOUT'}");
+        push(@{ $cmdref->{env} }, "DSH_FANOUT=$ENV{'DSH_FANOUT'}");
 
     }
 }
@@ -141,53 +141,53 @@ if (!($::TIMEOUT))
 {
     if ($ENV{'DSH_TIMEOUT'})
     {
-        push(@{$cmdref->{env}}, "DSH_TIMEOUT=$ENV{'DSH_TIMEOUT'}");
+        push(@{ $cmdref->{env} }, "DSH_TIMEOUT=$ENV{'DSH_TIMEOUT'}");
 
     }
 }
 if ($ENV{'DSH_REMOTE_PASSWORD'})
 {
-    push(@{$cmdref->{env}}, "DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'}");
+    push(@{ $cmdref->{env} }, "DSH_REMOTE_PASSWORD=$ENV{'DSH_REMOTE_PASSWORD'}");
 }
 
 if ($ENV{'DSH_FROM_USERID'})
 {
-    push(@{$cmdref->{env}}, "DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'}");
+    push(@{ $cmdref->{env} }, "DSH_FROM_USERID=$ENV{'DSH_FROM_USERID'}");
 }
 
 if ($ENV{'DSH_TO_USERID'})
 {
-    push(@{$cmdref->{env}}, "DSH_TO_USERID=$ENV{'DSH_TO_USERID'}");
+    push(@{ $cmdref->{env} }, "DSH_TO_USERID=$ENV{'DSH_TO_USERID'}");
 }
 
 if ($ENV{'DEVICETYPE'})
 {
-    push(@{$cmdref->{env}}, "DEVICETYPE=$ENV{'DEVICETYPE'}");
+    push(@{ $cmdref->{env} }, "DEVICETYPE=$ENV{'DEVICETYPE'}");
 }
 
 if ($ENV{'DSH_RSYNC_FILE'})
 {
-    push(@{$cmdref->{env}}, "DSH_RSYNC_FILE=$ENV{'DSH_RSYNC_FILE'}");
+    push(@{ $cmdref->{env} }, "DSH_RSYNC_FILE=$ENV{'DSH_RSYNC_FILE'}");
 }
 if ($ENV{'RSYNCSN'})
 {
-    push(@{$cmdref->{env}}, "RSYNCSN=$ENV{'RSYNCSN'}");
+    push(@{ $cmdref->{env} }, "RSYNCSN=$ENV{'RSYNCSN'}");
 }
 if ($ENV{'RSYNCSNONLY'})
 {
-    push(@{$cmdref->{env}}, "RSYNCSNONLY=$ENV{'RSYNCSNONLY'}");
+    push(@{ $cmdref->{env} }, "RSYNCSNONLY=$ENV{'RSYNCSNONLY'}");
 }
 if ($ENV{'DCP_PULL'})
 {
-    push(@{$cmdref->{env}}, "DCP_PULL=$ENV{'DCP_PULL'}");
+    push(@{ $cmdref->{env} }, "DCP_PULL=$ENV{'DCP_PULL'}");
 }
 if ($ENV{'DSHEXECUTE'})
 {
-    push(@{$cmdref->{env}}, "DSHEXECUTE=$ENV{'DSHEXECUTE'}");
+    push(@{ $cmdref->{env} }, "DSHEXECUTE=$ENV{'DSHEXECUTE'}");
 }
 if ($ENV{'DSH_ENVIRONMENT'})
 {
-    push(@{$cmdref->{env}}, "DSH_ENVIRONMENT=$ENV{'DSH_ENVIRONMENT'}");
+    push(@{ $cmdref->{env} }, "DSH_ENVIRONMENT=$ENV{'DSH_ENVIRONMENT'}");
 }
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
@@ -208,10 +208,11 @@ exit $xCAT::Client::EXITCODE;
 sub parse_args_xdsh
 {
     my $snodes = shift;
+
     # test to see if any parameters were entered
-    my $arraysize=@ARGV;
-    if ($arraysize ==0) {
-        my $msg= "No parameters were supplied on the xdsh command. Run xdsh -h";
+    my $arraysize = @ARGV;
+    if ($arraysize == 0) {
+        my $msg = "No parameters were supplied on the xdsh command. Run xdsh -h";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
@@ -247,8 +248,8 @@ sub parse_args_xdsh
             'V|version'                => \$options{'version'},
 
             'devicetype=s'               => \$options{'devicetype'},
-            'nodestatus|nodestatus' => \$options{'nodestatus'},
-            'sudo|sudo' => \$options{'sudo'},
+            'nodestatus|nodestatus'      => \$options{'nodestatus'},
+            'sudo|sudo'                  => \$options{'sudo'},
             'command-name|commandName=s' => \$options{'command-name'},
             'command-description|commandDescription=s' =>
               \$options{'command-description'},
@@ -281,7 +282,7 @@ sub parse_args_xdsh
 
         # get the directories on the servicenode to put the  files in
         my $defaultsyndir = "/var/xcat/syncfiles";
-        my @syndir        = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
+        my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
         my $synfiledir;
         if ($syndir[0])
         {
@@ -291,9 +292,10 @@ sub parse_args_xdsh
         {
             $synfiledir = "/var/xcat/syncfiles";    # default
         }
+
         # for append function
         my $defaultnodesyndir = "/var/xcat/node/syncfiles";
-        my @syndir2       = xCAT::TableUtils->get_site_attribute("nodesyncfiledir");
+        my @syndir2 = xCAT::TableUtils->get_site_attribute("nodesyncfiledir");
         my $synfiledir2;
         if ($syndir2[0])
         {
@@ -307,12 +309,13 @@ sub parse_args_xdsh
         {
             my $answer;
             my $msg =
-              "Do you wish to erase $synfiledir,$synfiledir2 and all subdirectories?\n Enter Y or N.";
+"Do you wish to erase $synfiledir,$synfiledir2 and all subdirectories?\n Enter Y or N.";
             xCAT::MsgUtils->message('I', "$msg");
             `stty -echo`;
             chop($answer = <STDIN>);
             `stty echo`;
-            $answer =~ tr/a-z/A-Z/;                 # convert to upper
+            $answer =~ tr/a-z/A-Z/;                       # convert to upper
+
             if ($answer ne "Y")
             {
                 exit 0;
@@ -321,7 +324,7 @@ sub parse_args_xdsh
         my $cmd = "xdsh $snodes -v rm -rf $synfiledir/*;xdsh $snodes -v rm -rf $synfiledir2";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
-        {                                           # error
+        {                                                 # error
             my $msg = "Error from $cmd: to cleanup servicenodes";
             xCAT::MsgUtils->message("E", $msg);
             exit 1;
@@ -331,7 +334,7 @@ sub parse_args_xdsh
     }
     if ($options{'bypass'})
     {
-        $ENV{XCATBYPASS} = "yes";                   # bypass xcatd
+        $ENV{XCATBYPASS} = "yes";                         # bypass xcatd
     }
     if ($options{'show-config'})
     {
@@ -339,24 +342,27 @@ sub parse_args_xdsh
         exit 0;
     }
     my $executescript;
+
     #check for full path to file
     if ($options{execute})
-    {  
+    {
         # this can be a file + parameters
         $executescript = join ' ', @ARGV;
         if ($executescript !~ /^\//) {
-          #relative path
-          $executescript = xCAT::Utils->full_path($executescript);
+
+            #relative path
+            $executescript = xCAT::Utils->full_path($executescript);
         }
-        $ENV{'DSHEXECUTE'} = $executescript;    # execute script 
+        $ENV{'DSHEXECUTE'} = $executescript;    # execute script
     }
+
     # -E <env file> option if not already exported
-     
+
     if ($options{environment})
-    {  
-      if (!($ENV{'DSH_ENVIRONMENT'})) { # env  variable first 
-        $ENV{'DSH_ENVIRONMENT'} = $options{environment};    # env file 
-      }
+    {
+        if (!($ENV{'DSH_ENVIRONMENT'})) {       # env  variable first
+            $ENV{'DSH_ENVIRONMENT'} = $options{environment};    # env file
+        }
     }
 
 
@@ -384,12 +390,13 @@ sub parse_args_xdsh
     $devicepath =~ s/::/\//g;
     if (($options{'ssh-setup'}) && ($devicepath =~ /Mellanox/i)) {
         my $msg =
-          "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
+"You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";
         xCAT::MsgUtils->message("E", $msg);
         exit 2;
     }
+
     # only allow -K with -l if --devicetype defined
-    if (   (($options{'user'}) && ($options{'ssh-setup'}))
+    if ((($options{'user'}) && ($options{'ssh-setup'}))
         && (!($options{'devicetype'})))
     {
         my $msg =
@@ -405,7 +412,7 @@ sub parse_args_xdsh
              # prompt for the password for the userid on the node that will be setup
             my $userpw;
             $msg =
-              "The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
+"The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
             xCAT::MsgUtils->message("I", $msg);
             system("stty -echo");    # turn off keyboard
             chop($userpw = <STDIN>);
@@ -433,49 +440,49 @@ sub parse_args_xdsh
         my $sshdir = "$home/.ssh";
         if (!-d $sshdir)
         {
-           my $cmd = "/bin/mkdir -m 700 -p $sshdir";
-           my $outref = xCAT::Utils->runcmd("$cmd", 0);
-           if ($::RUNCMD_RC != 0)
-           {
-            xCAT::MsgUtils->message('E', "Could not create $sshdir directory.");
-            exit 1; 
-          }
+            my $cmd = "/bin/mkdir -m 700 -p $sshdir";
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not create $sshdir directory.");
+                exit 1;
+            }
         }
 
 
-       #  add config file with strict host checking no, if not already there
-       my $configinfo = "StrictHostKeyChecking no";
-       my $configfile= "$home/.ssh/config";
-       if (-e $configfile)
-       {
-          my $cmd = "grep StrictHostKeyChecking $configfile";
-          xCAT::Utils->runcmd($cmd, -1);
-          if ($::RUNCMD_RC != 0)
-          {    # not there
-            $cmd = "echo  $configinfo >> $configfile";
-            my @output = xCAT::Utils->runcmd($cmd, 0);
+        #  add config file with strict host checking no, if not already there
+        my $configinfo = "StrictHostKeyChecking no";
+        my $configfile = "$home/.ssh/config";
+        if (-e $configfile)
+        {
+            my $cmd = "grep StrictHostKeyChecking $configfile";
+            xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)
-            {    # error
-                xCAT::MsgUtils->message("E", "Error on $cmd, @output");
-                return 1;
-            }
+            {    # not there
+                $cmd = "echo  $configinfo >> $configfile";
+                my @output = xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {    # error
+                    xCAT::MsgUtils->message("E", "Error on $cmd, @output");
+                    return 1;
+                }
 
-          }
+            }
         }
         else         # file does not exist
         {
-          my $cmd = "echo  $configinfo >> $configfile";
-          my @output = xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {        # error
-            xCAT::MsgUtils->message("E", "Error on $cmd, @output");
-            return 1;
-          }
-          else
-          {
-            chmod 0600, $configfile;
+            my $cmd = "echo  $configinfo >> $configfile";
+            my @output = xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {        # error
+                xCAT::MsgUtils->message("E", "Error on $cmd, @output");
+                return 1;
+            }
+            else
+            {
+                chmod 0600, $configfile;
 
-          }
+            }
         }
 
 
@@ -484,15 +491,16 @@ sub parse_args_xdsh
         #
         if ($current_userid ne "root")
         {
-             $::REMOTE_SHELL = "/usr/bin/ssh";
-             my $callback = \&xCAT::Client::handle_response;
-             # generates new keys for non-root id, if they do not already exist
-             my $rc=
-             xCAT::RemoteShellExp->remoteshellexp("k",$callback,$::REMOTE_SHELL);
-             if ($rc != 0) {
-               $msg = "remoteshellexp failed generating keys.";
-               xCAT::MsgUtils->message("E", $msg);
-             }
+            $::REMOTE_SHELL = "/usr/bin/ssh";
+            my $callback = \&xCAT::Client::handle_response;
+
+            # generates new keys for non-root id, if they do not already exist
+            my $rc =
+              xCAT::RemoteShellExp->remoteshellexp("k", $callback, $::REMOTE_SHELL);
+            if ($rc != 0) {
+                $msg = "remoteshellexp failed generating keys.";
+                xCAT::MsgUtils->message("E", $msg);
+            }
 
 
         }
@@ -547,10 +555,11 @@ sub parse_args_xdcp
 {
 
     my %options = ();
+
     # test to see if any parameters were entered
-    my $arraysize=@ARGV;
-    if ($arraysize ==0) {
-        my $msg= "No parameters were supplied on the xdcp command. Run xdcp -h";
+    my $arraysize = @ARGV;
+    if ($arraysize == 0) {
+        my $msg = "No parameters were supplied on the xdcp command. Run xdcp -h";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
@@ -560,28 +569,28 @@ sub parse_args_xdcp
 
     if (
         !GetOptions(
-                    'f|fanout=i'       => \$options{'fanout'},
-                    'F|File=s'         => \$options{'File'},
-                    'h|help'           => \$options{'help'},
-                    'i|rootimg=s'      => \$options{'rootimg'},
-                    'l|user=s'         => \$options{'user'},
-                    'm|monitor'                => \$options{'monitor'},
-                    'o|node-options=s' => \$options{'node-options'},
-                    'q|show-config'    => \$options{'show-config'},
-                    'p|preserve'       => \$options{'preserve'},
-                    'r|c|node-rcp=s'   => \$options{'node-rcp'},
-                    's'                => \$options{'rsyncSN'},
-                    't|timeout=i'      => \$options{'timeout'},
-                    'v|verify'         => \$options{'verify'},
-                    'B|bypass'         => \$options{'bypass'},
-                    'Q|silent'         => \$options{'silent'},
-                    'P|pull'           => \$options{'pull'},
-                    'R|recursive'      => \$options{'recursive'},
-                    'T|trace'          => \$options{'trace'},
-                    'V|version'        => \$options{'version'},
-                    'nodestatus|nodestatus' => \$options{'nodestatus'},
-                    'sudo|sudo' => \$options{'sudo'},
-                    'X:s'              => \$options{'ignore_env'}
+            'f|fanout=i'            => \$options{'fanout'},
+            'F|File=s'              => \$options{'File'},
+            'h|help'                => \$options{'help'},
+            'i|rootimg=s'           => \$options{'rootimg'},
+            'l|user=s'              => \$options{'user'},
+            'm|monitor'             => \$options{'monitor'},
+            'o|node-options=s'      => \$options{'node-options'},
+            'q|show-config'         => \$options{'show-config'},
+            'p|preserve'            => \$options{'preserve'},
+            'r|c|node-rcp=s'        => \$options{'node-rcp'},
+            's'                     => \$options{'rsyncSN'},
+            't|timeout=i'           => \$options{'timeout'},
+            'v|verify'              => \$options{'verify'},
+            'B|bypass'              => \$options{'bypass'},
+            'Q|silent'              => \$options{'silent'},
+            'P|pull'                => \$options{'pull'},
+            'R|recursive'           => \$options{'recursive'},
+            'T|trace'               => \$options{'trace'},
+            'V|version'             => \$options{'version'},
+            'nodestatus|nodestatus' => \$options{'nodestatus'},
+            'sudo|sudo'             => \$options{'sudo'},
+            'X:s'                   => \$options{'ignore_env'}
         )
       )
     {
@@ -645,7 +654,7 @@ sub parse_args_xdcp
     if (($options{'rootimg'}) && (!($options{'File'})))
     {
         xCAT::MsgUtils->message("E",
-                               "To use -i flag you must supply the -F flag\n.");
+            "To use -i flag you must supply the -F flag\n.");
         exit 1;
     }
     if ($options{'node-rcp'})    # if set on command line, use it
@@ -680,64 +689,64 @@ sub check_invalid_exports
     if ($ENV{'DSH_CONTEXT'})
     {
         xCAT::MsgUtils->message("I",
-              "DSH_CONTEXT is set but is not supported. It will be ignored.\n");
+            "DSH_CONTEXT is set but is not supported. It will be ignored.\n");
     }
     if ($ENV{'DSH_LIST'})    # if file of nodes input
     {
         xCAT::MsgUtils->message("I",
-                 "DSH_LIST is set but is not supported. It will be ignored.\n");
+            "DSH_LIST is set but is not supported. It will be ignored.\n");
 
     }
     if ($ENV{'DSH_NODE_LIST'})
     {
         xCAT::MsgUtils->message(
-              "I",
-              "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
-              );
+            "I",
+            "DSH_NODE_LIST is set but is not supported. It will be ignored.\n"
+        );
     }
     if ($ENV{'DSH_DEVICE_LIST'})
     {
         xCAT::MsgUtils->message(
             "I",
             "DSH_DEVICE_LIST is set but is not supported. It will be ignored.\n"
-            );
+        );
     }
     if ($ENV{'DSH_DEVICE_OPTS'})
     {
         xCAT::MsgUtils->message(
             "I",
             "DSH_DEVICE_OPTS is set but is not supported. It will be ignored.\n"
-            );
+        );
     }
     if ($ENV{'DSH_DEVICE_RCP'})
     {
         xCAT::MsgUtils->message(
-             "I",
-             "DSH_DEVICE_RCP is set but is not supported. It will be ignored.\n"
-             );
+            "I",
+            "DSH_DEVICE_RCP is set but is not supported. It will be ignored.\n"
+        );
     }
     if ($ENV{'DSH_DEVICE_RSH'})
     {
         xCAT::MsgUtils->message(
-             "I",
-             "DSH_DEVICE_RSH is set but is not supported. It will be ignored.\n"
-             );
+            "I",
+            "DSH_DEVICE_RSH is set but is not supported. It will be ignored.\n"
+        );
     }
     if ($ENV{'DSH_NODEGROUP_PATH'})
     {
         xCAT::MsgUtils->message(
             "I",
-            "DSH_NODEGROUP_PATH is set but is not supported. It will be ignored.\n"
-            );
+"DSH_NODEGROUP_PATH is set but is not supported. It will be ignored.\n"
+        );
     }
     if ($ENV{'RSYNC_RSH'})
     {
         xCAT::MsgUtils->message("I",
-               " RSYNC_RSH is set but is not supported. It will be ignored.\n");
+            " RSYNC_RSH is set but is not supported. It will be ignored.\n");
     }
     if ($ENV{'DSH_REPORT'})
     {
         xCAT::MsgUtils->message("I",
-              " DSH_REPORT is set but is not supported. It will be ignored.\n");
+            " DSH_REPORT is set but is not supported. It will be ignored.\n");
     }
 }

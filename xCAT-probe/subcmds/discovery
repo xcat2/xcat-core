@@ -293,7 +293,7 @@ sub get_node_ip {
     }
 
     foreach my $node (keys %nodecheckrst) {
-        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if(exists($nodecheckrst{$node}{error}));
+        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
     }
 
     return %nodeip;
@@ -379,7 +379,7 @@ sub dhcp_dynamic_range_check {
             } else {
                 push @dynamic_range, "$2-$1";
             }
-            
+
         }
     }
 
@@ -413,16 +413,16 @@ sub dhcp_dynamic_range_check {
             probe_utils->send_msg("$output", "d", "Dynamic range for net $net is @{$subnet_hash{$net}}.") if ($verbose);
 
             if (%node_ip) {
-               foreach my $node (keys %node_ip) {
-                   foreach my $dr (@{$subnet_hash{$net}}) {
-                       my @dr_ip = split(/-/, $dr);
+                foreach my $node (keys %node_ip) {
+                    foreach my $dr (@{ $subnet_hash{$net} }) {
+                        my @dr_ip = split(/-/, $dr);
 
-                       if (compare_ip_value($dr_ip[0], $node_ip{$node}) and compare_ip_value($node_ip{$node}, $dr_ip[1])) {
-                           probe_utils->send_msg("$output", "d", "$node ip $node_ip{$node} is conflicting with dynamic range.") if ($verbose);
-                           $rst = 1;
-                       }
-                   }
-               }
+                        if (compare_ip_value($dr_ip[0], $node_ip{$node}) and compare_ip_value($node_ip{$node}, $dr_ip[1])) {
+                            probe_utils->send_msg("$output", "d", "$node ip $node_ip{$node} is conflicting with dynamic range.") if ($verbose);
+                            $rst = 1;
+                        }
+                    }
+                }
             }
         } else {
             probe_utils->send_msg("$output", "d", "Dynamic range for net $net did not be configured.") if ($verbose);
@@ -1015,17 +1015,17 @@ sub do_monitor {
     my $computerpid;
     my $varlogpid;
     my $rst = 0;
-    {   #important to hold a block
-        if(! -e "$varlogmsg"){
+    {    #important to hold a block
+        if (!-e "$varlogmsg") {
             probe_utils->send_msg("$output", "w", "$varlogmsg doesn't exist");
         }
-        if(! -e "$clusterlog"){
+        if (!-e "$clusterlog") {
             probe_utils->send_msg("$output", "w", "$clusterlog doesn't exist");
         }
-        if(! -e "$computelog"){
+        if (!-e "$computelog") {
             probe_utils->send_msg("$output", "w", "$computelog doesn't exist");
         }
-        if(! -e "$httplog"){
+        if (!-e "$httplog") {
             probe_utils->send_msg("$output", "w", "$httplog doesn't exist");
         }
 
@@ -1092,7 +1092,7 @@ sub do_monitor {
                     probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished discovery process");
                 }
                 last;
-            } 
+            }
             sleep 0.01;
         }
         &dump_history;

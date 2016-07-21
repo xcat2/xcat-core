@@ -14,14 +14,14 @@ $mtime    = 0;
 $startdir = @ARGV[0];
 chomp($startdir);
 
-if (-d $startdir) { #directory
-  &directory("/", *mtime);
+if (-d $startdir) {    #directory
+    &directory("/", *mtime);
 }
-elsif (-f $startdir) {   #file
-  my ($dv, $in, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($startdir);
-  $mtime = $mtime1;
+elsif (-f $startdir) {    #file
+    my ($dv, $in, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($startdir);
+    $mtime = $mtime1;
 }
-else { exit 1; }    #not a recognized format
+else { exit 1; }          #not a recognized format
 
 print $mtime;
 exit 0;
@@ -34,75 +34,75 @@ exit 0;
 #
 sub directory
 {
-  local ($dir, *mtime, $nlink) = @_;
-  local ($dev, $ino, $mode, $subcount, $dirtry, $namedirtry, $name1, $name,
-         $dir1, $mtime1, $dv, $in, $m, $nl, $u, $g, $rd, $siz, $at);
+    local ($dir, *mtime, $nlink) = @_;
+    local ($dev, $ino, $mode, $subcount, $dirtry, $namedirtry, $name1, $name,
+        $dir1, $mtime1, $dv, $in, $m, $nl, $u, $g, $rd, $siz, $at);
 
-  ($dev, $ino, $nlink) = stat($dir) unless $nlink;
+    ($dev, $ino, $nlink) = stat($dir) unless $nlink;
 
-  $dirtry = $startdir;
-  $dirtry .= $dir;
+    $dirtry = $startdir;
+    $dirtry .= $dir;
 
-  $dir1 = substr($dir, 1);
+    $dir1 = substr($dir, 1);
 
-  opendir(DIR, $dirtry);
+    opendir(DIR, $dirtry);
 
-  local (@filenames) = readdir(DIR);
+    local (@filenames) = readdir(DIR);
 
-  if ($nlink == 2)  {
-    for (@filenames)  {
-      next if $_ eq '.';
-      next if $_ eq '..';
-      #
-      # Check to see if the mtime of this file is later than the current mtime
-      #
-      $name  = "$dir/$_";
-      $name1 = "$dir1/$_";
-      $name2 = "/$startdir/$name1";
+    if ($nlink == 2) {
+        for (@filenames) {
+            next if $_ eq '.';
+            next if $_ eq '..';
+            #
+            # Check to see if the mtime of this file is later than the current mtime
+            #
+            $name  = "$dir/$_";
+            $name1 = "$dir1/$_";
+            $name2 = "/$startdir/$name1";
 
-      ($dv, $in, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($name2);
+            ($dv, $in, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($name2);
 
-      if ($mtime1 > $mtime)  {
-        $mtime = $mtime1;
-      }
+            if ($mtime1 > $mtime) {
+                $mtime = $mtime1;
+            }
+        }
     }
-  }
-  else {
-    $subcount = $nlink - 2;
-    for (@filenames)  {
-      next if $_ eq '.';
-      next if $_ eq '..';
+    else {
+        $subcount = $nlink - 2;
+        for (@filenames) {
+            next if $_ eq '.';
+            next if $_ eq '..';
 
-      #
-      # Check to see if the mtime of this file is later than the current mtime
-      #
+            #
+            # Check to see if the mtime of this file is later than the current mtime
+            #
 
-      $name  = "$dir/$_";
-      $name1 = "$dir1/$_";
-      $name2 = "/$startdir/$name1";
+            $name  = "$dir/$_";
+            $name1 = "$dir1/$_";
+            $name2 = "/$startdir/$name1";
 
-      ($dev, $ino, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($name2);
+            ($dev, $ino, $m, $nl, $u, $g, $rd, $siz, $at, $mtime1) = stat($name2);
 
-      if ($mtime1 > $mtime && !(-d $name2)) {
-        $mtime = $mtime1;
-      }
+            if ($mtime1 > $mtime && !(-d $name2)) {
+                $mtime = $mtime1;
+            }
 
-      next if $subcount == 0;
+            next if $subcount == 0;
 
-      #
-      # Recurse into next lower subdirectory
-      #
+            #
+            # Recurse into next lower subdirectory
+            #
 
-      $namedirtry = "/$startdir/";
-      $namedirtry .= $name;
+            $namedirtry = "/$startdir/";
+            $namedirtry .= $name;
 
-      ($dev, $ino, $mode, $nlink) = lstat($namedirtry);
+            ($dev, $ino, $mode, $nlink) = lstat($namedirtry);
 
-      #next unless -d _;
-      next unless { $nlink > 1 }
-      &directory($name, *mtime, $nlink);
+            #next unless -d _;
+            next unless { $nlink > 1 }
+              &directory($name, *mtime, $nlink);
 
-      --$subcount;
+            --$subcount;
+        }
     }
-  }
 }

@@ -3,6 +3,7 @@
 #(C)IBM Corp
 
 #-----------------------------------------------------------------------------
+
 =head1 restartxcatd 
 
  restartxcatd  - this routine is used to restart the xcatd process group.
@@ -28,14 +29,15 @@
          then runs 'startsrc -s xcatd' to start xcatd.
 
 =cut
+
 #-----------------------------------------------------------------------------
 
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
@@ -44,26 +46,28 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 
 my $cmd = basename($0);
+
 # for auditing
 my $current_userid = getpwuid($>);
-my $rsp = {};
-my $host=`hostname`;
-$host=~ s/\s*//g; # remove blanks
+my $rsp            = {};
+my $host           = `hostname`;
+$host =~ s/\s*//g;    # remove blanks
+
 # check the arguments
 &parse_args($cmd);
 
-$rsp->{syslogdata}->[0] ="restartxcatd invoked by $current_userid.\n";
-$rsp->{userid} ->[0] = $current_userid;
-$rsp->{clientname} -> [0] = $host;
-$rsp->{clienttype} -> [0]= "cli";
-$rsp->{command} -> [0] = $cmd;
-$rsp->{status} -> [0] = "allowed";
-xCAT::MsgUtils->message("SA",$rsp); # syslog and auditlog
+$rsp->{syslogdata}->[0] = "restartxcatd invoked by $current_userid.\n";
+$rsp->{userid}->[0]     = $current_userid;
+$rsp->{clientname}->[0] = $host;
+$rsp->{clienttype}->[0] = "cli";
+$rsp->{command}->[0]    = $cmd;
+$rsp->{status}->[0]     = "allowed";
+xCAT::MsgUtils->message("SA", $rsp);    # syslog and auditlog
 
 
 # for Linux specific
 if (xCAT::Utils->isLinux())
-{ 
+{
     print "Restarting xCATd                                           ";
     if (-r "/etc/profile.d/xcat.sh") {
         $cmd = "source /etc/profile.d/xcat.sh;";
@@ -73,11 +77,11 @@ if (xCAT::Utils->isLinux())
     xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC == 0) {
         print "[  OK  ]\n";
-        system ("logger -p local4.info -t xcat Restart xcatd: [ OK ].");
+        system("logger -p local4.info -t xcat Restart xcatd: [ OK ].");
         exit 0;
     } else {
         print "[ FAILED  ]\n";
-        system ("logger -p local4.info -t xcat Restart xcatd: [ FAILED ].");
+        system("logger -p local4.info -t xcat Restart xcatd: [ FAILED ].");
         exit 1;
     }
 } elsif (!(xCAT::Utils->isAIX())) {
@@ -87,7 +91,7 @@ if (xCAT::Utils->isLinux())
 
 # Following code is for AIX only
 
-$::RE_CHECK_NUM = 10;   # the times to check the result of command, the checking interval is 1 second
+$::RE_CHECK_NUM = 10; # the times to check the result of command, the checking interval is 1 second
 
 my $rc;
 my @output;
@@ -95,9 +99,10 @@ my $inoperative = 0;
 my $check_num;
 
 # Check whether the xcatd subsystem has been created
-$cmd = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";
+$cmd    = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";
 @output = `$cmd`;
 if (scalar(@output)) {
+
     # create the subsystem if it does not exist
     $cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a \"-f\"";
     $rc = system($cmd);
@@ -108,7 +113,7 @@ if (scalar(@output)) {
 }
 
 # Check the current status of xcatd subsystem
-$cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
+$cmd    = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
 @output = `$cmd`;
 if (scalar(@output)) {
     if ($::VERBOSE) {
@@ -117,10 +122,10 @@ if (scalar(@output)) {
     $inoperative = 1;
 }
 
-if (! $inoperative) {   # active
-    # Stop the xcatd subsystem
+if (!$inoperative) {    # active
+                        # Stop the xcatd subsystem
     $cmd = "/usr/bin/stopsrc -s xcatd";
-    $rc = system($cmd);
+    $rc  = system($cmd);
     if ($rc >> 8) {
         xCAT::MsgUtils->message("E", "Error: Cannot run stopsrc command correctly.\n");
         exit 1;
@@ -129,7 +134,7 @@ if (! $inoperative) {   # active
     # Wait for end of the xcatd subsystem
     $check_num = $::RE_CHECK_NUM;
     while ($check_num > 0) {
-        $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
+        $cmd    = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
         @output = `$cmd`;
         if (scalar(@output) == 0) {
             sleep 1;
@@ -150,10 +155,10 @@ if (! $inoperative) {   # active
 }
 
 # Kill xcatd manually if needed
-$cmd = "ps -ef | grep xcatd: | grep -v grep";
+$cmd    = "ps -ef | grep xcatd: | grep -v grep";
 @output = `$cmd`;
 if (scalar(@output)) {
-    $cmd = "ps -ef | grep xcatd | grep 'SSL listener'";
+    $cmd    = "ps -ef | grep xcatd | grep 'SSL listener'";
     @output = `$cmd`;
     foreach my $ps (@output) {
         $ps =~ s/^\s+//;    # strip any leading spaces
@@ -161,8 +166,9 @@ if (scalar(@output)) {
         my $cmd = "/usr/bin/kill -15 -$pid >/dev/null 2>&1";
         `$cmd`;
     }
+
     # Kill the xcatd by force if it still there
-    $cmd = "ps -ef | grep xcatd: | grep -v grep";
+    $cmd    = "ps -ef | grep xcatd: | grep -v grep";
     @output = `$cmd`;
     foreach my $ps (@output) {
         $ps =~ s/^\s+//;    # strip any leading spaces
@@ -172,7 +178,7 @@ if (scalar(@output)) {
     }
     $check_num = $::RE_CHECK_NUM;
     while ($check_num > 0) {
-        $cmd = "ps -ef | grep xcatd: | grep -v grep";
+        $cmd    = "ps -ef | grep xcatd: | grep -v grep";
         @output = `$cmd`;
         if (scalar(@output)) {
             sleep 1;
@@ -208,6 +214,7 @@ if ($rc >> 8) {
     xCAT::MsgUtils->message("E", "Error: Cannot run startsrc command correctly.\n");
     exit 1;
 }
+
 # Sleep a while to make sure the startsrc has completed it's work
 sleep 3;
 
@@ -232,15 +239,15 @@ if ($check_num <= 0) {
 # now see if we can really talk to the database, up to a minute
 $wait = 60;
 while ($wait > 0) {
-   sleep 10;
-   $wait = $wait -10;
-   xCAT::Utils->runcmd("$::XCATROOT/sbin/tabdump site",-1);
-   if ($::RUNCMD_RC == 0) {
-            $wait=0;
-   }
+    sleep 10;
+    $wait = $wait - 10;
+    xCAT::Utils->runcmd("$::XCATROOT/sbin/tabdump site", -1);
+    if ($::RUNCMD_RC == 0) {
+        $wait = 0;
+    }
 }
 if ($::VERBOSE) {
-        xCAT::MsgUtils->message("I", "Started the xcatd subsystem.\n");
+    xCAT::MsgUtils->message("I", "Started the xcatd subsystem.\n");
 }
 
 exit 0;
@@ -282,12 +289,12 @@ sub parse_args
     }
     if ($::RELOAD)
     {
-       $ENV{XCATRELOAD} = "yes";
+        $ENV{XCATRELOAD} = "yes";
     }
     if ($::VERSION)
     {
         my $version = xCAT::Utils->Version();
-        $version .="\n";
+        $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }
