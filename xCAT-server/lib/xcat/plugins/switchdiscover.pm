@@ -1418,7 +1418,7 @@ sub switchsetup {
         if ( $stype =~ /BNT/ ) {
             $ret = config_BNT($dswitch, $node, $static_ip, $request, $sub_req);
             if ($ret == 1) {
-                next;
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=config failed, dhcp ip=$ip'] }, $sub_req, 0, 1);
             }
         } 
         # Mellanox switches
@@ -1427,15 +1427,13 @@ sub switchsetup {
             #NOTE:  this expect routine will timeout after set up address
             $ret = config_Mellanox($dswitch, $node, $static_ip, $request, $sub_req);
             if ($ret == 1) {
-                next;
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=config failed, dhcp ip=$ip'] }, $sub_req, 0, 1);
             }
 
         } 
         else {
             send_msg($request, 0, "the switch $dswitch type $stype is not support\n");
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$dswitch,"ip=$ip",'otherinterfaces=switch type is not supported'] }, $sub_req, 0, 1);
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype",'otherinterfaces=switch type is not supported'] }, $sub_req, 0, 1);
-            next;
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype",'otherinterfaces=switch type is not supported yet, dhcp ip=$ip'] }, $sub_req, 0, 1);
         }
 
         # save for update mac address and remove node definition
@@ -1458,8 +1456,6 @@ sub switchsetup {
     if ($mactab) {
         $mactab->setNodesAttribs($discovered_switch);
     }
-
-
     return;
 }
 
@@ -1496,7 +1492,7 @@ sub config_BNT {
     #send_msg($request, 0, Dumper($output));
     
     #add default attribute for BNT switch
-    my $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=root','password=admin','protocol=telnet','switchtype=BNT'] }, $sub_req, 0, 1);
+    my $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=root','password=admin','protocol=telnet','switchtype=BNT','otherinterfaces='] }, $sub_req, 0, 1);
     #send_msg($request, 0, Dumper($ret));
 
     #set up hostname
@@ -1507,7 +1503,6 @@ sub config_BNT {
     if ($::RUNCMD_RC != 0)
     {
         send_msg($request, 0, "Failed to change hostname on $node");
-        $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=Failed to change hostname'] }, $sub_req, 0, 1);
         return 1;
     }
    
@@ -1603,7 +1598,7 @@ sub config_Mellanox {
     $myexp->soft_close();
 
     #add default attribute for Mellanox switch
-    $output = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=admin','switchtype=Mellanox'] }, $sub_req, 0, 1);
+    $output = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=admin','switchtype=Mellanox','otherinterfaces='] }, $sub_req, 0, 1);
     #send_msg($request, 0, Dumper($output));
 
 
@@ -1615,7 +1610,6 @@ sub config_Mellanox {
     if ($::RUNCMD_RC != 0)
     {
         send_msg($request, 0, "Failed to change hostname on $node");
-        $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=Failed to change hostname'] }, $sub_req, 0, 1);
         return 1;
     }
 
