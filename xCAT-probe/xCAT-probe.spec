@@ -37,14 +37,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/probe/
 
 cp xcatprobe $RPM_BUILD_ROOT/%{prefix}/bin
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
-
 cp -r subcmds  $RPM_BUILD_ROOT/%{prefix}/probe/
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/probe/subcmds/*
-
 cp -r lib $RPM_BUILD_ROOT/%{prefix}/probe/
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/xCAT/
 
 %clean
 # This step does not happen until *after* the %files packaging below
