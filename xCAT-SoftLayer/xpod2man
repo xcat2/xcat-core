@@ -8,17 +8,19 @@
 # done relative to that.
 
 use strict;
+
 #use lib '.';
 use Pod::Man;
 use Pod::Html;
 
-my $poddir = 'pods';
-my $mandir = 'share/man';
-my $htmldir = 'share/doc';
+my $poddir   = 'pods';
+my $mandir   = 'share/man';
+my $htmldir  = 'share/doc';
 my $cachedir = "$ENV{'HOME'}/tmp";
 if (system("mkdir -p $cachedir")) { die "Error: could not create $cachedir.\n"; }
 
 my @pods = getPodList($poddir);
+
 #foreach (@pods) { print "$_\n"; } exit;
 
 # Build the cmd overview page.
@@ -29,12 +31,12 @@ my @pods = getPodList($poddir);
 print "Converting PODs to man pages...\n";
 foreach my $podfile (@pods) {
     my $manfile = $podfile;
-    $manfile =~ s/^$poddir/$mandir/;      # change the beginning of the path
-    $manfile =~ s/\.pod$//;			# change the ending
+    $manfile =~ s/^$poddir/$mandir/;    # change the beginning of the path
+    $manfile =~ s/\.pod$//;             # change the ending
     my $mdir = $manfile;
-    $mdir =~ s|/[^/]*$||;			# get rid of the basename part
-	if (system("mkdir -p $mdir")) { die "Error: could not create $mdir.\n"; }
-	my ($section) = $podfile =~ /\.(\d+)\.pod$/;
+    $mdir =~ s|/[^/]*$||;               # get rid of the basename part
+    if (system("mkdir -p $mdir")) { die "Error: could not create $mdir.\n"; }
+    my ($section) = $podfile =~ /\.(\d+)\.pod$/;
     convertpod2man($podfile, $manfile, $section);
 }
 
@@ -43,15 +45,17 @@ my @dummyPods = createDummyPods($poddir, \@pods);
 # Build the html page for each pod.
 #mkdir($htmldir) or die "Error: could not create $htmldir.\n";
 print "Converting PODs to HTML pages...\n";
+
 # have to clear the cache, because old entries can cause a problem
 unlink("$cachedir/pod2htmd.tmp", "$cachedir/pod2htmi.tmp");
 foreach my $podfile (@pods) {
     my $htmlfile = $podfile;
-    $htmlfile =~ s/^$poddir/$htmldir/;      # change the beginning of the path
-    $htmlfile =~ s/\.pod$/\.html/;			# change the ending
+    $htmlfile =~ s/^$poddir/$htmldir/;    # change the beginning of the path
+    $htmlfile =~ s/\.pod$/\.html/;        # change the ending
     my $hdir = $htmlfile;
-    $hdir =~ s|/[^/]*$||;			# get rid of the basename part
-	if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
+    $hdir =~ s|/[^/]*$||;                 # get rid of the basename part
+    if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
+
     #print "$podfile, $htmlfile, $poddir, $htmldir\n";
     convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
 }
@@ -68,73 +72,78 @@ exit;
 #	if that pod does not exist, create an empty one that will satisfy pod2html
 #	keep track of all dummy pods created, so they can be removed later
 sub createDummyPods {
-	my ($poddir, $pods) = @_;
-	my $cmd = "grep -r -E 'L<.+\\([57]\\)\\|.+\\.[57]>' " . $poddir;
-	#print "Running cmd: ", $cmd, "\n";
-	my @lines = `$cmd`;
-	if ($?) { print "Did not find any section 5 man page, creating dummy pods...\n"; print join('', @lines); }
-	#my @lines;
-	#system($cmd);
-	my @dummyPods;
-	foreach my $l (@lines) {
-		#print "$l\n";
-		my @matches = $l =~ /L<([^\(]+)\(([57])\)\|\1\.[57]>/g;		# get all the matches in the line
-		# The above line should create the array with every other entry being the man page name
-		# and every other entry is the section # (5 or 7)
-		my $cmd;
-		while ($cmd=shift @matches) {
-			#foreach my $m (@matches) {
-			my $section = shift @matches;
-			my $filename = "$poddir/man$section/$cmd.$section.pod";
-			#print "$filename\n";
-			if (!(grep /^$filename$/, @$pods) && !(grep /^$filename$/, @dummyPods)) { push @dummyPods, $filename; }
-		}
-	}
-	
-	
-	# Create these empty files
-	print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
-	mkdir "$poddir/man7";
-	foreach my $d (@dummyPods) {
-		if (!open(TMP, ">>$d")) { warn "Could not create dummy pod file $d ($!)\n"; }
-		else { close TMP; }
-	}
-	
-	return @dummyPods;
+    my ($poddir, $pods) = @_;
+    my $cmd = "grep -r -E 'L<.+\\([57]\\)\\|.+\\.[57]>' " . $poddir;
+
+    #print "Running cmd: ", $cmd, "\n";
+    my @lines = `$cmd`;
+    if ($?) { print "Did not find any section 5 man page, creating dummy pods...\n"; print join('', @lines); }
+
+    #my @lines;
+    #system($cmd);
+    my @dummyPods;
+    foreach my $l (@lines) {
+
+        #print "$l\n";
+        my @matches = $l =~ /L<([^\(]+)\(([57])\)\|\1\.[57]>/g; # get all the matches in the line
+          # The above line should create the array with every other entry being the man page name
+          # and every other entry is the section # (5 or 7)
+        my $cmd;
+        while ($cmd = shift @matches) {
+
+            #foreach my $m (@matches) {
+            my $section  = shift @matches;
+            my $filename = "$poddir/man$section/$cmd.$section.pod";
+
+            #print "$filename\n";
+            if (!(grep /^$filename$/, @$pods) && !(grep /^$filename$/, @dummyPods)) { push @dummyPods, $filename; }
+        }
+    }
+
+
+    # Create these empty files
+    print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
+    mkdir "$poddir/man7";
+    foreach my $d (@dummyPods) {
+        if (!open(TMP, ">>$d")) { warn "Could not create dummy pod file $d ($!)\n"; }
+        else                    { close TMP; }
+    }
+
+    return @dummyPods;
 }
 
 # Recursively get the list of pod man page files.
 sub getPodList {
-	my $poddir = shift;
-	my @files;
+    my $poddir = shift;
+    my @files;
 
-	# 1st get toplevel dir listing
-	opendir(DIR, $poddir) or die "Error: could not read $poddir.\n";
-	my @topdir = grep !/^\./, readdir(DIR);		# /
-	close(DIR);
+    # 1st get toplevel dir listing
+    opendir(DIR, $poddir) or die "Error: could not read $poddir.\n";
+    my @topdir = grep !/^\./, readdir(DIR);    # /
+    close(DIR);
 
-	# Now go thru each subdir (these are man1, man3, etc.)
-	foreach my $mandir (@topdir) {
-		opendir(DIR, "$poddir/$mandir") or die "Error: could not read $poddir/$mandir.\n";
-		my @dir = grep !/^\./, readdir(DIR);		# /
-		close(DIR);
-		foreach my $file (@dir) {
-			push @files, "$poddir/$mandir/$file";
-		}
-	}
-	return sort @files;
+    # Now go thru each subdir (these are man1, man3, etc.)
+    foreach my $mandir (@topdir) {
+        opendir(DIR, "$poddir/$mandir") or die "Error: could not read $poddir/$mandir.\n";
+        my @dir = grep !/^\./, readdir(DIR);    # /
+        close(DIR);
+        foreach my $file (@dir) {
+            push @files, "$poddir/$mandir/$file";
+        }
+    }
+    return sort @files;
 }
 
 
 # Create the xcat man page that gives a summary description of each xcat cmd.
 # Not used.
 sub writesummarypage {
-	my $file = shift;       # relative path file name of the man page
-	# the rest of @_ contains the pod files that describe each cmd
+    my $file = shift;    # relative path file name of the man page
+         # the rest of @_ contains the pod files that describe each cmd
 
-	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+    open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
 
-	print FILE <<'EOS1';
+    print FILE <<'EOS1';
 =head1 NAME
 
 B<xcat> - extreme Cluster Administration Tool.
@@ -160,56 +169,58 @@ i.e. all the commands in section 1, then the commands in section 3, etc.
 =over 12
 EOS1
 
-# extract the summary for each cmd from its man page
-foreach my $manpage (@_) {
-	my ($sectionnum) = $manpage =~ /\.(\d+)\.pod$/;
-	# Suck in the whole file, then we will parse it.
-	open(MANPAGE, "$manpage") or die "Error: could not open $manpage for reading.\n";
-	my @contents = <MANPAGE>;
-	my $wholemanpage = join('', @contents);
-	close(MANPAGE);
-	# This regex matches: optional space, =head1, space, title, space, cmd, space, description, newline
-	my ($cmd, $description) = $wholemanpage =~ /^\s*=head1\s+\S+\s+(\S+)\s+(.+?)\n/si;
-	if (!defined($cmd)) { print "Warning: $manpage is not in a recognized structure.  It will be ignored.\n"; next; }
-	if (!defined($description)) { print "Warning: $manpage does not have a description for $cmd.  It will be ignored.\n"; next; }
-	$cmd =~ s/^.<(.+)>$/$1/;		# if the cmd name has pod formatting around it, strip it off
-	$description =~ s/^-\s*//;		# if the description has a leading hypen, strip it off
-	print FILE "\n=item L<$cmd($sectionnum)|$cmd.$sectionnum>\n\n".$description."\n";
-}
+    # extract the summary for each cmd from its man page
+    foreach my $manpage (@_) {
+        my ($sectionnum) = $manpage =~ /\.(\d+)\.pod$/;
 
-# Artificially add the xcattest cmd, because the xCAT-test rpm will add this
-print FILE "\n=item L<xcattest(1)|xcattest.1>\n\nRun automated xCAT test cases.\n";
+        # Suck in the whole file, then we will parse it.
+        open(MANPAGE, "$manpage") or die "Error: could not open $manpage for reading.\n";
+        my @contents = <MANPAGE>;
+        my $wholemanpage = join('', @contents);
+        close(MANPAGE);
 
-	print FILE <<"EOS3";
+        # This regex matches: optional space, =head1, space, title, space, cmd, space, description, newline
+        my ($cmd, $description) = $wholemanpage =~ /^\s*=head1\s+\S+\s+(\S+)\s+(.+?)\n/si;
+        if (!defined($cmd)) { print "Warning: $manpage is not in a recognized structure.  It will be ignored.\n"; next; }
+        if (!defined($description)) { print "Warning: $manpage does not have a description for $cmd.  It will be ignored.\n"; next; }
+        $cmd =~ s/^.<(.+)>$/$1/; # if the cmd name has pod formatting around it, strip it off
+        $description =~ s/^-\s*//; # if the description has a leading hypen, strip it off
+        print FILE "\n=item L<$cmd($sectionnum)|$cmd.$sectionnum>\n\n" . $description . "\n";
+    }
+
+    # Artificially add the xcattest cmd, because the xCAT-test rpm will add this
+    print FILE "\n=item L<xcattest(1)|xcattest.1>\n\nRun automated xCAT test cases.\n";
+
+    print FILE <<"EOS3";
 
 =back
 EOS3
 
-	close FILE;
+    close FILE;
 }
 
 
 # Create the html page for one pod.
 sub convertpod2html {
-	my ($podfile, $htmlfile, $poddir, $htmldir) = @_;
+    my ($podfile, $htmlfile, $poddir, $htmldir) = @_;
 
-	#TODO: use --css=<stylesheet> and --title=<pagetitle> to make the pages look better
-	pod2html($podfile,
-			"--outfile=$htmlfile",
-			"--podpath=man1",
-			"--podroot=$poddir",
-			"--htmldir=$htmldir",
-			"--recurse",
-			"--cachedir=$cachedir",
-			);
+    #TODO: use --css=<stylesheet> and --title=<pagetitle> to make the pages look better
+    pod2html($podfile,
+        "--outfile=$htmlfile",
+        "--podpath=man1",
+        "--podroot=$poddir",
+        "--htmldir=$htmldir",
+        "--recurse",
+        "--cachedir=$cachedir",
+    );
 
 }
 
 
 # Create the man page for one pod.
 sub convertpod2man {
-	my ($podfile, $manfile, $section) = @_;
+    my ($podfile, $manfile, $section) = @_;
 
-	my $parser = Pod::Man->new(section => $section);
+    my $parser = Pod::Man->new(section => $section);
     $parser->parse_from_file($podfile, $manfile);
 }

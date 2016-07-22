@@ -52,32 +52,34 @@ else
 }
 
 $cmdref->{cwd}->[0] = cwd();
+
 # get info from files piped in as stdin
 my $data;
-if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
+if ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}))
 {
     my $rout;
-    my $rin="";
-    vec($rin,fileno(STDIN),1)=1;
-    my $nfound=select($rout=$rin,"","",1);
+    my $rin = "";
+    vec($rin, fileno(STDIN), 1) = 1;
+    my $nfound = select($rout = $rin, "", "", 1);
     if ($nfound)
     {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
 else
 {
     if (-p STDIN) {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
+
 # The noderange can be specified through a noderange file
 # the noderange file can be a relative path,
 # convert the relative path to a full path.
 my @tmpargv = ();
-my @tmpv = @ARGV;
+my @tmpv    = @ARGV;
 foreach my $a (@tmpv)
 {
     if (!($a =~ /=/) && !($a =~ /^-/)) {
@@ -85,17 +87,17 @@ foreach my $a (@tmpv)
         foreach my $nr (split(/,/, $a)) {
             if ($nr =~ /^\^(.*)$/) {
                 my $nrf = $1;
-                if ($nrf !~ /^\//) { #relative path
-                   $nrf = Cwd::abs_path($nrf);
-                } 
+                if ($nrf !~ /^\//) {    #relative path
+                    $nrf = Cwd::abs_path($nrf);
+                }
                 $nrf = "\^" . $nrf;
                 push @tempnr, $nrf;
             } else {
                 push @tempnr, $nr;
             }
         }
-        $a = join(',',@tempnr);
-    } 
+        $a = join(',', @tempnr);
+    }
     push @tmpargv, $a;
 }
 @ARGV = @tmpargv;
@@ -103,25 +105,27 @@ foreach my $a (@tmpv)
 # add all the cmd line args to the hash - to pass to the plugin subroutine
 foreach my $a (@ARGV)
 {
-    push(@{$cmdref->{arg}}, $a);
+    push(@{ $cmdref->{arg} }, $a);
 }
 
 # For some commands we need to set the noderange value
 # - don't want to depend on the order of args so need to pick
 #   the operand that doesn't have an "=" sign ( ie. attr=val format)
 my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim", "nimnodecust");
-if (grep(/^$bname$/, @checkcmds) ) { 
-	# strip off all options
-	# use getopt instead of getopts to let long options pass through
-	getopt('ismot');
-	# check the operands for a noderange
-	while (my $a = shift(@ARGV)) {
-		if (!($a =~ /=/) && !($a =~ /^-/)) {
-			$cmdref->{noderange}->[0]=$a;
-			last;
-		}
-	}
+if (grep(/^$bname$/, @checkcmds)) {
+
+    # strip off all options
+    # use getopt instead of getopts to let long options pass through
+    getopt('ismot');
+
+    # check the operands for a noderange
+    while (my $a = shift(@ARGV)) {
+        if (!($a =~ /=/) && !($a =~ /^-/)) {
+            $cmdref->{noderange}->[0] = $a;
+            last;
+        }
+    }
 }
 
-xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;

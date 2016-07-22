@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #Note, this pping still frontends fping.  I think it would be possible to write a perl equivalent, but
 #I've not had the time.  Net::Ping shows perl code I could see being adapted for a somewhat
-#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async 
+#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async
 #method Net::Ping provides.
 BEGIN
 {
@@ -16,36 +16,38 @@ use xCAT::TableUtils;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
+
 #use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
 
-my $USAGE="Usage: pping [-i|--interface interfaces][-f|--use_fping] noderange
+my $USAGE = "Usage: pping [-i|--interface interfaces][-f|--use_fping] noderange
        pping -h|--help
-       pping -v|--version\n"; 
+       pping -v|--version\n";
 
 my $interface;
+
 # Parse the options
 require Getopt::Long;
-Getopt::Long::Configure ("bundling");
-if(!GetOptions(
-      'f|use_fping'     => \$::USE_FPING,
-      'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,
-      'X|noexpand'  => \$::NOEXPAND,
-      'i|interface=s' => \$interface))
-	{
-		print "$USAGE";
-		exit 1;
-	}
+Getopt::Long::Configure("bundling");
+if (!GetOptions(
+        'f|use_fping'   => \$::USE_FPING,
+        'h|help'        => \$::HELP,
+        'v|version'     => \$::VERSION,
+        'X|noexpand'    => \$::NOEXPAND,
+        'i|interface=s' => \$interface))
+{
+    print "$USAGE";
+    exit 1;
+}
 
-if ($::HELP) {  print "$USAGE"; exit 0}
-if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
-my $xcathost='localhost:3001';
+if ($::HELP) { print "$USAGE"; exit 0 }
+if ($::VERSION) { print xCAT::Utils->Version() . "\n"; exit 0 }
+my $xcathost = 'localhost:3001';
 if ($ENV{XCATHOST}) {
-  $xcathost=$ENV{XCATHOST};
+    $xcathost = $ENV{XCATHOST};
 }
 
 unless (@ARGV) {
@@ -53,60 +55,61 @@ unless (@ARGV) {
     exit(1);
 }
 my $noderange = $ARGV[0];
-my @nodes=();
-my $cmd="id -u";
-my $userid = xCAT::Utils->runcmd("$cmd", -1);
+my @nodes     = ();
+my $cmd       = "id -u";
+my $userid    = xCAT::Utils->runcmd("$cmd", -1);
 
-if ($::NOEXPAND) {		# this is when ppping is calling us and has already expanded the noderange
-	@nodes = split(/,/, $noderange);
+if ($::NOEXPAND) { # this is when ppping is calling us and has already expanded the noderange
+    @nodes = split(/,/, $noderange);
 }
-else { 		# the normal case of the user running the cmd - expand the noderange using xcatd
+else { # the normal case of the user running the cmd - expand the noderange using xcatd
     my %sslargs;
     if (defined($ENV{'XCATSSLVER'})) {
         $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
     }
 
-	my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
-                SSL_cert_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
-                SSL_ca_file =>  xCAT::Utils->getHomeDir()."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-                SSL_verify_mode => SSL_VERIFY_PEER,
-                SSL_verifycn_scheme => "none",
-		%sslargs,
-             );
-	die "Connection failure: $!\n" unless ($client);
-	my %cmdref = (command => 'noderange', noderange => $noderange);
-	$SIG{ALRM} = sub { die "No response getting noderange" };
-	alarm(15);
-	print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-	alarm(15);
-	my $response="";
-	while (<$client>) {
-	  alarm(0);
-	  $response .= $_;
-	  if ($response =~ m/<\/xcatresponse>/) {
-	    my $rsp=XMLin($response, ForceArray => ['node']);
-	    $response='';
-	    if ($rsp->{warning}) {
-	      printf "Warning: ".$rsp->{warning}."\n";
-	    }
-	    if ($rsp->{error}) {
-	      die ("ERROR: ".$rsp->{error}."\n");
-	    } elsif ($rsp->{node}) {
-	      @nodes=@{$rsp->{node}};
-	    }
-	    if ($rsp->{serverdone}) {
-	      last;
-	    }
-	  }
-	}
-	close($client);
-}	# end of else that expands the noderange using xcatd
+    my $client = IO::Socket::SSL->new(
+        PeerAddr        => $xcathost,
+        SSL_key_file    => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
+        SSL_cert_file   => xCAT::Utils->getHomeDir() . "/.xcat/client-cred.pem",
+        SSL_ca_file     => xCAT::Utils->getHomeDir() . "/.xcat/ca.pem",
+        SSL_use_cert    => 1,
+        SSL_verify_mode => SSL_VERIFY_PEER,
+        SSL_verifycn_scheme => "none",
+        %sslargs,
+    );
+    die "Connection failure: $!\n" unless ($client);
+    my %cmdref = (command => 'noderange', noderange => $noderange);
+    $SIG{ALRM} = sub { die "No response getting noderange" };
+    alarm(15);
+    print $client XMLout(\%cmdref, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
+    alarm(15);
+    my $response = "";
+
+    while (<$client>) {
+        alarm(0);
+        $response .= $_;
+        if ($response =~ m/<\/xcatresponse>/) {
+            my $rsp = XMLin($response, ForceArray => ['node']);
+            $response = '';
+            if ($rsp->{warning}) {
+                printf "Warning: " . $rsp->{warning} . "\n";
+            }
+            if ($rsp->{error}) {
+                die("ERROR: " . $rsp->{error} . "\n");
+            } elsif ($rsp->{node}) {
+                @nodes = @{ $rsp->{node} };
+            }
+            if ($rsp->{serverdone}) {
+                last;
+            }
+        }
+    }
+    close($client);
+}    # end of else that expands the noderange using xcatd
 
 unless (scalar(@nodes)) {
-   exit 1;
+    exit 1;
 }
 
 # I think this was only needed when we forked ping ourselves
@@ -115,61 +118,62 @@ unless (scalar(@nodes)) {
 #$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
 
 my $usenmap = (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap');
-if ($::USE_FPING) { # Use fping instead of nmap
-	$usenmap = 0;
+if ($::USE_FPING) {    # Use fping instead of nmap
+    $usenmap = 0;
 }
 
 my @interfaces;
 if ($interface) { @interfaces = split(/,/, $interface); }
-else { $interfaces[0] = ''; }
+else            { $interfaces[0] = ''; }
 
 # Do the pings to the nodes for each interface in sequence.  We could consider doing all the interfaces
 # in parallel, but then the output would get all mixed up and be confusing for the user.
 foreach my $interf (@interfaces) {
-	my $noderef;
-	if ($interf) {
-		# make a copy of the node list and add the interface on
-		$noderef = [ @nodes ];
-		foreach (@$noderef) {
-                     s/-hf\d$//;
-                     s/$/-$interf/;
-               }
-	}
-	else {
-		$noderef = \@nodes;		# use the original node list
-	}
-	
-	if ($usenmap) { nmap_pping($noderef); }
-	else { fping_pping($noderef); }
+    my $noderef;
+    if ($interf) {
+
+        # make a copy of the node list and add the interface on
+        $noderef = [@nodes];
+        foreach (@$noderef) {
+            s/-hf\d$//;
+            s/$/-$interf/;
+        }
+    }
+    else {
+        $noderef = \@nodes;    # use the original node list
+    }
+
+    if   ($usenmap) { nmap_pping($noderef); }
+    else            { fping_pping($noderef); }
 }
 
 sub fping_pping {
-	my $nodes = shift;
-        my $master = xCAT::TableUtils->get_site_Master();
-        my $masterip = xCAT::NetworkUtils->getipaddr($master);
-        if ($masterip =~ /:/) #IPv6, needs fping6 support
+    my $nodes    = shift;
+    my $master   = xCAT::TableUtils->get_site_Master();
+    my $masterip = xCAT::NetworkUtils->getipaddr($master);
+    if ($masterip =~ /:/)      #IPv6, needs fping6 support
+    {
+        if (!-x '/usr/bin/fping6')
         {
-            if (!-x '/usr/bin/fping6')
-            {
-                print "fping6 is not availabe for IPv6 ping.\n";
-                exit 1;
-            }
-            open (FPING, "fping6 ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+            print "fping6 is not availabe for IPv6 ping.\n";
+            exit 1;
         }
-        else
-        {
-	    open (FPING, "fping ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+        open(FPING, "fping6 " . join(' ', @$nodes) . " 2>&1 |") or die("Cannot open fping pipe: $!");
+    }
+    else
+    {
+        open(FPING, "fping " . join(' ', @$nodes) . " 2>&1 |") or die("Cannot open fping pipe: $!");
+    }
+    while (<FPING>) {
+        if ($_ =~ /is unreachable/) {
+            s/ is unreachable/: noping/;
+        } elsif ($_ =~ /is alive/) {
+            s/ is alive/: ping/;
+        } elsif ($_ =~ /address not found/) {
+            s/ address not found/: noping/;
         }
-	while (<FPING>) {
-	  if ($_ =~ /is unreachable/) {
-	    s/ is unreachable/: noping/;
-	  } elsif ($_ =~ /is alive/) {
-	    s/ is alive/: ping/;
-	  } elsif ($_ =~ /address not found/) {
-	    s/ address not found/: noping/;
-	  }
-	  print $_;
-	}
+        print $_;
+    }
 }
 
 sub nmap_pping {
@@ -179,45 +183,46 @@ sub nmap_pping {
     my $more_options;
     my $tcmd;
     foreach (@$nodes) {
-        $deadnodes{$_}=1;
+        $deadnodes{$_} = 1;
     }
-    if ( $userid != 0 ) {
-        $tcmd ="tabdump site|grep nmapoptions|awk -F, '{print $2}'|sed -e 's/\"//g'|awk -F, '{print $1}'";
-        $more_options = xCAT::Utils->runcmd($tcmd, -1); 
+    if ($userid != 0) {
+        $tcmd = "tabdump site|grep nmapoptions|awk -F, '{print $2}'|sed -e 's/\"//g'|awk -F, '{print $1}'";
+        $more_options = xCAT::Utils->runcmd($tcmd, -1);
     } else {
+
         # get additional options from site table
         @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
         $more_options = $nmap_options[0];
-    } 
-    open (FPING, "nmap -PE --system-dns --send-ip -sP $more_options ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    }
+    open(FPING, "nmap -PE --system-dns --send-ip -sP $more_options " . join(' ', @$nodes) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
     while (<FPING>) {
-      if (/Host (.*) \(.*\) appears to be up/) {
-          $node=$1;
-          unless ($deadnodes{$node}) {
-              foreach (keys %deadnodes) {
-                  if ($node =~ /^$_\./) {
-                      $node = $_;
-                      last;
-                  }
-              }
-          }
-          delete $deadnodes{$node};
-          print "$node: ping\n" if ($node);
-      } elsif (/Nmap scan report for ([^ ]*) /) {
-          $node=$1;
-      } elsif (/Host is up./) {
-          unless ($deadnodes{$node}) {
-              foreach (keys %deadnodes) {
-                  if ($node =~ /^$_\./) {
-                      $node = $_;
-                      last;
-                  }
-              }
-          }
-          delete $deadnodes{$node};
-          print "$node: ping\n" if ($node);
-      }
+        if (/Host (.*) \(.*\) appears to be up/) {
+            $node = $1;
+            unless ($deadnodes{$node}) {
+                foreach (keys %deadnodes) {
+                    if ($node =~ /^$_\./) {
+                        $node = $_;
+                        last;
+                    }
+                }
+            }
+            delete $deadnodes{$node};
+            print "$node: ping\n" if ($node);
+        } elsif (/Nmap scan report for ([^ ]*) /) {
+            $node = $1;
+        } elsif (/Host is up./) {
+            unless ($deadnodes{$node}) {
+                foreach (keys %deadnodes) {
+                    if ($node =~ /^$_\./) {
+                        $node = $_;
+                        last;
+                    }
+                }
+            }
+            delete $deadnodes{$node};
+            print "$node: ping\n" if ($node);
+        }
     }
     foreach (sort keys %deadnodes) {
         print "$_: noping\n";

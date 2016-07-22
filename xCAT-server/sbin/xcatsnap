@@ -42,9 +42,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use File::Spec;
@@ -56,7 +56,7 @@ my @Commands_array;
 my $Command_name;
 my $Command;
 my $currentDirectory;
-my $logDirectory="/tmp/xcatsnap";
+my $logDirectory = "/tmp/xcatsnap";
 my $output_dir;
 my @files_array;
 my @file_list;
@@ -82,7 +82,7 @@ sub usage {
 sub valid_dir {
     $logDirectory = File::Spec->rel2abs($logDirectory);
     my $Dir_last_char = substr $logDirectory, -1, 1;
-    if ( $Dir_last_char eq "/" ) {
+    if ($Dir_last_char eq "/") {
         chop($logDirectory);
 
     }
@@ -92,12 +92,12 @@ sub valid_dir {
 
 sub run_cmd {
     my @output;
-    $Command_name = $Command;#Constructing the output file name from the command
+    $Command_name = $Command; #Constructing the output file name from the command
     $Command_name =~ s/ /_/g;
     $Command_name =~ s/-//g;
     $Command_name =~ s/tabdump_//g;
     $Command_name =~ s/\//_/g;
-    
+
     print "$Command -> $Command_name.out";
     print "\n\tExecuting: $Command \n";
     eval {
@@ -110,33 +110,33 @@ sub run_cmd {
         print "\t$Command  timed out.\n";
         @output = "$Command timed out.\n";
     }
-    
-        print "\tExecution Complete :$Command.\n";    #Writing command output into a file
-        my $outfile = $output_dir . $Command_name . ".out";
-        open( MYFILE, ">", $outfile );
-        print MYFILE @output;
-        close(MYFILE);
-    
+
+    print "\tExecution Complete :$Command.\n"; #Writing command output into a file
+    my $outfile = $output_dir . $Command_name . ".out";
+    open(MYFILE, ">", $outfile);
+    print MYFILE @output;
+    close(MYFILE);
+
 }
 
 ######################## Tar it: Tars files and folders #############################
 
 sub Tar_it {
-    my $file= shift;
+    my $file = shift;
     print "\n Processing $file ..\n";
     my $last = substr $file, -1, 1;
-    if ( $last eq "*" ) {
+    if ($last eq "*") {
         @file_list = `ls $file 2>/dev/null`;
         foreach my $i (@file_list) {
             print "\tProcessing $i";
         }
     }
-    if ( -l $file ) {
+    if (-l $file) {
 
         check_symbolic_link($file);    # Checking Symbolic links
     }
-    if ( $circular != 1 ) {
-        if ( -e $TarFile ) {
+    if ($circular != 1) {
+        if (-e $TarFile) {
             `cd /; tar -uf $TarFile .$file 2>/dev/null`;
         }
         else {
@@ -151,14 +151,14 @@ sub Tar_it {
 
 sub check_symbolic_link {
 
-    my $file= shift;
+    my $file           = shift;
     my $max_link_count = 32;
     my $i              = 0;
-    while ( defined( my $link = readlink $file ) && $i <= $max_link_count ) {
+    while (defined(my $link = readlink $file) && $i <= $max_link_count) {
         $file = $link;
         $i++;
     }
-    if ( $i >= $max_link_count ) {
+    if ($i >= $max_link_count) {
         $circular = 1;
         print
 "Either the link is circular or the symbolic link count exceeds max_link_count";
@@ -168,7 +168,7 @@ sub check_symbolic_link {
 ############## make_output_dir: Creates output directory #######################
 
 sub make_output_dir {
-    if ( -d $output_dir ) {
+    if (-d $output_dir) {
         `rm -rf $output_dir`;
     }
     `mkdir  $output_dir`;
@@ -178,67 +178,68 @@ sub make_output_dir {
 
 sub snap_it {
     print "Collecting files ...\n";
-    chop( $INSTALLDIR =
-          `tabdump site | grep installdir | cut -f2 -d ,` );
+    chop($INSTALLDIR =
+          `tabdump site | grep installdir | cut -f2 -d ,`);
     $INSTALLDIR =~ s/"//g;
+
     # make a list of all files in /tftpboot
     # need to limit what we get due to size
     `ls -lR /tftpboot > /tftpboot/tftpboot.list`;
-    if ( $OSname eq "AIX" ) {
-        
+    if ($OSname eq "AIX") {
+
         @files_array = (
-            "/etc/xcat/*","$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
+            "/etc/xcat/*", "$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
             "$INSTALLDIR/postscripts/*", "$INSTALLDIR/prescripts/*",
             "/tftpboot/*",               "/var/log/consoles/*",
             "/tmp/spot.out.*",           "/var/lib/dhcpd/dhcpd.leases",
             "/etc/hosts",                "/etc/conserver.cf",
             "/var/log/conserver",        "/etc/db_file.cr",
             "/etc/dhcpsd.cnf",           "/var/adm/ras/nimlog",
-            "/etc/resolv.conf", "/etc/named.conf",  "/var/log/messages", "/var/log/xcat/*");
+"/etc/resolv.conf", "/etc/named.conf", "/var/log/messages", "/var/log/xcat/*");
     }
 
-    elsif ( $OSname eq "Linux" ) {
-        
+    elsif ($OSname eq "Linux") {
+
         @files_array = (
-            "/etc/xcat/*","$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
-            "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*", "$INSTALLDIR/custom/*", 
-            "/tftpboot/*",                 "/var/log/consoles/*",
-            "/etc/*-release",              "/etc/dhcpd.conf",
+            "/etc/xcat/*", "$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
+"$INSTALLDIR/postscripts/*", "$INSTALLDIR/prescripts/*", "$INSTALLDIR/custom/*",
+            "/tftpboot/*",               "/var/log/consoles/*",
+            "/etc/*-release",            "/etc/dhcpd.conf",
             "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
-            "/etc/named.conf", "/etc/conserver.cf",           "/var/log/conserver",
-            "/etc/nsswitch.conf",          "/var/log/messages", "/var/log/xcat/*");
+            "/etc/named.conf",    "/etc/conserver.cf", "/var/log/conserver",
+            "/etc/nsswitch.conf", "/var/log/messages", "/var/log/xcat/*");
         print("@files_array \n");
     }
-            foreach my $item (@files_array) {
-            my $file = $item;
-            Tar_it($file);
-        }
+    foreach my $item (@files_array) {
+        my $file = $item;
+        Tar_it($file);
+    }
     print "Done collecting files ...\n\n";
     print "Gathering system configuration...\n\n";
     $output_dir = "$logDirectory/commands_output/";
-    my $xcatroot=$ENV{'XCATROOT'};
+    my $xcatroot = $ENV{'XCATROOT'};
     my $installdir;
-    chop( $installdir =
-          `tabdump site | grep installdir | cut -f2 -d ,` );
+    chop($installdir =
+          `tabdump site | grep installdir | cut -f2 -d ,`);
     make_output_dir();
-    if ( $OSname eq "AIX" ) {
+    if ($OSname eq "AIX") {
         @Commands_array = (
-            "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
-            "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
-            "ls $installdir","/bin/crontab -l",
-            "find /tftpboot -size -32k","ls -lR $xcatroot",
-            "arp -a","ps -edlf","ps -aux","ulimit -a","df -k","oslevel",
-            "netstat -A","errpt -a","/usr/sbin/instfix -i",
-            "/usr/sbin/lsnim -l","lssrc -l -s dhcpsd","lslpp -hac","lsxcatd -a");
+            "uname -a", "ifconfig -a", "netstat -in", "netstat -rn", "env",
+            "reventlog -a", "lsmod", "/sbin/lspci", "lssrc -a", "rpm -qa",
+            "ls $installdir",            "/bin/crontab -l",
+            "find /tftpboot -size -32k", "ls -lR $xcatroot",
+            "arp -a", "ps -edlf", "ps -aux", "ulimit -a", "df -k", "oslevel",
+            "netstat -A", "errpt -a", "/usr/sbin/instfix -i",
+"/usr/sbin/lsnim -l", "lssrc -l -s dhcpsd", "lslpp -hac", "lsxcatd -a");
     }
-    elsif ( $OSname eq "Linux" ) {
+    elsif ($OSname eq "Linux") {
         @Commands_array = (
-            "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
-            "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
-            "ls $installdir","/usr/bin/crontab -l",
-            "find /tftpboot -size -32k","ls -lR $xcatroot",
-            "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
-            "cat /etc/issue","lsxcatd -a","cat /proc/meminfo", "cat /proc/cpuinfo");
+            "uname -a", "ifconfig -a", "netstat -in", "netstat -rn", "env",
+            "reventlog -a", "lsmod", "/sbin/lspci", "lssrc -a", "rpm -qa",
+            "ls $installdir",            "/usr/bin/crontab -l",
+            "find /tftpboot -size -32k", "ls -lR $xcatroot",
+            "arp -a", "ps -edlf", "ps -aux", "ulimit -a", "df -k",
+"cat /etc/issue", "lsxcatd -a", "cat /proc/meminfo", "cat /proc/cpuinfo");
     }
     foreach my $item (@Commands_array) {
         $Command = $item;
@@ -246,13 +247,13 @@ sub snap_it {
     }
     print "Done gathering system configuration...\n\n";
 
-    if ( -d "/opt/xcat/" ) {
+    if (-d "/opt/xcat/") {
         print "Capturing xCAT specific information...\n\n";
         print "Gathering management node configurations...\n";
         @Commands_array = (
-            "lsdef -t site -l","lsdef -t group -l","lsdef -t osimage -l",
-            "nodels","lsdef -t node -l","rpower all stat","nodestat all",
-            "nodels all groups","monls -a","lsvm all","rinv all all",
+            "lsdef -t site -l", "lsdef -t group -l", "lsdef -t osimage -l",
+            "nodels", "lsdef -t node -l", "rpower all stat", "nodestat all",
+            "nodels all groups", "monls -a", "lsvm all", "rinv all all",
             "rvitals all all");
         foreach my $item (@Commands_array) {
             $Command = $item;
@@ -262,24 +263,29 @@ sub snap_it {
         print "Retrieving xCAT database...\n";
         $output_dir = "$logDirectory/xcat-database/";
         make_output_dir();
+
         # do not snap the ISNM tables, too big
         my $cmd;
-        $cmd="XCAT_SKIPTABLES=isnm_perf,isnm_perf_dlink,isnm_perf_dlink_sum,isnm_perf_hfi,isnm_perf_hfi_sum,isnm_perf_isr,isnm_perf_isr_sum,isnm_perf_lllink,isnm_perf_lllink_sum,isnm_perf_lrlink,isnm_perf_lrlink_sum,isnm_perf_sum";
-         $cmd .= " dumpxCATdb -p $output_dir";
+        $cmd = "XCAT_SKIPTABLES=isnm_perf,isnm_perf_dlink,isnm_perf_dlink_sum,isnm_perf_hfi,isnm_perf_hfi_sum,isnm_perf_isr,isnm_perf_isr_sum,isnm_perf_lllink,isnm_perf_lllink_sum,isnm_perf_lrlink,isnm_perf_lrlink_sum,isnm_perf_sum";
+        $cmd .= " dumpxCATdb -p $output_dir";
         `$cmd`;
+
         # now get auditlog and eventlog, last two days
-         # get number of seconds in the day count
-         my $numberdays=2;
-         my $numbersecs=($numberdays * 86400);
+        # get number of seconds in the day count
+        my $numberdays = 2;
+        my $numbersecs = ($numberdays * 86400);
+
         # get time now
-        my $timenow=time;
-        my $secsdaysago=$timenow - $numbersecs;
-         # Format like the database table timestamp record
+        my $timenow     = time;
+        my $secsdaysago = $timenow - $numbersecs;
+
+        # Format like the database table timestamp record
         my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
-              localtime($secsdaysago);
-         my $daysago = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
-                                        $year + 1900, $mon + 1, $mday,
-                                        $hour, $min, $sec);
+          localtime($secsdaysago);
+        my $daysago = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+            $year + 1900, $mon + 1, $mday,
+            $hour, $min, $sec);
+
         # now tabdump days gt 2 days ago
         $cmd = "tabdump -w \"audittime>$daysago\" auditlog > $output_dir/auditlog.csv";
 
@@ -287,34 +293,34 @@ sub snap_it {
         $cmd = "tabdump -w \"eventtime>$daysago\" eventlog > $output_dir/eventlog.csv";
 
         `$cmd`;
- 
+
         print "xCAT database retrieved.\n";
     }
-    `rm /tftpboot/tftpboot.list`;  # remove temp list
-}    
+    `rm /tftpboot/tftpboot.list`;    # remove temp list
+}
 ##################### getHomeDirectory ###########################
 #  input userid output homedir
 #####################################################################
 sub getHomeDir
 {
-  my @user;
-  my $homedir;
-  @user = getpwuid($>);
-  my $username=$user[0];
+    my @user;
+    my $homedir;
+    @user = getpwuid($>);
+    my $username = $user[0];
 
-  if ($user[7]) { #  if homedir
-      $homedir= $user[7];
-  } else { # no home
-      $homedir=`su - $username -c  pwd`;
-      chop $homedir;
-  }
-  return $homedir;
+    if ($user[7]) {                  #  if homedir
+        $homedir = $user[7];
+    } else {                         # no home
+        $homedir = `su - $username -c  pwd`;
+        chop $homedir;
+    }
+    return $homedir;
 
 }
 ############################# Main Section ####################################
 
-my $userid = `id -ru`;    #Checking if the user is root
-if ( $userid != 0 ) {
+my $userid = `id -ru`;               #Checking if the user is root
+if ($userid != 0) {
     print "You must be root to run the xcatsnap tool";
     exit 1;
 }
@@ -325,68 +331,69 @@ if ( $userid != 0 ) {
 
 if (
     !GetOptions(
-                'd|dir=s'        => \$::DIRECTORY,
-                'B|bypass'     => \$::BYPASS,
-                'h|help'       => \$::HELP,
-                'v|version'    => \$::VERSION,
+        'd|dir=s'   => \$::DIRECTORY,
+        'B|bypass'  => \$::BYPASS,
+        'h|help'    => \$::HELP,
+        'v|version' => \$::VERSION,
     )
   )
 {
     &usage;
     exit(1);
 }
-if ($::HELP ) {
+if ($::HELP) {
     usage();
     exit 0;
 }
 if ($::VERSION) {
-        my $version = xCAT::Utils->Version();
-        $version .= "\n";
-        xCAT::MsgUtils->message("N", $version);
-        exit 0;
+    my $version = xCAT::Utils->Version();
+    $version .= "\n";
+    xCAT::MsgUtils->message("N", $version);
+    exit 0;
 
     exit 0;
 
 }
 if ($::BYPASS)
 {
-    $ENV{XCATBYPASS} = "yes";  # bypass xcatd
+    $ENV{XCATBYPASS} = "yes";    # bypass xcatd
 }
 
 
 if (!($::DIRECTORY)) {
     print " Log Directory will be /tmp/xcatsnap/\n";
 }
-else  {
-    $logDirectory = $::DIRECTORY ;
+else {
+    $logDirectory = $::DIRECTORY;
     valid_dir();
 }
-unless ( -d $logDirectory ) {   #Create the output directory if it doesn't exist
+unless (-d $logDirectory) {    #Create the output directory if it doesn't exist
     `mkdir -p $logDirectory`;
-     if ($?!=0) {  
-       print " Could not create $logDirectory\n";
-       exit 1;
-     }  
-  
+    if ($? != 0) {
+        print " Could not create $logDirectory\n";
+        exit 1;
+    }
+
     valid_dir();
 }
 my $hostname;
-chop( $OSname   = `uname` );
-chop( $hostname = `hostname -s` );
-my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
+chop($OSname   = `uname`);
+chop($hostname = `hostname -s`);
+my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
   localtime(time);
 $mon = $mon + 1;
-my @date_array = ( $mon, $mday, $hour, $min );
+my @date_array = ($mon, $mday, $hour, $min);
+
 foreach my $item (@date_array) {
     $item =
-      sprintf( "%2d", $item );    #Formatting the date for dispaly in file name
+      sprintf("%2d", $item);    #Formatting the date for dispaly in file name
     $item =~ tr/ /0/;
 }
 my $logdate = $date_array[0] . $date_array[1] . $date_array[2] . $date_array[3];
 $LogFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".log";
 $TarFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".tar";
 
-open( STDOUT, "| tee  $LogFile" );
+open(STDOUT, "| tee  $LogFile");
 print "Time Stamp:" . `date`;
 print "Log Directory: $logDirectory \n";
 print "Preparation Complete...\n";
@@ -401,32 +408,32 @@ print "Compiling Information...\n";
 print "Information compiled...\n";
 `chmod 400 $LogFile`;    # Processing the log file
 print "Send $LogFile to IBM Support.\n";
-my $donotdelete=0;
-if ( `which gunzip` == 0 ) {    # Compressing the tar file
+my $donotdelete = 0;
+if (`which gunzip` == 0) {    # Compressing the tar file
     `gzip -f $TarFile`;
 }
-elsif ( `which compress` == 0 ) {
+elsif (`which compress` == 0) {
     `compress -f $TarFile`;
 }
 else {
     print
 "gzip and compress are not available. The tar file $TarFile will not be compressed";
-$donotdelete=1;
+    $donotdelete = 1;
 }
 
-if (-e $TarFile  && $donotdelete == 0){   # Don't remove if only file to send 
+if (-e $TarFile && $donotdelete == 0) {    # Don't remove if only file to send
     `rm $TarFile`;
 }
 
-if ( -e $TarFile . ".gz" ) {
+if (-e $TarFile . ".gz") {
     `chmod 400 $TarFile".gz"`;
     print "Send $TarFile.gz to IBM Support.\n";
 }
-elsif ( -e $TarFile . ".z" ) {
+elsif (-e $TarFile . ".z") {
     `chmod 400 $TarFile".z"`;
     print "Send $TarFile.z to IBM Support.\n";
 }
-elsif ( -e $TarFile ) {
+elsif (-e $TarFile) {
     `chmod 400 $TarFile`;
     print "Send $TarFile to IBM Support.\n";
 }

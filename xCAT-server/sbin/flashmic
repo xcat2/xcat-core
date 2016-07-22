@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 
-# This script is used to flash the mics on the host. 
-# This script is run by xdsh from MN/SN to the host 
+# This script is used to flash the mics on the host.
+# This script is run by xdsh from MN/SN to the host
 # parameters
-#  -m xcatmaster 
+#  -m xcatmaster
 #  -p the path of the mic configuration file. Generally, it's /tftpboot/xcat/miccfg/micflash.hostname
 
 use strict;
@@ -17,24 +17,25 @@ use Getopt::Long;
 select STDOUT;
 $| = 1;
 
-my $tmppath = "/tmp/mictmp";
-my $logpath = "/var/log/xcat/";
-my $logfile = "$logpath/flash.log";
-my $micmnt = "/var/mpss/mnt";
+my $tmppath   = "/tmp/mictmp";
+my $logpath   = "/var/log/xcat/";
+my $logfile   = "$logpath/flash.log";
+my $micmnt    = "/var/mpss/mnt";
 my $flashpath = "$micmnt/usr/share/mpss/flash";
 
-if (! -d "$flashpath") {
+if (!-d "$flashpath") {
     $flashpath = "/usr/share/mpss/flash";
 }
 
 mkpath $tmppath;
 mkpath $micmnt;
+
 #open the log file
-open (LOG, ">>$logfile") or die "Error: cannot open $logfile\n";
-print LOG "\n\n====================================================\nStart mic flashing: ".`date`."\n";
+open(LOG, ">>$logfile") or die "Error: cannot open $logfile\n";
+print LOG "\n\n====================================================\nStart mic flashing: " . `date` . "\n";
 
 my ($master, $cfgpath);
-GetOptions ('m=s'=>\$master, 'p=s'=>\$cfgpath);
+GetOptions('m=s' => \$master, 'p=s' => \$cfgpath);
 unless ($master && $cfgpath) {
     outputmsg("Error: the -m master and -p path arguments must be specified for configmic.\n", 1);
 }
@@ -46,7 +47,7 @@ if ($masterip) {
     chomp($masterip);
     my $myip = `ip route get $masterip| head -n 1 | sed 's/^.*src//g' | awk {'print \$1'}`;
     if ($myip) {
-        my $myipinfo =`getent hosts $myip`;
+        my $myipinfo = `getent hosts $myip`;
 
         if ($myipinfo && $myipinfo =~ /([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
             my $n1 = $2;
@@ -72,19 +73,19 @@ unless ($nodename_short) {
 
 # download the mic configuration file from master
 my $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/micflash.$nodename_short -P $tmppath";
-my ($rc, $output) = runsyscmd ($cmd);
+my ($rc, $output) = runsyscmd($cmd);
 if ($rc) {
     $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/micflash.$nodename -P $tmppath";
-    runsyscmd ($cmd, "Error: failed to download mic configuration file from $master\n", 3);
+    runsyscmd($cmd, "Error: failed to download mic configuration file from $master\n", 3);
 }
 
 unless (-r "$tmppath/micflash.$nodename") {
-    runsyscmd ("Error: cannot get the mic configuration file from http://$master/$cfgpath/micflash.$nodename\n", 4);
+    runsyscmd("Error: cannot get the mic configuration file from http://$master/$cfgpath/micflash.$nodename\n", 4);
 }
 
-# parse the configuration file 
-unless (open (CFGFILE, "<$tmppath/micflash.$nodename")) {
-    runsyscmd ("Error: cannot open $tmppath/micflash.$nodename\n", 5);
+# parse the configuration file
+unless (open(CFGFILE, "<$tmppath/micflash.$nodename")) {
+    runsyscmd("Error: cannot open $tmppath/micflash.$nodename\n", 5);
 }
 
 # the configureation file should have the following format
@@ -98,43 +99,45 @@ my $ospath;
 while (<CFGFILE>) {
     if (/(\d+):(.*)/) {
         my $deviceid = $1;
-        my @params = split (/\|/, $2);
+        my @params = split(/\|/, $2);
         foreach (@params) {
-            my ($n, $v) = split (/=/, $_);
+            my ($n, $v) = split(/=/, $_);
             $miccfg{$deviceid}{$n} = $v;
         }
     } elsif (/^miclist=(.*)/) {
         $miclist = $1;
     } elsif (/^imgpath=(.*)/) {
-        $ospath= $1;
+        $ospath = $1;
     }
 }
-close (CFGFILE);
+close(CFGFILE);
 
 $miclist =~ s/,/ /g;
 
 # add the mount entry for mounting of root fs from master to /etc/fstab
 # e.g. mount $master:/install/mpss3 /var/mpss/mnt
 $cmd = "grep \'$master:$ospath \' $micmnt /etc/fstab ";
-($rc, $output) = runsyscmd ($cmd);
+($rc, $output) = runsyscmd($cmd);
 if ($rc) {
+
     # not found the exact mount entry
     $cmd = "grep $micmnt /etc/fstab";
-    ($rc, $output) = runsyscmd ($cmd);
+    ($rc, $output) = runsyscmd($cmd);
     if (!$rc) {
+
         # found the mount to $micmnt with another master or directory, remove the entry and umount it
         my $trans = $micmnt;
         $trans =~ s/\//\\\//g;
         $cmd = "sed \"/$trans/d\" /etc/fstab > $tmppath/fstab.tmp";
-        runsyscmd ($cmd, "Error: failed to configure fstab.\n", 6);
-        copy ("$tmppath/fstab.tmp", "/etc/fstab");
+        runsyscmd($cmd, "Error: failed to configure fstab.\n", 6);
+        copy("$tmppath/fstab.tmp", "/etc/fstab");
         $cmd = "umount -l -f $micmnt";
-        runsyscmd ($cmd, "Error: failed to run umount -l -f $micmnt\n", 7);
+        runsyscmd($cmd, "Error: failed to run umount -l -f $micmnt\n", 7);
     }
     $cmd = "echo \"$master:$ospath $micmnt nfs timeo=14,intr 1 2\" >>/etc/fstab";
-    runsyscmd ($cmd);
+    runsyscmd($cmd);
     $cmd = "mount -a";
-    runsyscmd ($cmd);
+    runsyscmd($cmd);
 }
 
 # make sure the remote flash directory is accessable
@@ -146,7 +149,7 @@ unless (-d "$flashpath") {
 # #
 # # reset the mic to ready stat
 $cmd = "micctrl -r -w $miclist";
-($rc, $output) = runsyscmd ($cmd, "Error: failed to reset mic.\n", 100);
+($rc, $output) = runsyscmd($cmd, "Error: failed to reset mic.\n", 100);
 
 my $micidlist;
 foreach my $micid (keys %miccfg) {
@@ -160,34 +163,34 @@ $micidlist =~ s/^,//;
 
 # do the flash
 $cmd = "micflash -update $flashpath -device $micidlist";
-($rc, $output) = runsyscmd ($cmd);
+($rc, $output) = runsyscmd($cmd);
 
 # generate the output messages
 foreach (@$output) {
     foreach my $line (split /\n/, $_) {
-    if ($line =~ /^mic(\d+):/) {
-        $line =~ s/^mic(\d+):/MICMSG:$miccfg{$1}{'name'}:/;
-    }
-    print $line."\n";
+        if ($line =~ /^mic(\d+):/) {
+            $line =~ s/^mic(\d+):/MICMSG:$miccfg{$1}{'name'}:/;
+        }
+        print $line. "\n";
     }
 }
 
-print LOG "\nFinish the mic flashing: ".`date`."====================================================\n";
+print LOG "\nFinish the mic flashing: " . `date` . "====================================================\n";
 
-close (LOG);
+close(LOG);
 
 exit 0;
 
 # run command
 sub runsyscmd {
-    my $cmd = shift;
+    my $cmd    = shift;
     my $errmsg = shift;
-    my $rc = shift;
+    my $rc     = shift;
 
     print LOG "---------------------------------------------\n";
     print LOG "Run command: $cmd\n";
 
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }  
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
     my @output = `$cmd`;
 
     my $errcode = 0;
@@ -208,9 +211,9 @@ sub runsyscmd {
 }
 
 # display the output message
-sub outputmsg{
+sub outputmsg {
     my $msg = shift;
-    my $rc  =shift;
+    my $rc  = shift;
     print LOG $msg;
     print $msg;
     if ($rc) {

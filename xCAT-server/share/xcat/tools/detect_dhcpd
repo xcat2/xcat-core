@@ -16,81 +16,85 @@ Options:
 
 Author:  Wang, Xiao Peng\n";
 if (!GetOptions(
-    'i=s'       => \$::IF,
-    'm=s'       => \$::MACADD,
-    't=s'       => \$::TIMEOUT,
-    'V|verbose' => \$::VERBOSE,
-    'h|help' => \$::HELP,)) {
-  print $::USAGE;
-  exit 1;
+        'i=s'       => \$::IF,
+        'm=s'       => \$::MACADD,
+        't=s'       => \$::TIMEOUT,
+        'V|verbose' => \$::VERBOSE,
+        'h|help'    => \$::HELP,)) {
+    print $::USAGE;
+    exit 1;
 }
 
 if ($::HELP) { print $::USAGE; exit 0; }
 
 unless (-x "/usr/sbin/tcpdump") {
-  print "Error: Please install tcpdump before the detecting.\n";
-  exit 1;
+    print "Error: Please install tcpdump before the detecting.\n";
+    exit 1;
 }
 
 my $nic;
 if ($::IF) {
-  $nic = $::IF;
+    $nic = $::IF;
 } else {
-   print $::USAGE;
-   exit 1;
+    print $::USAGE;
+    exit 1;
 }
 
 my $start = Time::HiRes::gettimeofday();
 $start =~ s/(\d.*)\.(\d.*)/$1/;
 
-if (!$nic) { print "specify a nic\n"; print $::USAGE;  exit 1;}
+if (!$nic) { print "specify a nic\n"; print $::USAGE; exit 1; }
+
 #my $IP = `ifconfig $nic | grep "inet addr" | awk '{print \$2}' | awk -F: '{print \$2}'`;
 my $IPADDRMASK = `ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print \$2}' | head -n 1`;
-my ($IP,$MASK)= split (/\//,$IPADDRMASK);
+my ($IP, $MASK) = split(/\//, $IPADDRMASK);
 my $MAC;
 my $tmpMAC;
 my @ipoutput;
 if ($::MACADD) {
-  $MAC = $::MACADD;
+    $MAC = $::MACADD;
 } else {
-#  $MAC = `ifconfig $nic | grep "HWaddr" | /usr/bin/awk '{print \$5}'`;
-  $tmpMAC = `ip link show $nic | grep ether`;
-  @ipoutput= split (' ',$tmpMAC);
-  $MAC=$ipoutput[1];
+
+    #  $MAC = `ifconfig $nic | grep "HWaddr" | /usr/bin/awk '{print \$5}'`;
+    $tmpMAC   = `ip link show $nic | grep ether`;
+    @ipoutput = split(' ', $tmpMAC);
+    $MAC      = $ipoutput[1];
 }
 
 chomp($IP);
 chomp($MAC);
 
 if ($::VERBOSE) {
-  print "Send out dhcp discover from: NIC = $nic, IP = $IP, MAC = $MAC\n";
+    print "Send out dhcp discover from: NIC = $nic, IP = $IP, MAC = $MAC\n";
 }
-if (!$IP || !$MAC) { print "Cannot find IP/MAC\n"; exit 1;}
+if (!$IP || !$MAC) { print "Cannot find IP/MAC\n"; exit 1; }
 
 
 # check the distro
 my $os;
 if (-f "/etc/redhat-release") {
-  $os = "rh";
+    $os = "rh";
 } elsif (-f "/etc/SuSE-release") {
-  $os = "sles";
+    $os = "sles";
 } elsif (-f "/etc/lsb-release") {
-  $os = "ubuntu";
+    $os = "ubuntu";
 } elsif (-f "/etc/debian_version") {
-  $os = "debian";
+    $os = "debian";
 } else {
-  print "Only support the redhat, sles, ubuntu and debian OS.\n";
-  exit 1;
+    print "Only support the redhat, sles, ubuntu and debian OS.\n";
+    exit 1;
 }
+
 # fork a process to capture the packet by tcpdump
 my $pid = fork;
-if (!defined $pid) { print "Fork failed.\n"; exit 1;}
+if (!defined $pid) { print "Fork failed.\n"; exit 1; }
 my $dumpfile = "/tmp/dhcpdumpfile.log";
 if ($pid == 0) {
-  # Child process 
-  my $cmd = "tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
-  `$cmd`;
-  exit 0;
+
+    # Child process
+    my $cmd = "tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
+    `$cmd`;
+    exit 0;
 }
 
 # generate the discover package
@@ -98,104 +102,109 @@ my $package = packdhcppkg($MAC);
 
 # send out the package
 my $sock = IO::Socket::INET->new(Proto => 'udp',
-  Broadcast => 1,
-  #ReusePort => 1,
-  PeerPort => '67',
-  #LocalAddr => 0,
-  LocalAddr => $IP,
-  LocalPort => '68',
-  PeerAddr => inet_ntoa(INADDR_BROADCAST));
+    Broadcast => 1,
+
+    #ReusePort => 1,
+    PeerPort => '67',
+
+    #LocalAddr => 0,
+    LocalAddr => $IP,
+    LocalPort => '68',
+    PeerAddr  => inet_ntoa(INADDR_BROADCAST));
 
 # try the any port if localport 68 has been used
 unless ($sock) {
- $sock = IO::Socket::INET->new(Proto => 'udp',
-  Broadcast => 1,
-  PeerPort => '67',
-  LocalAddr => $IP,
-  PeerAddr => inet_ntoa(INADDR_BROADCAST));
+    $sock = IO::Socket::INET->new(Proto => 'udp',
+        Broadcast => 1,
+        PeerPort  => '67',
+        LocalAddr => $IP,
+        PeerAddr  => inet_ntoa(INADDR_BROADCAST));
 }
 
 unless ($sock) {
-  print "Create socket error: $@\n";
-  kill_child();
-  exit 1;
+    print "Create socket error: $@\n";
+    kill_child();
+    exit 1;
 }
 
 my $timeout = 10;
 if ($::TIMEOUT) {
-  $timeout = $::TIMEOUT;
+    $timeout = $::TIMEOUT;
 }
 
-my $end  = Time::HiRes::gettimeofday();
+my $end = Time::HiRes::gettimeofday();
 $end =~ s/(\d.*)\.(\d.*)/$1/;
 while ($end - $start <= $timeout) {
-  $sock->send($package) or die "Send discover error: $@\n";
-  sleep 2;
-  $end  = Time::HiRes::gettimeofday();
-  $end =~ s/(\d.*)\.(\d.*)/$1/;
+    $sock->send($package) or die "Send discover error: $@\n";
+    sleep 2;
+    $end = Time::HiRes::gettimeofday();
+    $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
 
 kill_child();
+
 #kill the child process
 kill 15, $pid;
 my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
 foreach my $cpid (@pidoftcpdump) {
-  kill 15, $cpid;
-#  print "try to kill $cpid\n";
+    kill 15, $cpid;
+
+    #  print "try to kill $cpid\n";
 }
 
 sleep 2;
-open (FILE, "<$dumpfile") or die "Cannot open $dumpfile\n";
+open(FILE, "<$dumpfile") or die "Cannot open $dumpfile\n";
 my %output;
-my @snack = ();
-my @siaddr = ();
+my @snack      = ();
+my @siaddr     = ();
 my $newsection = 0;
-my $offer = 0;
+my $offer      = 0;
 $chaddr = ();
 $ciaddr = ();
 $siaddr = ();
 while (<FILE>) {
-  $line = $_;
+    $line = $_;
 
-  if ($line =~ /^\d\d:\d\d:\d\d/) {
-    # A new packet was captured. Parse the last one.
-    if ($::VERBOSE) {
-      print "The server I found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer.\n";
+    if ($line =~ /^\d\d:\d\d:\d\d/) {
+
+        # A new packet was captured. Parse the last one.
+        if ($::VERBOSE) {
+            print "The server I found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer.\n";
+        }
+        if ($os eq "sles") { $offer = 1; }
+        if ($chaddr =~ /$MAC/i && $offer && $ciaddr && $siaddr && $rsiaddr) {
+            $output{$rsiaddr}{'client'} = $ciaddr;
+            $output{$rsiaddr}{'nextsv'} = $siaddr;
+        } elsif ($nack && $siaddr && !grep(/^$siaddr$/, @snack)) {
+            push @snack, $siaddr;
+        } elsif ($siaddr && !grep(/^$siaddr$/, @server)) {
+            push @server, $siaddr;
+        }
+        $offer   = 0;
+        $nack    = 0;
+        $chaddr  = ();
+        $ciaddr  = ();
+        $siaddr  = ();
+        $rsiaddr = ();    # the server which responsing the dhcp request
     }
-    if ($os eq "sles") { $offer = 1;}
-    if ($chaddr =~ /$MAC/i && $offer && $ciaddr && $siaddr && $rsiaddr) {
-      $output{$rsiaddr}{'client'} = $ciaddr;
-      $output{$rsiaddr}{'nextsv'} = $siaddr;
-    } elsif ($nack && $siaddr && !grep(/^$siaddr$/, @snack)) {
-      push @snack, $siaddr;
-    } elsif ($siaddr && ! grep(/^$siaddr$/,@server)) {
-      push @server, $siaddr;
+    if ($line =~ /(\d+\.\d+\.\d+\.\d+)\.[\d\w]+ > \d+\./) {
+        $rsiaddr = $1;
     }
-    $offer = 0;
-    $nack = 0;
-    $chaddr = ();
-    $ciaddr = ();
-    $siaddr = ();
-    $rsiaddr = (); # the server which responsing the dhcp request
-  } 
-  if ($line =~ /(\d+\.\d+\.\d+\.\d+)\.[\d\w]+ > \d+\./) {
-    $rsiaddr = $1;
-  }
-  if ($line =~ /\s*DHCP-Message.*: Offer/) {
-    $offer = 1;
-  } elsif ($line =~ /\s*DHCP-Message.*: NACK/) {
-    $nack = 1;
-  } 
-  if ($line =~ /\s*Client-Ethernet-Address (..:..:..:..:..:..)/) {
-    $chaddr = $1;
-  }
-  if ($line =~/\s*Your-IP (\d+\.\d+\.\d+.\d+)/) {
-    $ciaddr = $1;
-  }
-  if ($line =~/\s*Server-IP (\d+\.\d+\.\d+.\d+)/) {
-    $siaddr = $1;
-  }
+    if ($line =~ /\s*DHCP-Message.*: Offer/) {
+        $offer = 1;
+    } elsif ($line =~ /\s*DHCP-Message.*: NACK/) {
+        $nack = 1;
+    }
+    if ($line =~ /\s*Client-Ethernet-Address (..:..:..:..:..:..)/) {
+        $chaddr = $1;
+    }
+    if ($line =~ /\s*Your-IP (\d+\.\d+\.\d+.\d+)/) {
+        $ciaddr = $1;
+    }
+    if ($line =~ /\s*Server-IP (\d+\.\d+\.\d+.\d+)/) {
+        $siaddr = $1;
+    }
 }
 
 close(FILE);
@@ -204,137 +213,138 @@ my $sn = scalar(keys %output);
 print "\n++++++++++++++++++++++++++++++++++\n";
 print "There are $sn servers reply the dhcp discover.\n";
 foreach my $server (keys %output) {
-  print "    Server:$server assign IP [$output{$server}{'client'}] to you. The next server is [$output{$server}{'nextsv'}]!\n"; 
+    print "    Server:$server assign IP [$output{$server}{'client'}] to you. The next server is [$output{$server}{'nextsv'}]!\n";
 }
 print "++++++++++++++++++++++++++++++++++\n\n";
 
 if (scalar(@snack)) {
-  print "===================================\n";
-  print "The dhcp servers which sending out NACK in present network:\n";
-  foreach my $nack (@snack) {
-    print "    $nack\n";
-  }
+    print "===================================\n";
+    print "The dhcp servers which sending out NACK in present network:\n";
+    foreach my $nack (@snack) {
+        print "    $nack\n";
+    }
 }
 
 if (scalar(@server)) {
-  print "===================================\n";
-  print "The dhcp servers in present network:\n";
-  foreach my $s (@server) {
-    print "    $s\n";
-  }
+    print "===================================\n";
+    print "The dhcp servers in present network:\n";
+    foreach my $s (@server) {
+        print "    $s\n";
+    }
 }
 
 #`rm -f $dumpfile`;
 exit 0;
 
 
-sub packdhcppkg{
-  my $mymac = shift;
-  my $package;
+sub packdhcppkg {
+    my $mymac = shift;
+    my $package;
 
-  # add the operation type. 1 - request
-  $package .= pack("C*",1);
+    # add the operation type. 1 - request
+    $package .= pack("C*", 1);
 
-  # add the hardware type. 1 - ethernet
-  $package .= pack("C*",1);
+    # add the hardware type. 1 - ethernet
+    $package .= pack("C*", 1);
 
-  # add the length of hardware add
-  $package .= pack("C*",6);
+    # add the length of hardware add
+    $package .= pack("C*", 6);
 
-  # add the hops
-  $package .= pack("C*",0);
+    # add the hops
+    $package .= pack("C*", 0);
 
-  # add the transaction id
-  $package .= pack("C*",60,61,62,63);
+    # add the transaction id
+    $package .= pack("C*", 60, 61, 62, 63);
 
-  # add the elapsed time
-  $package .= pack("C*",0,0);
+    # add the elapsed time
+    $package .= pack("C*", 0, 0);
 
-  # add the flag 00 - broadcast
-  $package .= pack("C*",128,0);
+    # add the flag 00 - broadcast
+    $package .= pack("C*", 128, 0);
 
-  # add the IP of client
-  $package .= pack("C*",0,0,0,0);
+    # add the IP of client
+    $package .= pack("C*", 0, 0, 0, 0);
 
-  # add the your IP
-  $package .= pack("C*",0,0,0,0);
+    # add the your IP
+    $package .= pack("C*", 0, 0, 0, 0);
 
-  # add the next server IP
-  $package .= pack("C*",0,0,0,0);
+    # add the next server IP
+    $package .= pack("C*", 0, 0, 0, 0);
 
-  # add the relay agent IP
-  $package .= pack("C*",0,0,0,0);
+    # add the relay agent IP
+    $package .= pack("C*", 0, 0, 0, 0);
 
-  # add the mac address of the client
-  my @macval;
-  if ($mymac) {
-    my @strmac = split(/:/, $mymac);
-    foreach (@strmac) {
-      push @macval, hex($_);
+    # add the mac address of the client
+    my @macval;
+    if ($mymac) {
+        my @strmac = split(/:/, $mymac);
+        foreach (@strmac) {
+            push @macval, hex($_);
+        }
+        $package .= pack("C*", @macval);
+    } else {
+        @macval = ('0', '0', '50', '51', '52', '53');
+        $package .= pack("C*", @macval);
     }
-    $package .= pack("C*",@macval);
-  } else {
-    @macval = ('0','0','50','51','52','53');
-    $package .= pack("C*",@macval);
-  }
 
-  # add 10 padding for mac
-  my @macpad;
-  foreach (1..10) {
-    push @macpad, "0";
-  }
-  $package .= pack("C*",@macpad);
+    # add 10 padding for mac
+    my @macpad;
+    foreach (1 .. 10) {
+        push @macpad, "0";
+    }
+    $package .= pack("C*", @macpad);
 
-  # add the hostname of server
-  my @hs;
-  foreach (1..64) {
-    push @hs, "0";
-  }
-  $package .= pack("C*",@hs);
+    # add the hostname of server
+    my @hs;
+    foreach (1 .. 64) {
+        push @hs, "0";
+    }
+    $package .= pack("C*", @hs);
 
-  # add the file name
-  my @fn;
-  foreach (1..128) {
-    push @fn, "0";
-  }
-  $package .= pack("C*",@fn);
+    # add the file name
+    my @fn;
+    foreach (1 .. 128) {
+        push @fn, "0";
+    }
+    $package .= pack("C*", @fn);
 
-  # add the magic cookie
-  $package .= pack("C*",99,130,83,99);
+    # add the magic cookie
+    $package .= pack("C*", 99, 130, 83, 99);
 
-  # add the dhcp message type. The last num: 1 - dhcp discover
-  $package .= pack("C*",53,1,1);
+    # add the dhcp message type. The last num: 1 - dhcp discover
+    $package .= pack("C*", 53, 1, 1);
 
-  # add the client identifier
-  $package .= pack("C*",61,7,1); #type, length, hwtype
-  $package .= pack("C*",@macval);
+    # add the client identifier
+    $package .= pack("C*", 61, 7, 1);    #type, length, hwtype
+    $package .= pack("C*", @macval);
 
-  # add the parameter request list
-  $package .= pack("C*",55,10); #type, length
-  $package .= pack("C*",1,3,6,12,15,28,40,41,42,119);
+    # add the parameter request list
+    $package .= pack("C*", 55, 10);                                #type, length
+    $package .= pack("C*", 1, 3, 6, 12, 15, 28, 40, 41, 42, 119);
 
-  # add the end option
-  $package .= pack("C*",255);
+    # add the end option
+    $package .= pack("C*", 255);
 
-  # pad the package to 300
-  @strpack = unpack("W*",$package);
-  my $curleng = length($strpack);
+    # pad the package to 300
+    @strpack = unpack("W*", $package);
+    my $curleng = length($strpack);
 
-  my @padding;
-  foreach (1..35){
-    push @padding, '0';
-  }
+    my @padding;
+    foreach (1 .. 35) {
+        push @padding, '0';
+    }
 
-  $package .= pack("C*",@padding);
+    $package .= pack("C*", @padding);
 
-  return $package;
+    return $package;
 }
 
 sub kill_child {
-  kill 15, $pid;
-  my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
-  foreach my $cpid (@pidoftcpdump) {
-    kill 15, $cpid;
-    #print "try to kill $cpid\n";
-  }
+    kill 15, $pid;
+    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
+    foreach my $cpid (@pidoftcpdump) {
+        kill 15, $cpid;
+
+        #print "try to kill $cpid\n";
+    }
 }

@@ -22,26 +22,27 @@ sub updatenode_usage
 my $bname = basename($0);
 my $cmdref;
 $cmdref->{command}->[0] = $bname;
-$cmdref->{cwd}->[0] = cwd();
+$cmdref->{cwd}->[0]     = cwd();
 my $data;
+
 # allows our plugins to get the stdin of the cmd that invoked the plugin
-if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
+if ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}))
 {
-    my $rin="";
+    my $rin = "";
     my $rout;
-    vec($rin,fileno(STDIN),1)=1;
-    my $nfound=select($rout=$rin,"","",1);
+    vec($rin, fileno(STDIN), 1) = 1;
+    my $nfound = select($rout = $rin, "", "", 1);
     if ($nfound)
     {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
 else
 {
     if (-p STDIN) {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
 
@@ -50,56 +51,58 @@ Getopt::Long::Configure("posix_default");
 Getopt::Long::Configure("no_gnu_compat");
 Getopt::Long::Configure("bundling");
 
-my $tmp=" ".join(' ', @ARGV);
+my $tmp = " " . join(' ', @ARGV);
 if (!($tmp =~ / (--help|-h|-v|--version)/)) {
-  my $arg=shift(@ARGV);
-  # Set the noderange
-  if ($arg !~ /^-/) {
-    my @tempnr = ();
-    foreach my $nr (split(/,/, $arg)) {
-      if ($nr =~ /^\^(.*)$/) {
-        my $nrf = $1;
-        if ($nrf !~ /^\//) { #relative path
-          $nrf = Cwd::abs_path($nrf);
+    my $arg = shift(@ARGV);
+
+    # Set the noderange
+    if ($arg !~ /^-/) {
+        my @tempnr = ();
+        foreach my $nr (split(/,/, $arg)) {
+            if ($nr =~ /^\^(.*)$/) {
+                my $nrf = $1;
+                if ($nrf !~ /^\//) {    #relative path
+                    $nrf = Cwd::abs_path($nrf);
+                }
+                $nrf = "\^" . $nrf;
+                push @tempnr, $nrf;
+            } else {
+                push @tempnr, $nr;
+            }
         }
-        $nrf = "\^" . $nrf;
-        push @tempnr, $nrf;
-      } else {
-        push @tempnr, $nr;
-      }  
+        $arg = join(',', @tempnr);
+        $cmdref->{noderange}->[0] = $arg;
+    } else {
+        &updatenode_usage();
+        print "The noderange should be the first argument.\n";
+        exit 1;
     }
-    $arg = join(',',@tempnr);
-    $cmdref->{noderange}->[0]=$arg;
-  } else {
-    &updatenode_usage();
-    print "The noderange should be the first argument.\n";
-    exit 1;
-  }
 }
 
-push (@{$cmdref->{arg}}, @ARGV);
+push(@{ $cmdref->{arg} }, @ARGV);
+
 # check the syntax
-my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY);
+my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY);
 if (
     !GetOptions(
-                'A|updateallsw'    => \$ALLSW,
-                'c|cmdlineonly'    => \$CMDLINE,
-                'd=s'              => \$ALTSRC,
-                'h|help'           => \$HELP,
-                'v|version'        => \$VERSION,
-                'V|verbose'        => \$VERBOSE,
-                'F|sync'           => \$FILESYNC,
-                'g|genmypost'      => \$GENMYPOST,
-                'f|snsync'         => \$SNFILESYNC,
-                'l|user=s'         => \$USER,
-                'S|sw'             => \$SWMAINTENANCE,
-                's|sn'             => \$SETSERVER,
-                'P|scripts:s'      => \$RERUNPS,
-                'k|security'       => \$SECURITY,
-                'o|os=s'      	   => \$OS,
-                'fanout=i'         => \$fanout,
-                't|timetout=i'     => \$timeout,
-                'n|noverify'       => \$NOVERIFY,
+        'A|updateallsw' => \$ALLSW,
+        'c|cmdlineonly' => \$CMDLINE,
+        'd=s'           => \$ALTSRC,
+        'h|help'        => \$HELP,
+        'v|version'     => \$VERSION,
+        'V|verbose'     => \$VERBOSE,
+        'F|sync'        => \$FILESYNC,
+        'g|genmypost'   => \$GENMYPOST,
+        'f|snsync'      => \$SNFILESYNC,
+        'l|user=s'      => \$USER,
+        'S|sw'          => \$SWMAINTENANCE,
+        's|sn'          => \$SETSERVER,
+        'P|scripts:s'   => \$RERUNPS,
+        'k|security'    => \$SECURITY,
+        'o|os=s'        => \$OS,
+        'fanout=i'      => \$fanout,
+        't|timetout=i'  => \$timeout,
+        'n|noverify'    => \$NOVERIFY,
     )
   ) {
     &updatenode_usage();
@@ -131,29 +134,29 @@ if ($VERSION)
     print "$version\n";
     exit 0;
 }
-if (($FILESYNC) && ($SNFILESYNC)){  # only one
+if (($FILESYNC) && ($SNFILESYNC)) {    # only one
     my $msg = "Choose either -f to sync the service nodes, or -F  to sync the nodes not both.";
     xCAT::MsgUtils->message("E", $msg);
     exit 1;
-} 
-if (($SECURITY) && (($SWMAINTENANCE) || defined($RERUNPS) || ($FILESYNC) || ($SNFILESYNC))){
+}
+if (($SECURITY) && (($SWMAINTENANCE) || defined($RERUNPS) || ($FILESYNC) || ($SNFILESYNC))) {
     my $msg = "If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
     xCAT::MsgUtils->message("E", $msg);
     exit 1;
 }
 
-if ($SNFILESYNC && ($SWMAINTENANCE || defined($RERUNPS) || $SECURITY || $FILESYNC)){
+if ($SNFILESYNC && ($SWMAINTENANCE || defined($RERUNPS) || $SECURITY || $FILESYNC)) {
     my $msg = "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
     xCAT::MsgUtils->message("E", $msg);
     exit 1;
 }
 
-# determine who is running the command on the client and who we will run as 
+# determine who is running the command on the client and who we will run as
 # on the node
 my $current_userid = getpwuid($>);
 $ENV{DSH_FROM_USERID} = $current_userid;
 my $to_userid;
-if ($USER)   # entered -l
+if ($USER)    # entered -l
 {
     $to_userid = $USER;
 }
@@ -167,11 +170,11 @@ $ENV{DSH_TO_USERID} = $to_userid;
 if ($SECURITY) {
     my $msg;
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
-    {                         # if not already set
-        # prompt for the password for the userid on the node that will be setup
+    {    # if not already set
+         # prompt for the password for the userid on the node that will be setup
         my $userpw;
         $msg =
-          "The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
+"The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
         xCAT::MsgUtils->message("I", $msg);
         system("stty -echo");    # turn off keyboard
         chop($userpw = <STDIN>);
@@ -193,9 +196,9 @@ if ($SECURITY) {
 
 foreach (keys %ENV) {
     if (/^DSH_/ || /^XCAT/) {
-        push @{$cmdref->{environment}}, "$_=$ENV{$_}";
+        push @{ $cmdref->{environment} }, "$_=$ENV{$_}";
     }
 }
 
-xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;

@@ -31,12 +31,12 @@ Options:
 my $help;
 my $test;
 my $check;
-my @nodes = ();
+my @nodes   = ();
 my $verbose = '';
-if (!GetOptions("help|h" => \$help, 
-                "T" => \$test,
-                "c" => \$check,
-                "V" => \$verbose)) {
+if (!GetOptions("help|h" => \$help,
+        "T" => \$test,
+        "c" => \$check,
+        "V" => \$verbose)) {
     probe_utils->send_msg("$output", "f", "Option not support");
     probe_utils->send_msg("$output", "d", $::USAGE);
     exit 1;
@@ -54,10 +54,10 @@ if ($help) {
     exit 0;
 }
 
-if (! -d "$currdir/bin") {
-    mkpath("$currdir/bin/");    
+if (!-d "$currdir/bin") {
+    mkpath("$currdir/bin/");
 }
-if (! -e "$currdir/bin/switchprobe") {
+if (!-e "$currdir/bin/switchprobe") {
     link("$::XCATROOT/bin/xcatclient", "$currdir/bin/switchprobe");
 }
 
@@ -74,9 +74,9 @@ if ($test) {
 if ($verbose) {
     $verbose = "-V";
 }
-my $noderange = join(',',@nodes);
+my $noderange   = join(',', @nodes);
 my $normal_file = "/tmp/result_normal";
-my $error_file = "/tmp/result_error";
+my $error_file  = "/tmp/result_error";
 if (-f $normal_file) {
     unlink($normal_file);
 }
@@ -84,7 +84,7 @@ if (-f $error_file) {
     unlink($error_file);
 }
 if ($check) {
-    `$currdir/bin/switchprobe $noderange -c $verbose >$normal_file 2>$error_file`;
+`$currdir/bin/switchprobe $noderange -c $verbose >$normal_file 2>$error_file`;
 }
 else {
     `$currdir/bin/switchprobe $noderange $verbose >$normal_file 2>$error_file`;
@@ -95,6 +95,7 @@ if (-f $error_file) {
 my $fd;
 open($fd, "<", "$normal_file");
 my @fails = ();
+
 # There is 2 kinds of error message:
 # 1. Error: The nodetype is not 'switch' for nodes: switch1
 #    Error: No switch configuration info find for switch-10-5-23-1
@@ -107,7 +108,7 @@ foreach (<$fd>) {
         } elsif (/^Error:\s*(.*)/) {
             push @fails, $1;
         } else {
-            push @fails, $_; 
+            push @fails, $_;
         }
     }
     elsif (/^(\S*):\s*PASS/) {
@@ -117,7 +118,7 @@ foreach (<$fd>) {
         probe_utils->send_msg("$output", "d", $_);
     }
 }
-close ($fd);
+close($fd);
 if (-f $normal_file) {
     unlink($normal_file);
 }

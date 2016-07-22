@@ -8,7 +8,8 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
 use IO::Socket::SSL;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
+
 #use Data::Dumper;
 use IO::Handle;
 use IO::Select;
@@ -17,31 +18,31 @@ use Getopt::Long qw(:config pass_through require_order);
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
 GetOptions(
-  "interface=s" => \$interface,
-  "f|fanout=s" => \$fanout,
-  "h|help"     => \$usage,
-  "v|version" => \$::VERSION,
-  );
+    "interface=s" => \$interface,
+    "f|fanout=s"  => \$fanout,
+    "h|help"      => \$usage,
+    "v|version"   => \$::VERSION,
+);
 my %nodehdl;
-my $xcathost='localhost:3001';
-if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+my $xcathost = 'localhost:3001';
+if ($::VERSION) { print xCAT::Utils->Version() . "\n"; exit 0 }
 if ($ENV{XCATHOST}) {
-          $xcathost=$ENV{XCATHOST};
+    $xcathost = $ENV{XCATHOST};
 }
 
 sub usage
 {
-  print $_[0];
-  print "Usage: pscp [ -f fanout] [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
-  exit 1;
+    print $_[0];
+    print "Usage: pscp [ -f fanout] [-i <SUFFIX>] [SCP OPTIONS...] FILE... <NODERANGE>:<DESTINATION>\n";
+    exit 1;
 }
 
-my $pshmaxp = 64; 
-if ($ENV{XCATPSHFANOUT}) {  
-  $pshmaxp=$ENV{XCATPSHFANOUT};
+my $pshmaxp = 64;
+if ($ENV{XCATPSHFANOUT}) {
+    $pshmaxp = $ENV{XCATPSHFANOUT};
 }
-if ($fanout) {  # see if they overroad the fanout from the command line
-  $pshmaxp=$fanout;
+if ($fanout) {    # see if they overroad the fanout from the command line
+    $pshmaxp = $fanout;
 }
 
 
@@ -51,113 +52,118 @@ my $dest = shift;
 my @scpargs;
 while (@ARGV)
 {
-  push @scpargs, $dest;
-  $dest = shift;
+    push @scpargs, $dest;
+    $dest = shift;
 }
 my $noderange, $destloc;
 if ($dest =~ /:/) { ($noderange, $destloc) = split(/:/, $dest); }
-else { usage("No node range specified\n\n"); }
+else              { usage("No node range specified\n\n"); }
 
-my  @user = getpwuid($>);
-my $homedir=$user[7];
+my @user    = getpwuid($>);
+my $homedir = $user[7];
 my %sslargs;
 if (defined($ENV{'XCATSSLVER'})) {
     $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
 }
 
 my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_ca_file => $homedir."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-                SSL_verify_mode => SSL_VERIFY_PEER,
-                SSL_verifycn_scheme => "none",
-                %sslargs,
-             );
+    PeerAddr            => $xcathost,
+    SSL_key_file        => $homedir . "/.xcat/client-cred.pem",
+    SSL_cert_file       => $homedir . "/.xcat/client-cred.pem",
+    SSL_ca_file         => $homedir . "/.xcat/ca.pem",
+    SSL_use_cert        => 1,
+    SSL_verify_mode     => SSL_VERIFY_PEER,
+    SSL_verifycn_scheme => "none",
+    %sslargs,
+);
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
 $SIG{ALRM} = sub { die "No response getting noderange" };
 alarm(15);
-print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+print $client XMLout(\%cmdref, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
 alarm(15);
-my $response="";
-my @nodes=();
+my $response = "";
+my @nodes    = ();
+
 while (<$client>) {
-  alarm(0);
-  $response .= $_;
-  if ($response =~ m/<\/xcatresponse>/) {
-    $rsp=XMLin($response, ForceArray => ['node']);
-    $response='';
-    if ($rsp->{warning}) {
-      printf "Warning: ".$rsp->{warning}."\n";
+    alarm(0);
+    $response .= $_;
+    if ($response =~ m/<\/xcatresponse>/) {
+        $rsp = XMLin($response, ForceArray => ['node']);
+        $response = '';
+        if ($rsp->{warning}) {
+            printf "Warning: " . $rsp->{warning} . "\n";
+        }
+        if ($rsp->{error}) {
+            die("ERROR: " . $rsp->{error} . "\n");
+        } elsif ($rsp->{node}) {
+            @nodes = @{ $rsp->{node} };
+        }
+        if ($rsp->{serverdone}) {
+            last;
+        }
     }
-    if ($rsp->{error}) {
-      die ("ERROR: ".$rsp->{error}."\n");
-    } elsif ($rsp->{node}) {
-      @nodes=@{$rsp->{node}};
-    }
-    if ($rsp->{serverdone}) {
-      last;
-    }
-  }
 }
 close($client);
 my $children = 0;
-my $inputs = new IO::Select;
-$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+my $inputs   = new IO::Select;
+$SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
 if ($interface) {
-  foreach (@nodes) {
-    s/$/-$interface/;
-  }
+    foreach (@nodes) {
+        s/$/-$interface/;
+    }
 }
 foreach (@nodes) {
-  my $node=$_;
-  while ($children > $pshmaxp) { processoutput($inputs); }
-  $children++;
-  #scpnode(\$child,$node,@ARGV[0],$destloc);
-  scpnode($inputs,\%nodehdl,$node,\@scpargs,$destloc);
+    my $node = $_;
+    while ($children > $pshmaxp) { processoutput($inputs); }
+    $children++;
+
+    #scpnode(\$child,$node,@ARGV[0],$destloc);
+    scpnode($inputs, \%nodehdl, $node, \@scpargs, $destloc);
 }
 while ($inputs->count and $children) {
-  processoutput($inputs);
+    processoutput($inputs);
 }
-while (processoutput($inputs)) {};
+while (processoutput($inputs)) { }
 wait;
 exit(0);
 
-sub processoutput { #This way, one arbiter handles output, no interrupting
-  my $inputs = shift;
-  my @readyins = $inputs->can_read(1);
-  my $rc = @readyins;
-  my $readyh;
-  foreach $readyh (@readyins) {
-    my $line = <$readyh>;
-    unless ($line) {
-      $inputs->remove($readyh);
-      print $nodehdl{$readyh}.": done\n";
-      close($readyh);
-      next;
+sub processoutput {    #This way, one arbiter handles output, no interrupting
+    my $inputs   = shift;
+    my @readyins = $inputs->can_read(1);
+    my $rc       = @readyins;
+    my $readyh;
+    foreach $readyh (@readyins) {
+        my $line = <$readyh>;
+        unless ($line) {
+            $inputs->remove($readyh);
+            print $nodehdl{$readyh} . ": done\n";
+            close($readyh);
+            next;
+        }
+        chomp($line);
+        print $nodehdl{$readyh} . ": " . $line . "\n";
     }
-    chomp($line);
-    print $nodehdl{$readyh}.": ".$line."\n";
-  }
-  #yield;
-  return $rc;
+
+    #yield;
+    return $rc;
 }
+
 sub scpnode {
-  my $inputs = shift;
-  my $nodehdl = shift;
-  my $node = shift;
-  my $in;
-  #my $args = join(" ",@_);
-  #my $file = shift;
-  my $scpargsr = shift;
-  my @scpargs = @{$scpargsr};
-  my $dest = shift;
-  my $child;
-  open($child, "scp -o BatchMode=yes @scpargs $node:$dest 2>&1 |");
-  $inputs->add($child);
-  $nodehdl->{$child} = $node;
+    my $inputs  = shift;
+    my $nodehdl = shift;
+    my $node    = shift;
+    my $in;
+
+    #my $args = join(" ",@_);
+    #my $file = shift;
+    my $scpargsr = shift;
+    my @scpargs  = @{$scpargsr};
+    my $dest     = shift;
+    my $child;
+    open($child, "scp -o BatchMode=yes @scpargs $node:$dest 2>&1 |");
+    $inputs->add($child);
+    $nodehdl->{$child} = $node;
 }
 
 # vim: set et sw=2 ts=2 sts=2:

@@ -61,7 +61,7 @@ sub loadsubcmds {
             next;
         } else {
             my $desc = $2;
-            unless ($1 =~ /^ok$/) { 
+            unless ($1 =~ /^ok$/) {
                 print "skip $_ for doing '$_ -T' failed, invalid flag\n" if ($verbose);
                 next;
             }
@@ -233,7 +233,7 @@ my $pluginname;
 my $optnum = 0;
 foreach my $attr (@tmpargv) {
     if ($attr =~ /^-/) {
-        unless (grep(/^$attr$/,  @supportopt)){
+        unless (grep(/^$attr$/, @supportopt)) {
             print "Unsupported attribute: $attr\n";
             print $::USAGE;
             exit 1;

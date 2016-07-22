@@ -41,6 +41,7 @@ Options:
 ";
 
 #------------------------------------------
+
 =head3
     Description:
         Check if all nodes are valid
@@ -70,6 +71,7 @@ sub check_noderange {
             $nodecheckrst{$currentnode}{"error"} = "Could not find node definition";
             $rst = 1;
         } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
+
             # 'rst' is used to check whether the node process finished, 1 is finished.
             $monitor_nodes{$1}{"rst"} = 0;
             $currentnode              = $1;
@@ -312,7 +314,8 @@ sub handle_cluster_msg {
             probe_utils->send_msg("$output", "f", "Node $node has finished it's os provision process");
             push(@{ $rawdata{$node}{"history"} }, "Node $node os provision failed");
         } elsif (exists($rawdata{$node}) and ($status eq "installing")) {
-            # record 'installing' status, to check when receive 'booted' status 
+
+            # record 'installing' status, to check when receive 'booted' status
             $monitor_nodes{$node}{"status"} = "installing";
         }
     }

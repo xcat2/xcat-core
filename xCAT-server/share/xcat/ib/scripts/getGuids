@@ -25,19 +25,19 @@ use strict;
 use Getopt::Long;
 
 # Log file
-$::GUIDS_LOG = "/var/log/xcat/getGuids.log";
-$::DEFAULT_RESULT_FILE = "/var/opt/xcat/ib/Guids.xcat";
-$::GUIDS_LOG_PATH = "/var/log/xcat";
+$::GUIDS_LOG                = "/var/log/xcat/getGuids.log";
+$::DEFAULT_RESULT_FILE      = "/var/opt/xcat/ib/Guids.xcat";
+$::GUIDS_LOG_PATH           = "/var/log/xcat";
 $::DEFAULT_RESULT_FILE_PATH = "/var/opt/xcat/ib";
 
 # variables and Commands
-$::OK = 0;
-$::NOK = 1;
-$::logging = 0;
+$::OK          = 0;
+$::NOK         = 1;
+$::logging     = 0;
 $::GLOBAL_EXIT = 0;
-$::NODEGRP = "/opt/xcat/bin/nodels";
-$::LinuxIBCmd = "/usr/bin/ibv_devinfo";
-$::AIXIBCmd = "/usr/bin/ibstat";
+$::NODEGRP     = "/opt/xcat/bin/nodels";
+$::LinuxIBCmd  = "/usr/bin/ibv_devinfo";
+$::AIXIBCmd    = "/usr/bin/ibstat";
 
 # MAIN Main main#
 &getArgs;
@@ -51,16 +51,16 @@ local *FILE;
 unless (open(FILE, ">$::RESULT_FILE"))
 {
     print "Can't open file $::RESULT_FILE for writing.\n";
-    print $::LOG_FILE_HANDLE 
+    print $::LOG_FILE_HANDLE
       "Can't open file $::RESULT_FILE for writing.\n";
-      
+
     $::GLOBAL_EXIT = $::NOK;
     exit;
 }
 
 # get Linux nodes
 my @LnxNodes = `$::NODEGRP all nodetype.os | grep -E "sles|rhel"`;
-print $::LOG_FILE_HANDLE  "Running command: $::NODEGRP LinuxNodes\n";
+print $::LOG_FILE_HANDLE "Running command: $::NODEGRP LinuxNodes\n";
 chomp @LnxNodes;
 
 my @ReachableLnxNodes;
@@ -77,7 +77,7 @@ if ($num > 0)
         my $rest;
         ($node, $rest) = split(/:/, $node);
         my $rc = &checkxDshReachability($node);
-        if ($rc == 0) # xdsh is ok
+        if ($rc == 0)    # xdsh is ok
         {
             push @ReachableLnxNodes, $node;
         }
@@ -87,14 +87,14 @@ if ($num > 0)
         }
     }
 
-    if (scalar (@UnreachableLnxNodes))
+    if (scalar(@UnreachableLnxNodes))
     {
-        my $UnreachableLnxNodes = join (", ", @UnreachableLnxNodes);
-        print 
-          "Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
+        my $UnreachableLnxNodes = join(", ", @UnreachableLnxNodes);
+        print
+"Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
           "Please use xdsh <Node> -K command to configure it.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
+"Warning: xdsh is unreachable for the node(s): $UnreachableLnxNodes.\n" .
           "Please use xdsh <Node> -K command to configure it.\n";
     }
 
@@ -111,16 +111,16 @@ if ($num > 0)
         }
     }
 
-    if (scalar (@BadLnxNodes))
+    if (scalar(@BadLnxNodes))
     {
-        my $BadLnxNodes = join (", ", @BadLnxNodes);
-        print 
-          "Warning: Command $::LinuxIBCmd is not available on the node(s): $BadLnxNodes.\nPlease ensure the libibverbs rpm is installed.\n";
+        my $BadLnxNodes = join(", ", @BadLnxNodes);
+        print
+"Warning: Command $::LinuxIBCmd is not available on the node(s): $BadLnxNodes.\nPlease ensure the libibverbs rpm is installed.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: Command $::LinuxIBCmd is not available on the node(s): $BadLnxNodes.\nPlease ensure the libibverbs rpm is installed.\n";
+"Warning: Command $::LinuxIBCmd is not available on the node(s): $BadLnxNodes.\nPlease ensure the libibverbs rpm is installed.\n";
     }
 
-    if (scalar (@ValidLnxNodes))
+    if (scalar(@ValidLnxNodes))
     {
         my $rc = &getLinuxGUIDS(\@ValidLnxNodes);
         if ($rc)
@@ -133,7 +133,7 @@ if ($num > 0)
 
 # get AIX nodes
 my @AIXNodes = `$::NODEGRP all nodetype.os | grep "AIX"`;
-print $::LOG_FILE_HANDLE  "Running command: $::NODEGRP\n";
+print $::LOG_FILE_HANDLE "Running command: $::NODEGRP\n";
 chomp @AIXNodes;
 
 my @ReachableAIXNodes;
@@ -143,15 +143,15 @@ my @BadAIXNodes;
 my $num = scalar(@AIXNodes);
 if ($num > 0)
 {
-    # Handle AIX Nodes 
+    # Handle AIX Nodes
     # Check if xdsh is reachable
     foreach my $node (@AIXNodes)
     {
         my $rest;
         ($node, $rest) = split(/:/, $node);
-        
+
         my $rc = &checkxDshReachability($node);
-        if ($rc == 0) # xdsh is ok
+        if ($rc == 0)    # xdsh is ok
         {
             push @ReachableAIXNodes, $node;
         }
@@ -161,14 +161,14 @@ if ($num > 0)
         }
     }
 
-    if (scalar (@UnreachableAIXNodes))
+    if (scalar(@UnreachableAIXNodes))
     {
-        my $UnreachableAIXNodes = join (", ", @UnreachableAIXNodes);
-        print 
-          "Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
+        my $UnreachableAIXNodes = join(", ", @UnreachableAIXNodes);
+        print
+"Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
           "Please use xdsh <Node> -K command to configure it.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
+"Warning: The xdsh is unreachable for the node(s): $UnreachableAIXNodes.\n" .
           "Please use xdsh <Node> -K command to configure it.\n";
     }
 
@@ -185,16 +185,16 @@ if ($num > 0)
         }
     }
 
-    if (scalar (@BadAIXNodes))
+    if (scalar(@BadAIXNodes))
     {
-        my $BadAIXNodes = join (", ", @BadAIXNodes);
-        print 
-          "Warning: Command $::AIXIBCmd is not available on the node(s): $BadAIXNodes.\nPlease ensure the devices.common.IBM.ib.rte fileset is installed.\n";
+        my $BadAIXNodes = join(", ", @BadAIXNodes);
+        print
+"Warning: Command $::AIXIBCmd is not available on the node(s): $BadAIXNodes.\nPlease ensure the devices.common.IBM.ib.rte fileset is installed.\n";
         print $::LOG_FILE_HANDLE
-          "Warning: Command $::AIXIBCmd is not available on the node(s): $BadAIXNodes.\nPlease ensure the devices.common.IBM.ib.rte fileset is installed.\n";
+"Warning: Command $::AIXIBCmd is not available on the node(s): $BadAIXNodes.\nPlease ensure the devices.common.IBM.ib.rte fileset is installed.\n";
     }
 
-    if (scalar (@ValidAIXNodes))
+    if (scalar(@ValidAIXNodes))
     {
         my $rc = &getAIXGUIDS(\@ValidAIXNodes);
         if ($rc)
@@ -231,7 +231,7 @@ END
     }
 }
 
-exit;  # end of Main
+exit;    # end of Main
 
 #--------------------------------------------------------------------------------
 
@@ -244,8 +244,8 @@ exit;  # end of Main
 sub getArgs()
 {
     GetOptions(
-        'h'       => \$::HELP,
-        'f=s'     => \$::RESULT_FILE
+        'h'   => \$::HELP,
+        'f=s' => \$::RESULT_FILE
     );
     if ($::HELP)
     {
@@ -265,7 +265,7 @@ sub getArgs()
                 exit;
             }
         }
-    }   
+    }
 }
 
 #--------------------------------------------------------------------------------
@@ -279,11 +279,11 @@ sub getArgs()
 sub usage()
 {
     print
-    "Usage: getGuids [-h] [-f output_file]
+      "Usage: getGuids [-h] [-f output_file]
          -f output_file
             Specifies a file full path name that is used to save the GUIDs output.
          -h
-            Display usage information.\n";         
+            Display usage information.\n";
 }
 
 #--------------------------------------------------------------------------------
@@ -308,7 +308,7 @@ sub checkxDshReachability()
     my ($node) = @_;
 
     my $output = `xdsh $node date 2>/dev/null`;
-    print $::LOG_FILE_HANDLE  "Running command: xdsh $node date 2>/dev/null\n";
+    print $::LOG_FILE_HANDLE "Running command: xdsh $node date 2>/dev/null\n";
     if ($? == $::OK)
     {
         return $::OK;
@@ -367,7 +367,7 @@ sub append_logging()
 {
     #my ($class, $logfile) = @_;
     my ($logfile) = @_;
-    my ($cmd,  $rc);
+    my ($cmd, $rc);
 
     #
     #  get log file ready
@@ -402,10 +402,10 @@ sub append_logging()
     print "Output log is being written to \"$logfile\".\n";
 
     print $::LOG_FILE_HANDLE
-        "---------------------------------------------------------------------\n";
+      "---------------------------------------------------------------------\n";
     print $::LOG_FILE_HANDLE "Logging started $sdate.\n";
     print $::LOG_FILE_HANDLE
-        "---------------------------------------------------------------------\n";
+      "---------------------------------------------------------------------\n";
 
     return $::OK;
 }
@@ -426,10 +426,10 @@ sub stop_logging()
     my $sdate = `/bin/date`;
     chomp $sdate;
     print $::LOG_FILE_HANDLE
-        "---------------------------------------------------------------------\n";
+      "---------------------------------------------------------------------\n";
     print $::LOG_FILE_HANDLE "Logging stopped $sdate.\n";
     print $::LOG_FILE_HANDLE
-        "---------------------------------------------------------------------\n";
+      "---------------------------------------------------------------------\n";
 
     close($::LOG_FILE_HANDLE);
     $::LOG_FILE_HANDLE = undef;
@@ -450,7 +450,7 @@ Arguments:
 sub getAIXGUIDS()
 {
     my ($refAIXNodes) = @_;
-    my $AIXNodes = join (",", @$refAIXNodes);
+    my $AIXNodes = join(",", @$refAIXNodes);
 
     print "Getting GUIDs from AIX nodes...\n";
     print $::LOG_FILE_HANDLE "Getting GUIDs from AIX nodes...\n";
@@ -466,20 +466,20 @@ sub getAIXGUIDS()
         return $::NOK;
     }
 
-    my $oldhost = "";
-    my $host = "";
-    my $dev = "";
-    my $guid = "";
-    my $port = "";
-    my $gid = "";
+    my $oldhost  = "";
+    my $host     = "";
+    my $dev      = "";
+    my $guid     = "";
+    my $port     = "";
+    my $gid      = "";
     my $baseguid = "";
-    my $lsw0 = "";
-    my $lsw1 = "";
+    my $lsw0     = "";
+    my $lsw1     = "";
 
     foreach my $line (@output)
     {
         chomp $line;
-        
+
         # Get node hostname
         if ($line =~ /(\S*):.*/)
         {
@@ -488,7 +488,7 @@ sub getAIXGUIDS()
             {
                 print FILE "Node name is $host.\n";
                 print $::LOG_FILE_HANDLE "Node name is $host.\n";
-                $oldhost=$host;
+                $oldhost = $host;
             }
         }
 
@@ -502,23 +502,23 @@ sub getAIXGUIDS()
         if ($line =~ /.*\(GUID\):.*\s+(\S*)/)
         {
             $guid = $1;
-            $guid=~s/\.//g;
-    	    $baseguid=$guid;
-    	    $baseguid=~s/..$//;
-    	    $lsw0=$guid;
-    	    $lsw0=~s/..$/80/;
-    	    $lsw1=$guid;
-    	    $lsw1=~s/..$/81/;
+            $guid =~ s/\.//g;
+            $baseguid = $guid;
+            $baseguid =~ s/..$//;
+            $lsw0 = $guid;
+            $lsw0 =~ s/..$/80/;
+            $lsw1 = $guid;
+            $lsw1 =~ s/..$/81/;
 
-    	    print FILE "$host: $dev: baseguid: $baseguid\n";
-    	    print FILE "$host: $dev: dev: $guid\n";
-    	    print FILE "$host: $dev: lsw0: $lsw0\n";
-    	    print FILE "$host: $dev: lsw1: $lsw1\n";
+            print FILE "$host: $dev: baseguid: $baseguid\n";
+            print FILE "$host: $dev: dev: $guid\n";
+            print FILE "$host: $dev: lsw0: $lsw0\n";
+            print FILE "$host: $dev: lsw1: $lsw1\n";
 
-    	    print $::LOG_FILE_HANDLE "$host: $dev: baseguid: $baseguid\n";
-    	    print $::LOG_FILE_HANDLE "$host: $dev: dev: $guid\n";
-    	    print $::LOG_FILE_HANDLE "$host: $dev: lsw0: $lsw0\n";
-    	    print $::LOG_FILE_HANDLE "$host: $dev: lsw1: $lsw1\n";
+            print $::LOG_FILE_HANDLE "$host: $dev: baseguid: $baseguid\n";
+            print $::LOG_FILE_HANDLE "$host: $dev: dev: $guid\n";
+            print $::LOG_FILE_HANDLE "$host: $dev: lsw0: $lsw0\n";
+            print $::LOG_FILE_HANDLE "$host: $dev: lsw1: $lsw1\n";
         }
 
         # Get port number under device(iba)
@@ -531,7 +531,7 @@ sub getAIXGUIDS()
         if ($line =~ /.*GUID\[.*\s+(\S*)/)
         {
             $gid = $1;
-            $gid=~s/\.//g;
+            $gid =~ s/\.//g;
             print FILE "$host: $dev: portGUID_$port: $gid\n";
             print $::LOG_FILE_HANDLE "$host: $dev: portGUID_$port: $gid\n";
         }
@@ -553,9 +553,9 @@ Arguments:
 sub getLinuxGUIDS()
 {
     my ($refLnxNodes) = @_;
-    my $LnxNodes = join (",", @$refLnxNodes);
+    my $LnxNodes = join(",", @$refLnxNodes);
 
-    print 
+    print
       "Getting GUIDs from Linux nodes...\n";
     print $::LOG_FILE_HANDLE
       "Getting GUIDs from Linux nodes...\n";
@@ -566,26 +566,27 @@ sub getLinuxGUIDS()
 
     if ($?)
     {
-        print 
+        print
           "Command failed: $getCmd.\n";
-        print $::LOG_FILE_HANDLE 
+        print $::LOG_FILE_HANDLE
           "Command failed: $getCmd.\n";
         return $::NOK;
     }
 
-    my $oldhost = "";
-    my $host ="";
-    my $dev = "";
-    my $guid = "";
-    my $port = "";
-    my $gid = "";
+    my $oldhost  = "";
+    my $host     = "";
+    my $dev      = "";
+    my $guid     = "";
+    my $port     = "";
+    my $gid      = "";
     my $baseguid = "";
-    my $lsw0 = "" ;
-    my $lsw1 = "";
+    my $lsw0     = "";
+    my $lsw1     = "";
 
     foreach my $line (@output)
     {
         chomp $line;
+
         # Get node hostname
         if ($line =~ /(\S*):.*/)
         {
@@ -594,27 +595,27 @@ sub getLinuxGUIDS()
             {
                 print FILE "Node name is $host.\n";
                 print $::LOG_FILE_HANDLE "Node name is $host.\n";
-                $oldhost=$host;
+                $oldhost = $host;
             }
         }
 
         # Get device name
         if ($line =~ /.*hca_id:\s(\S*).*/)
         {
-            $dev = $1;    
+            $dev = $1;
         }
 
         # Get node_guid under hca_id
         if ($line =~ /.*node_guid:\s*(\S*)/)
         {
             $guid = $1;
-            $guid =~s/://g;
+            $guid =~ s/://g;
             $baseguid = $guid;
-            $baseguid =~s/..$//;
+            $baseguid =~ s/..$//;
             $lsw0 = $guid;
-            $lsw0 =~s/..$/80/;
+            $lsw0 =~ s/..$/80/;
             $lsw1 = $guid;
-            $lsw1 =~s/..$/81/;
+            $lsw1 =~ s/..$/81/;
 
             print FILE "$host: $dev: baseguid: $baseguid\n";
             print FILE "$host: $dev: dev: $guid\n";
@@ -637,9 +638,9 @@ sub getLinuxGUIDS()
         if ($line =~ /.*GID.* *(\S*:\S*:\S*:\S*).*/)
         {
             $gid = $1;
-            $gid=~s/://g;
-			my $prefix = substr $baseguid, 0, 4;
-			$gid = $prefix . $gid;
+            $gid =~ s/://g;
+            my $prefix = substr $baseguid, 0, 4;
+            $gid = $prefix . $gid;
             print FILE "$host: $dev: portGUID_$port: $gid\n";
             print $::LOG_FILE_HANDLE "$host: $dev: portGUID_$port: $gid\n";
         }
