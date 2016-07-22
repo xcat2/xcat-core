@@ -205,6 +205,13 @@ sub addotherinterfaces
             {
                 $itf = $node . $itf;
             }
+            
+            #lookup the domain for the ip address
+            #if failed, use the domain passed in
+            my ($mydomain,$mynet)=getIPdomain($ip);
+            if($mydomain){
+               $domain=$mydomain;
+            }
             addnode $callback, $itf, $ip, '', $domain;
         }
     }
