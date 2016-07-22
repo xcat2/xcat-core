@@ -58,6 +58,7 @@ cp $DIR/* $DRACUTMODDIR
 # Remove the ipr(IBM Power RAID) stuff when building on x86_64
 if [ $BUILDARCH = "x86_64" ]; then
     sed -i 's/dracut_install \/lib64\/libform.so.5//' $DRACUTMODDIR/install
+    sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libpanel.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libmenu.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
