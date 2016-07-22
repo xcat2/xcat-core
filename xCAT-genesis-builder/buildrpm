@@ -170,9 +170,20 @@ if [ $BUILDARCH = "ppc64" ]; then
 else
     dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 fi
+
+if [ $? -ne 0 ]; then
+    echo "ERROR - creating the initramfs, please correct the issues and try again"
+    exit 1
+fi
+
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
+
+if [ $? -ne 0 ]; then
+    echo "ERROR - expanding the initramfs, please correct the issues and try again"
+    exit 1
+fi
 
 # add the kernel
 if [ "$HOSTOS" = "mcp" ]; then
