@@ -1399,7 +1399,7 @@ sub switchsetup {
         my $node = $macmap->find_mac($mac,0);
         if (!$node) {
             send_msg($request, 0, "NO predefined switch matched this switch $dswitch with mac address $mac");
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$dswitch,"ip=$ip",'otherinterfaces=no predefined switch'] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$dswitch,"ip=$ip",'status=no predefined switch'] }, $sub_req, 0, 1);
             next;
         }
 
@@ -1418,7 +1418,7 @@ sub switchsetup {
         if ( $stype =~ /BNT/ ) {
             $ret = config_BNT($dswitch, $node, $static_ip, $request, $sub_req);
             if ($ret == 1) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=config failed, dhcp ip=$ip'] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=dhcp:$ip",'status=config failed'] }, $sub_req, 0, 1);
             }
         } 
         # Mellanox switches
@@ -1427,13 +1427,13 @@ sub switchsetup {
             #NOTE:  this expect routine will timeout after set up address
             $ret = config_Mellanox($dswitch, $node, $static_ip, $request, $sub_req);
             if ($ret == 1) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'otherinterfaces=config failed, dhcp ip=$ip'] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=dhcp:$ip",'status=config failed'] }, $sub_req, 0, 1);
             }
 
         } 
         else {
             send_msg($request, 0, "the switch $dswitch type $stype is not support\n");
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype",'otherinterfaces=switch type is not supported yet, dhcp ip=$ip'] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype","otherinterfaces=dhcp:$ip",'status=switch type is not supported yet'] }, $sub_req, 0, 1);
         }
 
         # save for update mac address and remove node definition
@@ -1492,7 +1492,7 @@ sub config_BNT {
     #send_msg($request, 0, Dumper($output));
     
     #add default attribute for BNT switch
-    my $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=root','password=admin','protocol=telnet','switchtype=BNT','otherinterfaces='] }, $sub_req, 0, 1);
+    my $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=root','password=admin','protocol=telnet','switchtype=BNT','otherinterfaces=','status='] }, $sub_req, 0, 1);
     #send_msg($request, 0, Dumper($ret));
 
     #set up hostname
@@ -1598,7 +1598,7 @@ sub config_Mellanox {
     $myexp->soft_close();
 
     #add default attribute for Mellanox switch
-    $output = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=admin','switchtype=Mellanox','otherinterfaces='] }, $sub_req, 0, 1);
+    $output = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=admin','switchtype=Mellanox','otherinterfaces=','status='] }, $sub_req, 0, 1);
     #send_msg($request, 0, Dumper($output));
 
 
