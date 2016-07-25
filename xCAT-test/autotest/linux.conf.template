@@ -138,4 +138,4 @@ NODEIP=10.4.27.10
 #should same with CN's ip this ip is set for CN's confignics' set up
 #genesis testcase
 imgip=10.4.27.10
-#imgip should be same with CN's ip 
+#imgip should be same with MN's ip genesis case only for ppc64le and x86_64
