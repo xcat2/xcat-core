@@ -8,7 +8,6 @@ Standards-Version: 3.9.2
 Package: xcat-genesis-scripts-ppc64
 Architecture: all
 Depends: xcat-genesis-base-ppc64
-Provides: xcat-genesis-scripts
 Conflicts: xcat-genesis-scripts
 Replaces: xcat-genesis-scripts
 Description: xCAT genesis 
