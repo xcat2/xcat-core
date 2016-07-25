@@ -5,16 +5,16 @@
 # Run asu64 or iflash64 utility out of band to multiple nodes, either sequentially or in parallel
 BEGIN
 {
-   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 my $iam = $0;
 use strict;
 close(STDIN);
-open(STDIN,"<","/dev/null");
+open(STDIN, "<", "/dev/null");
 use lib "$::XCATROOT/lib/perl";
 use IO::Socket::SSL;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 use Data::Dumper;
 use IO::Handle;
 use IO::Select;
@@ -22,13 +22,14 @@ use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Thread qw(yield);
+
 if ($iam =~ /pasu/) {
-  $::utilcmd = '/opt/lenovo/toolscenter/asu/asu64';
-  if (! -x $::utilcmd) {
-    $::utilcmd = '/opt/ibm/toolscenter/asu/asu64';
-  }
+    $::utilcmd = '/opt/lenovo/toolscenter/asu/asu64';
+    if (!-x $::utilcmd) {
+        $::utilcmd = '/opt/ibm/toolscenter/asu/asu64';
+    }
 } elsif ($iam =~ /piflash/) {
-  $::utilcmd = '/opt/xcat/sbin/iflash64 --unattended';
+    $::utilcmd = '/opt/xcat/sbin/iflash64 --unattended';
 }
 my $interface;
 my $username;
@@ -39,64 +40,67 @@ my $help;
 Getopt::Long::Configure("require_order");
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("no_pass_through");
+
 if (!GetOptions(
-  "i|interface=s" => \$interface,
-  "p|passwd=s" => \$passwd,
-  'l|loginname=s' => \$username,
-  'f|fanout=i' => \$fanout,
-  'b|batch=s' => \$batchfile,
-  'r|retry' => \$::RETRY,
-  'd|donotfilter' => \$::DONOTFILTER,
-  "V|verbose" => \$::VERBOSE,
-  'h|help' => \$help,
-  ) || $help || ($batchfile && scalar(@ARGV)!=1) || (!$batchfile && scalar(@ARGV)<2) ) {
-  print "Usage: $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
-  print "       $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
-  exit;
+        "i|interface=s" => \$interface,
+        "p|passwd=s"    => \$passwd,
+        'l|loginname=s' => \$username,
+        'f|fanout=i'    => \$fanout,
+        'b|batch=s'     => \$batchfile,
+        'r|retry'       => \$::RETRY,
+        'd|donotfilter' => \$::DONOTFILTER,
+        "V|verbose"     => \$::VERBOSE,
+        'h|help'        => \$help,
+    ) || $help || ($batchfile && scalar(@ARGV) != 1) || (!$batchfile && scalar(@ARGV) < 2)) {
+    print "Usage: $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
+    print "       $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
+    exit;
 }
 my %nodehdl;
-my $xcathost='localhost:3001';
-my $pasumaxp = 64; 
+my $xcathost = 'localhost:3001';
+my $pasumaxp = 64;
 if ($ENV{XCATHOST}) {
-  $xcathost=$ENV{XCATHOST};
+    $xcathost = $ENV{XCATHOST};
 }
-if ($ENV{XCATPSHFANOUT}) {  
-  $pasumaxp=$ENV{XCATPSHFANOUT};
+if ($ENV{XCATPSHFANOUT}) {
+    $pasumaxp = $ENV{XCATPSHFANOUT};
 }
-if ($fanout) {  # see if they overroad the fanout from the command line
-  $pasumaxp=$fanout;
+if ($fanout) {    # see if they overroad the fanout from the command line
+    $pasumaxp = $fanout;
 }
 my $noderange = shift @ARGV;
-my @nodes=();
+my @nodes     = ();
 
 #print "fanout=$fanout, username=$username, noderange=$noderange\n";
 
 my $nodeattrs;
-  # do not need to do this call, because getting the ipmi atts will also give us a list of nodes
-  #@nodes = expandnoderange($noderange);
 
-  # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
-  $nodeattrs = getipmiattrs($noderange);
-  #print Dumper($nodeattrs);
-  #foreach my $k (keys(%$nodeattrs)) {
-  #  print "$k:\n";
-  #  my $subhash = $nodeattrs->{$k};
-  #  foreach my $k2 (keys(%$subhash)) { print "  $k2=", $subhash->{$k2}, "\n"; }
-  #}
-  #exit;
-  @nodes = keys(%$nodeattrs);
+# do not need to do this call, because getting the ipmi atts will also give us a list of nodes
+#@nodes = expandnoderange($noderange);
+
+# this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+$nodeattrs = getipmiattrs($noderange);
+
+#print Dumper($nodeattrs);
+#foreach my $k (keys(%$nodeattrs)) {
+#  print "$k:\n";
+#  my $subhash = $nodeattrs->{$k};
+#  foreach my $k2 (keys(%$subhash)) { print "  $k2=", $subhash->{$k2}, "\n"; }
+#}
+#exit;
+@nodes = keys(%$nodeattrs);
 
 my $children = 0;
-my $inputs = new IO::Select;
-my %pids; # pid => node
-my %exitcodes; # Keep a list of children with known exit codes
+my $inputs   = new IO::Select;
+my %pids;         # pid => node
+my %exitcodes;    # Keep a list of children with known exit codes
 my %foundcodes;
 my @retries;      # the nodes that fail with connection error
 
 if ($interface) {
-  foreach (@nodes) {
-    s/$/-$interface/;
-  }
+    foreach (@nodes) {
+        s/$/-$interface/;
+    }
 }
 
 # Fork the processes for running utility for each node
@@ -105,60 +109,61 @@ if ($interface) {
 #      logic in just in case.
 @retries = @nodes;
 while (scalar(@retries)) {
-  @nodes = @retries;
-  @retries = ();
-  foreach (@nodes) {
-    my $node=$_;
-    my $ipmiattrs = $nodeattrs->{$node};
-    my $bmc = $ipmiattrs->{bmcaddr};
-    if (!defined($bmc)) {
-      print "$node: the ipmi.bmc attribute is not defined, skipping.\n";
-      next;
+    @nodes   = @retries;
+    @retries = ();
+    foreach (@nodes) {
+        my $node      = $_;
+        my $ipmiattrs = $nodeattrs->{$node};
+        my $bmc       = $ipmiattrs->{bmcaddr};
+        if (!defined($bmc)) {
+            print "$node: the ipmi.bmc attribute is not defined, skipping.\n";
+            next;
+        }
+
+        # if we have already forked the max # of simultaneous processes, wait till 1 finishes
+        while ($children > $pasumaxp) { processoutput($inputs); }
+
+        # fork anothe process
+        my $child;
+        $children++;
+
+        # precedence on the username and password is: cli option, ipmi table, passwd table
+        my ($user, $pw);
+        if (defined($username)) { $user = $username; }    # cli option
+        elsif (defined($ipmiattrs->{bmcuser})) { $user = $ipmiattrs->{bmcuser}; }
+        if (defined($passwd)) { $pw = $passwd; }          # cli option
+        elsif (defined($ipmiattrs->{bmcpass})) { $pw = $ipmiattrs->{bmcpass}; }
+        if ($::VERBOSE) { print "For node $node using bmc=$bmc, user=$user, pw=$pw\n"; }
+        utilnode(\$child, $node, $bmc, $user, $pw, $batchfile, @ARGV); # child is the fd of the child process
+        $inputs->add($child);
+        $nodehdl{$child} = $node;
     }
 
-    # if we have already forked the max # of simultaneous processes, wait till 1 finishes
-    while ($children > $pasumaxp) { processoutput($inputs); }
-
-    # fork anothe process
-    my $child;
-    $children++;
-    # precedence on the username and password is: cli option, ipmi table, passwd table
-    my ($user, $pw);
-    if (defined($username)) { $user = $username; }      # cli option
-    elsif (defined($ipmiattrs->{bmcuser})) { $user = $ipmiattrs->{bmcuser}; }
-    if (defined($passwd)) { $pw = $passwd; }      # cli option
-    elsif (defined($ipmiattrs->{bmcpass})) { $pw = $ipmiattrs->{bmcpass}; }
-    if ($::VERBOSE) { print "For node $node using bmc=$bmc, user=$user, pw=$pw\n"; }
-    utilnode(\$child,$node,$bmc,$user,$pw,$batchfile,@ARGV);     # child is the fd of the child process
-    $inputs->add($child);
-    $nodehdl{$child} = $node;
-  }
-
-  # quiesce everything
-  while ($inputs->count) {
-    processoutput($inputs);
-  }
-  while (processoutput($inputs)) {};
-  while (wait != -1) {
-    yield;
-  }
+    # quiesce everything
+    while ($inputs->count) {
+        processoutput($inputs);
+    }
+    while (processoutput($inputs)) { }
+    while (wait != -1) {
+        yield;
+    }
 }
 
-my $exitcode=0;
+my $exitcode = 0;
 foreach (values %pids) {
-    my $possible_codes = join ",",keys %foundcodes;
+    my $possible_codes = join ",", keys %foundcodes;
     unless (defined $exitcodes{$_}) {
         print stderr "$_: *** $iam missed exit code, probably one of the following: $possible_codes\n";
     }
 }
 foreach (keys %exitcodes) {
     if ($exitcodes{$_}) {
-        print stderr "$_: *** $::utilcmd exited with error code ".$exitcodes{$_}.".\n";
+        print stderr "$_: *** $::utilcmd exited with error code " . $exitcodes{$_} . ".\n";
         $exitcode++;
     }
 }
-if ($exitcode) { #Exit code reflects number of failed nodes
-    $exitcode=$exitcode%256; #keep from overflowing valid values
+if ($exitcode) {    #Exit code reflects number of failed nodes
+    $exitcode = $exitcode % 256;    #keep from overflowing valid values
     unless ($exitcode) { #if number of failed nodes happened to be evenly divisible by 256, make it non-zero again
         $exitcode++;
     }
@@ -166,175 +171,183 @@ if ($exitcode) { #Exit code reflects number of failed nodes
 exit($exitcode);
 
 # Process output on the select stmt from the forked cmds
-sub processoutput { #This way, one arbiter handles output, no interrupting
-  my $inputs = shift;       # the select object that contains all the file descriptors
-  my @readyins = $inputs->can_read(1);      # child fds with some output available
-  my $rc = @readyins;
-  my $readyh;
-  foreach $readyh (@readyins) {
-    my $cursel = new IO::Select;          # need to do non-blocking reads on this fd
-    $cursel->add($readyh);
-    while ($cursel->can_read(0)) {
-      my $line = <$readyh>;
-      unless ($line) {
-        $inputs->remove($readyh);
-        close($readyh);
-        $exitcodes{$nodehdl{$readyh}} = $? >> 8;
-        $children--;
-        next;
-      }
-      chomp($line);
-      if ($::RETRY && ($line =~ /Connection link error/i) ) {
-        if ($::VERBOSE) { print "Need to retry $nodehdl{$readyh}\n"; }
-        push @retries, $nodehdl{$readyh};
-      } elsif ($::DONOTFILTER || ($line!~/IBM Advanced Settings Utility version/i &&
-                             $line!~/Lenovo Advanced Settings Utility version/i &&
-                             $line!~/Licensed Materials - Property of IBM/i &&
-                             $line!~/Licensed Materials - Property of Lenovo/i &&
-                             $line!~/\(C\) Copyright IBM Corp. \d+-\d+ All Rights Reserved/i &&
-                             $line!~/\(C\) Copyright Lenovo Corp. \d+-\d+ All Rights Reserved/i &&
-                             $line!~/Connected to IMM at IP address/i )) {
-        print $nodehdl{$readyh}.": ".$line."\n";
-      }
+sub processoutput {      #This way, one arbiter handles output, no interrupting
+    my $inputs = shift; # the select object that contains all the file descriptors
+    my @readyins = $inputs->can_read(1);  # child fds with some output available
+    my $rc       = @readyins;
+    my $readyh;
+    foreach $readyh (@readyins) {
+        my $cursel = new IO::Select;  # need to do non-blocking reads on this fd
+        $cursel->add($readyh);
+        while ($cursel->can_read(0)) {
+            my $line = <$readyh>;
+            unless ($line) {
+                $inputs->remove($readyh);
+                close($readyh);
+                $exitcodes{ $nodehdl{$readyh} } = $? >> 8;
+                $children--;
+                next;
+            }
+            chomp($line);
+            if ($::RETRY && ($line =~ /Connection link error/i)) {
+                if ($::VERBOSE) { print "Need to retry $nodehdl{$readyh}\n"; }
+                push @retries, $nodehdl{$readyh};
+            } elsif ($::DONOTFILTER || ($line !~ /IBM Advanced Settings Utility version/i &&
+                    $line !~ /Lenovo Advanced Settings Utility version/i &&
+                    $line !~ /Licensed Materials - Property of IBM/i     &&
+                    $line !~ /Licensed Materials - Property of Lenovo/i  &&
+                    $line !~ /\(C\) Copyright IBM Corp. \d+-\d+ All Rights Reserved/i &&
+                    $line !~ /\(C\) Copyright Lenovo Corp. \d+-\d+ All Rights Reserved/i &&
+                    $line !~ /Connected to IMM at IP address/i)) {
+                print $nodehdl{$readyh} . ": " . $line . "\n";
+            }
+        }
     }
-  }
-  no strict 'subs';
-  IO::Handle::flush(stdout);
-  use strict 'subs';
-  yield; #Explicitly give all children a chance to refill any buffers
-  return $rc;
+    no strict 'subs';
+    IO::Handle::flush(stdout);
+    use strict 'subs';
+    yield;    #Explicitly give all children a chance to refill any buffers
+    return $rc;
 }
 
 sub utilnode {
-  my $out = shift;          # this is a reference to the child file descriptor
-  my $node = shift;
-  my $bmc = shift;
-  my $username = shift;
-  my $passwd = shift;
-  my $batchfile = shift;
-  my $args;
-  $bmc =~ s/,.*//;
-  if ($batchfile) {
-    $args = "batch $batchfile";
-  } else {
-    foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
-  }
-  my $cmd = "$::utilcmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
-  if ($::VERBOSE) { print "forking $cmd\n"; }
-  my $pid = open($$out, $cmd);
-  $pids{$pid} = $node;
+    my $out       = shift;    # this is a reference to the child file descriptor
+    my $node      = shift;
+    my $bmc       = shift;
+    my $username  = shift;
+    my $passwd    = shift;
+    my $batchfile = shift;
+    my $args;
+    $bmc =~ s/,.*//;
+
+    if ($batchfile) {
+        $args = "batch $batchfile";
+    } else {
+        foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
+    }
+    my $cmd = "$::utilcmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
+    if ($::VERBOSE) { print "forking $cmd\n"; }
+    my $pid = open($$out, $cmd);
+    $pids{$pid} = $node;
 }
 
 # Contact xcatd to expand the noderange into a list of nodes
 sub expandnoderange {
-  my $noderange = shift @_;
-  my @nodes;
-  my @user = getpwuid($>);
-  my $homedir=$user[7];
-  my %sslargs;
-  if (defined($ENV{'XCATSSLVER'})) {
-      $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
-  }
-
-  my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_ca_file => $homedir."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-                SSL_verify_mode => 1,
-                %sslargs,
-             );
-  die "Connection failure: $!\n" unless ($client);
-  #todo: get the bmc attr for each node, not the node name itself
-  my %cmdref = (command => 'noderange', noderange => $noderange);
-  $SIG{ALRM} = sub { die "No response getting noderange" };
-  alarm(15);
-  my $msg = XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-  if ($ENV{XCATXMLTRACE}) { print $msg; }
-  print $client $msg;
-  alarm(15);
-  my $response="";
-  while (<$client>) {
-    alarm(0);
-    $response .= $_;
-    if ($response =~ m/<\/xcatresponse>/) {
-      if ($ENV{XCATXMLTRACE}) { print $response; }
-      my $rsp=XMLin($response, ForceArray => ['node']);
-      $response='';
-      if ($rsp->{warning}) {
-        printf "Warning: ".$rsp->{warning}."\n";
-      }
-      if ($rsp->{error}) {
-        die ("ERROR: ".$rsp->{error}."\n");
-      } elsif ($rsp->{node}) {
-        @nodes=@{$rsp->{node}};
-      }
-      if ($rsp->{serverdone}) {
-        last;
-      }
+    my $noderange = shift @_;
+    my @nodes;
+    my @user    = getpwuid($>);
+    my $homedir = $user[7];
+    my %sslargs;
+    if (defined($ENV{'XCATSSLVER'})) {
+        $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
     }
-  }
-  close($client);
-  if ($::VERBOSE) { print 'Nodes:', join(',',@nodes), "\n"; }
-  return @nodes;
+
+    my $client = IO::Socket::SSL->new(
+        PeerAddr            => $xcathost,
+        SSL_key_file        => $homedir . "/.xcat/client-cred.pem",
+        SSL_cert_file       => $homedir . "/.xcat/client-cred.pem",
+        SSL_ca_file         => $homedir . "/.xcat/ca.pem",
+        SSL_use_cert        => 1,
+        SSL_verify_mode     => SSL_VERIFY_PEER,
+        SSL_verifycn_scheme => "none",
+        %sslargs,
+    );
+    die "Connection failure: $!\n" unless ($client);
+
+    #todo: get the bmc attr for each node, not the node name itself
+    my %cmdref = (command => 'noderange', noderange => $noderange);
+    $SIG{ALRM} = sub { die "No response getting noderange" };
+    alarm(15);
+    my $msg = XMLout(\%cmdref, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
+    if ($ENV{XCATXMLTRACE}) { print $msg; }
+    print $client $msg;
+    alarm(15);
+    my $response = "";
+
+    while (<$client>) {
+        alarm(0);
+        $response .= $_;
+        if ($response =~ m/<\/xcatresponse>/) {
+            if ($ENV{XCATXMLTRACE}) { print $response; }
+            my $rsp = XMLin($response, ForceArray => ['node']);
+            $response = '';
+            if ($rsp->{warning}) {
+                printf "Warning: " . $rsp->{warning} . "\n";
+            }
+            if ($rsp->{error}) {
+                die("ERROR: " . $rsp->{error} . "\n");
+            } elsif ($rsp->{node}) {
+                @nodes = @{ $rsp->{node} };
+            }
+            if ($rsp->{serverdone}) {
+                last;
+            }
+        }
+    }
+    close($client);
+    if ($::VERBOSE) { print 'Nodes:', join(',', @nodes), "\n"; }
+    return @nodes;
 }
 
 # Contact xcatd to get from the ipmi table for this list of nodes: bmc, username, password
 sub getipmiattrs {
-  my $noderange = shift @_;
-  my $nodeattrs = {};        # this will be a reference to a hash
-  my @user = getpwuid($>);
-  my $homedir=$user[7];
-  my %sslargs;
-  if (defined($ENV{'XCATSSLVER'})) {
-      $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
-  }
-
-  my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_ca_file => $homedir."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-                SSL_verify_mode => 1,
-                %sslargs,
-             );
-  die "Connection failure: $!\n" unless ($client);
-  my %cmdref = (command => 'getipmicons', noderange => $noderange);
-  $SIG{ALRM} = sub { die "No response getting ipmi attributes" };
-  alarm(15);
-  my $msg = XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-  if ($ENV{XCATXMLTRACE}) { print $msg; }
-  print $client $msg;
-  alarm(15);
-  my $response="";
-  while (<$client>) {
-    alarm(0);
-    $response .= $_;
-    if ($response =~ m/<\/xcatresponse>/) {
-      if ($ENV{XCATXMLTRACE}) { print $response; }
-      my $rsp=XMLin($response, ForceArray => ['node']);
-      $response='';
-      if ($rsp->{warning}) {
-        printf "Warning: ".$rsp->{warning}."\n";
-      }
-      if ($rsp->{error}) {
-        die ("ERROR: ".$rsp->{error}."\n");
-      } elsif ($rsp->{node}) {
-        #print Dumper($rsp->{node});
-        foreach (keys %{$rsp->{node}}) {
-          $nodeattrs->{$_} = $rsp->{node}->{$_};         # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
-        }
-      }
-      if ($rsp->{serverdone}) {
-        last;
-      }
+    my $noderange = shift @_;
+    my $nodeattrs = {};             # this will be a reference to a hash
+    my @user      = getpwuid($>);
+    my $homedir   = $user[7];
+    my %sslargs;
+    if (defined($ENV{'XCATSSLVER'})) {
+        $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
     }
-  }
-  close($client);
-  #if ($::VERBOSE) { print 'Nodes:', join(',',$nodeattrs), "\n"; }
-  return $nodeattrs;
+
+    my $client = IO::Socket::SSL->new(
+        PeerAddr            => $xcathost,
+        SSL_key_file        => $homedir . "/.xcat/client-cred.pem",
+        SSL_cert_file       => $homedir . "/.xcat/client-cred.pem",
+        SSL_ca_file         => $homedir . "/.xcat/ca.pem",
+        SSL_use_cert        => 1,
+        SSL_verify_mode     => SSL_VERIFY_PEER,
+        SSL_verifycn_scheme => "none",
+        %sslargs,
+    );
+    die "Connection failure: $!\n" unless ($client);
+    my %cmdref = (command => 'getipmicons', noderange => $noderange);
+    $SIG{ALRM} = sub { die "No response getting ipmi attributes" };
+    alarm(15);
+    my $msg = XMLout(\%cmdref, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
+    if ($ENV{XCATXMLTRACE}) { print $msg; }
+    print $client $msg;
+    alarm(15);
+    my $response = "";
+
+    while (<$client>) {
+        alarm(0);
+        $response .= $_;
+        if ($response =~ m/<\/xcatresponse>/) {
+            if ($ENV{XCATXMLTRACE}) { print $response; }
+            my $rsp = XMLin($response, ForceArray => ['node']);
+            $response = '';
+            if ($rsp->{warning}) {
+                printf "Warning: " . $rsp->{warning} . "\n";
+            }
+            if ($rsp->{error}) {
+                die("ERROR: " . $rsp->{error} . "\n");
+            } elsif ($rsp->{node}) {
+
+                #print Dumper($rsp->{node});
+                foreach (keys %{ $rsp->{node} }) {
+                    $nodeattrs->{$_} = $rsp->{node}->{$_}; # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+                }
+            }
+            if ($rsp->{serverdone}) {
+                last;
+            }
+        }
+    }
+    close($client);
+
+    #if ($::VERBOSE) { print 'Nodes:', join(',',$nodeattrs), "\n"; }
+    return $nodeattrs;
 }
 
 

@@ -56,7 +56,7 @@ switches Attributes:
 
 \ **password**\ 
  
- The password strinng for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.
+ The password string for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.
  
 
 
@@ -92,13 +92,13 @@ switches Attributes:
 
 \ **protocol**\ 
  
- Prorocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.
+ Protocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.
  
 
 
 \ **switchtype**\ 
  
- The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Juniper.
+ The type of switch. It is used to identify the file name that implements the functions for this switch. The valid values are: Mellanox, Cisco, BNT and Juniper.
  
 
 

@@ -44,20 +44,17 @@ ipmi Attributes:
 
 \ **bmc**\ 
  
- The hostname of the BMC adapater.
+ The hostname of the BMC adapter.
  
 
 
 \ **bmcport**\ 
  
+ In systems with selectable shared/dedicated ethernet ports, this parameter can be used to specify the preferred port. 0 means use the shared port, 1 means dedicated, blank is to not assign.
+ 
  
  .. code-block:: perl
  
-   In systems with selectable shared/dedicated ethernet ports,
-             this parameter can be used to specify the preferred port.  0
-             means use the shared port, 1 means dedicated, blank is to not
-             assign.
-  
              The following special cases exist for IBM System x servers:
   
              For x3755 M3 systems, 0 means use the dedicated port, 1 means

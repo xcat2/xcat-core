@@ -89,7 +89,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -206,3 +205,4 @@ reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
 redhat_migration1
 redhat_migration2
+clean_up_env

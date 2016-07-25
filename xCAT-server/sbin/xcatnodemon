@@ -13,53 +13,55 @@ use xCAT_monitoring::xcatmon;
 # This script is used as a cron job by the xCAT monitoring plug-in
 # to monitor the node status. To activate it, simply do
 # chtab pname=xCAT monitoring.nodestatmon=Y
-################################################################## 
+##################################################################
 
 #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
 #printf "%2d-%02d-%04d %02d:%02d:%02d: xcatnodemon started.\n", $mon+1,$mday,$year+1900,$hour,$min,$sec;
 
-#get saved node status from the nodelist table 
-my %nodes_status_old=xCAT_monitoring::xcatmon::getMonNodesStatus();
+#get saved node status from the nodelist table
+my %nodes_status_old = xCAT_monitoring::xcatmon::getMonNodesStatus();
 
 #get a list of nodes
-my $tmp_node_active=$nodes_status_old{$::STATUS_ACTIVE};
-my $tmp_node_inactive=$nodes_status_old{$::STATUS_INACTIVE};
-my $tmp_node_unknown=$nodes_status_old{unknown};
+my $tmp_node_active   = $nodes_status_old{$::STATUS_ACTIVE};
+my $tmp_node_inactive = $nodes_status_old{$::STATUS_INACTIVE};
+my $tmp_node_unknown  = $nodes_status_old{unknown};
+
 #print "active nodes: @$tmp_node_active\n";
 #print "inactive nodes: @$tmp_node_inactive\n";
 #print "unknown nodes: @$tmp_node_unknown\n";
 
 #get current node status
-my %nodes_status_new1=();
-if ($tmp_node_active) { %nodes_status_new1=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_active);} 
-my %nodes_status_new2=();
-if ($tmp_node_inactive) {%nodes_status_new2=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_inactive);}
-my %nodes_status_new3=();
-if ($tmp_node_unknown) { %nodes_status_new3=xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_unknown);}
+my %nodes_status_new1 = ();
+if ($tmp_node_active) { %nodes_status_new1 = xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_active); }
+my %nodes_status_new2 = ();
+if ($tmp_node_inactive) { %nodes_status_new2 = xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_inactive); }
+my %nodes_status_new3 = ();
+if ($tmp_node_unknown) { %nodes_status_new3 = xCAT::NetworkUtils->pingNodeStatus(@$tmp_node_unknown); }
 
-my $changed1=$nodes_status_new1{$::STATUS_INACTIVE};
-my $changed2=$nodes_status_new2{$::STATUS_ACTIVE};
-my $changed3=$nodes_status_new3{$::STATUS_INACTIVE};
-my $changed4=$nodes_status_new3{$::STATUS_ACTIVE};
-my @changed_active=(@$changed2, @$changed4);
-my @changed_inactive=(@$changed1, @$changed3);
+my $changed1         = $nodes_status_new1{$::STATUS_INACTIVE};
+my $changed2         = $nodes_status_new2{$::STATUS_ACTIVE};
+my $changed3         = $nodes_status_new3{$::STATUS_INACTIVE};
+my $changed4         = $nodes_status_new3{$::STATUS_ACTIVE};
+my @changed_active   = (@$changed2, @$changed4);
+my @changed_inactive = (@$changed1, @$changed3);
 
 #print "  switch to active:   @changed_active\n";
 #print "  switch to inactive: @changed_inactive\n";
 
-my %node_status=();
-if (@changed_active>0) {
-  $node_status{$::STATUS_ACTIVE}=\@changed_active;
-} 
-if (@changed_inactive>0) {
-  $node_status{$::STATUS_INACTIVE}=\@changed_inactive;
+my %node_status = ();
+if (@changed_active > 0) {
+    $node_status{$::STATUS_ACTIVE} = \@changed_active;
+}
+if (@changed_inactive > 0) {
+    $node_status{$::STATUS_INACTIVE} = \@changed_inactive;
 }
 
 #only set the node status for the changed ones
 if (keys(%node_status) > 0) {
-  #the second parameter means ignore checking. This is because the check is
-  #done getMonNodesStatus() call
-  xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status, 1);
+
+    #the second parameter means ignore checking. This is because the check is
+    #done getMonNodesStatus() call
+    xCAT_monitoring::xcatmon::setNodeStatusAttributes(\%node_status, 1);
 }
 
 #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);

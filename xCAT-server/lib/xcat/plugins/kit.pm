@@ -10,7 +10,7 @@ package xCAT_plugin::kit;
 
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -18,6 +18,7 @@ use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use Getopt::Long;
+
 #use Data::Dumper;
 use File::Basename;
 use File::Path;
@@ -26,16 +27,17 @@ use Cwd;
 my $kitconf = "kit.conf";
 
 # kit framework version for this xcat.
-$::KITFRAMEWORK ="2";
+$::KITFRAMEWORK = "2";
 
 # this code is compatible with other kits that are at framework 0 or 1.
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
-if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+if ($tempstring =~ /debian/ || $tempstring =~ /ubuntu/) {
     $debianflag = 1;
-#    print "debian";
+
+    #    print "debian";
 }
 
 #-------------------------------------------------------
@@ -51,15 +53,15 @@ Return list of commands handled by this plugin
 sub handled_commands
 {
     return {
-            lskit  => "kit",
-            addkit => "kit",
-            rmkit => "kit",
-            lskitcomp  => "kit",
-            addkitcomp => "kit",
-            rmkitcomp => "kit",
-            chkkitcomp => "kit",
-            lskitdeployparam  => "kit",
-	   };
+        lskit            => "kit",
+        addkit           => "kit",
+        rmkit            => "kit",
+        lskitcomp        => "kit",
+        addkitcomp       => "kit",
+        rmkitcomp        => "kit",
+        chkkitcomp       => "kit",
+        lskitdeployparam => "kit",
+    };
 }
 
 #-------------------------------------------------------
@@ -74,56 +76,56 @@ sub handled_commands
 sub process_request
 {
 
-    my $request  = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
     $::CALLBACK = $callback;
     $::args     = $request->{arg};
 
     my $lock;
     my $locked = xCAT::Utils->is_locked("kit", 1);
-    if ( !locked ) {
+    if (!locked) {
         $lock = xCAT::Utils->acquire_lock("kit", 1);
-        unless ($lock){
-            $callback->({error=>["Can not acquire lock."],errorcode=>[1]});
+        unless ($lock) {
+            $callback->({ error => ["Can not acquire lock."], errorcode => [1] });
             return 1;
-        }    
+        }
     } else {
-        if ( $::PID and $::PID != $$ ) {
-            $callback->({error=>["Can not acquire lock, another process is running."],errorcode=>[1]});
+        if ($::PID and $::PID != $$) {
+            $callback->({ error => ["Can not acquire lock, another process is running."], errorcode => [1] });
             return 1;
         }
 
         $::PID = $$;
     }
 
-    my $command  = $request->{command}->[0];
+    my $command = $request->{command}->[0];
     my $rc;
 
-    if ($command eq "lskit"){
+    if ($command eq "lskit") {
         $rc = lskit($request, $callback, $request_command);
-    } elsif ($command eq "addkit"){
+    } elsif ($command eq "addkit") {
         $rc = addkit($request, $callback, $request_command);
         system("rm -rf /tmp/tmpkit/");
-    } elsif ($command eq "rmkit"){
+    } elsif ($command eq "rmkit") {
         $rc = rmkit($request, $callback, $request_command);
-    } elsif ($command eq "lskitcomp"){
+    } elsif ($command eq "lskitcomp") {
         $rc = lskitcomp($request, $callback, $request_command);
-    } elsif ($command eq "addkitcomp"){
+    } elsif ($command eq "addkitcomp") {
         $rc = addkitcomp($request, $callback, $request_command);
-    } elsif ($command eq "rmkitcomp"){
+    } elsif ($command eq "rmkitcomp") {
         $rc = rmkitcomp($request, $callback, $request_command);
-    } elsif ($command eq "chkkitcomp"){
+    } elsif ($command eq "chkkitcomp") {
         $rc = chkkitcomp($request, $callback, $request_command);
-    } elsif ($command eq "lskitdeployparam"){
+    } elsif ($command eq "lskitdeployparam") {
         $rc = lskitdeployparam($request, $callback, $request_command);
-    } else{
-        $callback->({error=>["Error: $command not found in this module."],errorcode=>[1]});
+    } else {
+        $callback->({ error => ["Error: $command not found in this module."], errorcode => [1] });
         xCAT::Utils->release_lock($lock, 1);
         return 1;
     }
 
-    if ( $lock ) {
+    if ($lock) {
         xCAT::Utils->release_lock($lock, 1);
     }
     return $rc;
@@ -147,20 +149,20 @@ sub process_request
 #-------------------------------------------------------
 sub get_highest_version
 {
-    my $key = shift;
+    my $key     = shift;
     my $version = shift;
     my $release = shift;
     my @entries = @_;
 
     my $highest;
 
-    foreach my $entry ( @entries ) {
-        $highest=$entry if (!$highest);
+    foreach my $entry (@entries) {
+        $highest = $entry if (!$highest);
 
-        my $rc = compare_version($highest,$entry,$key,$version,$release);
-        if ( $rc == 1 ) {
+        my $rc = compare_version($highest, $entry, $key, $version, $release);
+        if ($rc == 1) {
             $highest = $entry;
-        }  
+        }
     }
 
     return $highest->{$key};
@@ -184,19 +186,19 @@ sub get_highest_version
 sub compare_version
 {
     my $highest = shift;
-    my $entry = shift;
-    my $key = shift;
+    my $entry   = shift;
+    my $key     = shift;
     my $version = shift;
     my $release = shift;
 
     my @a1 = split(/\./, $highest->{$version});
     my @a2 = split(/\./, $entry->{$version});
 
-    my ($len,$num1,$num2);
+    my ($len, $num1, $num2);
     if (($release = 'release') &&
-       (defined $highest->{$release}) && (defined $entry->{$release})){
+        (defined $highest->{$release}) && (defined $entry->{$release})) {
         $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
-    }else{
+    } else {
         $len = (scalar(@a1) < scalar(@a2) ? scalar(@a1) : scalar(@a2));
     }
 
@@ -215,46 +217,46 @@ sub compare_version
 
     for (my $i = 0 ; $i < $len ; $i++)
     {
-        my ($d1,$w1) = $a1[$i] =~ /^(\d*)(\w*)/;
-        my ($d2,$w2) = $a2[$i] =~ /^(\d*)(\w*)/;
+        my ($d1, $w1) = $a1[$i] =~ /^(\d*)(\w*)/;
+        my ($d2, $w2) = $a2[$i] =~ /^(\d*)(\w*)/;
 
 
         my $diff = length($d1) - length($d2);
-        if ($diff > 0)                     # pad d2
+        if ($diff > 0)    # pad d2
         {
             $num1 .= $d1;
             $num2 .= ('0' x $diff) . $d2;
         }
-        elsif ($diff < 0)                  # pad d1
+        elsif ($diff < 0)    # pad d1
         {
             $num1 .= ('0' x abs($diff)) . $d1;
             $num2 .= $d2;
         }
-        else                               # they are the same length
+        else                 # they are the same length
         {
             $num1 .= $d1;
             $num2 .= $d2;
         }
 
-        if ( $w1 && $w2)
+        if ($w1 && $w2)
         {
-            my ($w_to_d1, $w_to_d2) = comp_word( $w1, $w2);
+            my ($w_to_d1, $w_to_d2) = comp_word($w1, $w2);
             $num1 .= $w_to_d1;
             $num2 .= $w_to_d2;
         }
     }
 
-# Remove the leading 0s or perl will interpret the numbers as octal
+    # Remove the leading 0s or perl will interpret the numbers as octal
     $num1 =~ s/^0+//;
     $num2 =~ s/^0+//;
 
-#SuSE Changes
-# if $num1="", the "eval '$num1 $operator $num2'" will fail. So MUSTBE be sure that $num1 is not a "".
+    #SuSE Changes
+    # if $num1="", the "eval '$num1 $operator $num2'" will fail. So MUSTBE be sure that $num1 is not a "".
     if (length($num1) == 0) { $num1 = 0; }
     if (length($num2) == 0) { $num2 = 0; }
 
-    return 1 if ( $num2 > $num1 );
-    return 0 if ( $num2 == $num1 );
+    return 1 if ($num2 > $num1);
+    return 0 if ($num2 == $num1);
     return -1;
 }
 
@@ -292,22 +294,22 @@ sub comp_word
 {
     my $self = shift;
 
-    my ($w1,$w2) = @_;
+    my ($w1, $w2) = @_;
 
-    return (undef,undef) if (!$w1 || !$w2);
+    return (undef, undef) if (!$w1 || !$w2);
 
     my @strList1 = unpack "C*", $w1;
     my @strList2 = unpack "C*", $w2;
 
     my $len = scalar(@strList1) < scalar(@strList2) ? scalar(@strList1) : scalar(@strList2);
 
-    for ( my $i = 0; $i < $len; $i++)
+    for (my $i = 0 ; $i < $len ; $i++)
     {
-        next if ( $strList1[$i] == $strList2[$i]);
-        return ( 0, 1) if ( $strList1[$i] < $strList2[$i]);
-        return ( 1, 0);
+        next if ($strList1[$i] == $strList2[$i]);
+        return (0, 1) if ($strList1[$i] < $strList2[$i]);
+        return (1, 0);
     }
-    return (undef,undef);
+    return (undef, undef);
 
 }
 
@@ -324,24 +326,24 @@ sub comp_word
 =cut
 
 #-------------------------------------------------------
-sub check_newinstall 
+sub check_newinstall
 {
     my $kitcomponents = shift;
-    my @lines = @_;
+    my @lines         = @_;
 
     my @kitcomps = split /,/, $kitcomponents;
 
-    foreach my $kitcomp ( @kitcomps ) {
-        last if ( $::noupgrade );
+    foreach my $kitcomp (@kitcomps) {
+        last if ($::noupgrade);
 
         my $match_newinstall = 0;
-        foreach my $line ( @lines ) {
+        foreach my $line (@lines) {
             chomp($line);
-            if ( $line =~ /^#NEW_INSTALL_LIST#$/ ) {
+            if ($line =~ /^#NEW_INSTALL_LIST#$/) {
                 $match_newinstall = 1;
             }
-            if ( $line =~ /\/$kitcomp$/ ) {
-                if ( $match_newinstall ) {
+            if ($line =~ /\/$kitcomp$/) {
+                if ($match_newinstall) {
                     $::noupgrade = 1;
                 }
                 last;
@@ -366,18 +368,18 @@ sub check_newinstall
 
 sub get_local_otherpkgdir
 {
-      $otherpkgdir = shift;
-      my $localdir = "";
-      my @tempdirarray = split /,/, $otherpkgdir;
-         foreach my $tempdir (@tempdirarray){
-             $tempdir=~s/(^ +| +$)//g;
-             if ($tempdir !~ /^http.*/){
-                  $localdir = $tempdir;
-                  last;
-             }
+    $otherpkgdir = shift;
+    my $localdir = "";
+    my @tempdirarray = split /,/, $otherpkgdir;
+    foreach my $tempdir (@tempdirarray) {
+        $tempdir =~ s/(^ +| +$)//g;
+        if ($tempdir !~ /^http.*/) {
+            $localdir = $tempdir;
+            last;
         }
-     return $localdir;  
-      
+    }
+    return $localdir;
+
 }
 
 
@@ -392,18 +394,18 @@ sub get_local_otherpkgdir
 #-------------------------------------------------------
 sub assign_to_osimage
 {
-    my $osimage = shift;
-    my $kitcomp = shift;
+    my $osimage  = shift;
+    my $kitcomp  = shift;
     my $callback = shift;
-    my $tabs = shift;
+    my $tabs     = shift;
 
-    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitcompdeps', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
-    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents', 'osvers');
-    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({ kitcompname => $kitcomp }, 'kitname', 'kitreponame', 'basename', 'kitcompdeps', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall', 'postbootscripts', 'driverpacks');
+    (my $osimagetable) = $tabs->{osimage}->getAttribs({ imagename => $osimage }, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents', 'osvers');
+    (my $linuximagetable) = $tabs->{linuximage}->getAttribs({ imagename => $osimage }, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
 
     # Reading installdir.
     my $installdir = xCAT::TableUtils->getInstallDir();
-    unless($installdir){
+    unless ($installdir) {
         $installdir = '/install';
     }
     $installdir =~ s/\/$//;
@@ -411,46 +413,55 @@ sub assign_to_osimage
 
     # Reading kitdir
     my $kittable;
-    if ( $kitcomptable and $kitcomptable->{kitname} ) {
-        ($kittable) = $tabs->{kit}->getAttribs({kitname=> $kitcomptable->{kitname}}, 'kitdir', 'kitdeployparams');
+    if ($kitcomptable and $kitcomptable->{kitname}) {
+        ($kittable) = $tabs->{kit}->getAttribs({ kitname => $kitcomptable->{kitname} }, 'kitdir', 'kitdeployparams');
     }
 
     # Create osimage direcotry to save kit tmp files
     mkpath("$installdir/osimages/$osimage/kits/");
 
     # Adding genimage_postinstall script to linuximage.postintall attribute for diskless image or osimage.postbootscripts for diskfull image.
-    if ( $kitcomptable and $kitcomptable->{genimage_postinstall} ){
+    if ($kitcomptable and $kitcomptable->{genimage_postinstall}) {
         my @kitcompscripts = split ',', $kitcomptable->{genimage_postinstall};
-        foreach my $kitcompscript ( @kitcompscripts ) {
-            if ( $osimagetable ) {
+        foreach my $kitcompscript (@kitcompscripts) {
+            if ($osimagetable) {
                 my $otherpkgdir;
                 my $rootimgdir;
-                if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+                if ($linuximagetable and $linuximagetable->{otherpkgdir}) {
                     $otherpkgdir = $linuximagetable->{otherpkgdir};
+
                     #support mixed otherpkgdir http and local dir
                     $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
 
                 } else {
-                    $callback->({error => ["Could not read otherpkgdir from osimage $osimage"],errorcode=>[1]});
+                    $callback->({ error => ["Could not read otherpkgdir from osimage $osimage"], errorcode => [1] });
                     return 1;
                 }
 
-                if ( $osimagetable->{provmethod} =~ /install/ ) {
+                if ($osimagetable->{provmethod} =~ /install/) {
+
+                    # If the script is only for diskless node
+                    my $cmd = "grep \"#FLAG FOR DISKLESS ONLY#\" $installdir/postscripts/$kitcompscript";
+                    my $res = xCAT::Utils->runcmd($cmd, -1);
+                    if ($res eq "#FLAG FOR DISKLESS ONLY#") {
+                        next;
+                    }
+
                     # for diskfull node
                     my $match = 0;
                     my @scripts = split ',', $osimagetable->{postbootscripts};
-                    foreach my $script ( @scripts ) {
-                         if ( $script =~ /^KIT_$osimage.postbootscripts/ ) {
-                             $match = 1;
-                             last;
-                         }
+                    foreach my $script (@scripts) {
+                        if ($script =~ /^KIT_$osimage.postbootscripts/) {
+                            $match = 1;
+                            last;
+                        }
                     }
 
-                    if ( !-e "$installdir/postscripts/KIT_$osimage.postbootscripts" ) {
+                    if (!-e "$installdir/postscripts/KIT_$osimage.postbootscripts") {
                         if (open(FILE, ">", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
                             print FILE "#!/bin/sh\n\n";
                             close(FILE);
-                            chmod(0755,"$installdir/postscripts/KIT_$osimage.postbootscripts");
+                            chmod(0755, "$installdir/postscripts/KIT_$osimage.postbootscripts");
                         }
                     }
 
@@ -458,38 +469,39 @@ sub assign_to_osimage
                     if (open(POSTBOOTSCRIPTS, "<", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
                         @postbootlines = <POSTBOOTSCRIPTS>;
                         close(POSTBOOTSCRIPTS);
-                        if($::VERBOSE){
-                            $callback->({data=>["\nCreating osimage postbootscripts file $installdir/postscripts/KIT_$osimage.postbootscripts"]});
-                        } 
+                        if ($::VERBOSE) {
+                            $callback->({ data => ["\nCreating osimage postbootscripts file $installdir/postscripts/KIT_$osimage.postbootscripts"] });
+                        }
                     }
 
-                    unless ( grep(/$kitcompscript/ , @postbootlines ) ) {
+                    unless (grep(/$kitcompscript/, @postbootlines)) {
                         if (open(NEWLIST, ">>", "$installdir/postscripts/KIT_$osimage.postbootscripts")) {
                             print NEWLIST "otherpkgdir=$otherpkgdir $kitcompscript\n";
                             close(NEWLIST);
                         }
                     }
 
-                    if ( !$match ) {
+                    if (!$match) {
                         $osimagetable->{postbootscripts} = "KIT_$osimage.postbootscripts," . $osimagetable->{postbootscripts};
                         $osimagetable->{postbootscripts} =~ s/^,//;
                     }
 
                 } else {
+
                     # for diskless node
 
-                    if ( $linuximagetable and $linuximagetable->{rootimgdir} ) {
-                        $rootimgdir = $linuximagetable->{rootimgdir}."/rootimg";
+                    if ($linuximagetable and $linuximagetable->{rootimgdir}) {
+                        $rootimgdir = $linuximagetable->{rootimgdir} . "/rootimg";
                     } else {
-                        $callback->({error => ["Could not read rootimgdir from osimage $osimage"],errorcode=>[1]});
+                        $callback->({ error => ["Could not read rootimgdir from osimage $osimage"], errorcode => [1] });
                         return 1;
                     }
 
-                    if ( !-e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall" ) {
+                    if (!-e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall") {
                         if (open(FILE, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
                             print FILE "#!/bin/sh\n\n";
                             close(FILE);
-                            chmod(0755,"$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall");
+                            chmod(0755, "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall");
                         }
                     }
 
@@ -497,20 +509,20 @@ sub assign_to_osimage
                     if (open(POSTINSTALL, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
                         @postinstalllines = <POSTINSTALL>;
                         close(POSTINSTALL);
-        
-                        if($::VERBOSE){
-                           $callback->({data=>["\nReading osimage postinstall scripts file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall"]});
+
+                        if ($::VERBOSE) {
+                            $callback->({ data => ["\nReading osimage postinstall scripts file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall"] });
                         }
                     }
 
-                    unless ( grep(/$kitcompscript/ , @postinstalllines ) ) {
+                    unless (grep(/$kitcompscript/, @postinstalllines)) {
                         my $deployparams;
                         my @ls;
-                        if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                        if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
                             if (open(DEPLOYPARAM, "<", "$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}")) {
                                 @ls = <DEPLOYPARAM>;
                                 close(DEPLOYPARAM);
-                             }
+                            }
                         }
 
                         my @newlines;
@@ -537,43 +549,43 @@ sub assign_to_osimage
 
                     my $match = 0;
                     my @scripts = split ',', $linuximagetable->{postinstall};
-                    foreach my $script ( @scripts ) {
-                        if ( $script =~ /KIT_COMPONENTS.postinstall/ ) {
+                    foreach my $script (@scripts) {
+                        if ($script =~ /KIT_COMPONENTS.postinstall/) {
                             $match = 1;
                             last;
                         }
                     }
 
-                    if ( !$match ) {
-                        $linuximagetable->{postinstall} =  $linuximagetable->{postinstall} . ",$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall";
+                    if (!$match) {
+                        $linuximagetable->{postinstall} = $linuximagetable->{postinstall} . ",$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall";
                     }
                     $linuximagetable->{postinstall} =~ s/^,//;
                 }
             }
         }
     }
- 
+
     # Adding postbootscrits to osimage.postbootscripts
-    if ( !$::noscripts and $kitcomptable and $kitcomptable->{postbootscripts} ){
+    if (!$::noscripts and $kitcomptable and $kitcomptable->{postbootscripts}) {
         my @kitcompscripts = split ',', $kitcomptable->{postbootscripts};
-        foreach my $kitcompscript ( @kitcompscripts ) {
+        foreach my $kitcompscript (@kitcompscripts) {
 
             my $formatedkitcomp = $kitcompscript;
 
-            if ( $osimagetable ) {
-                if ( $osimagetable->{postbootscripts} ){
+            if ($osimagetable) {
+                if ($osimagetable->{postbootscripts}) {
                     my $match = 0;
                     my $added = 0;
                     my @newscripts;
                     my @scripts = split ',', $osimagetable->{postbootscripts};
-                    foreach my $script ( @scripts ) {
-                        if ( $script =~ /^$formatedkitcomp$/ ) {
+                    foreach my $script (@scripts) {
+                        if ($script =~ /^$formatedkitcomp$/) {
                             $match = 1;
                             last;
                         }
 
-                        if ( $script !~ /^BASEXCAT_/ and $script !~ /^KIT_/ ) {
-                            unless ( $added ) {
+                        if ($script !~ /^BASEXCAT_/ and $script !~ /^KIT_/) {
+                            unless ($added) {
                                 push @newscripts, $formatedkitcomp;
                                 $added = 1;
                             }
@@ -584,9 +596,9 @@ sub assign_to_osimage
 
                     }
 
-                    if ( $match ) {
+                    if ($match) {
                         next;
-                    } elsif ( !$added ) {
+                    } elsif (!$added) {
                         push @newscripts, $formatedkitcomp;
                     }
 
@@ -597,50 +609,52 @@ sub assign_to_osimage
                 }
 
             }
-            
+
         }
     }
 
     # Adding kit component's repodir to osimage.otherpkgdir
-    if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+    if ($kitcomptable and $kitcomptable->{kitreponame}) {
 
-        (my $kitrepotable) = $tabs->{kitrepo}->getAttribs({kitreponame=> $kitcomptable->{kitreponame}}, 'kitrepodir');
-        if ( $kitrepotable and $kitrepotable->{kitrepodir} ) {
+        (my $kitrepotable) = $tabs->{kitrepo}->getAttribs({ kitreponame => $kitcomptable->{kitreponame} }, 'kitrepodir');
+        if ($kitrepotable and $kitrepotable->{kitrepodir}) {
 
-            if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+            if ($linuximagetable and $linuximagetable->{otherpkgdir}) {
                 my $otherpkgdir = $linuximagetable->{otherpkgdir};
+
                 #support mixed otherpkgdir http and local dir
                 $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
                 my $kitrepodir = $kitrepotable->{kitrepodir};
 
                 # Create otherpkgdir if it doesn't exist
-                unless ( -d "$otherpkgdir" ) {
+                unless (-d "$otherpkgdir") {
                     mkpath("$otherpkgdir");
                 }
-		# Consider the mixed environment 
-		my $imagerhelflag = 0;
-                if ( $osimagetable and $osimagetable->{osvers} ) {
-                    if ($osimagetable->{osvers} =~ /rhel/){
-                    $imagerhelflag = 1;
-                    }
-                }
-		
 
-		if ( $debianflag && $imagerhelflag)
-                {
-                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
-                    {
-		        system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
+                # Consider the mixed environment
+                my $imagerhelflag = 0;
+                if ($osimagetable and $osimagetable->{osvers}) {
+                    if ($osimagetable->{osvers} =~ /rhel/) {
+                        $imagerhelflag = 1;
                     }
                 }
 
 
-                elsif ( $debianflag )
+                if ($debianflag && $imagerhelflag)
                 {
-                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
+                    unless (-d "$otherpkgdir/$kitcomptable->{kitreponame}")
                     {
-                       # system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
-                       # print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
+                        system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
+                    }
+                }
+
+
+                elsif ($debianflag)
+                {
+                    unless (-d "$otherpkgdir/$kitcomptable->{kitreponame}")
+                    {
+                        # system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
+                        # print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
                         system("cp -Rf $kitrepodir $otherpkgdir/");
                         print "cp -Rf $kitrepodir $otherpkgdir/";
                     }
@@ -648,62 +662,62 @@ sub assign_to_osimage
                 else
                 {
                     # Create symlink if doesn't exist
-                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
-                    system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
+                    unless (-d "$otherpkgdir/$kitcomptable->{kitreponame}") {
+                        system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
                     }
                 }
             } else {
-                $callback->({error => ["Cannot open linuximage table or otherpkgdir do not exist"],errorcode=>[1]});
+                $callback->({ error => ["Cannot open linuximage table or otherpkgdir do not exist"], errorcode => [1] });
                 return 1;
             }
         } else {
-            $callback->({error => ["Cannot open kit table or kitdir do not exist"],errorcode=>[1]});
+            $callback->({ error => ["Cannot open kit table or kitdir do not exist"], errorcode => [1] });
             return 1;
         }
     }
 
     # Adding kitcomponent.exlist to osimage.exlist
-    if ( $kitcomptable and $kitcomptable->{exlist} and $kittable and $kittable->{kitdir} ) {
+    if ($kitcomptable and $kitcomptable->{exlist} and $kittable and $kittable->{kitdir}) {
 
         my @lines;
         my $exlistfile = $kitcomptable->{exlist};
-        my $kitdir = $kittable->{kitdir};
+        my $kitdir     = $kittable->{kitdir};
 
 
         # Adding kit component exlist file to KIT_COMPONENTS.exlist file
         mkpath("$installdir/osimages/$osimage/kits/");
-        if ( -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist" ) {
+        if (-e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist") {
             if (open(EXLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                 @lines = <EXLIST>;
                 close(EXLIST);
-                if($::VERBOSE){
-                    $callback->({data=>["\nReading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist\n"]});
+                if ($::VERBOSE) {
+                    $callback->({ data => ["\nReading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist\n"] });
                 }
             } else {
-                $callback->({error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"],errorcode=>[1]});
+                $callback->({ error => ["Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist"], errorcode => [1] });
                 return 1;
             }
         }
-        unless ( grep(/^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/ , @lines) ) {
+        unless (grep(/^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/, @lines)) {
             if (open(NEWEXLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
-                
-                print NEWEXLIST "#INCLUDE:$kitdir/other_files/$exlistfile#\n"; 
+
+                print NEWEXLIST "#INCLUDE:$kitdir/other_files/$exlistfile#\n";
                 close(NEWEXLIST);
             }
         }
 
         # Adding KIT_COMPONENTS.exlist file to osimage.exlist if not existing.
-        if ( $linuximagetable ) {
-            if ( $linuximagetable->{exlist} ) {
+        if ($linuximagetable) {
+            if ($linuximagetable->{exlist}) {
                 my $match = 0;
-                my @exlists= split ',', $linuximagetable->{exlist};
-                foreach my $exlist ( @exlists ) {
-                    if ( $exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/ ) {
+                my @exlists = split ',', $linuximagetable->{exlist};
+                foreach my $exlist (@exlists) {
+                    if ($exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/) {
                         $match = 1;
                         last;
                     }
                 }
-                unless ( $match ) {
+                unless ($match) {
                     $linuximagetable->{exlist} = $linuximagetable->{exlist} . ',' . "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
                 }
             } else {
@@ -716,20 +730,20 @@ sub assign_to_osimage
 
     # Adding kitdeployparams to a otherpkglist file in osimage
     my @kitdeployparams;
-    if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) { 
+    if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
 
         # Creating kit deployparams file
         my @lines;
         mkpath("$installdir/osimages/$osimage/kits/");
-        if ( -e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
+        if (-e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist") {
             if (open(DEPLOYPARAM, "<", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
                 @lines = <DEPLOYPARAM>;
                 close(DEPLOYPARAM);
-                if($::VERBOSE){
-                    $callback->({data=>["\nReading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"]});
+                if ($::VERBOSE) {
+                    $callback->({ data => ["\nReading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist\n"] });
                 }
             } else {
-                $callback->({error => ["Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"],errorcode=>[1]});
+                $callback->({ error => ["Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist"], errorcode => [1] });
                 return 1;
             }
         }
@@ -737,15 +751,15 @@ sub assign_to_osimage
         # Checking if the kit deployparams have been written in the generated kit deployparams file.
         my @l;
         my $matched = 0;
-        foreach my $line ( @lines ) {
+        foreach my $line (@lines) {
             chomp $line;
-            if ( $line =~ m!$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}! ) {
+            if ($line =~ m!$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}!) {
                 $matched = 1;
                 last;
             }
         }
 
-        unless ( $matched ) {
+        unless ($matched) {
             push @l, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
         }
 
@@ -756,18 +770,18 @@ sub assign_to_osimage
         }
 
         # Write this kit deployparams to osimage.otherpkglist if not existing.
-        if ( $linuximagetable ) {
-            if ( $linuximagetable->{otherpkglist} ) {
+        if ($linuximagetable) {
+            if ($linuximagetable->{otherpkglist}) {
                 my $match = 0;
-                my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
-                foreach my $otherpkglist ( @otherpkglists ) {
-                    if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_DEPLOY_PARAMS.otherpkgs.pkglist$/ ) {
+                my @otherpkglists = split ',', $linuximagetable->{otherpkglist};
+                foreach my $otherpkglist (@otherpkglists) {
+                    if ($otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_DEPLOY_PARAMS.otherpkgs.pkglist$/) {
                         $match = 1;
                         last;
                     }
                 }
-                unless ( $match ) {
-                    $linuximagetable->{otherpkglist} = "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" . ',' . "$linuximagetable->{otherpkglist}"; 
+                unless ($match) {
+                    $linuximagetable->{otherpkglist} = "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" . ',' . "$linuximagetable->{otherpkglist}";
                 }
             } else {
                 $linuximagetable->{otherpkglist} = "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
@@ -777,32 +791,32 @@ sub assign_to_osimage
     }
 
     # Adding kit component basename to osimage.otherpkgs.pkglist
-    if ( $kitcomptable and $kitcomptable->{basename} and $kitcomptable->{kitreponame} ) {
+    if ($kitcomptable and $kitcomptable->{basename} and $kitcomptable->{kitreponame}) {
 
         my @lines;
-        my $basename = $kitcomptable->{basename};
+        my $basename    = $kitcomptable->{basename};
         my $kitreponame = $kitcomptable->{kitreponame};
 
         # Adding kit component basename to KIT_COMPONENTS.otherpkgs.pkglist file
         mkpath("$installdir/osimages/$osimage/kits");
-        if ( -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist" ) {
+        if (-e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist") {
             if (open(OTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
                 @lines = <OTHERPKGLIST>;
                 close(OTHERPKGLIST);
-                if($::VERBOSE){
-                    $callback->({data=>["\nReading kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist\n"]});
+                if ($::VERBOSE) {
+                    $callback->({ data => ["\nReading kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist\n"] });
                 }
             } else {
-                $callback->({error => ["Could not open kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist"],errorcode=>[1]});
+                $callback->({ error => ["Could not open kit component otherpkg file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist"], errorcode => [1] });
                 return 1;
             }
         }
-        unless ( grep(/^$kitreponame\/$basename$/, @lines) ) {
+        unless (grep(/^$kitreponame\/$basename$/, @lines)) {
             if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
-                if ( $kitcomptable and $kitcomptable->{prerequisite} ) {
+                if ($kitcomptable and $kitcomptable->{prerequisite}) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
 
-                    if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                    if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
                         push @lines, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
                     }
                     push @lines, "$kitreponame/$kitcomptable->{prerequisite}\n";
@@ -811,14 +825,14 @@ sub assign_to_osimage
 
                 # Check if this kitcomponent's kitcompdeps are in NEW_INSTALL_LIST or not.
                 # If so, set $::noupgrade to put this kitcomp in a new NEW_INSTALL_LIST
-                if ( $kitcomptable and $kitcomptable->{kitcompdeps} ) {
+                if ($kitcomptable and $kitcomptable->{kitcompdeps}) {
                     check_newinstall($kitcomptable->{kitcompdeps}, @lines);
                 }
 
-                if ( $::noupgrade ) {
+                if ($::noupgrade) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
 
-                    if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                    if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
                         push @lines, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
                     }
 
@@ -834,17 +848,17 @@ sub assign_to_osimage
         }
 
         # Write this kit component otherpkgs pkgfile to osimage.otherpkglist if not existing.
-        if ( $linuximagetable ) {
-            if ( $linuximagetable->{otherpkglist} ) {
+        if ($linuximagetable) {
+            if ($linuximagetable->{otherpkglist}) {
                 my $match = 0;
-                my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
-                foreach my $otherpkglist ( @otherpkglists ) {
-                    if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/ ) {
+                my @otherpkglists = split ',', $linuximagetable->{otherpkglist};
+                foreach my $otherpkglist (@otherpkglists) {
+                    if ($otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/) {
                         $match = 1;
                         last;
                     }
                 }
-                unless ( $match ) {
+                unless ($match) {
                     $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ',' . "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
                 }
             } else {
@@ -856,59 +870,59 @@ sub assign_to_osimage
         # Remove this component basename and pkgnames from KIT_RMPKGS.otherpkg.pkglist
         my @lines = ();
 
-        my @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
+        my @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps};
 
         # Remove prerequisite from KIT_RMPKGS.otherpkg.pkglist
-        if ( $kitcomptable and $kitcomptable->{prerequisite} ) {
+        if ($kitcomptable and $kitcomptable->{prerequisite}) {
             my @kitpreps = split /,/, $kitcomptable->{prerequisite};
-            foreach my $kitprep ( @kitpreps ) {
+            foreach my $kitprep (@kitpreps) {
                 push @kitpkgdeps, $kitprep;
             }
         }
-            
+
         push @kitpkgdeps, $basename;
 
         my @l = ();
-        if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+        if (-e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") {
             if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
                 @lines = <RMOTHERPKGLIST>;
                 close(RMOTHERPKGLIST);
-                if($::VERBOSE){
-                    $callback->({data=>["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"]});
+                if ($::VERBOSE) {
+                    $callback->({ data => ["\nReading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist\n"] });
                 }
             } else {
-                $callback->({error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"],errorcode=>[1]});
+                $callback->({ error => ["Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"], errorcode => [1] });
                 return 1;
             }
         }
 
         my $changed = 0;
-        foreach my $line ( @lines ) {
+        foreach my $line (@lines) {
             chomp $line;
             my $matched = 0;
-            foreach my $kitpkgdep ( @kitpkgdeps ) {
-                if ( $line =~ /^-$kitpkgdep$/ ) {
+            foreach my $kitpkgdep (@kitpkgdeps) {
+                if ($line =~ /^-$kitpkgdep$/) {
                     $matched = 1;
                     $changed = 1;
                     last;
                 }
             }
-            if ( $line =~ /^-prep_$basename$/ ) {
+            if ($line =~ /^-prep_$basename$/) {
                 $matched = 1;
                 $changed = 1;
             }
-            unless ( $matched ) {
+            unless ($matched) {
                 push @l, "$line\n";
             }
 
             my $lastline = pop @l;
-            while ( $lastline =~ /^#NEW_INSTALL_LIST#$/ ) {
+            while ($lastline =~ /^#NEW_INSTALL_LIST#$/) {
                 $lastline = pop @l;
             }
-            push @l, $lastline if ( $lastline );
+            push @l, $lastline if ($lastline);
         }
 
-        if ( $changed ) {
+        if ($changed) {
             if (open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
                 print RMPKGLIST @l;
                 close(RMPKGLIST);
@@ -916,17 +930,17 @@ sub assign_to_osimage
         }
 
     } else {
-        $callback->({error => ["Could not open kit component table and read basename for kit component $kitcomp"],errorcode=>[1]});
+        $callback->({ error => ["Could not open kit component table and read basename for kit component $kitcomp"], errorcode => [1] });
         return 1;
     }
 
     # Now writing kit component to osimage.kitcomponents
-    if($::VERBOSE){
-        $callback->({data=>["\nAdding this kitcomponent to osimage.kitcomponents\n"]});
+    if ($::VERBOSE) {
+        $callback->({ data => ["\nAdding this kitcomponent to osimage.kitcomponents\n"] });
     }
-    if ( $osimagetable ) {
-        if ( $osimagetable->{kitcomponents} ){
-            $osimagetable->{kitcomponents} = join( ',', $osimagetable->{kitcomponents}, $kitcomp);
+    if ($osimagetable) {
+        if ($osimagetable->{kitcomponents}) {
+            $osimagetable->{kitcomponents} = join(',', $osimagetable->{kitcomponents}, $kitcomp);
         } else {
             $osimagetable->{kitcomponents} = $kitcomp;
         }
@@ -934,23 +948,23 @@ sub assign_to_osimage
 
     # Adding driverpacks
 
-    if ( $linuximagetable and $linuximagetable->{driverupdatesrc} ) {
-        if ( $kitcomptable and $kitcomptable->{driverpacks} ) {
+    if ($linuximagetable and $linuximagetable->{driverupdatesrc}) {
+        if ($kitcomptable and $kitcomptable->{driverpacks}) {
             my @driverpacks = split ',', $kitcomptable->{driverpacks};
             my @driverupdatesrcs = split ',', $linuximagetable->{driverupdatesrc};
 
             my @newdriverupdatesrcs = @driverupdatesrcs;
 
-            foreach  my $driverpack ( @driverpacks ) {
+            foreach my $driverpack (@driverpacks) {
                 my $matched = 0;
-                    foreach my $driverupdatesrc ( @driverupdatesrcs ) {
-                    if ( $driverpack eq $driverupdatesrc ) {
+                foreach my $driverupdatesrc (@driverupdatesrcs) {
+                    if ($driverpack eq $driverupdatesrc) {
                         $matched = 1;
                         last;
                     }
                 }
 
-                unless ( $matched ) {
+                unless ($matched) {
                     push @newdriverupdatesrcs, $driverpack;
                 }
             }
@@ -958,14 +972,14 @@ sub assign_to_osimage
             my $newdriverupdatesrc = join ',', @newdriverupdatesrcs;
             $linuximagetable->{driverupdatesrc} = $newdriverupdatesrc;
         }
-    }    
-    
+    }
+
 
     # Write linuximage table with all the above udpates.
-    $tabs->{linuximage}->setAttribs({imagename => $osimage }, \%{$linuximagetable} );
+    $tabs->{linuximage}->setAttribs({ imagename => $osimage }, \%{$linuximagetable});
 
     # Write osimage table with all the above udpates.
-    $tabs->{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+    $tabs->{osimage}->setAttribs({ imagename => $osimage }, \%{$osimagetable});
 
 }
 
@@ -983,9 +997,9 @@ sub assign_to_osimage
 sub check_kit_config
 {
 
-    my $tabs = shift;
-    my $kit = shift;
-    my $kithash = shift;
+    my $tabs        = shift;
+    my $kit         = shift;
+    my $kithash     = shift;
     my $kitrepohash = shift;
     my $kitcomphash = shift;
 
@@ -994,39 +1008,39 @@ sub check_kit_config
 
     unless (keys %{$kithash}) {
         my %rsp;
-        push@{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
-        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        push @{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
+        xCAT::MsgUtils->message("E", \%rsp, $::CALLBACK);
         return 1;
     }
 
-    if ( $::INSPECTION ) {
+    if ($::INSPECTION) {
         my %rsp;
-        push@{ $rsp{data} }, "kitname=$kithash->{kitname}";
-        push@{ $rsp{data} }, "    description=$kithash->{description}";
-        push@{ $rsp{data} }, "    version=$kithash->{version}";
-        push@{ $rsp{data} }, "    ostype=$kithash->{ostype}";
-        xCAT::MsgUtils->message( "I", \%rsp, $::CALLBACK );
+        push @{ $rsp{data} }, "kitname=$kithash->{kitname}";
+        push @{ $rsp{data} }, "    description=$kithash->{description}";
+        push @{ $rsp{data} }, "    version=$kithash->{version}";
+        push @{ $rsp{data} }, "    ostype=$kithash->{ostype}";
+        xCAT::MsgUtils->message("I", \%rsp, $::CALLBACK);
         next;
     }
 
-    (my $ref1) = $tabs->{kit}->getAttribs({kitname => $kithash->{kitname}}, 'basename');
-    if ( $ref1 and $ref1->{'basename'}){
+    (my $ref1) = $tabs->{kit}->getAttribs({ kitname => $kithash->{kitname} }, 'basename');
+    if ($ref1 and $ref1->{'basename'}) {
         my %rsp;
-        push@{ $rsp{data} }, "Failed to add kit $kithash->{kitname} because it is already existing";
-        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        push @{ $rsp{data} }, "Failed to add kit $kithash->{kitname} because it is already existing";
+        xCAT::MsgUtils->message("E", \%rsp, $::CALLBACK);
         return 1;
     }
 
 
     # Check if the kitcomponent is existing
-    my @kitcomps = $tabs->{kitcomponent}->getAllAttribs( 'kitcompname' );
+    my @kitcomps = $tabs->{kitcomponent}->getAllAttribs('kitcompname');
     foreach my $kitcomp (@kitcomps) {
-        if ( $kitcomp->{kitcompname} ) {
+        if ($kitcomp->{kitcompname}) {
             foreach my $kitcompid (keys %{$kitcomphash}) {
-                if ( $kitcomphash->{$kitcompid}->{kitcompname} and $kitcomphash->{$kitcompid}->{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
+                if ($kitcomphash->{$kitcompid}->{kitcompname} and $kitcomphash->{$kitcompid}->{kitcompname} =~ /$kitcomp->{kitcompname}/) {
                     my %rsp;
-                    push@{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
-                    xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+                    push @{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
+                    xCAT::MsgUtils->message("E", \%rsp, $::CALLBACK);
                     return 1;
                 }
             }
@@ -1049,7 +1063,7 @@ sub check_kit_config
 sub read_kit_config
 {
 
-    my $fn = shift;
+    my $fn    = shift;
     my @lines = @$fn;
 
     my $sec;
@@ -1065,6 +1079,7 @@ sub read_kit_config
     my %kitcomphash;
 
     foreach my $line (@lines) {
+
         # Read through each line of kit.conf.
         my $key, $value;
         chomp $line;
@@ -1076,16 +1091,16 @@ sub read_kit_config
             $sec = "KIT";
             next;
         } elsif ($line =~ /kitrepo:/) {
-            $sec = "KITREPO";
+            $sec       = "KITREPO";
             $kitrepoid = $kitrepoid + 1;
             next;
         } elsif ($line =~ /kitcomponent:/) {
-            $sec = "KITCOMPONENT";
+            $sec       = "KITCOMPONENT";
             $kitcompid = $kitcompid + 1;
             next;
         } else {
-            if ( $line =~ /kitcompdeps/ ) {
-                $key = $line;
+            if ($line =~ /kitcompdeps/) {
+                $key   = $line;
                 $value = $line;
                 $key =~ s/\s+(\w+)\s+=.*$/$1/;
                 $key =~ s/\s+//g;
@@ -1093,21 +1108,21 @@ sub read_kit_config
                 $key =~ s/\s+//g;
                 $value =~ s/\s+//g;
             } else {
-                ($key,$value) = split /=/, $line;
+                ($key, $value) = split /=/, $line;
             }
         }
 
         # Remove spaces in each lines.
-        $key =~s/^\s+|\s+$//g;
-        $value =~s/^\s+|\s+$//g;
+        $key =~ s/^\s+|\s+$//g;
+        $value =~ s/^\s+|\s+$//g;
 
         # Add each attribute to different hash.
-        if ( $sec =~ /KIT$/) {
+        if ($sec =~ /KIT$/) {
             $kithash{$key} = $value;
-        } elsif ( $sec =~ /KITREPO$/ ) {
+        } elsif ($sec =~ /KITREPO$/) {
             $kitrepohash{$kitrepoid}{$key} = $value;
-        } elsif ( $sec =~ /KITCOMPONENT$/ ) {
-            if ( $key =~ /postbootscripts/ or $key =~ /genimage_postinstall/ ) {
+        } elsif ($sec =~ /KITCOMPONENT$/) {
+            if ($key =~ /postbootscripts/ or $key =~ /genimage_postinstall/) {
                 $scripts = $scripts . ',' . $value;
                 $kitcomphash{$kitcompid}{$key} = $value;
             } else {
@@ -1116,7 +1131,7 @@ sub read_kit_config
         }
     }
 
-    return(\%kithash,\%kitrepohash,\%kitcomphash,$scripts);
+    return (\%kithash, \%kitrepohash, \%kitcomphash, $scripts);
 
 }
 
@@ -1131,8 +1146,8 @@ sub read_kit_config
 #-------------------------------------------------------
 sub addkit
 {
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
 
     my $path;
@@ -1140,56 +1155,56 @@ sub addkit
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "Usage: addkit - Adds product software Kits to an xCAT cluster environment.";
-        push@{ $rsp{data} }, "\taddkit [-h|--help]";
-        push@{ $rsp{data} }, "\taddkit [-v|--version]";
-        push@{ $rsp{data} }, "\taddkit [-i|--inspection] <kitlist>]";
-        push@{ $rsp{data} }, "\taddkit [-V|--verbose] [-p|--path <path>] <kitlist>]";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Usage: addkit - Adds product software Kits to an xCAT cluster environment.";
+        push @{ $rsp{data} }, "\taddkit [-h|--help]";
+        push @{ $rsp{data} }, "\taddkit [-v|--version]";
+        push @{ $rsp{data} }, "\taddkit [-i|--inspection] <kitlist>]";
+        push @{ $rsp{data} }, "\taddkit [-V|--verbose] [-p|--path <path>] <kitlist>]";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     };
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The addkit command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The addkit command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
+    unless (defined($request->{arg})) { $xusage->(1); return; }
+    @ARGV = @{ $request->{arg} };
+    if ($#ARGV eq -1) {
+        $xusage->(1);
+        return;
     }
 
     GetOptions(
-            'h|help' => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$vers,
-            'i|inspection' => \$::INSPECTION,
-            'p|path=s' => \$path,
+        'h|help'       => \$help,
+        'V|verbose'    => \$::VERBOSE,
+        'v|version'    => \$vers,
+        'i|inspection' => \$::INSPECTION,
+        'p|path=s'     => \$path,
     );
 
-    if($help){
-            $xusage->(0);
-            return;
+    if ($help) {
+        $xusage->(0);
+        return;
     }
 
     # Option -v for version
-    if ( defined($vers) ) {
+    if (defined($vers)) {
         create_version_response('addkit');
         return 1;    # no usage - just exit
     }
 
-    my %tabs = ();
+    my %tabs   = ();
     my @tables = qw(kit kitrepo kitcomponent);
-    foreach my $t ( @tables ) {
-        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+    foreach my $t (@tables) {
+        $tabs{$t} = xCAT::Table->new($t, -create => 1, -autocommit => 1);
 
-        if ( !exists( $tabs{$t} )) {
+        if (!exists($tabs{$t})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open xCAT table $t";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
     }
@@ -1202,78 +1217,80 @@ sub addkit
     my $hasplugin = 0;
     foreach my $kit (@kits) {
 
-        my $kitdir = '';
+        my $kitdir    = '';
         my $kittmpdir = '';
 
-        if ( $kit =~ /NEED_PRODUCT_PKGS/ ) {
+        if ($kit =~ /NEED_PRODUCT_PKGS/) {
             my %rsp;
-            push@{ $rsp{data} }, "Not allowed to add partial kit $kit";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Not allowed to add partial kit $kit";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
         # extract the Kit to kitdir
         my $installdir = xCAT::TableUtils->getInstallDir();
-        unless($installdir){
+        unless ($installdir) {
             $installdir = '/install';
         }
         $installdir =~ s/\/$//;
 
-        my $dir = $request->{cwd}; #getcwd;
+        my $dir = $request->{cwd};    #getcwd;
         $dir = $dir->[0];
 
-        unless(-r $kit){
+        unless (-r $kit) {
             $kit = "$dir/$kit";
         }
 
         unless (-r $kit) {
             my %rsp;
-            push@{ $rsp{data} }, "Can not find $kit";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Can not find $kit";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
 
-        if(-d "$kit") {
+        if (-d "$kit") {
+
             # This is a directory.
             # TODO: check if this is a valid kit directory.
 
             $kittmpdir = $kit;
         } else {
+
             # should be a tar.bz2 file
 
             system("rm -rf /tmp/tmpkit/");
             mkpath("/tmp/tmpkit/");
-            
-            if($::VERBOSE){
+
+            if ($::VERBOSE) {
                 my %rsp;
-                push@{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
             $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
 
-            opendir($dir,"/tmp/tmpkit/");
+            opendir($dir, "/tmp/tmpkit/");
             my @files = readdir($dir);
 
-            foreach my $file ( @files ) {
-                next if ( $file eq '.' || $file eq '..' );
+            foreach my $file (@files) {
+                next if ($file eq '.' || $file eq '..');
                 $kittmpdir = "/tmp/tmpkit/$file";
                 last;
             }
 
-            if ( !$kittmpdir ) {
+            if (!$kittmpdir) {
                 my %rsp;
-                push@{ $rsp{data} }, "Could not find extracted kit.conf in /tmp/tmpkit";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Could not find extracted kit.conf in /tmp/tmpkit";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
         }
 
 
-        if($rc){
+        if ($rc) {
             my %rsp;
-            push@{ $rsp{data} }, "Failed to extract kit.conf from $kit, (Maybe there was no space left?)";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Failed to extract kit.conf from $kit, (Maybe there was no space left?)";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
@@ -1283,15 +1300,15 @@ sub addkit
         if (open(KITCONF, "<$kittmpdir/$kitconf")) {
             @lines = <KITCONF>;
             close(KITCONF);
-            if($::VERBOSE){
+            if ($::VERBOSE) {
                 my %rsp;
-                push@{ $rsp{data} }, "Reading kit configuration file $kittmpdir/$kitconf";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Reading kit configuration file $kittmpdir/$kitconf";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
         } else {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open kit configuration file $kittmpdir/$kitconf";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open kit configuration file $kittmpdir/$kitconf";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
@@ -1304,16 +1321,16 @@ sub addkit
         }
 
         # Read kit configuration file
-        my ($kithash,$kitrepohash,$kitcomphash, $scripts) = read_kit_config(\@lines);
+        my ($kithash, $kitrepohash, $kitcomphash, $scripts) = read_kit_config(\@lines);
 
         # Check if this kit is allowed to add.
-        if ( &check_kit_config(\%tabs,$kit,$kithash,$kitrepohash,$kitcomphash) ) {
+        if (&check_kit_config(\%tabs, $kit, $kithash, $kitrepohash, $kitcomphash)) {
             return 1;
         }
 
         my %rsp;
-        push@{ $rsp{data} }, "Adding Kit $kithash->{kitname}";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Adding Kit $kithash->{kitname}";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
 
         # Moving kits from tmp directory to kitdir
         if (!$path) {
@@ -1325,65 +1342,65 @@ sub addkit
         $kitdir =~ s/\/$//;
         $kitdir = $kitdir . "/" . $kithash->{kitname};
 
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "Create Kit directory $kitdir";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Create Kit directory $kitdir";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
         mkpath($kitdir);
 
         # Set kitdir and kitrepodir
         $kithash->{kitdir} = $kitdir;
 
-        foreach my $kitrepoid ( keys %{$kitrepohash} ) {
-            $kitrepohash->{$kitrepoid}->{kitrepodir} = $kitdir."/repos/".$kitrepohash->{$kitrepoid}->{kitreponame};
+        foreach my $kitrepoid (keys %{$kitrepohash}) {
+            $kitrepohash->{$kitrepoid}->{kitrepodir} = $kitdir . "/repos/" . $kitrepohash->{$kitrepoid}->{kitreponame};
         }
 
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "Copying Kit from $kittmpdir to $kitdir";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Copying Kit from $kittmpdir to $kitdir";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
             $rc = system("cp -rfv $kittmpdir/* $kitdir");
         } else {
             $rc = system("cp -rf $kittmpdir/* $kitdir");
         }
 
         # Coying scripts to /installdir/postscripts/
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "Copying kit scripts from $kitdir/other_files/ to $installdir/postscripts";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Copying kit scripts from $kitdir/other_files/ to $installdir/postscripts";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
 
         my @script = split ',', $scripts;
         foreach (@script) {
             next unless ($_);
-            if($::VERBOSE){
+            if ($::VERBOSE) {
                 $rc = system("cp -rfv $kitdir/other_files/$_ $installdir/postscripts/");
             } else {
                 $rc = system("cp -rf $kitdir/other_files/$_ $installdir/postscripts/");
             }
-            if($rc && !-e "$installdir/postscripts/$_"){
+            if ($rc && !-e "$installdir/postscripts/$_") {
                 my %rsp;
-                push@{ $rsp{data} }, "Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
             $rc = 0;
-            chmod(0755,"$installdir/postscripts/$_");
+            chmod(0755, "$installdir/postscripts/$_");
         }
 
         # Copying plugins to /opt/xcat/lib/perl/xCAT_plugin/
-        if ( -d "$kitdir/plugins/" ) {
+        if (-d "$kitdir/plugins/") {
 
             chmod(644, "$kitdir/plugins/*");
 
-            opendir($dir,"$kitdir/plugins/");
-            if ( grep { ($_ ne '.') && ($_ ne '..') } readdir($dir) ) {
-                if($::VERBOSE){
+            opendir($dir, "$kitdir/plugins/");
+            if (grep { ($_ ne '.') && ($_ ne '..') } readdir($dir)) {
+                if ($::VERBOSE) {
                     my %rsp;
-                    push@{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
-                    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                    push @{ $rsp{data} }, "Copying kit plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+                    xCAT::MsgUtils->message("I", \%rsp, $callback);
 
                     $rc = system("cp -rfv $kitdir/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
                 } else {
@@ -1394,44 +1411,44 @@ sub addkit
             }
         }
 
-        if($rc){
+        if ($rc) {
             my %rsp;
-            push@{ $rsp{data} }, "Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Failed to copy plugins from $kitdir/plugins/ to $::XCATROOT/lib/perl/xCAT_plugin";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
         # Write to DB
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "Writing kit configuration into xCAT DB";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Writing kit configuration into xCAT DB";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
 
-        $rc = $tabs{kit}->setAttribs({kitname => $kithash->{kitname} }, $kithash );
-        if($rc){
+        $rc = $tabs{kit}->setAttribs({ kitname => $kithash->{kitname} }, $kithash);
+        if ($rc) {
             my %rsp;
-            push@{ $rsp{data} }, "Failed to write kit object into xCAT DB";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Failed to write kit object into xCAT DB";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
         foreach my $kitrepoid (keys %{$kitrepohash}) {
-            $rc = $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash->{$kitrepoid}->{kitreponame} }, \%{$kitrepohash->{$kitrepoid}} );
-            if($rc){
+            $rc = $tabs{kitrepo}->setAttribs({ kitreponame => $kitrepohash->{$kitrepoid}->{kitreponame} }, \%{ $kitrepohash->{$kitrepoid} });
+            if ($rc) {
                 my %rsp;
-                push@{ $rsp{data} }, "Failed to write kitrepo $kitrepohash->{$kitrepoid}->{kitreponame} into xCAT DB";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Failed to write kitrepo $kitrepohash->{$kitrepoid}->{kitreponame} into xCAT DB";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
         }
 
         foreach my $kitcompid (keys %{$kitcomphash}) {
-            $rc = $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash->{$kitcompid}->{kitcompname} }, \%{$kitcomphash->{$kitcompid}} );
-            if($rc){
+            $rc = $tabs{kitcomponent}->setAttribs({ kitcompname => $kitcomphash->{$kitcompid}->{kitcompname} }, \%{ $kitcomphash->{$kitcompid} });
+            if ($rc) {
                 my %rsp;
-                push@{ $rsp{data} }, "Failed to write kitcomponent $kitcomphash->{$kitcompid}->{kitcompname} xCAT DB";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Failed to write kitcomponent $kitcomphash->{$kitcompid}->{kitcompname} xCAT DB";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
         }
@@ -1439,16 +1456,17 @@ sub addkit
         push @kitnames, $kithash->{kitname};
     }
 
-    unless ( $::INSPECTION ) {
+    unless ($::INSPECTION) {
         my $kitlist = join ',', @kitnames;
         my %rsp;
-        push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Kit $kitlist was successfully added.";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
 
-        if ( $hasplugin ) {
+        if ($hasplugin) {
+
             # Issue rescanplugins to have xcatd load the new plugins
-            xCAT::Utils->runxcmd( { command => ['rescanplugins'],},
-                                  $request_command, 0,1);
+            xCAT::Utils->runxcmd({ command => ['rescanplugins'], },
+                $request_command, 0, 1);
 
         }
     }
@@ -1466,173 +1484,176 @@ sub addkit
 #-------------------------------------------------------
 sub rmkit
 {
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
     my $kitdir;
     my $rc;
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
-        push@{ $rsp{data} }, "\trmkit [-h|--help]";
-        push@{ $rsp{data} }, "\trmkit [-v|--version]";
-        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>]";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
+        push @{ $rsp{data} }, "\trmkit [-h|--help]";
+        push @{ $rsp{data} }, "\trmkit [-v|--version]";
+        push @{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>]";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     };
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The rmkit command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The rmkit command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
+    unless (defined($request->{arg})) { $xusage->(1); return; }
+    @ARGV = @{ $request->{arg} };
+    if ($#ARGV eq -1) {
+        $xusage->(1);
+        return;
     }
 
 
     GetOptions(
-            'h|help' => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$vers,
-            't|test' => \$test,
-            'f|force' => \$force
+        'h|help'    => \$help,
+        'V|verbose' => \$::VERBOSE,
+        'v|version' => \$vers,
+        't|test'    => \$test,
+        'f|force'   => \$force
     );
 
     # Option -v for version
-    if ( defined($vers) ) {
+    if (defined($vers)) {
         create_version_response('rmkit');
         return 1;    # no usage - just exit
     }
 
-    if($help){
-            $xusage->(0);
-            return;
+    if ($help) {
+        $xusage->(0);
+        return;
     }
 
-    my %tabs = ();
+    my %tabs   = ();
     my @tables = qw(kit kitrepo kitcomponent osimage);
-    foreach my $t ( @tables ) {
-        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+    foreach my $t (@tables) {
+        $tabs{$t} = xCAT::Table->new($t, -create => 1, -autocommit => 1);
 
-        if ( !exists( $tabs{$t} )) {
+        if (!exists($tabs{$t})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open xCAT table $t";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
     }
 
     # Convert to kitname if input is a basename
     my %kitnames;
-    my $des = shift @ARGV;
-    my @kits = split ',', $des;
-    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
+    my $des    = shift @ARGV;
+    my @kits   = split ',', $des;
+    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
     foreach my $kit (@kits) {
 
         # Check if it is a kitname or basename
 
-        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kit}, 'basename', 'isinternal');
-        if ( $ref1 and $ref1->{'basename'}){
-            if ( $ref1->{'isinternal'} and !$force ) {
+        (my $ref1) = $tabs{kit}->getAttribs({ kitname => $kit }, 'basename', 'isinternal');
+        if ($ref1 and $ref1->{'basename'}) {
+            if ($ref1->{'isinternal'} and !$force) {
                 my %rsp;
-                push@{ $rsp{data} }, "Kit $kit with isinterval attribute cannot be removed";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Kit $kit with isinterval attribute cannot be removed";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
             $kitnames{$kit} = 1;
         } else {
             my @entries;
             if ($DBname =~ /^DB2/) {
-             @entries = $tabs{kit}->getAllAttribsWhere( "\"basename\" = '$kit'", 'kitname', 'isinternal');
+                @entries = $tabs{kit}->getAllAttribsWhere("\"basename\" = '$kit'", 'kitname', 'isinternal');
             } else {
-             @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname', 'isinternal');
+                @entries = $tabs{kit}->getAllAttribsWhere("basename = '$kit'", 'kitname', 'isinternal');
             }
             unless (@entries) {
                 my %rsp;
-                push@{ $rsp{data} }, "Kit $kit could not be found in DB $t";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "Kit $kit could not be found in DB $t";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
             foreach my $entry (@entries) {
-                if ( $entry->{'isinternal'} and !$force ) {
+                if ($entry->{'isinternal'} and !$force) {
                     my %rsp;
-                    push@{ $rsp{data} }, "Kit $entry->{kitname} with isinterval attribute cannot be remoed";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "Kit $entry->{kitname} with isinterval attribute cannot be remoed";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
-                $kitnames{$entry->{kitname}} = 1;
+                $kitnames{ $entry->{kitname} } = 1;
             }
         }
     }
 
     # Remove each kit
-    my @entries = $tabs{'osimage'}->getAllAttribs( 'imagename', 'kitcomponents' );
+    my @entries = $tabs{'osimage'}->getAllAttribs('imagename', 'kitcomponents');
     my @kitlist;
     my $hasplugin;
     my @kpinuse;
 
     foreach my $kitname (keys %kitnames) {
 
-        if ( !$test ) {
+        if (!$test) {
             my %rsp;
-            push@{ $rsp{data} }, "Removing kit $kitname";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Removing kit $kitname";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
 
         # Remove osimage.kitcomponents.
 
         # Find all the components in this kit.
         my $kitcompnames;
-         my @kitcomphash;
+        my @kitcomphash;
         if ($DBname =~ /^DB2/) {
-         @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "\"kitname\" = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
+            @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere("\"kitname\" = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
         } else {
-         @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
+            @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere("kitname = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
         }
-        if (@entries && (@entries > 0)) {  
+        if (@entries && (@entries > 0)) {
 
-            if($::VERBOSE and !$test){
+            if ($::VERBOSE and !$test) {
                 my %rsp;
-                push@{ $rsp{data} }, "Removing kit components from osimage.kitcomponents";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Removing kit components from osimage.kitcomponents";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
 
             foreach my $entry (@entries) {
+
                 # Check osimage.kitcomponents
                 my @kitcomponents = split ',', $entry->{kitcomponents};
-                foreach my $kitcomponent ( @kitcomponents ) {
+                foreach my $kitcomponent (@kitcomponents) {
                     chomp $kitcomponent;
+
                     # Compare with each component in osimage.kitcomponents list.
-                    foreach my $kitcomp ( @kitcomphash ) {
-                        my $kitcompname =  $kitcomp->{kitcompname};
+                    foreach my $kitcomp (@kitcomphash) {
+                        my $kitcompname = $kitcomp->{kitcompname};
+
                         # Remove this component from osimage.kitcomponents if -f option.
                         if ("$kitcompname" =~ /^$kitcomponent$/) {
-                            if ( $test  ) {
+                            if ($test) {
                                 push @kpinuse, $kitcomponent;
                                 my %rsp;
-                                push@{ $rsp{data} }, "$kitcomponent is being used by osimage $entry->{imagename}";
-                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                                push @{ $rsp{data} }, "$kitcomponent is being used by osimage $entry->{imagename}";
+                                xCAT::MsgUtils->message("I", \%rsp, $callback);
                                 next;
                             }
                             unless ($force) {
                                 my %rsp;
-                                push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent because:$kitcomponent is being used by osimage $entry->{imagename}";
-                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                                push @{ $rsp{data} }, "Failed to remove kit component $kitcomponent because:$kitcomponent is being used by osimage $entry->{imagename}";
+                                xCAT::MsgUtils->message("E", \%rsp, $callback);
                                 return 1;
                             }
 
                             # Remove this component from osimage.kitcomponents. Mark here.
-                            my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
-                            if ( $::RUNCMD_RC ) {
+                            my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => [ '-f', '-i', $entry->{imagename}, $kitcompname ] }, $request_command, 0, 1);
+                            if ($::RUNCMD_RC) {
                                 my %rsp;
-                                push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent from $entry->{imagename}";
-                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                                push @{ $rsp{data} }, "Failed to remove kit component $kitcomponent from $entry->{imagename}";
+                                xCAT::MsgUtils->message("E", \%rsp, $callback);
                                 return 1;
                             }
                         }
@@ -1641,33 +1662,33 @@ sub rmkit
             }
         }
 
-        if ( $test ) {
+        if ($test) {
             next;
         }
 
         my $kitdir;
-        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kitname }, 'kitdir');
-        if ( $ref1 and $ref1->{'kitdir'}){
+        (my $ref1) = $tabs{kit}->getAttribs({ kitname => $kitname }, 'kitdir');
+        if ($ref1 and $ref1->{'kitdir'}) {
 
             $kitdir = $ref1->{'kitdir'};
             chomp $kitdir;
 
             # remove kit plugins from /opt/xcat/lib/perl/xCAT_plugin
-            if($::VERBOSE){
+            if ($::VERBOSE) {
                 my %rsp;
-                push@{ $rsp{data} }, "Removing kit plugins from $::XCATROOT/lib/perl/xCAT_plugin/";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Removing kit plugins from $::XCATROOT/lib/perl/xCAT_plugin/";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
 
-            opendir($dir, $kitdir."/plugins");
+            opendir($dir, $kitdir . "/plugins");
             my @files = readdir($dir);
-            if ( grep { ($_ ne '.') && ($_ ne '..') } @files ) {
+            if (grep { ($_ ne '.') && ($_ ne '..') } @files) {
                 $hasplugin = 1;
             }
             foreach my $file (@files) {
                 if ($file eq '.' or $file eq '..') { next; }
-                if ( -e "$::XCATROOT/lib/perl/xCAT_plugin/$file" ) {
-                    if($::VERBOSE){
+                if (-e "$::XCATROOT/lib/perl/xCAT_plugin/$file") {
+                    if ($::VERBOSE) {
                         system("rm -rfv $::XCATROOT/lib/perl/xCAT_plugin/$file");
                     } else {
                         system("rm -rf $::XCATROOT/lib/perl/xCAT_plugin/$file");
@@ -1676,29 +1697,30 @@ sub rmkit
             }
 
 
-            if($::VERBOSE){
+            if ($::VERBOSE) {
                 my %rsp;
-                push@{ $rsp{data} }, "Removing kit scripts from /install/postscripts/";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Removing kit scripts from /install/postscripts/";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
+
             # remove kit scripts from /install/postscripts/
             my $installdir = xCAT::TableUtils->getInstallDir();
-            unless($installdir){
+            unless ($installdir) {
                 $installdir = '/install';
             }
             $installdir =~ s/\/$//;
 
             my $scripts;
-            foreach my $kitcomp ( @kitcomphash ) {
-                $scripts = $scripts.",".$kitcomp->{postbootscripts} if ( $kitcomp->{postbootscripts} );
-                $scripts = $scripts.",".$kitcomp->{genimage_postinstall} if ( $kitcomp->{genimage_postinstall} );
+            foreach my $kitcomp (@kitcomphash) {
+                $scripts = $scripts . "," . $kitcomp->{postbootscripts} if ($kitcomp->{postbootscripts});
+                $scripts = $scripts . "," . $kitcomp->{genimage_postinstall} if ($kitcomp->{genimage_postinstall});
             }
             $scripts =~ s/^,//;
             my @files = split /,/, $scripts;
             foreach my $file (@files) {
                 if ($file eq '.' or $file eq '..') { next; }
-                if ( -e "$installdir/postscripts/$file" ) {
-                    if($::VERBOSE){
+                if (-e "$installdir/postscripts/$file") {
+                    if ($::VERBOSE) {
                         system("rm -rfv $installdir/postscripts/$file");
                     } else {
                         system("rm -rf $installdir/postscripts/$file");
@@ -1707,10 +1729,10 @@ sub rmkit
             }
 
             # remove kitdir from /install/kits/
-            if($::VERBOSE){
+            if ($::VERBOSE) {
                 my %rsp;
-                push@{ $rsp{data} }, "Removing kitdir from installdir";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "Removing kitdir from installdir";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
                 system("rm -rfv $kitdir");
             } else {
                 system("rm -rf $kitdir");
@@ -1718,59 +1740,61 @@ sub rmkit
         }
 
 
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "Removing kit from xCAT DB";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "Removing kit from xCAT DB";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
-        # Remove kitcomponent 
-        foreach my $kitcomp ( @kitcomphash ) {
-            my $kitcompname =  $kitcomp->{kitcompname};
-            $tabs{kitcomponent}->delEntries({kitcompname => $kitcompname});
+
+        # Remove kitcomponent
+        foreach my $kitcomp (@kitcomphash) {
+            my $kitcompname = $kitcomp->{kitcompname};
+            $tabs{kitcomponent}->delEntries({ kitcompname => $kitcompname });
         }
 
         # Remove kitrepo
         my @kitrepohash;
         if ($DBname =~ /^DB2/) {
-         @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere( "\"kitname\" = '$kitname'", 'kitreponame');
+            @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere("\"kitname\" = '$kitname'", 'kitreponame');
         } else {
-         @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere( "kitname = '$kitname'", 'kitreponame');
+            @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere("kitname = '$kitname'", 'kitreponame');
         }
-        foreach my $kitrepo ( @kitrepohash ) {
-            my $kitreponame =  $kitrepo->{kitreponame};
-            $tabs{kitrepo}->delEntries({kitreponame => $kitreponame});
+        foreach my $kitrepo (@kitrepohash) {
+            my $kitreponame = $kitrepo->{kitreponame};
+            $tabs{kitrepo}->delEntries({ kitreponame => $kitreponame });
         }
 
         # Remove kit
-        $tabs{kit}->delEntries({kitname => $kitname});
+        $tabs{kit}->delEntries({ kitname => $kitname });
 
         push @kitlist, $kitname;
 
     }
-    
-    if ( $test ) {
-        if ( scalar(@kpinuse) ) {
+
+    if ($test) {
+        if (scalar(@kpinuse)) {
             my $kp = join ',', @kpinuse;
             my %rsp;
             push @{ $rsp{data} }, "Following kitcomponents are in use: $kp";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         } else {
             my %rsp;
             push @{ $rsp{data} }, "No kitcomponents are in use";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
         return 0;
     }
 
     my $kits = join ',', @kitlist;
     my %rsp;
-    push@{ $rsp{data} }, "Kit $kits was successfully removed.";
-    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    push @{ $rsp{data} }, "Kit $kits was successfully removed.";
+    xCAT::MsgUtils->message("I", \%rsp, $callback);
 
-    if ( $hasplugin ) {
+    if ($hasplugin) {
+
         # Issue rescanplugins to have xcatd load the new plugins
-        xCAT::Utils->runxcmd( { command => ['rescanplugins'],},
-                              $request_command, 0,1);
+        xCAT::Utils->runxcmd({ command => ['rescanplugins'], },
+            $request_command, 0, 1);
     }
 
 }
@@ -1785,9 +1809,9 @@ sub rmkit
 
 #-----------------------------------------------------
 
-sub validate_os{
+sub validate_os {
 
-    my $os = shift;
+    my $os      = shift;
     my $osimage = shift;
     my $kitcomp = shift;
 
@@ -1795,65 +1819,71 @@ sub validate_os{
     my $catched = 0;
     my @osbasename = split ',', $kitcomp->{osbasename};
     foreach (@osbasename) {
-        if ( $osimage->{basename} eq $_ ) {
+        if ($osimage->{basename} eq $_) {
             $catched = 1;
         }
     }
 
-    unless ( $catched ) {
-#        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute OS";
-#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    unless ($catched) {
+
+        #        my %rsp;
+        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute OS";
+        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
-    if ( $osimage->{majorversion} ne $kitcomp->{osmajorversion} ) {
-#        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute majorversion";
-#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    if ($osimage->{majorversion} ne $kitcomp->{osmajorversion}) {
+
+        #        my %rsp;
+        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute majorversion";
+        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
-    if ( $kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion}) ) {
-#        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute minorversion";
-#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    if ($kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion})) {
+
+        #        my %rsp;
+        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute minorversion";
+        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
-    if ( $osimage->{arch} ne $kitcomp->{osarch} && $kitcomp->{osarch} ne 'noarch' ) {
-#        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute arch";
-#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    if ($osimage->{arch} ne $kitcomp->{osarch} && $kitcomp->{osarch} ne 'noarch') {
+
+        #        my %rsp;
+        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute arch";
+        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
-    if ( $osimage->{type} ne $kitcomp->{ostype} ) {
-#        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute type";
-#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    if ($osimage->{type} ne $kitcomp->{ostype}) {
+
+        #        my %rsp;
+        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute type";
+        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
-    if ( $osimage->{serverrole} ) {
-        my $match = 0;
-        my @os_serverroles = split /,/, $osimage->{serverrole};
+    if ($osimage->{serverrole}) {
+        my $match               = 0;
+        my @os_serverroles      = split /,/, $osimage->{serverrole};
         my @kitcomp_serverroles = split /,/, $kitcomp->{serverroles};
         foreach my $os_serverrole (@os_serverroles) {
             foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
-                if ( $os_serverrole eq $kitcomp_serverrole ) {
+                if ($os_serverrole eq $kitcomp_serverrole) {
                     $match = 1;
                     last;
                 }
             }
 
-            if ( $match ) {
+            if ($match) {
                 last;
             }
         }
-        if ( !$match ) {
-#            my %rsp;
-#            push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute serverrole";
-#            xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        if (!$match) {
+
+            #            my %rsp;
+            #            push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute serverrole";
+            #            xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
             return 1;
         }
     }
@@ -1874,8 +1904,8 @@ sub validate_os{
 #-------------------------------------------------------
 sub addkitcomp
 {
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
     my $kitdir;
     my $rc;
@@ -1883,75 +1913,75 @@ sub addkitcomp
     my $xusage = sub {
         my $ret = shift;
         my %rsp;
-        push@{ $rsp{data} }, "Usage: addkitcomp - Add a Kit component to an xCAT osimage.";
-        push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\taddkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] [--noscripts] -i <osimage> <kitcompname_list>";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
+        push @{ $rsp{data} }, "Usage: addkitcomp - Add a Kit component to an xCAT osimage.";
+        push @{ $rsp{data} }, "\taddkitcomp [-h|--help]";
+        push @{ $rsp{data} }, "\taddkitcomp [-v|--version]";
+        push @{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] [--noscripts] -i <osimage> <kitcompname_list>";
+        xCAT::MsgUtils->message("I", \%rsp, $callback, $ret);
     };
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The addkitcomp command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The addkitcomp command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
+    unless (defined($request->{arg})) { $xusage->(1); return; }
+    @ARGV = @{ $request->{arg} };
+    if ($#ARGV eq -1) {
+        $xusage->(1);
+        return;
     }
 
     GetOptions(
-            'h|help' => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$vers,
-            'a|adddeps' => \$adddeps,
-            'f|force' => \$force,
-            'n|noupgrade' => \$::noupgrade,
-            'noscripts' => \$::noscripts,
-            'i=s' => \$osimage
+        'h|help'      => \$help,
+        'V|verbose'   => \$::VERBOSE,
+        'v|version'   => \$vers,
+        'a|adddeps'   => \$adddeps,
+        'f|force'     => \$force,
+        'n|noupgrade' => \$::noupgrade,
+        'noscripts'   => \$::noscripts,
+        'i=s'         => \$osimage
     );
 
-    if($help){
-            $xusage->(0);
-            return;
+    if ($help) {
+        $xusage->(0);
+        return;
     }
 
     # Option -v for version
-    if ( defined($vers) ) {
+    if (defined($vers)) {
         create_version_response('addkitcomp');
         return 1;    # no usage - just exit
     }
 
-    unless(scalar @ARGV)
+    unless (scalar @ARGV)
     {
         $xusage->(1);
         return 1;
     }
 
-    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
-    my %tabs = ();
+    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
+    my %tabs   = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
-    foreach my $t ( @tables ) {
-        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+    foreach my $t (@tables) {
+        $tabs{$t} = xCAT::Table->new($t, -create => 1, -autocommit => 1);
 
-        if ( !exists( $tabs{$t} )) {
+        if (!exists($tabs{$t})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open xCAT table $t";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
     }
 
     # Check if all the kitcomponents are existing before processing
 
-    if($::VERBOSE){
+    if ($::VERBOSE) {
         my %rsp;
-        push@{ $rsp{data} }, "Checking if kitcomponents are valid";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Checking if kitcomponents are valid";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     }
 
     my %kitcomps;
@@ -1960,112 +1990,112 @@ sub addkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'basename');
-        if ( $kitcomptable and $kitcomptable->{'basename'}){
-            $kitcomps{$kitcomponent}{name} = $kitcomponent;
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $kitcomponent }, 'kitname', 'basename');
+        if ($kitcomptable and $kitcomptable->{'basename'}) {
+            $kitcomps{$kitcomponent}{name}     = $kitcomponent;
             $kitcomps{$kitcomponent}{basename} = $kitcomptable->{'basename'};
         } else {
             my @entries;
             if ($DBname =~ /^DB2/) {
-             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("\"basename\" = '$kitcomponent'", 'kitcompname', 'version', 'release');
             } else {
-             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
-            }        
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("basename = '$kitcomponent'", 'kitcompname', 'version', 'release');
+            }
             unless (@entries) {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
-            
+
             my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
-            $kitcomps{$highest}{name} = $highest;
+            $kitcomps{$highest}{name}     = $highest;
             $kitcomps{$highest}{basename} = $kitcomponent;
         }
     }
 
     # Verify if the kitcomponents fitting to the osimage or not.
 
-    if($::VERBOSE){
+    if ($::VERBOSE) {
         my %rsp;
-        push@{ $rsp{data} }, "Verifying if kitcomponents fit to osimage";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Verifying if kitcomponents fit to osimage";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     }
 
     my %os;
     my $osdistrotable;
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
-    if ( $osimagetable and $osimagetable->{'osdistroname'}){
-        ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
-        if ( !$osdistrotable or !$osdistrotable->{basename} ) {
+    (my $osimagetable) = $tabs{osimage}->getAttribs({ imagename => $osimage }, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
+    if ($osimagetable and $osimagetable->{'osdistroname'}) {
+        ($osdistrotable) = $tabs{osdistro}->getAttribs({ osdistroname => $osimagetable->{'osdistroname'} }, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
+        if (!$osdistrotable or !$osdistrotable->{basename}) {
             my %rsp;
             push @{ $rsp{data} }, "$osdistroname osdistro does not exist";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
-        } 
+        }
 
         # Read basename,majorversion,minorversion,arch,type, from osdistro table
-        $os{$osimage}{basename} = lc($osdistrotable->{basename});
+        $os{$osimage}{basename}     = lc($osdistrotable->{basename});
         $os{$osimage}{majorversion} = lc($osdistrotable->{majorversion});
         $os{$osimage}{minorversion} = lc($osdistrotable->{minorversion});
-        $os{$osimage}{arch} = lc($osdistrotable->{arch});
-        $os{$osimage}{type} = lc($osdistrotable->{type});
+        $os{$osimage}{arch}         = lc($osdistrotable->{arch});
+        $os{$osimage}{type}         = lc($osdistrotable->{type});
 
         # Read serverrole from osimage.
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
-    } elsif ( !$osimagetable ) {
+    } elsif (!$osimagetable) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not exist";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not exist";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osname'} ) {
+    } elsif (!$osimagetable->{'osname'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osvers'} ) {
+    } elsif (!$osimagetable->{'osvers'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osarch'} ) {
+    } elsif (!$osimagetable->{'osarch'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
     } else {
-        $os{$osimage}{type} = lc($osimagetable->{'osname'});
-        $os{$osimage}{arch} = lc($osimagetable->{'osarch'});
+        $os{$osimage}{type}       = lc($osimagetable->{'osname'});
+        $os{$osimage}{arch}       = lc($osimagetable->{'osarch'});
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
- 
+
         my ($basename, $majorversion, $minorversion) = $osimagetable->{'osvers'} =~ /^(\D+)(\d+)\W+(\d+)/;
-        $os{$osimage}{basename} = lc($basename);
+        $os{$osimage}{basename}     = lc($basename);
         $os{$osimage}{majorversion} = lc($majorversion);
         $os{$osimage}{minorversion} = lc($minorversion);
     }
 
 
-    foreach my $kitcomp ( keys %kitcomps ) {
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomp}, 'kitname', 'kitreponame', 'serverroles', 'kitcompdeps');
-        if ( $kitcomptable and $kitcomptable->{'kitname'} and $kitcomptable->{'kitreponame'}) {
+    foreach my $kitcomp (keys %kitcomps) {
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $kitcomp }, 'kitname', 'kitreponame', 'serverroles', 'kitcompdeps');
+        if ($kitcomptable and $kitcomptable->{'kitname'} and $kitcomptable->{'kitreponame'}) {
 
-            # Read serverroles from kitcomponent table 
+            # Read serverroles from kitcomponent table
             $kitcomps{$kitcomp}{serverroles} = lc($kitcomptable->{'serverroles'});
- 
+
             # Read ostype from kit table
-            (my $kittable) = $tabs{kit}->getAttribs({kitname => $kitcomptable->{'kitname'}}, 'ostype');
-            if ( $kittable and $kittable->{ostype} ) {
+            (my $kittable) = $tabs{kit}->getAttribs({ kitname => $kitcomptable->{'kitname'} }, 'ostype');
+            if ($kittable and $kittable->{ostype}) {
                 $kitcomps{$kitcomp}{ostype} = lc($kittable->{ostype});
             } else {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomptable->{'kitname'} ostype does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomptable->{'kitname'} ostype does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
             # Read osbasename, osmajorversion,osminorversion,osarch,compat_osbasenames from kitrepo table
-            (my $kitrepotable) = $tabs{kitrepo}->getAttribs({kitreponame => $kitcomptable->{'kitreponame'}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+            (my $kitrepotable) = $tabs{kitrepo}->getAttribs({ kitreponame => $kitcomptable->{'kitreponame'} }, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
             if ($kitrepotable and $kitrepotable->{osbasename} and $kitrepotable->{osmajorversion} and $kitrepotable->{osarch}) {
                 if ($kitrepotable->{compat_osbasenames}) {
                     $kitcomps{$kitcomp}{osbasename} = lc($kitrepotable->{osbasename}) . ',' . lc($kitrepotable->{compat_osbasenames});
@@ -2078,121 +2108,121 @@ sub addkitcomp
                 $kitcomps{$kitcomp}{osarch} = lc($kitrepotable->{osarch});
             } else {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
-                            
-        }  else {
+
+        } else {
             my %rsp;
-            push@{ $rsp{data} }, "$kitcomp kitname or kitrepo name does not exist";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "$kitcomp kitname or kitrepo name does not exist";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( !$force ) {
+        if (!$force) {
 
             # Validate each attribute in kitcomp.
             my $catched = 0;
-            my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename}; 
+            my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename};
             foreach (@osbasename) {
-                if ( $os{$osimage}{basename} eq $_ ) {
+                if ($os{$osimage}{basename} eq $_) {
                     $catched = 1;
                 }
             }
 
-            unless ( $catched ) {
+            unless ($catched) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute OS";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute OS";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-            if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
+            if ($os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion}) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute majorversion";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute majorversion";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-            if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+            if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-            if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch' ) {
+            if ($os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch') {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute arch";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute arch";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-            if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
+            if ($os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype}) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute type";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute type";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-            if ( $os{$osimage}{serverrole} ) {
+            if ($os{$osimage}{serverrole}) {
                 my $match = 0;
                 my @os_serverroles = split /,/, $os{$osimage}{serverrole};
                 my @kitcomp_serverroles = split /,/, $kitcomps{$kitcomp}{serverroles};
                 foreach my $os_serverrole (@os_serverroles) {
                     foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
-                        if ( $os_serverrole eq $kitcomp_serverrole ) {
+                        if ($os_serverrole eq $kitcomp_serverrole) {
                             $match = 1;
                             last;
                         }
                     }
 
-                    if ( $match ) {
+                    if ($match) {
                         last;
                     }
                 }
-                if ( !$match ) {
+                if (!$match) {
                     my %rsp;
-                    push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
             }
 
-            if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+            if ($kitcomptable and $kitcomptable->{'kitcompdeps'}) {
                 my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
-                foreach my $kitcompdependency ( @kitcompdeps ) {
+                foreach my $kitcompdependency (@kitcompdeps) {
                     my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
                     my @entries;
                     if ($DBname =~ /^DB2/) {
-                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
+                        @entries = $tabs{kitcomponent}->getAllAttribsWhere("\"basename\" = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname', 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
                     } else {
-                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
+                        @entries = $tabs{kitcomponent}->getAllAttribsWhere("basename = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname', 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
                     }
                     unless (@entries) {
                         my %rsp;
-                        push@{ $rsp{data} }, "Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep";
+                        xCAT::MsgUtils->message("E", \%rsp, $callback);
                         return 1;
                     }
 
                     my $highest;
-                    if ( $vers ) {
+                    if ($vers) {
                         my @valid_kitcomp;
                         my $tmpkitcomp;
                         my ($vers, $rel) = split /-/, $vers;
                         $tmpkitcomp->{version} = $vers;
                         $tmpkitcomp->{release} = $rel;
-                        foreach my $entry ( @entries ) {
-                            my $rc = &compare_version($entry, $tmpkitcomp, 'kitcompname', 'version', 'release'); 
-                            if ( ($rc == -1 and $kitcompdependency =~ />/ )
+                        foreach my $entry (@entries) {
+                            my $rc = &compare_version($entry, $tmpkitcomp, 'kitcompname', 'version', 'release');
+                            if (($rc == -1 and $kitcompdependency =~ />/)
                                 || ($rc == 1 and $kitcompdependency =~ /</)
-                                || ($rc == 0 and $kitcompdependency =~ /=/) ) {
+                                || ($rc == 0 and $kitcompdependency =~ /=/)) {
 
 
                                 # Check if this kitcomp fits to the osimage
-                                (my $krtable) = $tabs{kitrepo}->getAttribs({kitreponame => $entry->{'kitreponame'}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+                                (my $krtable) = $tabs{kitrepo}->getAttribs({ kitreponame => $entry->{'kitreponame'} }, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
                                 if ($krtable->{compat_osbasenames}) {
                                     $entry->{osbasename} = lc($krtable->{osbasename}) . ',' . lc($krtable->{compat_osbasenames});
                                 } else {
@@ -2203,30 +2233,31 @@ sub addkitcomp
                                 $entry->{osminorversion} = lc($krtable->{osminorversion});
                                 $entry->{osarch} = lc($krtable->{osarch});
 
-                                (my $ktable) = $tabs{kit}->getAttribs({kitname => $entry->{'kitname'}}, 'ostype');
+                                (my $ktable) = $tabs{kit}->getAttribs({ kitname => $entry->{'kitname'} }, 'ostype');
                                 $entry->{ostype} = lc($ktable->{ostype});
 
-                                unless ( &validate_os($osimage, $os{$osimage}, $entry) ) {
+                                unless (&validate_os($osimage, $os{$osimage}, $entry)) {
                                     push @valid_kitcomp, $entry;
                                 }
 
                             }
                         }
 
-                        if ( scalar(@valid_kitcomp) ) {
+                        if (scalar(@valid_kitcomp)) {
                             $highest = get_highest_version('kitcompname', 'version', 'release', @valid_kitcomp);
                         } else {
                             my %rsp;
-                            push@{ $rsp{data} }, "Cannot find any kit component could match for kit component $kitcomp dependency $kitcompdep";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            push @{ $rsp{data} }, "Cannot find any kit component could match for kit component $kitcomp dependency $kitcompdep";
+                            xCAT::MsgUtils->message("E", \%rsp, $callback);
                         }
-                        
-                    } else { 
+
+                    } else {
                         my @valid_kitcomp;
 
-                        foreach my $entry ( @entries ) {
+                        foreach my $entry (@entries) {
+
                             # Check if this kitcomp fits to the osimage
-                            (my $krtable) = $tabs{kitrepo}->getAttribs({kitreponame => $entry->{'kitreponame'}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+                            (my $krtable) = $tabs{kitrepo}->getAttribs({ kitreponame => $entry->{'kitreponame'} }, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
                             if ($krtable->{compat_osbasenames}) {
                                 $entry->{osbasename} = lc($krtable->{osbasename}) . ',' . lc($krtable->{compat_osbasenames});
                             } else {
@@ -2237,11 +2268,11 @@ sub addkitcomp
                             $entry->{osminorversion} = lc($krtable->{osminorversion});
                             $entry->{osarch} = lc($krtable->{osarch});
 
-                            (my $ktable) = $tabs{kit}->getAttribs({kitname => $entry->{'kitname'}}, 'ostype');
+                            (my $ktable) = $tabs{kit}->getAttribs({ kitname => $entry->{'kitname'} }, 'ostype');
                             $entry->{ostype} = lc($ktable->{ostype});
 
 
-                            unless ( &validate_os($osimage, $os{$osimage}, $entry) ) {
+                            unless (&validate_os($osimage, $os{$osimage}, $entry)) {
                                 push @valid_kitcomp, $entry;
                             }
                         }
@@ -2249,56 +2280,56 @@ sub addkitcomp
 
                     }
 
-                    if ( $adddeps and $highest ) {
+                    if ($adddeps and $highest) {
                         my $catched = 0;
-                        if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+                        if ($osimagetable and $osimagetable->{'kitcomponents'}) {
                             my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
-                            foreach my $oskitcomp ( @oskitcomps ) {
-                                if ( $highest eq $oskitcomp ) {
-                                    $catched =  1;
+                            foreach my $oskitcomp (@oskitcomps) {
+                                if ($highest eq $oskitcomp) {
+                                    $catched = 1;
                                     last;
                                 }
                             }
                         }
 
 
-                        if ( !$catched ) {
+                        if (!$catched) {
 
-                            # Add dependencies recursive 
-                            my $ret = xCAT::Utils->runxcmd({ command => ['addkitcomp'], arg => ['-a','-i',$osimage, $highest] }, $request_command, 0, 1);
-                            if ( $::RUNCMD_RC ) {
+                            # Add dependencies recursive
+                            my $ret = xCAT::Utils->runxcmd({ command => ['addkitcomp'], arg => [ '-a', '-i', $osimage, $highest ] }, $request_command, 0, 1);
+                            if ($::RUNCMD_RC) {
                                 my %rsp;
-                                push@{ $rsp{data} }, "Failed to add dependency $highest to osimage $osimage";
-                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                                push @{ $rsp{data} }, "Failed to add dependency $highest to osimage $osimage";
+                                xCAT::MsgUtils->message("E", \%rsp, $callback);
                                 return 1;
                             }
 
-                            
+
                         }
                     } else {
 
                         my $catched = 0;
-                        if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+                        if ($osimagetable and $osimagetable->{'kitcomponents'}) {
                             my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
-                            foreach my $oskitcomp ( @oskitcomps ) {
-                                if ( $highest eq $oskitcomp ) {
-                                    $catched =  1;
+                            foreach my $oskitcomp (@oskitcomps) {
+                                if ($highest eq $oskitcomp) {
+                                    $catched = 1;
                                     last;
                                 }
                             }
                         }
 
-                        foreach my $k ( keys %kitcomps ) {
-                            if ( $kitcomps{$k}{basename} and $kitcompdep eq $kitcomps{$k}{basename} ) {
-                                $catched =  1;
+                        foreach my $k (keys %kitcomps) {
+                            if ($kitcomps{$k}{basename} and $kitcompdep eq $kitcomps{$k}{basename}) {
+                                $catched = 1;
                                 last;
                             }
                         }
 
-                        if ( !$catched ) {
+                        if (!$catched) {
                             my %rsp;
-                            push@{ $rsp{data} }, "kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command line";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            push @{ $rsp{data} }, "kit component dependency $highest for kit component $kitcomp is not existing in osimage or specified in command line";
+                            xCAT::MsgUtils->message("E", \%rsp, $callback);
                             return 1;
                         }
                     }
@@ -2306,19 +2337,19 @@ sub addkitcomp
             }
         }
 
-        if($::VERBOSE){
+        if ($::VERBOSE) {
             my %rsp;
-            push@{ $rsp{data} }, "kitcomponent $kitcomp fits to osimage $osimage";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+            push @{ $rsp{data} }, "kitcomponent $kitcomp fits to osimage $osimage";
+            xCAT::MsgUtils->message("I", \%rsp, $callback);
         }
     }
-    
+
     # Now assign each component to the osimage
 
-    if($::VERBOSE){
+    if ($::VERBOSE) {
         my %rsp;
-        push@{ $rsp{data} }, "Assigning kitcomponent to osimage";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Assigning kitcomponent to osimage";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     }
 
     my @kitcomps;
@@ -2326,87 +2357,89 @@ sub addkitcomp
     my $catched = 0;
     my @kitlist;
 
-    if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+    if ($osimagetable and $osimagetable->{'kitcomponents'}) {
         @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
     }
 
     my @newkitcomps = keys %kitcomps;
-    foreach ( keys %kitcomps ) {
+    foreach (keys %kitcomps) {
         my $kitcomp = shift @newkitcomps;
 
         my %rsp;
-        push@{ $rsp{data} }, "Assigning kit component $kitcomp to osimage $osimage";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Assigning kit component $kitcomp to osimage $osimage";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
+
         # Check if this component is existing in osimage.kitcomponents
-        foreach my $oskitcomp ( @oskitcomps ) {
-            if ( $kitcomp eq $oskitcomp ) {
+        foreach my $oskitcomp (@oskitcomps) {
+            if ($kitcomp eq $oskitcomp) {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
+                xCAT::MsgUtils->message("I", \%rsp, $callback);
                 $catched = 1;
             }
         }
 
         # No matching kitcomponent name in osimage.kitcomponents, now checking their basenames.
-        if ( !$catched ) {
+        if (!$catched) {
 
             my $add = 0;
-            foreach my $oskitcomp ( @oskitcomps ) {
+            foreach my $oskitcomp (@oskitcomps) {
 
                 # Compare this kit component's basename with basenames in osimage.kitcomponents
-                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomp}, 'basename', 'version', 'release');
-                if ( !$kitcomptable or !$kitcomptable->{'basename'} ) {
+                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $kitcomp }, 'basename', 'version', 'release');
+                if (!$kitcomptable or !$kitcomptable->{'basename'}) {
                     my %rsp;
-                    push@{ $rsp{data} }, "$kitcomp kit component does not have basename";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "$kitcomp kit component does not have basename";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
-                (my $oskitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $oskitcomp}, 'basename', 'version', 'release');
-                if ( !$oskitcomptable or !$oskitcomptable->{'basename'} ) {
+                (my $oskitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $oskitcomp }, 'basename', 'version', 'release');
+                if (!$oskitcomptable or !$oskitcomptable->{'basename'}) {
                     my %rsp;
-                    push@{ $rsp{data} }, "$oskitcomp kit component does not have basename";
-                    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                    push @{ $rsp{data} }, "$oskitcomp kit component does not have basename";
+                    xCAT::MsgUtils->message("I", \%rsp, $callback);
                     next;
                 }
 
-                if ( $kitcomptable->{'basename'} eq $oskitcomptable->{'basename'} ) {
-                    my $rc = compare_version($oskitcomptable,$kitcomptable,'kitcompname', 'version', 'release');
-                    if ( $rc == 1 and !$::noupgrade  ) {
+                if ($kitcomptable->{'basename'} eq $oskitcomptable->{'basename'}) {
+                    my $rc = compare_version($oskitcomptable, $kitcomptable, 'kitcompname', 'version', 'release');
+                    if ($rc == 1 and !$::noupgrade) {
                         my %rsp;
-                        push@{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
-                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-i',$osimage, $oskitcomp] }, $request_command, -2, 1);
-                        if ( !$ret ) {
+                        push @{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
+                        xCAT::MsgUtils->message("I", \%rsp, $callback);
+                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => [ '-f', '-i', $osimage, $oskitcomp ] }, $request_command, -2, 1);
+                        if (!$ret) {
                             my %rsp;
-                            push@{ $rsp{data} }, "Failed to remove kit component $kitcomp from $osimage";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            push @{ $rsp{data} }, "Failed to remove kit component $kitcomp from $osimage";
+                            xCAT::MsgUtils->message("E", \%rsp, $callback);
                             return 1;
                         }
                         $add = 1;
-                    } elsif ( $rc == 0 ) {
+                    } elsif ($rc == 0) {
                         my %rsp;
-                        push@{ $rsp{data} }, "Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp";
-                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Do nothing since kit component $oskitcomp in osimage $osimage has the same basename/version and release with kit component $kitcomp";
+                        xCAT::MsgUtils->message("I", \%rsp, $callback);
                         next;
-                    } elsif ( !$::noupgrade ) {
+                    } elsif (!$::noupgrade) {
                         my %rsp;
-                        push@{ $rsp{data} }, "kit component $oskitcomp is already in osimage $osimage, and has a newer release/version than $kitcomp.  Downgrading kit component is not supported";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        push @{ $rsp{data} }, "kit component $oskitcomp is already in osimage $osimage, and has a newer release/version than $kitcomp.  Downgrading kit component is not supported";
+                        xCAT::MsgUtils->message("E", \%rsp, $callback);
                         return 1;
                     }
                 }
             }
+
             # Now assign this component to osimage
-            my $rc = assign_to_osimage( $osimage, $kitcomp, $callback, \%tabs);                
+            my $rc = assign_to_osimage($osimage, $kitcomp, $callback, \%tabs);
         }
-            
+
         push @kitlist, $kitcomp;
     }
 
     my $kitnames = join ',', @kitlist;
     my %rsp;
-    push@{ $rsp{data} }, "Kit components $kitnames were added to osimage $osimage successfully";
-    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    push @{ $rsp{data} }, "Kit components $kitnames were added to osimage $osimage successfully";
+    xCAT::MsgUtils->message("I", \%rsp, $callback);
 
     return;
 }
@@ -2423,8 +2456,8 @@ sub addkitcomp
 sub rmkitcomp
 {
 
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
     my $kitdir;
     my $rc;
@@ -2432,65 +2465,65 @@ sub rmkitcomp
     my $xusage = sub {
         my $ret = shift;
         my %rsp;
-        push@{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
-        push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\trmkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] [--noscripts] \n\t\t-i <osimage> <kitcompname_list>";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
+        push @{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
+        push @{ $rsp{data} }, "\trmkitcomp [-h|--help]";
+        push @{ $rsp{data} }, "\trmkitcomp [-v|--version]";
+        push @{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] [--noscripts] \n\t\t-i <osimage> <kitcompname_list>";
+        xCAT::MsgUtils->message("I", \%rsp, $callback, $ret);
     };
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The rmkitcomp command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The rmkitcomp command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
+    unless (defined($request->{arg})) { $xusage->(1); return; }
+    @ARGV = @{ $request->{arg} };
+    if ($#ARGV eq -1) {
+        $xusage->(1);
+        return;
     }
 
 
     GetOptions(
-            'h|help' => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$vers,
-            'u|uninstall' => \$uninstall,
-            'f|force' => \$force,
-            'noscripts' => \$noscripts,
-            'i=s' => \$osimage
+        'h|help'      => \$help,
+        'V|verbose'   => \$::VERBOSE,
+        'v|version'   => \$vers,
+        'u|uninstall' => \$uninstall,
+        'f|force'     => \$force,
+        'noscripts'   => \$noscripts,
+        'i=s'         => \$osimage
     );
 
-    if($help){
-            $xusage->(0);
-            return;
+    if ($help) {
+        $xusage->(0);
+        return;
     }
 
     # Option -v for version
-    if ( defined($vers) ) {
+    if (defined($vers)) {
         create_version_response('rmkitcomp');
         return 1;    # no usage - just exit
     }
 
-    unless(scalar @ARGV)
+    unless (scalar @ARGV)
     {
         $xusage->(1);
         return 1;
     }
 
-    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
-    my %tabs = ();
+    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
+    my %tabs   = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
-    foreach my $t ( @tables ) {
-        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+    foreach my $t (@tables) {
+        $tabs{$t} = xCAT::Table->new($t, -create => 1, -autocommit => 1);
 
-        if ( !exists( $tabs{$t} )) {
+        if (!exists($tabs{$t})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open xCAT table $t";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
             return 1;
         }
@@ -2499,10 +2532,10 @@ sub rmkitcomp
 
     # Check if all the kitcomponents are existing before processing
 
-    if($::VERBOSE){
+    if ($::VERBOSE) {
         my %rsp;
-        push@{ $rsp{data} }, "Checking if kitcomponents are valid";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Checking if kitcomponents are valid";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     }
 
     my %kitcomps;
@@ -2512,14 +2545,14 @@ sub rmkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
-        if ( $kitcomptable and $kitcomptable->{'kitname'}){
-            $kitcomps{$kitcomponent}{name} = $kitcomponent;
-            $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $kitcomponent }, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+        if ($kitcomptable and $kitcomptable->{'kitname'}) {
+            $kitcomps{$kitcomponent}{name}       = $kitcomponent;
+            $kitcomps{$kitcomponent}{kitname}    = $kitcomptable->{kitname};
             $kitcomps{$kitcomponent}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
             $kitcomps{$kitcomponent}{prerequisite} = $kitcomptable->{prerequisite};
             $kitcomps{$kitcomponent}{basename} = $kitcomptable->{basename};
-            $kitcomps{$kitcomponent}{exlist} = $kitcomptable->{exlist};
+            $kitcomps{$kitcomponent}{exlist}   = $kitcomptable->{exlist};
             $kitcomps{$kitcomponent}{postbootscripts} = $kitcomptable->{postbootscripts};
             $kitcomps{$kitcomponent}{kitreponame} = $kitcomptable->{kitreponame};
             $kitcomps{$kitcomponent}{driverpacks} = $kitcomptable->{driverpacks};
@@ -2527,26 +2560,26 @@ sub rmkitcomp
         } else {
             my @entries;
             if ($DBname =~ /^DB2/) {
-               @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("\"basename\" = '$kitcomponent'", 'kitcompname', 'version', 'release');
             } else {
-               @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("basename = '$kitcomponent'", 'kitcompname', 'version', 'release');
             }
             unless (@entries) {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
-            push (@remove_kitcomps_by_basename,$kitcomponent);
+            push(@remove_kitcomps_by_basename, $kitcomponent);
             foreach $basename_entry (@entries) {
                 my $this_entry = $basename_entry->{kitcompname};
                 $kitcomps{$this_entry}{name} = $this_entry;
-                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $this_entry}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $this_entry }, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
                 $kitcomps{$this_entry}{kitname} = $kitcomptable->{kitname};
                 $kitcomps{$this_entry}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
                 $kitcomps{$this_entry}{prerequisite} = $kitcomptable->{prerequisite};
                 $kitcomps{$this_entry}{basename} = $kitcomptable->{basename};
-                $kitcomps{$this_entry}{exlist} = $kitcomptable->{exlist};
+                $kitcomps{$this_entry}{exlist}   = $kitcomptable->{exlist};
                 $kitcomps{$this_entry}{postbootscripts} = $kitcomptable->{postbootscripts};
                 $kitcomps{$this_entry}{kitreponame} = $kitcomptable->{kitreponame};
                 $kitcomps{$this_entry}{driverpacks} = $kitcomptable->{driverpacks};
@@ -2555,43 +2588,44 @@ sub rmkitcomp
             }
         }
     }
+
     # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
 
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename => $osimage}, 'kitcomponents', 'postbootscripts', 'provmethod');
-    if ( !$osimagetable or !$osimagetable->{'kitcomponents'} ){
+    (my $osimagetable) = $tabs{osimage}->getAttribs({ imagename => $osimage }, 'kitcomponents', 'postbootscripts', 'provmethod');
+    if (!$osimagetable or !$osimagetable->{'kitcomponents'}) {
         my %rsp;
-        push@{ $rsp{data} }, "$osimage osimage does not exist or not includes any kit components";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "$osimage osimage does not exist or not includes any kit components";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
     }
 
-    if ( !$osimagetable->{'provmethod'} ){
+    if (!$osimagetable->{'provmethod'}) {
         my %rsp;
-        push@{ $rsp{data} }, "$osimage osimage is missing provmethod";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "$osimage osimage is missing provmethod";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
     }
     my @osikitcomps = split ',', $osimagetable->{'kitcomponents'};
-    foreach my $osikitcomp ( @osikitcomps ) {
-        if ( exists($kitcomps{$osikitcomp}) ) {
+    foreach my $osikitcomp (@osikitcomps) {
+        if (exists($kitcomps{$osikitcomp})) {
             $kitcomps{$osikitcomp}{matched} = 1;
         }
-    } 
+    }
     my $invalidkitcomp = '';
-    foreach my $kitcomp ( keys %kitcomps) {
-        if ( !$kitcomps{$kitcomp}{matched} ) {
-            if ( $kitcomps{$kitcomp}{remove_by_basename} ) {
-              delete($kitcomps{$kitcomp});
+    foreach my $kitcomp (keys %kitcomps) {
+        if (!$kitcomps{$kitcomp}{matched}) {
+            if ($kitcomps{$kitcomp}{remove_by_basename}) {
+                delete($kitcomps{$kitcomp});
             } else {
-              if ( !$invalidkitcomp ) {
-                $invalidkitcomp = $kitcomp;
-              } else {
-                $invalidkitcomp = join(',', $invalidkitcomp, $kitcomp);
-              }
+                if (!$invalidkitcomp) {
+                    $invalidkitcomp = $kitcomp;
+                } else {
+                    $invalidkitcomp = join(',', $invalidkitcomp, $kitcomp);
+                }
             }
         }
     }
-  
+
     foreach $basename_to_remove (@remove_kitcomps_by_basename) {
         my $removing_at_least_one = 0;
         foreach my $kitcomponent (keys %kitcomps) {
@@ -2601,19 +2635,19 @@ sub rmkitcomp
             }
         }
         if (!$removing_at_least_one) {
-              if ( !$invalidkitcomp ) {
+            if (!$invalidkitcomp) {
                 $invalidkitcomp = $basename_to_remove;
-              } else {
+            } else {
                 $invalidkitcomp = join(',', $invalidkitcomp, $basename_to_remove);
-              }
+            }
         }
     }
 
 
-    if ( $invalidkitcomp ) {
+    if ($invalidkitcomp) {
         my %rsp;
-        push@{ $rsp{data} }, "$invalidkitcomp kit components are not assigned to osimage $osimage";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "$invalidkitcomp kit components are not assigned to osimage $osimage";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
     }
 
@@ -2621,34 +2655,36 @@ sub rmkitcomp
     # Now check if there is any other kitcomponent depending on this one.
 
     foreach my $kitcomponent (keys %kitcomps) {
-        foreach my $osikitcomp ( @osikitcomps ) {
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitcompdeps');
-            if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
+        foreach my $osikitcomp (@osikitcomps) {
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $osikitcomp }, 'kitcompdeps');
+            if ($kitcomptable and $kitcomptable->{'kitcompdeps'}) {
 
                 my @kitcompdeps = split(',', $kitcomptable->{'kitcompdeps'});
                 foreach my $kitcompdependency (@kitcompdeps) {
 
                     my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
+
                     # Get the kit component full name from basename.
                     my @entries;
                     if ($DBname =~ /^DB2/) {
-                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                        @entries = $tabs{kitcomponent}->getAllAttribsWhere("\"basename\" = '$kitcompdep'", 'kitcompname', 'version', 'release');
                     } else {
-                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                        @entries = $tabs{kitcomponent}->getAllAttribsWhere("basename = '$kitcompdep'", 'kitcompname', 'version', 'release');
                     }
                     unless (@entries) {
                         my %rsp;
-                        push@{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        push @{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
+                        xCAT::MsgUtils->message("W", \%rsp, $callback);
                     }
 
                     my $kitcompdepname = get_highest_version('kitcompname', 'version', 'release', @entries);
 
-                    if ( ($kitcomponent eq $kitcompdepname) and !$force and !exists($kitcomps{$osikitcomp}) ) {
+                    if (($kitcomponent eq $kitcompdepname) and !$force and !exists($kitcomps{$osikitcomp})) {
+
                         # There is other kitcomponent depending on this one and there is no --force option
                         my %rsp;
-                        push@{ $rsp{data} }, "Failed to remove kitcomponent $kitcomponent because $osikitcomp is still depending on it.  Use -f option to remove it anyway";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Failed to remove kitcomponent $kitcomponent because $osikitcomp is still depending on it.  Use -f option to remove it anyway";
+                        xCAT::MsgUtils->message("E", \%rsp, $callback);
                         return 1;
                     }
                 }
@@ -2659,7 +2695,7 @@ sub rmkitcomp
 
     # Reading installdir
     my $installdir = xCAT::TableUtils->getInstallDir();
-    unless($installdir){
+    unless ($installdir) {
         $installdir = '/install';
     }
     $installdir =~ s/\/$//;
@@ -2668,10 +2704,10 @@ sub rmkitcomp
     # Remove each kitcomponent from osimage.
 
     my @newosikitcomps;
-    foreach my $osikitcomp ( @osikitcomps ) {
+    foreach my $osikitcomp (@osikitcomps) {
         my $match = 0;
         foreach my $kitcomponent (keys %kitcomps) {
-            if ( $kitcomponent eq $osikitcomp ) {
+            if ($kitcomponent eq $osikitcomp) {
                 $match = 1;
                 last;
             }
@@ -2682,23 +2718,23 @@ sub rmkitcomp
     }
 
     my $newosikitcomp = join ',', @newosikitcomps;
-    $osimagetable->{'kitcomponents'} = $newosikitcomp; 
+    $osimagetable->{'kitcomponents'} = $newosikitcomp;
 
 
     # Remove kitcomponent.postbootscripts and kitcomponent.genimage_postinstall from osimage.postbootscripts.
 
     my @osimagescripts;
     my @newosimagescripts;
-    if ( $osimagetable and $osimagetable->{'postbootscripts'} ){
-        @osimagescripts = split( ',', $osimagetable->{'postbootscripts'} );
+    if ($osimagetable and $osimagetable->{'postbootscripts'}) {
+        @osimagescripts = split(',', $osimagetable->{'postbootscripts'});
     }
 
     foreach my $osimagescript (@osimagescripts) {
         my $match = 0;
         foreach my $kitcomponent (keys %kitcomps) {
-            my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{postbootscripts} );
-            foreach my $kitcompscript ( @kitcompscripts ) {
-                if ( $osimagescript =~ /^$kitcompscript/ ) {
+            my @kitcompscripts = split(',', $kitcomps{$kitcomponent}{postbootscripts});
+            foreach my $kitcompscript (@kitcompscripts) {
+                if ($osimagescript =~ /^$kitcompscript/) {
                     $match = 1;
                     last;
                 }
@@ -2711,8 +2747,8 @@ sub rmkitcomp
             push @newosimagescripts, $osimagescript;
         }
 
-        #Remove genimage_postinstall from osimage.postbootscripts 
-        if ( $osimagescript =~ /KIT_$osimage.postbootscripts/ and -e "$installdir/postscripts/KIT_$osimage.postbootscripts" ) {
+        #Remove genimage_postinstall from osimage.postbootscripts
+        if ($osimagescript =~ /KIT_$osimage.postbootscripts/ and -e "$installdir/postscripts/KIT_$osimage.postbootscripts") {
             foreach my $kitcomponent (keys %kitcomps) {
 
                 my @postbootlines;
@@ -2723,17 +2759,17 @@ sub rmkitcomp
                 }
 
                 my $match = 0;
-                my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
-                foreach my $line ( @postbootlines ) {
+                my @kitcompscripts = split(',', $kitcomps{$kitcomponent}{genimage_postinstall});
+                foreach my $line (@postbootlines) {
                     chomp $line;
-                    foreach my $kitcompscript ( @kitcompscripts ) {
-                        if ( grep(/$kitcompscript/, $line) ) {
+                    foreach my $kitcompscript (@kitcompscripts) {
+                        if (grep(/$kitcompscript/, $line)) {
                             $match = 1;
                         }
                     }
 
-                    if ( !$match ) {
-                        push @newlines, $line."\n";
+                    if (!$match) {
+                        push @newlines, $line . "\n";
                     }
                 }
 
@@ -2754,54 +2790,55 @@ sub rmkitcomp
     # Read all the kitcomponents assigned to all the osimage to make sure the repo used by other osimage
     # will not be deleted.
 
-    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs('imagename', 'kitcomponents');
 
-    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
-    if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({ imagename => $osimage }, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    if ($linuximagetable and $linuximagetable->{otherpkgdir}) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
+
         #support mixed otherpkgdir http and local dir
         $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
         foreach my $kitcomponent (keys %kitcomps) {
 
             my %newosikitcomponents;
             foreach my $allosikitcomp (@allosikitcomps) {
-                if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
-                    (my $allosiotherpkgdir) = $tabs{linuximage}->getAttribs({imagename=> $allosikitcomp->{imagename}}, 'otherpkgdir');
+                if ($allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename}) {
+                    (my $allosiotherpkgdir) = $tabs{linuximage}->getAttribs({ imagename => $allosikitcomp->{imagename} }, 'otherpkgdir');
 
                     my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
-                    foreach my $allkitcomp ( @allkitcomps ) {
-                        if ( (($allosikitcomp->{imagename} ne $osimage) and
-                              ($allosiotherpkgdir->{otherpkgdir} eq $otherpkgdir))
-                          or ($allkitcomp ne $kitcomponent)  ) {
+                    foreach my $allkitcomp (@allkitcomps) {
+                        if ((($allosikitcomp->{imagename} ne $osimage) and
+                                ($allosiotherpkgdir->{otherpkgdir} eq $otherpkgdir))
+                            or ($allkitcomp ne $kitcomponent)) {
                             $newosikitcomponents{$allkitcomp} = 1;
-                        } 
+                        }
                     }
                 }
             }
-    
-            if ( $kitcomps{$kitcomponent}{kitreponame} ) {
-                if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
+
+            if ($kitcomps{$kitcomponent}{kitreponame}) {
+                if (-d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}") {
 
                     # Check if this repo is used by other kitcomponent before removing the link
                     my $match = 0;
-                    foreach my $osikitcomp ( keys %newosikitcomponents ) {
+                    foreach my $osikitcomp (keys %newosikitcomponents) {
 
                         my $depkitrepodir;
-                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
-                        if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $osikitcomp }, 'kitreponame');
+                        if ($kitcomptable and $kitcomptable->{kitreponame}) {
                             $depkitrepodir = "$otherpkgdir/$kitcomptable->{kitreponame}";
                         }
-                        if ( $depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
+                        if ($depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
                             $match = 1;
                         }
                     }
-                    if ( !$match ) {
-                        if ( $debianflag )
+                    if (!$match) {
+                        if ($debianflag)
                         {
-                           #Now we do not use moun --bind for kitrepo dir to otherpkgdir
-                           #leave this line is support old way when using mount
-                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
+                            #Now we do not use moun --bind for kitrepo dir to otherpkgdir
+                            #leave this line is support old way when using mount
+                            system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
                         }
                         system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
                     }
@@ -2811,33 +2848,33 @@ sub rmkitcomp
     }
 
     # Remove genimage_postinstall from linuximage table
-    if ( $linuximagetable->{postinstall} ) {
+    if ($linuximagetable->{postinstall}) {
         my @scripts = split ',', $linuximagetable->{postinstall};
-        foreach my $script ( @scripts ) {
-            if ( $script =~ /KIT_COMPONENTS.postinstall/ and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall" ) {
+        foreach my $script (@scripts) {
+            if ($script =~ /KIT_COMPONENTS.postinstall/ and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall") {
 
                 foreach my $kitcomponent (keys %kitcomps) {
 
                     my @postinstalllines;
                     my @newlines;
-                    if (open(POSTINSTALLSCRIPTS, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall") ) { 
+                    if (open(POSTINSTALLSCRIPTS, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
                         @postinstalllines = <POSTINSTALLSCRIPTS>;
                         close(POSTINSTALLSCRIPTS);
                     }
 
-                    my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{genimage_postinstall} );
-                    foreach my $line ( @postinstalllines ) {
+                    my @kitcompscripts = split(',', $kitcomps{$kitcomponent}{genimage_postinstall});
+                    foreach my $line (@postinstalllines) {
                         chomp $line;
                         my $match = 0;
-                        foreach my $kitcompscript ( @kitcompscripts ) {
+                        foreach my $kitcompscript (@kitcompscripts) {
 
-                            if ( grep(/$kitcompscript/, $line) ) {
+                            if (grep(/$kitcompscript/, $line)) {
                                 $match = 1;
                                 last;
                             }
                         }
-                        if ( !$match ) {
-                            push @newlines, $line."\n";
+                        if (!$match) {
+                            push @newlines, $line . "\n";
                         }
                     }
 
@@ -2857,63 +2894,63 @@ sub rmkitcomp
     foreach my $kitcomponent (keys %kitcomps) {
 
         my %rsp;
-        push@{ $rsp{data} }, "Removing kitcomponent $kitcomponent from osimage $osimage";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Removing kitcomponent $kitcomponent from osimage $osimage";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
 
-        if ( !exists($kitcomps{$kitcomponent}{kitname}) ) {
+        if (!exists($kitcomps{$kitcomponent}{kitname})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not find kit object for kitcomponent $kitcomponent";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not find kit object for kitcomponent $kitcomponent";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
-        } 
+        }
 
         # Reading kitdir
-        my $kitdir = '';
+        my $kitdir     = '';
         my $exlistfile = '';
-        my $kitname = $kitcomps{$kitcomponent}{kitname};
-        (my $kittable) = $tabs{kit}->getAttribs({kitname=> $kitname}, 'kitdir', 'kitdeployparams');
+        my $kitname    = $kitcomps{$kitcomponent}{kitname};
+        (my $kittable) = $tabs{kit}->getAttribs({ kitname => $kitname }, 'kitdir', 'kitdeployparams');
 
 
         # Removing exlist
 
-        if ( $linuximagetable and $linuximagetable->{exlist} ) {
+        if ($linuximagetable and $linuximagetable->{exlist}) {
             my $match = 0;
-            my @exlists= split ',', $linuximagetable->{exlist};
-            foreach my $exlist ( @exlists ) {
-                if ( $exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/ ) {
+            my @exlists = split ',', $linuximagetable->{exlist};
+            foreach my $exlist (@exlists) {
+                if ($exlist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.exlist$/) {
                     $match = 1;
                     last;
                 }
             }
-    
+
             my @lines = ();
-            if ( $match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist" ) {
+            if ($match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist") {
                 if (open(EXLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist")) {
                     @lines = <EXLIST>;
-                    if($::VERBOSE){
+                    if ($::VERBOSE) {
                         my %rsp;
-                        push@{ $rsp{data} }, "Reading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
-                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Reading kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                        xCAT::MsgUtils->message("I", \%rsp, $callback);
                     }
                 } else {
                     my %rsp;
-                    push@{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
 
-                if ( $kittable and $kittable->{kitdir} ) {
+                if ($kittable and $kittable->{kitdir}) {
                     $kitdir = $kittable->{kitdir};
                 }
 
-                if ( exists($kitcomps{$kitcomponent}{exlist}) ) {
+                if (exists($kitcomps{$kitcomponent}{exlist})) {
                     $exlistfile = $kitcomps{$kitcomponent}{exlist};
                 }
 
                 my @newlines = ();
-                foreach my $line ( @lines ) {
+                foreach my $line (@lines) {
                     chomp $line;
-                    if ( $line =~ /^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/ ) {
+                    if ($line =~ /^#INCLUDE:$kitdir\/other_files\/$exlistfile#$/) {
                         next;
                     }
                     push @newlines, $line . "\n";
@@ -2925,67 +2962,67 @@ sub rmkitcomp
 
             }
         }
-            
+
         # Removing otherpkglist
 
-        if ( $linuximagetable and $linuximagetable->{otherpkglist} ) {
+        if ($linuximagetable and $linuximagetable->{otherpkglist}) {
             my $match = 0;
             my @lines = ();
 
             my @otherpkglists = split ',', $linuximagetable->{otherpkglist};
-            foreach my $otherpkglist ( @otherpkglists ) {
-                if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/ ) {
+            foreach my $otherpkglist (@otherpkglists) {
+                if ($otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_COMPONENTS.otherpkgs.pkglist$/) {
                     $match = 1;
                     last;
                 }
             }
 
-            if ( $match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist" ) {
+            if ($match and -e "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist") {
                 if (open(OTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
                     @lines = <OTHERPKGLIST>;
-                    if($::VERBOSE){
+                    if ($::VERBOSE) {
                         my %rsp;
-                        push@{ $rsp{data} }, "Reading kit component otherpkg pkglist $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
-                        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Reading kit component otherpkg pkglist $installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist";
+                        xCAT::MsgUtils->message("I", \%rsp, $callback);
                     }
                 } else {
                     my %rsp;
-                    push@{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "Could not open kit component exlist file $installdir/osimages/$osimage/kits/KIT_COMPONENTS.exlist";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
 
                 my $basename = '';
-                if ( exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame})) {
+                if (exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame})) {
                     $basename = $kitcomps{$kitcomponent}{basename};
                     my $kitreponame = $kitcomps{$kitcomponent}{kitreponame};
 
                     my @newlines = ();
-                    my $num = 0;
-                    my $inlist = 0;
-                    foreach my $line ( @lines ) {
+                    my $num      = 0;
+                    my $inlist   = 0;
+                    foreach my $line (@lines) {
                         chomp $line;
-                        
-                        if ( $line =~ /^#NEW_INSTALL_LIST#/ ) {
-                            $num = 1;
+
+                        if ($line =~ /^#NEW_INSTALL_LIST#/) {
+                            $num    = 1;
                             $inlist = 1;
                         }
-                        if ( $kitcomps{$kitcomponent}{prerequisite} ) {
-                            if (( $line =~ /^$kitreponame\/prep_$basename$/ ) ||
-                                ( $line =~ /^$kitreponame\/prep-$basename$/ )) {
-                                if ( $inlist ) {
+                        if ($kitcomps{$kitcomponent}{prerequisite}) {
+                            if (($line =~ /^$kitreponame\/prep_$basename$/) ||
+                                ($line =~ /^$kitreponame\/prep-$basename$/)) {
+                                if ($inlist) {
                                     $num--;
-                                    foreach ( 1..$num ) {
+                                    foreach (1 .. $num) {
                                         pop @newlines;
                                     }
                                 }
                                 next;
                             }
                         }
-                        if ( $line =~ /^$kitreponame\/$basename$/ ) {
-                            if ( $inlist ) {
+                        if ($line =~ /^$kitreponame\/$basename$/) {
+                            if ($inlist) {
                                 $num--;
-                                foreach ( 1..$num ) {
+                                foreach (1 .. $num) {
                                     pop @newlines;
                                 }
                             }
@@ -3003,71 +3040,71 @@ sub rmkitcomp
             }
 
             # Add this component basename and pkgnames to KIT_RMPKGS.otherpkg.pkglist
-            if ( $uninstall ) {
+            if ($uninstall) {
                 my @lines = ();
 
                 mkpath("$installdir/osimages/$osimage/kits/");
 
-                if ( -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+                if (-e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") {
                     if (open(RMOTHERPKGLIST, "<", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
                         @lines = <RMOTHERPKGLIST>;
                         close(RMOTHERPKGLIST);
-                        if($::VERBOSE){
+                        if ($::VERBOSE) {
                             my %rsp;
-                            push@{ $rsp{data} }, "Reading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
-                            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                            push @{ $rsp{data} }, "Reading kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
+                            xCAT::MsgUtils->message("I", \%rsp, $callback);
                         }
                     } else {
                         my %rsp;
-                        push@{ $rsp{data} }, "Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        push @{ $rsp{data} }, "Could not open kit component rmpkgs file $installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist";
+                        xCAT::MsgUtils->message("E", \%rsp, $callback);
                         return 1;
                     }
                 }
 
-                my @l = @lines;
-                my $basename = '';
+                my @l           = @lines;
+                my $basename    = '';
                 my $kitreponame = '';
-                my @kitpkgdeps = ();
+                my @kitpkgdeps  = ();
 
-                if ( exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame}) ) {
-                    $basename = $kitcomps{$kitcomponent}{basename};
+                if (exists($kitcomps{$kitcomponent}{basename}) and exists($kitcomps{$kitcomponent}{kitreponame})) {
+                    $basename    = $kitcomps{$kitcomponent}{basename};
                     $kitreponame = $kitcomps{$kitcomponent}{kitreponame};
                 } else {
                     my %rsp;
-                    push@{ $rsp{data} }, "Could not open kit component table and read basename for kit component $kitcomp";
-                    xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                    push @{ $rsp{data} }, "Could not open kit component table and read basename for kit component $kitcomp";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
                     return 1;
                 }
 
-                if ( exists($kitcomps{$kitcomponent}{kitpkgdeps}) ) {
+                if (exists($kitcomps{$kitcomponent}{kitpkgdeps})) {
                     @kitpkgdeps = split ',', $kitcomps{$kitcomponent}{kitpkgdeps};
                 }
 
                 #  Add prerequisite to  KIT_RMPKGS.otherpkg.pkglist
-                if ( $kitcomps{$kitcomponent}{prerequisite} ) {
+                if ($kitcomps{$kitcomponent}{prerequisite}) {
                     my @kitpreps = split /,/, $kitcomps{$kitcomponent}{prerequisite};
-                    foreach my $kitprep ( @kitpreps ) {
+                    foreach my $kitprep (@kitpreps) {
                         push @kitpkgdeps, $kitprep;
-                    } 
+                    }
                 }
 
                 push @kitpkgdeps, $basename;
 
                 my $update = 0;
 
-                foreach my $kitpkgdep ( @kitpkgdeps ) {
-                    next if ( $kitpkgdep =~ /^$/ );
+                foreach my $kitpkgdep (@kitpkgdeps) {
+                    next if ($kitpkgdep =~ /^$/);
                     my $matched = 0;
-                    foreach my $line ( @lines ) {
+                    foreach my $line (@lines) {
                         chomp $line;
-                        if ( $line =~ /^-$kitpkgdep$/ ) {
+                        if ($line =~ /^-$kitpkgdep$/) {
                             $matched = 1;
                             last;
                         }
                     }
 
-                    unless ( $matched ) {
+                    unless ($matched) {
                         unshift @l, "-$kitpkgdep\n";
                         $update = 1;
                     }
@@ -3075,22 +3112,22 @@ sub rmkitcomp
                 }
 
 
-                if ( $update and open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") ) {
+                if ($update and open(RMPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist")) {
                     print RMPKGLIST @l;
                     close(RMPKGLIST);
                 }
 
-                if ( $linuximagetable and $linuximagetable->{otherpkglist} ) {
+                if ($linuximagetable and $linuximagetable->{otherpkglist}) {
                     my $match = 0;
-                    my @otherpkglists= split ',', $linuximagetable->{otherpkglist};
-                    foreach my $otherpkglist ( @otherpkglists ) {
-                        if ( $otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_RMPKGS.otherpkgs.pkglist$/ ) {
+                    my @otherpkglists = split ',', $linuximagetable->{otherpkglist};
+                    foreach my $otherpkglist (@otherpkglists) {
+                        if ($otherpkglist =~ /^$installdir\/osimages\/$osimage\/kits\/KIT_RMPKGS.otherpkgs.pkglist$/) {
                             $match = 1;
                             last;
                         }
                     }
 
-                    if ( !$match and -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist" ) {
+                    if (!$match and -e "$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist") {
                         $linuximagetable->{otherpkglist} = $linuximagetable->{otherpkglist} . ",$installdir/osimages/$osimage/kits/KIT_RMPKGS.otherpkgs.pkglist"
                     }
                 }
@@ -3100,40 +3137,40 @@ sub rmkitcomp
 
         # Removing deploy parameters
 
-        if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+        if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
 
-            my $kitdir = $kittable->{kitdir};
+            my $kitdir        = $kittable->{kitdir};
             my $kitdeployfile = $kittable->{kitdeployparams};
 
             # Check if there is other kitcomponent in the same kit.
             my $match = 0;
-            if ( exists($kitcomps{$kitcomponent}{kitname}) ) {
+            if (exists($kitcomps{$kitcomponent}{kitname})) {
                 my $kitname = $kitcomps{$kitcomponent}{kitname};
 
-                foreach my $osikitcomp ( @osikitcomps ) {
-                    (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname=> $osikitcomp}, 'kitname');
-                    
-                    if ( $kitcomptable and $kitcomptable->{kitname} and $kitcomptable->{kitname} eq $kitname and !exists($kitcomps{$osikitcomp}{name}) ) {
+                foreach my $osikitcomp (@osikitcomps) {
+                    (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $osikitcomp }, 'kitname');
+
+                    if ($kitcomptable and $kitcomptable->{kitname} and $kitcomptable->{kitname} eq $kitname and !exists($kitcomps{$osikitcomp}{name})) {
                         $match = 1;
                         last;
                     }
                 }
 
-                unless ( $match ) {
-                    my @contents = ();;
-                    if ( -e "$kitdir/other_files/$kitdeployfile" ) {
-                        if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
+                unless ($match) {
+                    my @contents = ();
+                    if (-e "$kitdir/other_files/$kitdeployfile") {
+                        if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile")) {
                             @contents = <KITDEPLOY>;
                             close(KITDEPLOY);
-                            if($::VERBOSE){
+                            if ($::VERBOSE) {
                                 my %rsp;
-                                push@{ $rsp{data} }, "Reading kit deployparams from $kitdir/other_files/$kitdeployfile";
-                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                                push @{ $rsp{data} }, "Reading kit deployparams from $kitdir/other_files/$kitdeployfile";
+                                xCAT::MsgUtils->message("I", \%rsp, $callback);
                             }
                         } else {
                             my %rsp;
-                            push@{ $rsp{data} }, "Could not open kit deployparams file $kitdir/other_files/$kitdeployfile";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            push @{ $rsp{data} }, "Could not open kit deployparams file $kitdir/other_files/$kitdeployfile";
+                            xCAT::MsgUtils->message("E", \%rsp, $callback);
                             return 1;
                         }
 
@@ -3141,81 +3178,81 @@ sub rmkitcomp
                     }
 
                     my @lines = ();
-                    if ( -e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist" ) {
+                    if (-e "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist") {
 
                         system("cp $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist.orig");
 
                         if (open(DEPLOYPARAM, "<", "$installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist")) {
                             @lines = <DEPLOYPARAM>;
                             close(DEPLOYPARAM);
-                            if($::VERBOSE){
+                            if ($::VERBOSE) {
                                 my %rsp;
-                                push@{ $rsp{data} }, "Reading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
-                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                                push @{ $rsp{data} }, "Reading kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                                xCAT::MsgUtils->message("I", \%rsp, $callback);
                             }
                         } else {
                             my %rsp;
-                            push@{ $rsp{data} }, "Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            push @{ $rsp{data} }, "Could not open kit deployparams file $installdir/osimages/$osimage/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist";
+                            xCAT::MsgUtils->message("E", \%rsp, $callback);
                             return 1;
                         }
                     }
 
                     # Check if each deploy parameter is used by other kitcomponent.
                     my @otherlines = ();
-                    foreach my $osikitcomp ( @osikitcomps ) {
-                        next if ( exists($kitcomps{$osikitcomp}{name}) );
+                    foreach my $osikitcomp (@osikitcomps) {
+                        next if (exists($kitcomps{$osikitcomp}{name}));
 
-                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname=> $osikitcomp}, 'kitname');
-                        if ( $kitcomptable and $kitcomptable->{kitname} ) {
-                            (my $kittable) = $tabs{kit}->getAttribs({kitname=> $kitcomptable->{kitname}},  'kitdir', 'kitdeployparams');
-                            if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $osikitcomp }, 'kitname');
+                        if ($kitcomptable and $kitcomptable->{kitname}) {
+                            (my $kittable) = $tabs{kit}->getAttribs({ kitname => $kitcomptable->{kitname} }, 'kitdir', 'kitdeployparams');
+                            if ($kittable and $kittable->{kitdeployparams} and $kittable->{kitdir}) {
                                 my @otherdeployparams;
-                                my $deployparam_file = $kittable->{kitdir}."/other_files/".$kittable->{kitdeployparams};
-                                if ( -e "$deployparam_file" ) {
+                                my $deployparam_file = $kittable->{kitdir} . "/other_files/" . $kittable->{kitdeployparams};
+                                if (-e "$deployparam_file") {
 
-                                    if (open(OTHERDEPLOYPARAM, "<", "$deployparam_file" )) {
+                                    if (open(OTHERDEPLOYPARAM, "<", "$deployparam_file")) {
                                         @otherdeployparams = <OTHERDEPLOYPARAM>;
                                         close(OTHERDEPLOYPARAM);
                                     }
 
-                                    foreach ( @otherdeployparams ) {
+                                    foreach (@otherdeployparams) {
                                         push @otherlines, $_;
                                     }
 
                                     push @otherlines, "#INCLUDE:$deployparam_file#";
                                 }
-                             }
+                            }
                         }
                     }
 
 
                     my @newcontents = ();
-                    foreach my $line ( @lines ) {
+                    foreach my $line (@lines) {
                         chomp $line;
                         my $found = 0;
 
                         #check if the parameter is used by other kitcomponent
-                        foreach my $otherline ( @otherlines ) {
+                        foreach my $otherline (@otherlines) {
                             chomp $otherline;
-                            if ( $line =~ m!$otherline! ) {
+                            if ($otherline && $line =~ m!$otherline!) {
                                 $found = 1;
                                 last;
                             }
                         }
 
-                        if ( $found ) {
+                        if ($found) {
                             push @newcontents, $line . "\n";
                         } else {
-                            foreach my $content ( @contents ) {
+                            foreach my $content (@contents) {
                                 chomp $content;
-                                if ( $line =~ m!$content! ) {
+                                if ($content && $line =~ m!$content!) {
                                     $found = 1;
                                     last;
                                 }
                             }
 
-                            unless ( $found ) {
+                            unless ($found) {
                                 push @newcontents, $line . "\n";
                             }
                         }
@@ -3228,28 +3265,28 @@ sub rmkitcomp
                     }
                 }
             }
-        }        
+        }
 
 
         # Remove driverpacks from linuximage
 
-        if ( $linuximagetable and $linuximagetable->{driverupdatesrc} ) {
-            if ( exists($kitcomps{$kitcomponent}{driverpacks}) ) {
+        if ($linuximagetable and $linuximagetable->{driverupdatesrc}) {
+            if (exists($kitcomps{$kitcomponent}{driverpacks})) {
                 my @driverpacks = split ',', $kitcomps{$kitcomponent}{driverpacks};
                 my @driverupdatesrcs = split ',', $linuximagetable->{driverupdatesrc};
 
                 my @newdriverupdatesrcs = ();
 
-                foreach my $driverupdatesrc ( @driverupdatesrcs ) {
+                foreach my $driverupdatesrc (@driverupdatesrcs) {
                     my $matched = 0;
-                    foreach  my $driverpack ( @driverpacks ) {
-                        if ( $driverpack eq $driverupdatesrc ) {
+                    foreach my $driverpack (@driverpacks) {
+                        if ($driverpack eq $driverupdatesrc) {
                             $matched = 1;
                             last;
                         }
                     }
 
-                    unless ( $matched ) {
+                    unless ($matched) {
                         push @newdriverupdatesrcs, $driverupdatesrc;
                     }
                 }
@@ -3265,23 +3302,23 @@ sub rmkitcomp
 
     my $kitcompnames = join ',', @kitlist;
     my %rsp;
-    push@{ $rsp{data} }, "kitcomponents $kitcompnames were removed from osimage $osimage successfully";
-    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    push @{ $rsp{data} }, "kitcomponents $kitcompnames were removed from osimage $osimage successfully";
+    xCAT::MsgUtils->message("I", \%rsp, $callback);
 
     # Write linuximage table with all the above udpates.
-    $tabs{linuximage}->setAttribs({imagename => $osimage }, \%{$linuximagetable} );
+    $tabs{linuximage}->setAttribs({ imagename => $osimage }, \%{$linuximagetable});
 
     # Write osimage table with all the above udpates.
-    $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+    $tabs{osimage}->setAttribs({ imagename => $osimage }, \%{$osimagetable});
 
     #After all the data updated in osimage and linuximage table
     #check if these kitcomponents are assigned to other osimage
     #if these kitcomponents are not used by other osimage, find their kitrepo and kitrepo directory under otherpkg dir
     #delete these kitrepo
-    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs('imagename', 'kitcomponents');
 
-    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
-    if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({ imagename => $osimage }, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    if ($linuximagetable and $linuximagetable->{otherpkgdir}) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
         $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
@@ -3290,36 +3327,36 @@ sub rmkitcomp
 
             my %newosikitcomponents;
             foreach my $allosikitcomp (@allosikitcomps) {
-                if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                if ($allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename}) {
                     my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
-                    foreach my $allkitcomp ( @allkitcomps ) {
-                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                    foreach my $allkitcomp (@allkitcomps) {
+                        if ($allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent) {
                             $newosikitcomponents{$allkitcomp} = 1;
                         }
                     }
                 }
             }
 
-            if ( $kitcomps{$kitcomponent}{kitreponame} ) {
-                if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
+            if ($kitcomps{$kitcomponent}{kitreponame}) {
+                if (-d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}") {
 
                     # Check if this repo is used by other kitcomponent before removing the link
                     my $match = 0;
-                    foreach my $osikitcomp ( keys %newosikitcomponents ) {
+                    foreach my $osikitcomp (keys %newosikitcomponents) {
 
                         my $depkitrepodir;
-                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
-                        if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $osikitcomp }, 'kitreponame');
+                        if ($kitcomptable and $kitcomptable->{kitreponame}) {
                             $depkitrepodir = "$otherpkgdir/$kitcomptable->{kitreponame}";
                         }
-                        if ( $depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
+                        if ($depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
                             $match = 1;
                         }
                     }
-                    if ( !$match ) {
-                        if ( $debianflag )
+                    if (!$match) {
+                        if ($debianflag)
                         {
-                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
+                            system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
                         }
                         system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
                     }
@@ -3344,60 +3381,60 @@ sub rmkitcomp
 #-------------------------------------------------------
 sub chkkitcomp
 {
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "Usage: chkkitcomp - Check if a Kit component is compatible with an xCAT osimage.";
-        push@{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\tchkkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\tchkkitcomp [-V|--verbose] -i <osimage> <kitcompname_list>";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        push @{ $rsp{data} }, "Usage: chkkitcomp - Check if a Kit component is compatible with an xCAT osimage.";
+        push @{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
+        push @{ $rsp{data} }, "\tchkkitcomp [-v|--version]";
+        push @{ $rsp{data} }, "\tchkkitcomp [-V|--verbose] -i <osimage> <kitcompname_list>";
+        xCAT::MsgUtils->message("I", \%rsp, $callback);
     };
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The chkkitcomp command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The chkkitcomp command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    unless(defined($request->{arg})){ $xusage->(1); return; }
-    @ARGV = @{$request->{arg}};
-    if($#ARGV eq -1){
-            $xusage->(1);
-            return;
+    unless (defined($request->{arg})) { $xusage->(1); return; }
+    @ARGV = @{ $request->{arg} };
+    if ($#ARGV eq -1) {
+        $xusage->(1);
+        return;
     }
 
     GetOptions(
-            'h|help' => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$vers,
-            'i=s' => \$osimage
+        'h|help'    => \$help,
+        'V|verbose' => \$::VERBOSE,
+        'v|version' => \$vers,
+        'i=s'       => \$osimage
     );
 
-    if($help){
-            $xusage->(0);
-            return;
+    if ($help) {
+        $xusage->(0);
+        return;
     }
 
     # Option -v for version
-    if ( defined($vers) ) {
+    if (defined($vers)) {
         create_version_response('chkkitcomp');
         return 1;    # no usage - just exit
     }
-    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
-    my %tabs = ();
+    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
+    my %tabs   = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
-    foreach my $t ( @tables ) {
-        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+    foreach my $t (@tables) {
+        $tabs{$t} = xCAT::Table->new($t, -create => 1, -autocommit => 1);
 
-        if ( !exists( $tabs{$t} )) {
+        if (!exists($tabs{$t})) {
             my %rsp;
-            push@{ $rsp{data} }, "Could not open xCAT table $t";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
     }
@@ -3411,114 +3448,114 @@ sub chkkitcomp
     foreach my $kitcomponent (@kitcomponents) {
 
         # Check if it is a kitcompname or basename
-        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitname', 'kitcompdeps', 'kitpkgdeps', 'kitreponame', 'basename', 'serverroles');
-        if ( $kitcomptable and $kitcomptable->{'kitname'}){
-            $kitcomps{$kitcomponent}{name} = $kitcomponent;
-            $kitcomps{$kitcomponent}{kitname} = $kitcomptable->{kitname};
+        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $kitcomponent }, 'kitname', 'kitcompdeps', 'kitpkgdeps', 'kitreponame', 'basename', 'serverroles');
+        if ($kitcomptable and $kitcomptable->{'kitname'}) {
+            $kitcomps{$kitcomponent}{name}       = $kitcomponent;
+            $kitcomps{$kitcomponent}{kitname}    = $kitcomptable->{kitname};
             $kitcomps{$kitcomponent}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
             $kitcomps{$kitcomponent}{kitcompdeps} = $kitcomptable->{kitcompdeps};
             $kitcomps{$kitcomponent}{basename} = $kitcomptable->{basename};
             $kitcomps{$kitcomponent}{kitreponame} = $kitcomptable->{kitreponame};
             $kitcomps{$kitcomponent}{serverroles} = $kitcomptable->{serverroles};
-            $kitcompbasename{$kitcomptable->{basename}} = 1;
+            $kitcompbasename{ $kitcomptable->{basename} } = 1;
         } else {
             my @entries;
             if ($DBname =~ /^DB2/) {
-             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("\"basename\" = '$kitcomponent'", 'kitcompname', 'version', 'release');
             } else {
-             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+                @entries = $tabs{kitcomponent}->getAllAttribsWhere("basename = '$kitcomponent'", 'kitcompname', 'version', 'release');
             }
             unless (@entries) {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
             my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
             $kitcomps{$highest}{name} = $highest;
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'kitcompdeps', 'kitreponame', 'basename', 'serverroles');
-            $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
-            $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({ kitcompname => $highest }, 'kitname', 'kitpkgdeps', 'kitcompdeps', 'kitreponame', 'basename', 'serverroles');
+            $kitcomps{$highest}{kitname}     = $kitcomptable->{kitname};
+            $kitcomps{$highest}{kitpkgdeps}  = $kitcomptable->{kitpkgdeps};
             $kitcomps{$highest}{kitcompdeps} = $kitcomptable->{kitcompdeps};
-            $kitcomps{$highest}{basename} = $kitcomptable->{basename};
+            $kitcomps{$highest}{basename}    = $kitcomptable->{basename};
             $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
             $kitcomps{$highest}{serverroles} = $kitcomptable->{serverroles};
-            $kitcompbasename{$kitcomponent} = 1;
+            $kitcompbasename{$kitcomponent}  = 1;
         }
     }
 
     # Verify if the kitcomponents fitting to the osimage or not.
     my %os;
     my $osdistrotable;
-    (my $osimagetable) = $tabs{osimage}->getAttribs({imagename=> $osimage}, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
-    if ( $osimagetable and $osimagetable->{'osdistroname'}){
-        ($osdistrotable) = $tabs{osdistro}->getAttribs({osdistroname=> $osimagetable->{'osdistroname'}}, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
-        if ( !$osdistrotable or !$osdistrotable->{basename} ) {
+    (my $osimagetable) = $tabs{osimage}->getAttribs({ imagename => $osimage }, 'osdistroname', 'serverrole', 'kitcomponents', 'osname', 'osvers', 'osarch');
+    if ($osimagetable and $osimagetable->{'osdistroname'}) {
+        ($osdistrotable) = $tabs{osdistro}->getAttribs({ osdistroname => $osimagetable->{'osdistroname'} }, 'basename', 'majorversion', 'minorversion', 'arch', 'type');
+        if (!$osdistrotable or !$osdistrotable->{basename}) {
             my %rsp;
             push @{ $rsp{data} }, "$osdistroname osdistro does not exist";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
-        } 
+        }
 
         # Read basename,majorversion,minorversion,arch,type, from osdistro table
-        $os{$osimage}{basename} = lc($osdistrotable->{basename});
+        $os{$osimage}{basename}     = lc($osdistrotable->{basename});
         $os{$osimage}{majorversion} = lc($osdistrotable->{majorversion});
         $os{$osimage}{minorversion} = lc($osdistrotable->{minorversion});
-        $os{$osimage}{arch} = lc($osdistrotable->{arch});
-        $os{$osimage}{type} = lc($osdistrotable->{type});
+        $os{$osimage}{arch}         = lc($osdistrotable->{arch});
+        $os{$osimage}{type}         = lc($osdistrotable->{type});
 
         # Read serverrole from osimage.
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
-    } elsif ( !$osimagetable ) {
+    } elsif (!$osimagetable) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not exist";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not exist";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osname'} ) {
+    } elsif (!$osimagetable->{'osname'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osvers'} ) {
+    } elsif (!$osimagetable->{'osvers'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
-    } elsif ( !$osimagetable->{'osarch'} ) {
+    } elsif (!$osimagetable->{'osarch'}) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
-        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        push @{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
+        xCAT::MsgUtils->message("E", \%rsp, $callback);
         return 1;
     } else {
-        $os{$osimage}{type} = lc($osimagetable->{'osname'});
-        $os{$osimage}{arch} = lc($osimagetable->{'osarch'});
+        $os{$osimage}{type}       = lc($osimagetable->{'osname'});
+        $os{$osimage}{arch}       = lc($osimagetable->{'osarch'});
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
- 
+
         my ($basename, $majorversion, $minorversion) = $osimagetable->{'osvers'} =~ /^(\D+)(\d+)\W+(\d+)/;
-        $os{$osimage}{basename} = lc($basename);
+        $os{$osimage}{basename}     = lc($basename);
         $os{$osimage}{majorversion} = lc($majorversion);
         $os{$osimage}{minorversion} = lc($minorversion);
     }
 
     my @kitcompnames;
-    foreach my $kitcomp ( keys %kitcomps ) {
-        if ( $kitcomps{$kitcomp}{kitname} and $kitcomps{$kitcomp}{kitreponame}) { 
+    foreach my $kitcomp (keys %kitcomps) {
+        if ($kitcomps{$kitcomp}{kitname} and $kitcomps{$kitcomp}{kitreponame}) {
 
             # Read ostype from kit table
-            (my $kittable) = $tabs{kit}->getAttribs({kitname => $kitcomps{$kitcomp}{kitname}}, 'ostype');
-            if ( $kittable and $kittable->{ostype} ) {
+            (my $kittable) = $tabs{kit}->getAttribs({ kitname => $kitcomps{$kitcomp}{kitname} }, 'ostype');
+            if ($kittable and $kittable->{ostype}) {
                 $kitcomps{$kitcomp}{ostype} = lc($kittable->{ostype});
             } else {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomp ostype does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomp ostype does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
             # Read osbasename, osmajorversion,osminorversion,osarch,compat_osbasenames from kitrepo table
-            (my $kitrepotable) = $tabs{kitrepo}->getAttribs({kitreponame => $kitcomps{$kitcomp}{kitreponame}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+            (my $kitrepotable) = $tabs{kitrepo}->getAttribs({ kitreponame => $kitcomps{$kitcomp}{kitreponame} }, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
             if ($kitrepotable and $kitrepotable->{osbasename} and $kitrepotable->{osmajorversion} and $kitrepotable->{osarch}) {
                 if ($kitrepotable->{compat_osbasenames}) {
                     $kitcomps{$kitcomp}{osbasename} = lc($kitrepotable->{osbasename}) . ',' . lc($kitrepotable->{compat_osbasenames});
@@ -3531,15 +3568,15 @@ sub chkkitcomp
                 $kitcomps{$kitcomp}{osarch} = lc($kitrepotable->{osarch});
             } else {
                 my %rsp;
-                push@{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "$kitcomp osbasename,osmajorversion,osminorversion or osarch does not exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
 
-        }  else {
+        } else {
             my %rsp;
-            push@{ $rsp{data} }, "$kitcomp kitname $kitcomptable->{'kitname'} or kitrepo name $kitcomptable->{'kitreponame'} or serverroles $kitcomps{$kitcomp}{serverroles} does not exist";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "$kitcomp kitname $kitcomptable->{'kitname'} or kitrepo name $kitcomptable->{'kitreponame'} or serverroles $kitcomps{$kitcomp}{serverroles} does not exist";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
@@ -3547,76 +3584,76 @@ sub chkkitcomp
         my $catched = 0;
         my @osbasename = split ',', $kitcomps{$kitcomp}{osbasename};
         foreach (@osbasename) {
-            if ( $os{$osimage}{basename} eq $_ ) {
+            if ($os{$osimage}{basename} eq $_) {
                 $catched = 1;
             }
         }
-        unless ( $catched ) {
+        unless ($catched) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute OS";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute OS";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
+        if ($os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion}) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute majorversion";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute majorversion";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
+        if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch' ) {
+        if ($os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch') {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute arch";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute arch";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
+        if ($os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype}) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute type";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute type";
+            xCAT::MsgUtils->message("E", \%rsp, $callback);
             return 1;
         }
 
-        if ( $os{$osimage}{serverrole} ) {
+        if ($os{$osimage}{serverrole}) {
             my $match = 0;
             my @os_serverroles = split /,/, $os{$osimage}{serverrole};
             my @kitcomp_serverroles = split /,/, $kitcomps{$kitcomp}{serverroles};
             foreach my $os_serverrole (@os_serverroles) {
                 foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
-                    if ( $os_serverrole eq $kitcomp_serverrole ) {
+                    if ($os_serverrole eq $kitcomp_serverrole) {
                         $match = 1;
                         last;
                     }
                 }
 
-                if ( $match ) {
+                if ($match) {
                     last;
                 }
             }
-            if ( !$match ) {
+            if (!$match) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
         }
 
         # Check if this kit component's dependencies are in the kitcomponent list.
-        if ( $kitcomps{$kitcomp}{kitcompdeps}  ) {
+        if ($kitcomps{$kitcomp}{kitcompdeps}) {
             my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcomps{$kitcomp}{kitcompdeps};
-            if ( !exists( $kitcompbasename{ $kitcompdep } ) ) {
+            if (!exists($kitcompbasename{$kitcompdep})) {
                 my %rsp;
-                push@{ $rsp{data} }, "kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't exist";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                push @{ $rsp{data} }, "kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't exist";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
                 return 1;
             }
         }
@@ -3627,8 +3664,8 @@ sub chkkitcomp
     my $kitcompnamelist = join ',', @kitcompnames;
 
     my %rsp;
-    push@{ $rsp{data} }, "Kit components $kitcompnamelist are compatible with osimage $osimage";
-    xCAT::MsgUtils->message( "I", \%rsp, $callback );
+    push @{ $rsp{data} }, "Kit components $kitcompnamelist are compatible with osimage $osimage";
+    xCAT::MsgUtils->message("I", \%rsp, $callback);
 
     return;
 }
@@ -3647,11 +3684,11 @@ sub lskit_usage {
     push @{ $rsp->{data} },
       "\nUsage: lskit - List infomation for one or more kits.\n";
     push @{ $rsp->{data} },
-      "\tlskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names]\n\t[-R|--repoattr repoattr_names] [-C|--compattr compattr_names]\n\t[kit_names]\n ";
+"\tlskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names]\n\t[-R|--repoattr repoattr_names] [-C|--compattr compattr_names]\n\t[kit_names]\n ";
     push @{ $rsp->{data} }, "\tlskit [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tlskit [-v|--version]\n ";
     push @{ $rsp->{data} }, "\tlskit [-F|--framework] kit_path_name\n ";
-    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
 }
 
@@ -3672,7 +3709,7 @@ sub lskitcomp_usage {
     push @{ $rsp->{data} }, "\tlskitcomp [-h|--help|-?]";
     push @{ $rsp->{data} }, "\tlskitcomp [-v|--version]";
     push @{ $rsp->{data} }, "\tlskitcomp [-V|--verbose] [-x|--xml|--XML] \n\t\t[-C|--compattr compattr_names] [-O|--osdistro os_distro]\n\t\t[-S|--serverrole server_role] [kitcomp_names]\n ";
-    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
 }
 
@@ -3692,7 +3729,7 @@ sub lskitdeployparam_usage {
     push @{ $rsp->{data} }, "\tlskitdeployparam [-h|--help|-?]";
     push @{ $rsp->{data} }, "\tlskitdeployparam [-v|--version]";
     push @{ $rsp->{data} }, "\tlskitdeployparam [-V|--verbose] [-x|--xml|--XML] \n\t\t[-k|--kitname kit_names] [-c|--compname comp_names]\n";
-    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     return 0;
 }
 
@@ -3711,7 +3748,7 @@ sub create_version_response {
     push @{ $rsp->{data} }, "$command - xCAT $version";
     push @{ $rsp->{data} }, "\tkitframework = $::KITFRAMEWORK";
     push @{ $rsp->{data} }, "\tcompatible_frameworks = $::COMPATIBLE_KITFRAMEWORKS\n";
-    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 }
 
 
@@ -3728,7 +3765,7 @@ sub create_error_response {
     my $error_msg = shift;
     my $rsp;
     push @{ $rsp->{data} }, $error_msg;
-    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 }
 
 
@@ -3746,22 +3783,22 @@ sub create_error_response {
 
 #-----------------------------------------------------------------------------
 sub lskit_processargs {
-    if ( defined ($::args) && @{$::args} ){
+    if (defined($::args) && @{$::args}) {
         @ARGV = @{$::args};
     }
 
     # parse the options
     # options can be bundled up like -vV, flag unsupported options
-    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    Getopt::Long::Configure("bundling", "no_ignore_case", "no_pass_through");
     my $getopt_success = Getopt::Long::GetOptions(
-                              'help|h|?'  => \$::opt_h,
-                              'kitattr|K=s' => \$::opt_K,
-                              'repoattr|R=s' => \$::opt_R,
-                              'compattr|C=s' => \$::opt_C,
-                              'framework|F=s' => \$::opt_F,
-                              'verbose|V' => \$::opt_V,
-                              'version|v' => \$::opt_v,
-                              'xml|XML|x' => \$::opt_x,
+        'help|h|?'      => \$::opt_h,
+        'kitattr|K=s'   => \$::opt_K,
+        'repoattr|R=s'  => \$::opt_R,
+        'compattr|C=s'  => \$::opt_C,
+        'framework|F=s' => \$::opt_F,
+        'verbose|V'     => \$::opt_V,
+        'version|v'     => \$::opt_v,
+        'xml|XML|x'     => \$::opt_x,
     );
 
     if (!$getopt_success) {
@@ -3769,32 +3806,32 @@ sub lskit_processargs {
     }
 
     # Option -h for Help
-    if ( defined($::opt_h) ) {
+    if (defined($::opt_h)) {
         return 2;
     }
 
     # Option -v for version
-    if ( defined($::opt_v) ) {
+    if (defined($::opt_v)) {
         create_version_response('lskit');
         return 1;    # no usage - just exit
     }
 
     # Option -V for verbose output
-    if ( defined($::opt_V) ) {
+    if (defined($::opt_V)) {
         $::VERBOSE = 1;
     }
 
     # Option -K for kit attributes
-    if ( defined($::opt_K) ) {
+    if (defined($::opt_K)) {
         $::kitattrs = split_comma_delim_str($::opt_K);
         ensure_kitname_attr_in_list($::kitattrs);
         if (check_attr_names_exist('kit', $::kitattrs) != 0) {
             return 3;
-        } 
+        }
     }
 
     # Option -R for kit repo attributes
-    if ( defined($::opt_R) ) {
+    if (defined($::opt_R)) {
         $::kitrepoattrs = split_comma_delim_str($::opt_R);
         ensure_kitname_attr_in_list($::kitrepoattrs);
         if (check_attr_names_exist('kitrepo', $::kitrepoattrs) != 0) {
@@ -3803,7 +3840,7 @@ sub lskit_processargs {
     }
 
     # Option -C for kit component attributes
-    if ( defined($::opt_C)) {
+    if (defined($::opt_C)) {
         $::kitcompattrs = split_comma_delim_str($::opt_C);
         ensure_kitname_attr_in_list($::kitcompattrs);
         if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
@@ -3813,7 +3850,7 @@ sub lskit_processargs {
 
     # Kit names
     my $kitnames_str = shift(@ARGV);
-    if ( defined($kitnames_str) ) {
+    if (defined($kitnames_str)) {
         my @tmp = split(/,/, $kitnames_str);
         $::kitnames = \@tmp;
         if (check_attr_values_exist('kit', 'kitname', 'kit names', $::kitnames) != 0) {
@@ -3823,10 +3860,10 @@ sub lskit_processargs {
 
     # Other attributes are not allowed
     my $more_input = shift(@ARGV);
-    if ( defined($more_input) ) {
+    if (defined($more_input)) {
         create_error_response("Invalid input: $more_input \n");
         return 3;
-    } 
+    }
 
     return 0;
 }
@@ -3847,21 +3884,21 @@ sub lskit_processargs {
 #-----------------------------------------------------------------------------
 sub lskitcomp_processargs {
 
-    if ( defined ($::args) && @{$::args} ){
+    if (defined($::args) && @{$::args}) {
         @ARGV = @{$::args};
     }
 
     # parse the options
     # options can be bundled up like -vV, flag unsupported options
-    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    Getopt::Long::Configure("bundling", "no_ignore_case", "no_pass_through");
     my $getopt_success = Getopt::Long::GetOptions(
-                              'help|h|?'  => \$::opt_h,
-                              'compattr|C=s' => \$::opt_C,
-                              'osdistro|O=s' => \$::opt_O,
-                              'serverrole|S=s' => \$::opt_S,
-                              'verbose|V' => \$::opt_V,
-                              'version|v' => \$::opt_v,
-                              'xml|XML|x' => \$::opt_x,
+        'help|h|?'       => \$::opt_h,
+        'compattr|C=s'   => \$::opt_C,
+        'osdistro|O=s'   => \$::opt_O,
+        'serverrole|S=s' => \$::opt_S,
+        'verbose|V'      => \$::opt_V,
+        'version|v'      => \$::opt_v,
+        'xml|XML|x'      => \$::opt_x,
     );
 
     if (!$getopt_success) {
@@ -3869,25 +3906,25 @@ sub lskitcomp_processargs {
     }
 
     # Option -h for Help
-    if ( defined($::opt_h) ) {
+    if (defined($::opt_h)) {
         return 2;
     }
 
     # Option -v for version
-    if ( defined($::opt_v) ) {
+    if (defined($::opt_v)) {
         create_version_response('lskitcomp');
         return 1;    # no usage - just exit
     }
 
     # Option -V for verbose output
-    if ( defined($::opt_V) ) {
+    if (defined($::opt_V)) {
         $::VERBOSE = 1;
     }
 
     # Option -C for kit component attributes
-    if ( defined($::opt_C) ) {
+    if (defined($::opt_C)) {
         $::kitcompattrs = split_comma_delim_str($::opt_C);
-        push (@{$::kitcompattrs},"kitcompname");
+        push(@{$::kitcompattrs}, "kitcompname");
         ensure_kitname_attr_in_list($::kitcompattrs);
         if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
             return 3;
@@ -3896,7 +3933,7 @@ sub lskitcomp_processargs {
 
     # Option -O for osdistro name
     $::osdistroname = $::opt_O;
-    if ( defined($::osdistroname) ) {
+    if (defined($::osdistroname)) {
         if (check_attr_values_exist('osdistro', 'osdistroname', 'os distro', [$::osdistroname]) != 0) {
             return 3;
         }
@@ -3907,7 +3944,7 @@ sub lskitcomp_processargs {
 
     # Kit component names
     my $kitcompnames_str = shift(@ARGV);
-    if ( defined($kitcompnames_str) ) {
+    if (defined($kitcompnames_str)) {
         my @tmp = split(/,/, $kitcompnames_str);
         $::kitcompnames = \@tmp;
         if (check_attr_values_exist('kitcomponent', 'kitcompname', 'kit component names', $::kitcompnames) != 0) {
@@ -3917,10 +3954,10 @@ sub lskitcomp_processargs {
 
     # Other attributes are not allowed
     my $more_input = shift(@ARGV);
-    if ( defined($more_input) ) {
+    if (defined($more_input)) {
         create_error_response("Invalid input: $more_input \n");
         return 3;
-    } 
+    }
 
     return 0;
 }
@@ -3941,20 +3978,20 @@ sub lskitcomp_processargs {
 #-----------------------------------------------------------------------------
 sub lskitdeployparam_processargs {
 
-    if ( defined ($::args) && @{$::args} ){
+    if (defined($::args) && @{$::args}) {
         @ARGV = @{$::args};
     }
 
     # parse the options
     # options can be bundled up like -vV, flag unsupported options
-    Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
+    Getopt::Long::Configure("bundling", "no_ignore_case", "no_pass_through");
     my $getopt_success = Getopt::Long::GetOptions(
-                              'help|h|?'  => \$::opt_h,
-                              'kitname|k=s' => \$::opt_k,
-                              'compname|c=s' => \$::opt_c,
-                              'verbose|V' => \$::opt_V,
-                              'version|v' => \$::opt_v,
-                              'xml|XML|x' => \$::opt_x,
+        'help|h|?'     => \$::opt_h,
+        'kitname|k=s'  => \$::opt_k,
+        'compname|c=s' => \$::opt_c,
+        'verbose|V'    => \$::opt_V,
+        'version|v'    => \$::opt_v,
+        'xml|XML|x'    => \$::opt_x,
     );
 
     if (!$getopt_success) {
@@ -3962,18 +3999,18 @@ sub lskitdeployparam_processargs {
     }
 
     # Option -h for Help
-    if ( defined($::opt_h) ) {
+    if (defined($::opt_h)) {
         return 2;
     }
 
     # Option -v for version
-    if ( defined($::opt_v) ) {
+    if (defined($::opt_v)) {
         create_version_response('lskitdeployparam');
         return 1;    # no usage - just exit
     }
 
     # Option -V for verbose output
-    if ( defined($::opt_V) ) {
+    if (defined($::opt_V)) {
         $::VERBOSE = 1;
     }
 
@@ -3990,7 +4027,7 @@ sub lskitdeployparam_processargs {
     }
 
     # Option -k for kit names
-    if ( defined($::opt_k) ) {
+    if (defined($::opt_k)) {
         $::kitnames = split_comma_delim_str($::opt_k);
         if (check_attr_values_exist('kit', 'kitname', 'kit names', $::kitnames) != 0) {
             return 3;
@@ -3998,7 +4035,7 @@ sub lskitdeployparam_processargs {
     }
 
     # Option -c for kitocmponent names
-    if ( defined($::opt_c) ) {
+    if (defined($::opt_c)) {
         $::kitcompnames = split_comma_delim_str($::opt_c);
         if (check_attr_values_exist('kitcomponent', 'kitcompname', 'kit component names', $::kitcompnames) != 0) {
             return 3;
@@ -4007,10 +4044,10 @@ sub lskitdeployparam_processargs {
 
     # Other attributes are not allowed
     my $more_input = shift(@ARGV);
-    if ( defined($more_input) ) {
+    if (defined($more_input)) {
         create_error_response("Invalid input: $more_input \n");
         return 3;
-    } 
+    }
 
     return 0;
 }
@@ -4051,7 +4088,7 @@ sub ensure_kitname_attr_in_list {
     my $attrs = shift;
 
     if (defined($attrs)) {
-        if (! grep(/^kitname$/, @$attrs)) {
+        if (!grep(/^kitname$/, @$attrs)) {
             push(@$attrs, "kitname");
         }
     }
@@ -4074,22 +4111,22 @@ sub ensure_kitname_attr_in_list {
 sub check_attr_names_exist {
 
     my $tablename = shift;
-    my $attrs = shift;
-    my @badattrs = ();
+    my $attrs     = shift;
+    my @badattrs  = ();
 
     if (defined($attrs)) {
         my $schema = xCAT::Table->getTableSchema($tablename);
-        my @cols = @{$schema->{cols}};
+        my @cols   = @{ $schema->{cols} };
         foreach my $attr (@{$attrs}) {
-            if (! grep {$_ eq $attr} @cols ) {
+            if (!grep { $_ eq $attr } @cols) {
                 push(@badattrs, $attr);
             }
         }
     }
 
     if (scalar @badattrs > 0) {
-        my $error = sprintf("The following %s attributes are not valid: %s.", 
-            $tablename, join(",",@badattrs));
+        my $error = sprintf("The following %s attributes are not valid: %s.",
+            $tablename, join(",", @badattrs));
         create_error_response($error);
         return 1;
     }
@@ -4114,18 +4151,18 @@ sub check_attr_names_exist {
 #-----------------------------------------------------------------------------
 sub check_attr_values_exist {
 
-    my $tablename = shift;
-    my $tableattr = shift;
-    my $tableattr_desc = shift;
+    my $tablename       = shift;
+    my $tableattr       = shift;
+    my $tableattr_desc  = shift;
     my $values_to_check = shift;
-    my @badvalues = ();
+    my @badvalues       = ();
 
-    my $filter_stmt = db_build_filter_stmt({$tableattr => $values_to_check});
+    my $filter_stmt = db_build_filter_stmt({ $tableattr => $values_to_check });
     my $rows = db_get_table_rows($tablename, [$tableattr], $filter_stmt);
 
-    my @values_in_DB = map {$_->{$tableattr}} @$rows;
+    my @values_in_DB = map { $_->{$tableattr} } @$rows;
     foreach my $value_to_check (@{$values_to_check}) {
-        if (! grep {$_ eq $value_to_check} @values_in_DB ) {
+        if (!grep { $_ eq $value_to_check } @values_in_DB) {
             push(@badvalues, $value_to_check);
         }
     }
@@ -4133,9 +4170,9 @@ sub check_attr_values_exist {
     if (scalar @badvalues > 0) {
         my $error;
         if ($tableattr_desc =~ /s$/) {
-            $error = sprintf("The following %s are not valid: %s.", $tableattr_desc, join(",",@badvalues));
+            $error = sprintf("The following %s are not valid: %s.", $tableattr_desc, join(",", @badvalues));
         } else {
-            $error = sprintf("The following %s is not valid: %s.", $tableattr_desc, join(",",@badvalues));
+            $error = sprintf("The following %s is not valid: %s.", $tableattr_desc, join(",", @badvalues));
         }
         create_error_response($error);
         return 1;
@@ -4160,8 +4197,8 @@ sub check_attr_values_exist {
 #-----------------------------------------------------------------------------
 sub lskit {
 
-    my $request = shift;
-    my $callback = shift;
+    my $request         = shift;
+    my $callback        = shift;
     my $request_command = shift;
 
     my $rc = 0;
@@ -4170,34 +4207,34 @@ sub lskit {
     # 0=success, 1=version, 2=help, 3=error
 
     $rc = lskit_processargs(@_);
-    if ( $rc != 0 ) {
-       if ( $rc != 1) {
-           lskit_usage(@_);
-       } 
-       return ( $rc - 1 );
+    if ($rc != 0) {
+        if ($rc != 1) {
+            lskit_usage(@_);
+        }
+        return ($rc - 1);
     }
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The lskit command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The lskit command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
-    if ( defined($::opt_F) ) {
-        if ( defined($::opt_x) || defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
+    if (defined($::opt_F)) {
+        if (defined($::opt_x) || defined($::opt_K) || defined($::opt_R) || defined($::opt_C)) {
             my $rsp = {};
-            push @{ $rsp->{data}}, "\nThe \'-F\' option cannot be used with the x, R, K, or C options.\n";
+            push @{ $rsp->{data} }, "\nThe \'-F\' option cannot be used with the x, R, K, or C options.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             lskit_usage(1);
             return 1;
         }
-	my $tarpathname = $::opt_F;
+        my $tarpathname = $::opt_F;
 
         # check if full path
-        my $dir = $request->{cwd}; #getcwd;
+        my $dir = $request->{cwd};    #getcwd;
         my $cwd = $dir->[0];
-        
+
         if ($tarpathname !~ /^\//)
         {
             my $fullpath = xCAT::Utils->full_path($tarpathname, $cwd);
@@ -4213,9 +4250,10 @@ sub lskit {
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
+
         #  create a unique  /tmp dir name name
-        my $thisdate = `/bin/date +%s`;
-        my $tmp_dir_name = qq~/tmp/tmp_kit_$thisdate~;     
+        my $thisdate     = `/bin/date +%s`;
+        my $tmp_dir_name = qq~/tmp/tmp_kit_$thisdate~;
         $tmp_dir_name =~ s/\s*//g;    #remove blanks
 
         # extract the kit.conf file
@@ -4230,7 +4268,7 @@ sub lskit {
             push @{ $rsp->{data} }, "No kit.conf file was found.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
-        } 
+        }
 
         # get the framework from the file
         my $fcmd = "/bin/cat $tmp_dir_name/$kitconffile | grep 'kitframework '";
@@ -4257,7 +4295,7 @@ sub lskit {
 
         my $rcmd = qq~/bin/rm -Rf $tmp_dir_name 2>/dev/null~;
         my $out = xCAT::Utils->runcmd("$rcmd", -1);
-	if ($::RUNCMD_RC != 0) {
+        if ($::RUNCMD_RC != 0) {
             my $rsp = {};
             push @{ $rsp->{data} }, "Could not remove $tmp_dir_name.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -4274,7 +4312,7 @@ sub lskit {
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
-        return 0; 
+        return 0;
     }
 
     # Prepare the hash tables to pass to the output routines
@@ -4292,55 +4330,55 @@ sub lskit {
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
     }
-    if ( defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
+    if (defined($::opt_K) || defined($::opt_R) || defined($::opt_C)) {
 
-         if ( ! defined($::opt_x)) {
-               if ( defined($::opt_K) ){
-               lskit_K($kit_hash);
-               }
+        if (!defined($::opt_x)) {
+            if (defined($::opt_K)) {
+                lskit_K($kit_hash);
+            }
 
-               # Option -R for kit repo attributes
-               if ( defined($::opt_R) ) {
-                    my @kitrepos = keys(%$kitrepo_hash);
-                    if (scalar @kitrepos == 0) {
+            # Option -R for kit repo attributes
+            if (defined($::opt_R)) {
+                my @kitrepos = keys(%$kitrepo_hash);
+                if (scalar @kitrepos == 0) {
                     my $rsp = {};
                     push @{ $rsp->{data} }, "No kit repos were found.";
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
                     return 0;
-                    }
-                    lskit_R($kit_hash,$kitrepo_hash);
-               }
+                }
+                lskit_R($kit_hash, $kitrepo_hash);
+            }
 
-               if ( defined($::opt_C) ) {
-                    my @kitcomplist = keys(%$kitcomp_hash);
-                    if (scalar @kitcomplist == 0) {
-                         my $rsp = {};
-                         push @{ $rsp->{data} }, "No kit components were found.";
-                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                         return 0;
-                     }
-                     lskit_C($kit_hash,$kitcomp_hash);
-              }
-       }else
-       {
-           if (defined($::opt_K)) {
-              create_lskit_K_xml_response($kit_hash);
-           }
-           if (defined($::opt_R)) {
-              create_lskit_R_xml_response($kit_hash,$kitrepo_hash);
-           }
-           if (defined($::opt_C)) {
-              create_lskit_C_xml_response($kit_hash,$kitcomp_hash);
-           }
-       }
+            if (defined($::opt_C)) {
+                my @kitcomplist = keys(%$kitcomp_hash);
+                if (scalar @kitcomplist == 0) {
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "No kit components were found.";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    return 0;
+                }
+                lskit_C($kit_hash, $kitcomp_hash);
+            }
+        } else
+        {
+            if (defined($::opt_K)) {
+                create_lskit_K_xml_response($kit_hash);
+            }
+            if (defined($::opt_R)) {
+                create_lskit_R_xml_response($kit_hash, $kitrepo_hash);
+            }
+            if (defined($::opt_C)) {
+                create_lskit_C_xml_response($kit_hash, $kitcomp_hash);
+            }
+        }
     }
     else
     {
-          if (defined($::opt_x)) {
-               create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
-          } else {
-               create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
-          }
+        if (defined($::opt_x)) {
+            create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+        } else {
+            create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+        }
     }
     return 0;
 }
@@ -4363,20 +4401,20 @@ sub lskit {
 
 sub lskit_R {
 
-     my $kit_hash = shift;
-     my $kitrepo_hash = shift;
-     my $rsp = {};
-     my $count = 0;
+    my $kit_hash     = shift;
+    my $kitrepo_hash = shift;
+    my $rsp          = {};
+    my $count        = 0;
 
 
     for my $kitname (sort(keys(%$kit_hash))) {
 
-       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+        my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
 
 
         # Kit repository info
         if (defined($kitrepo_hash->{$kitname})) {
-            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+            for my $kitrepo (@{ $kitrepo_hash->{$kitname} }) {
                 $output .= "kitrepo:\n";
                 for my $kitrepo_attr (sort(keys(%$kitrepo))) {
                     $output .= sprintf("    %s=%s\n", $kitrepo_attr, $kitrepo->{$kitrepo_attr});
@@ -4411,14 +4449,15 @@ sub lskit_R {
 
 sub lskit_K {
 
-     my $kit_hash = shift;
-     my $rsp = {};
-     my $count = 0;
+    my $kit_hash = shift;
+    my $rsp      = {};
+    my $count    = 0;
 
 
     for my $kitname (sort(keys(%$kit_hash))) {
 
-       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+        my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+
         # Kit info
         if (defined($kit_hash->{$kitname})) {
             my $kit = $kit_hash->{$kitname}->[0];
@@ -4455,20 +4494,20 @@ sub lskit_K {
 
 sub lskit_C {
 
-     my $kit_hash = shift;
-     my $kitcomp_hash = shift;
-     my $rsp = {};
-     my $count = 0;
+    my $kit_hash     = shift;
+    my $kitcomp_hash = shift;
+    my $rsp          = {};
+    my $count        = 0;
 
 
     for my $kitname (sort(keys(%$kit_hash))) {
 
-       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+        my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
 
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
                 $output .= "kitcomponent:\n";
                 for my $kitcomp_attr (sort(keys(%$kitcomp))) {
                     $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
@@ -4512,17 +4551,17 @@ sub lskitcomp {
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The lskitcomp command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The lskitcomp command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
     $rc = lskitcomp_processargs(@_);
-    if ( $rc != 0 ) {
-       if ( $rc != 1) {
-           lskitcomp_usage(@_);
-       } 
-       return ( $rc - 1 );
+    if ($rc != 0) {
+        if ($rc != 1) {
+            lskitcomp_usage(@_);
+        }
+        return ($rc - 1);
     }
 
     # Get the list of kitcomponents to display
@@ -4544,10 +4583,11 @@ sub lskitcomp {
         foreach my $kitcomp (@$kitcomps) {
             if (defined($kitcomp->{serverroles})) {
                 my @serverroles = split(/,/, $kitcomp->{serverroles});
-                if (grep {$_ eq $::serverrole } @serverroles) {
+                if (grep { $_ eq $::serverrole } @serverroles) {
                     push(@tmplist, $kitcomp);
                 }
             } else {
+
                 # If kit component doesn't have server roles, it means
                 # it supports any server role.
                 push(@tmplist, $kitcomp);
@@ -4555,7 +4595,7 @@ sub lskitcomp {
         }
         @$kitcomps = @tmplist;
     }
-    
+
 
     # Check if kit component list is empty
 
@@ -4570,40 +4610,40 @@ sub lskitcomp {
     # Prepare the hash tables to pass to the output routines
 
     ## Kit hash table
-    my @kitnames = map {$_->{kitname}} @$kitcomps;
+    my @kitnames = map { $_->{kitname} } @$kitcomps;
     my $kit_hash = get_kit_hash(\@kitnames, ['kitname']);
     ## Kit component hash table
     my $kitcomp_hash = create_hash_from_table_rows($kitcomps, 'kitname');
 
 
     ## Now display the output
-    if ( defined($::opt_C) ) {
-        if ( defined($::opt_x)) {
-              create_lskitcomp_C_xml_response($kit_hash,$kitcomp_hash);
+    if (defined($::opt_C)) {
+        if (defined($::opt_x)) {
+            create_lskitcomp_C_xml_response($kit_hash, $kitcomp_hash);
         }
         else
         {
-             if ( defined($::opt_C) ) {
-                    my @kitcomplist = keys(%$kitcomp_hash);
-                    if (scalar @kitcomplist == 0) {
-                         my $rsp = {};
-                         push @{ $rsp->{data} }, "No kit components were found.";
-                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                         return 0;
-                     }
-                     lskitcomp_C($kit_hash,$kitcomp_hash);
-              }
+            if (defined($::opt_C)) {
+                my @kitcomplist = keys(%$kitcomp_hash);
+                if (scalar @kitcomplist == 0) {
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "No kit components were found.";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    return 0;
+                }
+                lskitcomp_C($kit_hash, $kitcomp_hash);
+            }
         }
     }
-    else 
+    else
     {
 
         if (defined($::opt_x)) {
-                create_lskit_xml_response($kit_hash, {}, $kitcomp_hash);
-        } 
-        else 
+            create_lskit_xml_response($kit_hash, {}, $kitcomp_hash);
+        }
+        else
         {
-                create_lskit_stanza_response($kit_hash, {}, $kitcomp_hash);
+            create_lskit_stanza_response($kit_hash, {}, $kitcomp_hash);
         }
     }
     return 0;
@@ -4626,10 +4666,10 @@ sub lskitcomp {
 
 sub lskitcomp_C {
 
-     my $kit_hash = shift;
-     my $kitcomp_hash = shift;
-     my $rsp = {};
-     my $count = 0;
+    my $kit_hash     = shift;
+    my $kitcomp_hash = shift;
+    my $rsp          = {};
+    my $count        = 0;
 
 
     for my $kitname (sort(keys(%$kit_hash))) {
@@ -4640,8 +4680,8 @@ sub lskitcomp_C {
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
                 $output .= "kitcomponent:\n";
                 for my $kitcomp_attr (sort(keys(%$kitcomp))) {
                     $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
@@ -4685,17 +4725,17 @@ sub lskitdeployparam {
 
     if ($^O ne 'linux') {
         my $rsp = {};
-        push @{ $rsp->{data}}, "The lskitdeployparam command is only supported on Linux.\n";
+        push @{ $rsp->{data} }, "The lskitdeployparam command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
     }
 
     $rc = lskitdeployparam_processargs(@_);
-    if ( $rc != 0 ) {
-       if ( $rc != 1) {
-           lskitdeployparam_usage(@_);
-       } 
-       return ( $rc - 1 );
+    if ($rc != 0) {
+        if ($rc != 1) {
+            lskitdeployparam_usage(@_);
+        }
+        return ($rc - 1);
     }
 
     # Get the kit deployment parameter files to read
@@ -4705,15 +4745,16 @@ sub lskitdeployparam {
     if (defined($::kitnames)) {
         $kitnames = $::kitnames;
     } elsif (defined $::kitcompnames) {
-        my $kitcomps = get_kitcomp_list($::kitcompnames, undef, ['kitname','kitcompname']);
-        my @tmp = map {$_->{kitname}} @$kitcomps;
+        my $kitcomps = get_kitcomp_list($::kitcompnames, undef, [ 'kitname', 'kitcompname' ]);
+        my @tmp = map { $_->{kitname} } @$kitcomps;
         $kitnames = \@tmp;
     } else {
+
         # unreachable code
     }
 
     ## Then get the kit deployment parameter file for each kit
-    my $kits = get_kit_list($kitnames, ['kitname','kitdir','kitdeployparams']);
+    my $kits = get_kit_list($kitnames, [ 'kitname', 'kitdir', 'kitdeployparams' ]);
 
     # Read the kit deployment parameter files. The format is:
     #        #ENV:KIT_KIT1_PARAM1=value11#
@@ -4721,7 +4762,7 @@ sub lskitdeployparam {
     #        #ENV:KIT_KIT2_PARAM1=value21#
     my $deployparam_hash = {};
     foreach my $kit (@$kits) {
-        my $deployparam_file = $kit->{kitdir}."/other_files/".$kit->{kitdeployparams};
+        my $deployparam_file = $kit->{kitdir} . "/other_files/" . $kit->{kitdeployparams};
 
         my $tmpkitdeployparames = $kit->{kitdeployparams};
 
@@ -4730,27 +4771,27 @@ sub lskitdeployparam {
             # Check if there is kitdeployparam file or not
             if (defined($tmpkitdeployparames))
             {
-                  open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
-            
-                  while (<$fh>) {
-                     chomp $_;
-                     if ($_ =~ /^#ENV:.+=.+#$/) {
-                          my $tmp = $_;
-                          $tmp =~ s/^#ENV://;
-                          $tmp =~ s/#$//;
-                          (my $name, my $value) = split(/=/, $tmp);
-                          $deployparam_hash->{$name} = $value;
-                     }
-                  }
-                  close($fh);
-           }
-           else {
-                   my $rsp = {};
-                   push @{ $rsp->{data}}, "There is no kitdeployparams file in $deployparam_file.\n";
-                   xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
+                open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
 
-                   return 1;
-           }
+                while (<$fh>) {
+                    chomp $_;
+                    if ($_ =~ /^#ENV:.+=.+#$/) {
+                        my $tmp = $_;
+                        $tmp =~ s/^#ENV://;
+                        $tmp =~ s/#$//;
+                        (my $name, my $value) = split(/=/, $tmp);
+                        $deployparam_hash->{$name} = $value;
+                    }
+                }
+                close($fh);
+            }
+            else {
+                my $rsp = {};
+                push @{ $rsp->{data} }, "There is no kitdeployparams file in $deployparam_file.\n";
+                xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
+
+                return 1;
+            }
 
         }
     }
@@ -4760,14 +4801,16 @@ sub lskitdeployparam {
     my $rsp = {};
 
     if (defined($::opt_x)) {
+
         # Output XML format
         foreach my $deployparam_key (sort(keys(%$deployparam_hash))) {
-            my $output_hash = {"kitdeployparam" => {"name" => "", "value" => ""}};
+            my $output_hash = { "kitdeployparam" => { "name" => "", "value" => "" } };
             $output_hash->{kitdeployparam}->{name} = $deployparam_key;
             $output_hash->{kitdeployparam}->{value} = $deployparam_hash->{$deployparam_key};
             push @{ $rsp->{data} }, $output_hash;
         }
     } else {
+
         # Output Stanza format
         foreach my $deployparam_key (sort(keys(%$deployparam_hash))) {
             my $output = "kitdeployparam:\n";
@@ -4784,6 +4827,7 @@ sub lskitdeployparam {
 
 
 1;
+
 #----------------------------------------------------------------------------
 
 =head3  get_kit_hash
@@ -4804,8 +4848,8 @@ sub lskitdeployparam {
 sub get_kit_hash {
 
     my $tablename = 'kit';
-    my $kitnames = shift;
-    my $kitattrs = shift;
+    my $kitnames  = shift;
+    my $kitattrs  = shift;
 
     my $filter_hash = {};
     if (defined($kitnames)) {
@@ -4842,8 +4886,8 @@ sub get_kit_hash {
 
 sub get_kitrepo_hash {
 
-    my $tablename = 'kitrepo';
-    my $kitnames = shift;
+    my $tablename    = 'kitrepo';
+    my $kitnames     = shift;
     my $kitrepoattrs = shift;
 
     my $filter_hash = {};
@@ -4881,8 +4925,8 @@ sub get_kitrepo_hash {
 
 sub get_kitcomp_hash {
 
-    my $tablename = 'kitcomponent';
-    my $kitnames = shift;
+    my $tablename    = 'kitcomponent';
+    my $kitnames     = shift;
     my $kitcompattrs = shift;
 
     my $filter_hash = {};
@@ -4997,17 +5041,18 @@ sub get_kitcomp_list {
 
 sub get_compat_kitreponames {
 
-    my $osdistroname = shift;
+    my $osdistroname    = shift;
     my @compat_kitrepos = ();
 
     ## Get the osdistro info
-    my $filter_stmt = db_build_filter_stmt({'osdistroname' => [$osdistroname]});
-    my $osdistros = db_get_table_rows('osdistro',  undef, $filter_stmt);
+    my $filter_stmt = db_build_filter_stmt({ 'osdistroname' => [$osdistroname] });
+    my $osdistros = db_get_table_rows('osdistro', undef, $filter_stmt);
     my $osdistro = $osdistros->[0];
+
     #print Dumper($osdistro);
 
     ## Get the kitrepos, which are compatible with the osdistro info
-    my $kitrepos = db_get_table_rows('kitrepo',  undef, undef);
+    my $kitrepos = db_get_table_rows('kitrepo', undef, undef);
 
     foreach my $kitrepo (@$kitrepos) {
         ## To check if kitrepo is compatible with an osdistro, the following 4 things
@@ -5023,8 +5068,8 @@ sub get_compat_kitreponames {
             if (defined($kitrepo->{compat_osbasenames})) {
                 @kitrepo_compat_basenames = split(/,/, $kitrepo->{compat_osbasenames});
             }
-            if ($kitrepo->{osbasename} ne $osdistro->{basename} && 
-                    ! grep {$_ eq $osdistro->{basename}} @kitrepo_compat_basenames ) {
+            if ($kitrepo->{osbasename} ne $osdistro->{basename} &&
+                !grep { $_ eq $osdistro->{basename} } @kitrepo_compat_basenames) {
                 next;
             }
         }
@@ -5040,9 +5085,10 @@ sub get_compat_kitreponames {
 
         push(@compat_kitrepos, $kitrepo);
     }
+
     #print Dumper(@compat_kitrepos);
 
-    my @compat_kitreponames = map {$_->{kitreponame}} @compat_kitrepos;
+    my @compat_kitreponames = map { $_->{kitreponame} } @compat_kitrepos;
     return \@compat_kitreponames;
 
 }
@@ -5074,7 +5120,7 @@ sub db_build_filter_stmt {
 
     for my $filter_key (keys(%$filter_hash)) {
         my $filter_values = $filter_hash->{$filter_key};
-        my $values_str = join ",", map {'\''.$_.'\''} @$filter_values;
+        my $values_str = join ",", map { '\'' . $_ . '\'' } @$filter_values;
         if ($filter_stmt eq "") {
             $filter_stmt = sprintf("%s in (%s)", $filter_key, $values_str);
         } else {
@@ -5104,20 +5150,21 @@ sub db_build_filter_stmt {
 
 sub db_get_table_rows {
 
-    my $tablename = shift;
-    my $attrs = shift;
+    my $tablename   = shift;
+    my $attrs       = shift;
     my $filter_stmt = shift;
 
     if (!defined($attrs)) {
         @{$attrs} = ();
         my $schema = xCAT::Table->getTableSchema($tablename);
-        foreach my $c (@{$schema->{cols}}) {
+        foreach my $c (@{ $schema->{cols} }) {
             push @{$attrs}, $c;
         }
     }
 
-    my $table = xCAT::Table->new($tablename);
+    my $table      = xCAT::Table->new($tablename);
     my @table_rows = ();
+
     # todo fix for DB2 support
     if (defined($filter_stmt)) {
         if (length($filter_stmt) > 0) {
@@ -5156,10 +5203,10 @@ sub create_hash_from_table_rows {
     my $result = {};
     foreach my $row (@$table_rows) {
         my $hash_key = $row->{$table_attr};
-        if (! defined($result->{$hash_key})) {
+        if (!defined($result->{$hash_key})) {
             $result->{$hash_key} = [];
         }
-        push(@{$result->{$hash_key}}, $row);
+        push(@{ $result->{$hash_key} }, $row);
     }
 
     return $result;
@@ -5185,32 +5232,32 @@ sub create_hash_from_table_rows {
 
 sub create_lskit_xml_response {
 
-    my $kit_hash = shift;
+    my $kit_hash     = shift;
     my $kitrepo_hash = shift;
     my $kitcomp_hash = shift;
 
     my $rsp = {};
 
     for my $kitname (sort(keys(%$kit_hash))) {
-        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+        my $output_hash = { "kitinfo" => { "kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
 
         # Kit info
         if (defined($kit_hash->{$kitname})) {
             my $kit = $kit_hash->{$kitname}->[0];
-            push(@{$output_hash->{kitinfo}->{kit}}, $kit);
+            push(@{ $output_hash->{kitinfo}->{kit} }, $kit);
         }
 
         # Kit repository info
         if (defined($kitrepo_hash->{$kitname})) {
-            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
-                push(@{$output_hash->{kitinfo}->{kitrepo}}, $kitrepo);
+            for my $kitrepo (@{ $kitrepo_hash->{$kitname} }) {
+                push(@{ $output_hash->{kitinfo}->{kitrepo} }, $kitrepo);
             }
-        } 
+        }
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
-                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
+                push(@{ $output_hash->{kitinfo}->{kitcomp} }, $kitcomp);
             }
         }
 
@@ -5242,12 +5289,12 @@ sub create_lskit_K_xml_response {
     my $rsp = {};
 
     for my $kitname (sort(keys(%$kit_hash))) {
-        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+        my $output_hash = { "kitinfo" => { "kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
 
         # Kit info
         if (defined($kit_hash->{$kitname})) {
             my $kit = $kit_hash->{$kitname}->[0];
-            push(@{$output_hash->{kitinfo}->{kit}}, $kit);
+            push(@{ $output_hash->{kitinfo}->{kit} }, $kit);
         }
 
         push @{ $rsp->{data} }, $output_hash;
@@ -5273,18 +5320,18 @@ sub create_lskit_K_xml_response {
 
 sub create_lskit_R_xml_response {
 
-    my $kit_hash = shift;
+    my $kit_hash     = shift;
     my $kitrepo_hash = shift;
 
     my $rsp = {};
 
     for my $kitname (sort(keys(%$kit_hash))) {
-        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+        my $output_hash = { "kitinfo" => { "kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
 
         # Kit repository info
         if (defined($kitrepo_hash->{$kitname})) {
-            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
-                push(@{$output_hash->{kitinfo}->{kitrepo}}, $kitrepo);
+            for my $kitrepo (@{ $kitrepo_hash->{$kitname} }) {
+                push(@{ $output_hash->{kitinfo}->{kitrepo} }, $kitrepo);
             }
         }
 
@@ -5313,19 +5360,19 @@ sub create_lskit_R_xml_response {
 
 sub create_lskit_C_xml_response {
 
-    my $kit_hash = shift;
+    my $kit_hash     = shift;
     my $kitcomp_hash = shift;
 
     my $rsp = {};
 
     for my $kitname (sort(keys(%$kit_hash))) {
-        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+        my $output_hash = { "kitinfo" => { "kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
 
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
-                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
+                push(@{ $output_hash->{kitinfo}->{kitcomp} }, $kitcomp);
             }
         }
 
@@ -5353,19 +5400,19 @@ sub create_lskit_C_xml_response {
 
 sub create_lskitcomp_C_xml_response {
 
-    my $kit_hash = shift;
+    my $kit_hash     = shift;
     my $kitcomp_hash = shift;
 
     my $rsp = {};
 
     for my $kitname (sort(keys(%$kit_hash))) {
-        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+        my $output_hash = { "kitinfo" => { "kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
 
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
-                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
+                push(@{ $output_hash->{kitinfo}->{kitcomp} }, $kitcomp);
             }
         }
 
@@ -5392,11 +5439,11 @@ sub create_lskitcomp_C_xml_response {
 #-----------------------------------------------------------------------------
 sub create_lskit_stanza_response {
 
-    my $kit_hash = shift;
+    my $kit_hash     = shift;
     my $kitrepo_hash = shift;
     my $kitcomp_hash = shift;
 
-    my $rsp = {};
+    my $rsp   = {};
     my $count = 0;
 
     for my $kitname (sort(keys(%$kit_hash))) {
@@ -5414,18 +5461,18 @@ sub create_lskit_stanza_response {
 
         # Kit repository info
         if (defined($kitrepo_hash->{$kitname})) {
-            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+            for my $kitrepo (@{ $kitrepo_hash->{$kitname} }) {
                 $output .= "kitrepo:\n";
                 for my $kitrepo_attr (sort(keys(%$kitrepo))) {
                     $output .= sprintf("    %s=%s\n", $kitrepo_attr, $kitrepo->{$kitrepo_attr});
                 }
                 $output .= "\n";
             }
-        } 
+        }
 
         # Kit component info
         if (defined($kitcomp_hash->{$kitname})) {
-            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+            for my $kitcomp (@{ $kitcomp_hash->{$kitname} }) {
                 $output .= "kitcomponent:\n";
                 for my $kitcomp_attr (sort(keys(%$kitcomp))) {
                     $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
@@ -5479,32 +5526,33 @@ sub check_framework
     my $kitcompat;
     my $section = '';
     foreach my $l (@kitconflines) {
+
         # skip blank and comment lines
-        if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ ) {
+        if ($l =~ /^\s*$/ || $l =~ /^\s*#/) {
             next;
         }
 
-        if ( $l =~ /^\s*(\w+)\s*:/ ) {
-           $section = $1;
-           next;
+        if ($l =~ /^\s*(\w+)\s*:/) {
+            $section = $1;
+            next;
         }
 
-        if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+        if ($l =~ /^\s*(\w+)\s*=\s*(.*)\s*/) {
             my $attr = $1;
             my $val  = $2;
             $attr =~ s/^\s*//;       # Remove any leading whitespace
             $attr =~ s/\s*$//;       # Remove any trailing whitespace
             $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
-            $val  =~ s/^\s*//;
-            $val  =~ s/\s*$//;
+            $val =~ s/^\s*//;
+            $val =~ s/\s*$//;
 
             if ($section eq 'kitbuildinfo') {
-                if ( $attr eq 'compatible_kitframeworks' )   {
+                if ($attr eq 'compatible_kitframeworks') {
                     $kitcompat = $val;
                 }
             }
             if ($section eq 'kit') {
-                if ( $attr eq 'basename' ) { $kitbasename = $val; }
+                if ($attr eq 'basename') { $kitbasename = $val; }
             }
         }
     }
@@ -5512,12 +5560,12 @@ sub check_framework
     if (!$kitcompat) {
         my %rsp;
         push @{ $rsp{data} }, "Could not determine the kit compatible framework values for \'$kitbasename\' from the kit.conf file. Continuing for now.";
-        xCAT::MsgUtils->message( "I", \%rsp, $::CALLBACK );
+        xCAT::MsgUtils->message("I", \%rsp, $::CALLBACK);
         return 0;
     }
 
-    my @kit_compat_list = split (',', $kitcompat);
-    my @my_compat_list = split (',', $::COMPATIBLE_KITFRAMEWORKS);
+    my @kit_compat_list = split(',', $kitcompat);
+    my @my_compat_list  = split(',', $::COMPATIBLE_KITFRAMEWORKS);
 
     foreach my $myfw (@my_compat_list) {
         chomp $myfw;
@@ -5532,6 +5580,6 @@ sub check_framework
 
     my %rsp;
     push @{ $rsp{data} }, "The kit named \'$kitbasename\' is not compatible with this version of the buildkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the buildkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'";
-    xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+    xCAT::MsgUtils->message("E", \%rsp, $::CALLBACK);
     return 1;
 }

@@ -3,14 +3,15 @@
 
 package xCAT::DSHRemoteShell;
 use strict;
+
 sub remote_shell_command {
 
-	return undef;
+    return undef;
 }
 
 sub remote_copy_command {
 
-	return undef;
+    return undef;
 }
 
 1;

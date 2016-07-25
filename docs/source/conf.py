@@ -76,7 +76,42 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+#
+# Adding a pattern or a file on this list will still make file available in the documentation,
+# but will eliminate the warning message "document isn't included in any toctree"
+# However, some files that generate such warning contain labels being referred to from other files,
+# if put on the exclude_patters list, such labels are not visible. The commented out files in the 
+# exclude_patters list below, are such files. They generate a warning, but contain reference labels.
+exclude_patterns = ['guides/install-guides/common_sections.rst',
+                    '**manage_clusters/common/deployment/*.rst',
+                    '**manage_clusters/common/discover/**',
+                    '**manage_clusters/common/management/**',
+                    '**manage_clusters/common/parallel_cmd.rst',
+                    '**manage_clusters/common/updatenode.rst',
+                    '**manage_clusters/common/kvm/manage_vm.rst',
+                    '**manage_clusters/common/management.rst',
+                    '**ppc64le/discovery/config_environment.rst',
+                    '**ppc64le/discovery/pbmc_discovery.rst',
+                    '**ppc64le/discovery/pbmc_discovery_with_bmcdiscover.rst',
+                    '**ppc64le/discovery/pbmc_discovery_with_lsslp.rst',
+                    '**ppc64le/discovery/schedule_environment.rst',
+                    '**ppc64le/discovery/standard_cn_definition.rst',
+                    '**ppc64le/diskless/customize_image/cfg_partition.rst',
+                    '**ppc64le/diskless/customize_image/raid_cfg.rst',
+                    #'**chain/create_image_for_runimage.rst'
+                    #'**hamn/setup_ha_mgmt_node_with_drbd_pacemaker_corosync.rst'
+                    #'**hamn/setup_ha_mgmt_node_with_raid1_and_disks_move.rst'
+                    #'**hamn/setup_ha_mgmt_node_with_shared_data.rst',
+                    #'**hamn/setup_xcat_high_available_management_node_in_softlayer.rst',
+                    '**hierarchy/databases/postgres_tips.rst',
+                    '**hierarchy/define_and_install_compute_node.rst',
+                    #'**hierarchy/define_service_node.rst',
+                    '**networks/getadapter.rst'
+                    #'**networks/vlan/index.rst',
+                    #'**networks/vlan/vlan.rst',
+                    #'**license/xcat_corporate_contributor_license_agreement.rst',
+                    #'**license/xcat_individual_contributor_license_agreement.rst'
+                   ]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -145,7 +180,7 @@ else:
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

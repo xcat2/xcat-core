@@ -55,7 +55,7 @@ The combinations of data synchronization mechanism and manual/automatic failover
 |Automatic Failover | 4                       | **5**           | **6**        |
 +-------------------+-------------------------+-----------------+--------------+
 
-Option 1, :ref:`setup_ha_mgmt_node_with_raid1_and disks_move` 
+Option 1, :ref:`setup_ha_mgmt_node_with_raid1_and_disks_move` 
 
 Option 2, :ref:`setup_ha_mgmt_node_with_shared_data` 
 

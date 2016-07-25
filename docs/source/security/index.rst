@@ -5,4 +5,3 @@ Security Notices
    :maxdepth: 2
 
    2016/index.rst
-   2015/index.rst

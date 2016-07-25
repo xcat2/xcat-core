@@ -1,6 +1,8 @@
 start:lslite_i 
 description:lslite -i
 os:Linux
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:chtab litefile.image="ALL" litefile.file="/xcatpost" litefile.options="tmpfs"
@@ -15,12 +17,16 @@ check:output=~/xcatpost
 check:output=~/etc/mtab
 check:output!~Error
 cmd:chtab -d file="/xcatpost" litefile
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
 end
 
 
 start:lslite_noderange
 description:lslite noderange
 os:Linux
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:chtab litefile.image="ALL" litefile.file="/xcatpost" litefile.options="tmpfs"
@@ -36,6 +42,8 @@ check:output!~Error
 cmd:chtab -d file="/xcatpost" litefile
 cmd:chtab -d node=$$CN statelite
 cmd:chtab -d priority=2 litetree
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
 end
 
 

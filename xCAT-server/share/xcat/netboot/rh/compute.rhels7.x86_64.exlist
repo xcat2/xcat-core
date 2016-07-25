@@ -28,7 +28,7 @@
 ./usr/share/man*
 ./usr/share/omf*
 ./usr/share/vim/site/doc*
-./usr/share/vim/vim72/doc*
+./usr/share/vim/vim74/doc*
 ./usr/share/zoneinfo*
 ./var/cache/man*
 ./var/lib/yum*

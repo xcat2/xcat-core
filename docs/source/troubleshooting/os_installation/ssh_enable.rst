@@ -1,9 +1,9 @@
 SSH Access: Accessing the installer via "ssh"
 ---------------------------------------------
 
-**This mode is only supported with debug level set to 2**
+**This mode is supported with debug level set to 2**
 
-The ssh access to the installer is enabled, the admin can login into the installer through:
+When ssh access to the installer is enabled, the admin can login into the installer through:
 
 #. For RHEL, the installation won't halt, just login into the installer with ``ssh root@<node>``.
 
@@ -28,7 +28,7 @@ The ssh access to the installer is enabled, the admin can login into the install
 
     SYSTEMCTL_OPTIONS=--ignore-dependencies yast.ssh
 
-#. For UBT, the installation will halt on the following similar message in the console: ::
+#. For UBT, the installation will halt on the message in the console similar to: ::
 
     ┌───────────┤ [!!] Continue installation remotely using SSH ├───────────┐
     │                                                                       │
@@ -49,7 +49,7 @@ The ssh access to the installer is enabled, the admin can login into the install
     │                                                                       │
     └───────────────────────────────────────────────────────────────────────┘
 
-   Just as the message show, the admin can run ``ssh installer@<node>`` with the password "cluster" to login into the installer, the following message shows on login: ::
+   Just as the message above suggests, the admin can run ``ssh installer@<node>`` with the password "cluster" to login into the installer, the following message shows on login: ::
 
     ┌────────────────────┤ [!!] Configuring d-i ├─────────────────────┐
     │                                                                 │

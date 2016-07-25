@@ -2,53 +2,48 @@ start:Full_installation_flat_docker
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,arch)__" != "ppc64" ]];then rmvm $$DOCKERHOST -f  && chdef $$DOCKERHOST mac= && mkvm $$DOCKERHOST ; fi
-check:rc==0
-cmd:makehosts $$DOCKERHOST
-check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+check:rc=0
 cmd:makedns -n
 check:rc==0
-cmd:sleep 60
+cmd:makeconservercf
+check:rc==0
 cmd:makedhcp -n
 check:rc==0
-cmd:makedhcp -a
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost -u profile=compute provmethod=install
 check:rc==0
-cmd:makeconservercf $$DOCKERHOST
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then  ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ; chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost  otherpkgdir="https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main" otherpkglist="/install/custom/ubuntu$ver/ubuntu"$ver"_docker.pkglist" osdistroname="__GETNODEATTR($$CN,os)__ ";fi
 check:rc==0
-cmd:cat /etc/conserver.cf | grep $$DOCKERHOST
-check:output=~$$DOCKERHOST
-cmd:  mkdef -t osimage -o __GETNODEATTR($$DOCKERHOST,os)__-__GETNODEATTR($$DOCKERHOST,arch)__-install-dockerhost -u profile=compute provmethod=install
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ; mkdir -p /install/custom/ubuntu$ver/ ;  chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost otherpkglist="/install/custom/ubuntu$ver/ubuntu"$ver"_docker.pkglist"  pkglist="/install/custom/ubuntu$ver/ubuntu$ver.pkglist";fi 
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,os)__" =~ "ubuntu" ]];then  ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ; chdef -t osimage -o __GETNODEATTR($$DOCKERHOST,os)__-__GETNODEATTR($$DOCKERHOST,arch)__-install-dockerhost  otherpkgdir="https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main" otherpkglist="/install/custom/ubuntu$ver/ubuntu"$ver"_docker.pkglist" osdistroname="__GETNODEATTR($$DOCKERHOST,os)__ ";fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ;for i in openssh-server ntp gawk nfs-common snmpd bridge-utils; do  cat /install/custom/ubuntu$ver/ubuntu$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /install/custom/ubuntu$ver/ubuntu$ver.pkglist; fi done;fi
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,os)__" =~ "ubuntu" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ; mkdir -p /install/custom/ubuntu$ver/ ;  chdef -t osimage -o __GETNODEATTR($$DOCKERHOST,os)__-__GETNODEATTR($$DOCKERHOST,arch)__-install-dockerhost otherpkglist="/install/custom/ubuntu$ver/ubuntu"$ver"_docker.pkglist"  pkglist="/install/custom/ubuntu$ver/ubuntu$ver.pkglist";fi 
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,os)__" =~ "ubuntu" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ;for i in openssh-server ntp gawk nfs-common snmpd bridge-utils; do  cat /install/custom/ubuntu$ver/ubuntu$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /install/custom/ubuntu$ver/ubuntu$ver.pkglist; fi done;fi
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,os)__" =~ "ubuntu14.04" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'`; for i in docker-engine;do cat /install/custom/ubuntu$ver/ubuntu"$ver"\_docker.pkglist |grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /install/custom/ubuntu$ver/ubuntu"$ver"\_docker.pkglist;fi done;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'`; for i in docker-engine;do cat /install/custom/ubuntu$ver/ubuntu"$ver"\_docker.pkglist |grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /install/custom/ubuntu$ver/ubuntu"$ver"\_docker.pkglist;fi done;fi
 check:rc==0 
-cmd: chdef $$DOCKERHOST -p postbootscripts="setupdockerhost mynet0=$$MYNET0VALUE@$$DOCKERHOSIP:$$NICNAME"
+cmd: chdef $$CN -p postbootscripts="setupdockerhost mynet0=$$MYNET0VALUE@$$DOCKERHOSIP:$$NICNAME"
 check:rc==0
-cmd:nodeset  $$DOCKERHOST osimage=__GETNODEATTR($$DOCKERHOST,os)__-__GETNODEATTR($$DOCKERHOST,arch)__-install-dockerhost
+cmd:nodeset  $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
 check:rc==0
-cmd:rpower $$DOCKERHOST boot
+cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 40
-cmd:lsdef -l $$DOCKERHOST | grep status
-cmd:sleep 3600
+cmd:lsdef -l $$CN | grep status
+cmd:sleep 2400
 check:rc==0
-cmd:ping $$DOCKERHOST -c 3
-check:output=~64 bytes from $$DOCKERHOST
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
 check:rc==0
-cmd:lsdef -l $$DOCKERHOST | grep status
+cmd:lsdef -l $$CN | grep status
 check:output=~booted
-cmd:xdsh $$DOCKERHOST date
+cmd:xdsh $$CN date
 check:rc==0
-cmd:xdsh $$DOCKERHOST "docker -v"
+cmd:xdsh $$CN "docker -v"
 check:output=~Docker version
 check:rc==0
-cmd:xdsh $$DOCKERHOST "docker pull $$DOCKERIMAGE"
+cmd:xdsh $$CN "docker pull $$DOCKERIMAGE"
 check:rc==0
-cmd:rmdef -t osimage -o __GETNODEATTR($$DOCKERHOST,os)__-__GETNODEATTR($$DOCKERHOST,arch)__-install-dockerhost
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
+check:rc==0
+cmd: chdef $$CN postbootscripts=
 check:rc==0
 end

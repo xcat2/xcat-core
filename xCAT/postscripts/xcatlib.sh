@@ -423,7 +423,15 @@ function startservice {
       return 127
    fi
    
-   eval $cmd
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario 
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1)   && retval=1
+
+   return $retval   
 }
 
 
@@ -461,8 +469,16 @@ function stopservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
-   eval $cmd
+
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+
+   return $retval
 }
 
 
@@ -499,7 +515,15 @@ function restartservice {
       return 127
    fi
    
-   eval $cmd
+   #for the linux distributions with systemd support
+   #In the chrooted env, the system management commands(start/stop/restart) will be ignored and the return code is 0
+   #need to return the proper code in the chrooted scenario
+   local retmsg
+   retmsg=`$cmd 2>&1`
+   retval=$?
+   [ "$retval" = "0" ] && (echo "$retmsg" | grep -i "Running in chroot,\s*ignoring request.*" >/dev/null 2>&1) && retval=1
+
+   return $retval
 }
 
 
@@ -589,7 +613,7 @@ function enableservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    eval $cmd
 }
 
@@ -628,7 +652,7 @@ function disableservice {
    if [ -z "$cmd"  ];then
       return 127
    fi
-   
+
    eval $cmd
 }
 
@@ -780,3 +804,4 @@ function msgutil_r {
 function msgutil {
    msgutil_r "" "$@"
 }
+

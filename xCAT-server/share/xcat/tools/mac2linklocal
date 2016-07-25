@@ -3,11 +3,11 @@
 #
 #####################################################
 #
-# This script will calculate the IPv6 link local address 
+# This script will calculate the IPv6 link local address
 # from the mac address
 # the mac address can be something like
 # 00215ea68cd9 or 00:21:5e:a6:8c:d9
-# example mac2linklocal 00215ea68cd9 
+# example mac2linklocal 00215ea68cd9
 #
 #####################################################
 
@@ -23,8 +23,8 @@ use warnings;
 use Getopt::Long;
 
 if (
-    !GetOptions("h|help"  => \$::HELP,
-                "m=s" => \$::MACADDR,)
+    !GetOptions("h|help" => \$::HELP,
+        "m=s" => \$::MACADDR,)
   )
 {
     &usage;
@@ -41,7 +41,7 @@ require xCAT::NetworkUtils;
 
 if ($::MACADDR)
 {
-    my $linklocal =  xCAT::NetworkUtils->linklocaladdr($::MACADDR);
+    my $linklocal = xCAT::NetworkUtils->linklocaladdr($::MACADDR);
     print "$linklocal";
 }
 

@@ -87,7 +87,7 @@ You can create/modify an osimage definition easily based on the default osimage 
 
 For example, if you need to change the osimage name to your favorite name, this command may be helpful: ::
 
-    lsdef -t osimage -z rhels6.2-x86_64-install-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
+    chdef -t osimage rhels6.2-x86_64-install-compute -n rhels6.2_myimage
 
 
 

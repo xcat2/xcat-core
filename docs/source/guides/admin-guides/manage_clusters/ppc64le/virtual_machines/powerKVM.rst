@@ -6,7 +6,7 @@ Provision Hypervisor with PowerKVM
 ----------------------------------
 
 
-Please follow the ``Diskful Installation Documentation`` :ref:`Diskful Installation <diskfull_installation>` to provision kvm hypervisor with PowerKVM, several customization steps should be taken into consideration.
+Please follow the :ref:`Diskful Installation <diskful_installation>` to provision kvm hypervisor with PowerKVM, several customization steps should be taken into consideration.
 
 To demonstrate the brief steps on hypervisor provision, take **ibm-powerkvm-3.1.0.0-39.0-ppc64le-gold-201511041419.iso** for example here:
  

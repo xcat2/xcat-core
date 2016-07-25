@@ -84,7 +84,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -206,7 +205,6 @@ lskit_C
 lskitcomp_v
 lskitcomp_h
 lskitcomp_C
-lskitcomp_C
 lskitcomp_S
 lskitdeployparam_v
 lskitdeployparam_h
@@ -241,6 +239,7 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
+Full_installation_flat_docker
 rpower_stop
 rpower_start
 rpower_state

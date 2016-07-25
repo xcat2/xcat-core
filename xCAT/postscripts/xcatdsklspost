@@ -112,8 +112,12 @@ download_postscripts()
     retry=0
     rc=1  # this is a fail return 
     while [ 0 -eq 0 ]; do
-	
-       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
+
+        if [ -e "\/$xcatpost" ]; then
+            rm -rf "\/$xcatpost"
+        fi
+
+        export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
          rc=$?
          if [ $rc -eq 0 ]; then   
            # return from wget was 0 but some OS do not return errors, so we
@@ -322,7 +326,12 @@ if [ "$MODE" = "4" ]; then # for statelite mode
         if [ "$KEY" =  "XCAT" ]; then
             TMP=`echo $i | awk -F= '{print $2}'`
             XCATSERVER=`echo $TMP | cut -d: -f1`
-            echo "XCATSERVER=$XCATSERVER" > /opt/xcat/xcatinfo
+            grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
+            if [ $? -eq 0 ]; then
+                sed -i "s/XCATSERVER=.*/XCATSERVER=$XCATSERVER/" /opt/xcat/xcatinfo
+            else
+                echo "XCATSERVER=$XCATSERVER" >> /opt/xcat/xcatinfo
+            fi
             break
         fi
     done
@@ -360,7 +369,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
             break
         fi
      done
-     grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+     grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
      if [ $? -eq 0 ]; then
         sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
      else
@@ -627,14 +636,14 @@ fi
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
-    new_ms=`grep '^MASTER' /$xcatpost/mypostscript |cut -d= -f2`
+    new_ms=`grep '^MASTER' /$xcatpost/mypostscript |head -n 1 |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
     if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
     fi
-    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
@@ -658,7 +667,7 @@ if [ -n "$useflowcontrol" ]; then
     else 
        new_fc="NO"
     fi
-    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
     else
@@ -682,7 +691,7 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
   fi
-  grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+  grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
   if [ $? -eq 0 ]; then
 	sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
   else
@@ -871,11 +880,12 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
 #       echo "$TMP"> /$xcatpost/mypostscript
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
-   msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
-   updateflag.awk \$MASTER 3002 \"installstatus booted\"
+    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
+    updateflag.awk \$MASTER 3002 \"installstatus booted\"
+    logger -t xcat.provision -p local4.info \"provision completed.(\$NODE)\"
 else
-   msgutil_r \$MASTER_IP \"debug\" \"node boot failed,reporting status...\" \"/var/log/xcat/xcat.log\"
-   updateflag.awk \$MASTER 3002 \"installstatus failed\"
+    msgutil_r \$MASTER_IP \"debug\" \"node boot failed,reporting status...\" \"/var/log/xcat/xcat.log\"
+    updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
         " >> /$xcatpost/mypostscript
   fi

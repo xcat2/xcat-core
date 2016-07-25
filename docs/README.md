@@ -13,9 +13,18 @@ The documentation project is written in restructured text (.rst) using Sphinx an
 
 * Clone the project
 
-* Using pip, install sphinx (See: http://pip.readthedocs.org/)
+* Using pip, install or update sphinx (See: http://pip.readthedocs.org/)
    ```
     pip install sphinx  
+   ```
+   or
+   ```
+    pip install sphinx --upgrade 
+   ```
+
+* Using pip, install ReadTheDocs theme
+   ```
+   pip install sphinx_rtd_theme
    ```
 
 * Build the Docs

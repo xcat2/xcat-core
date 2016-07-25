@@ -89,7 +89,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -196,6 +195,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 nodeset_check_warninginfo
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
@@ -204,3 +206,4 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+clean_up_env

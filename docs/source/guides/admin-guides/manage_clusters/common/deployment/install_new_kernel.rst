@@ -79,4 +79,4 @@ The default driver list: ::
 
 Note: With this approach, xCAT will search for the drivers in the rootimage. You need to make sure the drivers have been included in the rootimage before generating the initrd. You can install the drivers manually in an existing rootimage (using chroot) and run genimage again, or you can use a postinstall script to install drivers to the rootimage during your initial genimage run. 
 
-Use the driver rpm package to add new drivers from rpm packages to the diskless initrd.Refer to the :doc:`cfg_second_adapter.rst` for details. 
+Use the driver rpm package to add new drivers from rpm packages to the diskless initrd. Refer to the :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/cfg_second_adapter` for details. 

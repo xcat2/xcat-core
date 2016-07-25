@@ -49,15 +49,15 @@ sub get_kits_used_by_nodes {
 
     # Group the nodes by what osimage they use
     my $tablename = "nodetype";
-    my $table = xCAT::Table->new($tablename);
-    my $ent = $table->getNodesAttribs($nodes, ["provmethod"]);
-    
+    my $table     = xCAT::Table->new($tablename);
+    my $ent       = $table->getNodesAttribs($nodes, ["provmethod"]);
+
     my $osimage_to_nodes = {};
     foreach my $node (keys(%$ent)) {
         my $provmethod = $ent->{$node}->[0]->{"provmethod"};
         if (defined($provmethod)) {
             push(@{ $osimage_to_nodes->{$provmethod} }, $node);
-       }
+        }
     }
 
     # Group the osimages by what kits they use
@@ -68,9 +68,10 @@ sub get_kits_used_by_nodes {
     # Group nodes by kit
     my $kits_to_nodes = {};
     foreach my $kit (keys(%$kits_to_osimages)) {
-        my $tmphash = {};
+        my $tmphash  = {};
         my $osimages = $kits_to_osimages->{$kit};
         foreach my $osimage (@$osimages) {
+
             # Store nodes as hash keys to eliminate duplicates
             my @nodes = @{ $osimage_to_nodes->{$osimage} };
             @$tmphash{@nodes} = ();
@@ -111,14 +112,14 @@ sub get_kits_used_by_nodes {
 
 sub get_kits_used_by_osimages {
 
-    my $class = shift;
+    my $class    = shift;
     my $osimages = shift;
 
     # Get the kit components used by each osimage
     my $tablename = "osimage";
-    my $table = xCAT::Table->new($tablename);
+    my $table     = xCAT::Table->new($tablename);
 
-    my $osimages_str = join ",", map {'\''.$_.'\''} @$osimages;
+    my $osimages_str = join ",", map { '\'' . $_ . '\'' } @$osimages;
     my $filter_stmt = sprintf("imagename in (%s)", $osimages_str);
     my @table_rows = $table->getAllAttribsWhere($filter_stmt, ("imagename", "kitcomponents"));
 
@@ -134,15 +135,15 @@ sub get_kits_used_by_osimages {
 
     # Get the kit for each kit component
     $tablename = "kitcomponent";
-    $table = xCAT::Table->new($tablename);
+    $table     = xCAT::Table->new($tablename);
 
-    my $kitcomps_str = join ",", map {'\''.$_.'\''} keys(%$kitcomps_to_osimages);
+    my $kitcomps_str = join ",", map { '\'' . $_ . '\'' } keys(%$kitcomps_to_osimages);
     $filter_stmt = sprintf("kitcompname in (%s)", $kitcomps_str);
     @table_rows = $table->getAllAttribsWhere($filter_stmt, ("kitcompname", "kitname"));
 
     my $kits_to_kitcomps = {};
     foreach my $row (@table_rows) {
-        my $kitname = $row->{kitname};
+        my $kitname     = $row->{kitname};
         my $kitcompname = $row->{kitcompname};
         push(@{ $kits_to_kitcomps->{$kitname} }, $kitcompname);
     }
@@ -151,9 +152,10 @@ sub get_kits_used_by_osimages {
 
     my $kits_to_osimages = {};
     foreach my $kit (keys(%$kits_to_kitcomps)) {
-        my $tmphash = {};
+        my $tmphash  = {};
         my $kitcomps = $kits_to_kitcomps->{$kit};
         foreach my $kitcomp (@$kitcomps) {
+
             # Store osimages as hash keys to eliminate duplicates
             my @osimages = @{ $kitcomps_to_osimages->{$kitcomp} };
             @$tmphash{@osimages} = ();

@@ -1,0 +1,549 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Getopt::Long qw(:config no_ignore_case);
+
+my $proname = basename("$0");
+my $help;
+my $installnic;
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+
+$::USAGE = "Usage:
+    $proname -h
+    $proname -T
+    $proname [-n <install_nic>] [-V]
+
+Description:
+    After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. 
+
+Options:
+    -h : Get usage information of $proname
+    -T : To verify if $proname can work, reserve option for probe framework
+    -n : Required. Specify the network interface name of provision network
+    -V : Output more information for debug
+";
+
+sub returncmdoutput {
+    my $rst = shift;
+    chomp($rst);
+    my @lines = split("[\n\r]", $rst);
+    foreach my $line (@lines) {
+        probe_utils->send_msg("$output", "d", "$line");
+    }
+}
+
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h" => \$help,
+        "T"   => \$test,
+        "V"   => \$verbose,
+        "n=s" => \$installnic))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $proname");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. Before using this command, please install tftp, nslookup and wget commands ahead. The platform supported are redhat, sles and ubuntu.");
+    exit 0;
+}
+
+if (!defined($installnic)) {
+    probe_utils->send_msg("$output", "f", "Option -n is required");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+my $msg  = "NIC $installnic exists on current server";
+my $nics = `ip addr show $installnic >/dev/null 2>&1`;
+if ($?) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    probe_utils->send_msg("$output", "d", "Please use 'ip addr show' to check if there is NIC named $installnic on current server");
+    exit 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+$msg = "Get ip address of NIC $installnic";
+my $mnip = `ip addr show $installnic | awk -F" " '/inet / {print \$2}'|awk -F"/" '{print \$1}'`;
+chomp($mnip);
+if (!defined($mnip) || ($mnip eq "")) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    probe_utils->send_msg("$output", "d", "Please use 'ip addr show' to check if there is ip assigned to $installnic");
+    exit 1;
+} else {
+    probe_utils->send_msg("$output", "d", "The IP of NIC $installnic is $mnip") if ($verbose);
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+$msg = "Sub process 'xcatd: SSL listener' is running";
+my $xcatdproc = `ps aux|grep -v grep|grep xcatd`;
+chomp($xcatdproc);
+if ($xcatdproc =~ /xcatd: SSL listener/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "Sub process 'xcatd: DB Access' is running";
+if ($xcatdproc =~ /xcatd: DB Access/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "Sub process 'xcatd: UDP listener' is running";
+if ($xcatdproc =~ /xcatd: UDP listener/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "Sub process 'xcatd: install monitor' is running";
+if ($xcatdproc =~ /xcatd: install monitor/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "Sub process 'xcatd: Discovery worker' is running";
+if ($xcatdproc =~ /xcatd: Discovery worker/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "Sub process 'xcatd: Command log writer' is running";
+if ($xcatdproc =~ /xcatd: Command log writer/) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "w", "Sub process 'xcatd: Command log writer' isn't running");
+}
+exit 1 if ($rst);
+
+
+my $xcatdport = `tabdump site 2>&1 | awk -F',' '/^"xcatdport",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($xcatdport);
+probe_utils->send_msg("$output", "d", "The port used by the xcatd daemon for client/server communication is $xcatdport") if ($verbose);
+$msg = "xcatd is listening on port $xcatdport";
+my $cmdoutput = `netstat -ant|grep LISTEN|grep $xcatdport`;
+if ($?) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+my $xcatiport = `tabdump site 2>&1| awk -F',' '/^"xcatiport",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($xcatiport);
+probe_utils->send_msg("$output", "d", "The port used by xcatd to receive install status updates from nodes is $xcatiport") if ($verbose);
+$msg       = "xcatd is listening on port $xcatiport";
+$cmdoutput = `netstat -antp | grep -i xcatd|grep LISTEN|grep $xcatiport`;
+if ($?) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+exit 1 if ($rst);
+
+$msg       = "'lsxcatd -a' works";
+$cmdoutput = `lsxcatd -a 2>&1`;
+$rst       = $?;
+returncmdoutput($cmdoutput) if ($verbose);
+if ($rst) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    exit $rst;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($masteripinsite);
+probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table is $masteripinsite") if ($verbose);
+probe_utils->send_msg("$output", "f", "There isn't 'master' definition in 'site' talbe") if ($masteripinsite eq "");
+
+$msg = "The value of 'master' in 'site' table is a IP address";
+if (probe_utils->is_ip_addr("$masteripinsite")) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    exit 1;
+}
+
+if ($mnip) {
+    $msg = "The IP $mnip of $installnic equals the value of 'master' in 'site' table";
+    if ($mnip eq $masteripinsite) {
+        probe_utils->send_msg("$output", "o", "$msg");
+    } else {
+        probe_utils->send_msg("$output", "f", "$msg");
+        $rst = 1;
+    }
+}
+
+$msg = "IP $mnip of NIC $installnic is a static IP on current server";
+if (probe_utils->is_static_ip("$mnip", "$installnic")) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "w", "IP $mnip of $installnic is not a static ip on current server");
+}
+
+$msg = "$mnip belongs to one of networks defined in 'networks' table";
+my $networks = `tabdump networks|grep -v "^#"`;
+$networks =~ s/\"//g;
+my $netcnt = `echo "$networks"|wc -l`;
+my $hit    = 0;
+for (my $i = 1 ; $i < $netcnt + 1 ; $i++) {
+    my $line = `echo "$networks" |sed -n ${i}p |awk -F"," '{print \$2,\$3,\$4}'`;
+    chomp($line);
+    if ($line =~ /(.+) (.+) (.+)/) {
+        $hit = 1 if (probe_utils->is_ip_belong_to_net("$1", "$2", $mnip) && ("$3" eq "$installnic"));
+    }
+}
+if ($hit) {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "There is domain definition in 'site' table";
+my $domain = `tabdump site | awk -F',' '/^"domain",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($domain);
+if ($domain) {
+    probe_utils->send_msg("$output", "d", "The value of 'domain' in 'site' table is $domain") if ($verbose);
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "There is configuration in 'passwd' table for 'system' for node provision";
+my $passwd = `tabdump passwd |awk -F',' '/system/ { gsub(/"/, "", \$2); gsub(/"/, "", \$3); print \$2,\$3 }'`;
+chomp($passwd);
+my ($username, $pw) = split(" ", $passwd);
+if ($username eq "" || $pw eq "") {
+    probe_utils->send_msg("$output", "f", "$msg");
+    probe_utils->send_msg("$output", "d", "Please define username and password for 'system' in 'passwd' table");
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+my $installdir = `tabdump site 2>&1 | awk -F',' '/^"installdir"/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($installdir);
+probe_utils->send_msg("$output", "d", "The 'install' directory is set to $installdir in 'site' table on current server") if ($verbose);
+my $tftpdir = `tabdump site 2>&1 | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+chomp($tftpdir);
+probe_utils->send_msg("$output", "d", "The 'tftp' directory is set to $tftpdir in 'site' talbe on current server") if ($verbose);
+
+$msg = "There is $installdir directory on current server";
+if (-e "$installdir/postscripts/") {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+$msg = "There is $tftpdir directory on current server";
+if (-e "$tftpdir") {
+    probe_utils->send_msg("$output", "o", "$msg");
+} else {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+}
+
+my $expected = 10;
+$msg = "The free space of / directory is more than $expected G";
+my $diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/\$"`;
+if ($?) {
+    probe_utils->send_msg("$output", "d", "There isn't any filesystem mount on / directory");
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+} else {
+    chomp($diskspace);
+    my ($size, $dir) = split(" ", $diskspace);
+    $size =~ s/G//g;
+    probe_utils->send_msg("$output", "d", "The free space of / is $size G") if ($verbose);
+    if ($size < $expected) {
+        probe_utils->send_msg("$output", "w", "The free space of / is less than $expected G");
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+$expected  = 1;
+$msg       = "The free space of /var directory is more than $expected G";
+$diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/var\$"`;
+if (!$?) {
+    chomp($diskspace);
+    my ($size, $dir) = split(" ", $diskspace);
+    $size =~ s/G//g;
+    probe_utils->send_msg("$output", "d", "The free space of /var is $size G") if ($verbose);
+    if ($size < $expected) {
+        probe_utils->send_msg("$output", "w", "The free space of /var is less than $expected G");
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+$expected  = 1;
+$msg       = "The free space of /tmp directory is more than $expected G";
+$diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/tmp\$"`;
+if (!$?) {
+    chomp($diskspace);
+    my ($size, $dir) = split(" ", $diskspace);
+    $size =~ s/G//g;
+    probe_utils->send_msg("$output", "d", "The free space of /tmp is $size G") if ($verbose);
+    if ($size < $expected) {
+        probe_utils->send_msg("$output", "w", "The free space of /tmp is less than $expected G");
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+
+$expected  = 10;
+$msg       = "The free space of $installdir directory is more than $expected G";
+$diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "$installdir\$"`;
+if (!$?) {
+    chomp($diskspace);
+    my ($size, $dir) = split(" ", $diskspace);
+    $size =~ s/G//g;
+    probe_utils->send_msg("$output", "d", "The free space of /install is $size G") if ($verbose);
+    if ($size < $expected) {
+        probe_utils->send_msg("$output", "w", "The free space of /install is less than $expected G");
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+$msg = "SELinux is disabled on current server";
+if (probe_utils->is_selinux_enable()) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+$msg = "Firewall is closed on current server";
+if (probe_utils->is_firewall_open()) {
+    probe_utils->send_msg("$output", "w", "Firewall is configured on current server");
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+
+`which wget > /dev/null 2>&1`;
+if ($?) {
+    probe_utils->send_msg("$output", "w", "wget tool isn't installed on current server, skip checking HTTP service.");
+    probe_utils->send_msg("$output", "d", "Please do probe again after installing wget");
+} else {
+    $msg = "HTTP service is ready on $mnip";
+    if (probe_utils->is_http_ready("$mnip")) {
+        probe_utils->send_msg("$output", "o", "$msg");
+    } else {
+        probe_utils->send_msg("$output", "f", "$msg");
+        $rst = 1;
+    }
+}
+
+`which tftp > /dev/null 2>&1`;
+if ($?) {
+    probe_utils->send_msg("$output", "w", "tftp tool isn't installed on current server, skip checking tftp service.");
+    probe_utils->send_msg("$output", "d", "Please do probe again after installing tftp");
+} else {
+    $msg = "TFTP service is ready on $mnip";
+    if (probe_utils->is_tftp_ready("$mnip")) {
+        probe_utils->send_msg("$output", "o", "$msg");
+    } else {
+        probe_utils->send_msg("$output", "f", "$msg");
+        $rst = 1;
+    }
+}
+
+`which nslookup > /dev/null 2>&1`;
+if ($?) {
+    probe_utils->send_msg("$output", "w", "nslookup tool isn't installed in current server, skip checking DNS service.");
+    probe_utils->send_msg("$output", "d", "Please do probe again after installing nslookup");
+} else {
+    $msg = "DNS server is ready on $mnip";
+    probe_utils->send_msg("$output", "d", "Domain used to check DNS is $domain") if ($verbose);
+
+    my $rc = 0;
+    {    #very important brace to create a block
+        my $tmp = `chdef xcatmntest groups=all ip=$mnip`;
+        if ($?) {
+            returncmdoutput($tmp) if ($verbose);
+            probe_utils->send_msg("$output", "d", "Simulate a node by chdef failed") if ($verbose);
+            $rc = 1;
+            last;
+        } else {
+            probe_utils->send_msg("$output", "d", "Simulate a node xcatmntest<ip=$mnip> to do DNS test") if ($verbose);
+        }
+
+        probe_utils->send_msg("$output", "d", "To do 'makehosts xcatmntest'") if ($verbose);
+        $tmp = `makehosts xcatmntest`;
+        if ($?) {
+            returncmdoutput($tmp) if ($verbose);
+            probe_utils->send_msg("$output", "d", "makehosts xcatmntest failed") if ($verbose);
+            $rc = 1;
+            `rmdef xcatmntest`;
+            last;
+        }
+
+        $tmp = `cat /etc/hosts |grep xcatmntest |grep $mnip`;
+        if ($?) {
+            probe_utils->send_msg("$output", "d", "makehosts failed to add test node xcatmntest to /etc/hosts") if ($verbose);
+            $rc = 1;
+            `rmdef xcatmntest`;
+            last;
+        }
+
+        probe_utils->send_msg("$output", "d", "To do 'makedns -n xcatmntest'") if ($verbose);
+        $tmp = `makedns -V -n xcatmntest 2>&1`;
+        if ($?) {
+            returncmdoutput($tmp) if ($verbose);
+            probe_utils->send_msg("$output", "d", "makedns -n  xcatmntest failed") if ($verbose);
+            $rc = 1;
+            `makehosts -d xcatmntest && rmdef xcatmntest`;
+            last;
+        }
+
+        if (!probe_utils->is_dns_ready("$mnip", "xcatmntest", "$domain")) {
+            probe_utils->send_msg("$output", "d", "nslookup xcatmntest $mnip failed");
+            $rc = 1;
+            `makehosts -d xcatmntest && rmdef xcatmntest`;
+            last;
+        }
+
+        probe_utils->send_msg("$output", "d", "Start to clear simulate information for DNS test") if ($verbose);
+        $tmp = `makedns -d xcatmntest && makehosts -d xcatmntest &&  rmdef xcatmntest`;
+        returncmdoutput($tmp) if ($verbose);
+    }
+
+    if ($rc) {
+        probe_utils->send_msg("$output", "f", "$msg");
+        $rst = 1;
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+my $os        = probe_utils->get_os();
+my $leasefile = "";
+$leasefile = "/var/lib/dhcpd/dhcpd.leases"   if ($os =~ /redhat/i);
+$leasefile = "/var/lib/dhcp/db/dhcpd.leases" if ($os =~ /sles/i);
+$leasefile = "/var/lib/dhcp/dhcpd.leases"    if ($os =~ /ubuntu/i);
+$msg       = "The size of $leasefile is less than 100M";
+my $filesizetmp = `du -sb $leasefile`;
+if ($?) {
+    returncmdoutput($filesizetmp) if ($verbose);
+    probe_utils->send_msg("$output", "f", "$msg");
+    $rst = 1;
+} else {
+    chomp($filesizetmp);
+    my ($size, $file) = split(" ", $filesizetmp);
+    probe_utils->send_msg("$output", "d", "The size of $leasefile is $size bytes") if ($verbose);
+    if ($size > 104857600) {
+        probe_utils->send_msg("$output", "w", "The size of $leasefile is more than 100M");
+    } else {
+        probe_utils->send_msg("$output", "o", "$msg");
+    }
+}
+
+my $msg = "DHCP service is ready on $mnip";
+my $rc  = 0;
+{    #very important brace to create a block
+    my $tmp = `chdef xcatmntest groups=all ip=$mnip  mac=aa:aa:aa:aa:aa:aa`; if ($?) {
+        returncmdoutput($tmp) if ($verbose);
+        probe_utils->send_msg("$output", "d", "Simulate a node by chdef failed") if ($verbose);
+        $rc = 1;
+        last;
+    } else {
+        probe_utils->send_msg("$output", "d", "Simulate a node xcatmntest<ip=$mnip mac=aa:aa:aa:aa:aa:aa> to do dhcp test") if ($verbose);
+    }
+
+    probe_utils->send_msg("$output", "d", "To do 'makehosts xcatmntest'") if ($verbose);
+    $tmp = `makehosts xcatmntest`;
+    if ($?) {
+        returncmdoutput($tmp) if ($verbose);
+        probe_utils->send_msg("$output", "d", "makehosts xcatmntest failed") if ($verbose);
+        $rc = 1;
+        `rmdef xcatmntest`;
+        last;
+    }
+
+    $tmp = `cat /etc/hosts |grep xcatmntest |grep $mnip`;
+    if ($?) {
+        probe_utils->send_msg("$output", "d", "makehosts failed to add test node xcatmntest to /etc/hosts") if ($verbose);
+        $rc = 1;
+        `rmdef xcatmntest`;
+        last;
+    }
+
+    probe_utils->send_msg("$output", "d", "To do 'makedhcp xcatmntest'") if ($verbose);
+    $tmp = `makedhcp xcatmntest 2>&1`;
+    if ($?) {
+        returncmdoutput($tmp) if ($verbose);
+        probe_utils->send_msg("$output", "d", "makedhcp  xcatmntest failed") if ($verbose);
+        $rc = 1;
+        `makehosts -d xcatmntest &&  rmdef xcatmntest`;
+        last;
+    }
+
+    probe_utils->send_msg("$output", "d", "To do 'makedhcp -q  xcatmntest'") if ($verbose);
+    $tmp = `makedhcp -q  xcatmntest`;
+    if ($?) {
+        returncmdoutput($tmp) if ($verbose);
+        probe_utils->send_msg("$output", "d", "makedhcp -q xcatmntest failed") if ($verbose);
+        $rc = 1;
+`makedhcp -d xcatmntest && makehosts -d xcatmntest &&  rmdef xcatmntest`;
+        last;
+    }
+    chomp($tmp);
+    if ($tmp !~ /xcatmntest: ip-address = $mnip, hardware-address = aa:aa:aa:aa:aa:aa/) {
+        returncmdoutput($tmp) if ($verbose);
+        probe_utils->send_msg("$output", "d", "DHCP server's reply is wrong") if ($verbose);
+        $rc = 1;
+`makedhcp -d xcatmntest && makehosts -d xcatmntest &&  rmdef xcatmntest`;
+        last;
+    }
+
+    probe_utils->send_msg("$output", "d", "Start to clear simulate information for dhcp test") if ($verbose);
+    $tmp = `makedhcp -d xcatmntest && makehosts -d xcatmntest &&  rmdef xcatmntest`;
+    returncmdoutput($tmp) if ($verbose);
+}
+if ($rc) {
+    probe_utils->send_msg("$output", "f", "$msg");
+    probe_utils->send_msg("$output", "d", "please run 'makedhcp -n' if never run it before.");
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", "$msg");
+}
+exit $rst;

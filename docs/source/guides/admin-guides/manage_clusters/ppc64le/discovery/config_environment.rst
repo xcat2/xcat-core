@@ -1,3 +1,4 @@
+
 Configure xCAT
 --------------
 
@@ -14,8 +15,6 @@ Normally, there will be at least two entries for the two subnet on MN in ``netwo
 Run the following command to add networks in ``networks`` table if there are no entries in it::
 
     makenetworks
-
-.. _Setup-dhcp:
 
 Setup DHCP
 ``````````

@@ -11,9 +11,10 @@ BEGIN
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
     unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
-    }
+}
 use lib "$::XCATROOT/lib/perl";
 use strict;
+
 #-----------------------------------------------------------------------------
 
 =head3 readSNInfo
@@ -26,6 +27,7 @@ use strict;
   Example:
     my $retdata = xCAT::ServiceNodeUtils->readSNInfo;
 =cut
+
 #-----------------------------------------------------------------------------
 sub readSNInfo
 {
@@ -45,7 +47,7 @@ sub readSNInfo
             if (!($masternode))
             {
                 xCAT::MsgUtils->message('S',
-                                   "Could not get Master for node $nodename\n");
+                    "Could not get Master for node $nodename\n");
                 return 1;
             }
 
@@ -53,13 +55,13 @@ sub readSNInfo
             if ($et == 1)
             {
                 xCAT::MsgUtils->message('S',
-                                  "Could not get OS/ARCH for node $nodename\n");
+                    "Could not get OS/ARCH for node $nodename\n");
                 return 1;
             }
             if (!($et->{'os'} || $et->{'arch'}))
             {
                 xCAT::MsgUtils->message('S',
-                                  "Could not get OS/ARCH for node $nodename\n");
+                    "Could not get OS/ARCH for node $nodename\n");
                 return 1;
             }
         }
@@ -101,12 +103,12 @@ sub isServiceReq
     # read the  schema
     my $schema = xCAT::Table->getTableSchema("servicenode");
     my @services; #  list of only the actual service attributes from the servicenode table
-    my @servicesattrs;  # building second copy for call to getAllNodeAttribs, which modifies the array
-    foreach my $c (@{$schema->{cols}}) {
-      if (($c ne "node") && ($c ne "comments") && ($c ne "disable")) {
-       push @servicesattrs,$c;
-       push @services,$c;
-      }
+    my @servicesattrs; # building second copy for call to getAllNodeAttribs, which modifies the array
+    foreach my $c (@{ $schema->{cols} }) {
+        if (($c ne "node") && ($c ne "comments") && ($c ne "disable")) {
+            push @servicesattrs, $c;
+            push @services,      $c;
+        }
     }
 
     my @ips = @$serviceip;    # list of service node ip addresses and names
@@ -130,32 +132,32 @@ sub isServiceReq
         return;    # do not setup anything
     }
 
-    # Are we on the MN 
+    # Are we on the MN
     my $mname;
     if (xCAT::Utils->isMN()) {
-      my @nodeinfo = xCAT::NetworkUtils->determinehostname;
-       $mname   = pop @nodeinfo;                    # get hostname
+        my @nodeinfo = xCAT::NetworkUtils->determinehostname;
+        $mname = pop @nodeinfo;    # get hostname
     }
 
     my $servicehash;
-    
+
     # read all the nodes from the table, all the service attributes
-    my @snodelist= $servicenodetab->getAllNodeAttribs(\@servicesattrs); 
-    foreach my $service (@services) # check list of services
+    my @snodelist = $servicenodetab->getAllNodeAttribs(\@servicesattrs);
+    foreach my $service (@services)    # check list of services
     {
 
-        foreach $serviceip (@ips)    # check the table for this servicenode
+        foreach $serviceip (@ips)      # check the table for this servicenode
         {
             foreach my $node (@snodelist)
 
             {
                 if ($serviceip eq $node->{'node'})
-                {                    # match table entry
+                {                      # match table entry
                     if ($node->{$service})
-                    {                # returns service, only if set
+                    {                  # returns service, only if set
                         my $value = $node->{$service};
                         $value =~ tr/a-z/A-Z/;    # convert to upper
-                             # value 1 or yes  then we setup the service
+                            # value 1 or yes  then we setup the service
                         if (($value eq "1") || ($value eq "YES"))
                         {
                             $servicehash->{$service} = "1";
@@ -165,33 +167,35 @@ sub isServiceReq
                             $servicehash->{$service} = "0";
                         }
                     }
-                    last; 
+                    last;
                 }
-            }  
+            }
         }
 
     }
-    # if the ftpserver attribute is not defined in the service node table 
+
+    # if the ftpserver attribute is not defined in the service node table
     # and we are on
     # the Linux management node, we need to look at site.vsftp
     # if the tftpserver attribute is not defined, then we default it 1
     if (($mname) && (xCAT::Utils->isLinux())) {
-      if (!exists($servicehash->{'ftpserver'})) { 
-        my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");
-        if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/ )) {
-           $servicehash->{'ftpserver'} = 1;
+        if (!exists($servicehash->{'ftpserver'})) {
+            my @tmp = xCAT::TableUtils->get_site_attribute("vsftp");
+            if ($tmp[0] && ($tmp[0] !~ /0|NO|No|no|N|n/)) {
+                $servicehash->{'ftpserver'} = 1;
+            }
         }
-      }
-      if (!exists($servicehash->{'tftpserver'})) { 
-           $servicehash->{'tftpserver'} = 1;
-      }
-      # On Ubuntu management node, we disabled the isc-dhcp-server in upstart,
-      # through file /etc/init/isc-dhcp-server.override, see bug 4399
-      # however, this causes a new problem, bug 4515
-      # the fix is to start dhcp server when starting xcatd
-      if (!exists($servicehash->{'dhcpserver'}) && xCAT::Utils->osver() =~ /ubuntu.*/i) {
-          $servicehash->{'dhcpserver'} = 1;
-      }
+        if (!exists($servicehash->{'tftpserver'})) {
+            $servicehash->{'tftpserver'} = 1;
+        }
+
+        # On Ubuntu management node, we disabled the isc-dhcp-server in upstart,
+        # through file /etc/init/isc-dhcp-server.override, see bug 4399
+        # however, this causes a new problem, bug 4515
+        # the fix is to start dhcp server when starting xcatd
+        if (!exists($servicehash->{'dhcpserver'}) && xCAT::Utils->osver() =~ /ubuntu.*/i) {
+            $servicehash->{'dhcpserver'} = 1;
+        }
     }
     $servicenodetab->close;
 
@@ -226,9 +230,10 @@ sub isServiceReq
 #-----------------------------------------------------------------------------
 sub getAllSN
 {
-   
+
     my ($class, $options) = @_;
     require xCAT::Table;
+
     # reads all nodes from the service node table
     my @servicenodes;
     my $servicenodetab = xCAT::Table->new('servicenode');
@@ -242,22 +247,24 @@ sub getAllSN
     my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver']);
     foreach my $nodes (@nodes)
     {
-          push @servicenodes, $nodes->{node};
+        push @servicenodes, $nodes->{node};
     }
+
     # if did not input "ALL" and there is a MN, remove it
     my @newservicenodes;
-    if ((!defined($options)) || ($options ne "ALL")) {   
-       my @mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
-       if (@mname) { # if there is a MN
-        foreach my $node (@servicenodes) {
-          # check to see if node in MN list
-          if (!(grep(/^$node$/, @mname))) { # if node not in the MN array
-              push @newservicenodes, $node;
-          }
+    if ((!defined($options)) || ($options ne "ALL")) {
+        my @mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+        if (@mname) {    # if there is a MN
+            foreach my $node (@servicenodes) {
+
+                # check to see if node in MN list
+                if (!(grep(/^$node$/, @mname))) {  # if node not in the MN array
+                    push @newservicenodes, $node;
+                }
+            }
+            $servicenodetab->close;
+            return @newservicenodes;    # return without the MN in the array
         }
-        $servicenodetab->close;
-        return @newservicenodes;  # return without the MN in the array
-       }
     }
     $servicenodetab->close;
     return @servicenodes;
@@ -297,6 +304,7 @@ sub getSNandNodes
 {
 
     require xCAT::Table;
+
     # read all the nodes from the nodelist table
     #  call get_ServiceNode to find which Service Node
     # the node belongs to.
@@ -347,7 +355,7 @@ sub getSNandNodes
 sub getSNList
 {
     require xCAT::Table;
-    my ($class, $service,$options) = @_;
+    my ($class, $service, $options) = @_;
 
     # reads all nodes from the service node table
     my @servicenodes;
@@ -361,17 +369,17 @@ sub getSNList
     $servicenodetab->close;
     foreach my $node (@nodes)
     {
-        if  (! defined ($service) || ($service eq ""))     # want all the service nodes
+        if (!defined($service) || ($service eq "")) # want all the service nodes
         {
             push @servicenodes, $node->{node};
         }
         else
-        {                       # looking for a particular service
+        {    # looking for a particular service
             if ($node->{$service})
-            {                   # if null then do not add node
+            {    # if null then do not add node
                 my $value = $node->{$service};
                 $value =~ tr/a-z/A-Z/;    # convert to upper
-                     # value 1 or yes or blank then we setup the service
+                    # value 1 or yes or blank then we setup the service
                 if (($value == 1) || ($value eq "YES"))
                 {
                     push @servicenodes, $node->{node};
@@ -380,18 +388,19 @@ sub getSNList
             }
         }
     }
+
     # if did not input "ALL" and there is a MN, remove it
     my @newservicenodes;
-    if ((!defined($options)) || ($options ne "ALL")) {   
-       my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
-       if ($mname) { # if there is a MN
-        foreach my $nodes (@servicenodes) {
-           if ($mname ne ($nodes)){
-              push @newservicenodes, $nodes;
-           }
+    if ((!defined($options)) || ($options ne "ALL")) {
+        my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+        if ($mname) {    # if there is a MN
+            foreach my $nodes (@servicenodes) {
+                if ($mname ne ($nodes)) {
+                    push @newservicenodes, $nodes;
+                }
+            }
+            return @newservicenodes;    # return without the MN in the array
         }
-        return @newservicenodes;  # return without the MN in the array
-       }
     }
 
     return @servicenodes;
@@ -466,21 +475,22 @@ sub get_ServiceNode
     {
         $snattribute = "xcatmaster";
     }
+
     # get site.master this will be the default
-    my $master = xCAT::TableUtils->get_site_Master();  
+    my $master = xCAT::TableUtils->get_site_Master();
     $noderestab = xCAT::Table->new('noderes');
 
     unless ($noderestab)    # no noderes table, use default site.master
     {
         xCAT::MsgUtils->message('I',
-                         "Unable to open noderes table. Using site->Master.\n");
+            "Unable to open noderes table. Using site->Master.\n");
 
         if ($master)        # use site Master value
         {
-				
+
             foreach my $node (@node_list)
-            {               
-					push @{$snhash{$master}}, $node;
+            {
+                push @{ $snhash{$master} }, $node;
             }
         }
         else
@@ -500,16 +510,16 @@ sub get_ServiceNode
 
         foreach my $node (@node_list)
         {
-            foreach my $rec (@{$nodehash->{$node}})
+            foreach my $rec (@{ $nodehash->{$node} })
             {
-                if ($rec and $rec->{$snattribute}) # use noderes.servicenode
+                if ($rec and $rec->{$snattribute})    # use noderes.servicenode
                 {
                     my $key = $rec->{$snattribute};
-                    push @{$snhash{$key}}, $node;
+                    push @{ $snhash{$key} }, $node;
                 }
-                else  # use site.master
-                {    
-  		  push @{$snhash{$master}}, $node;
+                else                                  # use site.master
+                {
+                    push @{ $snhash{$master} }, $node;
                 }
             }
         }
@@ -527,10 +537,10 @@ sub get_ServiceNode
         {
             $nodehash =
               $noderestab->getNodesAttribs(\@node_list,
-                                           [$service, $snattribute]);
+                [ $service, $snattribute ]);
             foreach my $node (@node_list)
             {
-                foreach my $rec (@{$nodehash->{$node}})
+                foreach my $rec (@{ $nodehash->{$node} })
                 {
                     if ($rec and $rec->{$service})
                     {
@@ -545,18 +555,18 @@ sub get_ServiceNode
                                 $key = $nodeattr;
                             }
                         }
-                        push @{$snhash{$key}}, $node;
+                        push @{ $snhash{$key} }, $node;
                     }
                     else
                     {
                         if ($rec and $rec->{$snattribute})    # if it exists
                         {
                             my $key = $rec->{$snattribute};
-                            push @{$snhash{$key}}, $node;
+                            push @{ $snhash{$key} }, $node;
                         }
                         else
                         {                                     # use site.master
-                            push @{$snhash{$master}}, $node;
+                            push @{ $snhash{$master} }, $node;
                         }
                     }
                 }
@@ -576,23 +586,23 @@ sub get_ServiceNode
                 unless ($nodehmtab)    # no nodehm table
                 {
                     xCAT::MsgUtils->message('I',
-                                            "Unable to open nodehm table.\n");
+                        "Unable to open nodehm table.\n");
 
                     # use servicenode
                     $nodehash =
                       $noderestab->getNodesAttribs(\@node_list, [$snattribute]);
                     foreach my $node (@node_list)
                     {
-                        foreach my $rec (@{$nodehash->{$node}})
+                        foreach my $rec (@{ $nodehash->{$node} })
                         {
                             if ($rec and $rec->{$snattribute})
                             {
                                 my $key = $rec->{$snattribute};
-                                push @{$snhash{$key}}, $node;
+                                push @{ $snhash{$key} }, $node;
                             }
                             else
                             {    # use site.master
-                                push @{$snhash{$master}}, $node;
+                                push @{ $snhash{$master} }, $node;
                             }
                         }
                     }
@@ -605,7 +615,7 @@ sub get_ServiceNode
                   $nodehmtab->getNodesAttribs(\@node_list, ['conserver']);
                 foreach my $node (@node_list)
                 {
-                    foreach my $rec (@{$nodehash->{$node}})
+                    foreach my $rec (@{ $nodehash->{$node} })
                     {
                         if ($rec and $rec->{'conserver'})
                         {
@@ -622,21 +632,21 @@ sub get_ServiceNode
                                     $key = $nodeattr;
                                 }
                             }
-                            push @{$snhash{$key}}, $node;
+                            push @{ $snhash{$key} }, $node;
                         }
                         else
                         {              # use service node for this node
                             $sn =
                               $noderestab->getNodeAttribs($node,
-                                                          [$snattribute]);
+                                [$snattribute]);
                             if ($sn and $sn->{$snattribute})
                             {
                                 my $key = $sn->{$snattribute};
-                                push @{$snhash{$key}}, $node;
+                                push @{ $snhash{$key} }, $node;
                             }
                             else
                             {          # no service node use master
-                                push @{$snhash{$master}}, $node;
+                                push @{ $snhash{$master} }, $node;
                             }
                         }
                     }
@@ -649,7 +659,7 @@ sub get_ServiceNode
             else
             {
                 xCAT::MsgUtils->message('E',
-                                        "Invalid service=$service input.\n");
+                    "Invalid service=$service input.\n");
                 $::ERROR_RC = 1;
             }
         }
@@ -711,47 +721,47 @@ sub getSNformattedhash
     my $cmd;
     my %newsnhash;
 
-	my $type="";
-	if ($btype) {
-		$type=$btype;
-	}
+    my $type = "";
+    if ($btype) {
+        $type = $btype;
+    }
 
-	# get the values of either the servicenode or xcatmaster attributes
+    # get the values of either the servicenode or xcatmaster attributes
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@node_list, $service, $request);
 
     # get the keys which are the service nodes and break apart any pool lists
     # format into individual service node keys pointing to node lists
-	if ($sn)
-	{
+    if ($sn)
+    {
         foreach my $snkey (keys %$sn)
         {
-			# split the key if pool of service nodes
-			push my @tmpnodes, $sn->{$snkey};
-			my @nodes;
-			for my $i (0 .. $#tmpnodes) {
-				for my $j ( 0 .. $#{$tmpnodes[$i]}) {
-					my $check=$tmpnodes[$i][$j];
-					push @nodes,$check; 
-				}
-			}
+            # split the key if pool of service nodes
+            push my @tmpnodes, $sn->{$snkey};
+            my @nodes;
+            for my $i (0 .. $#tmpnodes) {
+                for my $j (0 .. $#{ $tmpnodes[$i] }) {
+                    my $check = $tmpnodes[$i][$j];
+                    push @nodes, $check;
+                }
+            }
 
-			# for SN backup we might only want the primary or backup
-			my @servicenodes;
-			my ($primary, $backup) = split /,/, $snkey;
-			if (($primary) && ($type eq "primary")) {
-				push @servicenodes, $primary;
-			} elsif (($backup) && ($type eq "backup")) {
-				push @servicenodes, $backup;
-			} else {
-				@servicenodes = split /,/, $snkey;
-			}
+            # for SN backup we might only want the primary or backup
+            my @servicenodes;
+            my ($primary, $backup) = split /,/, $snkey;
+            if (($primary) && ($type eq "primary")) {
+                push @servicenodes, $primary;
+            } elsif (($backup) && ($type eq "backup")) {
+                push @servicenodes, $backup;
+            } else {
+                @servicenodes = split /,/, $snkey;
+            }
 
-			# now build new hash of individual service nodes
-			foreach my $newsnkey (@servicenodes) {
-				push @{$newsnhash{$newsnkey}}, @nodes;
-			}
-		}
-	}
+            # now build new hash of individual service nodes
+            foreach my $newsnkey (@servicenodes) {
+                push @{ $newsnhash{$newsnkey} }, @nodes;
+            }
+        }
+    }
     return \%newsnhash;
 }
 
@@ -792,27 +802,27 @@ sub getAIXSNinterfaces
         my $out = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $sn, $ifcmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-			my $rsp;
-			push @{$rsp->{data}}, "Could not get IP addresses from service node $sn.\n";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
+            my $rsp;
+            push @{ $rsp->{data} }, "Could not get IP addresses from service node $sn.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
             next;
         }
 
-		my @result;
-		foreach my $line ( split(/\n/, $out)) {
-			$line =~ s/$sn:\s+//;
-			push(@result, $line);
-		}
-
-		foreach my $int (@result) {
-			my ($inet, $SNIP, $str) = split(" ", $int);
-			chomp $SNIP;
-			$SNIP =~ s/\/.*//; # ipv6 address 4000::99/64
-			$SNIP =~ s/\%.*//; # ipv6 address ::1%1/128
-            push(@{$SNinterfaces{$sn}}, $SNIP);
+        my @result;
+        foreach my $line (split(/\n/, $out)) {
+            $line =~ s/$sn:\s+//;
+            push(@result, $line);
         }
-    } # end foreach SN
-   	return \%SNinterfaces;
+
+        foreach my $int (@result) {
+            my ($inet, $SNIP, $str) = split(" ", $int);
+            chomp $SNIP;
+            $SNIP =~ s/\/.*//;    # ipv6 address 4000::99/64
+            $SNIP =~ s/\%.*//;    # ipv6 address ::1%1/128
+            push(@{ $SNinterfaces{$sn} }, $SNIP);
+        }
+    }    # end foreach SN
+    return \%SNinterfaces;
 }
 
 #-----------------------------------------------------------------------------
@@ -839,21 +849,22 @@ sub getAIXSNinterfaces
 =cut
 
 #-----------------------------------------------------------------------------
-sub getSNandCPnodes 
+sub getSNandCPnodes
 {
-   
-    my ($class, $nodes,$sn,$cn) = @_; 
+
+    my ($class, $nodes, $sn, $cn) = @_;
     my @nodelist = @$nodes;
+
     # get the list of all Service nodes
-    my @allSN=xCAT::ServiceNodeUtils->getAllSN;
+    my @allSN = xCAT::ServiceNodeUtils->getAllSN;
     foreach my $node (@nodelist) {
-      if (grep(/^$node$/, @allSN)) { # it is a SN
-         push (@$sn,$node);
-      } else {  # a CN
-         push (@$cn,$node);
-      }
+        if (grep(/^$node$/, @allSN)) {    # it is a SN
+            push(@$sn, $node);
+        } else {                          # a CN
+            push(@$cn, $node);
+        }
     }
 
-    return ; 
+    return;
 }
 1;

@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **iscsiboot**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ]
+\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ]
 
 \ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
@@ -50,7 +50,7 @@ Assume that /tftpboot is the root for tftpd (set in site(5)|site.5).
 
 \ **nodeset**\  only sets the next boot state, but does not reboot.
 
-\ **nodeset**\   is  called  by rinstall and winstall and is also called by the
+\ **nodeset**\   is  called  by \ **rinstall**\  and \ **winstall**\  and is also called by the
 installation process remotely to set the boot state back to "boot".
 
 A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called \ **prescripts**\ . They should be copied to /install/prescripts dirctory. A table called \ *prescripts*\  is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of \ *prescripts*\  table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of \ *prescripts*\  table. You can run 'tabdump -d prescripts' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If \ *#xCAT setting:MAX_INSTANCE=number*\  is specified in the script, the script will get invoked for each node in parallel, but no more than \ *number*\  of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
@@ -82,8 +82,8 @@ A user can supply their own scripts to be run on the mn or on the service node (
 
 \ **-**\ **-noupdateinitrd**\ 
  
- Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drviers to initrd. But, the geninitrd command
- should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of nodeset command.
+ Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drivers to initrd. But, the \ **geninitrd**\  command
+ should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of \ **nodeset**\  command.
  
 
 

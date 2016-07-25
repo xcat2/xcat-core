@@ -3,7 +3,7 @@
 #TEST: UNCOMMENT the first line, and COMMENT OUT the second line.
 #BUILD: COMMENT OUT the first line, and UNCOMMENT the second line.
 #package xCAT_plugin::nodemgmt;
-package xCAT_plugin::<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_nodemgmt;
+package xCAT_plugin :: << <buildkit_WILL_INSERT_modified_kitname_HERE> >> _nodemgmt;
 
 use strict;
 use warnings;
@@ -27,21 +27,21 @@ use Data::Dumper;
 #
 #    - Import node (nodeimport) / Discover node (findme) operations call:
 #          - kitnodeadd():  Any code added here gets called after
-#                           one or more nodes are added to the cluster. 
+#                           one or more nodes are added to the cluster.
 #
 #    - Remove node (nodepurge) operation calls:
 #          - kitnoderemove():  Any code added here gets called after
-#                              one or more nodes are removed from the cluster. 
+#                              one or more nodes are removed from the cluster.
 #
 #    - Update node's profiles (kitnodeupdate) / Update node's MAC (nodechmac)
 #      operations call:
 #          - kitnodeupdate():  Any code added here gets called after
 #                              a node's profile(s) or MAC address changes
 #
-#    - Refresh node's configuration files (noderefresh) / Re-generate IPs 
+#    - Refresh node's configuration files (noderefresh) / Re-generate IPs
 #       for nodes (noderegenips) operations call:
-#          - kitnoderefresh():  Any code added here gets called when 
-#                               node config files need to be regenerated. 
+#          - kitnoderefresh():  Any code added here gets called when
+#                               node config files need to be regenerated.
 #
 #
 # How to create a new plugin for your kit?
@@ -52,7 +52,7 @@ use Data::Dumper;
 #    2) Modify the sample plugin by implementing one or more of
 #       the plugin commands above.
 #
-#      Refer to each command's comments for command parameters 
+#      Refer to each command's comments for command parameters
 #      and return values.
 #
 #      For details on how to write plugin code, refer to:
@@ -104,6 +104,7 @@ $PLUGIN_KITNAME = "<<<buildkit_WILL_INSERT_kitname_HERE>>>";
 #-------------------------------------------------------
 
 sub handled_commands {
+
     #TEST: UNCOMMENT the first return, and COMMENT OUT the second return.
     #BUILD: COMMENT OUT the first return, and UNCOMMENT the second return.
     #return {
@@ -132,33 +133,36 @@ sub handled_commands {
 #-------------------------------------------------------
 
 sub process_request {
-    my $request = shift;
+    my $request  = shift;
     my $callback = shift;
     my $rsp;
 
     # Name of command and node list
     my $command = $request->{command}->[0];
-    my $nodes = $request->{node};
+    my $nodes   = $request->{node};
 
     # This kit plugin is passed a list of node names.
-    # Before running this plugin, we should check which 
+    # Before running this plugin, we should check which
     # nodes are using the kit which this plugin belongs to,
     # and run the plugin only on these nodes.
 
     my $nodes2;
 
     if ($PLUGIN_KITNAME eq "TESTMODE") {
+
         # Don't do the check in test mode
         $nodes2 = $nodes;
     } else {
+
         # Do the check
         my $kitdata = $request->{kitdata};
-        if (! defined($kitdata)) {
+        if (!defined($kitdata)) {
             $kitdata = xCAT::KitPluginUtils->get_kits_used_by_nodes($nodes);
             $request->{kitdata} = $kitdata;
         }
 
-        if (! exists($kitdata->{$PLUGIN_KITNAME})) {
+        if (!exists($kitdata->{$PLUGIN_KITNAME})) {
+
             # None of the nodes are using this plugin's kit, so don't run the plugin.
             $rsp->{data}->[0] = "Skipped running \"$command\" plugin command for \"$PLUGIN_KITNAME\" kit.";
             xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -169,7 +173,7 @@ sub process_request {
 
     # Run the command
 
-    if($command eq 'kitnodeadd') {
+    if ($command eq 'kitnodeadd') {
         kitnodeadd($callback, $nodes2);
     }
     elsif ($command eq 'kitnoderemove') {

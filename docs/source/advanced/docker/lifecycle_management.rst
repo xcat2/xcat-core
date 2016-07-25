@@ -56,17 +56,20 @@ The otherpkglist file should contain the following:
  
 At the time of this writing (February 2016), docker package is not available for **ppc64el** architecture from docker.org. You can follow instructions below on how to manually download and install it.
 
-* Download docker engine for ppc64el 
+* Download docker engine for ppc64el: 
+
 ::
  
  wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
 
-* Configure **otherpkgdir** like this 
+* Configure **otherpkgdir** like this: 
+
 ::
 
  otherpkgdir=/install/docker_ppc64el
 
-* The **otherpkglist** file should be 
+* The **otherpkglist** file should be: 
+
 ::
 
  # cat /install/custom/ubuntu/ubuntu_docker.pkglist
@@ -226,16 +229,19 @@ If things go wrong:
 * After dockerhost node boots, check contents of **/var/log/xcat/xcat.log** file on the dockerhost for errors.
 
 * Verify **nicname** specified in **Preparing setup trust connection for docker service and create docker network object** section exists on the docker host. Depending on the version of Ubuntu OS and host architecture, it could be **eth0**, or **em1**, or **eno1**, or **enp0s1**. Verify by running on the dockerhost
+
 ::
 
  ip addr show dev <nicname>
 
-* Run **ps -ef | grep docker** to verify docker engine is running with configured options. It should look something like
+* Run **ps -ef | grep docker** to verify docker engine is running with configured options. It should look something like 
+
 ::
 
  root      3703     1  0 Apr15 ?        00:12:28 /usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://host01:2375 --tls --tlscacert=/root/.docker/ca-cert.pem --tlscert=/root/.docker/dockerhost-cert.pem --tlskey=/root/.docker/dockerhost-cert.pem --tlsverify=true --raw-logs
 
-If the output is missing some options, verify that file **/lib/systemd/system/docker.service** contains the following lines
+If the output is missing some options, verify that file **/lib/systemd/system/docker.service** contains the following lines 
+
 ::
 
   EnvironmentFile=-/etc/default/docker

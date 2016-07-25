@@ -3,12 +3,14 @@
 use strict;
 use warnings;
 use Carp qw(cluck confess);
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+
     # Required when using DB2 as the xCAT database:
     $ENV{'DB2INSTANCE'} = 'xcatdb';
-    $ENV{'EXTSHM'} = 'ON';
+    $ENV{'EXTSHM'}      = 'ON';
 
     if (defined $ENV{ENABLE_TRACE_CODE}) {
         use lib "$ENV{'XCATROOT'}/lib/perl";
@@ -18,9 +20,9 @@ BEGIN
     }
 }
 
-my $globalencode = "xml";
+my $globalencode      = "xml";
 my %supported_encodes = (
-    "xml" => 1,
+    "xml"      => 1,
     "storable" => 1,
 );
 my $sslctl;
@@ -30,6 +32,7 @@ my $pid_MON;
 
 # ----used for command log start---------
 my $cmdlog_svrpid;
+
 # ----used for command log end---------
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
@@ -45,11 +48,12 @@ use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
 use xCAT::State;
-my $os = xCAT::Utils->osver();
+my $os   = xCAT::Utils->osver();
 my $arch = `uname -p`;
+
 # These do not have the IO::Uncompress rpm available
-unless (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))){
-    eval {require IO::Uncompress::Gunzip;}
+unless (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))) {
+    eval { require IO::Uncompress::Gunzip; }
 }
 use File::Basename;
 use File::Path;
@@ -57,12 +61,12 @@ use Time::HiRes qw(sleep);
 use Thread qw(yield);
 use Fcntl qw/:DEFAULT :flock/;
 use xCAT::Client qw(submit_request);
-my $clientselect = new IO::Select;
-my $sslclients = 0; # THROTTLE
-my $maxsslclients = 64; # default
-my $batchclients = 50;
-my @deferredmsgargs; # hold argumentlist for MsgUtils call until after fork
-                     # parallelizing logging overhead with real work
+my $clientselect  = new IO::Select;
+my $sslclients    = 0;                # THROTTLE
+my $maxsslclients = 64;               # default
+my $batchclients  = 50;
+my @deferredmsgargs;    # hold argumentlist for MsgUtils call until after fork
+                        # parallelizing logging overhead with real work
 
 sub xexit {
     while (wait() > 0) {
@@ -70,18 +74,18 @@ sub xexit {
     }
     exit @_;
 }
-my $dispatch_children=0;
-my %dispatched_children=();
-my $plugin_numchildren=0;
+my $dispatch_children   = 0;
+my %dispatched_children = ();
+my $plugin_numchildren  = 0;
 my %plugin_children;
 my $inet6support;
 
-my @CALLBACK_COMMAND =('getadapter');
+my @CALLBACK_COMMAND = ('getadapter');
 
-if ($^O =~ /^aix/i) {  # disable AIX IPV6 TODO
+if ($^O =~ /^aix/i) {    # disable AIX IPV6 TODO
     $inet6support = 0;
 } else {
-    $inet6support=eval { require Socket6 };
+    $inet6support = eval { require Socket6 };
 }
 if ($inet6support) {
     $inet6support = eval { require IO::Socket::INET6 };
@@ -91,6 +95,7 @@ if ($inet6support) {
 }
 
 if ($^O =~ /^linux/i) {
+
     # Is IPv6 enabled on the MN or SN at all?
     my $ipv6enabled = `ip addr | grep inet6`;
     if (!$ipv6enabled) {
@@ -104,23 +109,24 @@ unless ($inet6support) {
     eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet4'); };
 }
 
-my $dispatch_requests = 1; # govern whether commands are dispatchable
+my $dispatch_requests = 1;    # govern whether commands are dispatchable
 use IO::Socket;
 use IO::Handle;
 use IO::Select;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;
 use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
-openlog("xcat","local4");
+openlog("xcat", "local4");
+
 # turn off warnings for call to setlogsock.  puts out warning message if
 # syslog tcp port not defined in /etc/services.  this can safely be ignored.
 no warnings;
-setlogsock(["tcp","unix","stream"]);
+setlogsock([ "tcp", "unix", "stream" ]);
 use warnings;
 
 use xCAT::NotifHandler;
@@ -135,7 +141,7 @@ use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
 my $foreground;
 GetOptions(
-    'pidfile|p=s' => \$pidfile,
+    'pidfile|p=s'  => \$pidfile,
     'foreground|f' => \$foreground
 );
 
@@ -145,18 +151,18 @@ unless ($pidfile) {
 
 # start syslog if it is not up
 if (xCAT::Utils->isLinux()) {
-    my $init_file="/etc/init.d/syslog";
+    my $init_file = "/etc/init.d/syslog";
     if ((-f "/etc/fedora-release") || (-f "/etc/redhat-release") || (-f "/etc/lsb-release")) {
-        $init_file="/etc/init.d/rsyslog";
+        $init_file = "/etc/init.d/rsyslog";
     }
-    if ( -x $init_file ) {
-        my $result=`$init_file status 2>&1`;
+    if (-x $init_file) {
+        my $result = `$init_file status 2>&1`;
         if ($result !~ /running/i) {
             `$init_file start`;
         }
     }
 } else {
-    my $result=`lssrc -s syslogd 2>&1`;
+    my $result = `lssrc -s syslogd 2>&1`;
     if ($result !~ /active/i) {
         `startsrc -s syslogd`;
     }
@@ -169,47 +175,49 @@ my $domain;
 my $xcatdir;
 my $sitetab;
 my $retries = 0;
+
 # The database initialization may take some time in the system boot scenario
 # wait for a while for the database initialization
-while (!($sitetab=xCAT::Table->new('site')) && $retries < 200)
+while (!($sitetab = xCAT::Table->new('site')) && $retries < 200)
 {
-    print ("Can not open basic site table for configuration, waiting the database to be initialized.\n");
+    print("Can not open basic site table for configuration, waiting the database to be initialized.\n");
     sleep 1;
     $retries++;
 }
 unless ($sitetab) {
-    xCAT::MsgUtils->message("S","ERROR: Unable to open basic site table for configuration");
+    xCAT::MsgUtils->message("S", "ERROR: Unable to open basic site table for configuration");
     die;
 }
 
-my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
+my ($tmp) = $sitetab->getAttribs({ 'key' => 'xcatdport' }, 'value');
 unless ($tmp) {
-    xCAT::MsgUtils->message("S","ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
+    xCAT::MsgUtils->message("S", "ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
     die;
 }
 $port = $tmp->{value};
-($tmp) = $sitetab->getAttribs({'key'=>'xcatiport'},'value');
+($tmp) = $sitetab->getAttribs({ 'key' => 'xcatiport' }, 'value');
 if ($tmp) {
     $sport = $tmp->{value};
 }
-($tmp) = $sitetab->getAttribs({'key'=>'xcatmaxconnections'},'value');
+($tmp) = $sitetab->getAttribs({ 'key' => 'xcatmaxconnections' }, 'value');
 if ($tmp and $tmp->{value}) { $maxsslclients = $tmp->{value}; }
-($tmp) = $sitetab->getAttribs({'key'=>'xcatmaxbatchconnections'},'value');
+($tmp) = $sitetab->getAttribs({ 'key' => 'xcatmaxbatchconnections' }, 'value');
 if ($tmp and $tmp->{value}) { $batchclients = $tmp->{value}; }
 
 
-my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
-($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
+my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
+($tmp) = $sitetab->getAttribs({ 'key' => 'xcatconfdir' }, 'value');
 $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
 # ----used for command log start-------
-my $cmdlog_logfile="/var/log/xcat/commands.log";
-my $cmdlog_port=3003;
-($tmp) = $sitetab->getAttribs({'key'=>'xcatlport'},'value');
+my $cmdlog_logfile = "/var/log/xcat/commands.log";
+my $cmdlog_port    = 3003;
+($tmp) = $sitetab->getAttribs({ 'key' => 'xcatlport' }, 'value');
 if ($tmp) {
     $cmdlog_port = $tmp->{value};
 }
-my $cmdlog_alllog="====================================================\n";
+my $cmdlog_alllog = "====================================================\n";
+
 # ----used for command log end---------
 
 $sitetab->close;
@@ -229,29 +237,33 @@ $progname = \$0;
 # /opt/xcat/lib/perl/xCAT_schema
 
 if (xCAT::Utils->isMN()) {
+
     # update schema for xCAT tables
     my @table;
-    push @table,xCAT::Table->getTableList();
-    foreach  my $tablename (@table) {
-        my $tablelisttab=xCAT::Table->new($tablename,-create=>1);
-        my $rc= $tablelisttab->updateschema();
+    push @table, xCAT::Table->getTableList();
+    foreach my $tablename (@table) {
+        my $tablelisttab = xCAT::Table->new($tablename, -create => 1);
+        my $rc = $tablelisttab->updateschema();
         $tablelisttab->close;
     }
+
     # update schema for user tables
     xCAT::ExtTab->updateTables();
+
     # run any sql commands
     `$::XCATROOT/sbin/runsqlcmd`;
 }
 
 my $startupchild;
 my $startupparent;
+
 sub daemonize {
     chdir('/');
     umask 0022;
     my $pid;
-    socketpair($startupparent,$startupchild,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
-    if (! defined($pid = xCAT::Utils->xfork)) {
-        xCAT::MsgUtils->message("S","Can't fork: $!");
+    socketpair($startupparent, $startupchild, AF_UNIX, SOCK_STREAM, PF_UNSPEC);
+    if (!defined($pid = xCAT::Utils->xfork)) {
+        xCAT::MsgUtils->message("S", "Can't fork: $!");
         die;
     }
     if ($pid) {
@@ -259,30 +271,30 @@ sub daemonize {
         if ($pidfile) {
             open(PFILE, '>', $pidfile);
             print PFILE $pid;
-            close (PFILE);
+            close(PFILE);
         } else {
-            xCAT::MsgUtils->message("S","xcatd starting as PID $pid");
+            xCAT::MsgUtils->message("S", "xcatd starting as PID $pid");
         }
-        my $result=<$startupchild>;
+        my $result = <$startupchild>;
         chomp($result);
-        unless ($result) { exit (1); }
+        unless ($result) { exit(1); }
         if ($result ne "SUCCESS") {
-            xCAT::MsgUtils->message("S","xcatd failed to start: $result");
+            xCAT::MsgUtils->message("S", "xcatd failed to start: $result");
             exit(1);
         }
         exit;
     }
-    close($startupchild); # only want child to report up to parent...
-    if (! open STDIN, '/dev/null') {
+    close($startupchild);    # only want child to report up to parent...
+    if (!open STDIN, '/dev/null') {
         print $startupparent "Can't read /dev/null: $!\n";
         die;
     }
     open STDOUT, '>/dev/null';
     open STDERR, '>/dev/null';
-    $0='xcatd';
+    $0        = 'xcatd';
     $progname = \$0;
-    if (! setsid) {
-        xCAT::MsgUtils->message("S","Can't start new session");
+    if (!setsid) {
+        xCAT::MsgUtils->message("S", "Can't start new session");
         print $startupparent "Can't start new session\n";
         die;
     }
@@ -293,66 +305,69 @@ my $rescanreadpipe;
 my $rescanwritepipe;
 my $rescanrselect;
 my $rescanrequest = "rescanplugins";
+
 sub do_installm_service {
     unless ($sport) { return; }
+
     # This function servers as a handler for messages from installing nodes
     my $socket;
     my $installpidfile;
-    my $retry=1;
+    my $retry = 1;
     $SIG{USR2} = sub {
         if ($socket) { # do not mess with pid file except when we still have the socket.
-            unlink("/var/run/xcat/installservice.pid"); close($socket); $quit=1;
-            $udpctl=0;
-            xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
+            unlink("/var/run/xcat/installservice.pid"); close($socket); $quit = 1;
+            $udpctl = 0;
+            xCAT::MsgUtils->message("S", "xcatd install monitor $$ quiescing");
         }
     };
     if ($inet6support) {
-        $socket = IO::Socket::INET6->new(LocalPort=>$sport,
-                                         Proto    => 'tcp',
-                                         ReuseAddr => 1,
-                                         Listen => 8192);
+        $socket = IO::Socket::INET6->new(LocalPort => $sport,
+            Proto     => 'tcp',
+            ReuseAddr => 1,
+            Listen    => 8192);
     } else {
-        $socket = IO::Socket::INET->new(LocalPort=>$sport,
-                                        Proto    => 'tcp',
-                                        ReuseAddr => 1,
-                                        Listen => 8192);
+        $socket = IO::Socket::INET->new(LocalPort => $sport,
+            Proto     => 'tcp',
+            ReuseAddr => 1,
+            Listen    => 8192);
     }
-    if (not $socket and open($installpidfile,"<","/var/run/xcat/installservice.pid")) { # if we couldn't get the socket, go to pid to figure out current owner
-        # TODO: lsof or similar may be a more accurate measure
+    if (not $socket and open($installpidfile, "<", "/var/run/xcat/installservice.pid")) { # if we couldn't get the socket, go to pid to figure out current owner
+            # TODO: lsof or similar may be a more accurate measure
         my $pid = <$installpidfile>;
         if ($pid) {
-            $retry=100; # grace period for old instance to get out of the way, 5 seconds
-            kill 'USR2',$pid;
-            yield(); # let peer have a shot at closure
+            $retry = 100; # grace period for old instance to get out of the way, 5 seconds
+            kill 'USR2', $pid;
+            yield();      # let peer have a shot at closure
         }
         close($installpidfile);
     }
     while (not $socket and $retry) {
         $retry--;
         if ($inet6support) {
-            $socket = IO::Socket::INET6->new(LocalPort=>$sport,
-                                             Proto    => 'tcp',
-                                             ReuseAddr => 1,
-                                             Listen => 8192);
+            $socket = IO::Socket::INET6->new(LocalPort => $sport,
+                Proto     => 'tcp',
+                ReuseAddr => 1,
+                Listen    => 8192);
         } else {
-            $socket = IO::Socket::INET->new(LocalPort=>$sport,
-                                            Proto    => 'tcp',
-                                            ReuseAddr => 1,
-                                            Listen => 8192);
+            $socket = IO::Socket::INET->new(LocalPort => $sport,
+                Proto     => 'tcp',
+                ReuseAddr => 1,
+                Listen    => 8192);
         }
-        sleep 0.05; # up to 50 ms outage possible
+        sleep 0.05;    # up to 50 ms outage possible
     }
 
     unless ($socket) {
-        xCAT::MsgUtils->message("S","xcatd unable to open install monitor services on $sport");
+        xCAT::MsgUtils->message("S", "xcatd unable to open install monitor services on $sport");
         die;
     }
+
     # we have the socket, now we claim the pid file as our own
-    open($installpidfile,">","/var/run/xcat/installservice.pid"); # if here, everyone else has unlinked installservicepid or doesn't care
+    open($installpidfile, ">", "/var/run/xcat/installservice.pid"); # if here, everyone else has unlinked installservicepid or doesn't care
     print $installpidfile $$;
     close($installpidfile);
     until ($quit) {
-        $SIG{ALRM} = sub { xCAT::MsgUtils->message("S","XCATTIMEOUT"); die; };
+        $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "XCATTIMEOUT"); die; };
         my $conn;
         next unless $conn = $socket->accept;
 
@@ -362,7 +377,7 @@ sub do_installm_service {
             foreach my $rrequest (@rescans) {
                 my $rescan_request = fd_retrieve($rrequest);
                 if ($$rescan_request =~ /rescanplugins/) {
-                    scan_plugins('','1');
+                    scan_plugins('', '1');
                 } else {
                     print "ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request \n";
                 }
@@ -373,29 +388,29 @@ sub do_installm_service {
         my $client_aliases;
         my @clients;
         if ($inet6support) {
-            ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET6);
-            unless ($client_name) { ($client_name,$client_aliases) =  gethostbyaddr($conn->peeraddr,AF_INET); }
+            ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
+            unless ($client_name) { ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET); }
         } else {
-            ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET);
+            ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
         unless ($client_name) {
             my $myaddr = inet_ntoa($conn->peeraddr);
-            xCAT::MsgUtils->message("S","xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
+            xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
         }
 
         $clients[0] = $client_name;
         if ($client_aliases) {
-            push @clients, split(/\s+/,$client_aliases);
+            push @clients, split(/\s+/, $client_aliases);
         }
 
-        my $validclient=0;
+        my $validclient = 0;
         my $node;
         my $domain;
 
         foreach my $client (@clients) {
-            my @ndn = ($client);
-            my $nd = xCAT::NetworkUtils->getNodeDomains(\@ndn);
+            my @ndn         = ($client);
+            my $nd          = xCAT::NetworkUtils->getNodeDomains(\@ndn);
             my %nodedomains = %{$nd};
             $domain = $nodedomains{$client};
             $client =~ s/\..*//;
@@ -404,16 +419,17 @@ sub do_installm_service {
             } else {
                 $client =~ s/\..*//;
             }
+
             # ensure this is coming from a node IP at least
             ($node) = noderange($client);
-            if ($node) {  # Means the source isn't valid
-                $validclient=1;
+            if ($node) {    # Means the source isn't valid
+                $validclient = 1;
                 last;
             } else {
-                xCAT::MsgUtils->message("S","xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
+                xCAT::MsgUtils->message("S", "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
                 print "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored\n";
             }
-            
+
         }
 
         unless ($validclient) {
@@ -430,51 +446,55 @@ sub do_installm_service {
                 $text =~ s/\r//g;
                 if ($text =~ /next/) {
                     my %request = (
-                        command => [ 'nodeset' ],
-                        node => [ $node ],
-                        arg => [ 'next' ],
-                        );
+                        command => ['nodeset'],
+                        node    => [$node],
+                        arg     => ['next'],
+                    );
+
                     # node should be blocked, race condition may occur otherwise
                     #my $pid=xCAT::Utils->xfork();
                     #unless ($pid) { # fork off the nodeset and potential slowness
-                    plugin_command(\%request,undef,\&build_response);
+                    plugin_command(\%request, undef, \&build_response);
+
                     #exit(0);
                     #}
                     close($conn);
                 } elsif ($text =~ /installstatus/) {
-                    my @tmpa=split(' ', $text);
-                    for (my $i = 1; $i <= @tmpa-1; $i++) {
-                        my $newstat=$tmpa[$i];
+                    my @tmpa = split(' ', $text);
+                    for (my $i = 1 ; $i <= @tmpa - 1 ; $i++) {
+                        my $newstat = $tmpa[$i];
                         my %request = (
-                            command => [ 'updatenodestat' ],
-                            node => [ $node ],
-                            arg => [ "$newstat" ],
-                            );
+                            command => ['updatenodestat'],
+                            node    => [$node],
+                            arg     => ["$newstat"],
+                        );
+
                         # node should be blocked, race condition may occur otherwise
                         #my $pid=xCAT::Utils->xfork();
                         #unless ($pid) { # fork off the nodeset and potential slowness
-                        plugin_command(\%request,undef,\&build_response);
+                        plugin_command(\%request, undef, \&build_response);
+
                         #exit(0);
                         #}
                     }
                     close($conn);
                 } elsif ($text =~ /^unlocktftpdir/) { # TODO: only nodes in install state should be allowed
                     mkpath("$tftpdir/xcat/$node");
-                    chmod 01777,"$tftpdir/xcat/$node";
-                    chmod 0666,glob("$tftpdir/xcat/$node/*");
+                    chmod 01777, "$tftpdir/xcat/$node";
+                    chmod 0666,  glob("$tftpdir/xcat/$node/*");
                     close($conn);
                 } elsif ($text =~ /locktftpdir/) {
-                    chmod 0755,"$tftpdir/xcat/$node";
-                    chmod 0644,glob("$tftpdir/xcat/$node/*");
+                    chmod 0755, "$tftpdir/xcat/$node";
+                    chmod 0644, glob("$tftpdir/xcat/$node/*");
                 } elsif ($text =~ /^getpostscript/) {
-                    my $reply  =plugin_command({command=>['getpostscript'],_xcat_clienthost=>[$node]},undef,\&build_response);
-                    foreach (@{$reply->{data}}) {
+                    my $reply = plugin_command({ command => ['getpostscript'], _xcat_clienthost => [$node] }, undef, \&build_response);
+                    foreach (@{ $reply->{data} }) {
                         print $conn $_;
                     }
                     print $conn "#END OF SCRIPT\n";
                     close($conn);
                 } elsif ($text =~ /^syncfiles/) {
-                    plugin_command({command=>['syncfiles'],_xcat_clienthost=>[$node]},undef,\&build_response);
+                    plugin_command({ command => ['syncfiles'], _xcat_clienthost => [$node] }, undef, \&build_response);
                     print $conn "syncfiles done\n";
                     close($conn);
                 } elsif ($text =~ /^setiscsiparms/) {
@@ -482,46 +502,47 @@ sub do_installm_service {
                     my $kname;
                     my $iname;
                     my $kcmdline;
-                    ($kname,$iname,$kcmdline) = split(/\s+/,$text,3);
+                    ($kname, $iname, $kcmdline) = split(/\s+/, $text, 3);
                     chomp($kcmdline);
-                    my $bptab = xCAT::Table->new('bootparams',-create=>1);
-                    $bptab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
-                    my $iscsitab = xCAT::Table->new('iscsi',-create=>1);
-                    $iscsitab->setNodeAttribs($node,{kernel=>"xcat/$node/$kname",initrd=>"xcat/$node/$iname",kcmdline=>$kcmdline});
-                    my $chaintab = xCAT::Table->new('chain',-create=>1);
-                    $chaintab->setNodeAttribs($node,{currstate=>'iscsiboot',currchain=>'netboot'});
+                    my $bptab = xCAT::Table->new('bootparams', -create => 1);
+                    $bptab->setNodeAttribs($node, { kernel => "xcat/$node/$kname", initrd => "xcat/$node/$iname", kcmdline => $kcmdline });
+                    my $iscsitab = xCAT::Table->new('iscsi', -create => 1);
+                    $iscsitab->setNodeAttribs($node, { kernel => "xcat/$node/$kname", initrd => "xcat/$node/$iname", kcmdline => $kcmdline });
+                    my $chaintab = xCAT::Table->new('chain', -create => 1);
+                    $chaintab->setNodeAttribs($node, { currstate => 'iscsiboot', currchain => 'netboot' });
                     $bptab->close;
                     $chaintab->close;
                     undef $bptab;
                     undef $chaintab;
                     my %request = (
-                        command => [ 'nodeset' ],
-                        node => [ $node ],
-                        arg => [ 'enact' ],
-                        );
-                    my $pid=xCAT::Utils->xfork();
+                        command => ['nodeset'],
+                        node    => [$node],
+                        arg     => ['enact'],
+                    );
+                    my $pid = xCAT::Utils->xfork();
                     unless ($pid) { # fork off the nodeset and potential slowness
-                        plugin_command(\%request,undef,\&build_response);
+                        plugin_command(\%request, undef, \&build_response);
                         xexit(0);
                     }
                 } elsif ($text =~ /hpcbootstatus/) {
                     $text =~ s/hpcbootstatus //;
                     chomp $text;
                     my %request = (
-                        command => [ 'updatenodeappstat' ],
-                        node => [ $node ],
-                        arg => [ "$text" ],
-                        );
+                        command => ['updatenodeappstat'],
+                        node    => [$node],
+                        arg     => ["$text"],
+                    );
 
-                    plugin_command(\%request,undef,\&build_response);
+                    plugin_command(\%request, undef, \&build_response);
                     close($conn);
                 } elsif ($text =~ /basecustremv/) {
 
                     $text =~ s/basecustremv //;
                     chomp $text;
+
                     # remove the BASECUST_REMOVAL line from /tftpboot/hostname.info file
                     my $myfile = "/tftpboot/$text" . ".info";
-                    `/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
+`/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
                     `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
                     close($conn);
                 }
@@ -531,13 +552,13 @@ sub do_installm_service {
         };
         if ($@) {
             if ($@ =~ /XCATTIMEOUT/) {
-                xCAT::MsgUtils->message("S","xcatd installmonitor timed out talking to $node");
+                xCAT::MsgUtils->message("S", "xcatd installmonitor timed out talking to $node");
             } else {
-                xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT install monitor service: ".$@);
+                xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT install monitor service: " . $@);
             }
         }
     }
-    if (open($installpidfile,"<","/var/run/xcat/installservice.pid")) {
+    if (open($installpidfile, "<", "/var/run/xcat/installservice.pid")) {
         my $pid = <$installpidfile>;
         if ($pid == $$) { # if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
             unlink("/var/run/xcat/installservice.pid");
@@ -548,50 +569,52 @@ sub do_installm_service {
 
 
 sub grant_tcrequests {
-    my $requestors = shift;
-    my $udpcontext = shift;
+    my $requestors     = shift;
+    my $udpcontext     = shift;
     my $availableslots = $batchclients;
     if (not keys %{$requestors}) { return; }  # skip the interaction with SSL if
-    # no requests are actually pending
-    my $oldtime = time()-180; # drop requests older than three minutes if still around
+                                              # no requests are actually pending
+    my $oldtime = time() - 180; # drop requests older than three minutes if still around
     my $msg;
-    eval { store_fd({'req'=>'get_client_count'}, $sslctl); $msg = fd_retrieve($sslctl); };
-    if (not $msg)  {
+    eval { store_fd({ 'req' => 'get_client_count' }, $sslctl); $msg = fd_retrieve($sslctl); };
+
+    if (not $msg) {
         return;
     }
-    $availableslots -= $msg->{clientfudge}; # value that forecasts the pressure
+    $availableslots -= $msg->{clientfudge};  # value that forecasts the pressure
     $availableslots -= $msg->{sslclientcount}; # subtract all currently really active sessions
     my $fudgefactor = $msg->{clientfudge};
     foreach my $rkey (keys %{$requestors}) {
         if ($requestors->{$rkey}->{timestamp} < $oldtime) { delete $requestors->{$rkey}; next; }
         unless ($availableslots > 0) { next; } # no slots, ignore requests for now
-        $fudgefactor += 1; # adjust forecast for being busy
-        $availableslots-=1;
-        $udpcontext->{socket}->send("resourcerequest: ok\n",0,$requestors->{$rkey}->{sockaddr});
-        delete ($requestors->{$rkey}); # we acknoweldged, assume consumer got it, they'll do retry if they failed
+        $fudgefactor += 1;                     # adjust forecast for being busy
+        $availableslots -= 1;
+        $udpcontext->{socket}->send("resourcerequest: ok\n", 0, $requestors->{$rkey}->{sockaddr});
+        delete($requestors->{$rkey}); # we acknoweldged, assume consumer got it, they'll do retry if they failed
     }
-    eval { store_fd({'req'=>'set_fudge_factor', 'fudge'=>$fudgefactor}, $sslctl); $msg = fd_retrieve($sslctl); };
+    eval { store_fd({ 'req' => 'set_fudge_factor', 'fudge' => $fudgefactor }, $sslctl); $msg = fd_retrieve($sslctl); };
 }
 
 sub do_discovery_process {
     $SIG{TERM} = 'DEFAULT';
-    $SIG{INT} = 'DEFAULT';
-    my %args =@_;
-    my $broker = $args{broker};
-    my $quit=0;
+    $SIG{INT}  = 'DEFAULT';
+    my %args    = @_;
+    my $broker  = $args{broker};
+    my $quit    = 0;
     my $vintage = time();
-    $dispatch_requests=0;
+    $dispatch_requests = 0;
     populate_site_hash();
     populate_vpd_hash();
     populate_mp_hash();
+
     while (not $quit) {
         my $msg = fd_retrieve($broker);
-        if ((time()-$vintage)> 15) {
+        if ((time() - $vintage) > 15) {
             populate_site_hash();
             populate_vpd_hash();
             populate_mp_hash();
             $vintage = time();
-        } # site table reread every 15 second
+        }    # site table reread every 15 second
         my $data;
         my $client;
         my $clientn;
@@ -599,8 +622,8 @@ sub do_discovery_process {
         if (ref $msg eq 'HASH') { $data = $msg->{data}; } else { die "incorrect code to disco"; }
         my $saddr = $msg->{sockaddr};
         if ($inet6support) {
-            ($client,$sport) = Socket6::getnameinfo($saddr);
-            ($clientip,$sport) = Socket6::getnameinfo($saddr,Socket6::NI_NUMERICHOST());
+            ($client, $sport) = Socket6::getnameinfo($saddr);
+            ($clientip, $sport) = Socket6::getnameinfo($saddr, Socket6::NI_NUMERICHOST());
             if ($clientip =~ /::ffff:.*\..*\./) {
                 $clientip =~ s/^::ffff://;
             }
@@ -608,76 +631,82 @@ sub do_discovery_process {
                 $client =~ s/^::ffff://;
             }
         } else {
-            ($sport,$clientn) = sockaddr_in($saddr);
+            ($sport, $clientn) = sockaddr_in($saddr);
             $clientip = inet_ntoa($clientn);
-            $client=gethostbyaddr($clientn,AF_INET);
+            $client = gethostbyaddr($clientn, AF_INET);
         }
-        if ($data =~ /^\037\213/) {  # per rfc 1952, these two bytes are gzip, and they are invalid for
-            # xcatrequest xml, so go ahead and decompress it
+        if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
+                # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
-            IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);
+            IO::Uncompress::Gunzip::gunzip(\$data, \$bigdata);
             $data = $bigdata;
         }
-        my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
+        my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => 1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
-            $req->{'_xcat_clienthost'}=$client;
-            $req->{'_xcat_clientip'}=$clientip;
-            $req->{'_xcat_clientport'}=$sport;
+            $req->{'_xcat_clienthost'} = $client;
+            $req->{'_xcat_clientip'}   = $clientip;
+            $req->{'_xcat_clientport'} = $sport;
             if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { # only discover from ips that appear to be on a managed network
-                xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
-                $req->{cacheonly}->[0] = 1;
-                plugin_command($req,undef,\&build_response);
-                if ($req->{cacheonly}->[0]) {
-                    delete $req->{cacheonly};
-                    plugin_command($req,undef,\&build_response);
-                }
+                xCAT::MsgUtils->message("S", "xcatd: Processing discovery request from " . $req->{'_xcat_clientip'});
+
+                # Using cacheonly will cause the discovery processing running 2 times, cacheonly seems useless for switch.pm, so remove it
+                #$req->{cacheonly}->[0] = 1;
+                #plugin_command($req,undef,\&build_response);
+                #if ($req->{cacheonly}->[0]) {
+                #delete $req->{cacheonly};
+                plugin_command($req, undef, \&build_response);
+
+                #}
             } else {
-                xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".$client." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
+                xCAT::MsgUtils->message("S", "xcatd: Skipping discovery from " . $client . " because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
             }
         }
     }
 }
-sub do_udp_service { # This function opens up a UDP port
-    # It will do similar to the standard service, except:
-    # -Obviously, unencrypted and messages are not guaranteed
-    # -For that reason, more often than not plugins designed with
-    # -this method will not expect to have a callback
-    # Also, this throttles to handle one message at a time, so no forking either
-    # Explicitly, to handle whatever operations nodes periodically send during discover state
-    # Could be used for heartbeating and such as desired
-    my %args=@_;
+
+sub do_udp_service {    # This function opens up a UDP port
+        # It will do similar to the standard service, except:
+        # -Obviously, unencrypted and messages are not guaranteed
+        # -For that reason, more often than not plugins designed with
+        # -this method will not expect to have a callback
+     # Also, this throttles to handle one message at a time, so no forking either
+     # Explicitly, to handle whatever operations nodes periodically send during discover state
+     # Could be used for heartbeating and such as desired
+    my %args     = @_;
     my $discoctl = $args{discoctl};
-    $dispatch_requests=0;
+    $dispatch_requests = 0;
     my $udpcontext;
-    $udpcontext->{sslclientcount}=0;
+    $udpcontext->{sslclientcount} = 0;
     my $udppidfile;
-    my $retry=1;
+    my $retry = 1;
     my $socket;
     my $discopid = $args{discopid};
     $SIG{USR2} = sub {
+
         if ($socket) {
+
             # only clear out pid file when we still have socket.
-            unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
-            $udpctl=0;
-            xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
+            unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit = 1; $socket = 0;
+            $udpctl = 0;
+            xCAT::MsgUtils->message("S", "xcatd udp service $$ quiescing");
         }
-        kill('TERM',$discopid);
+        kill('TERM', $discopid);
     };
     if ($inet6support) {
         $socket = IO::Socket::INET6->new(LocalPort => $port,
-            Proto     => 'udp',
-            );
+            Proto => 'udp',
+        );
     } else {
         $socket = IO::Socket::INET->new(LocalPort => $port,
-            Proto     => 'udp',
+            Proto  => 'udp',
             Domain => AF_INET);
     }
-    if (not $socket and open($udppidfile,"<","/var/run/xcat/udpservice.pid")) {
+    if (not $socket and open($udppidfile, "<", "/var/run/xcat/udpservice.pid")) {
         my $pid = <$udppidfile>;
         if ($pid) {
-            $retry=100; # grace period for old instance to get out of the way, 5 seconds
-            kill 'USR2',$pid;
-            yield(); # let peer have a shot at closure
+            $retry = 100; # grace period for old instance to get out of the way, 5 seconds
+            kill 'USR2', $pid;
+            yield();      # let peer have a shot at closure
         }
         close($udppidfile);
     }
@@ -686,24 +715,25 @@ sub do_udp_service { # This function opens up a UDP port
         $retry--;
         if ($inet6support) {
             $socket = IO::Socket::INET6->new(LocalPort => $port,
-                Proto     => 'udp',
-                );
+                Proto => 'udp',
+            );
         } else {
             $socket = IO::Socket::INET->new(LocalPort => $port,
-                Proto     => 'udp',
+                Proto  => 'udp',
                 Domain => AF_INET);
         }
         sleep 0.05;
     }
 
-    openlog("xcat",'','local4');
+    openlog("xcat", '', 'local4');
     unless ($socket) {
-        xCAT::MsgUtils->message("S","xCAT UDP service unable to open port $port: $!");
+        xCAT::MsgUtils->message("S", "xCAT UDP service unable to open port $port: $!");
         closelog();
         die "Unable to start UDP on $port";
     }
+
     # only take udp pid if we get the socket
-    open($udppidfile,">","/var/run/xcat/udpservice.pid"); # if here, everyone else has unlinked udpservicepid or doesn't care
+    open($udppidfile, ">", "/var/run/xcat/udpservice.pid"); # if here, everyone else has unlinked udpservicepid or doesn't care
     print $udppidfile $$;
     close($udppidfile);
     $select->add($socket);
@@ -716,17 +746,18 @@ sub do_udp_service { # This function opens up a UDP port
     my $client;
     my $peerhost;
     my %packets;
-    my $actualpid=$$;
+    my $actualpid = $$;
+
     until ($quit) {
         eval {
-            my $tcclients; # hash reference to store traffic control requests
+            my $tcclients;    # hash reference to store traffic control requests
             while (1) {
                 unless ($actualpid == $$) { # This really should be impossible now...
-                    xCAT::MsgUtils->message("S","xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
+                    xCAT::MsgUtils->message("S", "xcatd: Something absolutely ludicrous happpened, xCAT developers think this message is impossible to see, post if you see it, fork bomb averted");
                     exit(1);
                 }
-                until ($select->can_read(5)) {  # Wait for data
-                    if ($quit) { last; };
+                until ($select->can_read(5)) {    # Wait for data
+                    if ($quit) { last; }
                     populate_site_hash();
                     yield;
                 }
@@ -735,12 +766,13 @@ sub do_udp_service { # This function opens up a UDP port
                     my $hdl;
                     foreach $hdl (@hdls) {
                         if ($hdl == $socket) {
-                            $part = $socket->recv($data,2000);
-                            $packets{$part} = [$part,$data];
+                            $part = $socket->recv($data, 2000);
+                            $packets{$part} = [ $part, $data ];
                         } elsif ($hdl == $sslctl) {
                             next;
+
                             #update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
-                        } elsif ($hdl == $discoctl) {  # got a discovery response....
+                        } elsif ($hdl == $discoctl) { # got a discovery response....
                         } else {
                             print "Something is wrong in udp process (search xcatd for this string)\n";
                         }
@@ -748,44 +780,46 @@ sub do_udp_service { # This function opens up a UDP port
                 }
                 foreach my $pkey (keys %packets) {
                     my $saddr = $packets{$pkey}->[0];
-                    $data=$packets{$pkey}->[1];
-                    if ($data =~ /^\037\213/) {  # per rfc 1952, these two bytes are gzip, and they are invalid for
-                        store_fd({data=>$data,sockaddr=>$saddr},$discoctl); # for now, punt the gunzip to the worker process
-                    } elsif ($data =~ /^<xcat/) { # xml format
-                        store_fd({data=>$data,sockaddr=>$saddr},$discoctl);
-                    } else { # for *now*, we'll do a tiny YAML subset
+                    $data = $packets{$pkey}->[1];
+                    if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
+                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl); # for now, punt the gunzip to the worker process
+                    } elsif ($data =~ /^<xcat/) {    # xml format
+                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl);
+                    } else {    # for *now*, we'll do a tiny YAML subset
                         if ($data =~ /^resourcerequest: xcatd$/) {
-                            $socket->send("ackresourcerequest\n",0,$packets{$pkey}->[0]);
-                            $tcclients->{$pkey}={ sockaddr=>$packets{$pkey}->[0], timestamp=>time() }
+                            $socket->send("ackresourcerequest\n", 0, $packets{$pkey}->[0]);
+                            $tcclients->{$pkey} = { sockaddr => $packets{$pkey}->[0], timestamp => time() }
                         }
-                    } # JSON maybe one day if important
+                    }    # JSON maybe one day if important
                     if ($quit) { last; }
                     while (@hdls = $select->can_read(0)) { # grab any incoming requests during run
                         foreach my $hdl (@hdls) {
                             if ($hdl == $socket) {
-                                $part = $socket->recv($data,1500);
-                                $packets{$part} = [$part,$data];
+                                $part = $socket->recv($data, 1500);
+                                $packets{$part} = [ $part, $data ];
+
                                 #} elsif ($hdl == $sslctl) {
                                 #	update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
                             }
                         }
                     }
+
                     # Some of those 'future' packets might be stale dupes of this packet, so...
                     delete $packets{$pkey}; # Delete any duplicates of current packet
                 }
                 if ($quit) { last; }
-                grant_tcrequests($tcclients,$udpcontext);
+                grant_tcrequests($tcclients, $udpcontext);
             }
         };
         if ($@) {
-            xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT UDP service: ".$@);
+            xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT UDP service: " . $@);
         }
         unless ($actualpid == $$) { # We should absolutely never be here, exponential growth from a plugin crash.
-            xCAT::MsgUtils->message("S","xcatd: Something ludicrous happpened, bailing to avoid fork bomb, double check perl XS modules like 'net-snmp-perl'");
+            xCAT::MsgUtils->message("S", "xcatd: Something ludicrous happpened, bailing to avoid fork bomb, double check perl XS modules like 'net-snmp-perl'");
             exit 1;
         }
     }
-    if (open($udppidfile,"<","/var/run/xcat/udpservice.pid")) {
+    if (open($udppidfile, "<", "/var/run/xcat/udpservice.pid")) {
         my $pid = <$udppidfile>;
         if ($pid == $$) { # if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
             unlink("/var/run/xcat/udpservice.pid");
@@ -798,69 +832,70 @@ sub do_udp_service { # This function opens up a UDP port
 
 sub scan_plugins {
     my $serialdest = shift;
-    my $rescan = shift;
-    %cmd_handlers=();
-    my @plugins=glob($plugins_dir."/*.pm");
+    my $rescan     = shift;
+    %cmd_handlers = ();
+    my @plugins = glob($plugins_dir . "/*.pm");
     foreach (@plugins) {
         /.*\/([^\/]*).pm$/;
         my $modname = $1;
-        unless ( eval { require "$_" }) {
-            xCAT::MsgUtils->message("S","Error loading module ".$_."  ...skipping");
+        unless (eval { require "$_" }) {
+            xCAT::MsgUtils->message("S", "Error loading module " . $_ . "  ...skipping");
 
             next;
         }
         no strict 'refs';
         my $cmd_adds;
         eval {
-            $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
+            $cmd_adds = ${ "xCAT_plugin::" . $modname . "::" }{handled_commands}->();
         };
         if ($@) {
-            xCAT::MsgUtils->message("S","Error registering module ".$_."  ...skipping");
+            xCAT::MsgUtils->message("S", "Error registering module " . $_ . "  ...skipping");
             next;
         }
         foreach (keys %$cmd_adds) {
             my $value = $_;
             my @modulehandlerinfos;
             if (ref $cmd_adds->{$_}) {
-                @modulehandlerinfos=@{$cmd_adds->{$value}};
+                @modulehandlerinfos = @{ $cmd_adds->{$value} };
             } else {
-                @modulehandlerinfos=($cmd_adds->{$value});
+                @modulehandlerinfos = ($cmd_adds->{$value});
             }
             unless (defined($cmd_handlers{$value})) {
-                $cmd_handlers{$value} = [ ];
+                $cmd_handlers{$value} = [];
             }
+
             # Add every plugin registration to cmd_handlers
             foreach (@modulehandlerinfos) {
-                push @{$cmd_handlers{$value}},[$modname,$_];
+                push @{ $cmd_handlers{$value} }, [ $modname, $_ ];
             }
         }
     }
-    if ( ! $rescan ) {
+    if (!$rescan) {
         foreach (@plugins) {
             no strict 'refs';
             /.*\/([^\/]*).pm$/;
             my $modname = $1;
-            unless (defined(${"xCAT_plugin::".$modname."::"}{init_plugin})) {
+            unless (defined(${ "xCAT_plugin::" . $modname . "::" }{init_plugin})) {
                 next;
             }
-            ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
+            ${ "xCAT_plugin::" . $modname . "::" }{init_plugin}->(\&do_request);
         }
     }
-    if ($serialdest) { store_fd(\%cmd_handlers,$serialdest); }; #print $serialdest freeze(\%cmd_handlers); };
+    if ($serialdest) { store_fd(\%cmd_handlers, $serialdest); }; #print $serialdest freeze(\%cmd_handlers); };
 }
 
 my $pid_init;
 my $readpipe;
 my $writepipe;
-if (socketpair($readpipe, $writepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+if (socketpair($readpipe, $writepipe, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) {
     $pid_init = xCAT::Utils->xfork;
 } else {
     xCAT::MsgUtils->message("S", "socketpair failed: $!");
 }
 if (defined $pid_init) {
-    if ($pid_init) { # parent, just sit and wait..
+    if ($pid_init) {    # parent, just sit and wait..
         close($writepipe);
-        %cmd_handlers = %{fd_retrieve($readpipe)};
+        %cmd_handlers = %{ fd_retrieve($readpipe) };
     } else {
         $$progname = "xcatd: plugin initialization";
         scan_plugins($writepipe);
@@ -872,9 +907,9 @@ if (defined $pid_init) {
 }
 
 
-unless (xCAT::Utils->isLinux()) {	# messes up the output of the service cmd on linux
+unless (xCAT::Utils->isLinux()) { # messes up the output of the service cmd on linux
     eval {
-        xCAT::MsgUtils->message("S","xcatd: service starting");
+        xCAT::MsgUtils->message("S", "xcatd: service starting");
     };
 }
 if ($@) {
@@ -885,15 +920,20 @@ unless ($foreground) {
     daemonize;
 }
 
-$dbmaster=xCAT::Table::init_dbworker;
-my $CHILDPID=0; # Global for reapers
+$dbmaster = xCAT::Table::init_dbworker;
+
+# Make sure DB process is ready.
+wait_db_process();
+my $CHILDPID = 0;    # Global for reapers
 my %immediatechildren;
+
 sub generic_reaper {
-    local($!);
-    while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
+    local ($!);
+    while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+
             # got here because UDP child is gone
-            close($udpctl); $udpctl=0;
+            close($udpctl); $udpctl = 0;
         }
         yield;
     }
@@ -901,47 +941,57 @@ sub generic_reaper {
 }
 
 sub ssl_reaper {
-    local($!);
+    local ($!);
     my $numdone = 0;
-    while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
+    while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         if ($immediatechildren{$CHILDPID}) {
             delete $immediatechildren{$CHILDPID};
             $sslclients--;
             $numdone--;
         }
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+
             # got here because UDP child is gone
-            close($udpctl); $udpctl=0;
+            close($udpctl); $udpctl = 0;
+            $pid_UDP = 0;
+        }
+        if ($CHILDPID == $cmdlog_svrpid) {
+            $cmdlog_svrpid = 0;
+        }
+        if ($CHILDPID == $pid_MON) {
+            $pid_MON = 0;
         }
     }
     $SIG{CHLD} = \&ssl_reaper;
 }
 
 sub dispatch_reaper {
-    local($!);
-    while (($CHILDPID =waitpid(-1, WNOHANG)) > 0) {
+    local ($!);
+    while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         if ($dispatched_children{$CHILDPID}) {
             delete $dispatched_children{$CHILDPID};
             $dispatch_children--;
         }
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+
             # got here because UDP child is gone
-            close($udpctl); $udpctl=0;
+            close($udpctl); $udpctl = 0;
         }
     }
     $SIG{CHLD} = \&dispatch_reaper;
 }
 
 sub plugin_reaper {
-    local($!);
+    local ($!);
     while (($CHILDPID = waitpid(-1, WNOHANG)) > 0) {
         if ($plugin_children{$CHILDPID}) {
             delete $plugin_children{$CHILDPID};
             $plugin_numchildren--;
         }
         if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+
             # got here because UDP child is gone
-            close($udpctl); $udpctl=0;
+            close($udpctl); $udpctl = 0;
         }
     }
     $SIG{CHLD} = \&plugin_reaper;
@@ -950,6 +1000,7 @@ sub plugin_reaper {
 $SIG{CHLD} = \&generic_reaper;
 
 $SIG{TERM} = $SIG{INT} = sub {
+
     #printf("Asked to quit...\n");
     $quit++;
     foreach (keys %dispatched_children) {
@@ -965,42 +1016,45 @@ $SIG{TERM} = $SIG{INT} = sub {
         kill 'USR2', $pid_MON;
     }
     xCAT::Table::shut_dbworker;
+
     # ----used for command log start---------
-    if ($cmdlog_svrpid){
+    if ($cmdlog_svrpid) {
         kill 'INT', $cmdlog_svrpid;
     }
+
     # ----used for command log end---------
 };
 
-socketpair($sslctl, $udpctl,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
+socketpair($sslctl, $udpctl, AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 my $prevfh = select($udpctl);
-$|=1;
+$| = 1;
 select($sslctl);
-$|=1;
+$| = 1;
 select($prevfh);
 $pid_UDP = xCAT::Utils->xfork;
-if (! defined $pid_UDP) {
+if (!defined $pid_UDP) {
     xCAT::MsgUtils->message("S", "Unable to fork for UDP/TCP");
     die;
 }
 unless ($pid_UDP) {
-    close($udpctl); $udpctl=0;
-    $$progname="xcatd: UDP listener";
+    close($udpctl); $udpctl = 0;
+    $$progname = "xcatd: UDP listener";
     my $pid_disco;
     my $discoctl;
     my $udpbroker;
-    socketpair($discoctl,$udpbroker,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
+    socketpair($discoctl, $udpbroker, AF_UNIX, SOCK_STREAM, PF_UNSPEC);
     $udpbroker->autoflush(1);
     $discoctl->autoflush(1);
     $pid_disco = xCAT::Utils->xfork;
+
     if (!defined $pid_disco) {
         xCAT::MsgUtils->message("S", "Unable to fork for UDP/TCP");
         die;
     }
     unless ($pid_disco) { # this is the child, therefore the discovery process..
         close($discoctl);
-        $$progname="xcatd: Discovery worker";
-        do_discovery_process(broker=>$udpbroker);
+        $$progname = "xcatd: Discovery worker";
+        do_discovery_process(broker => $udpbroker);
         xexit(0);
     }
     close($udpbroker);
@@ -1013,66 +1067,66 @@ unless ($pid_UDP) {
         alarm(2);
     };
 
-    do_udp_service(discoctl=>$discoctl,discopid=>$pid_disco);
+    do_udp_service(discoctl => $discoctl, discopid => $pid_disco);
     xexit(0);
 }
 close($sslctl);
 
 # Set up communication pipe to have ssl listener tell install monitor to
 # rescanplugins
-if ( !(socketpair($rescanreadpipe, $rescanwritepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) ) {
+if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNSPEC))) {
     xCAT::MsgUtils->message("S", "socketpair failed: $!");
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
 $pid_MON = xCAT::Utils->xfork;
-if (! defined $pid_MON) {
+if (!defined $pid_MON) {
     xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
     die;
 }
 unless ($pid_MON) {
-    $$progname="xcatd: install monitor";
-    close($udpctl); $udpctl=0;
+    $$progname = "xcatd: install monitor";
+    close($udpctl); $udpctl = 0;
     do_installm_service;
     xexit(0);
 }
 
 # ----used for command log start---------
 $cmdlog_svrpid = xCAT::Utils->xfork;
-if (! defined $cmdlog_svrpid) {
+if (!defined $cmdlog_svrpid) {
     print "xCAT command log sever unable to fork";
-    xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
+    xCAT::MsgUtils->message("S", "xCAT command log sever unable to fork");
 }
-unless ($cmdlog_svrpid){
-    $$progname="xcatd: Command log writer";
+unless ($cmdlog_svrpid) {
+    $$progname = "xcatd: Command log writer";
     my $clientsock;
     my @waittowritepro;
     my $cmdlogsvrlistener;
     my $cmdlogfile;
     my $cmdlogpidfile;
-    my $retry=200;
-    my $writing=0;
-    my $cmdlogfileswitch=0;
-    my $cmdlogservicefile="/var/run/xcat/cmdlogservice.pid";
+    my $retry             = 200;
+    my $writing           = 0;
+    my $cmdlogfileswitch  = 0;
+    my $cmdlogservicefile = "/var/run/xcat/cmdlogservice.pid";
     my $cmdlog_logfile_umask;
 
     $SIG{USR2} = sub {
-        while($writing){sleep(0.01);}
-        if($cmdlogfile){close($cmdlogfile);}
-        if($clientsock){close($clientsock);}
-        if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
+        while ($writing) { sleep(0.01); }
+        if ($cmdlogfile)           { close($cmdlogfile); }
+        if ($clientsock)           { close($clientsock); }
+        if (-e $cmdlogservicefile) { unlink("$cmdlogservicefile"); }
+        if ($cmdlogsvrlistener)    { close($cmdlogsvrlistener); }
+        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
         exit(0);
     };
 
     $SIG{TERM} = $SIG{INT} = sub {
-        while($writing){sleep(0.01);}
-        if($cmdlogfile){close($cmdlogfile);}
-        if($clientsock){close($clientsock);}
-        if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
+        while ($writing) { sleep(0.01); }
+        if ($cmdlogfile)           { close($cmdlogfile); }
+        if ($clientsock)           { close($clientsock); }
+        if (-e $cmdlogservicefile) { unlink("$cmdlogservicefile"); }
+        if ($cmdlogsvrlistener)    { close($cmdlogsvrlistener); }
+        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
         exit(0);
     };
 
@@ -1080,37 +1134,37 @@ unless ($cmdlog_svrpid){
     # when it changes the commands.log name, it will send HUP signal to 'command log writer' process.
     # so when 'command log writer' process receives the HUP siganl, it should reopen the commands.log to make log writing correctly.
     $SIG{HUP} = sub {
-        my $trytime=200;
-        while($writing){sleep(0.01);}
-        $cmdlogfileswitch=0;
-        if($cmdlogfile){close($cmdlogfile);}
-        while(!$cmdlogfileswitch and $trytime){
-            unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
+        my $trytime = 200;
+        while ($writing) { sleep(0.01); }
+        $cmdlogfileswitch = 0;
+        if ($cmdlogfile) { close($cmdlogfile); }
+        while (!$cmdlogfileswitch and $trytime) {
+            unless (open($cmdlogfile, ">>$cmdlog_logfile")) {
                 $trytime--;
-                xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile.");
+                xCAT::MsgUtils->trace(0, "E", "xcatd: Can't open xcat command log file $cmdlog_logfile.");
                 sleep(0.05);
                 next;
             }
             select($cmdlogfile);
-            $|=1;
-            $cmdlogfileswitch=1;
+            $|                = 1;
+            $cmdlogfileswitch = 1;
         }
-        if(!$trytime){
-            xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
+        if (!$trytime) {
+            xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
             kill 'INT', $$;
-        }else{
-            xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
+        } else {
+            xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
         }
     };
 
     $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
         LocalAddr => "127.0.0.1",
-        Type => SOCK_STREAM,
-        Reuse => 1,
-        Listen => 8192);
+        Type      => SOCK_STREAM,
+        Reuse     => 1,
+        Listen    => 8192);
 
-    if(not $cmdlogsvrlistener and open($cmdlogpidfile,"<","$cmdlogservicefile")) {
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
+    if (not $cmdlogsvrlistener and open($cmdlogpidfile, "<", "$cmdlogservicefile")) {
+        xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
         my $pid = <$cmdlogpidfile>;
         if ($pid) {
             kill 'USR2', $pid;
@@ -1121,33 +1175,33 @@ unless ($cmdlog_svrpid){
         $retry--;
         $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
             LocalAddr => "127.0.0.1",
-            Type => SOCK_STREAM,
-            Reuse => 1,
-            Listen => 8192);
+            Type      => SOCK_STREAM,
+            Reuse     => 1,
+            Listen    => 8192);
         sleep(0.05);
     }
     unless ($cmdlogsvrlistener) {
-        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open command log service on port $cmdlog_port,command log process $$ stop.");
+        xCAT::MsgUtils->trace(0, "E", "xcatd: Can't open command log service on port $cmdlog_port,command log process $$ stop.");
         exit(0);
     }
 
-    open($cmdlogpidfile,">$cmdlogservicefile");
+    open($cmdlogpidfile, ">$cmdlogservicefile");
     print $cmdlogpidfile $$;
     close($cmdlogpidfile);
-    xCAT::MsgUtils->trace(0,"I","xcatd: command log process $$ start");
+    xCAT::MsgUtils->trace(0, "I", "xcatd: command log process $$ start");
 
-    my $cmdlog_logfile_path=dirname($cmdlog_logfile);
-    mkpath("$cmdlog_logfile_path") unless(-d "$cmdlog_logfile_path");
+    my $cmdlog_logfile_path = dirname($cmdlog_logfile);
+    mkpath("$cmdlog_logfile_path") unless (-d "$cmdlog_logfile_path");
 
     $cmdlog_logfile_umask = umask(0077);
-    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
-        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
+    unless (open($cmdlogfile, ">>$cmdlog_logfile")) {
+        xCAT::MsgUtils->trace(0, "E", "xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
         exit(1);
     }
     umask($cmdlog_logfile_umask);
     select($cmdlogfile);
-    $|=1;
-    $cmdlogfileswitch=1;
+    $|                = 1;
+    $cmdlogfileswitch = 1;
 
     while (1)
     {
@@ -1156,38 +1210,39 @@ unless ($cmdlog_svrpid){
         my $log = "";
         my $bytesread;
         do {
-            $bytesread=sysread($clientsock,$log,65536,length($log))
-            } while ($bytesread);
+            $bytesread = sysread($clientsock, $log, 65536, length($log))
+        } while ($bytesread);
         close($clientsock);
-        until($cmdlogfileswitch){
+        until ($cmdlogfileswitch) {
             sleep(0.05);
         }
-        $writing=1;
+        $writing = 1;
         print $cmdlogfile $log;
-        $writing=0;
+        $writing = 0;
     }
 
-    if($cmdlogfile){close($cmdlogfile);}
-    if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-    xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ stop");
+    if ($cmdlogfile)        { close($cmdlogfile); }
+    if ($cmdlogsvrlistener) { close($cmdlogsvrlistener); }
+    xCAT::MsgUtils->message("S", "INFO xcatd: 'Command log writer' process $$ stop");
 }
+
 # ----used for command log end---------
 
-$$progname="xcatd: SSL listener";
+$$progname = "xcatd: SSL listener";
 
 # Enable the signals for the subroutine calling trace
 $SIG{TRAP} = sub {
     if (-f "/tmp/xcatcallingtrace.flag") {
-        if (open (TRACEFLAG, "</tmp/xcatcallingtrace.flag")) {
+        if (open(TRACEFLAG, "</tmp/xcatcallingtrace.flag")) {
             my $traceflag = <TRACEFLAG>;
-            if($traceflag == 1) {
+            if ($traceflag == 1) {
                 &enable_callingtrace;
                 print "enabled calling trace\n";
             } else {
                 &disable_callingtrace;
                 print "dislabled calling trace\n";
             }
-            close (TRACEFLAG);
+            close(TRACEFLAG);
         }
     }
 };
@@ -1202,7 +1257,7 @@ xCAT_monitoring::monitorctrl::start($$);
 # cmd_handlers hash and pass it back to this parent when rescanplugins requested
 my $chreadpipe;
 my $chwritepipe;
-if ( !(socketpair($chreadpipe, $chwritepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) ) {
+if (!(socketpair($chreadpipe, $chwritepipe, AF_UNIX, SOCK_STREAM, PF_UNSPEC))) {
     xCAT::MsgUtils->message("S", "socketpair failed: $!");
 }
 my $chrselect = new IO::Select;
@@ -1211,36 +1266,36 @@ $chrselect->add($chreadpipe);
 
 my $peername;
 my $ssltimeout;
-my $retry=1;
-openlog("xcat","","local4");
+my $retry = 1;
+openlog("xcat", "", "local4");
 my $listener;
 my $mainpidfile;
 $SIG{USR2} = sub {
     if ($listener) {
-        unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0;
-        $udpctl=0;
-        xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
+        unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit = 1; $listener = 0;
+        $udpctl = 0;
+        xCAT::MsgUtils->message("S", "xcatd main service $$ quiescing");
     }
 };
 if ($inet6support) {
     $listener = IO::Socket::INET6->new(
         LocalPort => $port,
-        Listen => 8192,
-        Reuse => 1,
-        );
+        Listen    => 8192,
+        Reuse     => 1,
+    );
 } else {
     $listener = IO::Socket::INET->new(
         LocalPort => $port,
-        Listen => 8192,
-        Reuse => 1,
-        );
+        Listen    => 8192,
+        Reuse     => 1,
+    );
 }
-if (not $listener and open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
+if (not $listener and open($mainpidfile, "<", "/var/run/xcat/mainservice.pid")) {
     my $pid = <$mainpidfile>;
     if ($pid) {
-        $retry=100; # grace period for old instance to get out of the way, 5 seconds
-        kill 'USR2',$pid;
-        yield(); # let peer have a shot at closure
+        $retry = 100; # grace period for old instance to get out of the way, 5 seconds
+        kill 'USR2', $pid;
+        yield();      # let peer have a shot at closure
     }
     close($mainpidfile);
 }
@@ -1249,21 +1304,21 @@ while (not $listener and $retry) {
     if ($inet6support) {
         $listener = IO::Socket::INET6->new(
             LocalPort => $port,
-            Listen => 8192,
-            Reuse => 1,
-            );
+            Listen    => 8192,
+            Reuse     => 1,
+        );
     } else {
         $listener = IO::Socket::INET->new(
             LocalPort => $port,
-            Listen => 8192,
-            Reuse => 1,
-            );
+            Listen    => 8192,
+            Reuse     => 1,
+        );
     }
     sleep(0.05);
 }
 my $listenwatcher = IO::Select->new($listener);
-my $udpwatcher = IO::Select->new($udpctl);
-my $bothwatcher = IO::Select->new($udpctl, $listener);
+my $udpwatcher    = IO::Select->new($udpctl);
+my $bothwatcher   = IO::Select->new($udpctl, $listener);
 
 unless ($listener) {
     kill 'INT', $pid_UDP;
@@ -1272,7 +1327,7 @@ unless ($listener) {
     if ($dbmaster) {
         kill 'INT', $dbmaster;
     }
-    xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
+    xCAT::MsgUtils->message("S", "xCAT service unable to open SSL services on $port: $!");
     closelog();
     if ($startupparent) {
         print $startupparent "Unable to perform socket takeover from existing xCAT instance\n";
@@ -1285,26 +1340,25 @@ if ($startupparent) {
 }
 
 # only write to pid file if we have listener, listener ownership serves as lock to protect integrity
-open($mainpidfile,">","/var/run/xcat/mainservice.pid"); # if here, everyone else has unlinked mainservicepid or doesn't care
+open($mainpidfile, ">", "/var/run/xcat/mainservice.pid"); # if here, everyone else has unlinked mainservicepid or doesn't care
 print $mainpidfile $$;
 close($mainpidfile);
 closelog();
 my @pendingconnections;
 my $tconn;
 my $sslfudgefactor = 0;
-my $udpalive = 1;
-# Make sure DB process is ready.
-wait_db_process();
+my $udpalive       = 1;
+
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
-    while ($udpalive and $udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
+    while ($udpalive and $udpwatcher->can_read(0)) { # take an intermission to broker some state requests from udp traffic control
         eval {
             my $msg = fd_retrieve($udpctl);
             if ($msg->{req} eq 'get_client_count') {
-                store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients}, $udpctl);
+                store_fd({ 'clientfudge' => $sslfudgefactor, 'sslclientcount' => $sslclients }, $udpctl);
             } elsif ($msg->{req} eq 'set_fudge_factor') {
                 $sslfudgefactor = $msg->{fudge};
-                store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients}, $udpctl);
+                store_fd({ 'clientfudge' => $sslfudgefactor, 'sslclientcount' => $sslclients }, $udpctl);
             }
         };
         if ($@) {
@@ -1316,61 +1370,67 @@ until ($quit) {
         while ($listenwatcher->can_read(0)) { # grab everything we can, but don't spend any time waiting for more
             $tconn = $listener->accept;
             unless ($tconn) { next; }
-            push @pendingconnections,$tconn;
+            push @pendingconnections, $tconn;
         }
     } else {
+
         # if select returned with no ready fds, there might be udpctl broken.
         if (not $bothwatcher->can_read(30)) {
+
             # if the errno is 'bad fd', check the health of the udpctl
             if ($! == EBADF) {
                 $udpwatcher->can_read(0);
                 if ($! == EBADF) {
+
                     # if udpctl cannot be read and said 'bad fd', remove it from $bothwatcher
-                    $udpalive = 0;$bothwatcher = IO::Select->new($listener);
+                    $udpalive = 0; $bothwatcher = IO::Select->new($listener);
                 }
             }
         }
-        if (not $listenwatcher->can_read(0)) {  # check for udpctl messages since
-            # we have no listen to hear
+        if (not $listenwatcher->can_read(0)) { # check for udpctl messages since
+                                               # we have no listen to hear
             next;
         }
         $tconn = $listener->accept; # we have no connections pending, no rush, just wait until the next connection attempt comes in
         unless ($tconn) { next; } # sometimes we get 'undef', in which case carry on with our lives...
-        push @pendingconnections,$tconn;
+        push @pendingconnections, $tconn;
     }
     unless (scalar @pendingconnections) { next; } # if for some reason we landed here without any accepted connections, carry on..
     if ($sslclients > $maxsslclients) { # we have enough children, wait for some to exit before spawning more
         $bothwatcher->can_read(0.1); # when next connection tries to come in or a tenth of a second, whichever comes first
-        next; # just keep pulling things off listen queue onto our own
+        next;                        # just keep pulling things off listen queue onto our own
     }
+
     # before we fork, check to see if rescanplugins was previously processed and
     # we now have a new cmd_handlers hash to refresh
     my @chdata;
     if (@chdata = $chrselect->can_read(0)) {
         foreach my $chd (@chdata) {
-            %cmd_handlers = %{fd_retrieve($chd)};
+            %cmd_handlers = %{ fd_retrieve($chd) };
         }
     }
+
     # we have a pending connection and we are under the threshold, grab one from the list and process it...
-    my $cnnection=shift @pendingconnections;
+    my $cnnection = shift @pendingconnections;
+
     #my $previous = select ($cnnection); # assure that perl buffering is not in play at the low level
     #$|=1;
     #select ($previous);
     my $connection;
     my $child = xCAT::Utils->xfork(); # Yes we fork, IO::Socket::SSL is not threadsafe..
     if ($child) {
-        $immediatechildren{$child}=1;
+        $immediatechildren{$child} = 1;
     }
 
     unless (defined $child) {
-        xCAT::MsgUtils->message("S","xcatd cannot fork");
+        xCAT::MsgUtils->message("S", "xcatd cannot fork");
         die;
     }
 
     if ($child == 0) {
-        close($udpctl); $udpctl=0;
+        close($udpctl); $udpctl = 0;
         $SIG{TERM} = $SIG{INT} = 'DEFAULT';
-        $SIG{CHLD} = \&generic_reaper; # THROTTLE
+        $SIG{CHLD} = \&generic_reaper;    # THROTTLE
         $listener->close;
 
         populate_site_hash();
@@ -1383,59 +1443,62 @@ until ($quit) {
         eval {
             alarm(10);
             $connection = IO::Socket::SSL->start_SSL($cnnection,
-                SSL_key_file=>$xcatdir."/cert/server-cred.pem",
-                SSL_cert_file=>$xcatdir."/cert/server-cred.pem",
-                SSL_ca_file=>$xcatdir."/cert/ca.pem",
-                SSL_server=>1,
-                SSL_verify_mode=> 1,
+                SSL_key_file    => $xcatdir . "/cert/server-cred.pem",
+                SSL_cert_file   => $xcatdir . "/cert/server-cred.pem",
+                SSL_ca_file     => $xcatdir . "/cert/ca.pem",
+                SSL_server      => 1,
+                SSL_verify_mode => 1,
                 %extrasslargs,
-                );
+            );
             alarm(0);
         };
-        $SIG{ALRM}='DEFAULT';
-        if ($@) { # SSL failure
+        $SIG{ALRM} = 'DEFAULT';
+        if ($@) {    # SSL failure
             close($cnnection);
             xexit 0;
         }
         unless ($connection) {
             xexit 0;
         }
+
         #$previous=select($connection); # also assure buffering not in play at SSL socket, which seems to be possibly independent of lower socket
         #$|=1;
         #select($previous);
         $clientselect->add($connection);
-        my $peerhost=undef;
-        my $peerfqdn=undef;
-        my $peer=$connection->peer_certificate("owner");
+        my $peerhost = undef;
+        my $peerfqdn = undef;
+        my $peer     = $connection->peer_certificate("owner");
         if ($peer) {
             $peer =~ m/CN=([^\/]*)/;
             $peername = $1;
         } else {
-            $peername=undef;
+            $peername = undef;
         }
 
         if ($inet6support) {
-            $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
+            $peerhost = gethostbyaddr($connection->peeraddr, AF_INET6);
         } else {
-            $peerhost = gethostbyaddr($connection->peeraddr,AF_INET);
+            $peerhost = gethostbyaddr($connection->peeraddr, AF_INET);
         }
 
-        unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr,AF_INET); }
-        $peerfqdn=$peerhost;
-        my $peerhostorg=$peerhost;  # save original with domain for validation
+        unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr, AF_INET); }
+        $peerfqdn = $peerhost;
+        my $peerhostorg = $peerhost;  # save original with domain for validation
 
         if ($peerhost) {
             my @hosts;
-            push (@hosts, $peerhost);
-            my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+            push(@hosts, $peerhost);
+            my $nd          = xCAT::NetworkUtils->getNodeDomains(\@hosts);
             my %nodedomains = %$nd;
             $domain = $nodedomains{$peerhost};
         }
 
         if ($domain) {
+
             # strip off domain if set
             $peerhost && $peerhost =~ s/\.$domain\.*$//;
         } else {
+
             # otherwise just strip off whatever comes after the first dot
             $peerhost && $peerhost =~ s/\..*//;
         }
@@ -1443,23 +1506,24 @@ until ($quit) {
         $peerhost && $peerhost =~ s/-eth\d*$//;
         $peerhost && $peerhost =~ s/-myri\d*$//;
         $peerhost && $peerhost =~ s/-ib\d*$//;
+
         #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
 
-        my $debugmsg = "xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
-        xCAT::MsgUtils->trace(0,"D","$debugmsg");
+        my $debugmsg = "xcatd: connection from " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
+        xCAT::MsgUtils->trace(0, "D", "$debugmsg");
 
-        $$progname="xcatd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
-        service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
+        $$progname = "xcatd SSL: Instance for " . ($peername ? $peername . "@" . $peerhost : $peerhost) if $peerhost;
+        service_connection($connection, $peername, $peerhost, $peerfqdn, $peerhostorg);
 
-        $debugmsg = "xcatd: close connection with ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
-        xCAT::MsgUtils->trace(0,"D","$debugmsg");
+        $debugmsg = "xcatd: close connection with " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
+        xCAT::MsgUtils->trace(0, "D", "$debugmsg");
         xexit(0);
     }
     if ($sslfudgefactor) { $sslfudgefactor -= 1; }
-    $sslclients++; # THROTTLE
+    $sslclients++;    # THROTTLE
     $cnnection->close();
 }
-if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
+if (open($mainpidfile, "<", "/var/run/xcat/mainservice.pid")) {
     my $pid = <$mainpidfile>;
     if ($pid == $$) { # if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
         unlink("/var/run/xcat/mainservice.pid");
@@ -1468,10 +1532,16 @@ if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
 }
 if ($listener) { $listener->close; }
 my $lastpid;
-while (keys %immediatechildren) {
-    $lastpid=wait();
+while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
+    $lastpid = wait();
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
+    } elsif ($lastpid == $pid_UDP) {
+        $pid_UDP = 0;
+    } elsif ($lastpid == $cmdlog_svrpid) {
+        $cmdlog_svrpid = 0;
+    } elsif ($lastpid == $pid_MON) {
+        $pid_MON = 0;
     }
 }
 xCAT::Table::shut_dbworker;
@@ -1486,25 +1556,26 @@ my $parent_fd;
 my %resps;
 
 sub plugin_command {
-    my $req = shift;
-    my $sock = shift;
+    my $req      = shift;
+    my $sock     = shift;
     my $callback = shift;
     my %handler_hash;
     my $usesiteglobal = 0;
     use xCAT::NodeRange qw/extnoderange nodesmissed noderange/;
-    $Main::resps={};
+    $Main::resps = {};
     my @nodes;
     @ARGV = ();
+
     if ($req->{node}) {
-        @nodes = @{$req->{node}};
+        @nodes = @{ $req->{node} };
     } elsif ($req->{noderange} and $req->{noderange}->[0]) {
         xCAT::NodeRange::retain_cache(0); # if the request has a 'noderange' element, take the performance hit for the sake of freshness
         @nodes = noderange($req->{noderange}->[0]);
         if (nodesmissed) {
-            my $rsp = {errorcode=>['1'],error=>["Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)]};
-            $rsp->{serverdone} = [ undef ];
+            my $rsp = { errorcode => ['1'], error => [ "Invalid nodes and/or groups in noderange: " . join(',', nodesmissed) ] };
+            $rsp->{serverdone} = [undef];
             if ($sock) {
-                send_response($rsp,$sock);
+                send_response($rsp, $sock);
             }
             return ($rsp);
         }
@@ -1516,44 +1587,45 @@ sub plugin_command {
     if (@nodes) { $req->{node} = \@nodes; }
     my %unhandled_nodes;
     foreach (@nodes) {
-        $unhandled_nodes{$_}=1;
+        $unhandled_nodes{$_} = 1;
     }
-    my $useunhandled=0;
-    if (defined($cmd_handlers{$req->{command}->[0]})) {
+    my $useunhandled = 0;
+    if (defined($cmd_handlers{ $req->{command}->[0] })) {
         my $hdlspec;
-        my @globalhandlers=();
-        my $useglobals=1; # If it stays 1, then use globals normally, if 0, use only for 'unhandled_nodes, if -1, don't do at all
+        my @globalhandlers = ();
+        my $useglobals = 1; # If it stays 1, then use globals normally, if 0, use only for 'unhandled_nodes, if -1, don't do at all
         my %hdlrcaches;
-        foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
-            $hdlspec =$_->[1];
+        foreach (@{ $cmd_handlers{ $req->{command}->[0] } }) {
+            $hdlspec = $_->[1];
             my $ownmod = $_->[0];
-            if ($hdlspec =~ /^site:/) { # A site entry specifies a plugin
+            if ($hdlspec =~ /^site:/) {    # A site entry specifies a plugin
                 my $sitekey = $hdlspec;
                 $sitekey =~ s/^site://;
-                if ($::XCATSITEVALS{$sitekey}) {# A site style plugin specification is just like
-                    # a static global, it grabs all nodes rather than some
+                if ($::XCATSITEVALS{$sitekey}) { # A site style plugin specification is just like
+                        # a static global, it grabs all nodes rather than some
                     $useglobals = -1; # If they tried to specify anything, don't use the default global handlers at all
                     unless (@nodes) {
-                        $handler_hash{$::XCATSITEVALS{$sitekey}} = 1;
+                        $handler_hash{ $::XCATSITEVALS{$sitekey} } = 1;
                         $usesiteglobal = 1;
                     }
                     foreach (@nodes) { # Specified a specific plugin, not a table lookup
-                        $handler_hash{$::XCATSITEVALS{$sitekey}}->{$_} = 1;
+                        $handler_hash{ $::XCATSITEVALS{$sitekey} }->{$_} = 1;
                     }
                 }
             } elsif ($hdlspec =~ /:/) { # Specificed a table lookup path for plugin name
-                if (@nodes) { # only use table lookup plugin if nodelist exists
-                    # Usage will be handled in common AAAhelp plugin
+                if (@nodes) {  # only use table lookup plugin if nodelist exists
+                               # Usage will be handled in common AAAhelp plugin
                     $useglobals = 0; # Only contemplate nodes that aren't caught through searching below in the global handler
-                    $useunhandled=1;
+                    $useunhandled = 1;
                     my $table;
                     my $cols;
-                    ($table,$cols) = split(/:/,$hdlspec);
-                    my @colmns=split(/,/,$cols);
+                    ($table, $cols) = split(/:/, $hdlspec);
+                    my @colmns = split(/,/, $cols);
                     my @columns;
-                    my $hdlrtable=0;
+                    my $hdlrtable = 0;
+
                     unless ($hdlrcaches{$hdlspec}) {
-                        $hdlrtable=xCAT::Table->new($table,-create=>0);
+                        $hdlrtable = xCAT::Table->new($table, -create => 0);
                         unless ($hdlrtable) {
                             next;
                         }
@@ -1563,11 +1635,11 @@ sub plugin_command {
                     foreach my $colu (@colmns) {
                         if ($colu =~ /=/) { # a value redirect to a pattern/specific name
                             my $coln; my $colv;
-                            ($coln,$colv) = split(/=/,$colu,2);
+                            ($coln, $colv) = split(/=/, $colu, 2);
                             $colvals->{$coln} = $colv;
-                            push (@columns,$coln);
+                            push(@columns, $coln);
                         } else {
-                            push (@columns,$colu);
+                            push(@columns, $colu);
                         }
                     }
 
@@ -1577,14 +1649,14 @@ sub plugin_command {
                         $useglobals = 1;
                     }
                     if ($hdlrtable) {
-                        $hdlrcaches{$hdlspec} = $hdlrtable->getNodesAttribs(\@nodes,\@columns);
+                        $hdlrcaches{$hdlspec} = $hdlrtable->getNodesAttribs(\@nodes, \@columns);
                     }
                     foreach $node (@nodes) {
                         unless ($hdlrcaches{$hdlspec}) { next; }
                         my $attribs = $hdlrcaches{$hdlspec}->{$node}->[0]; #$hdlrtable->getNodeAttribs($node,\@columns);
                         unless (defined($attribs)) { next; }
                         foreach (@columns) {
-                            my $col=$_;
+                            my $col = $_;
                             if (defined($attribs->{$col})) {
                                 if ($colvals->{$col}) { # A pattern match style request.
                                     if ($attribs->{$col} =~ /$colvals->{$col}/) {
@@ -1593,9 +1665,10 @@ sub plugin_command {
                                         last;
                                     }
                                 } else {
+
                                     # call the plugin that matches the table value for that node
                                     if ($attribs->{$col} =~ /$ownmod/) {
-                                        $handler_hash{$attribs->{$col}}->{$node} = 1;
+                                        $handler_hash{ $attribs->{$col} }->{$node} = 1;
                                         delete $unhandled_nodes{$node};
                                         last;
                                     }
@@ -1604,10 +1677,10 @@ sub plugin_command {
                         }
                     }
                     $hdlrtable->close if $hdlrtable;
-                }  # end if (@nodes)
+                }    # end if (@nodes)
 
             } else {
-                push @globalhandlers,$hdlspec;
+                push @globalhandlers, $hdlspec;
             }
         }
         if ($useglobals == 1) {  # Behavior when globals have not been overriden
@@ -1624,7 +1697,7 @@ sub plugin_command {
             unless (@nodes or $usesiteglobal) { # if something like 'makedhcp -n',
                 foreach (keys %handler_hash) {
                     if ($handler_hash{$_} == 1) {
-                        delete ($handler_hash{$_})
+                        delete($handler_hash{$_})
                     }
                 }
             }
@@ -1636,13 +1709,13 @@ sub plugin_command {
                     $handler_hash{$hdlspec}->{$_} = 1;
                 }
             }
-        } # Otherwise, global handler is implicitly disabled
+        }    # Otherwise, global handler is implicitly disabled
     } else {
-        return 1;  # TODO: error back that request has no known plugin for it
+        return 1;    # TODO: error back that request has no known plugin for it
     }
     if ($useunhandled) {
-        my $queuelist='';
-        foreach (@{$cmd_handlers{$req->{command}->[0]}}) {
+        my $queuelist = '';
+        foreach (@{ $cmd_handlers{ $req->{command}->[0] } }) {
             my $queueitem = $_->[1];
             if (($queueitem =~ /:/) and !($queuelist =~ /($queueitem)/)) {
                 $queuelist .= "$_->[1];";
@@ -1653,20 +1726,21 @@ sub plugin_command {
         if ($sock) {
             my $xcatresponse = { xcatresponse => [] };
             foreach (keys %unhandled_nodes) {
-                push @{$xcatresponse->{xcatresponse}},{node=>[{name=>[$_],error=>["Unable to identify plugin for this command, check relevant tables: $queuelist"],errorcode=>[1]}]};
+                push @{ $xcatresponse->{xcatresponse} }, { node => [ { name => [$_], error => ["Unable to identify plugin for this command, check relevant tables: $queuelist"], errorcode => [1] } ] };
             }
-            send_response($xcatresponse,$sock);
+            send_response($xcatresponse, $sock);
         } else {
             foreach (keys %unhandled_nodes) {
                 my $tabdesc = $queuelist;
                 $tabdesc =~ s/=.*$//;
-                $callback->({node=>[{name=>[$_],error=>['Unable to identify plugin for this command, check relevant tables: '.$tabdesc],errorcode=>[1]}]});
+                $callback->({ node => [ { name => [$_], error => [ 'Unable to identify plugin for this command, check relevant tables: ' . $tabdesc ], errorcode => [1] } ] });
             }
         }
     }
-    my %xcatresponses = ( xcatresponse => [] );
-    $plugin_numchildren=0;
-    %plugin_children=();
+    my %xcatresponses = (xcatresponse => []);
+    $plugin_numchildren = 0;
+    %plugin_children    = ();
+
     # save the old signal
     my $old_sig_chld = $SIG{CHLD};
     $SIG{CHLD} = \&plugin_reaper; #sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $plugin_numchildren--; } } };
@@ -1676,7 +1750,7 @@ sub plugin_command {
         foreach (keys %plugin_children) {
             kill 'INT', $_;
         }
-        $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
+        $SIG{ALRM} = sub { xexit 0; };    # wait 1s for grace exit
         alarm(1);
     };
 
@@ -1684,89 +1758,95 @@ sub plugin_command {
     if ($sock) {
         $check_fds = new IO::Select;
     }
+
     # Multiple plugins for one command
     # $req->{sequential} is 0 by default
     if (defined($req->{sequential}) && $req->{sequential}->[0]) {
+
         # PCM case, executing plugins sequentially in alphabetic order
         my $old_parent_fd = $parent_fd;
         $parent_fd = 0;
         foreach (sort(keys %handler_hash)) {
             my $modname = $_;
-            $Main::resps={};
-            if (-r $plugins_dir."/".$modname.".pm") {
-                require $plugins_dir."/".$modname.".pm";
+            $Main::resps = {};
+            if (-r $plugins_dir . "/" . $modname . ".pm") {
+                require $plugins_dir . "/" . $modname . ".pm";
                 $plugin_numchildren++;
-                my $oldprogname=$$progname;
-                $$progname=$oldprogname.": $modname instance";
+                my $oldprogname = $$progname;
+                $$progname = $oldprogname . ": $modname instance";
                 unless ($handler_hash{$_} == 1) {
+
                     # ok, if nodes have numbers, this sorts them numerically... roughly..
                     # if node doesn't, then it sorts out alphabetically.
-                    my @nodes = sort {($a =~ /(\d+)/ ? $1 : -1)[0] <=> ($b =~ /(\d+)/ ? $1 : -1)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
-                    $req->{node}=\@nodes;
+                    my @nodes = sort { ($a =~ /(\d+)/ ? $1 : -1)[0] <=> ($b =~ /(\d+)/ ? $1 : -1)[0] || $a cmp $b } (keys %{ $handler_hash{$_} });
+                    $req->{node} = \@nodes;
                 }
-                no strict  "refs";
-                eval { # REMOVEEVALFORDEBUG
+                no strict "refs";
+                eval {    # REMOVEEVALFORDEBUG
                     if ($dispatch_requests) {
-                        dispatch_request($req,$callback,$modname);
+                        dispatch_request($req, $callback, $modname);
                     } else {
-                        $SIG{CHLD}='DEFAULT';
+                        $SIG{CHLD} = 'DEFAULT';
+
                         # Call the plugin to process the command request
                         #    rescanplugins request gets handled directly here in xcatd
                         if ($req->{command}->[0] eq 'rescanplugins') {
-                            scan_plugins($chwritepipe,'1');
+                            scan_plugins($chwritepipe, '1');
                             if ($rescanwritepipe) {
-                                store_fd(\$rescanrequest,$rescanwritepipe);
+                                store_fd(\$rescanrequest, $rescanwritepipe);
                             }
                         } else {
-                            my $debuglog= "xcatd: call plugin <$modname> to handle command <$req->{command}->[0]>";
-                            xCAT::MsgUtils->trace(0,"D","$debuglog");
+                            my $debuglog = "xcatd: call plugin <$modname> to handle command <$req->{command}->[0]>";
+                            xCAT::MsgUtils->trace(0, "D", "$debuglog");
 
-                            ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+                            ${ "xCAT_plugin::" . $modname . "::" }{process_request}->($req, $callback, \&do_request);
                         }
                     }
-                    $$progname=$oldprogname;
-                }; # REMOVEEVALFORDEBUG
+                    $$progname = $oldprogname;
+                };    # REMOVEEVALFORDEBUG
                 if ($@) { # We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
                     xCAT::MsgUtils->message("S", "$@");
                     die $@;
                 }
             } else {
-                my $pm_name = $plugins_dir."/".$modname.".pm";
+                my $pm_name = $plugins_dir . "/" . $modname . ".pm";
                 if (ref $handler_hash{$_}) {
-                    foreach my $node (keys %{$handler_hash{$_}}) {
+                    foreach my $node (keys %{ $handler_hash{$_} }) {
                         if ($sock) {
-                            send_response({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},$sock);
+                            send_response({ node => [ { name => [$node], data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] } ] }, $sock);
                         } else {
-                            $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
+                            $callback->({ node => [ { name => [$node], data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] } ] });
                         }
                     }
                 } else {
                     if ($sock) {
-                        send_response({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},$sock);
+                        send_response({ data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] }, $sock);
                     } else {
-                        $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
+                        $callback->({ data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] });
                     }
                 }
             }
-            push @{$xcatresponses{xcatresponse}}, $Main::resps;
+            push @{ $xcatresponses{xcatresponse} }, $Main::resps;
         }
         $parent_fd = $old_parent_fd;
     } else {
         my $req_back = undef;
-        my $command = $req->{'command'}->[0];
+        my $command  = $req->{'command'}->[0];
+
         # executing plugins parallel
         foreach (keys %handler_hash) {
-            my $modname = $_;
-            my $shouldbealivepid=$$;
-            if (-r $plugins_dir."/".$modname.".pm") {
-                require $plugins_dir."/".$modname.".pm";
+            my $modname          = $_;
+            my $shouldbealivepid = $$;
+            if (-r $plugins_dir . "/" . $modname . ".pm") {
+                require $plugins_dir . "/" . $modname . ".pm";
                 $plugin_numchildren++;
+
                 # build the request queue for the callback command
                 if (grep (/^$command$/, @CALLBACK_COMMAND)) {
-                    no strict  "refs";                	
-                    if (defined(${"xCAT_plugin::".$modname."::"}{route_request})) {
-                        my $ret = ${"xCAT_plugin::".$modname."::"}{route_request}
-                        ($req,$callback,\&do_request);
+                    no strict "refs";
+                    if (defined(${ "xCAT_plugin::" . $modname . "::" }{route_request})) {
+                        my $ret = ${ "xCAT_plugin::" . $modname . "::" }{route_request}
+                          ($req, $callback, \&do_request);
                         if ($ret == xCAT::State->REQUEST_ERROR) {
                             xCAT::MsgUtils->message("S", "Request failed: $!");
                             next;
@@ -1775,22 +1855,23 @@ sub plugin_command {
                         }
                     }
                 }
-                my $pfd; # will be referenced for inter-process messaging.
+                my $pfd;    # will be referenced for inter-process messaging.
                 my $parfd; # not causing a problem that I discern yet, but theoretically
                 my $child;
-                if ($sock) { # If $sock not passed in, don't fork..
-                    if (! socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+                if ($sock) {    # If $sock not passed in, don't fork..
+                    if (!socketpair($pfd, $parfd, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) {
                         xCAT::MsgUtils->message("S", "socketpair failed: $!");
                         die;
                     }
+
                     #pipe($pfd,$cfd);
                     my $oldfh = select $parfd;
-                    $|=1;
+                    $| = 1;
                     select $pfd;
-                    $|=1;
+                    $| = 1;
                     select $oldfh;
-                    binmode($parfd,':utf8');
-                    binmode($pfd,':utf8');
+                    binmode($parfd, ':utf8');
+                    binmode($pfd,   ':utf8');
                     $child = xCAT::Utils->xfork;
                 } else {
                     if ($req_back) {
@@ -1805,127 +1886,131 @@ sub plugin_command {
                     die;
                 }
                 if ($child == 0) {
-                    if ($parfd) {  # If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
+                    if ($parfd) { # If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
                         $parent_fd = $parfd;
                     }
                     my $org_parent_fd = $parent_fd;
-                    my $oldprogname=$$progname;
-                    $$progname=$oldprogname.": $modname instance";
+                    my $oldprogname   = $$progname;
+                    $$progname = $oldprogname . ": $modname instance";
                     if ($sock) { close $pfd; }
                     unless ($handler_hash{$_} == 1) {
+
                         # ok, if nodes have numbers, this sorts them numerically... roughly..
                         # if node doesn't, then it sorts out alphabetically.
-                        my @nodes = sort {($a =~ /(\d+)/ ? $1 : -1)[0] <=> ($b =~ /(\d+)/ ? $1 : -1)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
-                        $req->{node}=\@nodes;
+                        my @nodes = sort { ($a =~ /(\d+)/ ? $1 : -1)[0] <=> ($b =~ /(\d+)/ ? $1 : -1)[0] || $a cmp $b } (keys %{ $handler_hash{$_} });
+                        $req->{node} = \@nodes;
                     }
-                    no strict  "refs";
-                    eval { # REMOVEEVALFORDEBUG
+                    no strict "refs";
+                    eval {    # REMOVEEVALFORDEBUG
                         if ($dispatch_requests) {
-                            dispatch_request($req,$callback,$modname);
+                            dispatch_request($req, $callback, $modname);
                         } else {
-                            $SIG{CHLD}='DEFAULT';
+                            $SIG{CHLD} = 'DEFAULT';
+
                             # Call the plugin to process the command request
                             #    rescanplugins request gets handled directly here in xcatd
                             if ($req->{command}->[0] eq 'rescanplugins') {
-                                scan_plugins($chwritepipe,'1');
+                                scan_plugins($chwritepipe, '1');
                                 if ($rescanwritepipe) {
-                                    store_fd(\$rescanrequest,$rescanwritepipe);
+                                    store_fd(\$rescanrequest, $rescanwritepipe);
                                 }
                             } else {
-                                ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+                                ${ "xCAT_plugin::" . $modname . "::" }{process_request}->($req, $callback, \&do_request);
                             }
                         }
-                        $$progname=$oldprogname;
+                        $$progname = $oldprogname;
                         $parent_fd = $org_parent_fd;
                         if ($sock) {
                             close($parent_fd);
                             xexit(0);
                         }
-                        $@=""; # sometimes a child 'eval' doesn't clean up $@, if we make it this far, no non-eval bug bombed out
-                    }; # REMOVEEVALFORDEBUG
+                        $@ = ""; # sometimes a child 'eval' doesn't clean up $@, if we make it this far, no non-eval bug bombed out
+                    };    # REMOVEEVALFORDEBUG
                     if ($sock or $shouldbealivepid != $$) { # We shouldn't still be alive, try to send as much detail to parent as possible as to why
-                        my $error= "$modname plugin bug, pid $$, process description: '$$progname'";
+                        my $error = "$modname plugin bug, pid $$, process description: '$$progname'";
                         if ($@) {
                             $error .= " with error '$@'";
                         } else { # Sys::Virt and perhaps Net::SNMP sometimes crashes in a way $@ won't catch..
                             $error .= " with missing eval error, probably due to special manipulation of $@ or strange circumstances in an XS library, remove evals in xcatd marked 'REMOVEEVALFORDEBUG and run xcatd -f for more info";
                         }
-                        if (scalar (@nodes)) { # Don't know which of the nodes, so one error message warning about the possibliity..
-                            $error .= " while trying to fulfill request for the following nodes: ".join(",",@nodes);
+                        if (scalar(@nodes)) { # Don't know which of the nodes, so one error message warning about the possibliity..
+                            $error .= " while trying to fulfill request for the following nodes: " . join(",", @nodes);
                         }
-                        xCAT::MsgUtils->message("S","xcatd: $error");
-                        $callback->({error=>[$error],errorcode=>[1]});
-                        xexit(0); # Die like we should have done
+                        xCAT::MsgUtils->message("S", "xcatd: $error");
+                        $callback->({ error => [$error], errorcode => [1] });
+                        xexit(0);             # Die like we should have done
                     } elsif ($@) { # We are still alive, should be alive, but yet we have an error.  This means we are in the case of 'do_request' or something similar.  Forward up the death since our communication channel is intact..
                         xCAT::MsgUtils->message("S", "$@");
                         die $@;
                     }
                 } else {
-                    $plugin_children{$child}=1;
+                    $plugin_children{$child} = 1;
                     close $parfd;
                     $check_fds->add($pfd);
                 }
             } else {
-                my $pm_name = $plugins_dir."/".$modname.".pm";
+                my $pm_name = $plugins_dir . "/" . $modname . ".pm";
                 if (ref $handler_hash{$_}) {
-                    foreach my $node (keys %{$handler_hash{$_}}) {
+                    foreach my $node (keys %{ $handler_hash{$_} }) {
                         if ($sock) {
-                            send_response({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},$sock);
+                            send_response({ node => [ { name => [$node], data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] } ] }, $sock);
                         } else {
-                            $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
+                            $callback->({ node => [ { name => [$node], data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] } ] });
                         }
                     }
                 } else {
                     if ($sock) {
-                        send_response({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},$sock);
+                        send_response({ data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] }, $sock);
                     } else {
-                        $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
+                        $callback->({ data => ["Cannot find the perl module to complete the operation: $pm_name"], errorcode => [1] });
                     }
                 }
             }
         }
     }
     unless ($sock) {
+
         # restore the old signal
         $SIG{CHLD} = $old_sig_chld;
         return $Main::resps
     }
 
-    if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) };
-    @deferredmsgargs=();
-    my $nextxmittime = time()+1;
+    if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) }
+    @deferredmsgargs = ();
+    my $nextxmittime = time() + 1;
     while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { # this tracks end of useful data from children much more closely
-        relay_fds($check_fds,$xcatresponses{xcatresponse});
+        relay_fds($check_fds, $xcatresponses{xcatresponse});
         if (time() > $nextxmittime) {
-            $nextxmittime = time()+1;
-            send_response(\%xcatresponses,$sock);
-            $xcatresponses{xcatresponse}=[];
+            $nextxmittime = time() + 1;
+            send_response(\%xcatresponses, $sock);
+            $xcatresponses{xcatresponse} = [];
         }
     }
     if ($check_fds->count > 0) {
-        relay_fds($check_fds,$xcatresponses{xcatresponse});
+        relay_fds($check_fds, $xcatresponses{xcatresponse});
     }
-    if (scalar(@{$xcatresponses{xcatresponse}})) {
-        send_response(\%xcatresponses,$sock);
-        $xcatresponses{xcatresponse}=[];
+    if (scalar(@{ $xcatresponses{xcatresponse} })) {
+        send_response(\%xcatresponses, $sock);
+        $xcatresponses{xcatresponse} = [];
     }
+
     #while (relay_fds($check_fds,$sock)) {}
 
     # restore the old signal
     $SIG{CHLD} = $old_sig_chld;
 
     my %done;
-    $done{serverdone} = [ undef ];
+    $done{serverdone} = [undef];
     if ($req->{transid}) {
-        $done{transid}=$req->{transid}->[0];
+        $done{transid} = $req->{transid}->[0];
     }
     if ($sock) {
         my $clientpresence = new IO::Select; # The client may have gone away without confirmation, don't PIPE over this trivial thing
         $clientpresence->add($sock);
-        my $deadline = time()+5;
+        my $deadline = time() + 5;
         while ($deadline > time()) { # sometimes can_write exits prematurely without waiting the whole time.....
             if ($clientpresence->can_write(5)) {
-                send_response(\%done,$sock);
+                send_response(\%done, $sock);
                 last;
             }
         }
@@ -1933,24 +2018,26 @@ sub plugin_command {
 }
 
 my $dispatch_parentfd;
+
 sub dispatch_callback {
     my $rspo = shift;
     unless ($rspo) {
         return;
     }
-    my $rsp = {%$rspo}; # deep copy
+    my $rsp = {%$rspo};    # deep copy
     delete $rsp->{serverdone};
     unless (%$rsp) { return; }
-    store_fd($rsp,$dispatch_parentfd);
-    yield; # This has to happen before next line could possibly work anyway
+    store_fd($rsp, $dispatch_parentfd);
+    yield;    # This has to happen before next line could possibly work anyway
     my $parselect = new IO::Select;
     $parselect->add($dispatch_parentfd);
     my $selbits = $parselect->bits;
-    while (defined($selbits) && ($rsp = select($selbits,undef,undef,5))) { # block for up to 5 seconds before continuing
-        if ($quit) { # termination requested by a clean shutdown facility
+
+    while (defined($selbits) && ($rsp = select($selbits, undef, undef, 5))) { # block for up to 5 seconds before continuing
+        if ($quit) {    # termination requested by a clean shutdown facility
             xexit 0;
         }
-        if ($rsp == 0) { # The select call failed to find any ready items
+        if ($rsp == 0) {    # The select call failed to find any ready items
             last;
         }
         if ($rsp < 0) { # A child exited or other signal event that made select skip out before suggesting succes
@@ -1971,7 +2058,7 @@ sub dispatch_callback {
 }
 
 sub relay_dispatch {
-    my $fds = shift;
+    my $fds         = shift;
     my $dispatch_cb = shift;
     my @ready_ins;
     eval {
@@ -1997,33 +2084,34 @@ sub relay_dispatch {
 }
 
 sub dispatch_request {
-    %dispatched_children=();
-    my $req = shift;
+    %dispatched_children = ();
+    my $req         = shift;
     my $dispatch_cb = shift;
 
-    my $modname = shift;
-    my $reqs = [];
+    my $modname     = shift;
+    my $reqs        = [];
     my $child_fdset = new IO::Select;
-    no strict  "refs";
+    no strict "refs";
 
     # save the old signal
     my $old_sig_chld = $SIG{CHLD};
 
     # ----used for trace start---------
-    my $str_cmd=$req->{command}->[0]." ";
-    if(exists($req->{noderange})){
-        foreach my $n (@{$req->{noderange}}) {
-            $str_cmd .= $n.",";
+    my $str_cmd = $req->{command}->[0] . " ";
+    if (exists($req->{noderange})) {
+        foreach my $n (@{ $req->{noderange} }) {
+            $str_cmd .= $n . ",";
         }
         $str_cmd =~ s/(.+),$/$1 /g;
     }
-    if(exists($req->{arg})){
-        foreach my $arg (@{$req->{arg}}) {
-            $str_cmd .= $arg." ";
+    if (exists($req->{arg})) {
+        foreach my $arg (@{ $req->{arg} }) {
+            $str_cmd .= $arg . " ";
         }
         $str_cmd =~ s/(.+) $/$1/g;
     }
-    xCAT::MsgUtils->trace(0,"D","xcatd: dispatch request '$str_cmd' to plugin '$modname'");
+    xCAT::MsgUtils->trace(0, "D", "xcatd: dispatch request '$str_cmd' to plugin '$modname'");
+
     # ----used for trace end---------
 
     # Hierarchy support.  Originally, the default scope for noderange commands was
@@ -2034,26 +2122,27 @@ sub dispatch_request {
     # Since plugins may commonly experience this, a preprocess_request implementation
     # will for now be required for a command to be scaled through service nodes
     # If the plugin offers a preprocess method, use it to set the request array
-    if ((not (defined $req->{_xcatpreprocessed}->[0] and $req->{_xcatpreprocessed}->[0] == 1)) and (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request}))) {
-        $SIG{CHLD}='DEFAULT';
-        xCAT::MsgUtils->trace(0,"D","xcatd: handle request '$req->{command}->[0]' by plugin '$modname''s preprocess_request");
-        $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
-    } else { # otherwise, pass it in without hierarchy support
+    if ((not(defined $req->{_xcatpreprocessed}->[0] and $req->{_xcatpreprocessed}->[0] == 1)) and (defined(${ "xCAT_plugin::" . $modname . "::" }{preprocess_request}))) {
+        $SIG{CHLD} = 'DEFAULT';
+        xCAT::MsgUtils->trace(0, "D", "xcatd: handle request '$req->{command}->[0]' by plugin '$modname''s preprocess_request");
+        $reqs = ${ "xCAT_plugin::" . $modname . "::" }{preprocess_request}->($req, $dispatch_cb, \&do_request);
+    } else {    # otherwise, pass it in without hierarchy support
         $reqs = [$req];
     }
 
-    $dispatch_children=0;
+    $dispatch_children = 0;
     $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
     $SIG{TERM} = $SIG{INT} = sub {
         foreach (keys %dispatched_children) {
             kill 'INT', $_;
         }
-        $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
+        $SIG{ALRM} = sub { xexit 0; };    # wait 1s for grace exit
         alarm(1);
     };
+
     # this is used to filter out the incorrect module that xcat command came into
     # Mainly useful for hierarchical environment on SN
-    if (defined $req->{'_modname'} ) {
+    if (defined $req->{'_modname'}) {
         my $in_modname = undef;
         if (ref $req->{'_modname'} eq 'ARRAY') {
             $in_modname = $req->{'_modname'}->[0];
@@ -2065,9 +2154,9 @@ sub dispatch_request {
         }
     }
 
-    my $onlyone=0;
+    my $onlyone = 0;
     if (defined $reqs and (scalar(@{$reqs}) == 1)) {
-        $onlyone=1;
+        $onlyone = 1;
     }
 
     foreach (@{$reqs}) {
@@ -2076,139 +2165,146 @@ sub dispatch_request {
         my $child;
         delete $_->{noderange};
         if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
-            _->{'_xcatdest'} =  $_->{'_xcatdest'}->[0];
+            _->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
         }
-        if ($onlyone and not ($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
-            $SIG{CHLD}='DEFAULT';
+        if ($onlyone and not($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
+            $SIG{CHLD} = 'DEFAULT';
 
             # make the plugin process exit directly instead of wait(), this is useful
             # for the plugin process to exit successfully when it opened some shell subprocesses.
             $SIG{TERM} = $SIG{INT} = 'DEFAULT';
-            "" =~ m/()/; # clear $1 that we may have sitting around
+            "" =~ m/()/;    # clear $1 that we may have sitting around
             if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
+
             # Call the plugin to process the command request
             #    rescanplugins request gets handled directly here in xcatd
             if ($_->{command}->[0] eq 'rescanplugins') {
-                scan_plugins($chwritepipe,'1');
+                scan_plugins($chwritepipe, '1');
                 if ($rescanwritepipe) {
-                    store_fd(\$rescanrequest,$rescanwritepipe);
+                    store_fd(\$rescanrequest, $rescanwritepipe);
                 }
             } else {
-                xCAT::MsgUtils->trace(0,"D","xcatd: handle request '$_->{command}->[0]' by plugin '$modname''s process_request");
-                ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+                xCAT::MsgUtils->trace(0, "D", "xcatd: handle request '$_->{command}->[0]' by plugin '$modname''s process_request");
+                ${ "xCAT_plugin::" . $modname . "::" }{process_request}->($_, $dispatch_cb, \&do_request);
             }
             return;
         }
 
-        if (! socketpair($pfd, $parfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) {
+        if (!socketpair($pfd, $parfd, AF_UNIX, SOCK_STREAM, PF_UNSPEC)) {
             xCAT::MsgUtils->message("S", "ERROR: socketpair: $!");
             die;
         }
         my $oldfh = select $parfd;
-        $|=1;
+        $| = 1;
         select $pfd;
-        $|=1;
+        $| = 1;
         select $oldfh;
-        binmode($parfd,':utf8');
-        binmode($pfd,':utf8');
+        binmode($parfd, ':utf8');
+        binmode($pfd,   ':utf8');
         $child = xCAT::Utils->xfork;
+
         if ($child) {
             $dispatch_children++;
-            $dispatched_children{$child}=1;
+            $dispatched_children{$child} = 1;
             $child_fdset->add($pfd);
             close($parfd);
             next;
         }
         unless (defined $child) {
-            $dispatch_cb->({error=>['Fork failure dispatching request'],errorcode=>[1]});
+            $dispatch_cb->({ error => ['Fork failure dispatching request'], errorcode => [1] });
         }
         close($pfd);
-        $SIG{CHLD}='DEFAULT';
+        $SIG{CHLD} = 'DEFAULT';
         $dispatch_parentfd = $parfd;
-        my @prexcatdests=();
-        my @xcatdests=();
+        my @prexcatdests = ();
+        my @xcatdests    = ();
         if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
         if (ref($_->{'_xcatdest'}) eq 'ARRAY') { # If array, consider it an 'anycast' operation, broadcast done through dupe
-            # requests, or an alternative join '&' maybe?
-            @prexcatdests=@{$_->{'_xcatdest'}};
+                # requests, or an alternative join '&' maybe?
+            @prexcatdests = @{ $_->{'_xcatdest'} };
         } else {
-            @prexcatdests=($_->{'_xcatdest'});
+            @prexcatdests = ($_->{'_xcatdest'});
         }
         foreach (@prexcatdests) {
             if ($_ and /,/) {
-                push @xcatdests,split /,/,$_;
+                push @xcatdests, split /,/, $_;
             } else {
-                push @xcatdests,$_;
+                push @xcatdests, $_;
             }
         }
         my $xcatdest;
-        my $numdests=scalar(@xcatdests);
-        my $request_satisfied=0;
+        my $numdests          = scalar(@xcatdests);
+        my $request_satisfied = 0;
         foreach $xcatdest (@xcatdests) {
             my $dlock;
             if ($xcatdest and xCAT::NetworkUtils->thishostisnot($xcatdest)) {
+
                 #mkpath("/var/lock/xcat/"); # For now, limit intra-xCAT requests to one at a time, to mitigate DB handle usage
                 #open($dlock,">","/var/lock/xcat/dispatchto_$xcatdest");
                 #flock($dlock,LOCK_EX);
-                $ENV{XCATHOST} =  ($xcatdest =~ /:/ ? $xcatdest : $xcatdest.":3001" );
-                $$progname.=": connection to ".$ENV{XCATHOST};
+                $ENV{XCATHOST} = ($xcatdest =~ /:/ ? $xcatdest : $xcatdest . ":3001");
+                $$progname .= ": connection to " . $ENV{XCATHOST};
                 my $errstr;
                 eval {
                     undef $_->{'_xcatdest'};
+
                     # mainly used by SN to filter out the incorrect module that xcat command came into
                     $_->{'_modname'} = $modname;
 
-                    xCAT::MsgUtils->trace(0,"D","dispatch hierarchical sub-command $_->{command}->[0] to $ENV{XCATHOST}");
-                    xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem");
+                    xCAT::MsgUtils->trace(0, "D", "dispatch hierarchical sub-command $_->{command}->[0] to $ENV{XCATHOST}");
+                    xCAT::Client::submit_request($_, \&dispatch_callback, $xcatdir . "/cert/server-cred.pem", $xcatdir . "/cert/server-cred.pem", $xcatdir . "/cert/ca.pem");
                 };
                 if ($@) {
-                    $errstr=$@;
+                    $errstr = $@;
                 }
+
                 #unlink("/var/lock/xcat/dispatchto_$xcatdest");
                 #flock($dlock,LOCK_UN);
                 if ($errstr) {
                     if ($numdests == 1) {
-                        dispatch_callback({error=>["Unable to dispatch hierarchical sub-command to ".$ENV{XCATHOST}.".  Error: $errstr. "],errorcode=>[1]});
-                        xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
+                        dispatch_callback({ error => [ "Unable to dispatch hierarchical sub-command to " . $ENV{XCATHOST} . ".  Error: $errstr. " ], errorcode => [1] });
+                        xCAT::MsgUtils->message("S", "Error dispatching request to " . $ENV{XCATHOST} . ": " . $errstr);
                     } else {
-                        xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.", trying other service nodes: ".$errstr);
+                        xCAT::MsgUtils->message("S", "Error dispatching request to " . $ENV{XCATHOST} . ", trying other service nodes: " . $errstr);
                     }
                     next;
                 } else {
-                    $request_satisfied=1;
+                    $request_satisfied = 1;
                     last;
                 }
             } else {
-                $$progname.=": locally executing";
-                $SIG{CHLD}='DEFAULT';
+                $$progname .= ": locally executing";
+                $SIG{CHLD} = 'DEFAULT';
+
                 # make the plugin process exit directly instead of wait(), this is useful
                 # for the plugin process to exit successfully when it opened some shell subprocesses.
                 $SIG{TERM} = $SIG{INT} = 'DEFAULT';
+
                 # Call the plugin to process the command request
                 #    rescanplugins request gets handled directly here in xcatd
                 if ($_->{command}->[0] eq 'rescanplugins') {
-                    scan_plugins($chwritepipe,'1');
+                    scan_plugins($chwritepipe, '1');
                     if ($rescanwritepipe) {
-                        store_fd(\$rescanrequest,$rescanwritepipe);
+                        store_fd(\$rescanrequest, $rescanwritepipe);
                     }
                 } else {
-                    xCAT::MsgUtils->trace(0,"D","handle command $_->{command}->[0] by plugin $modname 's process_request");
-                    ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+                    xCAT::MsgUtils->trace(0, "D", "handle command $_->{command}->[0] by plugin $modname 's process_request");
+                    ${ "xCAT_plugin::" . $modname . "::" }{process_request}->($_, \&dispatch_callback, \&do_request);
                 }
                 last;
             }
         }
-        if (!(xCAT::Utils->isServiceNode()))  {  # not on a service node
+        if (!(xCAT::Utils->isServiceNode())) {    # not on a service node
             if ($numdests > 1 and not $request_satisfied) {
-                xCAT::MsgUtils->message("S","Error dispatching a request to all possible service nodes for request");
-                dispatch_callback({error=>["Failed to dispatch command to any of the following service nodes: ".join(",",@xcatdests)],errorcode=>[1]});
+                xCAT::MsgUtils->message("S", "Error dispatching a request to all possible service nodes for request");
+                dispatch_callback({ error => [ "Failed to dispatch command to any of the following service nodes: " . join(",", @xcatdests) ], errorcode => [1] });
             }
         }
 
         xexit;
     }
-    while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset,$dispatch_cb) }
-    while (relay_dispatch($child_fdset,$dispatch_cb)) { } # Potentially useless drain.
+    while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset, $dispatch_cb) }
+    while (relay_dispatch($child_fdset, $dispatch_cb)) { } # Potentially useless drain.
 
     # restore the old signal
     $SIG{CHLD} = $old_sig_chld;
@@ -2216,10 +2312,10 @@ sub dispatch_request {
 
 
 sub do_request {
-    my $req = shift;
-    my $second = shift;
+    my $req        = shift;
+    my $second     = shift;
     my $rsphandler = \&build_response;
-    my $sock = undef;
+    my $sock       = undef;
     if ($second) {
         if (ref($second) eq "CODE") {
             $rsphandler = $second;
@@ -2230,32 +2326,32 @@ sub do_request {
 
 
     #my $sock = shift; # If no sock, will return a response hash
-    if ($cmd_handlers{$req->{command}->[0]}) {
-        return plugin_command($req,$sock,$rsphandler);
+    if ($cmd_handlers{ $req->{command}->[0] }) {
+        return plugin_command($req, $sock, $rsphandler);
     } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
         my @nodes = noderange($req->{noderange}->[0]);
         my %resp;
         if (nodesmissed) {
-            $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
+            $resp{warning} = "Invalid nodes in noderange:" . join ',', nodesmissed;
         }
-        $resp{serverdone} = [ undef ];
-        @{$resp{node}}=@nodes;
+        $resp{serverdone} = [undef];
+        @{ $resp{node} } = @nodes;
         if ($req->{transid}) {
-            $resp{transid}=$req->{transid}->[0];
+            $resp{transid} = $req->{transid}->[0];
         }
         if ($sock) {
-            send_response(\%resp,$sock);
+            send_response(\%resp, $sock);
         } else {
             return (\%resp);
         }
     } else {
-        my %resp=(error=>"Unsupported request");
-        $resp{serverdone} = [ undef ];
+        my %resp = (error => "Unsupported request");
+        $resp{serverdone} = [undef];
         if ($req->{transid}) {
-            $resp{transid}=$req->{transid}->[0];
+            $resp{transid} = $req->{transid}->[0];
         }
         if ($sock) {
-            send_response(\%resp,$sock);
+            send_response(\%resp, $sock);
         } else {
             return (\%resp);
         }
@@ -2263,7 +2359,8 @@ sub do_request {
 }
 
 sub convey_response {
-    my $resp=shift;
+    my $resp = shift;
+
     # TODO: This is where the following will/may happen:
     # -Track transaction id
     # -Save output for deferred commands
@@ -2272,27 +2369,30 @@ sub convey_response {
         return;
     }
     unless ($resp) { return; }
-    $pipeexpected=1;
+    $pipeexpected = 1;
+
     #$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
     # sanitize the response, to avoid being killed by non-printable bytes
     #$resp =~ tr/\011-\177/?/c;
     # seeing if using utf-8 offloads potential issues to client terminal, it didn't
-    store_fd($resp,$parent_fd);
+    store_fd($resp, $parent_fd);
     yield; # parent must get timeslice anyway before an ack could possibly return
     my $parsel = new IO::Select;
     $parsel->add($parent_fd);
     my $selbits = $parsel->bits;
     my $rsp;
     while ($selbits && ($rsp = select($selbits, undef, undef, 5))) { # block up to five seconds
-        if ($quit) {  # Obey quit flag
+
+        if ($quit) {    # Obey quit flag
             xexit 0;
         }
-        if ($rsp == 0) { # This means the filedescriptor was removed
+        if ($rsp == 0) {    # This means the filedescriptor was removed
             last;
         }
-        if ($rsp < 0) { # A signal caused select to skip out, do-over
+        if ($rsp < 0) {     # A signal caused select to skip out, do-over
             next;
         }
+
         # At this point, the only possibility is a positive return, meaning parent_fd requires attention of some sort
         $rsp = <$parent_fd>;
         if ($rsp) { # If data actually came in, last, otherwise, remove it from the IO::Select, but both should amount to the same thing
@@ -2307,6 +2407,7 @@ sub convey_response {
 }
 
 sub build_response {
+
     # Handle responses from do_request calls made directly from a plugin
     #   Merge this response into the full response hash.  We'll collect all
     #   the responses and ship it back on the return to the plugin.
@@ -2317,34 +2418,36 @@ sub build_response {
     foreach (keys %$resp) {
         my $subresp = dclone($resp->{$_});
         if (ref $subresp eq 'ARRAY') {
-            push (@{$Main::resps->{$_}}, @{$subresp});
+            push(@{ $Main::resps->{$_} }, @{$subresp});
         } else {
-            push (@{$Main::resps->{$_}}, $subresp);
+            push(@{ $Main::resps->{$_} }, $subresp);
         }
     }
 }
 
 sub becomeuser {
+
     # if username and password match, return the new username
     # otherwise, return undef
     # TODO PAM?
     my $passtab = xCAT::Table->new('passwd');
-    my $id=shift;
-    my $pass=shift;
+    my $id      = shift;
+    my $pass    = shift;
     unless (defined $id and defined $pass) {
         return undef;
     }
-    my $passent=$passtab->getAttribs({key=>'xcat',username=>$id},['password']);
+    my $passent = $passtab->getAttribs({ key => 'xcat', username => $id }, ['password']);
     unless ($passent) {
         return undef;
     }
-    $passent=$passent->{password};
-    my $encryptedpass = crypt($pass,$passent);
+    $passent = $passent->{password};
+    my $encryptedpass = crypt($pass, $passent);
     if ($encryptedpass eq $passent) {
         return $id;
-    }elsif ($pass eq $passent) {
+    } elsif ($pass eq $passent) {
         return $id;
     }
+
     #if ($passent =~ /^\$(2a|1)\$.*\$/) { # MD5 or Blowfish hash, calculate before comparison
     #$pass = crypt($pass,$passent);
     #} # Not bothering with old DES method, for now assume plaintext if not set
@@ -2359,144 +2462,174 @@ sub becomeuser {
 sub wait_db_process {
     my $retry = 100;
     my $ready = 0;
+
     # Make sure DB process is ready, so that no direct access
-    while($retry) {
+    while ($retry) {
         if (!xCAT::Utils::is_process_exists($dbmaster)) {
             sleep 0.1;
         } else {
             $ready = 1;
             last;
         }
-        $retry --;
+        $retry--;
     }
     if (!$ready) {
-        xCAT::MsgUtils->message("S","Error: xcat db process has not been started in 10 seconds.");
+        xCAT::MsgUtils->message("S", "Error: xcat db process has not been started in 10 seconds.");
         return -1;
     }
-    # use create 1 to make sure nodelist and site object cached.
-    my $tmptab = xCAT::Table->new('site',-create=>1);
-    if(!$tmptab) {
+
+    # use '-create=>1' to make sure nodelist and site object cached.
+    my $tmptab = xCAT::Table->new('site', -create => 1);
+    if (!$tmptab) {
+        xCAT::MsgUtils->message("S", "Error: Failed to access site table when monitoring DB process.");
         return -1;
     }
     return 0;
 }
 
 sub populate_site_hash {
-    %::XCATSITEVALS=();
-    my $sitetab = xCAT::Table->new('site',-create=>0);
+    %::XCATSITEVALS = ();
+    my $sitetab = xCAT::Table->new('site', -create => 0);
     unless ($sitetab) { return; }
     my @records = $sitetab->getAllAttribs(qw/key value/);
     foreach (@records) {
-        $::XCATSITEVALS{$_->{key}}=$_->{value};
+        $::XCATSITEVALS{ $_->{key} } = $_->{value};
     }
 }
 
 sub populate_vpd_hash {
-    %::XCATVPDHASH=();
-    my $vpdtab = xCAT::Table->new('vpd',-create=>0);
-    unless ($vpdtab) {return;}
+    %::XCATVPDHASH = ();
+    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    unless ($vpdtab) { return; }
     my @entries = $vpdtab->getAllAttribs(qw/node serial mtm/);
     foreach (@entries) {
-        unless ($_->{mtm} and $_->{serial}) {next;}
-        my $mtms = $_->{mtm}."*".$_->{serial};
-        push @{$::XCATVPDHASH{$mtms}}, $_->{node};
+        unless ($_->{mtm} and $_->{serial}) { next; }
+        my $mtms = $_->{mtm} . "*" . $_->{serial};
+        push @{ $::XCATVPDHASH{$mtms} }, $_->{node};
     }
 }
+
 sub populate_mp_hash {
-    %::XCATMPHASH=();
-    my $mptab = xCAT::Table->new('mp',-create=>0);
-    unless ($mptab) {return;}
+    %::XCATMPHASH = ();
+    my $mptab = xCAT::Table->new('mp', -create => 0);
+    unless ($mptab) { return; }
     my @entries = $mptab->getAllAttribs(qw/node nodetype/);
     foreach (@entries) {
         if ($_->{nodetype} and $_->{nodetype} eq 'bmc') {
-            $::XCATMPHASH{$_->{node}}=$_->{nodetype};
+            $::XCATMPHASH{ $_->{node} } = $_->{nodetype};
         }
     }
 }
 
 sub send_response {
     my $response = shift;
-    my $sock = shift;
-    my $encode = shift;
+    my $sock     = shift;
+    my $encode   = shift;
     unless ($encode) { $encode = $globalencode; }
     if ($encode eq "xml") {
         my $xml;
-        if ($response->{xcatresponse}) { # it's an aggregate, keeproot
-            $xml = XMLout($response,KeyAttr=>[], NoAttr=>1,KeepRoot=>1);
+        if ($response->{xcatresponse}) {    # it's an aggregate, keeproot
+            $xml = XMLout($response, KeyAttr => [], NoAttr => 1, KeepRoot => 1);
         } else {
-            $xml = XMLout($response,RootName => 'xcatresponse',NoAttr=>1);
+            $xml = XMLout($response, RootName => 'xcatresponse', NoAttr => 1);
         }
         $xml =~ tr/\011-\177/?/c;
+
         # ----used for command log start-------
         my $tmp_xml = $xml;
+
         # ----used for command log end --------
         eval {
             my $rsplen = length($xml);
-            my $blocks = int($rsplen/4096)-1;
-            if ($rsplen%4096) {
+            my $blocks = int($rsplen / 4096) - 1;
+            if ($rsplen % 4096) {
                 $blocks += 1;
             }
-            foreach (0..$blocks) {
+            foreach (0 .. $blocks) {
                 do {
-                    syswrite($sock,$xml,4096,$_*4096);
-                    } while (($! == EAGAIN) or ($! == ECHILD));
+                    syswrite($sock, $xml, 4096, $_ * 4096);
+                } while (($! == EAGAIN) or ($! == ECHILD));
             }
         };
 
         # ----used for command log start-------
-        my $cmdlog_xml="<massresponse>";
+        my $cmdlog_xml = "<massresponse>";
         $tmp_xml =~ s/\e/xxxxESCxxxx/g;
-        $cmdlog_xml .= $tmp_xml."</massresponse>";
-        my $cmdlog_rsp = XMLin($cmdlog_xml,SuppressEmpty=>undef,ForceArray=>1);
+        $cmdlog_xml .= $tmp_xml . "</massresponse>";
+        my $cmdlog_rsp = XMLin($cmdlog_xml, SuppressEmpty => undef, ForceArray => 1);
         cmdlog_collectlog($cmdlog_rsp);
+
         # ----used for command log end --------
 
     } elsif ($encode eq "storable") {
         if ($response->{xcatresponse}) {
             $response = $response->{xcatresponse};
         }
-        nstore_fd($response,$sock);
+        nstore_fd($response, $sock);
         $sock->flush(); # otherwise, the response might actually get deferred until after the close_notify, crazy huh?
     }
 }
+
 sub get_request {
-    my $sock = shift;
-    my $encode = shift;
+    my $sock    = shift;
+    my $encode  = shift;
     my $request = shift;
+
     if ($encode eq "xml") {
-        my $line = $request;
+        my $readtry = 0;
         while ((!$request) || ($request !~ m/<\/xcatrequest>/)) {
-            my $flags=fcntl($sock,F_GETFL,0);
+            if ($readtry > 10) {
+
+                # if retry too much, sleep for a while and try again
+                # otherwise it will use too much cpu
+                sleep 1;
+                $readtry = 0;
+            }
+            my $flags = fcntl($sock, F_GETFL, 0);
             $flags |= O_NONBLOCK; # we want sysread to bail on us, select seems to be evil to us still..
-            fcntl($sock,F_SETFL,$flags);
+            fcntl($sock, F_SETFL, $flags);
             my $bytesread;
-            if (!($line) ) { $line = ''; }
-            do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
-            if (length($line)==0) {
-                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
+            my $line = '';
+            do { $bytesread = sysread($sock, $line, 65536, length($line)) } while ($bytesread);
+            if (length($line) == 0) {
+
+                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) {
+
+                    # retry when an error happens
+                    # ECHILD makes no sense, but some platform does it
+                    $readtry++;
+                    next;
+                }
                 return undef;
             }
-            $flags=fcntl($sock,F_GETFL,0);
-            $flags &= ~O_NONBLOCK; # now we want *print* to be blocking IO
-            fcntl($sock,F_SETFL,$flags);
-            $request = $line;
+            $flags = fcntl($sock, F_GETFL, 0);
+            $flags &= ~O_NONBLOCK;    # now we want *print* to be blocking IO
+            fcntl($sock, F_SETFL, $flags);
+            $request .= $line;
+
+            # check the validity of the request message
+            if ($request and length($request) > 15 and ($request !~ m/<xcatrequest>/)) {
+                xCAT::MsgUtils->message("S", "xcatd: Close an invalid connection.");
+                return undef;
+            }
         }
-        return eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
+        return eval { XMLin($request, SuppressEmpty => undef, ForceArray => 1) };
     } elsif ($encode eq "storable") {
-        my $return = eval { fd_retrieve($sock); }; # suppres end of stream err
+        my $return = eval { fd_retrieve($sock); };   # suppres end of stream err
         return $return;
     }
 }
 
 
 sub service_connection {
-    my $sock = shift;
-    my $peername = shift;
-    my $peerhost = shift;
-    my $peerfqdn = shift;
+    my $sock        = shift;
+    my $peername    = shift;
+    my $peerhost    = shift;
+    my $peerfqdn    = shift;
     my $peerhostorg = shift;
-    my $peerport = $sock->peerport;
-    my %tables=();
+    my $peerport    = $sock->peerport;
+    my %tables      = ();
+
     # some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
     # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
     # -Option to generate a random password per 'getipmi' request.  This reduces the exposure to a D.O.S. hopefully
@@ -2505,75 +2638,76 @@ sub service_connection {
 
     $SIG{ALRM} = sub { $timedout = 1; die; };
     my $evalpid = $$;
-    eval { # REMOVEEVALFORDEBUG
+    eval {    # REMOVEEVALFORDEBUG
         my $request;
-        my $req=undef;
+        my $req = undef;
         my $line;
         my $clientsel = new IO::Select;
         $clientsel->add($sock);
         while (1) {
             unless ($clientsel->can_read(15)) { last; } # don't let an unresponsive client hold us up
-            my $line = <$sock>; # grab one line, check for mode...
-            # Commenting out, could be a remote exceution path
-            # consider sereal one day
-            #if ($line and $line =~ /^xcatencoding: (.*)/) {
-            #unless ($supported_encodes{$1}) {
-            #print $sock "Unsupported encoding $1\n";
-            #last;
-            #}
-            #print $sock "Encoding accepted\n";
-            #$globalencode=$1;
-            #$line = "";
-            #}
-            $req = get_request($sock,$globalencode,$line);
+            my $line = <$sock>;    # grab one line, check for mode...
+                 # Commenting out, could be a remote exceution path
+                 # consider sereal one day
+                 #if ($line and $line =~ /^xcatencoding: (.*)/) {
+                 #unless ($supported_encodes{$1}) {
+                 #print $sock "Unsupported encoding $1\n";
+                 #last;
+                 #}
+                 #print $sock "Encoding accepted\n";
+                 #$globalencode=$1;
+                 #$line = "";
+                 #}
+            $req = get_request($sock, $globalencode, $line);
             unless ($req) { last; }
 
             # ----used for command log start----------
-            my ($sec,$min,$hour,$mday,$mon,$year) = localtime(time());
+            my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time());
             $year += 1900;
-            $mon += 1;
-            my $strmon = ($mon>9? $mon:"0".$mon);
-            my $strmday = ($mday>9? $mday:"0".$mday);
-            my $strhour = ($hour>9? $hour:"0".$hour);
-            my $strmin = ($min>9? $min:"0".$min);
-            my $strsec = ($sec>9? $sec:"0".$sec);
+            $mon  += 1;
+            my $strmon  = ($mon > 9  ? $mon  : "0" . $mon);
+            my $strmday = ($mday > 9 ? $mday : "0" . $mday);
+            my $strhour = ($hour > 9 ? $hour : "0" . $hour);
+            my $strmin  = ($min > 9  ? $min  : "0" . $min);
+            my $strsec  = ($sec > 9  ? $sec  : "0" . $sec);
             $cmdlog_alllog .= "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n";
 
             #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
             #print Dumper $req;
 
-            $cmdlog_alllog .= "[ClientType] ".$req->{clienttype}->[0]." \n";
-            $cmdlog_alllog .= "[Request]    ".$req->{command}->[0]." ";
-            if(exists($req->{noderange})){
-                foreach my $node (@{$req->{noderange}}) {
-                    $cmdlog_alllog .= $node.",";
+            $cmdlog_alllog .= "[ClientType] " . $req->{clienttype}->[0] . " \n";
+            $cmdlog_alllog .= "[Request]    " . $req->{command}->[0] . " ";
+            if (exists($req->{noderange})) {
+                foreach my $node (@{ $req->{noderange} }) {
+                    $cmdlog_alllog .= $node . ",";
                 }
                 $cmdlog_alllog =~ s/(.+),$/$1 /g;
             }
 
-            if(exists($req->{arg})){
-                foreach my $arg (@{$req->{arg}}) {
-                    if($arg =~ /[^A-Za-z0-9.-]/){
+            if (exists($req->{arg})) {
+                foreach my $arg (@{ $req->{arg} }) {
+                    if ($arg =~ /[^A-Za-z0-9.-]/) {
                         my $tmparg = $arg;
                         $tmparg =~ s/'/'\\''/g;
-                        $cmdlog_alllog .= "'".$tmparg."' ";
-                    }else{
-                        $cmdlog_alllog .= $arg." ";
+                        $cmdlog_alllog .= "'" . $tmparg . "' ";
+                    } else {
+                        $cmdlog_alllog .= $arg . " ";
                     }
                 }
             }
             $cmdlog_alllog .= "\n[Response]\n";
+
             # ----used for command log end----------
 
-            { # TODO: find closing brace..
-                # first change peername on 'becomeuser' tag if present and valid
+            {    # TODO: find closing brace..
+                 # first change peername on 'becomeuser' tag if present and valid
                 if (defined $req->{becomeuser}) {
-                    $peername=becomeuser($req->{becomeuser}->[0]->{username}->[0],
+                    $peername = becomeuser($req->{becomeuser}->[0]->{username}->[0],
                         $req->{becomeuser}->[0]->{password}->[0]);
                     unless (defined $peername) {
-                        my $resp={error=>["Authentication failure"],errorcode=>[1]};
-                        $resp->{serverdone}=[ undef ] ;
-                        send_response($resp,$sock);
+                        my $resp = { error => ["Authentication failure"], errorcode => [1] };
+                        $resp->{serverdone} = [undef];
+                        send_response($resp, $sock);
                         return;
                     }
                     delete($req->{becomeuser}); # Remove it to keep it from view
@@ -2581,34 +2715,37 @@ sub service_connection {
 
                 # If the request is to aquire a token for a specific account
                 if (defined $req->{gettoken}) {
+
                     # authencitate the username:password
-                    $peername=becomeuser($req->{gettoken}->[0]->{username}->[0],
+                    $peername = becomeuser($req->{gettoken}->[0]->{username}->[0],
                         $req->{gettoken}->[0]->{password}->[0]);
                     my $resp;
                     if ($peername) {
+
                         # for a valid account, get a token
                         my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
-                        my ($sec,$min,$hour,$mday,$mon,$year) = localtime($exptime);
+                        my ($sec, $min, $hour, $mday, $mon, $year) = localtime($exptime);
                         $year += 1900;
-                        $mon += 1;
+                        $mon  += 1;
                         my $htime = "$year-$mon-$mday $hour:$min:$sec";
-                        $resp = {data=>[{token => [{id => $tokenid, expire => $htime}]}]};
+                        $resp = { data => [ { token => [ { id => $tokenid, expire => $htime } ] } ] };
                     } else {
-                        $resp={error=>["Authentication failure"],errorcode=>[1]};
+                        $resp = { error => ["Authentication failure"], errorcode => [1] };
                     }
-                    $resp->{serverdone}=[ undef ] ;
-                    send_response($resp,$sock);
+                    $resp->{serverdone} = [undef];
+                    send_response($resp, $sock);
                     return;
                 }
 
                 # If user trying to use 'token' to authenticate
                 if (defined $req->{tokens}) {
+
                     # get the valid user name by the token id
                     $peername = xCAT::xcatd->verifytoken($req);
                     unless (defined $peername) {
-                        my $resp={error=>["Authentication failure"],errorcode=>[1]};
-                        $resp->{serverdone}=[ undef ] ;
-                        send_response($resp,$sock);
+                        my $resp = { error => ["Authentication failure"], errorcode => [1] };
+                        $resp->{serverdone} = [undef];
+                        send_response($resp, $sock);
                         return;
                     }
                     delete($req->{tokenid});
@@ -2616,134 +2753,136 @@ sub service_connection {
 
                 # we have a full request..
                 #printf $request."\n";
-                $request="";
-                if (xCAT::xcatd->validate($peername,$peerhost,$req,$peerhostorg,\@deferredmsgargs)) {
-                    $req->{'_xcat_authname'} = [$peername];
+                $request = "";
+                if (xCAT::xcatd->validate($peername, $peerhost, $req, $peerhostorg, \@deferredmsgargs)) {
+                    $req->{'_xcat_authname'}   = [$peername];
                     $req->{'_xcat_clienthost'} = [$peerhost];
                     $req->{'_xcat_clientfqdn'} = [$peerfqdn];
-                    $req->{'_xcat_clientport'}= [$peerport];
-                    $$progname="xcatd SSL: ".$req->{command}->[0];
+                    $req->{'_xcat_clientport'} = [$peerport];
+                    $$progname = "xcatd SSL: " . $req->{command}->[0];
                     if ($req->{noderange} && defined($req->{noderange}->[0])) {
-                        $$progname .= " to ".$req->{noderange}->[0];
+                        $$progname .= " to " . $req->{noderange}->[0];
                     }
 
-                    if($peerhost){
-                        $$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
+                    if ($peerhost) {
+                        $$progname .= " for " . ($peername ? $peername . "@" . $peerhost : $peerhost);
                     }
 
-                    my $debuglog= "xcatd: open new process : $$progname";
-                    xCAT::MsgUtils->trace(0,"D","$debuglog");
+                    my $debuglog = "xcatd: open new process : $$progname";
+                    xCAT::MsgUtils->trace(0, "D", "$debuglog");
 
                     if ($req->{command}->[0] eq "authcheck") { # provide a method for UI to verify a user without actually requesting action
                         my $resp;
                         if ($peername or $peername eq "0") {
-                            $resp->{username}=[$peername];
-                            $resp->{data}=["Authenticated"];
+                            $resp->{username} = [$peername];
+                            $resp->{data}     = ["Authenticated"];
                         } else {
-                            $resp->{data}=["Unauthenticated"];
+                            $resp->{data} = ["Unauthenticated"];
                         }
-                        $resp->{serverdone}=[ undef ];
-                        send_response($resp,$sock);
-                    } elsif ($cmd_handlers{$req->{command}->[0]}) {
-                        plugin_command($req,$sock,\&convey_response);
+                        $resp->{serverdone} = [undef];
+                        send_response($resp, $sock);
+                    } elsif ($cmd_handlers{ $req->{command}->[0] }) {
+                        plugin_command($req, $sock, \&convey_response);
                     } elsif ($req->{command}->[0] eq "noderange" and $req->{noderange}) {
                         xCAT::NodeRange::retain_cache(0); # if the request has a 'noderange' element, take the performance hit for the sake of freshness
                         my @nodes = noderange($req->{noderange}->[0]);
                         my %resp;
                         if (nodesmissed) {
-                            $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
+                            $resp{warning} = "Invalid nodes in noderange:" . join ',', nodesmissed;
                         }
-                        $resp{serverdone} = [ undef ];
-                        @{$resp{node}}=@nodes;
+                        $resp{serverdone} = [undef];
+                        @{ $resp{node} } = @nodes;
                         if ($req->{transid}) {
-                            $resp{transid}=$req->{transid}->[0];
+                            $resp{transid} = $req->{transid}->[0];
                         }
-                        send_response(\%resp,$sock);
+                        send_response(\%resp, $sock);
                         next;
-                    } elsif ($req->{command}->[0] eq "extnoderange" and $req->{noderange}) {  # This is intended for the UIs to build trees
-                        # as this would be part of a highly dynamic construct, it has a shortcut here to minimize server load
-                        my $subgroups=0;
-                        if ($req->{arg} and grep /subgroups/,@{$req->{arg}}) {
-                            $subgroups=1;
+                    } elsif ($req->{command}->[0] eq "extnoderange" and $req->{noderange}) { # This is intended for the UIs to build trees
+                         # as this would be part of a highly dynamic construct, it has a shortcut here to minimize server load
+                        my $subgroups = 0;
+                        if ($req->{arg} and grep /subgroups/, @{ $req->{arg} }) {
+                            $subgroups = 1;
                         }
-                        my %resp=%{extnoderange($req->{noderange}->[0],{intersectinggroups=>$subgroups})};
-                        $resp{serverdone}=[ undef ];
-                        send_response(\%resp,$sock);
+                        my %resp = %{ extnoderange($req->{noderange}->[0], { intersectinggroups => $subgroups }) };
+                        $resp{serverdone} = [undef];
+                        send_response(\%resp, $sock);
                         next;
                     } else {
-                        my %resp=(error=>"Unsupported request");
-                        $resp{serverdone} = [ undef ];
+                        my %resp = (error => "Unsupported request");
+                        $resp{serverdone} = [undef];
                         if ($req->{transid}) {
-                            $resp{transid}=$req->{transid}->[0];
+                            $resp{transid} = $req->{transid}->[0];
                         }
-                        xCAT::MsgUtils->message("S","Unsupported request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport, command=".$req->{command}->[0]);
-                        send_response(\%resp,$sock);
+                        xCAT::MsgUtils->message("S", "Unsupported request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport, command=" . $req->{command}->[0]);
+                        send_response(\%resp, $sock);
                         next;
                     }
                 } else {
-                    my %resp=(error=>"Permission denied for request");
-                    $resp{serverdone} = [ undef ];
+                    my %resp = (error => "Permission denied for request");
+                    $resp{serverdone} = [undef];
                     if ($req->{transid}) {
-                        $resp{transid}=$req->{transid}->[0];
+                        $resp{transid} = $req->{transid}->[0];
                     }
-                    xCAT::MsgUtils->message("S","Permission denied for request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport command= ".$req->{command}->[0]);
-                    send_response(\%resp,$sock);
+                    xCAT::MsgUtils->message("S", "Permission denied for request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport command= " . $req->{command}->[0]);
+                    send_response(\%resp, $sock);
                     next;
                 }
             }
         }
-    }; # REMOVEEVALFORDEBUG
-    if ($@) { # The eval statement caught a program bug..
+    };    # REMOVEEVALFORDEBUG
+    if ($@) {    # The eval statement caught a program bug..
         if ($@ =~ /^SIGPIPE/) {
-            xCAT::MsgUtils->message("S","xcatd: Unexpected client disconnect");
+            xCAT::MsgUtils->message("S", "xcatd: Unexpected client disconnect");
             if ($sock) {
                 eval {
-                    send_response({error=>"Generic PIPE error occurred.  $@"},$sock);
+                    send_response({ error => "Generic PIPE error occurred.  $@" }, $sock);
                 };
             }
         } elsif ($@ =~ /Client abort requested/) {
         } else {
-            my $errstr="A fatal error was encountered, the following information may help identify a bug: $@";
+            my $errstr = "A fatal error was encountered, the following information may help identify a bug: $@";
             chomp($errstr);
-            xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT TCP service: ".$@);
+            xCAT::MsgUtils->message("S", "xcatd: possible BUG encountered by xCAT TCP service: " . $@);
             if ($sock) {
                 eval {
-                    send_response({error=>$errstr},$sock);
+                    send_response({ error => $errstr }, $sock);
                 };
             }
         }
     } elsif ($evalpid ne $$) {
-        xCAT::MsgUtils->message("S","A child jumped to where it should never ever be, this shouldn't be possible, please report this bug");
+        xCAT::MsgUtils->message("S", "A child jumped to where it should never ever be, this shouldn't be possible, please report this bug");
+
         # The folowing corrupts the SSL state preventing any further output by the parent.
         # A bug triggering this absolutely
         # needs to fixed.  With the current code layout it is either trash valid data that could have been or
         # risk user missing data
         # without knowing it.  It's likely possible to rearchitect to change that, but as it stands it really
         # should be no longer possible to hit this condition.
-        send_response({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"},$sock);
+        send_response({ error => "A child jumped to where it should never ever be, this shouldn't be possible, please report this bug" }, $sock);
     }
 
     # ----used for command log start-------
     cmdlog_submitlog();
+
     # ----used for command log end---------
 
-    $SIG{ALRM}= sub { xCAT::MsgUtils->message("S","$$ failed shutting down"); die;};
+    $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "$$ failed shutting down"); die; };
     alarm(10);
     foreach (keys %tables) {
         $tables{$_}->commit;
     }
-    $sock->close(SSL_fast_shutdown=>1);
+    $sock->close(SSL_fast_shutdown => 1);
     if ($timedout == 1) {
-        printf ("Client timeout");
+        printf("Client timeout");
     }
 }
 
 sub relay_fds { # Relays file descriptors from pipes to children to the SSL socket
-    my $fds = shift;
-    my $replyqueue=shift;
-    my $goneclient=0;
-    my $collate = ( scalar @_ > 0 ? shift  : 0);
-    my @readyset = $fds->can_read(1);
+    my $fds        = shift;
+    my $replyqueue = shift;
+    my $goneclient = 0;
+    my $collate    = (scalar @_ > 0 ? shift : 0);
+    my @readyset   = $fds->can_read(1);
     my $rfh;
     my $rc = @readyset;
     my $text;
@@ -2751,7 +2890,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
     # A PIPE signal might be received when run fd_retrieve from the plugin sub processors
     # This mostly happens when there are multiple plugins are called for certain command
     # So spkit the pipe error handle
-    $pipeexpected=1;
+    $pipeexpected = 1;
     foreach $rfh (@readyset) { # go through each child, extract a complete, atomic message
         my $line;
         my $resp;
@@ -2762,7 +2901,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             $fds->remove($rfh);
             close($rfh);
         } else {
-            push @$replyqueue,$resp;
+            push @$replyqueue, $resp;
             print $rfh "nfin\n";
         }
     }
@@ -2770,16 +2909,16 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
         my $subselect = new IO::Select;
         $subselect->add($rin);
         my $subdata;
-        my $clientintr = get_request($rin,$globalencode,"");
+        my $clientintr = get_request($rin, $globalencode, "");
         unless ($clientintr) {
             next;
         }
         if ($clientintr->{abortcommand}->[0]) {
-            $pipeexpected=1;
+            $pipeexpected = 1;
             print "Aborting...";
             foreach (keys %plugin_children) {
                 print "Sending INT to $_\n";
-                kill 'INT', $_;
+                kill 'INT',  $_;
                 kill 'TERM', $_;
             }
             foreach my $cin ($fds->handles) {
@@ -2792,6 +2931,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             # ----used for command log start-------
             $cmdlog_alllog .= "Client abort requested\n";
             cmdlog_submitlog();
+
             # ----used for command log end---------
 
             exit(0);
@@ -2807,16 +2947,16 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
 
 # Enable the trace of subroutine calling.
 # Replace the original subroutine with a trace added subroutine to output more debug trace
-sub enable_callingtrace{
-    my $enableall = 0;  # if $enableall=1, enable trace for all the functions of xcat
-    my @pluginfuncs = (); # function list that will be enabled for plugins
-    my @xcatdfuncs = (); # function list that will be enabled for xcatd
+sub enable_callingtrace {
+    my $enableall = 0; # if $enableall=1, enable trace for all the functions of xcat
+    my @pluginfuncs = ();    # function list that will be enabled for plugins
+    my @xcatdfuncs  = ();    # function list that will be enabled for xcatd
 
     # call the subroutine scan_plugins to fill the symbol table
     #scan_plugins();
 
     # Backup the trace log
-    my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime();
     $year -= 100;
     $mon += 1;
     my $time = sprintf "%02s%02s%02s%02s%02s%02s", $year, $mon, $mday, $hour, $min, $sec;
@@ -2829,7 +2969,7 @@ sub enable_callingtrace{
 
     # Read the subroutine list from the configuration file
     if (-f "/tmp/xcatcallingtrace.cfg") {
-        if (! open (FUNLIST, "</tmp/xcatcallingtrace.cfg")) {
+        if (!open(FUNLIST, "</tmp/xcatcallingtrace.cfg")) {
             xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open /tmp/xcatcallingtrace.cfg");
             xCAT::MsgUtils->stop_logging();
             return 1;
@@ -2837,18 +2977,19 @@ sub enable_callingtrace{
         my $cfg = <FUNLIST>;
         chomp($cfg);
         my @funlist;
-        if (-f $cfg) { # Specified a configuration file
-            if (! open (CFG, "<$cfg")) {
+        if (-f $cfg) {    # Specified a configuration file
+            if (!open(CFG, "<$cfg")) {
                 xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open $cfg");
                 xCAT::MsgUtils->stop_logging();
                 return 1;
-            } else { # read the configuration file
+            } else {      # read the configuration file
                 while (<CFG>) {
                     push @funlist, $_;
                 }
-                close (CFG);
+                close(CFG);
             }
         } else {
+
             # Specified the function list
             # The format of the function list should be package(func1,func2,...),package(func1,func2,...)
             push @funlist, split /\|/, $cfg;
@@ -2856,13 +2997,13 @@ sub enable_callingtrace{
 
         # Parse the function list
         foreach (@funlist) {
-            if (/(.*::.*)\((.*)\)/) {  # if the format is xCAT::plugin(f1,f2)
+            if (/(.*::.*)\((.*)\)/) {    # if the format is xCAT::plugin(f1,f2)
                 my $pkg = $1;
                 my @funcs = split /,/, $2;
                 foreach (@funcs) {
                     chomp;
                     s/^\s*//;
-                    push @pluginfuncs, "\*".$pkg."::".$_;
+                    push @pluginfuncs, "\*" . $pkg . "::" . $_;
                 }
             } else { # if the format is f1,f2, only for the functions in the xcatd
                 s/^\s*\(//;
@@ -2871,11 +3012,11 @@ sub enable_callingtrace{
                 foreach (@funcs) {
                     chomp;
                     s/^\s*//;
-                    push @xcatdfuncs, "\*main::".$_;
+                    push @xcatdfuncs, "\*main::" . $_;
                 }
             }
         }
-        close (FUNLIST);
+        close(FUNLIST);
     } else {
         $enableall = 1;
     }
@@ -2883,26 +3024,29 @@ sub enable_callingtrace{
     no strict 'refs';
 
     my @debugfuns = ();
+
     # Get the functions of xcatd
-    my $xcatdpath = $::XCATROOT."/sbin/xcatd";
-    if (! open (XCATDLINES, "<$xcatdpath")) {
+    my $xcatdpath = $::XCATROOT . "/sbin/xcatd";
+    if (!open(XCATDLINES, "<$xcatdpath")) {
         xCAT::MsgUtils->message("SL", "Enable subroutine calling trace failed: cannot open $xcatdpath");
     } else {
         my @sub_in_xcatd;
+
         # Get all the name of subroutines except the xxx_callingtrace
         while (<XCATDLINES>) {
             if (/^\s*sub\s+([^\s]*)/) {
-                if (! /enable_callingtrace|disable_callingtrace|add_callingtrace/) {
+                if (!/enable_callingtrace|disable_callingtrace|add_callingtrace/) {
                     push @sub_in_xcatd, $1;
                 }
             }
         }
         close(XCATDLINES);
+
         # Get all the symbols from the %main:: space
         foreach my $fun (keys %main::) {
             my $symfun = $main::{$fun};
-            if (($symfun =~ /^\*/)  # must be a symbol
-                && *{$symfun}{CODE} # must be a subroutine
+            if (($symfun =~ /^\*/)    # must be a symbol
+                && *{$symfun}{CODE}    # must be a subroutine
                 && grep (/\Q$fun\E/, @sub_in_xcatd) # must be defined in the xcatd
                 && ($enableall || grep (/\Q$symfun\E/, @xcatdfuncs))) { # all or configured in the configuration file
                 push @debugfuns, $symfun;
@@ -2912,41 +3056,46 @@ sub enable_callingtrace{
 
     # Get the functions of xCAT plugins
     foreach my $plugin (\%xCAT::, \%xCAT_plugin::) {
+
         # Get the path of the plugins
         my $path = "";
         foreach (keys %$plugin) {
             my $glob = $plugin->{$_};
             if ($glob =~ /\*([^:]*)::/) {
-                $path = $::XCATROOT."/lib/perl/$1/";
+                $path = $::XCATROOT . "/lib/perl/$1/";
                 last;
             }
         }
+
         # For each plugin moduel, search the matched functions
         foreach my $xcatplugin (keys %$plugin) {
             if ($xcatplugin =~ /[^\*].*::$/) {
+
                 # get the subroutines in the plugin file
                 my $pluginfile = $xcatplugin;
                 $pluginfile =~ s/:://;
+
                 # Ignore to enable the trace for the subroutines in the MsgUtils
                 if ($pluginfile eq "MsgUtils") {
                     next;
                 }
-                my $module_file = $path.$pluginfile.".pm";
-                my @sub_in_pm = ();
+                my $module_file = $path . $pluginfile . ".pm";
+                my @sub_in_pm   = ();
                 if (-r $module_file) {
-                    open (LINES, "<$module_file") or last;
+                    open(LINES, "<$module_file") or last;
                     while (<LINES>) {
                         if (/^\s*sub\s+([^\s]*)/) {
                             push @sub_in_pm, $1;
                         }
                     }
-                    close (LINES);
+                    close(LINES);
                 }
+
                 # Search the symbol from the space of plugin
-                foreach my $fun (keys %{$plugin->{$xcatplugin}}) {
+                foreach my $fun (keys %{ $plugin->{$xcatplugin} }) {
                     my $symfun = $plugin->{$xcatplugin}{$fun};
-                    if ($symfun =~ /^\*/   # must be a symbol
-                        && *{$symfun}{CODE}  # must be a subroutine
+                    if ($symfun =~ /^\*/    # must be a symbol
+                        && *{$symfun}{CODE}    # must be a subroutine
                         && grep (/\Q$fun\E/, @sub_in_pm) # must be defined in the plugin modules
                         && ($enableall || grep (/\Q$symfun\E/, @pluginfuncs))) { # all or configured in the configuration file
                         push @debugfuns, $symfun;
@@ -2962,12 +3111,13 @@ sub enable_callingtrace{
         my ($funname, $orig) = @_;
         sub {
             my $args = Dumper(@_);
+
             #$args =~ s{\A\$VAR\d+\s*=\s*}{};
             my $callstack = Carp::longmess;
 
             # write the trace log to the trace file
             print $::LOG_FILE_HANDLE "\n***************Calling of subroutine $funname***************\n";
-            print $::LOG_FILE_HANDLE localtime()."\n";
+            print $::LOG_FILE_HANDLE localtime() . "\n";
             print $::LOG_FILE_HANDLE "Arguments: \n$args\n";
             print $::LOG_FILE_HANDLE "Calling stack: \n       $callstack\n";
             &$orig;
@@ -2978,18 +3128,23 @@ sub enable_callingtrace{
     print $::LOG_FILE_HANDLE "##########Enabled the calling trace for: ###########\n";
     foreach my $debugfun (@debugfuns) {
         print $::LOG_FILE_HANDLE "    $debugfun\n";
-        if (defined ($::DEBUG_FUN{"$debugfun"}{'debug'})) {
+        if (defined($::DEBUG_FUN{"$debugfun"}{'debug'})) {
+
             # if the trace added subroutine has been defined
             *{"$debugfun"} = $::DEBUG_FUN{"$debugfun"}{'debug'};
+
             #print "  => $::DEBUG_FUN{$debugfun}{debug}\n";
         } else {
             my $oldfun = *{$debugfun}{CODE};
+
             # Bakcup the original subroutine
             $::DEBUG_FUN{"$debugfun"}{'orig'} = $oldfun;
+
             #print "$debugfun".":  $::DEBUG_FUN{$debugfun}{orig}";
             # otherise creating a trace added subroutine from scratch
             *{"$debugfun"} = add_callingtrace($debugfun, $oldfun);
             $::DEBUG_FUN{"$debugfun"}{'debug'} = *{"$debugfun"}{CODE};
+
             #print "  => $::DEBUG_FUN{$debugfun}{debug}\n";
         }
     }
@@ -3024,19 +3179,19 @@ sub disable_callingtrace {
 =cut
 
 # --------------------------------------------------------------------------------
-sub cmdlog_collectlog(){
-    my $rsponse= shift;
-    my $rsp_log="";
+sub cmdlog_collectlog() {
+    my $rsponse = shift;
+    my $rsp_log = "";
 
-    if((exists($rsponse->{xcatresponse}->[0]->{serverdone})) && (! exists($rsponse->{xcatresponse}->[0]->{error}))){return 0;}
+    if ((exists($rsponse->{xcatresponse}->[0]->{serverdone})) && (!exists($rsponse->{xcatresponse}->[0]->{error}))) { return 0; }
     my $rsp;
-    if(exists($rsponse->{xcatresponse})){
+    if (exists($rsponse->{xcatresponse})) {
         $rsp = $rsponse->{xcatresponse};
-    }else{
+    } else {
         push @{$rsp}, $rsponse;
     }
-    if (ref($rsp) ne 'ARRAY') {return 0;}
-    if (scalar(@$rsp) == 0) {return 0;}
+    if (ref($rsp) ne 'ARRAY') { return 0; }
+    if (scalar(@$rsp) == 0)   { return 0; }
 
     foreach my $tmprsp (@{$rsp}) {
         $rsp = $tmprsp;
@@ -3045,12 +3200,12 @@ sub cmdlog_collectlog(){
         # Handle errors
         if ($rsp->{error}) {
             if (ref($rsp->{error}) eq 'ARRAY') {
-                foreach my $text (@{$rsp->{error}}) {
+                foreach my $text (@{ $rsp->{error} }) {
                     if (defined($text)) {
                         if ($rsp->{NoErrorPrefix}) {
-                            $rsp_log.=$text;
+                            $rsp_log .= $text;
                         } else {
-                            $rsp_log.="Error: $text\n";
+                            $rsp_log .= "Error: $text\n";
                         }
                     }
                 }
@@ -3058,9 +3213,9 @@ sub cmdlog_collectlog(){
             else {
                 if (defined($rsp->{error})) {
                     if ($rsp->{NoErrorPrefix}) {
-                        $rsp_log.= $rsp->{error}."\n";
+                        $rsp_log .= $rsp->{error} . "\n";
                     } else {
-                        $rsp_log.= "Error: ".$rsp->{error}."\n";
+                        $rsp_log .= "Error: " . $rsp->{error} . "\n";
                     }
                 }
             }
@@ -3068,22 +3223,22 @@ sub cmdlog_collectlog(){
 
         if ($rsp->{warning}) {
             if (ref($rsp->{warning}) eq 'ARRAY') {
-                foreach my $text (@{$rsp->{warning}}) {
-                    if (defined ($text)) {
+                foreach my $text (@{ $rsp->{warning} }) {
+                    if (defined($text)) {
                         if ($rsp->{NoWarnPrefix}) {
-                            $rsp_log.= "$text\n";
+                            $rsp_log .= "$text\n";
                         } else {
-                            $rsp_log.= "Warning: $text\n";
+                            $rsp_log .= "Warning: $text\n";
                         }
                     }
                 }
             }
             else {
-                if (defined ($rsp->{warning})) { 
+                if (defined($rsp->{warning})) {
                     if ($rsp->{NoWarnPrefix}) {
-                        $rsp_log.= $rsp->{warning}."\n";
+                        $rsp_log .= $rsp->{warning} . "\n";
                     } else {
-                        $rsp_log.= "Warning: ".$rsp->{warning}."\n";
+                        $rsp_log .= "Warning: " . $rsp->{warning} . "\n";
                     }
                 }
             }
@@ -3091,35 +3246,35 @@ sub cmdlog_collectlog(){
 
         if ($rsp->{info}) {
             if (ref($rsp->{info}) eq 'ARRAY') {
-                foreach my $text (@{$rsp->{info}}) {
+                foreach my $text (@{ $rsp->{info} }) {
                     if (defined($text)) {
-                        $rsp_log.= "$text\n";
+                        $rsp_log .= "$text\n";
                     }
                 }
-            }else{
-                if (defined ($rsp->{info})) {
-                    $rsp_log.= $rsp->{info}."\n";
+            } else {
+                if (defined($rsp->{info})) {
+                    $rsp_log .= $rsp->{info} . "\n";
                 }
             }
         }
 
         if ($rsp->{sinfo}) {
             if (ref($rsp->{sinfo}) eq 'ARRAY') {
-                foreach my $text (@{$rsp->{sinfo}}) {
+                foreach my $text (@{ $rsp->{sinfo} }) {
                     if (defined($text)) {
-                        $rsp_log.= "$text ";
+                        $rsp_log .= "$text ";
                     }
                 }
-            }else{
+            } else {
                 if (defined($rsp->{sinfo})) {
-                    $rsp_log.= $rsp->{sinfo}." ";
+                    $rsp_log .= $rsp->{sinfo} . " ";
                 }
             }
         }
 
         # Handle {node} structure
-        my $errflg=0;
-        my $nodes=($rsp->{node});
+        my $errflg = 0;
+        my $nodes  = ($rsp->{node});
         unless (ref $nodes eq 'ARRAY') {
             $nodes = [$nodes];
         }
@@ -3128,108 +3283,108 @@ sub cmdlog_collectlog(){
             foreach $node (@$nodes) {
                 my $desc;
                 if (ref($node->{name}) eq 'ARRAY') {
-                    $desc=$node->{name}->[0];
+                    $desc = $node->{name}->[0];
                 } else {
-                    $desc=$node->{name};
+                    $desc = $node->{name};
                 }
                 if ($node->{error}) {
                     if (defined($node->{error}->[0])) {
-                        $desc.=": Error: ".$node->{error}->[0];
-                        $errflg=1;
+                        $desc .= ": Error: " . $node->{error}->[0];
+                        $errflg = 1;
                     }
                 }
                 if ($node->{warning}) {
                     if (defined($node->{warning}->[0])) {
-                        $desc.=": Warning: ".$node->{warning}->[0];
-                        $errflg=1;
+                        $desc .= ": Warning: " . $node->{warning}->[0];
+                        $errflg = 1;
                     }
                 }
                 if ($node->{data}) {
                     if (ref(\($node->{data})) eq 'SCALAR') {
                         if (defined($node->{data})) {
-                            $desc=$desc.": ".$node->{data};
+                            $desc = $desc . ": " . $node->{data};
                         }
                     } elsif (ref($node->{data}) eq 'HASH') {
                         if ($node->{data}->{desc}) {
                             if (ref($node->{data}->{desc}) eq 'ARRAY') {
                                 if (defined($node->{data}->{desc}->[0])) {
-                                    $desc=$desc.": ".$node->{data}->{desc}->[0];
+                                    $desc = $desc . ": " . $node->{data}->{desc}->[0];
                                 }
                             } else {
                                 if (defined($node->{data}->{desc})) {
-                                    $desc=$desc.": ".$node->{data}->{desc};
+                                    $desc = $desc . ": " . $node->{data}->{desc};
                                 }
                             }
                         }
                         if ($node->{data}->{contents}) {
                             if (ref($node->{data}->{contents}) eq 'ARRAY') {
                                 if (defined($node->{data}->{contents}->[0])) {
-                                    $desc="$desc: ".$node->{data}->{contents}->[0];
+                                    $desc = "$desc: " . $node->{data}->{contents}->[0];
                                 }
-                            }else{
+                            } else {
                                 if (defined($node->{data}->{contents})) {
-                                    $desc="$desc: ".$node->{data}->{contents};
+                                    $desc = "$desc: " . $node->{data}->{contents};
                                 }
                             }
                         }
-                    }elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
+                    } elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
                         if (defined($node->{data}->[0])) {
-                            $desc=$desc.": ".$node->{data}->[0];
+                            $desc = $desc . ": " . $node->{data}->[0];
                         }
-                    }else{
+                    } else {
                         if ($node->{data}->[0]->{desc}) {
                             if (defined($node->{data}->[0]->{desc}->[0])) {
-                                $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+                                $desc = $desc . ": " . $node->{data}->[0]->{desc}->[0];
                             }
                         }
                         if ($node->{data}->[0]->{contents}) {
                             if (defined($node->{data}->[0]->{contents}->[0])) {
-                                $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+                                $desc = "$desc: " . $node->{data}->[0]->{contents}->[0];
                             }
                         }
                     }
                 }
                 if ($desc) {
                     if ($errflg == 1) {
-                        $rsp_log.= "$desc\n";
-                    }else{
-                        $rsp_log.= "$desc\n";
+                        $rsp_log .= "$desc\n";
+                    } else {
+                        $rsp_log .= "$desc\n";
                     }
                 }
             }
         }
 
         # Handle {data} structure with no nodes
-        foreach my $mykey ( keys %{$rsp} ) {
-            if ($mykey ne "data") {next;}
+        foreach my $mykey (keys %{$rsp}) {
+            if ($mykey ne "data") { next; }
             if ($rsp->{data}) {
                 if (ref($rsp->{data}) eq 'ARRAY') {
-                    my $data=($rsp->{data});
+                    my $data = ($rsp->{data});
                     my $data_entry;
                     foreach $data_entry (@$data) {
                         my $desc;
                         if (ref(\($data_entry)) eq 'SCALAR') {
-                            $desc=$data_entry;
+                            $desc = $data_entry;
                         } else {
                             if ($data_entry->{desc}) {
-                                $desc=$data_entry->{desc}->[0];
+                                $desc = $data_entry->{desc}->[0];
                             }
                             if ($data_entry->{contents}) {
                                 if ($desc) {
                                     if (defined($data_entry->{contents}->[0])) {
-                                        $desc="$desc: ".$data_entry->{contents}->[0];
+                                        $desc = "$desc: " . $data_entry->{contents}->[0];
                                     }
                                 } else {
-                                    $desc=$data_entry->{contents}->[0];
+                                    $desc = $data_entry->{contents}->[0];
                                 }
                             }
                         }
                         if ($desc) {
-                            $rsp_log.= "$desc\n";
+                            $rsp_log .= "$desc\n";
                         }
                     }
-                }else{
-                    $rsp_log.= $rsp->{data}."\n";
+                } else {
+                    $rsp_log .= $rsp->{data} . "\n";
                 }
             }
         }
@@ -3267,39 +3422,39 @@ sub cmdlog_collectlog(){
 sub cmdlog_submitlog() {
     my $tmpreq;
     my $mysocket;
-    my $trytime=3;
-    my @tmplog=split(/\n/, $cmdlog_alllog);
+    my $trytime = 3;
+    my @tmplog = split(/\n/, $cmdlog_alllog);
     foreach my $item (@tmplog) {
-        if($item =~ /\[Request\]/){
+        if ($item =~ /\[Request\]/) {
             $tmpreq = $item;
         }
     }
 
     $tmpreq =~ s/\[Request\]\s+(.+)/$1/g;
-    if ($tmpreq =~ /getipmicons/) {return 1;}
-    if ($tmpreq =~ /getcons/) {return 1;} 
+    if ($tmpreq =~ /getipmicons/) { return 1; }
+    if ($tmpreq =~ /getcons/)     { return 1; }
 
-    if( $cmdlog_alllog !~ /\n$/) {
+    if ($cmdlog_alllog !~ /\n$/) {
         $cmdlog_alllog .= "\n";
     }
 
-    while ($trytime>0){
+    while ($trytime > 0) {
         $mysocket = IO::Socket::INET->new(PeerAddr => "127.0.0.1",
             PeerPort => $cmdlog_port,
-            Proto => "tcp");
-        if($mysocket) {
+            Proto    => "tcp");
+        if ($mysocket) {
             last;
-        }else{
+        } else {
             $trytime--;
             sleep(0.05);
         }
     }
-    if($mysocket){
+    if ($mysocket) {
         print $mysocket $cmdlog_alllog;
-        close ($mysocket);
+        close($mysocket);
         return 0;
-    }else{
-        xCAT::MsgUtils->trace(0,"I","xcatd: Drop request '$tmpreq' output due to connection with 'Command log writer' process failed");
+    } else {
+        xCAT::MsgUtils->trace(0, "I", "xcatd: Drop request '$tmpreq' output due to connection with 'Command log writer' process failed");
         return 1;
     }
 }

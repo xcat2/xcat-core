@@ -40,6 +40,18 @@ function makenoarch {
 				fi
 			fi 
 		fi
+
+                #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
+                #1 make xcat probe code to be self-contained
+                #2 don't maintain two files for each script
+                #3 symbolic link can't work during package
+                if [ $RPMNAME = "xCAT-probe" ]; then
+                    CURDIR=$(pwd)
+                    mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                fi
+
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
@@ -146,30 +158,6 @@ function makeironic {
 	rm -rf /tmp/ironic_baremetal
 }	
 	
-
-# Make the xCAT-nbroot-core rpm
-function makenbroot {
-	if [ -z "$2" ]; then
-		echo 'Usage: makerpm xCAT-nbroot-core <arch> [<embedded-system>]'
-		exit 1
-	fi
-
-	DIR="xCAT-nbroot"
-	ARCH="$2"
-	RPMNAME="xCAT-nbroot-core-$ARCH"
-	SPEC="xcat-core-nbroot"
-	cd `dirname $0`/$DIR
-	tar --exclude .svn -czf $RPMROOT/SOURCES/xcat-nbrootoverlay.tar.gz -C overlay/  .
-	cp LICENSE.html $RPMROOT/BUILD
-	cp $SPEC.spec $RPMROOT/SOURCES
-	cd - >/dev/null
-	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$SPEC.spec --target $ARCH
-}
-
-
-
 # Make the xCAT-genesis rpm
 function makegenesis {
 	DIR="xCAT-genesis-builder"
@@ -183,6 +171,7 @@ function makegenesis {
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
 	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
 }
+
 function makegenesisscripts {
 	DIR="xCAT-genesis-scripts"
 	if [ -z "$2" ]; then
@@ -248,9 +237,6 @@ fi
 if [ "$1" = "xCAT" -o "$1" = "xCATsn" -o "$1" = "xCAT-buildkit" -o "$1" = "xCAT-OpenStack" ]; then
 	exportEmbed $3
 	makexcat $1 $2
-elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
-	exportEmbed $3
-	makenbroot xCAT-nbroot-core $2
 elif [ "$1" = "xCAT-genesis-builder" ]; then
 	exportEmbed $2
 	makegenesis $1

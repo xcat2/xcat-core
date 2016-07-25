@@ -24,6 +24,8 @@ where the /tmp/servicenodes contains a host per line: ::
 **While not recommended**, if you wish to manually migrate your xCAT database, see the following documentation: 
 `Manually set up MySQL <https://sourceforge.net/p/xcat/wiki/Setting_Up_MySQL_as_the_xCAT_DB/#configure-mysql-manually>`_
 
+.. _grante_revoke_mysql_access_label:
+
 Granting/Revoking access to the database for Service Node Clients
 -----------------------------------------------------------------
 

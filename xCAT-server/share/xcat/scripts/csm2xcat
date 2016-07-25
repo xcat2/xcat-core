@@ -19,8 +19,8 @@ my $needhelp  = 0;
 my $directory = "/tmp/csm2xcat";
 
 if (
-    !GetOptions("help"  => \$needhelp,
-                "dir=s" => \$directory,)
+    !GetOptions("help" => \$needhelp,
+        "dir=s" => \$directory,)
   )
 {
     &usage;
@@ -54,7 +54,7 @@ open(LOG, ">$directory/conversion.log")
 
 log_this("Conversion finished at " . scalar(localtime()));
 print
-  "Conversion finished, please carefully review $directory/conversion.log and check results in the $directory  stanza files before using chdef -z to update the database!\n";
+"Conversion finished, please carefully review $directory/conversion.log and check results in the $directory  stanza files before using chdef -z to update the database!\n";
 close(LOG);
 exit 0;
 
@@ -273,12 +273,12 @@ sub getNodeinfo
         {
             #if ($attr eq "InstallServer")
             #{
-             #   if ($value)
-              #  {
-               #     $xcatline = "    xcatmaster=$value\n";
-                #    $xcatline .= "    servicenode=$value\n";
+            #   if ($value)
+            #  {
+            #     $xcatline = "    xcatmaster=$value\n";
+            #    $xcatline .= "    servicenode=$value\n";
 
-                #}
+            #}
             #}
             # since we are suggesting that the xCAT MN is a different machine
             # than the CSM MS,  we will not use the Management Server value
@@ -307,7 +307,7 @@ sub getNodeinfo
             }
             if ($attr eq "InstallDistributionVersion")
             {
-                if (   $value
+                if ($value
                     && $DISTNAME)    # put together DistributeName and Version
                 {
                     $xcatline = "    os=$DISTNAME";
@@ -335,7 +335,7 @@ sub getNodeinfo
             }
             if ($attr eq "HWControlPoint")
             {
-                if ($value) 
+                if ($value)
                 {
                     $xcatline = "    hcp=$value\n";
                 }
@@ -500,7 +500,7 @@ sub getDevinfo
         my $xcatline;
         my $attr;
 
-        my $grplist  = get_dev_groups($nodename);
+        my $grplist       = get_dev_groups($nodename);
         my $shortnodename = get_shortname($nodename);
         $xcatline = "$shortnodename:\n";    # write node name
         $xcatline .= "    objtype=node\n";
@@ -526,8 +526,8 @@ sub getDevinfo
                     my $lcvalue = lc($value);
                     $xcatline = "    nodetype=ppc\n";
                     if ($lcvalue eq "hmc") {
-                      $xcatline .= "    mgt=$lcvalue\n";
-                      $xcatline .= "    hwtype=$lcvalue\n";
+                        $xcatline .= "    mgt=$lcvalue\n";
+                        $xcatline .= "    hwtype=$lcvalue\n";
                     }
                 }
             }
@@ -701,7 +701,7 @@ sub runcmd
     @$outref = `$cmd`;
     if ($?)
     {
-        $rc          = $? ;
+        $rc          = $?;
         $::RUNCMD_RC = $rc;
         if ($rc > 0)
         {
@@ -719,11 +719,11 @@ sub usage
 {
     print "CSM database to xCAT stanza files migration utility.\n";
     print
-      "Reads the CSM database and creates xCAT stanza files that \ncan be imported using the chdef command into the xCAT database.\n";
+"Reads the CSM database and creates xCAT stanza files that \ncan be imported using the chdef command into the xCAT database.\n";
     print "Usage:\n";
     print "\t--help - usage\n";
     print
-      "\t--dir - output directory for stanza files.\n                      Default is /tmp/csm2xcat.\n";
+"\t--dir - output directory for stanza files.\n                      Default is /tmp/csm2xcat.\n";
     print "\n";
     return;
 }

@@ -50,7 +50,7 @@ use xCAT::ExtTab;
         descriptions => {
             node => 'The name of the node or group that will use this location.',
             image => "Reserved for future development, not used. ",
-            statemnt => "The persistant read/write area where a node's persistent files will be written to, e.g: 10.0.0.1/state/.  The node name will be automatically added to the pathname, so 10.0.0.1:/state, will become 10.0.0.1:/state/<nodename>.",
+            statemnt => "The persistent read/write area where a node's persistent files will be written to, e.g: 10.0.0.1/state/.  The node name will be automatically added to the pathname, so 10.0.0.1:/state, will become 10.0.0.1:/state/<nodename>.",
             mntopts => "A comma-separated list of options to use when mounting the persistent directory.  (Ex. 'soft') The default is to do a 'hard' mount. ",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -70,7 +70,7 @@ use xCAT::ExtTab;
 
             #        domain => 'The name of the domain it is a member of, such as "example.com".  Defaults to domain value from the site table',
             # the above column is unimplemented by anything, so leave it out for this pass
-            ou => 'For an LDAP described machine account (i.e. Active Directory), the orginaztional unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain',
+            ou => 'For an LDAP described machine account (i.e. Active Directory), the organizational unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain',
             authdomain => 'If a node should participate in an AD domain or Kerberos realm distinct from domain indicated in site, this field can be used to specify that',
             adminuser => 'Allow a node specific indication of Administrative user.  Most will want to just use passwd table to indicate this once rather than by node.',
             adminpassword => 'Allow a node specific indication of Administrative user password for the domain.  Most will want to ignore this in favor of passwd table.',
@@ -87,7 +87,7 @@ use xCAT::ExtTab;
         cols     => [qw(node xml comments disable)],
         keys     => [qw(node)],
         required => [qw(node)],
-        table_desc => 'Persistant store for KVM plugin, not intended for manual modification.',
+        table_desc => 'Persistent store for KVM plugin, not intended for manual modification.',
         types => {
             xml => 'VARCHAR(16000)',
         },
@@ -102,7 +102,7 @@ use xCAT::ExtTab;
         cols       => [qw(name xml comments disable)],
         keys       => [qw(name)],
         nodecol    => 'name',
-        table_desc => 'Persistant store for KVM plugin for masters',
+        table_desc => 'Persistent store for KVM plugin for masters',
         types      => {
             xml => 'VARCHAR(16000)',
         },
@@ -153,18 +153,18 @@ use xCAT::ExtTab;
             image => "The name of the image (as specified in the osimage table) that will use these options on this dir/file. You can also specify an image group name that is listed in the osimage.groups attribute of some osimages. 'ALL' means use this row for all images.",
             file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
             options => "Options for the file:\n\n" .
-                qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n} .
-                qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Please do not confuse it with the "rw" permission in the file system. \n\n} .
-                qq{ persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted on the local file or directory. Anything written to that file or directory is preserved. It means, if the file/directory does not exist at first, it will be copied to the persistent location. Next time the file/directory in the persistent location will be used. The file/directory will be persistent across reboots. Its permission will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. This option can be performed on files and directories. \n\n} .
-                qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Please do not use it for one directory.\n\n} .
-                qq{ ro - The file/directory will be overmounted read-only on the local file/directory. It will be located in the directory hierarchy specified in the litetree table. Changes made to this file or directory on the server will be immediately seen in this file/directory on the node. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. This option can be performed on files and directories.\n\n} .
-                qq{ link - It provides one file/directory for the node to use when booting, it is copied from the server, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to one file/directory in tmpfs. And the permission of the symbolic link is "lrwxrwxrwx", which is not the real permission of the file/directory on the node. So for some application sensitive to file permissions, it will be one issue to use "link" as its option, for example, "/root/.ssh/", which is used for SSH, should NOT use "link" as its option. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option can be performed on files and directories. \n\n} .
-                qq{ link,con -  It works similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files. \n\n} .
-                qq{  link,persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted to the tmpfs on the booted node, and finally the symbolic link in the local file system will be linked to the over-mounted tmpfs file/directory on the booted node. The file/directory will be persistent across reboots. The permission of the file/directory where the symbolic link points to will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. The option can be performed on files and directories.\n\n} .
-                qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the tmpfs. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. The option can be performed on files and directories.},
+qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n} .
+qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Please do not confuse it with the "rw" permission in the file system. \n\n} .
+qq{ persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted on the local file or directory. Anything written to that file or directory is preserved. It means, if the file/directory does not exist at first, it will be copied to the persistent location. Next time the file/directory in the persistent location will be used. The file/directory will be persistent across reboots. Its permission will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. This option can be performed on files and directories. \n\n} .
+qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Please do not use it for one directory.\n\n} .
+qq{ ro - The file/directory will be overmounted read-only on the local file/directory. It will be located in the directory hierarchy specified in the litetree table. Changes made to this file or directory on the server will be immediately seen in this file/directory on the node. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. This option can be performed on files and directories.\n\n} .
+qq{ link - It provides one file/directory for the node to use when booting, it is copied from the server, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to one file/directory in tmpfs. And the permission of the symbolic link is "lrwxrwxrwx", which is not the real permission of the file/directory on the node. So for some application sensitive to file permissions, it will be one issue to use "link" as its option, for example, "/root/.ssh/", which is used for SSH, should NOT use "link" as its option. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option can be performed on files and directories. \n\n} .
+qq{ link,con -  It works similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files. \n\n} .
+qq{  link,persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted to the tmpfs on the booted node, and finally the symbolic link in the local file system will be linked to the over-mounted tmpfs file/directory on the booted node. The file/directory will be persistent across reboots. The permission of the file/directory where the symbolic link points to will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. The option can be performed on files and directories.\n\n} .
+qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the tmpfs. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. The option can be performed on files and directories.},
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
-        }
+          }
     },
 
     vmmaster => {
@@ -181,17 +181,17 @@ use xCAT::ExtTab;
         table_desc => 'Inventory of virtualization images for use with clonevm.  Manual intervention in this table is not intended.',
         descriptions => {
             'name' => 'The name of a master',
-            'os' => 'The value of nodetype.os at the time the master was captured',
+'os' => 'The value of nodetype.os at the time the master was captured',
             'arch'    => 'The value of nodetype.arch at the time of capture',
             'profile' => 'The value of nodetype.profile at time of capture',
             'storage' => 'The storage location of bulk master information',
-            'storagemodel' => 'The default storage style to use when modifying a vm cloned from this master',
-            'nics' => 'The nic configuration and relationship to vlans/bonds/etc',
+'storagemodel' => 'The default storage style to use when modifying a vm cloned from this master',
+'nics' => 'The nic configuration and relationship to vlans/bonds/etc',
             'vintage'    => "When this image was created",
             'originator' => 'The user who created the image',
-            'specializeparameters' => 'Implementation specific arguments, currently only "autoLogonCount=<number" for ESXi clonevme',
-            'virttype' => 'The type of virtualization this image pertains to (e.g. vmware, kvm, etc)',
-        }
+'specializeparameters' => 'Implementation specific arguments, currently only "autoLogonCount=<number" for ESXi clonevme',
+'virttype' => 'The type of virtualization this image pertains to (e.g. vmware, kvm, etc)',
+          }
     },
     vm => {
         cols => [qw(node mgr host migrationdest storage storagemodel storagecache storageformat cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings physlots vidmodel vidproto vidpassword comments disable)],
@@ -202,18 +202,19 @@ use xCAT::ExtTab;
             'node' => 'The node or static group name',
             'mgr'  => 'The function manager for the virtual machine',
             'host' => 'The system that currently hosts the VM',
-            'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
-            'storage' => 'A list of storage files or devices to be used.  i.e. dir:///cluster/vm/<nodename> or nfs://<server>/path/to/folder/',
+'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
+'storage' => 'A list of storage files or devices to be used.  i.e. dir:///cluster/vm/<nodename> or nfs://<server>/path/to/folder/',
             'storagemodel' => 'Model of storage devices to provide to guest',
-            'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
-            'memory' => 'Megabytes of memory the VM currently should be set to.',
-            'master' => 'The name of a master image, if any, this virtual machine is linked to.  This is generally set by clonevm and indicates the deletion of a master that would invalidate the storage of this virtual machine',
+'cfgstore' => 'Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
+'memory' => 'Megabytes of memory the VM currently should be set to.',
+'master' => 'The name of a master image, if any, this virtual machine is linked to.  This is generally set by clonevm and indicates the deletion of a master that would invalidate the storage of this virtual machine',
             'cpus' => 'Number of CPUs the node should see.',
-            'nics' => 'Network configuration parameters.  Of the general form [physnet:]interface,.. Generally, interface describes the vlan entity (default for native, tagged for tagged, vl[number] for a specific vlan.  physnet is a virtual switch name or port description that is used for some virtualization technologies to construct virtual switches.  hypervisor.netmap can map names to hypervisor specific layouts, or the descriptions described there may be used directly here where possible.',
-            'nicmodel' => 'Model of NICs that will be provided to VMs (i.e. e1000, rtl8139, virtio, etc)',
+'nics' => 'Network configuration parameters.  Of the general form [physnet:]interface,.. Generally, interface describes the vlan entity (default for native, tagged for tagged, vl[number] for a specific vlan.  physnet is a virtual switch name or port description that is used for some virtualization technologies to construct virtual switches.  hypervisor.netmap can map names to hypervisor specific layouts, or the descriptions described there may be used directly here where possible.',
+'nicmodel' => 'Model of NICs that will be provided to VMs (i.e. e1000, rtl8139, virtio, etc)',
             'bootorder' => 'Boot sequence (i.e. net,hd)',
-            'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
-            'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
+            'virtflags' => 'General flags used by the virtualization method.  
+          For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
             imageformat=[raw|fullraw|qcow2]
                 raw is a generic sparse file that allocates storage on demand
                 fullraw is a generic, non-sparse file that preallocates all space
@@ -222,21 +223,21 @@ use xCAT::ExtTab;
                 qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
                 reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs 
             placement_affinity=[migratable|user_migratable|pinned]',
-            'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
-            'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
-            'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-            'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively,the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
-            'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
-            'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
-            'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
-            'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
-            'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
-            'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, please reference to manpage of 'lsvm'.",
-            'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
-            'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
-            'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
-            'storageformat' => "Select disk format to use by default (e.g. raw versus qcow2)",
-        }
+'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
+'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
+'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
+'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
+'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
+'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
+'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
+'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
+'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
+'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, please reference to manpage of 'lsvm'.",
+'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
+'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
+'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
+'storageformat' => "Select disk format to use by default (e.g. raw versus qcow2)",
+          }
     },
     hypervisor => {
         cols => [qw(node type mgr interface netmap defaultnet cluster datacenter preferdirect comments disable)],
@@ -244,15 +245,15 @@ use xCAT::ExtTab;
         table_desc   => 'Hypervisor parameters',
         descriptions => {
             'node' => 'The node or static group name',
-            'type' => 'The plugin associated with hypervisor specific commands such as revacuate',
-            'mgr' => 'The virtualization specific manager of this hypervisor when applicable',
-            'interface' => 'The definition of interfaces for the hypervisor. The format is [networkname:interfacename:bootprotocol:IP:netmask:gateway] that split with | for each interface',
-            'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
-            'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
-            'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
-            'datacenter' => 'Optionally specify a datacenter for the hypervisor to exist in (only applicable to VMWare)',
-            'preferdirect' => 'If a mgr is declared for a hypervisor, xCAT will default to using the mgr for all operations.  If this is field is set to yes or 1, xCAT will prefer to directly communicate with the hypervisor if possible'
-        }
+'type' => 'The plugin associated with hypervisor specific commands such as revacuate',
+'mgr' => 'The virtualization specific manager of this hypervisor when applicable',
+'interface' => 'The definition of interfaces for the hypervisor. The format is [networkname:interfacename:bootprotocol:IP:netmask:gateway] that split with | for each interface',
+'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
+'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
+'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
+'datacenter' => 'Optionally specify a datacenter for the hypervisor to exist in (only applicable to VMWare)',
+'preferdirect' => 'If a mgr is declared for a hypervisor, xCAT will default to using the mgr for all operations.  If this is field is set to yes or 1, xCAT will prefer to directly communicate with the hypervisor if possible'
+          }
     },
     virtsd => {
         cols => [qw(node sdtype stype location host cluster datacenter comments disable)],
@@ -260,13 +261,13 @@ use xCAT::ExtTab;
         table_desc => 'The parameters which used to create the Storage Domain',
         descriptions => {
             'node' => 'The name of the storage domain',
-            'sdtype' => 'The type of storage domain. Valid values: data, iso, export',
-            'stype' => 'The type of storge. Valid values: nfs, fcp, iscsi, localfs',
+'sdtype' => 'The type of storage domain. Valid values: data, iso, export',
+'stype' => 'The type of storge. Valid values: nfs, fcp, iscsi, localfs',
             'location' => 'The path of the storage',
-            'host' => 'For rhev, a hypervisor host needs to be specified to manage the storage domain as SPM (Storage Pool Manager). But the SPM role will be failed over to another host when this host down.',
+'host' => 'For rhev, a hypervisor host needs to be specified to manage the storage domain as SPM (Storage Pool Manager). But the SPM role will be failed over to another host when this host down.',
             'cluster' => 'A cluster of hosts',
-            'datacenter' => 'A collection for all host, vm that will shared the same storages, networks.',
-        }
+'datacenter' => 'A collection for all host, vm that will shared the same storages, networks.',
+          }
     },
 
     storage => {
@@ -275,10 +276,11 @@ use xCAT::ExtTab;
         table_descr  => 'Node storage resources',
         descriptions => {
             node       => 'The node name',
-            controller => 'The management address to attach/detach new volumes.
-                       In the scenario involving multiple controllers, this data must be
-                       passed as argument rather than by table value',
+            controller => 'The management address to attach/detach new volumes. 
+In the scenario involving multiple controllers, this data must be
+passed as argument rather than by table value',
             osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
+
                 localdisk (Install to first non-FC attached disk)
                 usbdisk (Install to first USB mass storage device seen)
                 wwn=0x50000393c813840c (Install to storage device with given WWN)",
@@ -291,7 +293,7 @@ use xCAT::ExtTab;
             volumetag => 'A specific tag used to identify the volume in the autoyast or kickstart template.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
-        }
+          }
     },
     websrv => {
         cols         => [qw(node port username password comments disable)],
@@ -311,13 +313,13 @@ use xCAT::ExtTab;
         keys => [qw(bprofile)],
         table_desc => 'Specify non-standard initrd, kernel, and parameters that should be used for a given profile.',
         descriptions => {
-            'bprofile' => 'All nodes with a nodetype.profile value equal to this value and nodetype.os set to "boottarget", will use the associated kernel, initrd, and kcmdline.',
-            'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
-            'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
+'bprofile' => 'All nodes with a nodetype.profile value equal to this value and nodetype.os set to "boottarget", will use the associated kernel, initrd, and kcmdline.',
+'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
+'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
             'kcmdline' => 'Arguments to be passed to the kernel',
             comments   => 'Any user-written notes.',
             disable    => "Set to 'yes' or '1' to comment out this row."
-        }
+          }
     },
     bootparams => {
         cols => [qw(node kernel initrd kcmdline addkcmdline dhcpstatements adddhcpstatements comments disable)],
@@ -326,15 +328,15 @@ use xCAT::ExtTab;
         table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
         descriptions => {
             'node' => 'The node or group name',
-            'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
-            'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
+'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
+'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
             'kcmdline' => 'Arguments to be passed to the kernel',
-            'addkcmdline' => 'User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"',
-            'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
-            'adddhcpstatements' => 'Custom dhcp statements for administrator use (not implemneted yet)',
+'addkcmdline' => 'User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"',
+'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
+'adddhcpstatements' => 'Custom dhcp statements for administrator use (not implemneted yet)',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
-        }
+          }
     },
     prodkey => {
         cols         => [qw(node product key comments disable)],
@@ -346,7 +348,7 @@ use xCAT::ExtTab;
             key => "The product key relevant to the aforementioned node/group and product combination",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
-        }
+          }
     },
     chain => {
         cols => [qw(node currstate currchain chain ondiscover comments disable)],
@@ -371,7 +373,7 @@ use xCAT::ExtTab;
             node => 'The node name or group name.',
             nodedep => 'Comma-separated list of nodes or node groups it is dependent on.',
             msdelay => 'How long to wait between operating on the dependent nodes and the primary nodes.',
-            cmd => 'Comma-seperated list of which operation this dependency applies to.',
+            cmd => 'Comma-separated list of which operation this dependency applies to.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -395,11 +397,8 @@ use xCAT::ExtTab;
         table_desc => 'Settings for nodes that are controlled by an on-board BMC via IPMI.',
         descriptions => {
             node => 'The node name or group name.',
-            bmc  => 'The hostname of the BMC adapater.',
-            bmcport => ' In systems with selectable shared/dedicated ethernet ports,
-           this parameter can be used to specify the preferred port.  0
-           means use the shared port, 1 means dedicated, blank is to not
-           assign.
+            bmc  => 'The hostname of the BMC adapter.',
+            bmcport => 'In systems with selectable shared/dedicated ethernet ports, this parameter can be used to specify the preferred port. 0 means use the shared port, 1 means dedicated, blank is to not assign.
 
            The following special cases exist for IBM System x servers:
 
@@ -484,7 +483,7 @@ use xCAT::ExtTab;
         required => [qw(name)],
         table_desc => 'Controls what external monitoring tools xCAT sets up and uses.  Entries should be added and removed from this table using the provided xCAT commands monstart and monstop.',
         descriptions => {
-            name => "The name of the mornitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for monstart for details.",
+            name => "The name of the monitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for monstart for details.",
             nodestatmon => 'Specifies if the monitoring plug-in is used to feed the node status to the xCAT cluster.  Any one of the following values indicates "yes":  y, Y, yes, Yes, YES, 1.  Any other value or blank (default), indicates "no".',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -496,7 +495,7 @@ use xCAT::ExtTab;
         required => [qw(name key)],
         table_desc => 'Specifies the monitoring plug-in specific settings. These settings will be used by the monitoring plug-in to customize the behavior such as event filter, sample interval, responses etc. Entries should be added, removed or modified by chtab command. Entries can also be added or modified by the monstart command when a monitoring plug-in is brought up.',
         descriptions => {
-            name => "The name of the mornitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for monstart for details.",
+            name => "The name of the monitoring plug-in module.  The plug-in must be put in $ENV{XCATROOT}/lib/perl/xCAT_monitoring/.  See the man page for monstart for details.",
             key => 'Specifies the name of the attribute. The valid values are specified by each monitoring plug-in. Use "monls name -d" to get a list of valid keys.',
             value    => 'Specifies the value of the attribute.',
             comments => 'Any user-written notes.',
@@ -509,7 +508,7 @@ use xCAT::ExtTab;
         table_desc => 'Contains the hardware control info specific to blades.  This table also refers to the mpa table, which contains info about each Management Module.',
         descriptions => {
             node => 'The blade node name or group name.',
-            mpa  => 'The managment module used to control this blade.',
+            mpa  => 'The management module used to control this blade.',
             id   => 'The slot number of this blade in the BladeCenter chassis.',
             nodetype => 'The hardware type for mp node. Valid values: mm,cmm, blade.',
             comments => 'Any user-written notes.',
@@ -527,6 +526,7 @@ use xCAT::ExtTab;
             password => 'Password to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
             displayname => 'Alternative name for BladeCenter chassis. Only used by PCM.',
             slots => 'The number of available slots in the chassis. For PCM, this attribute is used to store the number of slots in the following format:  <slot rows>,<slot columns>,<slot orientation>  Where:
+
                  <slot rows>  = number of rows of slots in chassis
                  <slot columns> = number of columns of slots in chassis
                  <slot orientation> = set to 0 if slots are vertical, and set to 1 if slots of horizontal
@@ -608,7 +608,7 @@ use xCAT::ExtTab;
         descriptions => {
             node => 'The hostname of a node in the cluster.',
             groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group. Internal group names are designated by using __<groupname>.  For example, __Unmanaged, could be the internal name for a group of nodes that is not managed by xCAT. Admins should avoid using the __ characters when defining their groups.",
-            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequenses are: For installaton: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series dicovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Please note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
+            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Please note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
             statustime => "The data and time when the status was updated.",
             appstatus => "A comma-delimited list of application status. For example: 'sshd=up,ftp=down,ll=down'",
             appstatustime => 'The date and time when appstatus was updated.',
@@ -647,12 +647,13 @@ use xCAT::ExtTab;
             node => 'The node name or group name.',
             servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
             netboot => 'The type of network booting to use for this node.  Valid values:
-                       Arch                  OS                           valid netboot options 
-                       x86, x86_64           ALL                          pxe, xnba 
-                       ppc64                 <=rhel6, <=sles11.3          yaboot
-                       ppc64                 >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
-                 ppc64le NonVirtualize       ALL                          petitboot
-                 ppc64le PowerKVM Guest      ALL                          grub2,grub2-http,grub2-tftp
+
+                       Arch                    OS                           valid netboot options 
+                       x86, x86_64             ALL                          pxe, xnba 
+                       ppc64                   <=rhel6, <=sles11.3          yaboot
+                       ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
+                       ppc64le NonVirtualize   ALL                          petitboot
+                       ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                        
 ',
             tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
@@ -685,14 +686,14 @@ use xCAT::ExtTab;
             switch => 'The hostname/address of the switch to which the settings apply',
             snmpversion => 'The version to use to communicate with switch.  SNMPv1 is assumed by default.',
             username => 'The username to use for SNMPv3 communication, ignored for SNMPv1',
-            password => 'The password strinng for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.',
+            password => 'The password string for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.',
             privacy => 'The privacy protocol to use for v3. xCAT will use authNoPriv if this is unspecified. DES is recommended to use if v3 enabled, as it is the most readily available.',
             auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
             linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.',
             sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
             sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
-            protocol => 'Prorocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.',
-            switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Juniper.',
+            protocol => 'Protocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.',
+            switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this switch. The valid values are: Mellanox, Cisco, BNT and Juniper.',
         },
     },
     nodetype => {
@@ -748,7 +749,7 @@ use xCAT::ExtTab;
             osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).',
             osarch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
             synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes. Can be a comma separated list of multiple synclist files. The synclist generated by PCM named /install/osimages/<imagename>/synclist.cfm is reserved for use only by PCM and should not be edited by the admin.',
-            postscripts => 'Comma separated list of scripts that should be run on this image after diskful installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. See the site table runbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX. ',
+            postscripts => 'Comma separated list of scripts that should be run on this image after diskful installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. See the site table runbootscripts attribute.',
             postbootscripts => 'Comma separated list of scripts that should be run on this after diskful installation or diskless boot. On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attribute to run first in the list. See the site table runbootscripts attribute.',
             serverrole => 'The role of the server created by this osimage.  Default roles: mgtnode, servicenode, compute, login, storage, utility.',
             isdeletable => 'A flag to indicate whether this image profile can be deleted.  This attribute is only used by PCM.',
@@ -768,11 +769,11 @@ use xCAT::ExtTab;
             boottarget => 'The name of the boottarget definition.  When this attribute is set, xCAT will use the kernel, initrd and kernel params defined in the boottarget definition instead of the default.',
             addkcmdline => 'User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments. For the kernel options need to be persistent after installation, specify them with prefix "R::".  This attribute is ignored if linuximage.boottarget is set.',
             pkglist => 'The fully qualified name of the file that stores the distro  packages list that will be included in the image. Make sure that if the pkgs in the pkglist have dependency pkgs, the dependency pkgs should be found in one of the pkgdir',
-            pkgdir => 'The name of the directory where the distro packages are stored. It could be set multiple paths.The multiple paths must be seperated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.',
-            otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set multiple paths.The multiple paths must be seperated by ",".',
+            pkgdir => 'The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.',
+            otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
             otherpkgdir => 'The base directory where the non-distro packages are stored. Only 1 local directory supported at present.',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
-            postinstall => 'The fully qualified name of the script file that will be run at the end of the genimage command. It could be set multiple paths.The multiple paths must be seperated by ",". It is used for diskless image only.',
+            postinstall => 'The fully qualified name of the script file that will be run at the end of the genimage command. It could be set to multiple paths. The multiple paths must be separated by ",". It is used for diskless image only.',
             rootimgdir => 'The directory name where the image is stored.  It is generally used for diskless image. it also can be used in sysclone environment to specify where the image captured from golden client is stored. in sysclone environment, rootimgdir is generally assigned to some default value by xcat, but you can specify your own store directory. just one thing need to be noticed, wherever you save the image, the name of last level directory must be the name of image. for example, if your image name is testimage and you want to save this image under home directoy, rootimgdir should be assigned to value /home/testimage/',
             kerneldir => 'The directory name where the 3rd-party kernel is stored. It is used for diskless image only.',
             nodebootif => 'The network interface the stateless/statelite node will boot over (e.g. eth0)',
@@ -783,7 +784,7 @@ use xCAT::ExtTab;
             permission => 'The mount permission of /.statelite directory is used, its default value is 755',
             dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
             crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
-            partitionfile => 'The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/install_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma "," ',
+            partitionfile => 'The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/xcat.install_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma "," ',
             driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_srouce_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -842,7 +843,7 @@ use xCAT::ExtTab;
         table_desc => 'The scripts that should be run on each node after installation or diskless boot.',
         descriptions => {
             node => 'The node name or group name.',
-            postscripts => 'Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX. ',
+            postscripts => 'Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute.',
             postbootscripts => 'Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attribute to run first in the list.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -923,29 +924,29 @@ use xCAT::ExtTab;
         table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nattributes currently used by xCAT organized into categories.\n",
         descriptions => {
 
-# Do not put description text past column 88, so it displays well in a 100 char wide window.
-# ----------------------------------------------------------------------------------|----------
+            # Do not put description text past column 88, so it displays well in a 100 char wide window.
+            # ----------------------------------------------------------------------------------|----------
             key => "Attribute Name:  Description\n\n" .
-" ------------\n" .
-"AIX ATTRIBUTES\n" .
-" ------------\n" .
+              " ------------\n" .
+              "AIX ATTRIBUTES\n" .
+              " ------------\n" .
 " nimprime :   The name of NIM server, if not set default is the AIX MN.
               If Linux MN, then must be set for support of mixed cluster (TBD).\n\n" .
 " useSSHonAIX:  (yes/1 or no/0). Default is yes.  The support for rsh/rcp is deprecated.\n" .
 " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n" .
-"               NFSv3 will be used with NIM. Default is no.\n\n" .
-" -----------------\n" .
-"DATABASE ATTRIBUTES\n" .
-" -----------------\n" .
+              "               NFSv3 will be used with NIM. Default is no.\n\n" .
+              " -----------------\n" .
+              "DATABASE ATTRIBUTES\n" .
+              " -----------------\n" .
 " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n" .
 "                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
 "                Default is to write to both the auditlog table and syslog.\n" .
 " auditskipcmds: List of commands and/or client types that will not be\n" .
 "                written to the auditlog table and syslog. See auditnosyslog.\n" .
 "                'ALL' means all cmds will be skipped. If attribute is null, all\n" .
-"                commands will be written.\n" .
+              "                commands will be written.\n" .
 "                clienttype:web would skip all commands from the web client\n" .
-"                For example: tabdump,nodels,clienttype:web \n" .
+              "                For example: tabdump,nodels,clienttype:web \n" .
 "                will not log tabdump,nodels and any web client commands.\n\n" .
 " databaseloc:    Directory where we create the db instance directory.\n" .
 "                 Default is /var/lib. Only DB2 is currently supported.\n" .
@@ -955,18 +956,18 @@ use xCAT::ExtTab;
 " excludenodes:  A set of comma separated nodes and/or groups that would automatically\n" .
 "                be subtracted from any noderange, it can be used for excluding some\n" .
 "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n" .
-"                details on supported formats.\n\n" .
+              "                details on supported formats.\n\n" .
 " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n" .
 "              the node deployment, node discovery and power operations. The default is to update.\n\n" .
 " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n\n" .
 " skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not be logged in syslog.\n\n" .
-" -------------\n" .
-"DHCP ATTRIBUTES\n" .
-" -------------\n" .
+              " -------------\n" .
+              "DHCP ATTRIBUTES\n" .
+              " -------------\n" .
 " dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same\n" .
 "                  for all nodes, use a simple comma-separated list of NICs.  To\n" .
 "                  specify different NICs for different nodes:\n" .
-"                       xcatmn|eth1,eth2;service|bond0.\n" .
+              "                       xcatmn|eth1,eth2;service|bond0.\n" .
 "                  In this example xcatmn is the name of the xCAT MN, and DHCP there\n" .
 "                  should listen on eth1 and eth2.  On all of the nodes in group\n" .
 "                  'service' DHCP should listen on the bond0 nic.\n\n" .
@@ -981,12 +982,12 @@ use xCAT::ExtTab;
 "                     If set to 'static', the network configuration will be configured \n" .
 "                     in static mode based on the node and network definition on MN.\n" .
 "                     If set to 'dhcp', the network will be configured with dhcp protocol.\n" .
-"                     The default is 'dhcp'.\n\n" .
-" ------------\n" .
-"DNS ATTRIBUTES\n" .
-" ------------\n" .
+              "                     The default is 'dhcp'.\n\n" .
+              " ------------\n" .
+              "DNS ATTRIBUTES\n" .
+              " ------------\n" .
 " dnshandler:  Name of plugin that handles DNS setup for makedns.\n" .
-" domain:  The DNS domain name used for the cluster.\n\n" .
+              " domain:  The DNS domain name used for the cluster.\n\n" .
 " forwarders:  The DNS servers at your site that can provide names outside of the\n" .
 "              cluster. The makedns command will configure the DNS on the management\n" .
 "              node to forward requests it does not know to these servers.\n" .
@@ -1001,48 +1002,48 @@ use xCAT::ExtTab;
 "               In a hierarchical cluster, you can also set this attribute to\n" .
 "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n" .
 "               node that is managing it (either its service node or the management\n" .
-"               node).\n\n" .
+              "               node).\n\n" .
 " externaldns:  To specify that external dns is used. If externaldns is set to any value\n" .
 "               then, makedns command will not start the local nameserver on xCAT MN. \n" .
-"               Default is to start the local nameserver.\n\n" .
+              "               Default is to start the local nameserver.\n\n" .
 " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n" .
 "               section. This is an interface for user to add configuration entries to\n" .
-"               the zone sections in named.conf.\n\n" .
+              "               the zone sections in named.conf.\n\n" .
 " dnsinterfaces:  The network interfaces DNS server should listen on.  If it is the same\n" .
 "                  for all nodes, use a simple comma-separated list of NICs.  To\n" .
 "                  specify different NICs for different nodes:\n" .
-"                       xcatmn|eth1,eth2;service|bond0.\n" .
+              "                       xcatmn|eth1,eth2;service|bond0.\n" .
 "                  In this example xcatmn is the name of the xCAT MN, and DNS there\n" .
 "                  should listen on eth1 and eth2.  On all of the nodes in group\n" .
 "                  'service' DNS should listen on the bond0 nic.\n" .
 "                  NOTE: if using this attribute to block certain interfaces, make sure\n" .
 "                  the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to\n" .
 "                  use this ip to communicate with the local NDS server on MN.\n\n" .
-" -------------------------\n" .
-"HARDWARE CONTROL ATTRIBUTES\n" .
-" -------------------------\n" .
+              " -------------------------\n" .
+              "HARDWARE CONTROL ATTRIBUTES\n" .
+              " -------------------------\n" .
 " blademaxp:  The maximum number of concurrent processes for blade hardware control.\n\n" .
 " ea_primary_hmc:  The hostname of the HMC that the Integrated Switch Network\n" .
 "                  Management Event Analysis should send hardware serviceable\n" .
 "                  events to for processing and potentially sending to IBM.\n\n" .
 " ea_backup_hmc:  The hostname of the HMC that the Integrated Switch Network\n" .
 "                  Management Event Analysis should send hardware serviceable\n" .
-"                  events to if the primary HMC is down.\n\n" .
+              "                  events to if the primary HMC is down.\n\n" .
 " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n" .
 "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n" .
 " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n" .
 " hwctrldispatch:  Whether or not to send hw control operations to the service\n" .
 "                  node of the target nodes. Default is 'y'.(At present, this attribute\n" .
-"                  is only used for IBM Flex System)\n\n" .
+              "                  is only used for IBM Flex System)\n\n" .
 " ipmidispatch:  Whether or not to send ipmi hw control operations to the service\n" .
 "                node of the target compute nodes. Default is 'y'.\n\n" .
 " ipmimaxp:  The max # of processes for ipmi hw ctrl. The default is 64. Currently,\n" .
-"            this is only used for HP hw control.\n\n" .
+              "            this is only used for HP hw control.\n\n" .
 " ipmiretries:  The # of retries to use when communicating with BMCs. Default is 3.\n\n" .
 " ipmisdrcache:  If set to 'no', then the xCAT IPMI support will not cache locally\n" .
 "                the target node's SDR cache to improve performance.\n\n" .
 " ipmitimeout:  The timeout to use when communicating with BMCs. Default is 2.\n" .
-"               This attribute is currently not used.\n\n" .
+              "               This attribute is currently not used.\n\n" .
 " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n" .
 "          This parameter doesn't take effect on the rpower command.\n" .
 "          It takes effects on other PPC hardware control command\n" .
@@ -1052,7 +1053,7 @@ use xCAT::ExtTab;
 "                 For system x IPMI servers, this is the number of seconds the\n" .
 "                 rpower command will wait between powering on <syspowermaxnodes>\n" .
 "                 nodes at a time.  This value is used to control the power on speed\n" .
-"                 in large clusters. Default is 0.\n\n" .
+              "                 in large clusters. Default is 0.\n\n" .
 " syspowermaxnodes:  The number of servers to power on at one time before waiting\n" .
 "                    'syspowerinterval' seconds to continue on to the next set of\n" .
 "                    nodes.  If the noderange given to rpower includes nodes served\n" .
@@ -1069,18 +1070,18 @@ use xCAT::ExtTab;
 "           processes for PPC hardware control commands. Default is 64.\n\n" .
 " ppcretry:  The max # of PPC hw connection attempts to HMC before failing.\n" .
 "           It only takes effect on the hardware control commands through HMC. \n" .
-"           Default is 3.\n\n" .
+              "           Default is 3.\n\n" .
 " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw\n" .
 "              through HMC. It only takes effect on the hardware control commands\n" .
-"              through HMC. Default is 0.\n\n" .
+              "              through HMC. Default is 0.\n\n" .
 " snmpc:  The snmp community string that xcat should use when communicating with the\n" .
-"         switches.\n\n" .
-" ---------------------------\n" .
-"INSTALL/DEPLOYMENT ATTRIBUTES\n" .
-" ---------------------------\n" .
+              "         switches.\n\n" .
+              " ---------------------------\n" .
+              "INSTALL/DEPLOYMENT ATTRIBUTES\n" .
+              " ---------------------------\n" .
 " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
 "                   directory on the stateless and statelite nodes after the\n" .
-"                   postscripts are run. Default is no.\n\n" .
+              "                   postscripts are run. Default is no.\n\n" .
 " db2installloc:  The location which the service nodes should mount for\n" .
 "                 the db2 code to install. Format is hostname:/path.  If hostname is\n" .
 "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n" .
@@ -1088,18 +1089,18 @@ use xCAT::ExtTab;
 " defserialport:  The default serial port - currently only used by mknb.\n\n" .
 " defserialspeed:  The default serial speed - currently only used by mknb.\n\n" .
 " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n" .
-"                prefix (e.g. 00:11:aa)\n\n" .
+              "                prefix (e.g. 00:11:aa)\n\n" .
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
-"                them.\n\n" .
+              "                them.\n\n" .
 " installdir:  The local directory name used to hold the node deployment packages.\n\n" .
 " installloc:  The location from which the service nodes should mount the \n" .
 "              deployment packages in the format hostname:/path.  If hostname is\n" .
 "              omitted, it defaults to the management node. The path must\n" .
-"              match the path in the installdir attribute.\n\n" .
+              "              match the path in the installdir attribute.\n\n" .
 " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n" .
 " mnroutenames:  The name of the routes to be setup on the management node.\n" .
 "                It is a comma separated list of route names that are defined in the\n" .
-"                routes table.\n\n" .
+              "                routes table.\n\n" .
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
@@ -1115,7 +1116,7 @@ use xCAT::ExtTab;
 " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n" .
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
 "              If value is set to a hostname, the directory in tftpdir\n" .
-"              will be mounted from that hostname on the SN\n\n" .
+              "              will be mounted from that hostname on the SN\n\n" .
 " sharedinstall: Indicates if a shared file system will be used for installation\n" .
 "               resources. Possible values are: 'no', 'sns', or 'all'.  'no' \n" .
 "               means a shared file system is not being used.  'sns' means a\n" .
@@ -1123,20 +1124,20 @@ use xCAT::ExtTab;
 "               'all' means that the management as well as the service nodes\n" .
 "               are all using a common shared filesystem. The default is 'no'.\n" .
 " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n" .
-" xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques\n".
-"                 to help user debug problems while using xCAT, especially on OS provision,\n".
-"                 such as collecting logs of the whole installation process and accessing\n".
-"                 the installing system via ssh, etc. These techniques will be enabled\n".
-"                 according to different xCAT debug levels specified by 'xcatdebugmode',\n".
-"                 currently supported values:\n".
-"                   '0':  disable debug mode\n".
-"                   '1':  enable basic debug mode\n".
-"                   '2':  enalbe expert debug mode\n".
-"                 For the details on 'basic debug mode' and 'expert debug mode',\n".
-"                 please refer to xCAT documentation.\n\n".
-" --------------------\n" .
-"REMOTESHELL ATTRIBUTES\n" .
-" --------------------\n" .
+" xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques\n" .
+"                 to help user debug problems while using xCAT, especially on OS provision,\n" .
+"                 such as collecting logs of the whole installation process and accessing\n" .
+"                 the installing system via ssh, etc. These techniques will be enabled\n" .
+"                 according to different xCAT debug levels specified by 'xcatdebugmode',\n" .
+              "                 currently supported values:\n" .
+              "                   '0':  disable debug mode\n" .
+              "                   '1':  enable basic debug mode\n" .
+              "                   '2':  enable expert debug mode\n" .
+"                 For the details on 'basic debug mode' and 'expert debug mode',\n" .
+              "                 please refer to xCAT documentation.\n\n" .
+              " --------------------\n" .
+              "REMOTESHELL ATTRIBUTES\n" .
+              " --------------------\n" .
 " nodesyncfiledir:  The directory on the node, where xdcp will rsync the files\n" .
 " SNsyncfiledir:  The directory on the Service Node, where xdcp will rsync the files\n" .
 "                 from the MN that will eventually be rsync'd to the compute nodes.\n\n" .
@@ -1144,15 +1145,15 @@ use xCAT::ExtTab;
 "                   ssh during install, or xdsh -K. Default is ALLGROUPS.\n" .
 "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n" .
 "                   Service Nodes are not affected by this attribute\n" .
-"                   they are always setup with\n" .
+              "                   they are always setup with\n" .
 "                   passwordless root access to nodes and other SN.\n" .
 "                   If using the zone table, this attribute in not used.\n\n" .
-" -----------------\n" .
-"SERVICES ATTRIBUTES\n" .
-" -----------------\n" .
+              " -----------------\n" .
+              "SERVICES ATTRIBUTES\n" .
+              " -----------------\n" .
 " consoleondemand:  When set to 'yes', conserver connects and creates the console\n" .
 "                   output only when the user opens the console. Default is no on\n" .
-"                   Linux, yes on AIX.\n\n" .
+              "                   Linux, yes on AIX.\n\n" .
 " httpport:    The port number that the booting/installing nodes should contact the\n" .
 "              http server on the MN/SN on. It is your responsibility to configure\n" .
 "              the http server to listen on that port - xCAT will not do that.\n\n" .
@@ -1162,7 +1163,7 @@ use xCAT::ExtTab;
 "              For example, if the network response time is too slow, nmap may not\n" .
 "              give stable output. You can increase the timeout value by specifying \n" .
 "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n" .
-"              the nmap command.\n\n" .
+              "              the nmap command.\n\n" .
 " ntpservers:  A comma delimited list of NTP servers for the service node and\n" .
 "              the compute node to sync with. The keyword <xcatmaster> means that\n" .
 "              the node's NTP server is the node that is managing it\n" .
@@ -1170,11 +1171,11 @@ use xCAT::ExtTab;
 " extntpservers:  A comma delimited list of external NTP servers for the xCAT\n" .
 "                 management node to sync with. If it is empty, the NTP server\n" .
 "                 will use the management node's own hardware clock to calculate\n" .
-"                 the system date and time\n\n" .
+              "                 the system date and time\n\n" .
 " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n" .
-"              mgmt node.\n\n" .
-" timezone:  (e.g. America/New_York)\n\n" .
-" tftpdir:  tftp directory path. Default is /tftpboot\n\n" .
+              "              mgmt node.\n\n" .
+              " timezone:  (e.g. America/New_York)\n\n" .
+              " tftpdir:  tftp directory path. Default is /tftpboot\n\n" .
 " tftpflags:  The flags that used to start tftpd. Default is \'-v -l -s /tftpboot \n" .
 "               -m /etc/tftpmapfile4xcat.conf\' if tftplfags is not set\n\n" .
 " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n" .
@@ -1184,31 +1185,31 @@ use xCAT::ExtTab;
 "              bring up vsftpd.  (You must manually install vsftpd before this.\n" .
 "              This setting does not apply to the service node. For sn\n" .
 "              you need to set servicenode.ftpserver=1 if you want xcatd to\n" .
-"              bring up vsftpd.\n\n" .
+              "              bring up vsftpd.\n\n" .
 "FQDNfirst: Fully Qualified Domain Name first. If set to 1/yes/enable, the /etc/hosts \n" .
 "           entries generated by 'makehosts' will put the FQDN before the PQDN(Partially \n" .
 "           Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
-"hierarchicalattrs: Table attributes(e.g. postscripts, postbootscripts) that will be\n".
-"                   included hierarchically. Attribute values for all the node's groups\n".
-"                   will be applied to the node in the groups' order except the repeat one.\n\n".
-" -----------------------\n" .
-"VIRTUALIZATION ATTRIBUTES\n" .
-" -----------------------\n" .
+"hierarchicalattrs: Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
+"                   included hierarchically. Attribute values for all the node's groups\n" .
+"                   will be applied to the node in the groups' order except the repeat one.\n\n" .
+              " -----------------------\n" .
+              "VIRTUALIZATION ATTRIBUTES\n" .
+              " -----------------------\n" .
 " usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the\n" .
-"           virtual network bridge up correctly.\n" .
+              "           virtual network bridge up correctly.\n" .
 " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n" .
 "                   and add hypervisors while trying to perform operations.  If users\n" .
 "                   or tasks outside of xCAT perform the joining this assures xCAT\n" .
-"                   will not interfere.\n\n" .
+              "                   will not interfere.\n\n" .
 " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n" .
 "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n" .
 " persistkvmguests:  Keep the kvm definition on the kvm hypervisor when you power off\n" .
 "                    the kvm guest node. This is useful for you to manually change the \n" .
 "                    kvm xml definition file in virsh for debugging. Set anything means\n" .
-"                    enable.\n\n" .
-" --------------------\n" .
-"XCAT DAEMON ATTRIBUTES\n" .
-" --------------------\n" .
+              "                    enable.\n\n" .
+              " --------------------\n" .
+              "XCAT DAEMON ATTRIBUTES\n" .
+              " --------------------\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
 "               until xcatd is ready to handle the requests associated with\n" .
@@ -1216,9 +1217,9 @@ use xCAT::ExtTab;
 "               locking out admin interactive use. This value works with the\n" .
 "               xcatmaxconnections and xcatmaxbatch attributes. Is not supported on AIX.\n" .
 "               If the value is no, nodes sleep for a random time before contacting\n" .
-"               xcatd, and retry. The default is no.\n" .
-"               See the following document for details:\n" .
-"               Hints_and_Tips_for_Large_Scale_Clusters\n\n" .
+              "               xcatd, and retry. The default is no.\n" .
+              "               See the following document for details:\n" .
+              "               Hints_and_Tips_for_Large_Scale_Clusters\n\n" .
 " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n" .
 "                      begin queueing. This applies to both client command requests\n" .
 "                      and node requests, e.g. to get postscripts. Default is 64.\n\n" .
@@ -1228,7 +1229,7 @@ use xCAT::ExtTab;
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
 " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n" .
-" xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
+              " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -1257,7 +1258,7 @@ use xCAT::ExtTab;
             serial => 'The serial number of the node.',
             mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
             side => '<BPA>-<port> or <FSP>-<port>. The side information for the BPA/FSP. The side attribute refers to which BPA/FSP, A or B, which is determined by the slot value returned from lsslp command. It also lists the physical port within each BPA/FSP which is determined by the IP address order from the lsslp response. This information is used internally when communicating with the BPAs/FSPs',
-            asset => 'A field for administators to use to correlate inventory numbers they may have to accomodate',
+            asset => 'A field for administrators to use to correlate inventory numbers they may have to accommodate',
             uuid     => 'The UUID applicable to the node',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -1341,7 +1342,7 @@ use xCAT::ExtTab;
             id => 'The location or the resource name where the event occurred.', #In RMC it's the resource name and attribute name
             severity => 'The severity of the event. Valid values are: informational, warning, critical.',
             message => 'The full description of the event.',
-            rawdata => ' The data that associated with the event. ', # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
+            rawdata => 'The data that associated with the event. ', # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
             comments => 'Any user-provided notes.',
             disable => "Do not use.  tabprune will not work if set to yes or 1",
         },
@@ -1355,7 +1356,7 @@ use xCAT::ExtTab;
         },
         compress     => 'YES',
         tablespace   => 'XCATTBS32K',
-        table_desc   => ' Audit Data log.',
+        table_desc   => 'Audit Data log.',
         descriptions => {
             recid      => 'The record id.',
             audittime  => 'The timestamp for the audit entry.',
@@ -1379,35 +1380,35 @@ use xCAT::ExtTab;
         descriptions => {
             node => 'The node name or group name.',
 
-# Do not put description text past column 88, so it displays well in a 100 char wide window.
-# ----------------------------------------------------------------------------------|
+            # Do not put description text past column 88, so it displays well in a 100 char wide window.
+            # ----------------------------------------------------------------------------------|
             begin =>
-"The scripts to be run at the beginning of the nodeset(Linux),\n" .
-" nimnodeset(AIX) or mkdsklsnode(AIX) command.\n" .
-" The format is:\n" .
-"   [action1:]s1,s2...[|action2:s3,s4,s5...]\n" .
-" where:\n" .
+              "The scripts to be run at the beginning of the nodeset(Linux)," .
+              " nimnodeset(AIX) or mkdsklsnode(AIX) command.\n" .
+              " The format is:\n" .
+              "   [action1:]s1,s2...[| action2:s3,s4,s5...]\n" .
+              " where:\n" .
 "  - action1 and action2 for Linux are the nodeset actions specified in the command. \n" .
 "    For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'\n" .
-"    and 'standalone for nimnodeset command. \n" .
-"  - s1 and s2 are the scripts to run for action1 in order.\n" .
-"  - s3, s4, and s5 are the scripts to run for actions2.\n" .
-" If actions are omitted, the scripts apply to all actions.\n" .
-" Examples:\n" .
-"   myscript1,myscript2  (all actions)\n" .
-"   diskless:myscript1,myscript2   (AIX)\n" .
-"   install:myscript1,myscript2|netboot:myscript3   (Linux)\n\n" .
+              "    and 'standalone for nimnodeset command. \n" .
+              "  - s1 and s2 are the scripts to run for action1 in order.\n" .
+              "  - s3, s4, and s5 are the scripts to run for actions2.\n" .
+              " If actions are omitted, the scripts apply to all actions.\n" .
+              " Examples:\n" .
+              "   myscript1,myscript2  (all actions)\n" .
+              "   diskless:myscript1,myscript2   (AIX)\n" .
+              "   install:myscript1,myscript2|netboot:myscript3   (Linux)\n" .
 " All the scripts should be copied to /install/prescripts directory.\n" .
 " The following two environment variables will be passed to each script: \n" .
 "   NODES a coma separated list of node names that need to run the script for\n" .
-"   ACTION current nodeset action.\n\n" .
+              "   ACTION current nodeset action.\n" .
 " If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script\n" .
 " will get invoked for each node in parallel, but no more than number of instances\n" .
 " will be invoked at at a time. If it is not specified, the script will be invoked\n" .
-" once for all the nodes.\n",
-            end => "The scripts to be run at the end of the nodeset(Linux),\n" .
-                " nimnodeset(AIX),or mkdsklsnode(AIX) command. \n" .
-                " The format is the same as the 'begin' column.",
+              " once for all the nodes.\n",
+            end => "The scripts to be run at the end of the nodeset(Linux)," .
+              " nimnodeset(AIX),or mkdsklsnode(AIX) command." .
+              " The format is the same as the 'begin' column.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1416,7 +1417,7 @@ use xCAT::ExtTab;
     routes => {
         cols => [qw(routename net mask gateway ifname comments disable)],
         keys => [qw(routename)],
-        table_desc => 'Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the servie node as gateway.',
+        table_desc => 'Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the service node as gateway.',
         descriptions => {
             routename => 'Name used to identify this route.',
             net       => 'The network address.',
@@ -1462,8 +1463,9 @@ use xCAT::ExtTab;
         tablespace   => 'XCATTBS16K',
         table_desc   => 'Stores NIC details.',
         descriptions => {
-            node => 'The node or group name.',
-            nicips => 'Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
+            node   => 'The node or group name.',
+            nicips => 'Comma-separated list of IP addresses per NIC. 
+                To specify one ip address per NIC:
                     <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
                 To specify multiple ip addresses per NIC:
                     <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a. The xCAT object definition commands support to use nicips.<nicname> as the sub attributes.
@@ -1471,14 +1473,14 @@ use xCAT::ExtTab;
             nichostnamesuffixes => 'Comma-separated list of hostname suffixes per NIC. 
                         If only one ip address is associated with each NIC:
                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
-                        If multiple ip addresses are associcated with each NIC:
+                        If multiple ip addresses are associated with each NIC:
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nichostnameprefixes => 'Comma-separated list of hostname prefixes per NIC. 
                         If only one ip address is associated with each NIC:
                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
-                        If multiple ip addresses are associcated with each NIC:
+                        If multiple ip addresses are associated with each NIC:
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
                         The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
@@ -1491,16 +1493,16 @@ use xCAT::ExtTab;
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64. The xCAT object definition commands support to use nicnetworks.<nicname> as the sub attributes.',
             nicaliases => 'Comma-separated list of hostname aliases for each NIC.
-            Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
-			For multiple aliases per nic use a space-separated list.
-            For example: eth0!moe larry curly,eth1!tom|jerry',
+                Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
+                    For multiple aliases per nic use a space-separated list. 
+                For example: eth0!moe larry curly,eth1!tom|jerry',
             nicextraparams => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
                 If only one ip address is associated with each NIC:
                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param3=value3>, for example, eth0!MTU=1500,ib0!MTU=65520 CONNECTED_MODE=yes.
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
-            nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
+            nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
             nicsadapter => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.',
             comments => 'Any user-written notes.',
@@ -1661,7 +1663,7 @@ use xCAT::ExtTab;
     mic => {
         cols => [qw(node host id nodetype bridge onboot vlog powermgt comments disable)],
         keys => [qw(node)],
-        table_desc => 'The host, slot id and configuraton of the mic (Many Integrated Core).',
+        table_desc => 'The host, slot id and configuration of the mic (Many Integrated Core).',
         descriptions => {
             node => 'The node name or group name.',
             host => 'The host node which the mic card installed on.',
@@ -1702,7 +1704,7 @@ use xCAT::ExtTab;
         },
     },
     taskstate => {
-        cols         => [qw(node command state pid reserve)],
+        cols         => [qw(node command state pid reserve disable)],
         keys         => [qw(node)],
         table_desc   => 'The task state for the node.',
         descriptions => {
@@ -1792,6 +1794,8 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
     osdistro       => { attrs => [], attrhash => {}, objkey => 'osdistroname' },
     osdistroupdate => { attrs => [], attrhash => {}, objkey => 'osupdatename' },
     zone           => { attrs => [], attrhash => {}, objkey => 'zonename' },
+    firmware       => { attrs => [], attrhash => {}, objkey => 'cfgfile' },
+    taskstate      => { attrs => [], attrhash => {}, objkey => 'node' },
 
 );
 
@@ -3956,6 +3960,35 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
 
 );
 
+#############################
+#  boottarget object #
+#############################
+#    boottarget table    #
+#############################
+
+@{ $defspec{boottarget}->{'attrs'} } =
+  (
+    { attr_name => 'bprofile',
+        tabentry        => 'boottarget.bprofile',
+        access_tabentry => 'boottarget.bprofile=attr:bprofile',
+    },
+    { attr_name => 'kernel',
+        tabentry        => 'boottarget.kernel',
+        access_tabentry => 'boottarget.bprofile=attr:bprofile',
+    },
+    { attr_name => 'initrd',
+        tabentry        => 'boottarget.initrd',
+        access_tabentry => 'boottarget.bprofile=attr:bprofile',
+    },
+    { attr_name => 'kcmdline',
+        tabentry        => 'boottarget.kcmdline',
+        access_tabentry => 'boottarget.bprofile=attr:bprofile',
+    },
+    { attr_name => 'comments',
+        tabentry        => 'boottarget.comments',
+        access_tabentry => 'boottarget.bprofile=attr:bprofile',
+    },
+  );
 
 
 ###################################################

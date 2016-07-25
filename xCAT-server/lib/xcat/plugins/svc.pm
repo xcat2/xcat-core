@@ -19,24 +19,24 @@ my %controllersessions;
 
 sub handled_commands {
     return {
-        mkstorage => "storage:type",
-        lsstorage => "storage:type",
+        mkstorage     => "storage:type",
+        lsstorage     => "storage:type",
         detachstorage => "storage:type",
-        rmstorage => "storage:type",
-        lspool => "storage:type",
-    }
+        rmstorage     => "storage:type",
+        lspool        => "storage:type",
+      }
 }
 
 sub detachstorage {
     my $request = shift;
-    my @nodes = @{$request->{node}};
+    my @nodes   = @{ $request->{node} };
     my $controller;
-    @ARGV = @{$request->{arg}};
+    @ARGV = @{ $request->{arg} };
     unless (GetOptions(
-        'controller=s' => \$controller,
+            'controller=s' => \$controller,
         )) {
         foreach (@nodes) {
-            sendmsg([1,"Error parsing arguments"],$callback,$_);
+            sendmsg([ 1, "Error parsing arguments" ], $callback, $_);
         }
     }
     my $storagetab = xCAT::Table->new('storage');
@@ -45,17 +45,17 @@ sub detachstorage {
         $controller = assure_identical_table_values(\@nodes, $storents, 'controller');
     }
     my @volnames = @ARGV;
-    my $wwns = get_wwns(@nodes);
+    my $wwns     = get_wwns(@nodes);
     use Data::Dumper;
-    my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+    my %namemap = makehosts($wwns, controller => $controller, cfg => $storents);
     foreach my $node (keys %namemap) {
         my $host = $namemap{$node};
-        my $session = establish_session(controller=>$controller);
+        my $session = establish_session(controller => $controller);
         foreach my $volname (@volnames) {
             my @rets = $session->cmd("rmvdiskhostmap -host $host $volname");
-            my $ret = $rets[0];
+            my $ret  = $rets[0];
             if ($ret =~ m/^CMMVC5842E/) {
-                sendmsg([1,"Node not attached to $volname"],$callback,$node);
+                sendmsg([ 1, "Node not attached to $volname" ], $callback, $node);
             }
         }
     }
@@ -63,34 +63,34 @@ sub detachstorage {
 
 sub rmstorage {
     my $request = shift;
-    my @nodes = @{$request->{node}};
+    my @nodes   = @{ $request->{node} };
     my $controller;
-    @ARGV = @{$request->{arg}};
+    @ARGV = @{ $request->{arg} };
     unless (GetOptions(
-        'controller=s' => \$controller,
+            'controller=s' => \$controller,
         )) {
         foreach (@nodes) {
-            sendmsg([1,"Error parsing arguments"],$callback,$_);
+            sendmsg([ 1, "Error parsing arguments" ], $callback, $_);
         }
     }
-    my @volnames = @ARGV;
+    my @volnames   = @ARGV;
     my $storagetab = xCAT::Table->new('storage');
-    my $storents = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
+    my $storents   = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
     unless ($controller) {
         $controller = assure_identical_table_values(\@nodes, $storents, 'controller');
     }
     detachstorage($request);
-    my $session = establish_session(controller=>$controller);
+    my $session = establish_session(controller => $controller);
     foreach my $volname (@volnames) {
         my @info = $session->cmd("rmvdisk $volname");
-        my $ret = $info[0];
+        my $ret  = $info[0];
         if ($ret =~ m/^CMMVC5753E/) {
             foreach my $node (@nodes) {
-                sendmsg([1,"Disk $volname does not exist"], $callback, @nodes);
+                sendmsg([ 1, "Disk $volname does not exist" ], $callback, @nodes);
             }
         } elsif ($ret =~ m/^CMMVC5840E/) {
             foreach my $node (@nodes) {
-                sendmsg([1,"Disk $volname is mapped to other nodes and/or busy"], $callback, @nodes);
+                sendmsg([ 1, "Disk $volname is mapped to other nodes and/or busy" ], $callback, @nodes);
             }
         }
     }
@@ -98,25 +98,25 @@ sub rmstorage {
 
 
 sub lsstorage {
-    my $request = shift;
-    my @nodes = @{$request->{node}};
-    my $storagetab = xCAT::Table->new("storage",-create=>0);
+    my $request    = shift;
+    my @nodes      = @{ $request->{node} };
+    my $storagetab = xCAT::Table->new("storage", -create => 0);
     unless ($storagetab) { return; }
-    my $storents = $storagetab->getNodesAttribs(\@nodes,[qw/controller/]);
+    my $storents = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
     my $wwns = get_wwns(@nodes);
     foreach my $node (@nodes) {
         if ($storents and $storents->{$node} and $storents->{$node}->[0]->{controller}) {
             my $ctls = $storents->{$node}->[0]->{controller};
             foreach my $ctl (split /,/, $ctls) { # TODO: scan all controllers at once
-                my $session = establish_session(controller=>$ctl);
-                my %namemap = makehosts($wwns, controller=>$ctl, cfg=>$storents);
+                my $session = establish_session(controller => $ctl);
+                my %namemap = makehosts($wwns, controller => $ctl, cfg => $storents);
                 my @vdisks = hashifyoutput($session->cmd("lsvdisk -delim :"));
                 foreach my $vdisk (@vdisks) {
-                    my @maps = hashifyoutput($session->cmd("lsvdiskhostmap -delim : ".$vdisk->{'id'}));
+                    my @maps = hashifyoutput($session->cmd("lsvdiskhostmap -delim : " . $vdisk->{'id'}));
                     foreach my $map (@maps) {
                         if ($map->{host_name} eq $namemap{$node}) {
-                            sendmsg($vdisk->{name}.': size: '.$vdisk->{capacity}.' id: '.$vdisk->{vdisk_UID},$callback,$node);
-                            last; 
+                            sendmsg($vdisk->{name} . ': size: ' . $vdisk->{capacity} . ' id: ' . $vdisk->{vdisk_UID}, $callback, $node);
+                            last;
                         }
                     }
                 }
@@ -127,45 +127,45 @@ sub lsstorage {
 
 sub mkstorage {
     my $request = shift;
-    my @nodes = @{$request->{node}};
-    my $shared = 0;
+    my @nodes   = @{ $request->{node} };
+    my $shared  = 0;
     my $controller;
     my $pool;
     my $size;
-    my $boot = 0;
+    my $boot   = 0;
     my $format = 0;
     unless (ref $request->{arg}) {
         die "TODO: usage";
     }
     my $name;
-    @ARGV = @{$request->{arg}};
+    @ARGV = @{ $request->{arg} };
     unless (GetOptions(
-        'format' => \$format,
-        'shared' => \$shared,
-        'controller=s' => \$controller,
-        'boot' => \$boot,
-        'size=f' => \$size,
-        'name=s' => \$name,
-        'pool=s' => \$pool,
+            'format'       => \$format,
+            'shared'       => \$shared,
+            'controller=s' => \$controller,
+            'boot'         => \$boot,
+            'size=f'       => \$size,
+            'name=s'       => \$name,
+            'pool=s'       => \$pool,
         )) {
         foreach (@nodes) {
-            sendmsg([1,"Error parsing arguments"],$callback,$_);
+            sendmsg([ 1, "Error parsing arguments" ], $callback, $_);
         }
     }
     if ($shared and $boot) {
         foreach (@nodes) {
-            sendmsg([1,"Storage can not be both shared and boot"],$callback,$_);
+            sendmsg([ 1, "Storage can not be both shared and boot" ], $callback, $_);
         }
     }
     my $storagetab = xCAT::Table->new('storage');
-    my $storents = $storagetab->getNodesAttribs(\@nodes,
+    my $storents   = $storagetab->getNodesAttribs(\@nodes,
         [qw/controller storagepool size/]);
     if ($shared) {
         unless ($size) {
             foreach (@nodes) {
-                sendmsg([1,
-                     "Size for shared volumes must be specified as an argument"
-                    ], $callback,$_);
+                sendmsg([ 1,
+"Size for shared volumes must be specified as an argument"
+                ], $callback, $_);
             }
         }
         unless ($pool) {
@@ -177,43 +177,44 @@ sub mkstorage {
         unless (defined $pool and defined $controller) {
             return;
         }
-        my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+        my %lunargs = (controller => $controller, size => $size, pool => $pool);
         if ($name) { $lunargs{name} = $name; }
         my $lun = create_lun(%lunargs);
-        sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback);
+        sendmsg($lun->{name} . ": id: " . $lun->{wwn}, $callback);
         my $wwns = get_wwns(@nodes);
-        my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+        my %namemap = makehosts($wwns, controller => $controller, cfg => $storents);
         my @names = values %namemap;
-        bindhosts(\@names, $lun, controller=>$controller);
+        bindhosts(\@names, $lun, controller => $controller);
+
         if ($format) {
             my %request = (
-                node => [$nodes[0]],
-                command => [ 'formatdisk' ],
-                arg => [ '--id', $lun->{wwn}, '--name', $lun->{name} ]
+                node    => [ $nodes[0] ],
+                command => ['formatdisk'],
+                arg     => [ '--id', $lun->{wwn}, '--name', $lun->{name} ]
             );
             $dorequest->(\%request, $callback);
             %request = (
-                node => \@nodes,
-                command => [ 'rescansan' ],
+                node    => \@nodes,
+                command => ['rescansan'],
             );
             $dorequest->(\%request, $callback);
         }
     } else {
         foreach my $node (@nodes) {
-            mkstorage_single(node=>$node, size=>$size, pool=>$pool,
-                             boot=>$boot, name=>$name, controller=>$controller,
-                             cfg=>$storents->{$node});
+            mkstorage_single(node => $node, size => $size, pool => $pool,
+                boot => $boot, name => $name, controller => $controller,
+                cfg => $storents->{$node});
         }
     }
 }
 
 sub hashifyoutput {
     my @svcoutput = @_;
-    my $hdr = shift @svcoutput;
-    my @columns = split /:/, $hdr;
+    my $hdr       = shift @svcoutput;
+    my @columns   = split /:/, $hdr;
     my @ret;
     foreach my $line (@svcoutput) {
-        my $index = 0;
+        my $index  = 0;
         my %record = ();
         my $keyname;
         foreach my $datum (split /:/, $line) {
@@ -221,36 +222,38 @@ sub hashifyoutput {
             $record{$keyname} = $datum;
             $index += 1;
         }
-        push @ret,\%record;
+        push @ret, \%record;
     }
-    pop @ret; # discard data from prompt
+    pop @ret;    # discard data from prompt
     return @ret;
 }
+
 sub bindhosts {
-    my $nodes = shift;
-    my $lun = shift;
-    my %args = @_;
+    my $nodes   = shift;
+    my $lun     = shift;
+    my %args    = @_;
     my $session = establish_session(%args);
     foreach my $node (@$nodes) {
+
         #TODO: get what failure looks like... somehow...
         #I guess I could make something with mismatched name and see how it
         #goes
-        $session->cmd("mkvdiskhostmap -force -host $node ".$lun->{id});
+        $session->cmd("mkvdiskhostmap -force -host $node " . $lun->{id});
     }
 }
 
 sub fixup_host {
     my $session = shift;
     my $wwnlist = shift;
-    my @hosts = hashifyoutput($session->cmd("lshost -delim :"));
+    my @hosts   = hashifyoutput($session->cmd("lshost -delim :"));
     my %wwnmap;
     my %hostmap;
     foreach my $host (@hosts) {
-        my @hostd = $session->cmd("lshost -delim : ".$host->{name});
+        my @hostd = $session->cmd("lshost -delim : " . $host->{name});
         foreach my $hdatum (@hostd) {
             if ($hdatum =~ m/^WWPN:(.*)$/) {
                 $wwnmap{$1} = $host->{name};
-                $hostmap{$host->{name}}->{$1} = 1;
+                $hostmap{ $host->{name} }->{$1} = 1;
             }
         }
     }
@@ -258,8 +261,8 @@ sub fixup_host {
     foreach my $wwn (@$wwnlist) {
         $wwn =~ s/://g;
         $wwn = uc($wwn);
-        if (defined $wwnmap{$wwn}) { # found the matching host
-            #we want to give the host all the ports that may be relevant
+        if (defined $wwnmap{$wwn}) {    # found the matching host
+                #we want to give the host all the ports that may be relevant
             $name = $wwnmap{$wwn};
             foreach my $mwwn (@$wwnlist) {
                 $mwwn =~ s/://g;
@@ -275,29 +278,30 @@ sub fixup_host {
 }
 
 sub makehosts {
-    my $wwnmap = shift;
-    my %args = @_;
+    my $wwnmap  = shift;
+    my %args    = @_;
     my $session = establish_session(%args);
     my $stortab = xCAT::Table->new('storage');
     my %nodenamemap;
     foreach my $node (keys %$wwnmap) {
         my $wwnstr = "";
-        foreach my $wwn (@{$wwnmap->{$node}}) {
+        foreach my $wwn (@{ $wwnmap->{$node} }) {
             $wwn =~ s/://g;
             $wwnstr .= $wwn . ":";
         }
         chop($wwnstr);
+
         #TODO: what if the given wwn exists, but *not* as the nodename we want
         #the correct action is to look at hosts, see if one exists, and reuse,
         #create, or warn depending
         my @hostres = $session->cmd("mkhost -name $node -hbawwpn $wwnstr -force");
         my $result = $hostres[0];
-        if ($result =~ m/^CMM/) { # we have some exceptional case....
-            if ($result =~ m/^CMMVC6035E/) { #duplicate name and/or wwn..
-                #need to finde the host and massage it to being viable
+        if ($result =~ m/^CMM/) {    # we have some exceptional case....
+            if ($result =~ m/^CMMVC6035E/) {    #duplicate name and/or wwn..
+                    #need to finde the host and massage it to being viable
                 $nodenamemap{$node} = fixup_host($session, $wwnmap->{$node});
             } else {
-                die $result." while trying to create host";
+                die $result . " while trying to create host";
             }
         } else {
             $nodenamemap{$node} = $node;
@@ -308,24 +312,25 @@ sub makehosts {
         } else {
             @currentcontrollers = ();
         }
-        if (grep { $_ eq $args{controller}} @currentcontrollers) {
+        if (grep { $_ eq $args{controller} } @currentcontrollers) {
             next;
         }
         unshift @currentcontrollers, $args{controller};
         my $ctrstring = join ",", @currentcontrollers;
-        $stortab->setNodeAttribs($node,{controller=>$ctrstring});
+        $stortab->setNodeAttribs($node, { controller => $ctrstring });
     }
     return %nodenamemap;
 }
 
 my %wwnmap;
+
 sub got_wwns {
     my $rsp = shift;
-    foreach my $ndata (@{$rsp->{node}}) {
+    foreach my $ndata (@{ $rsp->{node} }) {
         my $nodename = $ndata->{name}->[0];
-        my @wwns = ();
-        foreach my $data (@{$ndata->{data}}) {
-            push @{$wwnmap{$nodename}}, $data->{contents}->[0];
+        my @wwns     = ();
+        foreach my $data (@{ $ndata->{data} }) {
+            push @{ $wwnmap{$nodename} }, $data->{contents}->[0];
         }
     }
 }
@@ -337,9 +342,9 @@ sub get_wwns {
         $wwnmap{$node} = [];
     }
     my %request = (
-        node => \@nodes,
-        command => [ 'rinv' ],
-        arg => [ 'wwn' ]
+        node    => \@nodes,
+        command => ['rinv'],
+        arg     => ['wwn']
     );
     $dorequest->(\%request, \&got_wwns);
     return \%wwnmap;
@@ -347,46 +352,49 @@ sub get_wwns {
 
 my $globaluser;
 my $globalpass;
+
 sub get_svc_creds {
     my $controller = shift;
     if ($globaluser and $globalpass) {
         return { 'user' => $globaluser, 'pass' => $globalpass }
     }
-    my $passtab = xCAT::Table->new('passwd',-create=>0);
-    my $passent = $passtab->getAttribs({key=>'svc'}, qw/username password/);
+    my $passtab = xCAT::Table->new('passwd', -create => 0);
+    my $passent = $passtab->getAttribs({ key => 'svc' }, qw/username password/);
     $globaluser = $passent->{username};
     $globalpass = $passent->{password};
-   return { 'user' => $globaluser, 'pass' => $globalpass }
+    return { 'user' => $globaluser, 'pass' => $globalpass }
 }
 
 sub establish_session {
-    my %args = @_;
+    my %args       = @_;
     my $controller = $args{controller};
     if ($controllersessions{$controller}) {
         return $controllersessions{$controller};
     }
+
     #need to establish a new session
     my $cred = get_svc_creds($controller);
-    my $sess = new xCAT::SSHInteract(-username=>$cred->{user},
-                                     -password=>$cred->{pass},
-                                     -host=>$controller,
-                                     -output_record_separator=>"\r",
-                                     #Errmode=>"return",
-                                     #Input_Log=>"/tmp/svcdbgl",
-                                     Prompt=>'/>$/');
+    my $sess = new xCAT::SSHInteract(-username => $cred->{user},
+        -password                => $cred->{pass},
+        -host                    => $controller,
+        -output_record_separator => "\r",
+
+        #Errmode=>"return",
+        #Input_Log=>"/tmp/svcdbgl",
+        Prompt => '/>$/');
     unless ($sess and $sess->atprompt) { die "TODO: cleanly handle bad login" }
     $controllersessions{$controller} = $sess;
     return $sess;
 }
 
 sub create_lun {
-    my %args = @_;
+    my %args    = @_;
     my $session = establish_session(%args);
-    my $pool = $args{pool};
-    my $size = $args{size};
-    my $cmd="mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb";
+    my $pool    = $args{pool};
+    my $size    = $args{size};
+    my $cmd     = "mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb";
     if ($args{name}) {
-        $cmd .= " -name ".$args{name};
+        $cmd .= " -name " . $args{name};
     }
     my @result = $session->cmd($cmd);
     if ($result[0] =~ m/Virtual Disk, id \[(\d*)\], successfully created/) {
@@ -407,26 +415,26 @@ sub create_lun {
 }
 
 sub assure_identical_table_values {
-    my $nodes = shift;
-    my $storents = shift;
+    my $nodes     = shift;
+    my $storents  = shift;
     my $attribute = shift;
     my $lastval;
     foreach my $node (@$nodes) {
         my $sent = $storents->{$node}->[0];
         unless ($sent) {
-            sendmsg([1, "No $attribute in arguments or table"],
+            sendmsg([ 1, "No $attribute in arguments or table" ],
                 $callback, $node);
             return undef;
         }
         my $currval = $sent->{$attribute};
         unless ($currval) {
-            sendmsg([1, "No $attribute in arguments or table"],
+            sendmsg([ 1, "No $attribute in arguments or table" ],
                 $callback, $node);
             return undef;
         }
         if ($lastval and $currval ne $lastval) {
-            sendmsg([1,
-                "$attribute mismatch in table config, try specifying as argument"],
+            sendmsg([ 1,
+"$attribute mismatch in table config, try specifying as argument" ],
                 $callback, $node);
             return undef;
         }
@@ -438,7 +446,7 @@ sub assure_identical_table_values {
 sub mkstorage_single {
     my %args = @_;
     my $size;
-    my $cfg = $args{cfg};
+    my $cfg  = $args{cfg};
     my $node = $args{node};
     my $pool;
     my $controller;
@@ -447,7 +455,7 @@ sub mkstorage_single {
     } elsif ($cfg->{size}) {
         $size = $cfg->{size};
     } else {
-        sendmsg([1, "Size not provided via argument or storage.size"],
+        sendmsg([ 1, "Size not provided via argument or storage.size" ],
             $callback, $node);
     }
     if (defined $args{pool}) {
@@ -455,7 +463,7 @@ sub mkstorage_single {
     } elsif ($cfg->{storagepool}) {
         $pool = $cfg->{storagepool};
     } else {
-        sendmsg([1, "Pool not provided via argument or storage.storagepool"],
+        sendmsg([ 1, "Pool not provided via argument or storage.storagepool" ],
             $callback, $node);
     }
     if (defined $args{controller}) {
@@ -464,21 +472,21 @@ sub mkstorage_single {
         $controller = $cfg->[0]->{controller};
         $controller =~ s/.*,//;
     }
-    my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+    my %lunargs = (controller => $controller, size => $size, pool => $pool);
     if ($args{name}) {
-        $lunargs{name} = $args{name}."-".$node;
+        $lunargs{name} = $args{name} . "-" . $node;
     }
     my $lun = create_lun(%lunargs);
-    sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback,$node);
+    sendmsg($lun->{name} . ": id: " . $lun->{wwn}, $callback, $node);
     my $wwns = get_wwns($node);
-    my %namemap = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    my %namemap = makehosts($wwns, controller => $controller, cfg => { $node => $cfg });
     my @names = values %namemap;
-    bindhosts(\@names, $lun, controller=>$controller);
+    bindhosts(\@names, $lun, controller => $controller);
 }
 
 sub process_request {
     my $request = shift;
-    $callback = shift;
+    $callback  = shift;
     $dorequest = shift;
     if ($request->{command}->[0] eq 'mkstorage') {
         mkstorage($request);
@@ -498,12 +506,12 @@ sub process_request {
 
 sub lsmdiskgrp {
     my $req = shift;
-    foreach my $node (@{$req->{node}}) {
-        my $session = establish_session(controller=>$node);
+    foreach my $node (@{ $req->{node} }) {
+        my $session = establish_session(controller => $node);
         my @pools = hashifyoutput($session->cmd("lsmdiskgrp -delim :"));
         foreach my $pool (@pools) {
-            sendmsg($pool->{name}. " available capacity: ".$pool->{free_capacity},$callback,$node);
-            sendmsg($pool->{name}. " total capacity: ".$pool->{capacity},$callback,$node);
+            sendmsg($pool->{name} . " available capacity: " . $pool->{free_capacity}, $callback, $node);
+            sendmsg($pool->{name} . " total capacity: " . $pool->{capacity}, $callback, $node);
         }
     }
 }

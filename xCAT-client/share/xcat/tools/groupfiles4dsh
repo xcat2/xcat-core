@@ -6,9 +6,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
@@ -79,7 +79,7 @@ sub parse_args
     my $msg;
     my $usagemsg;
     $usagemsg =
-      "groupfiles4dsh -h \ngroupfiles4dsh -v \ngroupfiles4dsh [-p] [path to group files directory]";
+"groupfiles4dsh -h \ngroupfiles4dsh -v \ngroupfiles4dsh [-p] [path to group files directory]";
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");

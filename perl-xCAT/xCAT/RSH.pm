@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::RSH;
+
 # cannot use strict
 # cannot use strict
 use base xCAT::DSHRemoteShell;
@@ -9,14 +10,14 @@ use base xCAT::DSHRemoteShell;
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
-if ( $^O eq 'aix' ) {
-	our $RCP_CMD = '/bin/rcp';
-	our $RSH_CMD = '/bin/rsh';
+if ($^O eq 'aix') {
+    our $RCP_CMD = '/bin/rcp';
+    our $RSH_CMD = '/bin/rsh';
 }
 
-if ( $^O eq 'linux' ) {
-	our $RCP_CMD = '/usr/bin/rcp';
-	our $RSH_CMD = '/usr/bin/rsh';
+if ($^O eq 'linux') {
+    our $RCP_CMD = '/usr/bin/rcp';
+    our $RSH_CMD = '/usr/bin/rsh';
 }
 
 =head3
@@ -53,28 +54,28 @@ if ( $^O eq 'linux' ) {
 =cut
 
 sub remote_shell_command {
-	my ( $class, $config, $exec_path ) = @_;
+    my ($class, $config, $exec_path) = @_;
 
-	$exec_path || ( $exec_path = $RSH_CMD );
+    $exec_path || ($exec_path = $RSH_CMD);
 
-	my @command = ();
+    my @command = ();
 
-	push @command, $exec_path;
-	push @command, $$config{'hostname'};
+    push @command, $exec_path;
+    push @command, $$config{'hostname'};
 
-	if ( $$config{'user'} ) {
-		push @command, '-l';
-		push @command, $$config{'user'};
-	}
+    if ($$config{'user'}) {
+        push @command, '-l';
+        push @command, $$config{'user'};
+    }
 
-	if ( $$config{'options'} ) {
-		my @options = split ' ', $$config{'options'};
-		push @command, @options;
-	}
+    if ($$config{'options'}) {
+        my @options = split ' ', $$config{'options'};
+        push @command, @options;
+    }
 
-	push @command, $$config{'command'};
+    push @command, $$config{'command'};
 
-	return @command;
+    return @command;
 }
 
 =head3
@@ -117,41 +118,41 @@ sub remote_shell_command {
 =cut
 
 sub remote_copy_command {
-	my ( $class, $config, $exec_path ) = @_;
+    my ($class, $config, $exec_path) = @_;
 
-	$exec_path || ( $exec_path = $RCP_CMD );
+    $exec_path || ($exec_path = $RCP_CMD);
 
-	my @command   = ();
-	my @src_files = ();
-	my @dest_file = ();
+    my @command   = ();
+    my @src_files = ();
+    my @dest_file = ();
 
-	my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
+    my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
 
-	foreach $src_file (@src_file_list) {
-		my @src_path = ();
-		$$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
-		$$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
-		$$config{'src-file'} && push @src_path, $src_file;
-		push @src_files, ( join '', @src_path );
-	}
+    foreach $src_file (@src_file_list) {
+        my @src_path = ();
+        $$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
+        $$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
+        $$config{'src-file'} && push @src_path, $src_file;
+        push @src_files, (join '', @src_path);
+    }
 
-	$$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
-	$$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
-	$$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
+    $$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
+    $$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
+    $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
 
-	push @command, $exec_path;
-	$$config{'preserve'}  && push @command, '-p';
-	$$config{'recursive'} && push @command, '-r';
+    push @command, $exec_path;
+    $$config{'preserve'}  && push @command, '-p';
+    $$config{'recursive'} && push @command, '-r';
 
-	if ( $$config{'options'} ) {
-		my @options = split ' ', $$config{'options'};
-		push @command, @options;
-	}
+    if ($$config{'options'}) {
+        my @options = split ' ', $$config{'options'};
+        push @command, @options;
+    }
 
-	push @command, @src_files;
-	push @command, ( join '', @dest_file );
+    push @command, @src_files;
+    push @command, (join '', @dest_file);
 
-	return @command;
+    return @command;
 }
 
 1;

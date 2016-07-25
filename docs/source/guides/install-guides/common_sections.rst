@@ -188,22 +188,22 @@ xCAT is started automatically after the installation, but the following commands
 * start xCAT: ::
 
     service xcatd start
-    [systemd] systemctl xcatd.service start
+    [systemd] systemctl start xcatd.service
 
 * stop xCAT: ::
 
     service xcatd stop
-    [systemd] systemctl xcatd.service stop
+    [systemd] systemctl stop xcatd.service
 
 * restart xCAT: ::
 
     service xcatd restart
-    [systemd] systemctl xcatd.service restart
+    [systemd] systemctl restart xcatd.service
 
 * check xCAT status: ::
 
     service xcatd status
-    [systemd] systemctl xcatd.service status
+    [systemd] systemctl status xcatd.service
 
 
 .. END_verifying_xcat 

@@ -42,33 +42,33 @@ our $nodegroup_path = $ENV{'DSH_NODEGROUP_PATH'};
 =cut
 
 sub context_defaults {
-	my %defaults = ();
+    my %defaults = ();
 
-	if ( $ENV{'DSH_NODE_RSH'} ) {
-		my @remoteshell_list = split ',', $ENV{'DSH_NODE_RSH'};
+    if ($ENV{'DSH_NODE_RSH'}) {
+        my @remoteshell_list = split ',', $ENV{'DSH_NODE_RSH'};
 
-		foreach $context_remoteshell (@remoteshell_list) {
-			my ( $context, $remoteshell ) = split ':', $context_remoteshell;
+        foreach $context_remoteshell (@remoteshell_list) {
+            my ($context, $remoteshell) = split ':', $context_remoteshell;
 
-			if ( !$remoteshell ) {
-				$remoteshell = $context;
-				!$defaults{'NodeRemoteShell'}
-				  && ( $defaults{'NodeRemoteShell'} = $remoteshell );
-			}
+            if (!$remoteshell) {
+                $remoteshell = $context;
+                !$defaults{'NodeRemoteShell'}
+                  && ($defaults{'NodeRemoteShell'} = $remoteshell);
+            }
 
-			elsif ( $context eq 'DSH' ) {
-				$defaults{'NodeRemoteShell'} = $remoteshell;
-			}
-		}
-	}
+            elsif ($context eq 'DSH') {
+                $defaults{'NodeRemoteShell'} = $remoteshell;
+            }
+        }
+    }
 
-	if ( !$defaults{'NodeRemoteShell'} ) {
-		my $dsh_context_defaults = xCAT::DSHContext->context_defaults;
-		$defaults{'NodeRemoteShell'} =
-		  $$dsh_context_defaults{'NodeRemoteShell'};
-	}
+    if (!$defaults{'NodeRemoteShell'}) {
+        my $dsh_context_defaults = xCAT::DSHContext->context_defaults;
+        $defaults{'NodeRemoteShell'} =
+          $$dsh_context_defaults{'NodeRemoteShell'};
+    }
 
-	return \%defaults;
+    return \%defaults;
 }
 
 =head3
@@ -99,46 +99,46 @@ sub context_defaults {
 =cut
 
 sub context_properties {
-	my %properties = ();
+    my %properties = ();
 
-	$properties{'DCP_DEVICE_OPTS'} = $ENV{'DCP_DEVICE_OPTS'};
-	$properties{'DCP_DEVICE_RCP'}  = $ENV{'DCP_DEVICE_RCP'}
-	  || $ENV{'DCP_DEVICE_COPY_CMD'};
-	$properties{'DCP_NODE_OPTS'} = $ENV{'DCP_NODE_OPTS'};
-	$properties{'DCP_NODE_RCP'}  = $ENV{'DCP_NODE_RCP'} || $ENV{'DCP_COPY_CMD'};
-	$properties{'DSH_CONTEXT'}   = $ENV{'DSH_CONTEXT'};
-	$properties{'DSH_DEVICE_LIST'} = $ENV{'DSH_DEVICE_LIST'};
-	$properties{'DSH_DEVICE_OPTS'} = $ENV{'DSH_DEVICE_OPTS'}
-	  || $ENV{'DSH_DEVICE_REMOTE_OPTS'};
-	$properties{'DSH_DEVICE_RCP'} = $ENV{'DSH_DEVICE_RCP'};
-	$properties{'DSH_DEVICE_RSH'} = $ENV{'DSH_DEVICE_RSH'}
-	  || $ENV{'DSH_DEVICE_REMOTE_CMD'};
-	$properties{'DSH_ENVIRONMENT'}    = $ENV{'DSH_ENVIRONMENT'};
-	$properties{'DSH_FANOUT'}         = $ENV{'DSH_FANOUT'};
-	$properties{'DSH_LOG'}            = $ENV{'DSH_LOG'};
-	$properties{'DSH_NODEGROUP_PATH'} = $ENV{'DSH_NODEGROUP_PATH'};
-	$properties{'DSH_NODE_LIST'}      = $ENV{'DSH_NODE_LIST'}
-	  || $ENV{'DSH_LIST'}
-	  || $ENV{'WCOLL'};
-	$properties{'DSH_NODE_OPTS'} = $ENV{'DSH_NODE_OPTS'}
-	  || $ENV{'DSH_REMOTE_OPTS'};
-	$properties{'DSH_NODE_RCP'} = $ENV{'DSH_NODE_RCP'};
-	$properties{'DSH_NODE_RSH'} = $ENV{'DSH_NODE_RSH'}
-	  || $ENV{'DSH_REMOTE_SHELL'}
-	  || $ENV{'DSH_REMOTE_CMD'};
-	$properties{'DSH_OUTPUT'} = $ENV{'DSH_OUTPUT'};
-	$properties{'DSH_PATH'}   = $ENV{'DSH_PATH'};
-	$properties{'DSH_REPORT'} = $ENV{'DSH_REPORT'}
-	  || $ENV{'DSH_REPORTS_DIRECTORY'};
-	$properties{'DSH_SYNTAX'}  = $ENV{'DSH_SYNTAX'};
-	$properties{'DSH_TIMEOUT'} = $ENV{'DSH_TIMEOUT'};
-	$properties{'RSYNC_RSH'}   = $ENV{'RSYNC_RSH'};
+    $properties{'DCP_DEVICE_OPTS'} = $ENV{'DCP_DEVICE_OPTS'};
+    $properties{'DCP_DEVICE_RCP'}  = $ENV{'DCP_DEVICE_RCP'}
+      || $ENV{'DCP_DEVICE_COPY_CMD'};
+    $properties{'DCP_NODE_OPTS'} = $ENV{'DCP_NODE_OPTS'};
+    $properties{'DCP_NODE_RCP'}  = $ENV{'DCP_NODE_RCP'} || $ENV{'DCP_COPY_CMD'};
+    $properties{'DSH_CONTEXT'}   = $ENV{'DSH_CONTEXT'};
+    $properties{'DSH_DEVICE_LIST'} = $ENV{'DSH_DEVICE_LIST'};
+    $properties{'DSH_DEVICE_OPTS'} = $ENV{'DSH_DEVICE_OPTS'}
+      || $ENV{'DSH_DEVICE_REMOTE_OPTS'};
+    $properties{'DSH_DEVICE_RCP'} = $ENV{'DSH_DEVICE_RCP'};
+    $properties{'DSH_DEVICE_RSH'} = $ENV{'DSH_DEVICE_RSH'}
+      || $ENV{'DSH_DEVICE_REMOTE_CMD'};
+    $properties{'DSH_ENVIRONMENT'}    = $ENV{'DSH_ENVIRONMENT'};
+    $properties{'DSH_FANOUT'}         = $ENV{'DSH_FANOUT'};
+    $properties{'DSH_LOG'}            = $ENV{'DSH_LOG'};
+    $properties{'DSH_NODEGROUP_PATH'} = $ENV{'DSH_NODEGROUP_PATH'};
+    $properties{'DSH_NODE_LIST'}      = $ENV{'DSH_NODE_LIST'}
+      || $ENV{'DSH_LIST'}
+      || $ENV{'WCOLL'};
+    $properties{'DSH_NODE_OPTS'} = $ENV{'DSH_NODE_OPTS'}
+      || $ENV{'DSH_REMOTE_OPTS'};
+    $properties{'DSH_NODE_RCP'} = $ENV{'DSH_NODE_RCP'};
+    $properties{'DSH_NODE_RSH'} = $ENV{'DSH_NODE_RSH'}
+      || $ENV{'DSH_REMOTE_SHELL'}
+      || $ENV{'DSH_REMOTE_CMD'};
+    $properties{'DSH_OUTPUT'} = $ENV{'DSH_OUTPUT'};
+    $properties{'DSH_PATH'}   = $ENV{'DSH_PATH'};
+    $properties{'DSH_REPORT'} = $ENV{'DSH_REPORT'}
+      || $ENV{'DSH_REPORTS_DIRECTORY'};
+    $properties{'DSH_SYNTAX'}  = $ENV{'DSH_SYNTAX'};
+    $properties{'DSH_TIMEOUT'} = $ENV{'DSH_TIMEOUT'};
+    $properties{'RSYNC_RSH'}   = $ENV{'RSYNC_RSH'};
 
-	if($ENV{'DSH_ON_HMC'}){
-		$properties{'DSH_NODE_RCP'} = '/usr/hmcrbin/scp';
-		$properties{'DSH_NODE_RSH'} = '/usr/hmcrbin/ssh';
-	}
-	return \%properties;
+    if ($ENV{'DSH_ON_HMC'}) {
+        $properties{'DSH_NODE_RCP'} = '/usr/hmcrbin/scp';
+        $properties{'DSH_NODE_RSH'} = '/usr/hmcrbin/ssh';
+    }
+    return \%properties;
 }
 
 =head3
@@ -166,19 +166,19 @@ sub context_properties {
 =cut
 
 sub all_nodegroups {
-	my @nodegroups = ();
+    my @nodegroups = ();
 
-	if ($nodegroup_path) {
-		opendir( DIR, $nodegroup_path );
+    if ($nodegroup_path) {
+        opendir(DIR, $nodegroup_path);
 
-		while ( my $nodegroup = readdir(DIR) ) {
-			( $nodegroup !~ /^\./ ) && push @nodegroups, $nodegroup;
-		}
+        while (my $nodegroup = readdir(DIR)) {
+            ($nodegroup !~ /^\./) && push @nodegroups, $nodegroup;
+        }
 
-		closedir DIR;
-	}
+        closedir DIR;
+    }
 
-	return @nodegroups;
+    return @nodegroups;
 }
 
 =head3
@@ -207,33 +207,33 @@ sub all_nodegroups {
 =cut
 
 sub nodegroup_members {
-	my ( $class, $nodegroup ) = @_;
+    my ($class, $nodegroup) = @_;
 
-	my %resolved_nodes   = ();
-	my %unresolved_nodes = ();
+    my %resolved_nodes   = ();
+    my %unresolved_nodes = ();
 
-	my $nodes = DSH->read_target_file("$nodegroup_path/$nodegroup");
+    my $nodes = DSH->read_target_file("$nodegroup_path/$nodegroup");
 
-	!$nodes && return undef;
+    !$nodes && return undef;
 
-	my @members = ();
+    my @members = ();
 
-	foreach $node (@$nodes) {
-		if ( $node =~ /@/ ) {
-			xCAT::MsgUtils->message("E",
-				"$node is not a valid name for group $nodegroup");
-		}
+    foreach $node (@$nodes) {
+        if ($node =~ /@/) {
+            xCAT::MsgUtils->message("E",
+                "$node is not a valid name for group $nodegroup");
+        }
 
-		else {
-			push @members, $node;
-		}
-	}
+        else {
+            push @members, $node;
+        }
+    }
 
-	DSHContext->resolve_hostnames( \%resolved_nodes, \%unresolved_nodes,
-		@members );
+    DSHContext->resolve_hostnames(\%resolved_nodes, \%unresolved_nodes,
+        @members);
 
-	@members = keys(%resolved_nodes);
-	return \@members;
+    @members = keys(%resolved_nodes);
+    return \@members;
 }
 
 =head3
@@ -261,70 +261,70 @@ sub nodegroup_members {
 =cut
 
 sub all_nodes {
-	my $build_cache = undef;
+    my $build_cache = undef;
 
-	if ( -e "$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes" ) {
-		my @stat_path     = stat $nodegroup_path;
-		my @stat_allnodes =
-		  stat "$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes.dsh";
+    if (-e "$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes") {
+        my @stat_path = stat $nodegroup_path;
+        my @stat_allnodes =
+          stat "$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes.dsh";
 
-		if ( $stat_path[9] > $stat_allnodes[9] ) {
-			$build_cache = 1;
-		}
+        if ($stat_path[9] > $stat_allnodes[9]) {
+            $build_cache = 1;
+        }
 
-		else {
-			if ($nodegroup_path) {
-				opendir( DIR, $nodegroup_path );
+        else {
+            if ($nodegroup_path) {
+                opendir(DIR, $nodegroup_path);
 
-				while ( my $nodegroup = readdir(DIR) ) {
+                while (my $nodegroup = readdir(DIR)) {
 
-					if ( $nodegroup !~ /^\./ ) {
-						my @stat_file = stat $nodegroup;
-						( $stat_file[9] > $stat_allnodes[9] )
-						  && ( $build_cache = 1 );
-					}
+                    if ($nodegroup !~ /^\./) {
+                        my @stat_file = stat $nodegroup;
+                        ($stat_file[9] > $stat_allnodes[9])
+                          && ($build_cache = 1);
+                    }
 
-					last if $build_cache;
-				}
+                    last if $build_cache;
+                }
 
-				closedir DIR;
-			}
-		}
-	}
+                closedir DIR;
+            }
+        }
+    }
 
-	else {
-		$build_cache = 1;
-	}
+    else {
+        $build_cache = 1;
+    }
 
-	if ($build_cache) {
-		my @nodegroups = DSH->all_nodegroups;
+    if ($build_cache) {
+        my @nodegroups = DSH->all_nodegroups;
 
-		my @nodes = ();
+        my @nodes = ();
 
-		foreach $nodegroup (@nodegroups) {
-			push @nodes, @{ DSH->nodegroup_members($nodegroup) };
-		}
+        foreach $nodegroup (@nodegroups) {
+            push @nodes, @{ DSH->nodegroup_members($nodegroup) };
+        }
 
-		if ( !( -d "$ENV{'HOME'}/.dsh/$nodegroup_path" ) ) {
-			eval { mkpath( "$ENV{'HOME'}/.dsh/$nodegroup_path") };
-			if ($@) {
-				 xCAT::MsgUtils->message(
-					"E",
-				" Cannot make directory: $ENV{'HOME'}/.dsh/$nodegroup_path\n");
-				return undef;
-			}
-		}
+        if (!(-d "$ENV{'HOME'}/.dsh/$nodegroup_path")) {
+            eval { mkpath("$ENV{'HOME'}/.dsh/$nodegroup_path") };
+            if ($@) {
+                xCAT::MsgUtils->message(
+                    "E",
+" Cannot make directory: $ENV{'HOME'}/.dsh/$nodegroup_path\n");
+                return undef;
+            }
+        }
 
-		DSH->write_target_file( "$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes",
-			@nodes );
-		return @nodes;
-	}
+        DSH->write_target_file("$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes",
+            @nodes);
+        return @nodes;
+    }
 
-	else {
-		my $nodes =
-		  DSH->read_target_file("$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes");
-		return @$nodes;
-	}
+    else {
+        my $nodes =
+          DSH->read_target_file("$ENV{'HOME'}/.dsh/$nodegroup_path/AllNodes");
+        return @$nodes;
+    }
 }
 
 =head3
@@ -353,32 +353,32 @@ sub all_nodes {
 =cut
 
 sub read_target_file {
-	my ( $class, $filename ) = @_;
+    my ($class, $filename) = @_;
 
-	my %targets = ();
+    my %targets = ();
 
-	if ( open( FILE, $filename ) ) {
+    if (open(FILE, $filename)) {
 
-		while ( my $target = <FILE> ) {
-			$target =~ /^\s*#/     && next;
-			$target =~ /^\s*$/     && next;
-			$target =~ /;/         && next;
-			$target =~ /\S+\s+\S+/ && next;
-			$target =~ s/\s+$//;
-			chomp($target);
-			$targets{$target}++;
-		}
+        while (my $target = <FILE>) {
+            $target =~ /^\s*#/     && next;
+            $target =~ /^\s*$/     && next;
+            $target =~ /;/         && next;
+            $target =~ /\S+\s+\S+/ && next;
+            $target =~ s/\s+$//;
+            chomp($target);
+            $targets{$target}++;
+        }
 
-		close FILE;
+        close FILE;
 
-		my @target_list = keys(%targets);
-		return \@target_list;
-	}
+        my @target_list = keys(%targets);
+        return \@target_list;
+    }
 
-	else {
-		xCAT::MsgUtils->message( "E", "Cannot open file: $filename\n"); 
-		return undef;
-	}
+    else {
+        xCAT::MsgUtils->message("E", "Cannot open file: $filename\n");
+        return undef;
+    }
 }
 
 =head3
@@ -408,40 +408,40 @@ sub read_target_file {
 =cut
 
 sub write_target_file {
-	my ( $class, $filename, @targets ) = @_;
+    my ($class, $filename, @targets) = @_;
 
-	if ( open( FILE, ">$filename" ) ) {
+    if (open(FILE, ">$filename")) {
 
-		print FILE "#\n";
-		print FILE "# DSH Utilities Target File\n";
-		print FILE "#\n";
+        print FILE "#\n";
+        print FILE "# DSH Utilities Target File\n";
+        print FILE "#\n";
 
-		foreach $target (@targets) {
-			print FILE "$target\n";
-		}
+        foreach $target (@targets) {
+            print FILE "$target\n";
+        }
 
-		close FILE;
-	}
+        close FILE;
+    }
 
-	else {
-		xCAT::MsgUtils->message("E", "Error writing file $filename");
-	}
+    else {
+        xCAT::MsgUtils->message("E", "Error writing file $filename");
+    }
 }
 
 sub query_node {
-	my ( $class, $node ) = @_;
-	my $res = 0;
+    my ($class, $node) = @_;
+    my $res = 0;
 
-	$~ = "NODES";
-	NetworkUtils->tryHost( $node, \$res );
-	if ($res) {
-		print("$node : Valid\n");
-	}
-	else {
-		print("$node : Invalid\n");
-	}
+    $~ = "NODES";
+    NetworkUtils->tryHost($node, \$res);
+    if ($res) {
+        print("$node : Valid\n");
+    }
+    else {
+        print("$node : Invalid\n");
+    }
 
-	format NODES =
+    format NODES =
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<	@<<<<<<<<<<<<<<<<<
 $node, $status
 .
@@ -449,16 +449,16 @@ $node, $status
 }
 
 sub query_group {
-	my ( $class, $group ) = @_;
-	my @dsh_groups = all_nodegroups();
+    my ($class, $group) = @_;
+    my @dsh_groups = all_nodegroups();
 
-	$~ = "GROUPS";
-	if ( grep( /^$group$/, @dsh_groups ) ) {
-		print("$group : Valid\n");
-	}
-	else {
-		print("$group : Invalid\n");
-	}
+    $~ = "GROUPS";
+    if (grep(/^$group$/, @dsh_groups)) {
+        print("$group : Valid\n");
+    }
+    else {
+        print("$group : Invalid\n");
+    }
 }
 
 1;    #end

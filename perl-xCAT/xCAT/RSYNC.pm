@@ -6,6 +6,7 @@ package xCAT::RSYNC;
 # cannot use strict
 use base xCAT::DSHRemoteShell;
 use xCAT::TableUtils qw(get_site_attribute);
+
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
@@ -13,9 +14,9 @@ if ($^O eq 'aix')
 {
 
     if (-e ("/usr/bin/rsync")) {
-      our $RSYNC_CMD = '/usr/bin/rsync';
+        our $RSYNC_CMD = '/usr/bin/rsync';
     } else {
-      our $RSYNC_CMD = '/usr/local/bin/rsync';
+        our $RSYNC_CMD = '/usr/local/bin/rsync';
     }
 }
 
@@ -23,6 +24,7 @@ if ($^O eq 'linux')
 {
     our $RSYNC_CMD = '/usr/bin/rsync';
 }
+
 #-----------------------------------------------------------------------
 
 =head3
@@ -69,22 +71,22 @@ if ($^O eq 'linux')
 
 sub remote_copy_command
 {
-    my ($class, $config, $exec_path,$localhost) = @_;
+    my ($class, $config, $exec_path, $localhost) = @_;
 
     $exec_path || ($exec_path = $RSYNC_CMD);
 
     # see if we are using rsh or ssh on AIX
-    my $usersh=0;
+    my $usersh = 0;
     if ($^O eq 'aix')
     {
-      my @useSSH = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
-      if (defined($useSSH[0])) { 
-        $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper
-        if (($useSSH[0] eq "0") || ($useSSH[0] eq "NO"))
-        {
-         $usersh=1;
+        my @useSSH = xCAT::TableUtils->get_site_attribute("useSSHonAIX");
+        if (defined($useSSH[0])) {
+            $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper
+            if (($useSSH[0] eq "0") || ($useSSH[0] eq "NO"))
+            {
+                $usersh = 1;
+            }
         }
-      }
     }
 
 
@@ -97,46 +99,47 @@ sub remote_copy_command
         if ($^O eq 'aix')
         {
             if (-e ("/usr/bin/rsync")) {
-             if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local 
-               if ($$config{'sudo'}){
-                $sync_opt = '--rsync-path=sudo /usr/bin/rsync ';
-               } else {
-                $sync_opt = '--rsync-path /usr/bin/rsync ';
-               }
-             } else {
-                $sync_opt = '--rsh /bin/rsh --rsync-path /usr/bin/rsync ';
-             }
+                if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local
+                    if ($$config{'sudo'}) {
+                        $sync_opt = '--rsync-path=sudo /usr/bin/rsync ';
+                    } else {
+                        $sync_opt = '--rsync-path /usr/bin/rsync ';
+                    }
+                } else {
+                    $sync_opt = '--rsh /bin/rsh --rsync-path /usr/bin/rsync ';
+                }
             } else {
-             if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local
-               if ($$config{'sudo'}){
-                $sync_opt = '--rsync-path=sudo /usr/local/bin/rsync  ';
-               } else {
-                $sync_opt = '--rsync-path=/usr/local/bin/rsync ';
-               }
-             } else {
-                $sync_opt = '--rsh /bin/rsh --rsync-path /usr/local/bin/rsync ';
-             }
+                if (($usersh == 0) || ($localhost == 1)) { # using ssh, or local
+                    if ($$config{'sudo'}) {
+                        $sync_opt = '--rsync-path=sudo /usr/local/bin/rsync  ';
+                    } else {
+                        $sync_opt = '--rsync-path=/usr/local/bin/rsync ';
+                    }
+                } else {
+                    $sync_opt = '--rsh /bin/rsh --rsync-path /usr/local/bin/rsync ';
+                }
             }
         }
-        else #linux
+        else                                               #linux
         {
-          if ($$config{'sudo'}) {
-            $sync_opt = '--rsync-path=\'sudo /usr/bin/rsync\' ';
-          } else {
-            $sync_opt = '--rsync-path /usr/bin/rsync ';
-          }
+            if ($$config{'sudo'}) {
+                $sync_opt = '--rsync-path=\'sudo /usr/bin/rsync\' ';
+            } else {
+                $sync_opt = '--rsync-path /usr/bin/rsync ';
+            }
         }
+
         # if only syncing the service node or
         # (no postscripts and no append lines)  then do not
         # get update file notification
-        if (($::SYNCSN  == 1) || ((!(@::postscripts)) && (!(@::appendlines)) && (!(@::mergelines)))) { 
-          $sync_opt .= '-Lprogtz ';
+        if (($::SYNCSN == 1) || ((!(@::postscripts)) && (!(@::appendlines)) && (!(@::mergelines)))) {
+            $sync_opt .= '-Lprogtz ';
         } else {
-           $sync_opt .= '-Liprogtz --out-format=%f%L '; # add notify of update
+            $sync_opt .= '-Liprogtz --out-format=%f%L ';  # add notify of update
         }
         $sync_opt .= $$config{'options'};
         if ($::SYNCSN == 1)
-        {    # syncing service node
+        {                                                 # syncing service node
             $rsyncfile = "/tmp/rsync_$$config{'dest-host'}";
             $rsyncfile .= "_s";
         }
@@ -146,7 +149,7 @@ sub remote_copy_command
         }
         open RSCYCCMDFILE, "> $rsyncfile"
           or die "Can not open file $rsyncfile";
-        my $dest_dir_list = join ' ', keys %{$$config{'destDir_srcFile'}};
+        my $dest_dir_list = join ' ', keys %{ $$config{'destDir_srcFile'} };
         my $dest_user_host = $$config{'dest-host'};
         if ($$config{'dest-user'})
         {
@@ -154,47 +157,48 @@ sub remote_copy_command
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";
         }
         print RSCYCCMDFILE "#!/bin/sh\n";
-        if ($localhost == 1) { # running to the MN from the MN
+        if ($localhost == 1) {    # running to the MN from the MN
             print RSCYCCMDFILE
               "/bin/mkdir -p $dest_dir_list\n";
-        } else {  #  running to another node 
-          if ($usersh == 0) { # using ssh
-            print RSCYCCMDFILE
-              "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
-          } else {
-            print RSCYCCMDFILE
-              "/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
-          }
+        } else {                  #  running to another node
+            if ($usersh == 0) {    # using ssh
+                print RSCYCCMDFILE
+"/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+            } else {
+                print RSCYCCMDFILE
+"/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+            }
         }
-        foreach my $dest_dir (keys %{$$config{'destDir_srcFile'}})
+        foreach my $dest_dir (keys %{ $$config{'destDir_srcFile'} })
         {
             my @src_file =
-              @{$$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'}};
+              @{ $$config{'destDir_srcFile'}{$dest_dir}{'same_dest_name'} };
 
             my $src_file_list = join ' ', @src_file;
             if ($src_file_list)
             {
-               if ($localhost == 1) {  # running local ( on MN)
-                print RSCYCCMDFILE
-                 "$exec_path $sync_opt $src_file_list $dest_dir\n";
-               } else {  # running to another node
-                print RSCYCCMDFILE
-                 "$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir\n";
-               }
+                if ($localhost == 1) {    # running local ( on MN)
+                    print RSCYCCMDFILE
+                      "$exec_path $sync_opt $src_file_list $dest_dir\n";
+                } else {                  # running to another node
+                    print RSCYCCMDFILE
+"$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir\n";
+                }
             }
             my %diff_dest_hash =
-              %{$$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'}};
+              %{ $$config{'destDir_srcFile'}{$dest_dir}{'diff_dest_name'} };
             foreach my $src_file_diff_dest (keys %diff_dest_hash)
             {
 
                 my $diff_basename = $diff_dest_hash{$src_file_diff_dest};
+
                 # if  localhost do not put in hostname:
-                if ($localhost == 1) { # running to the MN from the MN (local)
-                  print RSCYCCMDFILE
-                  "$exec_path $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
-                } else { # running remote
-                  print RSCYCCMDFILE
-                  "$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+                if ($localhost == 1) {   # running to the MN from the MN (local)
+                    print RSCYCCMDFILE
+"$exec_path $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
+                } else {                 # running remote
+                    print RSCYCCMDFILE
+"$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
                 }
             }
 
@@ -227,9 +231,9 @@ sub remote_copy_command
         $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
 
         push @command, $exec_path;
-        if ($usersh == 1) { # using rsh 
-          push @command, "--rsh";
-          push @command, "/bin/rsh";
+        if ($usersh == 1) {    # using rsh
+            push @command, "--rsh";
+            push @command, "/bin/rsh";
         }
         $$config{'preserve'} && push @command, ('-p', '-t');
         $$config{'recursive'} && push @command, '-r';

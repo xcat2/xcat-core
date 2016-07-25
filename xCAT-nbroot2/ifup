@@ -1,4 +1,0 @@
-if [ "${1%?}" = "usb" ]; then
-	/sbin/setupimmnic
-fi
-exit 0

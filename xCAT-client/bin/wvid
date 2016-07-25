@@ -4,6 +4,7 @@
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
 use lib "$::XCATROOT/lib/perl";
 use Cwd;
+
 #use IO::Socket::SSL;
 #use IO::Socket::INET;
 my %rvidhash;
@@ -13,16 +14,17 @@ unless ($xcatroot) {
 }
 use File::Basename;
 use xCAT::Client;
+
 #use Data::Dumper;
 sub process_response {
     my $resp = shift;
-    foreach my $rst (\@{$resp->{node}}) {
+    foreach my $rst (\@{ $resp->{node} }) {
         foreach my $rsp (@$rst) {
-         if ($rsp->{errorcode} and (not ref $rsp->{errorcode} or $rsp->{errorcode}->[0])) {
-            print $rsp->{name}->[0].": Error: ".$rsp->{error}->[0]."\n";
-         } else {
-            $rvidhash{$rsp->{name}->[0]}->{$rsp->{data}->[0]->{desc}->[0]} = $rsp->{data}->[0]->{contents}->[0];
-         }
+            if ($rsp->{errorcode} and (not ref $rsp->{errorcode} or $rsp->{errorcode}->[0])) {
+                print $rsp->{name}->[0] . ": Error: " . $rsp->{error}->[0] . "\n";
+            } else {
+                $rvidhash{ $rsp->{name}->[0] }->{ $rsp->{data}->[0]->{desc}->[0] } = $rsp->{data}->[0]->{contents}->[0];
+            }
         }
     }
 }
@@ -31,23 +33,23 @@ my $cmdref;
 $cmdref->{command}->[0] = 'getrvidparms';
 
 # Consider the 1st non-hyphen arg to be the noderange.  All others (before and after) go on the arg list.
-my $arg=shift(@ARGV);
+my $arg = shift(@ARGV);
 while ($arg =~ /^-/) {
-  push (@{$cmdref->{arg}}, $arg);
-  $arg=shift(@ARGV);
+    push(@{ $cmdref->{arg} }, $arg);
+    $arg = shift(@ARGV);
 }
 if ($arg ne "NO_NODE_RANGE") {
-  $cmdref->{noderange}->[0]=$arg;
+    $cmdref->{noderange}->[0] = $arg;
 }
-push (@{$cmdref->{arg}}, @ARGV);
+push(@{ $cmdref->{arg} }, @ARGV);
 
-xCAT::Client::submit_request($cmdref,\&process_response);
-my %CLEANENV=%ENV;
+xCAT::Client::submit_request($cmdref, \&process_response);
+my %CLEANENV = %ENV;
 foreach my $node (keys %rvidhash) {
-    %ENV=%CLEANENV;
-    foreach my $var (keys %{$rvidhash{$node}}) {
-        $ENV{"rvid_$var"}=$rvidhash{$node}->{$var};
+    %ENV = %CLEANENV;
+    foreach my $var (keys %{ $rvidhash{$node} }) {
+        $ENV{"rvid_$var"} = $rvidhash{$node}->{$var};
     }
-    system("$xcatroot/share/xcat/rvid/rvid.".$ENV{"rvid_method"}." &");
+    system("$xcatroot/share/xcat/rvid/rvid." . $ENV{"rvid_method"} . " &");
 }
 exit $xCAT::Client::EXITCODE;

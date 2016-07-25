@@ -1,6 +1,5 @@
 start:Diskless_installation_flat_p8_le
 os:Linux
-stop:yes
 
 cmd:copycds $$ISO
 check:rc==0
@@ -20,9 +19,19 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/ne
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/sles/compute.synclist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/rh/compute.synclist;elif  cat /etc/*release |grep "Ubuntu"  >/dev/null; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/ubuntu/compute.synclist;fi
 check:rc==0
+cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
+cmd:mount |sort > /tmp/mountoutput/file.org
+cmd:cat /tmp/mountoutput/file.org
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
+cmd:mount |sort > /tmp/mountoutput/file.new
+cmd:cat /tmp/mountoutput/file.new
+cmd:diff /tmp/mountoutput/file.org /tmp/mountoutput/file.new
+check:rc==0
+cmd:rm -rf /tmp/mountoutput
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:chdef $$CN status=
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
@@ -31,7 +40,7 @@ check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 200 
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 100 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date
@@ -42,6 +51,7 @@ check:rc==0
 cmd:rpower $$CN reset
 check:rc==0
 cmd:sleep 200
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 100 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date

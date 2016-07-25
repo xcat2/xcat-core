@@ -72,7 +72,7 @@ check:rc==0
 cmd:cat /etc/bind/named.conf 
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
-cmd:nslookup dnstestnode 
+cmd:nslookup dnstestnode $$MN 
 check:output~=Server:             $$MN
 check:output!~(server can't find dnstestnode)
 cmd:rm -f /etc/hosts

@@ -119,14 +119,14 @@ file. ospkgs postscript will normally remove all the existing rpm
 repositories before adding server:/install/<os>/<arch/ as the new repository. 
 To preserve the existing repositories, you can run the following command instead:
 
-updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
+  updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
 
 B<For AIX systems:>
 
 Note: The updatenode command is used to update AIX diskful nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
 For information on updating software on AIX cluster:
 For diskful installs, read:
-XCAT_AIX_RTE_Diskfull_Nodes
+XCAT_AIX_RTE_Diskful_Nodes
 For diskless installs, read:
 XCAT_AIX_Diskless_Nodes
 

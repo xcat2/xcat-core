@@ -3,7 +3,7 @@
 #TEST: UNCOMMENT the first line, and COMMENT OUT the second line.
 #BUILD: COMMENT OUT the first line, and UNCOMMENT the second line.
 #package xCAT_plugin::imageprofile;
-package xCAT_plugin::<<<buildkit_WILL_INSERT_modified_kitname_HERE>>>_imageprofile;
+package xCAT_plugin :: << <buildkit_WILL_INSERT_modified_kitname_HERE> >> _imageprofile;
 
 use strict;
 use warnings;
@@ -19,7 +19,7 @@ use Data::Dumper;
 # =======================================
 # What is this plugin used for?
 #    This is an xCAT Perl plugin that lets you add custom code
-#    which gets called during certain image profile management 
+#    which gets called during certain image profile management
 #    operations.
 #
 #
@@ -60,23 +60,23 @@ use Data::Dumper;
 #    1) Copy the sample plugin
 #          % cp plugins/sample/imageprofile.pm plugins
 #
-#    2) Modify the sample plugin by implementing one or more of 
+#    2) Modify the sample plugin by implementing one or more of
 #       the plugin commands above.
 #
-#       Refer to each command's comments for command parameters 
+#       Refer to each command's comments for command parameters
 #       and return values.
 #
 #       For details on how to write plugin code, refer to:
 #       http://sourceforge.net/p/xcat/wiki/XCAT_Developer_Guide/
 #
 #    3) To test the plugin commands:
-#          a) Search this file for lines that start with "TEST:" and follow the 
+#          a) Search this file for lines that start with "TEST:" and follow the
 #              instructions
 #
 #          b) Refer to each command's comments for test steps.
 #
 #    4) After you finish the test, you can build the the kit.
-#       Before building, search this file for lines that start with "BUILD:" and 
+#       Before building, search this file for lines that start with "BUILD:" and
 #       follow the instructions.
 #
 #    5) Run buildkit as normal to build the kit.
@@ -115,6 +115,7 @@ $PLUGIN_KITNAME = "<<<buildkit_WILL_INSERT_kitname_HERE>>>";
 #-------------------------------------------------------
 
 sub handled_commands {
+
     #TEST: UNCOMMENT the first return, and COMMENT OUT the second return.
     #BUILD: COMMENT OUT the first return, and UNCOMMENT the second return.
     #return {
@@ -151,37 +152,41 @@ sub handled_commands {
 #-------------------------------------------------------
 
 sub process_request {
-    my $request = shift;
+    my $request  = shift;
     my $callback = shift;
     my $rsp;
 
     # Name of command and node list
     my $command = $request->{command}->[0];
-    my $args = $request->{arg};
+    my $args    = $request->{arg};
 
     # This kit plugin is passed the name of an image profile.
-    # Before running this plugin, we should check if the 
+    # Before running this plugin, we should check if the
     # image profile is using the kit which this plugin belongs to.
 
     if ($PLUGIN_KITNAME eq "TESTMODE") {
+
         # Don't do the check in test mode
     } elsif ($command eq 'kitimagepregenerate' || $command eq 'kitimageprecopy') {
+
         # Also, don't do the check if the image profile doesn't yet exist
     } else {
-        # Do the check 
+
+        # Do the check
         my $imageprofile = parse_str_arg($request->{arg}->[0]);
 
         my $kitdata = undef;
-        if (! exists($request->{kitdata}))
+        if (!exists($request->{kitdata}))
         {
             $kitdata = $request->{kitdata};
         }
-        if (! defined($kitdata) && ! ($command eq 'kitimagepostdelete')) {
+        if (!defined($kitdata) && !($command eq 'kitimagepostdelete')) {
             $kitdata = xCAT::KitPluginUtils->get_kits_used_by_image_profiles([$imageprofile]);
             $request->{kitdata} = $kitdata;
         }
 
-        if (! exists($kitdata->{$PLUGIN_KITNAME})) {
+        if (!exists($kitdata->{$PLUGIN_KITNAME})) {
+
             # This image profile is not using this plugin's kit, so don't run the plugin.
             $rsp->{data}->[0] = "Skipped running \"$command\" plugin command for \"$PLUGIN_KITNAME\" kit.";
             xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -191,8 +196,8 @@ sub process_request {
 
 
     # Run the command
-    
-    if($command eq 'kitimagepregenerate') {
+
+    if ($command eq 'kitimagepregenerate') {
         kitimagepregenerate($callback, $args);
     }
     elsif ($command eq 'kitimagepostgenerate') {
@@ -271,18 +276,18 @@ sub process_request {
 
 sub kitimagepregenerate {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
-    my $imageprofile = parse_str_arg(shift(@$args));
-    my $osdistro = parse_str_arg(shift(@$args));
+    my $imageprofile   = parse_str_arg(shift(@$args));
+    my $osdistro       = parse_str_arg(shift(@$args));
     my $osdistroupdate = parse_str_arg(shift(@$args));
-    my $bootparams = parse_str_arg(shift(@$args));
-    my @ospkgs = parse_list_arg(shift(@$args));
-    my @custompkgs = parse_list_arg(shift(@$args));
-    my @kitcomponents = parse_list_arg(shift(@$args));
-    my @modules = parse_list_arg(shift(@$args));
+    my $bootparams     = parse_str_arg(shift(@$args));
+    my @ospkgs         = parse_list_arg(shift(@$args));
+    my @custompkgs     = parse_list_arg(shift(@$args));
+    my @kitcomponents  = parse_list_arg(shift(@$args));
+    my @modules        = parse_list_arg(shift(@$args));
 
     $rsp->{data}->[0] = "Running kitimagepregenerate ($PLUGIN_KITNAME) ...";
     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -328,7 +333,7 @@ sub kitimagepregenerate {
 
 sub kitimagepostgenerate {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
@@ -392,18 +397,18 @@ sub kitimagepostgenerate {
 
 sub kitimageprecopy {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
-    my $imageprofile = parse_str_arg(shift(@$args));
-    my $osdistro = parse_str_arg(shift(@$args));
+    my $imageprofile   = parse_str_arg(shift(@$args));
+    my $osdistro       = parse_str_arg(shift(@$args));
     my $osdistroupdate = parse_str_arg(shift(@$args));
-    my $bootparams = parse_str_arg(shift(@$args));
-    my @ospkgs = parse_list_arg(shift(@$args));
-    my @custompkgs = parse_list_arg(shift(@$args));
-    my @kitcomponents = parse_list_arg(shift(@$args));
-    my @modules = parse_list_arg(shift(@$args));
+    my $bootparams     = parse_str_arg(shift(@$args));
+    my @ospkgs         = parse_list_arg(shift(@$args));
+    my @custompkgs     = parse_list_arg(shift(@$args));
+    my @kitcomponents  = parse_list_arg(shift(@$args));
+    my @modules        = parse_list_arg(shift(@$args));
 
     $rsp->{data}->[0] = "Running kitimageprecopy ($PLUGIN_KITNAME) ...";
     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -449,7 +454,7 @@ sub kitimageprecopy {
 
 sub kitimagepostcopy {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
@@ -513,18 +518,18 @@ sub kitimagepostcopy {
 
 sub kitimagepreupdate {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
-    my $imageprofile = parse_str_arg(shift(@$args));
-    my $osdistro = parse_str_arg(shift(@$args));
+    my $imageprofile   = parse_str_arg(shift(@$args));
+    my $osdistro       = parse_str_arg(shift(@$args));
     my $osdistroupdate = parse_str_arg(shift(@$args));
-    my $bootparams = parse_str_arg(shift(@$args));
-    my @ospkgs = parse_list_arg(shift(@$args));
-    my @custompkgs = parse_list_arg(shift(@$args));
-    my @kitcomponents = parse_list_arg(shift(@$args));
-    my @modules = parse_list_arg(shift(@$args));
+    my $bootparams     = parse_str_arg(shift(@$args));
+    my @ospkgs         = parse_list_arg(shift(@$args));
+    my @custompkgs     = parse_list_arg(shift(@$args));
+    my @kitcomponents  = parse_list_arg(shift(@$args));
+    my @modules        = parse_list_arg(shift(@$args));
 
     $rsp->{data}->[0] = "Running kitimagepreupdate ($PLUGIN_KITNAME) ...";
     xCAT::MsgUtils->message("I", $rsp, $callback);
@@ -570,7 +575,7 @@ sub kitimagepreupdate {
 
 sub kitimagepostupdate {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
@@ -619,7 +624,7 @@ sub kitimagepostupdate {
 
 sub kitimagepredelete {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
@@ -669,7 +674,7 @@ sub kitimagepredelete {
 
 sub kitimagepostdelete {
     my $callback = shift;
-    my $args = shift;
+    my $args     = shift;
     my $rsp;
 
     # Parameters
@@ -700,18 +705,18 @@ sub kitimagepostdelete {
 
 #-------------------------------------------------------
 sub parse_str_arg {
-  
-   my $arg = shift;
-   my $result;
 
-   if (!defined($arg)) {
-      return $arg;
-   }
-   
-   $arg =~ s/.*?=//;
-   $result = $arg;
- 
-   return $result;
+    my $arg = shift;
+    my $result;
+
+    if (!defined($arg)) {
+        return $arg;
+    }
+
+    $arg =~ s/.*?=//;
+    $result = $arg;
+
+    return $result;
 
 }
 
@@ -731,18 +736,18 @@ sub parse_str_arg {
 
 #-------------------------------------------------------
 sub parse_list_arg {
-  
-   my $arg = shift;
-   my @result;
-   
-   if (!defined($arg)) {
-      return $arg;
-   }
 
-   $arg =~ s/.*?=//;
-   @result = split(/,/, $arg);
- 
-   return @result;
+    my $arg = shift;
+    my @result;
+
+    if (!defined($arg)) {
+        return $arg;
+    }
+
+    $arg =~ s/.*?=//;
+    @result = split(/,/, $arg);
+
+    return @result;
 
 }
 

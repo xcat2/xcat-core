@@ -18,8 +18,10 @@ dracut
 dracut-network
 e2fsprogs
 bc
+file
 lsvpd
 irqbalance
 procps-ng
 parted
 net-tools
+xz

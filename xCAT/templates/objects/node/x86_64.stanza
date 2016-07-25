@@ -1,0 +1,19 @@
+# <the system X node definition>
+
+x86_64-template:
+    objtype=node
+    arch=x86_64
+    bmc="MANDATORY:The hostname or ip address of the BMC adapater"
+    bmcpassword="MANDATORY:the password of the BMC"
+    bmcusername="MANDATORY:the username of the BMC"
+    cons=ipmi
+    getmac=ipmi
+    groups=all
+    hcp=
+    ip="OPTIONAL:the ip address of the node"
+    mac="OPTIONAL:the mac of the node"
+    mgt=ipmi
+    netboot=xnba
+    serialport=0
+    serialspeed=115200
+    usercomment="the system X node definition"

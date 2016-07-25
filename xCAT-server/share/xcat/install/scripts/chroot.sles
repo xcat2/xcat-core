@@ -22,34 +22,22 @@ fi
 
 AWK=`find / -name awk | head -1`
 #old awk /mounts/instsys/bin/awk -f
+if [ ! -e /usr/bin/awk ]; then
+    ln -s $AWK /usr/bin/awk
+fi
 
-cat >/tmp/updateflag.awk <<EOF
-#!$AWK -f
+XCATDPORT=#TABLE:site:key=xcatiport:value#
+XCATDHOST="#XCATVAR:XCATMASTER#"
 
-BEGIN {
-	xcatdport = #TABLE:site:key=xcatiport:value#
-	xcatdhost = "#XCATVAR:XCATMASTER#"
-
-	ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
-
-	while(1) {
-		if((ns |& getline) > 0)
-			print \$0
-
-		if(\$0 == "ready")
-			print "next" |& ns
-		if(\$0 == "done")
-			break
-	}
-
-	close(ns)
-
-	exit 0
-}
+(cat >/tmp/updateflag << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
 EOF
+) >/tmp/updateflag 
 
-chmod 755 /tmp/updateflag.awk
-/tmp/updateflag.awk
+chmod 755 /tmp/updateflag
+
+/tmp/updateflag $XCATDHOST $XCATDPORT
+
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
 then

@@ -91,7 +91,7 @@ If the above syncfile is performed by the **updatenode/xdcp** commands, or perfo
 
 
 Support nodes in synclist file
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Note: From xCAT 2.9.2 on AIX and from xCAT 2.12 on Linux, xCAT support a new format for syncfile. The new format is  ::
 

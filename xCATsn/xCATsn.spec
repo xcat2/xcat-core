@@ -56,13 +56,13 @@ Requires: conserver-xcat
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
-Requires: ipmitool-xcat >= 1.8.11
+Requires: ipmitool-xcat >= 1.8.15-2
 Requires: xnba-undi
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
 Requires: xCAT-genesis-scripts-ppc64
-Requires: ipmitool-xcat >= 1.8.15
+Requires: ipmitool-xcat >= 1.8.15-2
 %endif
 %endif
 

@@ -1,3 +1,6 @@
+
+.. _setup_service_node_stateful_label:
+
 Diskful (Stateful) Installation
 ===============================
 
@@ -103,8 +106,8 @@ the build with fixes from RHEL6 team, once meet this problem, you need to
 manually select the SAS disk to be the first boot device and boots from the
 SAS disk.
 
-Update Service Node Diskfull Image
-----------------------------------
+Update Service Node Diskful Image
+---------------------------------
 
 To update the xCAT software on the Service Node: 
 

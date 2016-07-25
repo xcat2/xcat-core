@@ -34,7 +34,7 @@ clearpart --all --initlabel
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-%include /tmp/partitioning
+%include /tmp/partitionfile
 #part swap --size 1024 
 #part / --size 1 --grow --fstype ext4
 #XCAT_PARTITION_END#
@@ -78,7 +78,7 @@ clearpart --all --initlabel
 #The bootloader config here is commented out
 #For user customized partition file or partition script, 
 #the bootloader configuration should be specified in the user customized partition file/script
-#For the xCAT default partition scheme, the bootloader configuration is in /tmp/partitioning
+#For the xCAT default partition scheme, the bootloader configuration is in /tmp/partitionfile
 #which is generated in %pre section
 ##KICKSTARTBOOTLOADER#
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# This command can be used to 
+# This command can be used to
 # 1. Enable/Disbale the subroutine calling trace.
 # 2. Enable the commented trace log inside a subroutine.
 
@@ -12,7 +12,7 @@
 # xCAT::Utils(isMN,Version)
 # xCAT_plugin::DBobjectdefs(defls,process_request)
 #
-# Following three lines need to be added to enable the capability of commented trace 
+# Following three lines need to be added to enable the capability of commented trace
 #if (defined $ENV{ENABLE_TRACE_CODE}) {
 #  use xCAT::Enabletrace qw(loadtrace filter);
 #  loadtrace();
@@ -41,77 +41,79 @@ my $usage = "xcatdebug { [-f enable|disable [-c configuration file | subroutine 
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("no_pass_through");
 if (
-  !GetOptions(
-    'f=s'    => \$::FUNC,
-    'c=s'  => \$::CONFIG,
-    'd=s'    => \$::DEBUG,)) {
+    !GetOptions(
+        'f=s' => \$::FUNC,
+        'c=s' => \$::CONFIG,
+        'd=s' => \$::DEBUG,)) {
     print "$usage";
     exit 1;
 }
 
 if ($^O !~ /^linux/i) {
-  print "xcatdebug command only supports Linux Operating System.\n";
-  exit 1;
+    print "xcatdebug command only supports Linux Operating System.\n";
+    exit 1;
 }
 
 if (!($::FUNC || $::DEBUG)) {
-  print "$usage";
-  exit 1;
+    print "$usage";
+    exit 1;
 }
 
 # The action that enable the commented debug log should be done firstly
 # In this case the xcatd need to be restart
 if (defined($::DEBUG)) {
-  if ($::DEBUG eq "enable") {
-    `XCATRELOAD=yes ENABLE_TRACE_CODE=1 xcatd -p /var/run/xcatd.pid`;
-    print "Enabled the commented trace log.\n";
-  } elsif ($::DEBUG eq "disable") {
-    `XCATRELOAD=yes xcatd -p /var/run/xcatd.pid`;
-    print "Disabled the commented trace log.\n";
-  } else {
-    print "$usage";
-    exit 1;
-  }
+    if ($::DEBUG eq "enable") {
+        `XCATRELOAD=yes ENABLE_TRACE_CODE=1 xcatd -p /var/run/xcatd.pid`;
+        print "Enabled the commented trace log.\n";
+    } elsif ($::DEBUG eq "disable") {
+        `XCATRELOAD=yes xcatd -p /var/run/xcatd.pid`;
+        print "Disabled the commented trace log.\n";
+    } else {
+        print "$usage";
+        exit 1;
+    }
 }
 
 
 if (defined($::FUNC)) {
-  # Get the pid of xcatd
-  my $pid;
-  if (-e "/var/run/xcatd.pid") {
-    open (PID, "</var/run/xcatd.pid") or die "Cannot open /var/run/xcatd.pid\n";
-    $pid = <PID>;
-    close (PID);
-  } elsif ($pid = `ps -ef | grep 'xcatd: SSL listener' | grep -v 'grep' | awk '{print \$2}'`) {
-  } else {
-    die "Cannot find the pid in the /var/run/xcatd.pid\n";
-  }
-  if ($::FUNC eq "enable") {
-    # Enable the function trace
-    if (defined $::CONFIG) {
-      open(CFG, ">/tmp/xcatcallingtrace.cfg") or die "Cannot open /tmp/xcatcallingtrace.cfg\n";
-      print CFG $::CONFIG;
-      close (CFG);
+
+    # Get the pid of xcatd
+    my $pid;
+    if (-e "/var/run/xcatd.pid") {
+        open(PID, "</var/run/xcatd.pid") or die "Cannot open /var/run/xcatd.pid\n";
+        $pid = <PID>;
+        close(PID);
+    } elsif ($pid = `ps -ef | grep 'xcatd: SSL listener' | grep -v 'grep' | awk '{print \$2}'`) {
     } else {
-      unlink "/tmp/xcatcallingtrace.cfg";
+        die "Cannot find the pid in the /var/run/xcatd.pid\n";
     }
-    open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
-    print TRACEFLAG 1;
-    close (TRACEFLAG);
-    kill SIGTRAP, $pid;
-    print "Enabled the subroutine calling trace.\n";
-  } elsif ($::FUNC eq "disable") {
-    open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
-    print TRACEFLAG 0;
-    close (TRACEFLAG);
-    kill SIGTRAP, $pid;
-    unlink "/tmp/xcatcallingtrace.cfg";
-    print "Disabled the subroutine calling trace.\n";
-  } else {
-    print "$usage";
-    exit 1;
-  }
-  print "  Get the trace log from the /var/log/xcat/subcallingtrace\n"; 
+    if ($::FUNC eq "enable") {
+
+        # Enable the function trace
+        if (defined $::CONFIG) {
+            open(CFG, ">/tmp/xcatcallingtrace.cfg") or die "Cannot open /tmp/xcatcallingtrace.cfg\n";
+            print CFG $::CONFIG;
+            close(CFG);
+        } else {
+            unlink "/tmp/xcatcallingtrace.cfg";
+        }
+        open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
+        print TRACEFLAG 1;
+        close(TRACEFLAG);
+        kill SIGTRAP, $pid;
+        print "Enabled the subroutine calling trace.\n";
+    } elsif ($::FUNC eq "disable") {
+        open(TRACEFLAG, ">/tmp/xcatcallingtrace.flag") or die "Cannot open file to write in /tmp\n";
+        print TRACEFLAG 0;
+        close(TRACEFLAG);
+        kill SIGTRAP, $pid;
+        unlink "/tmp/xcatcallingtrace.cfg";
+        print "Disabled the subroutine calling trace.\n";
+    } else {
+        print "$usage";
+        exit 1;
+    }
+    print "  Get the trace log from the /var/log/xcat/subcallingtrace\n";
 }
 
 

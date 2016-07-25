@@ -59,7 +59,7 @@ group Attributes:
 
 \ **bmc**\  (ipmi.bmc)
  
- The hostname of the BMC adapater.
+ The hostname of the BMC adapter.
  
 
 
@@ -71,86 +71,44 @@ group Attributes:
 
 \ **bmcport**\  (ipmi.bmcport)
  
+ In systems with selectable shared/dedicated ethernet ports, this parameter can be used to specify the preferred port. 0 means use the shared port, 1 means dedicated, blank is to not assign.
+ 
  
  .. code-block:: perl
  
-   In systems with selectable shared/dedicated ethernet ports,
-  
-             this parameter can be used to specify the preferred port.  0
-  
-             means use the shared port, 1 means dedicated, blank is to not
-  
-             assign.
-  
-  
-  
              The following special cases exist for IBM System x servers:
   
-  
-  
              For x3755 M3 systems, 0 means use the dedicated port, 1 means
-  
              shared, blank is to not assign.
   
-  
-  
          For certain systems which have a mezzaine or ML2 adapter, there is a second
-  
          value to include:
-  
-  
-  
   
   
              For x3750 M4 (Model 8722):
   
   
-  
-  
-  
              0 2   1st 1Gbps interface for LOM
-  
-  
   
              0 0   1st 10Gbps interface for LOM
   
-  
-  
              0 3   2nd 1Gbps interface for LOM
   
-  
-  
              0 1   2nd 10Gbps interface for LOM
-  
-  
-  
   
   
              For  x3750 M4 (Model 8752), x3850/3950 X6, dx360 M4, x3550 M4, and x3650 M4:
   
   
-  
-  
-  
              0     Shared (1st onboard interface)
-  
-  
   
              1     Dedicated
   
-  
-  
              2 0   First interface on ML2 or mezzanine adapter
-  
-  
   
              2 1   Second interface on ML2 or mezzanine adapter
   
-  
-  
              2 2   Third interface on ML2 or mezzanine adapter
-  
-  
   
              2 3   Fourth interface on ML2 or mezzanine adapter
  
@@ -267,7 +225,7 @@ group Attributes:
 
 \ **dockerflag**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively,the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 
@@ -545,7 +503,7 @@ group Attributes:
 
 \ **mpa**\  (mp.mpa)
  
- The managment module used to control this blade.
+ The management module used to control this blade.
  
 
 
@@ -568,17 +526,12 @@ group Attributes:
  
  .. code-block:: perl
  
-                         Arch                  OS                           valid netboot options 
-  
-                         x86, x86_64           ALL                          pxe, xnba 
-  
-                         ppc64                 <=rhel6, <=sles11.3          yaboot
-  
-                         ppc64                 >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
-  
-                   ppc64le NonVirtualize       ALL                          petitboot
-  
-                   ppc64le PowerKVM Guest      ALL                          grub2,grub2-http,grub2-tftp
+                         Arch                    OS                           valid netboot options 
+                         x86, x86_64             ALL                          pxe, xnba 
+                         ppc64                   <=rhel6, <=sles11.3          yaboot
+                         ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
+                         ppc64le NonVirtualize   ALL                          petitboot
+                         ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
  
  
 
@@ -598,142 +551,85 @@ group Attributes:
 \ **nicaliases**\  (nics.nicaliases)
  
  Comma-separated list of hostname aliases for each NIC.
- 
- 
- .. code-block:: perl
- 
-              Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
-  
-  			For multiple aliases per nic use a space-separated list.
-  
-              For example: eth0!moe larry curly,eth1!tom|jerry
- 
+                 Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
+                     For multiple aliases per nic use a space-separated list. 
+                 For example: eth0!moe larry curly,eth1!tom|jerry
  
 
 
 \ **niccustomscripts**\  (nics.niccustomscripts)
  
  Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
- 
  .
  
 
 
 \ **nicdevices**\  (nics.nicdevices)
  
- Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.
+ Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.
  
 
 
 \ **nicextraparams**\  (nics.nicextraparams)
  
  Comma-separated list of extra parameters that will be used for each NIC configuration.
- 
- 
- .. code-block:: perl
- 
-                  If only one ip address is associated with each NIC:
-  
-                      <nic1>!<param1=value1 param2=value2>,<nic2>!<param3=value3>, for example, eth0!MTU=1500,ib0!MTU=65520 CONNECTED_MODE=yes.
-  
-                  If multiple ip addresses are associated with each NIC:
-  
-                      <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
-  
-              The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.
- 
+                 If only one ip address is associated with each NIC:
+                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param3=value3>, for example, eth0!MTU=1500,ib0!MTU=65520 CONNECTED_MODE=yes.
+                 If multiple ip addresses are associated with each NIC:
+                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
+             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.
  
 
 
 \ **nichostnameprefixes**\  (nics.nichostnameprefixes)
  
- Comma-separated list of hostname prefixes per NIC.
- 
- 
- .. code-block:: perl
- 
-                          If only one ip address is associated with each NIC:
-  
-                              <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
-  
-                          If multiple ip addresses are associcated with each NIC:
-  
-                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
-  
-                          The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
-  
-                          Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
- 
+ Comma-separated list of hostname prefixes per NIC. 
+                         If only one ip address is associated with each NIC:
+                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
+                         If multiple ip addresses are associated with each NIC:
+                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
+                         The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
+                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
  
 
 
 \ **nichostnamesuffixes**\  (nics.nichostnamesuffixes)
  
- Comma-separated list of hostname suffixes per NIC.
- 
- 
- .. code-block:: perl
- 
-                          If only one ip address is associated with each NIC:
-  
-                              <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
-  
-                          If multiple ip addresses are associcated with each NIC:
-  
-                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
-  
-                          The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
-  
-                          Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
- 
+ Comma-separated list of hostname suffixes per NIC. 
+                         If only one ip address is associated with each NIC:
+                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
+                         If multiple ip addresses are associated with each NIC:
+                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
+                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
+                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
  
 
 
 \ **nicips**\  (nics.nicips)
  
- Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
- 
- 
- .. code-block:: perl
- 
-                      <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
-  
-                  To specify multiple ip addresses per NIC:
-  
-                      <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a. The xCAT object definition commands support to use nicips.<nicname> as the sub attributes.
-  
-                  Note: The primary IP address must also be stored in the hosts.ip attribute. The nichostnamesuffixes should specify one hostname suffix for each ip address.
- 
+ Comma-separated list of IP addresses per NIC. 
+                 To specify one ip address per NIC:
+                     <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
+                 To specify multiple ip addresses per NIC:
+                     <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a. The xCAT object definition commands support to use nicips.<nicname> as the sub attributes.
+                 Note: The primary IP address must also be stored in the hosts.ip attribute. The nichostnamesuffixes should specify one hostname suffix for each ip address.
  
 
 
 \ **nicnetworks**\  (nics.nicnetworks)
  
  Comma-separated list of networks connected to each NIC.
- 
- 
- .. code-block:: perl
- 
-                  If only one ip address is associated with each NIC:
-  
-                      <nic1>!<network1>,<nic2>!<network2>, for example, eth0!10_0_0_0-255_255_0_0, ib0!11_0_0_0-255_255_0_0
-  
-                  If multiple ip addresses are associated with each NIC:
-  
-                      <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64. The xCAT object definition commands support to use nicnetworks.<nicname> as the sub attributes.
- 
+                 If only one ip address is associated with each NIC:
+                     <nic1>!<network1>,<nic2>!<network2>, for example, eth0!10_0_0_0-255_255_0_0, ib0!11_0_0_0-255_255_0_0
+                 If multiple ip addresses are associated with each NIC:
+                     <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64. The xCAT object definition commands support to use nicnetworks.<nicname> as the sub attributes.
  
 
 
 \ **nicsadapter**\  (nics.nicsadapter)
  
  Comma-separated list of extra parameters that will be used for each NIC configuration.
- 
- 
- .. code-block:: perl
- 
-                      <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
- 
+                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
  
 
 
@@ -775,9 +671,7 @@ group Attributes:
  .. code-block:: perl
  
                   localdisk (Install to first non-FC attached disk)
-  
                   usbdisk (Install to first USB mass storage device seen)
-  
                   wwn=0x50000393c813840c (Install to storage device with given WWN)
  
  
@@ -791,7 +685,7 @@ group Attributes:
 
 \ **ou**\  (domain.ou)
  
- For an LDAP described machine account (i.e. Active Directory), the orginaztional unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain
+ For an LDAP described machine account (i.e. Active Directory), the organizational unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain
  
 
 
@@ -857,7 +751,7 @@ group Attributes:
 
 \ **postscripts**\  (postscripts.postscripts)
  
- Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX.
+ Comma separated list of scripts that should be run on this node after diskful installation or diskless boot. Each script can take zero or more parameters. For example: "script1 p1 p2,script2,...". xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute.
  
 
 
@@ -875,73 +769,34 @@ group Attributes:
 
 \ **prescripts-begin**\  (prescripts.begin)
  
- The scripts to be run at the beginning of the nodeset(Linux),
- 
- 
- .. code-block:: perl
- 
-   nimnodeset(AIX) or mkdsklsnode(AIX) command.
-  
-   The format is:
-  
-     [action1:]s1,s2...[|action2:s3,s4,s5...]
-  
-   where:
-  
-    - action1 and action2 for Linux are the nodeset actions specified in the command. 
-  
-      For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'
-  
-      and 'standalone for nimnodeset command. 
-  
-    - s1 and s2 are the scripts to run for action1 in order.
-  
-    - s3, s4, and s5 are the scripts to run for actions2.
-  
-   If actions are omitted, the scripts apply to all actions.
-  
-   Examples:
-  
-     myscript1,myscript2  (all actions)
-  
-     diskless:myscript1,myscript2   (AIX)
-  
-     install:myscript1,myscript2|netboot:myscript3   (Linux)
-  
-  
-  
-   All the scripts should be copied to /install/prescripts directory.
-  
-   The following two environment variables will be passed to each script: 
-  
-     NODES a coma separated list of node names that need to run the script for
-  
-     ACTION current nodeset action.
-  
-  
-  
-   If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script
-  
-   will get invoked for each node in parallel, but no more than number of instances
-  
-   will be invoked at at a time. If it is not specified, the script will be invoked
-  
-   once for all the nodes.
- 
+ The scripts to be run at the beginning of the nodeset(Linux), nimnodeset(AIX) or mkdsklsnode(AIX) command.
+  The format is:
+    [action1:]s1,s2...[| action2:s3,s4,s5...]
+  where:
+   - action1 and action2 for Linux are the nodeset actions specified in the command. 
+     For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'
+     and 'standalone for nimnodeset command. 
+   - s1 and s2 are the scripts to run for action1 in order.
+   - s3, s4, and s5 are the scripts to run for actions2.
+  If actions are omitted, the scripts apply to all actions.
+  Examples:
+    myscript1,myscript2  (all actions)
+    diskless:myscript1,myscript2   (AIX)
+    install:myscript1,myscript2|netboot:myscript3   (Linux)
+  All the scripts should be copied to /install/prescripts directory.
+  The following two environment variables will be passed to each script: 
+    NODES a coma separated list of node names that need to run the script for
+    ACTION current nodeset action.
+  If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script
+  will get invoked for each node in parallel, but no more than number of instances
+  will be invoked at at a time. If it is not specified, the script will be invoked
+  once for all the nodes.
  
 
 
 \ **prescripts-end**\  (prescripts.end)
  
- The scripts to be run at the end of the nodeset(Linux),
- 
- 
- .. code-block:: perl
- 
-   nimnodeset(AIX),or mkdsklsnode(AIX) command. 
-  
-   The format is the same as the 'begin' column.
- 
+ The scripts to be run at the end of the nodeset(Linux), nimnodeset(AIX),or mkdsklsnode(AIX) command. The format is the same as the 'begin' column.
  
 
 
@@ -965,7 +820,7 @@ group Attributes:
 
 \ **protocol**\  (switches.protocol)
  
- Prorocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.
+ Protocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.
  
 
 
@@ -1121,9 +976,7 @@ group Attributes:
  .. code-block:: perl
  
                    <slot rows>  = number of rows of slots in chassis
-  
                    <slot columns> = number of columns of slots in chassis
-  
                    <slot orientation> = set to 0 if slots are vertical, and set to 1 if slots of horizontal
  
  
@@ -1137,7 +990,7 @@ group Attributes:
 
 \ **snmppassword**\  (switches.password)
  
- The password strinng for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.
+ The password string for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.
  
 
 
@@ -1161,15 +1014,9 @@ group Attributes:
 
 \ **storagcontroller**\  (storage.controller)
  
- The management address to attach/detach new volumes.
- 
- 
- .. code-block:: perl
- 
-                         In the scenario involving multiple controllers, this data must be
-  
-                         passed as argument rather than by table value
- 
+ The management address to attach/detach new volumes. 
+ In the scenario involving multiple controllers, this data must be
+ passed as argument rather than by table value
  
 
 
@@ -1217,7 +1064,7 @@ group Attributes:
 
 \ **switchtype**\  (switches.switchtype)
  
- The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Juniper.
+ The type of switch. It is used to identify the file name that implements the functions for this switch. The valid values are: Mellanox, Cisco, BNT and Juniper.
  
 
 
@@ -1313,7 +1160,7 @@ group Attributes:
 
 \ **vmcfgstore**\  (vm.cfgstore)
  
- Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data
+ Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data
  
 
 
@@ -1367,7 +1214,7 @@ group Attributes:
 
 \ **vmothersetting**\  (vm.othersettings)
  
- This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively,the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:"vcpupin:'0-15,^8'",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 
@@ -1409,27 +1256,16 @@ group Attributes:
 
 \ **vmvirtflags**\  (vm.virtflags)
  
- General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
- 
- 
- .. code-block:: perl
- 
-              imageformat=[raw|fullraw|qcow2]
-  
-                  raw is a generic sparse file that allocates storage on demand
-  
-                  fullraw is a generic, non-sparse file that preallocates all space
-  
-                  qcow2 is a sparse, copy-on-write capable format implemented at the virtualization layer rather than the filesystem level
-  
-              clonemethod=[qemu-img|reflink]
-  
-                  qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
-  
-                  reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs 
-  
-              placement_affinity=[migratable|user_migratable|pinned]
- 
+ General flags used by the virtualization method.  
+           For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+             imageformat=[raw|fullraw|qcow2]
+                 raw is a generic sparse file that allocates storage on demand
+                 fullraw is a generic, non-sparse file that preallocates all space
+                 qcow2 is a sparse, copy-on-write capable format implemented at the virtualization layer rather than the filesystem level
+             clonemethod=[qemu-img|reflink]
+                 qemu-img allows use of qcow2 to generate virtualization layer copy-on-write
+                 reflink uses a generic filesystem facility to clone the files on your behalf, but requires filesystem support such as btrfs 
+             placement_affinity=[migratable|user_migratable|pinned]
  
 
 

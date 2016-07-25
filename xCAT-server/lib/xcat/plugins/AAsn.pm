@@ -78,15 +78,16 @@ sub init_plugin
     my $rc = 0;
 
     #On the Servicenodes or the Management node
-    if (((xCAT::Utils->isServiceNode()) && ( -s "/etc/xcat/cfgloc"))
-           || (xCAT::Utils->isMN()))
+    if (((xCAT::Utils->isServiceNode()) && (-s "/etc/xcat/cfgloc"))
+        || (xCAT::Utils->isMN()))
     {
-        my @nodeinfo   = xCAT::NetworkUtils->determinehostname;
-        my $nodename   = pop @nodeinfo;                    # get hostname
-        my @nodeipaddr = @nodeinfo;                        # get ip addresses
+        my @nodeinfo = xCAT::NetworkUtils->determinehostname;
+        my $nodename = pop @nodeinfo;                           # get hostname
+        my @nodeipaddr = @nodeinfo;    # get ip addresses
         my $service;
+
         # if a linux servicenode
-        if ((xCAT::Utils->isLinux())&& (xCAT::Utils->isServiceNode()))
+        if ((xCAT::Utils->isLinux()) && (xCAT::Utils->isServiceNode()))
         {
 
             # service needed on Linux Service Node
@@ -94,7 +95,7 @@ sub init_plugin
             &setupInstallloc($nodename);
             $service = "ssh";
 
-            &setup_SSH();    # setup SSH
+            &setup_SSH();              # setup SSH
 
         }
 
@@ -111,7 +112,7 @@ sub init_plugin
 
                 if ($servicelist->{"ftpserver"} == 1)
                 {
-                     &setup_FTP();    # setup vsftpd
+                    &setup_FTP();    # setup vsftpd
                 }
 
                 if ($servicelist->{"ldapserver"} == 1)
@@ -121,60 +122,60 @@ sub init_plugin
 
                 if ($servicelist->{"tftpserver"} == 1)
                 {
-                 if (xCAT::Utils->isServiceNode()) { # service node
-                     &setup_TFTP($nodename, $doreq);    # setup TFTP
-                 } else { # management node
-                    &enable_TFTPhpa();
-                 }
+                    if (xCAT::Utils->isServiceNode()) {    # service node
+                        &setup_TFTP($nodename, $doreq);    # setup TFTP
+                    } else {                               # management node
+                        &enable_TFTPhpa();
+                    }
 
                 }
                 if ($servicelist->{"ntpserver"} == 1) {
                     &setup_NTP($doreq);
-                }  
+                }
                 if ($servicelist->{"proxydhcp"} == 1) {
                     &setup_proxydhcp(1);
                 } else {
                     &setup_proxydhcp(0);
                 }
             }    # end Linux only
-            #
-            # setup these services for AIX or Linux
-            #
+                 #
+                 # setup these services for AIX or Linux
+                 #
             if ($servicelist->{"conserver"} == 1)
             {
                 if (xCAT::Utils->isLinux())
                 {    #run only the following only on Linux
 
-                     &setup_CONS($nodename);    # setup conserver
-                } else { #AIX
-                    $rc=xCAT::Utils->setupAIXconserver();
-            
+                    &setup_CONS($nodename);    # setup conserver
+                } else {                       #AIX
+                    $rc = xCAT::Utils->setupAIXconserver();
+
                 }
             }
-            if (($servicelist->{"nameserver"} == 1) || ($servicelist->{"nameserver"} == 2) )
+            if (($servicelist->{"nameserver"} == 1) || ($servicelist->{"nameserver"} == 2))
             {
 
-                &setup_DNS($servicelist);    # setup DNS
+                &setup_DNS($servicelist);      # setup DNS
 
             }
             if ($servicelist->{"nfsserver"} == 1)
             {
 
-                 &setup_NFS($nodename);    # setup NFS
+                &setup_NFS($nodename);         # setup NFS
 
                 # The nfsserver field in servicenode table
                 # will also setup http service for Linux
                 if (xCAT::Utils->isLinux())
                 {
-                     &setup_HTTP($nodename);    # setup HTTP
+                    &setup_HTTP($nodename);    # setup HTTP
                 }
 
             }
             if ($servicelist->{"ipforward"} == 1)
-         {
-	           # enable ip forwarding 
-	            xCAT::NetworkUtils->setup_ip_forwarding(1); 
-	         }
+            {
+                # enable ip forwarding
+                xCAT::NetworkUtils->setup_ip_forwarding(1);
+            }
 
             #
             # setup dhcp only on Linux and do it last
@@ -191,9 +192,9 @@ sub init_plugin
 
         }
         else
-        {    # error from servicenode tbl read
+        {                                      # error from servicenode tbl read
             xCAT::MsgUtils->message("S",
-                                "AAsn.pm:Error reading the servicenode table.");
+                "AAsn.pm:Error reading the servicenode table.");
         }
 
     }
@@ -340,11 +341,11 @@ sub setupInstallloc
                 }
                 else
                 {
-                   $cmd = "mount -o rw,nolock $master:$installloc $installdir";
+                    $cmd = "mount -o rw,nolock $master:$installloc $installdir";
                 }
                 system $cmd;
                 if ($? > 0)
-                {                     # error
+                {    # error
                     $rc = 1;
                     xCAT::MsgUtils->message("S", "Error $cmd");
                 }
@@ -394,12 +395,12 @@ sub setupInstallloc
 
                     # ok - then add this entry
                     my $cmd =
-                      "/bin/echo '$installdir *(rw,no_root_squash,sync,no_subtree_check)' >> /etc/exports";
+"/bin/echo '$installdir *(rw,no_root_squash,sync,no_subtree_check)' >> /etc/exports";
                     my $outref = xCAT::Utils->runcmd("$cmd", 0);
                     if ($::RUNCMD_RC != 0)
                     {
                         xCAT::MsgUtils->message('S',
-                                     "Could not update the /etc/exports file.");
+                            "Could not update the /etc/exports file.");
                     }
                     else
                     {
@@ -438,7 +439,7 @@ sub setupInstallloc
         {
             if ($nomount == 0)    # then add the entry
             {
-                `echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+`echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
 
             }
         }
@@ -495,8 +496,8 @@ sub setup_CONS
     $cmdref->{svboot}->[0]  = "yes";
     no strict "refs";
     my $modname = "conserver";
-    ${"xCAT_plugin::" . $modname . "::"}{process_request}
-          ->($cmdref, \&xCAT::Client::handle_response);
+    ${ "xCAT_plugin::" . $modname . "::" }{process_request}
+      ->($cmdref, \&xCAT::Client::handle_response);
 
     # start conserver. conserver needs 2 CA files to start
     my $ca_file1 = "/etc/xcat/ca/ca-cert.pem";
@@ -504,20 +505,21 @@ sub setup_CONS
     if (!-e $ca_file1)
     {
         print
-        "conserver cannot be started because the file $ca_file1 cannot be found\n";
+"conserver cannot be started because the file $ca_file1 cannot be found\n";
     }
     elsif (!-e $ca_file2)
     {
         print
-          "conserver cannot be started because the file $ca_file2 cannot be found\n";
+"conserver cannot be started because the file $ca_file2 cannot be found\n";
     }
     else
-    {  
-        if (xCAT::Utils->isAIX()){
-           $rc=xCAT::Utils->startService("conserver");  
-        }elsif(xCAT::Utils->isLinux()){
-        #my $rc = xCAT::Utils->startService("conserver");
-           $rc=xCAT::Utils->startservice("conserver");
+    {
+        if (xCAT::Utils->isAIX()) {
+            $rc = xCAT::Utils->startService("conserver");
+        } elsif (xCAT::Utils->isLinux()) {
+
+            #my $rc = xCAT::Utils->startService("conserver");
+            $rc = xCAT::Utils->startservice("conserver");
         }
         if ($rc != 0)
         {
@@ -543,30 +545,31 @@ sub setup_DHCP
     my $rc = 0;
     my $cmd;
     my $snonly = 0;
+
     # if on the MN check to see if dhcpd is running, and start it if not.
-    if (xCAT::Utils->isMN()) { # on the MN
-        #my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
-        #if ($::RUNCMD_RC != 0)  { # not running
-        my $dhcpservice = "dhcpd"; 
-        if (-e "/etc/init.d/isc-dhcp-server") { #Ubuntu
+    if (xCAT::Utils->isMN()) {    # on the MN
+            #my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
+            #if ($::RUNCMD_RC != 0)  { # not running
+        my $dhcpservice = "dhcpd";
+        if (-e "/etc/init.d/isc-dhcp-server") {    #Ubuntu
             $dhcpservice = "isc-dhcp-server";
         }
-        my $retcode= xCAT::Utils->checkservicestatus($dhcpservice);
-        if($retcode!=0){
-          $rc = xCAT::Utils->startservice($dhcpservice);
-          if ($rc != 0)
-          {
-            return 1;
-          }
+        my $retcode = xCAT::Utils->checkservicestatus($dhcpservice);
+        if ($retcode != 0) {
+            $rc = xCAT::Utils->startservice($dhcpservice);
+            if ($rc != 0)
+            {
+                return 1;
+            }
         }
         return 0;
     }
 
     # read the disjointdhcps attribute to determine if we will setup
     # dhcp for all nodes or just for the nodes service by this service node
-    my @hs = xCAT::TableUtils->get_site_attribute("disjointdhcps");
+    my @hs  = xCAT::TableUtils->get_site_attribute("disjointdhcps");
     my $tmp = $hs[0];
-    if(defined($tmp)) {
+    if (defined($tmp)) {
         $snonly = $tmp;
     }
 
@@ -583,29 +586,30 @@ sub setup_DHCP
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     no strict "refs";
     my $modname = "dhcp";
-    ${"xCAT_plugin::" . $modname . "::"}{process_request}
+    ${ "xCAT_plugin::" . $modname . "::" }{process_request}
       ->($cmdref, \&xCAT::Client::handle_response);
 
     my $distro = xCAT::Utils->osver();
+
     #my $serv = "dhcpd";
     #if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
-    #    $serv = "isc-dhcp-server";	
+    #    $serv = "isc-dhcp-server";
     #}
 
     #my $rc = xCAT::Utils->startService($serv);
-    my $rc=0;
-    if(xCAT::Utils->isAIX()){
-       $rc = xCAT::Utils->startService("dhcpd");
-    } elsif(xCAT::Utils->isLinux()){
-       $rc = xCAT::Utils->startservice("dhcp");
+    my $rc = 0;
+    if (xCAT::Utils->isAIX()) {
+        $rc = xCAT::Utils->startService("dhcpd");
+    } elsif (xCAT::Utils->isLinux()) {
+        $rc = xCAT::Utils->startservice("dhcp");
     }
     if ($rc != 0)
     {
         return 1;
     }
-    
-    # setup DHCP 
-    # 
+
+    # setup DHCP
+    #
 
 
     # clean up $::opt_n which set by last makedhcp context and conlicts with -a below.
@@ -613,44 +617,45 @@ sub setup_DHCP
 
 
     my $modname = "dhcp";
-    if ($snonly != 1)  {  # setup  dhcp for all nodes
-      $cmdref;
-      $cmdref->{command}->[0] = "makedhcp";
-      $cmdref->{arg}->[0]     = "-a";
-      $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+    if ($snonly != 1) {    # setup  dhcp for all nodes
+        $cmdref;
+        $cmdref->{command}->[0] = "makedhcp";
+        $cmdref->{arg}->[0]     = "-a";
+        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
 
-   } else {  # setup dhcp just for the nodes owned by the SN
-     # determine my name
-     # get servicenodes and their nodes
-     # find the list of nodes serviced
-     my @hostinfo=xCAT::NetworkUtils->determinehostname();
-     my $sn_hash =xCAT::ServiceNodeUtils->getSNandNodes();
-     my @nodes;
-     my %iphash=();
-     my $snkey;
-     $cmdref;
-     foreach  $snkey (keys %$sn_hash) {  # find the service node
-        if (grep(/$snkey/, @hostinfo)) {
-            push @nodes, @{$sn_hash->{$snkey}};
-            $cmdref->{node} = $sn_hash->{$snkey};
-            $cmdref->{'_xcatdest'}            = $snkey;
+    } else {               # setup dhcp just for the nodes owned by the SN
+                           # determine my name
+                           # get servicenodes and their nodes
+                           # find the list of nodes serviced
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $sn_hash  = xCAT::ServiceNodeUtils->getSNandNodes();
+        my @nodes;
+        my %iphash = ();
+        my $snkey;
+        $cmdref;
+
+        foreach $snkey (keys %$sn_hash) {    # find the service node
+            if (grep(/$snkey/, @hostinfo)) {
+                push @nodes, @{ $sn_hash->{$snkey} };
+                $cmdref->{node} = $sn_hash->{$snkey};
+                $cmdref->{'_xcatdest'} = $snkey;
+            }
         }
-     }
-     if (@nodes) {
-       my $nodelist;
-       foreach my $n (@nodes) { 
-        $nodelist .= $n;
-        $nodelist .= ",";
-       }
-       chop $nodelist;
-       $cmdref->{arg}->[0] = ();
-       $cmdref->{command}->[0] = "makedhcp";
-       $cmdref->{noderange}->[0]     = "$nodelist";
-       $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+        if (@nodes) {
+            my $nodelist;
+            foreach my $n (@nodes) {
+                $nodelist .= $n;
+                $nodelist .= ",";
+            }
+            chop $nodelist;
+            $cmdref->{arg}->[0]       = ();
+            $cmdref->{command}->[0]   = "makedhcp";
+            $cmdref->{noderange}->[0] = "$nodelist";
+            $cmdref->{cwd}->[0]       = "/opt/xcat/sbin";
+        }
     }
-   }
-   ${"xCAT_plugin::" . $modname . "::"}{process_request}
-        ->($cmdref, \&xCAT::Client::handle_response);
+    ${ "xCAT_plugin::" . $modname . "::" }{process_request}
+      ->($cmdref, \&xCAT::Client::handle_response);
     return $rc;
 }
 
@@ -678,7 +683,7 @@ sub setup_FTP
     # link installdir
     # restart the daemon
     my $installdir = xCAT::TableUtils->getInstallDir();
-    if (!(-e $installdir))         # make it
+    if (!(-e $installdir))    # make it
     {
         mkpath($installdir);
     }
@@ -694,10 +699,10 @@ sub setup_FTP
 
     #my $rc = xCAT::Utils->startService("vsftpd");
     my $rc = 0;
-    if(xCAT::Utils->isAIX()){
-       $rc = xCAT::Utils->startService("vsftpd");
-    }elsif(xCAT::Utils->isLinux()){
-       $rc = xCAT::Utils->startservice("vsftpd");
+    if (xCAT::Utils->isAIX()) {
+        $rc = xCAT::Utils->startService("vsftpd");
+    } elsif (xCAT::Utils->isLinux()) {
+        $rc = xCAT::Utils->startservice("vsftpd");
     }
     if ($rc != 0)
     {
@@ -732,9 +737,9 @@ sub setup_DNS
     {
         # setup the named.conf file as dns forwarding/caching
         system("$XCATROOT/sbin/makenamed.conf");
-     }
-     else
-     {
+    }
+    else
+    {
         # setup the named.conf file as dns slave
         my $cmdref;
         $cmdref->{command}->[0] = "makedns";
@@ -742,13 +747,14 @@ sub setup_DNS
         $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
         no strict "refs";
         my $modname = "ddns";
-        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+        ${ "xCAT_plugin::" . $modname . "::" }{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
-     }
-        
+    }
+
     # turn DNS on
 
     my $distro = xCAT::Utils->osver();
+
     #my $serv = "named";
     #if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
     #    $serv = "bind9";
@@ -756,10 +762,10 @@ sub setup_DNS
 
     #my $rc = xCAT::Utils->startService($serv);
     my $rc = 0;
-    if(xCAT::Utils->isAIX()){
-       $rc = xCAT::Utils->startService("named"); 
-    }elsif(xCAT::Utils->isLinux()){
-       $rc=xCAT::Utils->startservice("named");
+    if (xCAT::Utils->isAIX()) {
+        $rc = xCAT::Utils->startService("named");
+    } elsif (xCAT::Utils->isLinux()) {
+        $rc = xCAT::Utils->startservice("named");
     }
 
     if ($rc != 0)
@@ -772,7 +778,7 @@ sub setup_DNS
     {
         #/etc/inittab
         my $cmd = "/usr/sbin/lsitab named > /dev/null 2>&1";
-        my $rc = system("$cmd") >>8;
+        my $rc  = system("$cmd") >> 8;
         if ($rc != 0)
         {
             #add new entry
@@ -787,8 +793,8 @@ sub setup_DNS
         #my $cmd = "/sbin/chkconfig $serv on";
         #my $outref = xCAT::Utils->runcmd("$cmd", 0);
         #if ($::RUNCMD_RC != 0)
-        my $retcode=xCAT::Utils->enableservice("named");
-        if($retcode!=0)
+        my $retcode = xCAT::Utils->enableservice("named");
+        if ($retcode != 0)
         {
             xCAT::MsgUtils->message("SE", " Error: Could not enable dns server.");
         }
@@ -797,7 +803,7 @@ sub setup_DNS
             xCAT::MsgUtils->message("SI", " dns server has been enabled on boot.");
         }
     }
-    
+
     return 0;
 }
 
@@ -815,11 +821,11 @@ sub setup_LDAP
 
     #my $rc = xCAT::Utils->startService("ldap");
     my $rc = 0;
- 
-    if(xCAT::Utils->isAIX()){
-       $rc = xCAT::Utils->startService("ldap");
-    }elsif(xCAT::Utils->isLinux()){
-       $rc=xCAT::Utils->startservice("ldap");
+
+    if (xCAT::Utils->isAIX()) {
+        $rc = xCAT::Utils->startService("ldap");
+    } elsif (xCAT::Utils->isLinux()) {
+        $rc = xCAT::Utils->startservice("ldap");
     }
     if ($rc != 0)
     {
@@ -883,8 +889,8 @@ sub setup_NFS
 sub setup_NTP
 {
     my $doreq = shift;
-    my $res = xCAT::Utils->runxcmd({
-        command => ['makentp'],}, $doreq, 0, 1);
+    my $res   = xCAT::Utils->runxcmd({
+            command => ['makentp'], }, $doreq, 0, 1);
 
     return 0;
 }
@@ -902,14 +908,15 @@ sub setup_NTP
 sub start_NTP
 {
 
-    my $rc =0;
-    if (xCAT::Utils->isAIX()){
-        $rc=xCAT::Utils->startService("ntpd");  
-    }elsif(xCAT::Utils->isLinux()){
+    my $rc = 0;
+    if (xCAT::Utils->isAIX()) {
+        $rc = xCAT::Utils->startService("ntpd");
+    } elsif (xCAT::Utils->isLinux()) {
+
         #my $rc = xCAT::Utils->startService("conserver");
-        $rc=xCAT::Utils->startservice("ntpd");
+        $rc = xCAT::Utils->startservice("ntpd");
     }
-    
+
     if ($rc != 0)
     {
         return 1;
@@ -1055,7 +1062,7 @@ sub setup_TFTP
     # read DB for nodeinfo
     my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
     if (not ref $retdata)
-    {    # error
+    {                              # error
         xCAT::MsgUtils->message("S", " Error reading service node arch.");
         return 1;
     }
@@ -1063,7 +1070,7 @@ sub setup_TFTP
     $os     = $retdata->{'os'};
     $arch   = $retdata->{'arch'};
     if (!($arch))
-    {    # error
+    {                              # error
         xCAT::MsgUtils->message("S", " Error reading service node arch.");
         return 1;
     }
@@ -1072,37 +1079,39 @@ sub setup_TFTP
     $cmd = "/usr/sbin/in.tftpd -V";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
-    {    # not installed
+    {                              # not installed
         xCAT::MsgUtils->message("S", "atftp is not installed, ok for Power5");
     }
     my $tftpdir;
     my $mountdirectory = "1";        # default to mount tftpdir
     my $tftphost       = $master;    # default to master
          # read sharedtftp attribute from site table, if exist
-    #my $stab = xCAT::Table->new('site');
-    #my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    my @ss = xCAT::TableUtils->get_site_attribute("sharedtftp");
+         #my $stab = xCAT::Table->new('site');
+         #my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    my @ss         = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $sharedtftp = $ss[0];
-    if ( defined($sharedtftp) )
+
+    if (defined($sharedtftp))
     {
 
         $tftphost       = $sharedtftp;    # either hostname or yes/no
         $mountdirectory = $tftphost;
-        $mountdirectory =~ tr/a-z/A-Z/;            # convert to upper
-        if (   $mountdirectory ne "1"
+        $mountdirectory =~ tr/a-z/A-Z/;    # convert to upper
+        if ($mountdirectory ne "1"
             && $mountdirectory ne "YES"
             && $mountdirectory ne "0"
             && $mountdirectory ne "NO")
-        {                                          # then tftphost is hostname
-                                                   # for the mount
-            $mountdirectory = "1";                 # and we mount the directory
+        {                                  # then tftphost is hostname
+                                           # for the mount
+            $mountdirectory = "1";         # and we mount the directory
         }
         else
         {
-            $tftphost = $master;                   # will mount master,if req
+            $tftphost = $master;           # will mount master,if req
         }
 
     }
+
     #$stab->close;
 
     # read tftpdir directory from database
@@ -1134,15 +1143,16 @@ sub setup_TFTP
             }
             system $cmd;
             if ($? > 0)
-            {                 # error
+            {    # error
                 $rc = 1;
                 xCAT::MsgUtils->message("S", "Error $cmd");
             }
         }
     }
     else
-    {                         #if not mounting, have to regenerate....
+    {            #if not mounting, have to regenerate....
         my $cmdref;
+
         # mknb is now run in xCATsn.spec
         #use xCAT_plugin::mknb;
         #for my $architecture ("ppc64", "x86", "x86_64")
@@ -1172,15 +1182,15 @@ sub setup_TFTP
                 push @tnodes, $_->{node};
             }
             my %hmhash =
-              %{$hmtab->getNodesAttribs(\@tnodes, [qw(node netboot)])};
+              %{ $hmtab->getNodesAttribs(\@tnodes, [qw(node netboot)]) };
             foreach (@tnodes)
             {
                 if ($hmhash{$_}->[0]->{netboot})
                 {
-                    push @{$netmethods{$hmhash{$_}->[0]->{netboot}}}, $_;
+                    push @{ $netmethods{ $hmhash{$_}->[0]->{netboot} } }, $_;
                 }
             }
-            $::DISABLENODESETWARNING=1;  # stop the warnings about using install/netboot etc
+            $::DISABLENODESETWARNING = 1; # stop the warnings about using install/netboot etc
             $cmdref->{command}->[0]  = "nodeset";
             $cmdref->{inittime}->[0] = "1";
             $cmdref->{arg}->[0]      = "enact";
@@ -1206,12 +1216,12 @@ sub setup_TFTP
 
             # update fstab so that it will restart on reboot
             $cmd =
-              "fgrep \"$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
+"fgrep \"$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
             xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)    # not already there
             {
 
-                `echo "$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+`echo "$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
             }
         }
     }
@@ -1245,7 +1255,7 @@ sub setup_HTTP
         #{
         #    $rc = xCAT::Utils->startService("httpd");
         #}
-        $rc=xCAT::Utils->startservice("http");
+        $rc = xCAT::Utils->startservice("http");
     }
     return $rc;
 }
@@ -1261,145 +1271,155 @@ sub setup_HTTP
 #-----------------------------------------------------------------------------
 sub enable_TFTPhpa
 {
-  # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
-  unless (-x "/usr/sbin/in.tftpd" and ( -e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa" )) {
-    xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
-    return 1;
-  }
-
-  # kill the process of atftp if it's there
-  my @output = xCAT::Utils->runcmd("ps -ef | grep atftpd | grep -v grep", -1);
-  foreach my $ps (@output) {
-    $ps =~ s/^\s+//;    # strip any leading spaces
-    my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
-    system("kill -9 $pid >/dev/null 2>&1");
-  }
-
-  # read tftpdir directory from database
-  my $tftpdir = xCAT::TableUtils->getTftpDir();
-  if (!(-e $tftpdir)) {
-    mkdir($tftpdir);
-  }
-
-  # The location of tftp mapfile
-  my $mapfile = "/etc/tftpmapfile4xcat.conf";
-  if (! -e "$mapfile") {
-    if (! open (MAPFILE, ">$mapfile")) {
-      xCAT::MsgUtils->message("S", "ERROR: Cannot open $mapfile.");
-      return 1;
+    # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
+    unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
+        xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
+        return 1;
     }
-    # replace the \ with /
-    print MAPFILE 'rg (\\\) \/';
-    close (MAPFILE);
-  }
 
-  my $distro = xCAT::Utils->osver();
-  if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i ){
-    if (! open (FILE, "</etc/xinetd.d/tftp")) {
-      xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
-      return 1;
+    # kill the process of atftp if it's there
+    my @output = xCAT::Utils->runcmd("ps -ef | grep atftpd | grep -v grep", -1);
+    foreach my $ps (@output) {
+        $ps =~ s/^\s+//;    # strip any leading spaces
+        my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
+        system("kill -9 $pid >/dev/null 2>&1");
+    }
+
+    # read tftpdir directory from database
+    my $tftpdir = xCAT::TableUtils->getTftpDir();
+    if (!(-e $tftpdir)) {
+        mkdir($tftpdir);
     }
 
     # The location of tftp mapfile
     my $mapfile = "/etc/tftpmapfile4xcat.conf";
-    my $recfg = 0;
-    my @newcfgfile;
-    # Check whether need to reconfigure the /etc/xinetd.d/tftp
-    while (<FILE>) {
-      # check the configuration of 'server_args = -s /xx -m xx'  entry
-      if (/^\s*server_args\s*=(.*)$/) {
-        my $cfg_args = $1;
-        # handle the -s option for the location of tftp root dir
-        if ($cfg_args =~ /-s\s+([^\s]*)/) {
-          my $cfgdir = $1;
-          $cfgdir =~ s/\$//;
-          $tftpdir =~ s/\$//;
-          # make sure the tftp dir should comes from the site.tftpdir
-          if ($cfgdir ne $tftpdir) {
-            $recfg = 1;
-          }
+    if (!-e "$mapfile") {
+        if (!open(MAPFILE, ">$mapfile")) {
+            xCAT::MsgUtils->message("S", "ERROR: Cannot open $mapfile.");
+            return 1;
         }
-        # handle the -m option for the mapfile
-        if ($cfg_args !~ /-m\s+([^\s]*)/) {
-          $recfg = 1;
+
+        # replace the \ with /
+        print MAPFILE 'rg (\\\) \/';
+        close(MAPFILE);
+    }
+
+    my $distro = xCAT::Utils->osver();
+    if ($distro !~ /ubuntu.*/i && $distro !~ /debian.*/i) {
+        if (!open(FILE, "</etc/xinetd.d/tftp")) {
+            xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp.");
+            return 1;
         }
+
+        # The location of tftp mapfile
+        my $mapfile = "/etc/tftpmapfile4xcat.conf";
+        my $recfg   = 0;
+        my @newcfgfile;
+
+        # Check whether need to reconfigure the /etc/xinetd.d/tftp
+        while (<FILE>) {
+
+            # check the configuration of 'server_args = -s /xx -m xx'  entry
+            if (/^\s*server_args\s*=(.*)$/) {
+                my $cfg_args = $1;
+
+                # handle the -s option for the location of tftp root dir
+                if ($cfg_args =~ /-s\s+([^\s]*)/) {
+                    my $cfgdir = $1;
+                    $cfgdir =~ s/\$//;
+                    $tftpdir =~ s/\$//;
+
+                    # make sure the tftp dir should comes from the site.tftpdir
+                    if ($cfgdir ne $tftpdir) {
+                        $recfg = 1;
+                    }
+                }
+
+                # handle the -m option for the mapfile
+                if ($cfg_args !~ /-m\s+([^\s]*)/) {
+                    $recfg = 1;
+                }
+                if ($recfg) {
+
+                    # regenerate the entry for server_args
+                    my $newcfg = $_;
+                    $newcfg =~ s/=.*$/= -s $tftpdir -m $mapfile/;
+                    push @newcfgfile, $newcfg;
+                } else {
+                    push @newcfgfile, $_;
+                }
+            } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*yes/) {
+
+                # disable the tftp by handling the entry 'disable = yes'
+                my $newcfg = $_;
+                $newcfg =~ s/=.*$/= yes/;
+                push @newcfgfile, $newcfg;
+                $recfg = 1;
+            } else {
+                push @newcfgfile, $_;
+            }
+        }
+        close(FILE);
+
+        # reconfigure the /etc/xinetd.d/tftp
         if ($recfg) {
-          # regenerate the entry for server_args
-          my $newcfg = $_;
-          $newcfg =~ s/=.*$/= -s $tftpdir -m $mapfile/;
-          push @newcfgfile, $newcfg;
-        } else {
-          push @newcfgfile, $_;
+            if (!open(FILE, ">/etc/xinetd.d/tftp")) {
+                xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp");
+                return 1;
+            }
+            print FILE @newcfgfile;
+            close(FILE);
+
+            #my @output = xCAT::Utils->runcmd("service xinetd status", -1);
+            #if ($::RUNCMD_RC == 0) {}
+            my $retcode = xCAT::Utils->checkservicestatus("xinetd");
+            if ($retcode == 0) {
+                my $retcode = xCAT::Utils->restartservice("xinetd");
+                if ($retcode != 0)
+                {
+                    xCAT::MsgUtils->message("S",
+                        "Error on restart xinetd\n");
+
+                }
+
+                #if (grep(/running/, @output))
+                #{
+                #  print ' ';              # indent service output to separate it from the xcatd service output
+                #  system "service xinetd stop";
+                #  if ($? > 0)
+                #  {    # error
+                #      xCAT::MsgUtils->message("S",
+                #                                "Error on command: service xinetd stop\n");
+                #  }
+                #  system "service xinetd start";
+                #  if ($? > 0)
+                #  {    # error
+                #      xCAT::MsgUtils->message("S",
+                #                                "Error on command: service xinetd start\n");
+                #  }
+                #}
+            }
         }
-      } elsif (/^\s*disable\s*=/ && !/^\s*disable\s*=\s*yes/) {
-        # disable the tftp by handling the entry 'disable = yes'
-        my $newcfg = $_;
-        $newcfg =~ s/=.*$/= yes/;
-        push @newcfgfile, $newcfg;
-        $recfg = 1;
-      } else {
-        push @newcfgfile, $_;
-      }
     }
-    close (FILE);
 
-    # reconfigure the /etc/xinetd.d/tftp
-    if ($recfg) {
-      if (! open (FILE, ">/etc/xinetd.d/tftp")) {
-        xCAT::MsgUtils->message("S", "ERROR: Cannot open /etc/xinetd.d/tftp");
-        return 1;
-      }
-      print FILE @newcfgfile;
-      close (FILE);
-      #my @output = xCAT::Utils->runcmd("service xinetd status", -1);
-      #if ($::RUNCMD_RC == 0) {}
-      my $retcode=xCAT::Utils->checkservicestatus("xinetd");
-      if($retcode==0){
-        my $retcode=xCAT::Utils->restartservice("xinetd");
-        if($retcode !=0 )
-          {
-              xCAT::MsgUtils->message("S",
-                                        "Error on restart xinetd\n");
-    
-          }
-        #if (grep(/running/, @output))
-        #{
-        #  print ' ';              # indent service output to separate it from the xcatd service output
-        #  system "service xinetd stop";
-        #  if ($? > 0)
-        #  {    # error
-        #      xCAT::MsgUtils->message("S",
-        #                                "Error on command: service xinetd stop\n");
-        #  }
-        #  system "service xinetd start";
-        #  if ($? > 0)
-        #  {    # error
-        #      xCAT::MsgUtils->message("S",
-        #                                "Error on command: service xinetd start\n");
-        #  }
-        #}
-      }
+    # get the version of TCP/IP protocol
+    my $protocols;
+    my $v4only = "-4 ";
+    if (xCAT::Utils->osver() =~ /^sle[sc]10/) {
+        $v4only = "";
     }
-  }
 
-  # get the version of TCP/IP protocol
-  my $protocols;
-  my $v4only="-4 ";
-  if (xCAT::Utils->osver() =~ /^sle[sc]10/) {
-      $v4only = "";
-  }
-
-  open($protocols,"<","/proc/net/protocols");
-  if ($protocols) {
-	my $line;
-	while ($line = <$protocols>) {
-		if ($line =~ /^TCPv6/) {
-			$v4only="";
-			last;
-		}
-	}
+    open($protocols, "<", "/proc/net/protocols");
+    if ($protocols) {
+        my $line;
+        while ($line = <$protocols>) {
+            if ($line =~ /^TCPv6/) {
+                $v4only = "";
+                last;
+            }
+        }
     } else {
-	$v4only="";
+        $v4only = "";
     }
 
     # get the tftpflags which set by customer
@@ -1411,31 +1431,43 @@ sub enable_TFTPhpa
 
 
     if (-x "/usr/sbin/in.tftpd") {
-	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
-    if ($distro =~ /ubuntu.*/i){
-        sleep 1;
-        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
-        if (@checkproc){
-            system("stop tftpd-hpa");
+        system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
+        if ($distro =~ /ubuntu.*/i || $distro =~ /debian.*/i) {
+            sleep 1;
+            my @checkproc = `ps axf|grep -v grep|grep in.tftpd`;
+            if (@checkproc) {
+                xCAT::Utils->stopservice("tftpd-hpa");
+            }
         }
-    }
 
-    if ($distro =~ /debian.*/i){
-        sleep 1;
-        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
-        if (@checkproc){
-            #system("service tftpd-hpa stop");
-            xCAT::Utils->stopservice("tftpd-hpa");
+        my @tftpprocpids = `ps axf | grep -v 'awk /in.tftpd/' | awk '/in.tftpd/ {print \$1}'`;
+        if (@tftpprocpids) {
+            my %pids_map;
+            my $count = 0;
+            map { chomp; $pids_map{$_} = 1 } @tftpprocpids;
+            while (keys %pids_map) {
+                foreach my $pid (keys %pids_map) {
+                    if (xCAT::Utils::is_process_exists($pid)) {
+                        $count++;
+                        if ($count == 5) {
+                            my $tftpinfo = `ps axf|grep -v grep|grep in.tftpd`;
+                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process $pid [$tftpinfo] in 5 seconds, stop it again.");
+                            system("killall -s KILL in.tftpd");
+                        }
+                        if ($count > 10) {
+                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process in 10 seconds.");
+                            return 1;
+                        }
+                        sleep 1;
+                    } else {
+                        delete $pids_map{$pid}
+                    }
+                }
+            }
         }
-    }
-    my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
-	while (@tftpprocs) {
-		sleep 0.1;
-	}
         system("$startcmd");
     }
-
-  return 0;
+    return 0;
 }
 
 # enable or disable proxydhcp service
@@ -1443,8 +1475,9 @@ sub setup_proxydhcp {
     my $flag = shift;
 
     my $pid;
+
     # read the pid of proxydhcp
-    if (open (PIDF, "</var/run/xcat/proxydhcp-xcat.pid")) {
+    if (open(PIDF, "</var/run/xcat/proxydhcp-xcat.pid")) {
         $pid = <PIDF>;
     }
     close(PIDF);
@@ -1456,7 +1489,7 @@ sub setup_proxydhcp {
 
     # start the proxydhcp daemon if it's set to enable
     if ($flag) {
-        system ("/opt/xcat/sbin/proxydhcp-xcat -d");
+        system("/opt/xcat/sbin/proxydhcp-xcat -d");
     }
 }
 

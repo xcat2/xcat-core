@@ -28,6 +28,12 @@ if [[ $TFTPDIR != /* ]]; then
     TFTPDIR="/"$TFTPDIR
 fi
 
+
+(cat  << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
+EOF
+) >/tmp/updateflag
+
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
@@ -38,7 +44,7 @@ sleep $RAND
 # Stop if no openssl to help the next bit
 if [ ! -x /usr/bin/openssl ]; then
     msgutil_r "$MASTER_IP" "debug" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 
@@ -47,8 +53,21 @@ if [ ! -f /opt/xcat/xcatinfo ]; then
     mkdir -p /opt/xcat
     touch /opt/xcat/xcatinfo
 fi
-echo "XCATSERVER=$MASTER_IP" > /opt/xcat/xcatinfo
-echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+
+grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/XCATSERVER=.*/XCATSERVER=$MASTER_IP/" /opt/xcat/xcatinfo
+else
+    echo "XCATSERVER=$MASTER_IP" >> /opt/xcat/xcatinfo
+fi
+
+grep 'INSTALLDIR' /opt/xcat/xcatinfo > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    sed -i "s/INSTALLDIR=.*/INSTALLDIR=$INSTALLDIR/" /opt/xcat/xcatinfo
+else
+    echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+fi
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log"
 fi
@@ -62,14 +81,14 @@ fi
 # Stop if no wget to help the next bit
 if [ ! -x /usr/bin/wget ]; then
     msgutil_r "$MASTER_IP" "debug" "/usr/bin/wget does not exist, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 
 wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost
 if [ "$?" != "0" ]; then
     msgutil_r "$MASTER_IP" "debug" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
 chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
@@ -113,7 +132,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
     # Stop if no getpostscript.awk to help the next bit
     if [ ! -x /xcatpost/getpostscript.awk ]; then
         msgutil_r "$MASTER_IP" "debug" "/xcatpost/getpostscript.awk does not exist, halt ..." "/var/log/xcat/xcat.log"
-        updateflag $MASTER $XCATIPORT "installstatus failed"
+        /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
         sleep 36500d
     fi
     /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
@@ -214,7 +233,7 @@ fi
 chmod +x /xcatpost/mypostscript
 if [ ! -x /xcatpost/mypostscript ]; then
     msgutil_r "$MASTER_IP" "debug" "generate mypostscript file failure, halt ..." "/var/log/xcat/xcat.log"
-    updateflag $MASTER $XCATIPORT "installstatus failed"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 else
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
@@ -366,6 +385,16 @@ if [[ $OSVER == ubuntu* ]]; then
     elif [[ -r /boot/grub/grub.cfg ]] ; then
         update-grub
     fi
+    
+    #print the kernel messages and service start messages with systemd on the console during system bootup
+    [ -f /etc/default/grub ] && sed -i -e '/GRUB_CMDLINE_LINUX_DEFAULT=/s/quiet//;s/splash//' -e '/#GRUB_TERMINAL=/s/#//' -e 's/#GRUB_GFXMODE=.*/GRUB_GFXMODE=text/' /etc/default/grub && update-grub
+
+    if echo "$ARCH" | grep -i 'x86_64'; then
+        #grab the install-time console configuration from /proc/cmdline inside os installer
+        CONSOLECFG=$(awk 'BEGIN{RS="[ \n]" ;ORS=" "} $0 ~ /^console=/{print $0}' /proc/cmdline)
+        #if the console configuration is not applied to the grub configuration,apply it 
+        cat /boot/grub/grub.cfg |grep "$CONSOLECFG" >/dev/null 2>&1 || ([ -f /etc/default/grub ] && sed -i -e "/GRUB_CMDLINE_LINUX_DEFAULT=/s/=\"/=\" $CONSOLECFG /" /etc/default/grub && update-grub)
+    fi 
     if echo "$ARCH" | grep -i 'ppc64'; then
         if [ -z "$CONSOLEPORT" ] ; then
             export CONSOLEPORT=0

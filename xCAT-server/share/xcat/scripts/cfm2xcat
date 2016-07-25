@@ -44,9 +44,9 @@ my $rc = 0;
 
 if (
     !GetOptions(
-                'h|help'     => \$help,
-                'i|input=s'  => \$input,
-                'o|output=s' => \$output,
+        'h|help'     => \$help,
+        'i|input=s'  => \$input,
+        'o|output=s' => \$output,
     )
   )
 {
@@ -72,7 +72,7 @@ if (!($output))
 
 # call cfmupdatenode and build cfm distribution files
 &buildcfmdistfiles($input);
-if (-e ($input))  # if anything built
+if (-e ($input))    # if anything built
 {
 
     # build the xcat sync files
@@ -81,7 +81,7 @@ if (-e ($input))  # if anything built
     if ($rc == 0)
     {
         print
-          "Conversion finished, please carefully review $output files! Make sure that all the files list to sync to the nodes are relevant and available on the xCAT system in the directory indicated. \n";
+"Conversion finished, please carefully review $output files! Make sure that all the files list to sync to the nodes are relevant and available on the xCAT system in the directory indicated. \n";
     }
     else
     {
@@ -200,12 +200,12 @@ sub buildxcatsyncfile_new {
             if ($line =~ /^#/) {    # skip commments
                 next;
             }
-            if ($line =~ /.runclocal/) {   # skip sending runclocal
+            if ($line =~ /.runclocal/) {    # skip sending runclocal
                 next;
             }
-            my ($sourcefile, $rest)     = split("->",      $line);
-            my ($tmpnodes,   $destfile) = split("install", $rest);
-            my ($root2, $strippeddestfile) = split("cfmlocal", $destfile);
+            my ($sourcefile, $rest)             = split("->",       $line);
+            my ($tmpnodes,   $destfile)         = split("install",  $rest);
+            my ($root2,      $strippeddestfile) = split("cfmlocal", $destfile);
             chomp $strippeddestfile;
             chop $strippeddestfile;
             $destfile = $strippeddestfile;
@@ -220,6 +220,7 @@ sub buildxcatsyncfile_new {
             my $goodnr = "";
             foreach my $node (@nodes) {
                 if ($node !~ /^\s*$/) {
+
                     #skip blanks
                     my @shorthost = split(/\./, $node);
                     $goodnr .= $shorthost[0];
@@ -235,12 +236,12 @@ sub buildxcatsyncfile_new {
     }
 
     open(XCATSF, "> $xcatfile")
-              or die "Can't open $xcatfile for writing: $!";
+      or die "Can't open $xcatfile for writing: $!";
 
     foreach (@xcatsyncfile) {
-        print XCATSF $_."\n";
+        print XCATSF $_ . "\n";
     }
-    close (XCATSF);
+    close(XCATSF);
 
     return 0;
 }
@@ -383,7 +384,7 @@ sub buildxcatrsyncfiles
           or die "Can't open $newxcatfile for writing: $!";
         my $srcfile;
         my $destfile;
-        foreach my $sourcefile (keys %{$noderangequeue{$noderange}{'files'}})
+        foreach my $sourcefile (keys %{ $noderangequeue{$noderange}{'files'} })
         {
             $srcfile  = $sourcefile;
             $destfile = $noderangequeue{$noderange}{'files'}{$sourcefile};
@@ -438,7 +439,7 @@ sub usage
       "\t-o - Complete Path to the xCAT xdcp rsync input file(s) created from.";
     print "                the CFM file. Be sure directory exists.\n";
     print
-      "    Example: cfm2xcat -i /tmp/migration/cfmfiles -o /tmp/migration/xdcpfiles.";
+"    Example: cfm2xcat -i /tmp/migration/cfmfiles -o /tmp/migration/xdcpfiles.";
     print "\n";
     return;
 }

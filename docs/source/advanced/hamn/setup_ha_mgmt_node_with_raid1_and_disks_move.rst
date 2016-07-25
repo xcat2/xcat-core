@@ -1,4 +1,4 @@
-.. _setup_ha_mgmt_node_with_raid1_and disks_move:
+.. _setup_ha_mgmt_node_with_raid1_and_disks_move:
 
 Setup HA Mgmt Node With RAID1 and disks move
 ============================================

@@ -121,7 +121,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -276,7 +275,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
-runcmdinstaller
+runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
@@ -303,3 +302,4 @@ reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
 redhat_migration1
 redhat_migration2
+clean_up_env

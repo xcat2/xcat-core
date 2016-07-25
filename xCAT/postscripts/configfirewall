@@ -16,7 +16,7 @@ $Getopt::Long::ignorecase = 0;
 
 my @allowed_ports = ("22", "53", "69", "80", "443", "873", "3001", "3002");
 
-if(scalar(@ARGV) == 0)
+if (scalar(@ARGV) == 0)
 {
     &usage();
     exit 0;
@@ -24,10 +24,10 @@ if(scalar(@ARGV) == 0)
 
 if (
     !GetOptions(
-                'private=s'     => \$::opt_private,
-                'public=s'  => \$::opt_public,
-                'nat'  => \$::opt_nat,
-                'ports=s'  => \$::opt_ports,
+        'private=s' => \$::opt_private,
+        'public=s'  => \$::opt_public,
+        'nat'       => \$::opt_nat,
+        'ports=s'   => \$::opt_ports,
     )
   )
 {
@@ -37,14 +37,15 @@ if (
 }
 
 # Invalid input arguments
-if(scalar(@ARGV) > 0)
+if (scalar(@ARGV) > 0)
 {
     print "Unknown options @ARGV\n";
     &usage();
     exit 1;
 }
+
 # --private and --public must be used together
-if(($::opt_private && !$::opt_public) || (!$::opt_private && $::opt_public))
+if (($::opt_private && !$::opt_public) || (!$::opt_private && $::opt_public))
 {
     print "Flags --private and --public must be used together\n";
     &usage();
@@ -74,48 +75,48 @@ if ($::opt_ports)
 if (-f "/etc/redhat-release")
 {
 
-    #From Redhat7, firewalld is used as the default firewall service, 
-    #however, it does not support complex firewall rules. 
+    #From Redhat7, firewalld is used as the default firewall service,
+    #however, it does not support complex firewall rules.
     #So we'd better disable firewalld and use iptables service
     #iptables service is shiped in iptables-services package in rhels7 iso,
     #which is not installed by default, it should be installed
 
-    if ( -f "/usr/lib/systemd/system/firewalld.service" ){
-          if (system("systemctl is-active firewalld > /dev/null 2>&1") == 0){
-             print "firewalld is running, stopping firewalld service \n";
-             if(system ("service firewalld stop") ==0 )
-                {
-                   print "\n[success]\n";
-                }
-             else
-                {
-                   print "\n[failed]\n";
-                   exit 1
-                }
-          }
+    if (-f "/usr/lib/systemd/system/firewalld.service") {
+        if (system("systemctl is-active firewalld > /dev/null 2>&1") == 0) {
+            print "firewalld is running, stopping firewalld service \n";
+            if (system("service firewalld stop") == 0)
+            {
+                print "\n[success]\n";
+            }
+            else
+            {
+                print "\n[failed]\n";
+                exit 1
+            }
+        }
 
-          if (system("systemctl is-enabled firewalld > /dev/null 2>&1") == 0){
-             print "disabling firewalld service \n";
-             if( system("systemctl disable firewalld") ==0)
-               {
-                   print "\n[success]\n";
-               }
-             else
-               {
-                   print "\n[failed]\n";
-                   exit 1
-               }
-          }
+        if (system("systemctl is-enabled firewalld > /dev/null 2>&1") == 0) {
+            print "disabling firewalld service \n";
+            if (system("systemctl disable firewalld") == 0)
+            {
+                print "\n[success]\n";
+            }
+            else
+            {
+                print "\n[failed]\n";
+                exit 1
+            }
+        }
     }
 
-    if ( (! -f "/usr/lib/systemd/system/iptables.service") && (! -f "/etc/init.d/iptables")){
-       print "please install iptables-services (for redhat 7) or iptables package first by running:\n";
-       print "on redhat7:\tyum install iptables-services\n";
-       print "    others:\tyum install iptables\n";
-       exit 1
+    if ((!-f "/usr/lib/systemd/system/iptables.service") && (!-f "/etc/init.d/iptables")) {
+        print "please install iptables-services (for redhat 7) or iptables package first by running:\n";
+        print "on redhat7:\tyum install iptables-services\n";
+        print "    others:\tyum install iptables\n";
+        exit 1
     }
 
-    if($::opt_private && $::opt_public)
+    if ($::opt_private && $::opt_public)
     {
         &setup_ip_forwarding();
         my $cmd = &generate_iptables_conf($::opt_private, $::opt_public);
@@ -146,13 +147,13 @@ elsif (-f "/etc/SuSE-release")
 {
     my $conffile;
     my $conf;
-    if($::opt_private && $::opt_public)
+    if ($::opt_private && $::opt_public)
     {
         &setup_ip_forwarding();
         $conffile = "/etc/sysconfig/SuSEfirewall2";
         my @privates = split /,/, $::opt_private;
         my $privintf = join(' ', @privates);
-        
+
         # Configuration content
         # if the public and private interface is the same,
         # do not set FW_DEV_EXT
@@ -180,7 +181,7 @@ elsif (-f "/etc/SuSE-release")
     print CONFFILE $conf;
     close(CONFFILE);
 
-    # restart firewall 
+    # restart firewall
     #my $cmd = "service SuSEfirewall2_setup restart";
     #system($cmd);
     xCAT::Utils->restartservice("firewall");
@@ -196,7 +197,7 @@ elsif (system("grep -i ubuntu /etc/issue > /dev/null 2>&1") == 0)
 {
     my $fwconf = "/etc/fwrules.ubuntu";
 
-    if($::opt_private && $::opt_public)
+    if ($::opt_private && $::opt_public)
     {
         &setup_ip_forwarding();
         my $cmd = &generate_iptables_conf($::opt_private, $::opt_public);
@@ -231,7 +232,7 @@ exit 0;
 
 sub usage()
 {
-        print "Usage:\n    configfirewall --private <private_interfaces> --public <pubic_interface> [--nat] [--ports <ports_allowed>]\n";
+    print "Usage:\n    configfirewall --private <private_interfaces> --public <pubic_interface> [--nat] [--ports <ports_allowed>]\n";
 }
 
 sub generate_iptables_conf()
@@ -252,7 +253,8 @@ sub generate_iptables_conf()
         $cmd .= "iptables -A INPUT -i $publicintf -m state --state NEW -p tcp --dport $port -j ACCEPT;";
         $cmd .= "iptables -A INPUT -i $publicintf -m state --state NEW -p udp --dport $port -j ACCEPT;";
     }
-    # Reject settings for public interface 
+
+    # Reject settings for public interface
     $cmd .= "iptables -A INPUT -i $publicintf -j REJECT --reject-with icmp-port-unreachable;";
 
     # Setup for private interfaces
@@ -266,21 +268,22 @@ sub generate_iptables_conf()
 sub setup_ip_forwarding()
 {
     # Enable ip forwarding
-    my $conf_file="/etc/sysctl.conf";
+    my $conf_file = "/etc/sysctl.conf";
     `grep "net.ipv4.ip_forward" $conf_file`;
     if ($? == 0) {
-        `sed -i "s/^net.ipv4.ip_forward = .*/net.ipv4.ip_forward = 1/" $conf_file`;
+`sed -i "s/^net.ipv4.ip_forward = .*/net.ipv4.ip_forward = 1/" $conf_file`;
     } else {
         `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
     }
     `sysctl -e -p $conf_file`;
 }
+
 sub generate_nat_conf()
 {
     my ($privintf, $pubintf) = @_;
 
     my $cmd;
-    my @privates = split /,/, $privintf; 
+    my @privates = split /,/, $privintf;
 
     # Setup forward for public interface
     $cmd .= "iptables -t nat -A POSTROUTING -o $pubintf -j MASQUERADE;";
@@ -289,7 +292,7 @@ sub generate_nat_conf()
     foreach my $intf (@privates)
     {
         $cmd .= "iptables -A FORWARD -i $intf -j ACCEPT;";
-        $cmd .= "iptables -A FORWARD -i $intf -o $pubintf -m state --state RELATED,ESTABLISHED -j ACCEPT;"; 
+        $cmd .= "iptables -A FORWARD -i $intf -o $pubintf -m state --state RELATED,ESTABLISHED -j ACCEPT;";
     }
     return $cmd;
 }

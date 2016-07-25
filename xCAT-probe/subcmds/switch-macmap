@@ -1,0 +1,131 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use Cwd 'abs_path';
+use Cwd;
+use File::Basename;
+use File::Path;
+use probe_utils;
+use Getopt::Long qw(:config no_ignore_case);
+
+my $proname = basename("$0");
+my $currdir = dirname(abs_path($0));
+my $output  = "stdout";
+
+$::USAGE = "Usage:
+    $proname -h
+    $proname -T
+    $proname  <noderange> [-c] [-V]
+
+Description:
+    To retrieve MAC address mapping for the specified switch, or all the switches defined in switches table in xCAT db.
+
+Options:
+    -T: Check whether this script is OK to run.
+    -c: To check whether the switch is OK to retrieve MAC address mapping.
+    -V: Output verbose information when accessing switch
+";
+
+my $help;
+my $test;
+my $check;
+my @nodes   = ();
+my $verbose = '';
+if (!GetOptions("help|h" => \$help,
+        "T" => \$test,
+        "c" => \$check,
+        "V" => \$verbose)) {
+    probe_utils->send_msg("$output", "f", "Option not support");
+    probe_utils->send_msg("$output", "d", $::USAGE);
+    exit 1;
+}
+foreach (@ARGV) {
+    if (/^-\w*/) {
+        probe_utils->send_msg("$output", "f", "Option $_ not support");
+        exit 1;
+    } else {
+        push @nodes, $_;
+    }
+}
+if ($help) {
+    probe_utils->send_msg("$output", "d", $::USAGE);
+    exit 0;
+}
+
+if (!-d "$currdir/bin") {
+    mkpath("$currdir/bin/");
+}
+if (!-e "$currdir/bin/switchprobe") {
+    link("$::XCATROOT/bin/xcatclient", "$currdir/bin/switchprobe");
+}
+
+if ($test) {
+    `$currdir/bin/switchprobe -h`;
+    if ($?) {
+        probe_utils->send_msg("$output", "f", "No switchprobe tool is available at $currdir/bin/");
+        exit 1;
+    } else {
+        probe_utils->send_msg("$output", "o", "To retrieve MAC address mapping for the specified switch, or all the switches defined in switches table in xCAT db.");
+        exit 0;
+    }
+}
+if ($verbose) {
+    $verbose = "-V";
+}
+my $noderange   = join(',', @nodes);
+my $normal_file = "/tmp/result_normal";
+my $error_file  = "/tmp/result_error";
+if (-f $normal_file) {
+    unlink($normal_file);
+}
+if (-f $error_file) {
+    unlink($error_file);
+}
+if ($check) {
+`$currdir/bin/switchprobe $noderange -c $verbose >$normal_file 2>$error_file`;
+}
+else {
+    `$currdir/bin/switchprobe $noderange $verbose >$normal_file 2>$error_file`;
+}
+if (-f $error_file) {
+    `cat $error_file >> $normal_file`;
+}
+my $fd;
+open($fd, "<", "$normal_file");
+my @fails = ();
+
+# There is 2 kinds of error message:
+# 1. Error: The nodetype is not 'switch' for nodes: switch1
+#    Error: No switch configuration info find for switch-10-5-23-1
+# 2. switch-10-5-23-1: Error: Timeout
+foreach (<$fd>) {
+    chomp($_);
+    if (/Error:/) {
+        if (/^(\S*):\s*Error:\s*(.*)/) {
+            push @fails, "$1 - $2";
+        } elsif (/^Error:\s*(.*)/) {
+            push @fails, $1;
+        } else {
+            push @fails, $_;
+        }
+    }
+    elsif (/^(\S*):\s*PASS/) {
+        probe_utils->send_msg("$output", "o", "$1");
+    }
+    else {
+        probe_utils->send_msg("$output", "d", $_);
+    }
+}
+close($fd);
+if (-f $normal_file) {
+    unlink($normal_file);
+}
+if (-f $error_file) {
+    unlink($error_file);
+}
+foreach (@fails) {
+    probe_utils->send_msg("$output", "f", "$_");
+}
+exit 0;

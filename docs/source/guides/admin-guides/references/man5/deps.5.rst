@@ -56,7 +56,7 @@ deps Attributes:
 
 \ **cmd**\ 
  
- Comma-seperated list of which operation this dependency applies to.
+ Comma-separated list of which operation this dependency applies to.
  
 
 

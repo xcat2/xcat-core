@@ -44,7 +44,7 @@ mp Attributes:
 
 \ **mpa**\ 
  
- The managment module used to control this blade.
+ The management module used to control this blade.
  
 
 

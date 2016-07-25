@@ -30,18 +30,18 @@ use warnings;
 sub getUserId {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
 
     # Get user ID using VMCP
-    my $out     = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q userid"`;
-    my @results = split( ' ', $out );
+    my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q userid"`;
+    my @results = split(' ', $out);
 
-    return ( $results[0] );
+    return ($results[0]);
 }
 
 #-------------------------------------------------------
@@ -60,16 +60,16 @@ sub getUserId {
 sub getHost {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
 
     # Get host using VMCP
-    my $out     = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q userid"`;
-    my @results = split( ' ', $out );
+    my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q userid"`;
+    my @results = split(' ', $out);
     my $host    = $results[2];
 
     return ($host);
@@ -91,8 +91,8 @@ sub getHost {
 sub getPrivileges {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -100,9 +100,9 @@ sub getPrivileges {
 
     # Get privilege class
     my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q priv"`;
-    my @out = split( '\n', $out );
-    $out[1] = xCAT::zvmUtils->trimStr( $out[1] );
-    $out[2] = xCAT::zvmUtils->trimStr( $out[2] );
+    my @out = split('\n', $out);
+    $out[1] = xCAT::zvmUtils->trimStr($out[1]);
+    $out[2] = xCAT::zvmUtils->trimStr($out[2]);
     my $str = "    $out[1]\n    $out[2]\n";
 
     return ($str);
@@ -124,8 +124,8 @@ sub getPrivileges {
 sub getMemory {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -133,9 +133,9 @@ sub getMemory {
 
     # Get memory
     my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q virtual storage"`;
-    my @out = split( ' ', $out );
+    my @out = split(' ', $out);
 
-    return ( xCAT::zvmUtils->trimStr( $out[2] ) );
+    return (xCAT::zvmUtils->trimStr($out[2]));
 }
 
 
@@ -156,8 +156,8 @@ sub getMemory {
 sub getCpu {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -186,8 +186,8 @@ sub getCpu {
 sub getNic {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -216,8 +216,8 @@ sub getNic {
 sub getNetworkNames {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -225,26 +225,26 @@ sub getNetworkNames {
 
     # Get network names
     my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q lan | egrep 'LAN|VSWITCH'"`;
-    my @lines = split( '\n', $out );
+    my @lines = split('\n', $out);
     my @parms;
     my $names;
     foreach (@lines) {
-        
+
         # Trim output
-        $_     = xCAT::zvmUtils->trimStr($_);
-        @parms = split( ' ', $_ );
-        
+        $_ = xCAT::zvmUtils->trimStr($_);
+        @parms = split(' ', $_);
+
         # Get the network name
-        if ( $parms[0] eq "LAN" ) {
-            
+        if ($parms[0] eq "LAN") {
+
             # Determine if this network is a hipersocket
             # Only hipersocket guest LANs are supported
-            if ( $_ =~ m/Type: HIPERS/i ) {
+            if ($_ =~ m/Type: HIPERS/i) {
                 $names .= $parms[0] . ":HIPERS " . $parms[1] . " " . $parms[2] . "\n";
             } else {
                 $names .= $parms[0] . ":QDIO " . $parms[1] . " " . $parms[2] . "\n";
             }
-        } elsif ( $parms[0] eq "VSWITCH" ) {
+        } elsif ($parms[0] eq "VSWITCH") {
             $names .= $parms[0] . " " . $parms[1] . " " . $parms[2] . "\n";
         }
     }
@@ -268,44 +268,46 @@ sub getNetworkNames {
 sub getNetworkNamesArray {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
+    my ($class, $user, $node) = @_;
     my @networks;
     my %netHash;
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     # Get the networks used by the node
-    my $out   = `ssh $user\@$node "$sudo /sbin/vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-    my @lines = split( '\n', $out );
-    
+    my $out = `ssh $user\@$node "$sudo /sbin/vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+    my @lines = split('\n', $out);
+
     # Loop through each line
     my $line;
     my @words;
     my $name;
-    foreach(@lines) {
+    foreach (@lines) {
+
         # Get network name
         # Line should contain: MAC: 02-00-01-00-00-12 VSWITCH: SYSTEM VSW1
-        $line = xCAT::zvmUtils->trimStr( $_ );
-        @words = split( ' ', $line );
+        $line = xCAT::zvmUtils->trimStr($_);
+        @words = split(' ', $line);
         if (@words) {
-            $name = xCAT::zvmUtils->trimStr( $words[4] );
-        
+            $name = xCAT::zvmUtils->trimStr($words[4]);
+
             # If network is not 'None'
             if ($name ne 'None') {
+
                 # Save network
                 $netHash{$name} = 1;
             }
         }
     }
-    
+
     # Push networks into array
-    foreach $name ( keys %netHash ) {
+    foreach $name (keys %netHash) {
         push(@networks, $name);
     }
-            
+
     return @networks;
 }
 
@@ -326,16 +328,16 @@ sub getNetworkNamesArray {
 sub getNetwork {
 
     # Get inputs
-    my ( $class, $user, $node, $netName ) = @_;
+    my ($class, $user, $node, $netName) = @_;
 
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     # Get network info
     my $out;
-    if ( $netName eq "all" ) {
+    if ($netName eq "all") {
         $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q lan"`;
     } else {
         $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q lan $netName"`;
@@ -360,8 +362,8 @@ sub getNetwork {
 sub getDisks {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -390,8 +392,8 @@ sub getDisks {
 sub loadVmcp {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -418,8 +420,8 @@ sub loadVmcp {
 sub getVswitchId {
 
     # Get inputs
-    my ( $class, $user, $node ) = @_;
-    
+    my ($class, $user, $node) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -427,12 +429,12 @@ sub getVswitchId {
 
     # Get VSwitch
     my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v nic" | grep "VSWITCH"`;
-    my @lines = split( '\n', $out );
+    my @lines = split('\n', $out);
     my @parms;
     my @vswitch;
     foreach (@lines) {
-        @parms = split( ' ', $_ );
-        push( @vswitch, $parms[4] );
+        @parms = split(' ', $_);
+        push(@vswitch, $parms[4]);
     }
 
     return @vswitch;
@@ -456,11 +458,11 @@ sub getVswitchId {
 sub grantVSwitch {
 
     # Get inputs
-    my ( $class, $callback, $user, $hcp, $userId, $vswitchId ) = @_;
-    
+    my ($class, $callback, $user, $hcp, $userId, $vswitchId) = @_;
+
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -473,7 +475,7 @@ sub grantVSwitch {
 
     # If return string contains 'Done' - Operation was successful
     my $retStr;
-    if ( $out =~ m/Done/i ) {
+    if ($out =~ m/Done/i) {
         $retStr = "Done\n";
     } else {
         $retStr = "Failed\n";
@@ -503,11 +505,11 @@ sub grantVSwitch {
 sub flashCopy {
 
     # Get inputs
-    my ( $class, $user, $hcp, $srcAddr, $tgtAddr ) = @_;
-    
+    my ($class, $user, $hcp, $srcAddr, $tgtAddr) = @_;
+
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
@@ -515,12 +517,12 @@ sub flashCopy {
 
     # Flash copy using CP
     my $out = `ssh $user\@$hcp "$sudo /sbin/vmcp flashcopy $srcAddr 0 end to $tgtAddr 0 end synchronous"`;
-    
+
     $out = xCAT::zvmUtils->trimStr($out);
 
     # If return string contains 'Command complete' - Operation was successful
     my $retStr = "";
-    if ( $out =~ m/Command complete/i ) {
+    if ($out =~ m/Command complete/i) {
         $retStr = "Copying data via CP FLASHCOPY... Done\n";
     } else {
         $out    = xCAT::zvmUtils->tabStr($out);
@@ -550,28 +552,28 @@ sub flashCopy {
 sub smapiFlashCopy {
 
     # Get inputs
-    my ( $class, $user, $hcp, $srcId, $srcAddr, $tgtId, $tgtAddr ) = @_;
-    
+    my ($class, $user, $hcp, $srcId, $srcAddr, $tgtId, $tgtAddr) = @_;
+
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
 
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
-        
+
     # Use SMAPI EXEC to flash copy
     my $cmd = '\"' . "CMD=FLASHCOPY $srcId $srcAddr 0 END $tgtId $tgtAddr 0 END" . '\"';
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $hcpUserId -c $cmd"`;
     xCAT::zvmUtils->printSyslog("smapiFlashCopy- ssh $user\@$hcp $sudo $dir/smcli xCAT_Commands_IUO -T $hcpUserId -c $cmd");
-        
+
     $out = xCAT::zvmUtils->trimStr($out);
 
     # If return string contains 'Done' - Operation was successful
     my $retStr = "";
-    if ( $out =~ m/Done/i ) {
+    if ($out =~ m/Done/i) {
         $retStr = "Copying data via SMAPI FLASHCOPY... Done\n";
     } else {
         $out    = xCAT::zvmUtils->tabStr($out);
@@ -599,30 +601,30 @@ sub smapiFlashCopy {
 
 #-------------------------------------------------------
 sub punch2Reader {
-    my ( $class, $user, $hcp, $userId, $srcFile, $tgtFile, $options ) = @_;
-    
+    my ($class, $user, $hcp, $userId, $srcFile, $tgtFile, $options) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     # Get source node OS
     my $os = xCAT::zvmUtils->getOsVersion($user, $hcp);
-            
+
     # Punch to reader
     # VMUR located in different directories on RHEL and SLES
     my $out;
-    if ( $os =~ m/sles10/i ) {
+    if ($os =~ m/sles10/i) {
         $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
-    } elsif ( $os =~ m/rhel/i ) {
-    	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
+    } elsif ($os =~ m/rhel/i) {
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
     } else {
-    	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
     }
-    
+
     # If punch is successful -- Look for this string
     my $searchStr = "created and transferred";
-    if ( !( $out =~ m/$searchStr/i ) ) {
+    if (!($out =~ m/$searchStr/i)) {
         $out = "Failed\n";
     } else {
         $out = "Done\n";
@@ -646,25 +648,27 @@ sub punch2Reader {
 
 #-------------------------------------------------------
 sub purgeReader {
-    my ( $class, $user, $hcp, $userId ) = @_;
-    
+    my ($class, $user, $hcp, $userId) = @_;
+
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     xCAT::zvmUtils->printSyslog("sudoer:$user zHCP:$hcp sudo:$sudo");
-    
+
     my $out;
     if (xCAT::zvmUtils->smapi4xcat($user, $hcp)) {
+
         # Use SMAPI EXEC to purge reader
         my $cmd = '\"' . "CMD=PURGE $userId RDR ALL" . '\"';
         $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd"`;
         xCAT::zvmUtils->printSyslog("smcli xCAT_Commands_IUO -T $userId -c $cmd");
     } else {
+
         # Purge reader using CP
         $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp purge $userId rdr all"`;
         xCAT::zvmUtils->printSyslog("/sbin/vmcp purge $userId rdr all");
@@ -689,25 +693,27 @@ sub purgeReader {
 
 #-------------------------------------------------------
 sub sendCPCmd {
-    my ( $class, $user, $hcp, $userId, $cmd ) = @_;
+    my ($class, $user, $hcp, $userId, $cmd) = @_;
 
     # Directory where executables are
     my $dir = '/opt/zhcp/bin';
-    
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     xCAT::zvmUtils->printSyslog("sudoer:$user zHCP:$hcp sudo:$sudo");
-    
+
     my $out;
     if (xCAT::zvmUtils->smapi4xcat($user, $hcp)) {
+
         # Use SMAPI EXEC to send command
         $cmd = '\"' . "CMD=SEND CP $userId " . uc($cmd) . '\"';
         $out = `ssh $user\@$hcp "$sudo $dir/smcli xCAT_Commands_IUO -T $userId -c $cmd"`;
         xCAT::zvmUtils->printSyslog("smcli xCAT_Commands_IUO -T $userId -c $cmd");
     } else {
+
         # Send CP command to given user
         $out = `ssh $user\@$hcp "$sudo /sbin/vmcp send cp $userId $cmd"`;
         xCAT::zvmUtils->printSyslog("/sbin/vmcp send cp $userId $cmd");
@@ -734,31 +740,31 @@ sub sendCPCmd {
 
 #-------------------------------------------------------
 sub getNetworkLayer {
-    my ( $class, $user, $node, $netName ) = @_;
+    my ($class, $user, $node, $netName) = @_;
 
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     # Exit if the network name is not given
-    if ( !$netName ) {
+    if (!$netName) {
         return -1;
     }
 
     # Get network type (Layer 2 or 3)
     my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q lan $netName"`;
-    if ( !$out ) {
+    if (!$out) {
         return -1;
     }
 
     # Go through each line
-    my $layer = 3;    # Default to layer 3
-    my @lines = split( '\n', $out );
+    my $layer = 3;                   # Default to layer 3
+    my @lines = split('\n', $out);
     foreach (@lines) {
 
         # If the line contains ETHERNET, then it is a layer 2 network
-        if ( $_ =~ m/ETHERNET/i ) {
+        if ($_ =~ m/ETHERNET/i) {
             $layer = 2;
         }
     }
@@ -781,33 +787,33 @@ sub getNetworkLayer {
 
 #-------------------------------------------------------
 sub getNetworkType {
-    my ( $class, $user, $hcp, $netName ) = @_;
-    
+    my ($class, $user, $hcp, $netName) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";
     }
-    
+
     # Get network details
     my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q lan $netName" | grep "Type"`;
 
     # Go through each line and determine network type
-    my @lines = split( '\n', $out );
+    my @lines = split('\n', $out);
     my $netType = "";
     foreach (@lines) {
 
         # Virtual switch
-        if ( $_ =~ m/VSWITCH/i ) {
+        if ($_ =~ m/VSWITCH/i) {
             $netType = "VSWITCH";
         }
 
         # HiperSocket guest LAN
-        elsif ( $_ =~ m/HIPERS/i ) {
+        elsif ($_ =~ m/HIPERS/i) {
             $netType = "HIPERS";
         }
 
         # QDIO guest LAN
-        elsif ( $_ =~ m/QDIO/i ) {
+        elsif ($_ =~ m/QDIO/i) {
             $netType = "QDIO";
         }
     }
@@ -831,8 +837,8 @@ sub getNetworkType {
 sub defineCpu {
 
     # Get inputs
-    my ( $class, $user, $node, $addr, $type ) = @_;
-    
+    my ($class, $user, $node, $addr, $type) = @_;
+
     my $sudo = "sudo";
     if ($user eq "root") {
         $sudo = "";

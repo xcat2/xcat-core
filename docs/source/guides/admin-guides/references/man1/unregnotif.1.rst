@@ -49,7 +49,7 @@ OPTIONS
 
 \ **-h | -help**\           Display usage message.
 
-\ **-v | -version **\       Command Version.
+\ **-v | -version**\       Command Version.
 
 \ **-V | -verbose**\        Verbose output.
 

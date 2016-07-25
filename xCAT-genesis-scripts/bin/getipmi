@@ -1,4 +1,6 @@
 #!/bin/bash
+log_label="xcat.genesis.getipmi"
+
 allowcred.awk &
 CREDPID=$!
 if [ -z "$XCATDEST" ]; then
@@ -24,7 +26,7 @@ echo "<xcatrequest>
 <callback_port>300</callback_port>
 <bmcmac>$BMCMAC</bmcmac>
 </xcatrequest>" > /tmp/bmcreq.xml
-rm /tmp/ipmicfg.xml
+rm -f /tmp/ipmicfg.xml
 while [ ! -f /tmp/ipmicfg.xml ] || grep error /tmp/ipmicfg.xml; do
 	if [ -f /tmp/ipmicfg.xml ]; then
 		timer=60

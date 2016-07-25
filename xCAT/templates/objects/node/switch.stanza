@@ -1,0 +1,11 @@
+# <the switch definition template>
+
+switch-template:
+    objtype=node
+    groups=switch
+    ip="OPTIONAL:the ip address of the switch"
+    mac="OPTIONAL:the MAC address of the switch"
+    mgt=switch
+    nodetype=switch
+    switchtype="OPTIONAL:The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Juniper."
+    usercomment="the switch definition template"
