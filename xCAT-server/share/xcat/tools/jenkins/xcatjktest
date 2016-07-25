@@ -825,11 +825,10 @@ sub install_xcat {
             &runcmd("xdsh $mn 'apt-get -y install xcat xcat-test  > $installlog  2>&1' >/dev/null 2>&1");
             if($?){
                 send_msg(0, "[install_xcat] apt-get -y install xcat xCAT-test in $mn failed");
-                return 1;
+            }else{
+                &runcmd("xdsh $mn 'mkdir -p /install/$os/%arch/install/netboot '");
+                &runcmd("scp /install/$os/%arch/install/netboot/initrd.gz $mn:/install/%os/%arch/install/netboot  ");
             }
-            
-            &runcmd("xdsh $mn 'mkdir -p /install/$os/%arch/install/netboot '");
-            &runcmd("scp /install/$os/%arch/install/netboot/initrd.gz $mn:/install/%os/%arch/install/netboot  ");
         }
     }
 
