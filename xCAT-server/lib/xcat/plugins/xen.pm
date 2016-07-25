@@ -586,29 +586,6 @@ sub guestcmd {
         return getvmcons($node, @args);
     }
 
-=cut
-  } elsif ($command eq "rvitals") {
-    return vitals(@args);
-  } elsif ($command =~ /r[ms]preset/) {
-    return resetmp(@args);
-  } elsif ($command eq "rspconfig") {
-    return mpaconfig($mpa,$user,$pass,$node,$slot,@args);
-  } elsif ($command eq "rbootseq") {
-    return bootseq(@args);
-  } elsif ($command eq "switchblade") {
-     return switchblade(@args);
-  } elsif ($command eq "getmacs") {
-    return getmacs(@args);
-  } elsif ($command eq "rinv") {
-    return inv(@args);
-  } elsif ($command eq "reventlog") {
-    return eventlog(@args);
-  } elsif ($command eq "rscan") {
-    return rscan(\@args);
-  }
-  
-=cut
-
     return (1, "$command not a supported command by xen method");
 }
 

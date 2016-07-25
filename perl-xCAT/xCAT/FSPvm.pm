@@ -1874,11 +1874,11 @@ sub query_cec_info_actions {
         if (@$values[1] =~ /^$/) {
             next;
         }
-        if ($usage eq 1 or $usage eq 2) {
+        if ($usage == 1 or $usage == 2) {
             &parse_part_get_info(\%hash, @$values[1], $lparid);
         }
 
-        if ($usage eq 0 or $usage eq 2) {
+        if ($usage == 0 or $usage == 2) {
             if ($lparid) {
                 if ($action eq "lpar_lhea_mac") {
                     my @output = split /\n/, @$values[1];
@@ -1941,10 +1941,10 @@ sub query_cec_info_actions {
             push @array, [ $name, @$values[1], @$values[2] ];
         }
     }
-    if ($usage eq 0 or $usage eq 2) {
+    if ($usage == 0 or $usage == 2) {
 
         #return $data;
-        if ($usage eq 2) {
+        if ($usage == 2) {
             %$lpar_hash = %hash;
         }
         return \@array;

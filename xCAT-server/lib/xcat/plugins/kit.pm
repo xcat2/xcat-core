@@ -1172,7 +1172,7 @@ sub addkit
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -1508,7 +1508,7 @@ sub rmkit
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -1929,7 +1929,7 @@ sub addkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -2481,7 +2481,7 @@ sub rmkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -3403,7 +3403,7 @@ sub chkkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }

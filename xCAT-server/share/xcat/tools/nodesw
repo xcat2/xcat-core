@@ -35,7 +35,7 @@ sub getVlanMask {
     #foreach (@xs){
     #	print $_ . "\n";
     #}
-    unless (scalar(@xs) eq 7) {
+    unless (scalar(@xs) == 7) {
         print "Could not get vlan mask for $vlan\n";
     }
 
@@ -121,7 +121,7 @@ sub connectToSwitch {
 
         #ERROR:
         print "Failed to communicate with $switch\n";
-        print $SNMP::Session::ErrorStr . "\n";
+        print "$SNMP::Session::ErrorStr\n";
 
         #xCAT::MsgUtils->message("S","Failed to communicate with $switch");
     }
@@ -259,7 +259,7 @@ sub addNodeToVlan {
     #print Dumper($v2);
     $session->set($v2);
     if ($session->{ErrorStr}) {
-        print "Error! " . $session->{ErrorStr} . "\n";
+        print "Error! $session->{ErrorStr} \n";
     }
 
     #######################################

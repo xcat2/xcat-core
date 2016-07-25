@@ -110,7 +110,7 @@ sub ximport {
     };
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -157,7 +157,7 @@ sub xexport {
     };
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }

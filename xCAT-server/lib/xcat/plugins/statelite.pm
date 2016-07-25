@@ -719,11 +719,11 @@ sub parseLiteFiles {
                 $parent .= "/" unless ($parent =~ m/\/$/);
                 @res = grep { $_ =~ m/\Q$parent\E$/ } @entries;
                 $found = scalar @res;
-                last if ($found eq 1);
+                last if ($found == 1);
                 $parent = dirname $parent;
             }
 
-            if ($found eq 1) {    # $parent is found in @entries
+            if ($found == 1) {    # $parent is found in @entries
                                   # handle $res[0];
                 my @tmpresentry = split /\s+/, $res[0];
                 shift @tmpresentry;    # remove the imgname in @tmpresentry

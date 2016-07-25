@@ -1209,7 +1209,7 @@ sub get_host {
             if ($tmpmtm eq $mtm and $tmpsn eq $sn and $tmptype eq $type) {
                 if ($oldnode =~ /^Server\-/) { #judge if need to change node's name
                     if ($oldnode =~ /(\-A)$/) {
-                        $nodename = s/(\-A)$//;
+                        $nodename =~ s/(\-A)$//;
 
                         # should send a warning here
                         $$flagref = 1;

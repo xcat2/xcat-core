@@ -670,7 +670,7 @@ sub windows_net_cfg {
                             }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="' . $num++ . '">' . $ip . "/$netmask" . '</IpAddress>';
                         }
-                        if ($num eq 1) {
+                        if ($num == 1) {
 
                             # no correct IP with correct network is found
                             next;

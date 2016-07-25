@@ -290,7 +290,7 @@ sub parse_args {
     #############################################
     # Check for node range
     #############################################
-    if (scalar(@ARGV) eq 1) {
+    if (scalar(@ARGV) == 1) {
         my @nodes = xCAT::NodeRange::noderange(@ARGV);
         foreach (@nodes) {
             push @filternodes, $_;

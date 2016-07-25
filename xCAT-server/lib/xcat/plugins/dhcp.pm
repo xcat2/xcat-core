@@ -537,7 +537,7 @@ sub addnode
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
-                    elsif ($nxtsrvd[0] eq 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
+                    elsif ($nxtsrvd[0] == 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
                     else {
                         $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
                         return;

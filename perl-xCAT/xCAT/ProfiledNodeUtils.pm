@@ -1261,7 +1261,7 @@ sub check_nicips {
             $nic    = $nic_and_ips[0];
             $nic_ip = $nic_and_ips[1];
 
-            if (exists $nics_hash{$nic} or $len ne 2) {
+            if (exists $nics_hash{$nic} or $len != 2) {
                 $errmsg = "The specified nicips is incorrect. It must be formatted correctly, in the form: <nic1>!<nic-ip1>,<nic2>!<nic-ip2>,...";
                 return (1, "", $errmsg);
             }

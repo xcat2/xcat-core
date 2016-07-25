@@ -107,7 +107,7 @@ sub setstate {
         my $ipfn;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
 
-        if ($ipfnd[0] eq 1) {
+        if ($ipfnd[0] ==  1) {
             $::callback->(
                 {
                     error     => [ $ipfnd[1] ],
@@ -115,7 +115,7 @@ sub setstate {
                 });
             return;
         }
-        elsif ($ipfnd[0] eq 2) {
+        elsif ($ipfnd[0] == 2) {
             my $servicenodes = $nrhash{$node}->[0];
             if ($servicenodes and $servicenodes->{servicenode}) {
                 my @sns = split /,/, $servicenodes->{servicenode};
