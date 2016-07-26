@@ -21,8 +21,7 @@ sub parse_args {
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
     my $node    = $request->{node};
-    my $vers =
-      my @VERSION = qw( 2.6 );
+    my @VERSION = qw( 2.6 );
     my @dev = qw(hfi net);
 
     #############################################
