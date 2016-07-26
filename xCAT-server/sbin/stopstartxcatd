@@ -7,9 +7,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
@@ -71,35 +71,35 @@ sub parse_args
 
         )
       )
-    { 
+    {
         if ($cmd eq "xcatstart") {
-          $usagemsg = "$cmd [-h|-v|-r]\n";
-          xCAT::MsgUtils->message("E", $usagemsg);
-        } else {  #xcatstop
-          $usagemsg = "$cmd [-h|-v]\n";
-          xCAT::MsgUtils->message("E", $usagemsg);
-        } 
+            $usagemsg = "$cmd [-h|-v|-r]\n";
+            xCAT::MsgUtils->message("E", $usagemsg);
+        } else {    #xcatstop
+            $usagemsg = "$cmd [-h|-v]\n";
+            xCAT::MsgUtils->message("E", $usagemsg);
+        }
         exit 1;
     }
     if ($::HELP)
     {
         if ($cmd eq "xcatstart") {
-          $usagemsg = "$cmd [-h|-v|-r]\n";
-          xCAT::MsgUtils->message("I", $usagemsg);
-        } else {  #xcatstop
-          $usagemsg = "$cmd [-h|-v]\n";
-          xCAT::MsgUtils->message("I", $usagemsg);
-        } 
+            $usagemsg = "$cmd [-h|-v|-r]\n";
+            xCAT::MsgUtils->message("I", $usagemsg);
+        } else {    #xcatstop
+            $usagemsg = "$cmd [-h|-v]\n";
+            xCAT::MsgUtils->message("I", $usagemsg);
+        }
         exit 0;
     }
     if ($::RELOAD)
     {
-       $ENV{XCATRELOAD} = "yes"; 
+        $ENV{XCATRELOAD} = "yes";
     }
     if ($::VERSION)
     {
         my $version = xCAT::Utils->Version();
-        $version .="\n";
+        $version .= "\n";
         xCAT::MsgUtils->message("I", $version);
         exit 0;
     }

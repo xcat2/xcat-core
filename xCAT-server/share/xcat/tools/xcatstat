@@ -178,7 +178,7 @@ if ($DILIMITER) {
 
 print "# Hostname:Status:Network-Interfaces:\n";
 foreach (sort @statusoutput) {
-    print $_. ":\n";
+    print "$_ :\n";
 }
 
 exit 0;

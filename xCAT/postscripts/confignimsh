@@ -37,13 +37,13 @@ use Socket;
 my $master = $ENV{'MASTER'};
 my $mhost;
 my $shortmaster;
-my $returnval=0;
+my $returnval = 0;
 if ($master =~ /\d+\.\d+\.\d+\.\d+/)
 {
-	my $packedaddr = inet_aton($master);
-	$mhost = gethostbyaddr($packedaddr, AF_INET);
+    my $packedaddr = inet_aton($master);
+    $mhost = gethostbyaddr($packedaddr, AF_INET);
 } else {
-	$mhost = $master;
+    $mhost = $master;
 }
 ($shortmaster = $mhost) =~ s/\..*$//;
 chomp $shortmaster;
@@ -64,30 +64,30 @@ chomp $shortname;
 
 # save off the existing niminfo file
 if (-f "/etc/niminfo") {
-	runcmd("mv /etc/niminfo /etc/niminfo.bak");
+    runcmd("mv /etc/niminfo /etc/niminfo.bak");
 }
 
 # create new niminfo file and start nimsh daemon etc.
 runcmd("niminit -a name=$shortname -a master=$shortmaster -a connect='nimsh'");
 
-# configure nimsh to use ssl 
+# configure nimsh to use ssl
 runcmd("nimclient -c");
 
 # get rid of the .rhost - ????
 if (-f "/.rhosts") {
-	runcmd("mv /.rhost /.rhost.orig");
+    runcmd("mv /.rhost /.rhost.orig");
 }
 
 exit $returnval;
 
 sub runcmd {
-	my $cmd = shift @_;
-	$cmd .= ' 2>&1';
-	my @output = `$cmd`;
-	my $rc = $? >> 8;
-	if ($rc) {
-		system("logger -t xcat -p local4.err 'confignimsh: command $cmd failed with rc $rc: " . join('',@output) . "'");
-                $returnval=$rc;
-		exit $rc;
-	}
+    my $cmd = shift @_;
+    $cmd .= ' 2>&1';
+    my @output = `$cmd`;
+    my $rc     = $? >> 8;
+    if ($rc) {
+        system("logger -t xcat -p local4.err 'confignimsh: command $cmd failed with rc $rc: " . join('', @output) . "'");
+        $returnval = $rc;
+        exit $rc;
+    }
 }

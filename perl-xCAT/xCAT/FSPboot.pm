@@ -11,7 +11,7 @@ use xCAT::PPCboot;
 use xCAT::LparNetbootExp;
 
 ##########################################################################
-# Parse the command line for options and operands 
+# Parse the command line for options and operands
 ##########################################################################
 sub parse_args {
     xCAT::PPCboot::parse_args(@_);
@@ -19,7 +19,7 @@ sub parse_args {
 
 
 ##########################################################################
-# Netboot the lpar 
+# Netboot the lpar
 ##########################################################################
 sub do_rnetboot {
 
@@ -36,14 +36,14 @@ sub do_rnetboot {
     my $Rc      = SUCCESS;
     my $cmd;
     my %optarg;
-    
+
     #######################################
     # Disconnect Expect session
     #######################################
     #xCAT::PPCcli::disconnect( $exp );
- 
+
     #######################################
-    # Get node data 
+    # Get node data
     #######################################
     my $id       = @$d[0];
     my $pprofile = @$d[1];
@@ -51,10 +51,10 @@ sub do_rnetboot {
     my $hcp      = @$d[3];
 
     ########################################
-    ## Find Expect script 
+    ## Find Expect script
     ########################################
     #$cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
-    #$cmd .= "lpar_netboot.expect"; 
+    #$cmd .= "lpar_netboot.expect";
     #
     ########################################
     ## Check command installed
@@ -65,7 +65,7 @@ sub do_rnetboot {
     #######################################
     # Save user name and passwd of hcp to
     # environment variables.
-    # lpar_netboot.expect depends on it 
+    # lpar_netboot.expect depends on it
     #######################################
     $ENV{HCP_USERID} = $userid;
     $ENV{HCP_PASSWD} = $pw;
@@ -73,34 +73,40 @@ sub do_rnetboot {
     #######################################
     # Turn on verbose and debugging
     #######################################
-    if ( ${$request->{arg}}[0] eq '-V' ) {
+    if (${ $request->{arg} }[0] eq '-V') {
+
         #$cmd.= " -v -x";
-        $optarg{'v'} = 1; #for verbose
-        $optarg{'x'} = 1; #for debug
+        $optarg{'v'} = 1;    #for verbose
+        $optarg{'x'} = 1;    #for debug
     }
     #######################################
     # Force LPAR shutdown
     #######################################
-    if ( exists( $opt->{f} ) || !xCAT::Utils->isAIX() ) {
+    if (exists($opt->{f}) || !xCAT::Utils->isAIX()) {
+
         #$cmd.= " -i";
         $optarg{'i'} = 1;
-    } 
+    }
 
     #######################################
     # Write boot order
     #######################################
-    if (  exists( $opt->{s} )) {
+    if (exists($opt->{s})) {
         foreach ($opt->{s}) {
-            if ( /^net$/ ) {
+            if (/^net$/) {
+
                 #$cmd.= " -w 1";
                 $optarg{'w'} = 1;
-            } elsif ( /^net,hd$/ ) {
+            } elsif (/^net,hd$/) {
+
                 #$cmd.= " -w 2";
                 $optarg{'w'} = 2;
-            } elsif ( /^hd,net$/ ) {
+            } elsif (/^hd,net$/) {
+
                 #$cmd.= " -w 3";
                 $optarg{'w'} = 3;
-            } elsif ( /^hd$/ ) {
+            } elsif (/^hd$/) {
+
                 #$cmd.= " -w 4";
                 $optarg{'w'} = 4;
             }
@@ -108,7 +114,7 @@ sub do_rnetboot {
     }
 
     my @macs = split /\|/, $opt->{m};
-    foreach my $mac ( @macs ) {
+    foreach my $mac (@macs) {
         $mac = lc($mac);
         #######################################
         # Network specified
@@ -121,20 +127,23 @@ sub do_rnetboot {
         $optarg{'C'} = $opt->{C};
         $optarg{'N'} = $opt->{N};
         $optarg{'G'} = $opt->{G};
-        if (  exists( $opt->{o} )) {
+        if (exists($opt->{o})) {
+
             #$cmd.= " -o";
             $optarg{'o'} = 1;
         }
 
-        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
-        if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
+        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
+        if (grep /hf/, $client_nethash{$node}{mgtifname}) {
+
             #$cmd.= " -t hfi-ent";
             $optarg{'t'} = "hfi-ent";
         } else {
+
             #$cmd.= " -t ent";
             $optarg{'t'} = "ent";
         }
-    
+
         $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
 
         #######################################
@@ -142,21 +151,22 @@ sub do_rnetboot {
         #######################################
         #$cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
         #print "cmd: $cmd\n";
-        $optarg{'f'} = 1;
-        $optarg{'name'} = $name;
+        $optarg{'f'}        = 1;
+        $optarg{'name'}     = $name;
         $optarg{'pprofile'} = $pprofile;
-        $optarg{'fsp'} = $fsp;
-        $optarg{'id'} = $id;
-        $optarg{'hcp'} = $hcp;
-        $optarg{'node'} = $node;
+        $optarg{'fsp'}      = $fsp;
+        $optarg{'id'}       = $id;
+        $optarg{'hcp'}      = $hcp;
+        $optarg{'node'}     = $node;
         my $done = 0;
-        while ( $done < 2 ) {
+
+        while ($done < 2) {
             $result = "";
-            $Rc = SUCCESS;
+            $Rc     = SUCCESS;
             ########################################
             ## Execute command
             ########################################
-	    #print "cmd:$cmd\n";
+            #print "cmd:$cmd\n";
             #my $pid = open( OUTPUT, "$cmd 2>&1 |");
             #$SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
             #    kill 9, $pid;
@@ -172,7 +182,7 @@ sub do_rnetboot {
             #    $result.=$_;
             #}
             #close OUTPUT;
-    
+
             ########################################
             ## Get command exit code
             ########################################
@@ -188,7 +198,7 @@ sub do_rnetboot {
             #######################################
             $result = xCAT::LparNetbootExp->lparnetbootexp(\%optarg, $request);
             $Rc = @$result[0];
-            if ( $Rc == SUCCESS ) {
+            if ($Rc == SUCCESS) {
                 $done = 2;
             } else {
                 $done = $done + 1;
@@ -196,7 +206,7 @@ sub do_rnetboot {
             }
         }
 
-        if ( $Rc == SUCCESS ) {
+        if ($Rc == SUCCESS) {
             last;
         }
     }
@@ -215,20 +225,20 @@ sub rnetboot {
     my $options = $request->{opt};
     my $hwtype  = @$exp[2];
     my $result;
-    my $name    = $request->{node};
+    my $name     = $request->{node};
     my $callback = $request->{callback};
     #####################################
-    # Get node data 
+    # Get node data
     #####################################
     my $lparid = @$d[0];
     my $mtms   = @$d[2];
     my $type   = @$d[4];
     my $node   = @$d[6];
-    my $o      = @$d[7]; 
+    my $o      = @$d[7];
 
     #####################################
-    # Gateway (-G) 
-    # Server  (-S) 
+    # Gateway (-G)
+    # Server  (-S)
     # Client  (-C)
     # mac     (-m)
     #####################################
@@ -246,31 +256,31 @@ sub rnetboot {
     }
 
     #####################################
-    # Strip colons from mac address 
+    # Strip colons from mac address
     #####################################
     $opt{m} =~ s/://g;
 
     #####################################
-    # Force LPAR shutdown 
+    # Force LPAR shutdown
     #####################################
-    if ( exists( $options->{f} )) { 
+    if (exists($options->{f})) {
         $opt{f} = 1;
     }
     #####################################
     # Write boot device order
     #####################################
-    if ( exists( $options->{s} )) {
+    if (exists($options->{s})) {
         $opt{s} = $options->{s};
     }
-    if ( exists( $options->{o} )) {
+    if (exists($options->{o})) {
         $opt{o} = $options->{o};
     }
 
     #####################################
-    # Invalid target hardware 
+    # Invalid target hardware
     #####################################
-    if ( $type !~ /^lpar$/ ) {
-        return( [[$name,"Not supported",RC_ERROR]] );
+    if ($type !~ /^lpar$/) {
+        return ([ [ $name, "Not supported", RC_ERROR ] ]);
     }
     #########################################
     # Get name known by HCP
@@ -306,78 +316,82 @@ sub rnetboot {
     # It is not allowed to rinitialize node
     # if it is in boot state
     #########################################
-    if ( !exists( $options->{F} ) && !xCAT::Utils->isAIX() ) {
+    if (!exists($options->{F}) && !xCAT::Utils->isAIX()) {
         my $chaintab = xCAT::Table->new('chain');
-        my $vcon = $chaintab->getAttribs({ node => "$node"}, 'currstate');
-        if ( $vcon and $vcon->{"currstate"} and $vcon->{"currstate"} eq "boot" ) {
-            return( [[$node,"Node is in boot state. Use nodeset command before rnetboot or use -F option with rnetboot",RC_ERROR]] );
+        my $vcon = $chaintab->getAttribs({ node => "$node" }, 'currstate');
+        if ($vcon and $vcon->{"currstate"} and $vcon->{"currstate"} eq "boot") {
+            return ([ [ $node, "Node is in boot state. Use nodeset command before rnetboot or use -F option with rnetboot", RC_ERROR ] ]);
         }
     }
 
     #my $sitetab  = xCAT::Table->new('site');
     #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
     #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
-	    #   $result = xCAT::PPCcli::lpar_netboot(
-	    #                $exp,
-	    #                $request->{verbose},
-	    #                $name,
-	    #                $d,
-	    #                \%opt );
+    #   $result = xCAT::PPCcli::lpar_netboot(
+    #                $exp,
+    #                $request->{verbose},
+    #                $name,
+    #                $d,
+    #                \%opt );
     #    return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
     #} else {
-        #########################################
-        # Manually perform boot. 
-        #########################################
-        $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+    #########################################
+    # Manually perform boot.
+    #########################################
+    $result = do_rnetboot($request, $d, $exp, $name, $node, \%opt);
+
     #}
     #$sitetab->close;
 
     if (defined($request->{opt}->{m})) {
-    
-        my $retries = 0;
+
+        my $retries  = 0;
         my @monnodes = ($name);
         my $monsettings = xCAT::Utils->generate_monsettings($request, \@monnodes);
-        xCAT::Utils->monitor_installation($request, $monsettings);;
-        while ($retries++ < $monsettings->{'retrycount'} && scalar(keys %{$monsettings->{'nodes'}}) > 0) {
+        xCAT::Utils->monitor_installation($request, $monsettings);
+        while ($retries++ < $monsettings->{'retrycount'} && scalar(keys %{ $monsettings->{'nodes'} }) > 0) {
             ####lparnetboot can not support multiple nodes in one invocation
             ####for now, does not know how the $d and \%opt will be changed if
             ####support mulitiple nodes in one invocation,
             ####so just use the original node name and node attribute array and hash
-             
-             my $rsp={};
-             $rsp->{data}->[0] = "$node: Reinitializing the installation: $retries retry";
-             xCAT::MsgUtils->message("I", $rsp, $callback);
-             #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
-		    #    $result = xCAT::PPCcli::lpar_netboot(
-		    #                $exp,
-		    #                $request->{verbose},
-		    #                $name,
-		    #                $d,
-		    #                \%opt );
+
+            my $rsp = {};
+            $rsp->{data}->[0] = "$node: Reinitializing the installation: $retries retry";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+
+            #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+            #    $result = xCAT::PPCcli::lpar_netboot(
+            #                $exp,
+            #                $request->{verbose},
+            #                $name,
+            #                $d,
+            #                \%opt );
             #return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
             #} else {
-                $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
+            $result = do_rnetboot($request, $d, $exp, $name, $node, \%opt);
+
             #}
             xCAT::Utils->monitor_installation($request, $monsettings);
-                
+
         }
+
         #failed after retries
-        if (scalar(keys %{$monsettings->{'nodes'}}) > 0) {
-            foreach my $node (keys %{$monsettings->{'nodes'}}) {
-                my $rsp={};
+        if (scalar(keys %{ $monsettings->{'nodes'} }) > 0) {
+            foreach my $node (keys %{ $monsettings->{'nodes'} }) {
+                my $rsp = {};
                 $rsp->{data}->[0] = "The node \"$node\" can not reach the expected status after $monsettings->{'retrycount'} retries, the installation for this done failed";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
             }
-         }
+        }
     }
     $Rc = shift(@$result);
-    
+
 
     ##################################
     # Form string from array results
     ##################################
-    if ( exists($request->{verbose}) ) {
-        return( [[$node,join( '', @$result ),$Rc]] );
+    if (exists($request->{verbose})) {
+        return ([ [ $node, join('', @$result), $Rc ] ]);
     }
     ##################################
     # Return error
@@ -393,18 +407,18 @@ sub rnetboot {
     #    lpar_netboot: can not find mac address 42DAB.
     #
     ##################################
-    if ( $Rc != SUCCESS ) {
-        if ( @$result[0] =~ /lpar_netboot (.*)/ ) {
-            return( [[$node,$1,$Rc]] );
+    if ($Rc != SUCCESS) {
+        if (@$result[0] =~ /lpar_netboot (.*)/) {
+            return ([ [ $node, $1, $Rc ] ]);
         }
-        return( [[$node,join( '', @$result ),$Rc]] );
+        return ([ [ $node, join('', @$result), $Rc ] ]);
     }
     ##################################
     # Split array into string
     ##################################
     my $data = @$result[0];
-    if ( $hwtype eq "hmc" ) {
-        $data = join( '', @$result );
+    if ($hwtype eq "hmc") {
+        $data = join('', @$result);
     }
     ##################################
     # lpar_netboot returns:
@@ -419,8 +433,8 @@ sub rnetboot {
     #  # Finished.
     #
     #####################################
-    if ( $data =~ /Finished/) {
-        return( [[$node,"Success",$Rc]] );
+    if ($data =~ /Finished/) {
+        return ([ [ $node, "Success", $Rc ] ]);
     }
     #####################################
     # Can still be error w/ Rc=0:
@@ -434,12 +448,12 @@ sub rnetboot {
     #  lpar_netboot: bootp operation failed.
     #
     #####################################
-    if ( $data =~ /lpar_netboot (.*)/ ) {
-        return( [[$node,$1,RC_ERROR]] );
+    if ($data =~ /lpar_netboot (.*)/) {
+        return ([ [ $node, $1, RC_ERROR ] ]);
     }
-    return( [[$node,$data,RC_ERROR]] );
+    return ([ [ $node, $data, RC_ERROR ] ]);
 }
- 
+
 
 1;
 

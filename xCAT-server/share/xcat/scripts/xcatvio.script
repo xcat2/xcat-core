@@ -22,8 +22,8 @@ $::script =~ s/.*\///;
 sub runcmd
 {
     my ($cmd) = @_;
-    my $rc=0;
-    $cmd .= ' 2>&1' ;
+    my $rc = 0;
+    $cmd .= ' 2>&1';
     msg("Running command $cmd");
     $::outref = `$cmd`;
     if ($?)
@@ -31,8 +31,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-        print "$::sdate $0: $::outref\n";
-        print $::LOG_FILE "$::sdate $0: $::outref\n";
+            print "$::sdate $0: $::outref\n";
+            print $::LOG_FILE "$::sdate $0: $::outref\n";
         }
     }
     return $rc;
@@ -57,9 +57,10 @@ if (!-d $logdir) {
 }
 
 my $logfile = $logdir . "/xcat.log";
+
 # this log should not contain much so it might be ok to let it grow?
 # at least we'll have the errors preserved
-open(LOGFILE,">>",$logfile);
+open(LOGFILE, ">>", $logfile);
 $::LOG_FILE = \*LOGFILE;
 foreach my $env (keys %ENV)
 {
@@ -70,43 +71,45 @@ my $cmd;
 my $hostname;
 my $ipaddr;
 my $servnode;
+
 # TODO: use the environment variable instead of reading /etc/niminfo
 # get the name of my service node/NIM master from the /etc/niminfo file
 
 if (-f "/etc/niminfo") {
 
-        $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_HOSTNAME'";
-        &runcmd($cmd);
-        my $hostline = $::outref;
-        my $junk;
-        ($junk, $hostname) = split(/=/, $hostline);
-        $hostname =~ s/^\s*//;
-        chomp $hostname;
-        msg("Info: the hostname is $hostname");
+    $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_HOSTNAME'";
+    &runcmd($cmd);
+    my $hostline = $::outref;
+    my $junk;
+    ($junk, $hostname) = split(/=/, $hostline);
+    $hostname =~ s/^\s*//;
+    chomp $hostname;
+    msg("Info: the hostname is $hostname");
 
-        $cmd = "host $hostname";
-        &runcmd($cmd);
-        $ipaddr = $::outref;
-        $ipaddr =~ s/.*is\s+//;
-        chomp $ipaddr;
-        msg("Info: the ip address is $ipaddr");
+    $cmd = "host $hostname";
+    &runcmd($cmd);
+    $ipaddr = $::outref;
+    $ipaddr =~ s/.*is\s+//;
+    chomp $ipaddr;
+    msg("Info: the ip address is $ipaddr");
 
-        $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
-        &runcmd($cmd);
-        my $SNline = $::outref;
-        ($junk, $servnode) =  split(/=/, $SNline);
-        $servnode =~ s/^\s*//;
-        chomp $servnode;
+    $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
+    &runcmd($cmd);
+    my $SNline = $::outref;
+    ($junk, $servnode) = split(/=/, $SNline);
+    $servnode =~ s/^\s*//;
+    chomp $servnode;
 
-   
-        my $xcatinfo="/etc/xcatinfo";
-        open(XCATINFO,">",$xcatinfo);
-        print XCATINFO "XCATSERVER=$servnode\n";
-        close(XCATINFO);
+
+    my $xcatinfo = "/etc/xcatinfo";
+    open(XCATINFO, ">", $xcatinfo);
+    print XCATINFO "XCATSERVER=$servnode\n";
+    close(XCATINFO);
 } else {
-        msg("Error: could not find /etc/niminfo file, exiting...");
-        exit 1;
+    msg("Error: could not find /etc/niminfo file, exiting...");
+    exit 1;
 }
+
 # Configure TCP/IP
 # Get the boot nic
 my $bootnic;
@@ -161,19 +164,19 @@ if (defined($ENV{'SEA_ADAPTERS'}) and $ENV{'SEA_ADAPTERS'} =~ /bootnic/i) {
         msg("Warning: No Virtual Ethernet Adapter found");
         $skiptcpip = 1;
     } else {
-        my $xcatinfo="/etc/xcatinfo";
-        open(XCATINFO,">>",$xcatinfo);
+        my $xcatinfo = "/etc/xcatinfo";
+        open(XCATINFO, ">>", $xcatinfo);
         print XCATINFO "SEA_ADAPTERS=$bootnic:$vir_nic[0]:1:$ENV{'NIM_IPADDR'}:$ENV{'NIM_NETMASK'}:$hostname\n";
         close(XCATINFO);
-        
-        my $lsicmd = "/usr/sbin/lsitab bootnicsea > /dev/null 2>&1"; 
+
+        my $lsicmd = "/usr/sbin/lsitab bootnicsea > /dev/null 2>&1";
         if (&runcmd($lsicmd) != 0) {
             my $mkicmd = '/usr/sbin/mkitab "bootnicsea:2:wait:/xcatpost/config_bootnicsea > /dev/console 2>&1"';
             if (&runcmd($mkicmd) != 0) {
                 msg("Warning: config_bootnicsea: Could not add config_bootnicsea to /etc/inittab.\n")
             }
         }
-        
+
     }
 } elsif (defined($ENV{'SEA_ADAPTERS'})) {
     msg("Info: Environment variable SEA_ADAPTERS is $ENV{'SEA_ADAPTERS'}");
@@ -187,10 +190,10 @@ if (defined($ENV{'SEA_ADAPTERS'}) and $ENV{'SEA_ADAPTERS'} =~ /bootnic/i) {
             $skiptcpip = 1;
             last;
         }
-        $sea_adapters{$phy}{'phy'} = $phy;
+        $sea_adapters{$phy}{'phy'}  = $phy;
         $sea_adapters{$phy}{'virt'} = $virt;
         $sea_adapters{$phy}{'vlan'} = $vlan;
-        $sea_adapters{$phy}{'ip'} = $ip;
+        $sea_adapters{$phy}{'ip'}   = $ip;
         $sea_adapters{$phy}{'mask'} = $mask;
     }
 } else {
@@ -209,13 +212,13 @@ if (!$skiptcpip) {
         msg("Warning: NIM_NETMASK is not specified, using the default 255.255.255.0");
         $netmask = "255.255.255.0";
     }
-    
+
     foreach my $phy (keys %sea_adapters)
     {
-        my $phy = $sea_adapters{$phy}{'phy'};
+        my $phy  = $sea_adapters{$phy}{'phy'};
         my $virt = $sea_adapters{$phy}{'virt'};
         my $vlan = $sea_adapters{$phy}{'vlan'};
-        my $ip = $sea_adapters{$phy}{'ip'};
+        my $ip   = $sea_adapters{$phy}{'ip'};
         my $mask = $sea_adapters{$phy}{'mask'};
         if ($phy eq $bootnic)
         {
@@ -227,30 +230,31 @@ if (!$skiptcpip) {
             $cmd = "/usr/ios/cli/ioscli license -accept";
             &runcmd($cmd);
         }
-        { # detach bootnic
+        {    # detach bootnic
             if ($bootnicsea and $phy =~ /^ent(\d+)/) {
                 my $phynic_id = $1;
-                my $en_nic = "en".$phynic_id;
-                my $ent_nic = "ent".$phynic_id;
-                my $et_nic = "et".$phynic_id;
+                my $en_nic    = "en" . $phynic_id;
+                my $ent_nic   = "ent" . $phynic_id;
+                my $et_nic    = "et" . $phynic_id;
                 $cmd = "ifconfig $en_nic down; ifconfig $en_nic detach; rmdev -dl $en_nic; rmdev -dl $ent_nic; rmdev -dl $et_nic; cfgmgr;";
                 if (&runcmd($cmd) != 0) {
                     msg("Error: could not detach bootnic:$bootnic");
                     next;
                 }
             }
-          
+
         }
+
         #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mkvdev -sea $phy -vadapter $virt -default $virt -defaultid $vlan"~;
         $cmd = "/usr/ios/cli/ioscli mkvdev -sea $phy -vadapter $virt -default $virt -defaultid $vlan";
         if (&runcmd($cmd) != 0) {
             msg("Error: could not create SEA with physical adapter $phy, virtual adapter $virt and vlan id $vlan");
             next;
         }
-        my $sea_out = $::outref;
-        my $sea = undef;
-        my @out_array = split (/\n/, $sea_out); 
-        foreach (@out_array) { 
+        my $sea_out   = $::outref;
+        my $sea       = undef;
+        my @out_array = split(/\n/, $sea_out);
+        foreach (@out_array) {
             if (/(ent\d+)\s*Available/) {
                 $sea = $1;
                 $sea =~ s/t//;
@@ -261,6 +265,7 @@ if (!$skiptcpip) {
             next;
         }
         msg("Info: The interface created with mkvdev is: $sea");
+
         #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mktcpip -hostname $hostname -inetaddr $ip -interface $sea -netmask $mask"~;
         $cmd = "/usr/ios/cli/ioscli mktcpip -hostname $hostname -inetaddr $ip -interface $sea -netmask $mask";
         if (&runcmd($cmd) != 0) {
@@ -293,12 +298,12 @@ if (&runcmd($cmd) != 0) {
 # Set a temporary root password
 # - the user-provided root passwd will be set by xcataixpost
 my $padmin_passwd;
-if(defined($ENV{'PADMIN_PASSWD'}))
+if (defined($ENV{'PADMIN_PASSWD'}))
 {
     $padmin_passwd = $ENV{'PADMIN_PASSWD'};
 }
 
-if(!$padmin_passwd)
+if (!$padmin_passwd)
 {
     msg("Warning: padmin password is not specified, using the default password \"cluster\"");
     $padmin_passwd = "cluster";
@@ -323,7 +328,7 @@ if (&runcmd($pwcmd) != 0) {
 
 my $installdir;
 if (!$installdir) {
-    $installdir="/install";
+    $installdir = "/install";
 }
 
 # get the contents of the $installdir/postscripts dir on the server
@@ -344,18 +349,20 @@ if (&runcmd($mcmd) != 0) {
 }
 
 my $cpcmd;
-if ((@ARGV==0) || ($ARGV[0] != 2)) {
+if ((@ARGV == 0) || ($ARGV[0] != 2)) {
     $cpcmd = "/bin/cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
 } else {
-# when argv[1]=2, there is only one postscript file,
-# user wants only download it to save time
-    $cpcmd= "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+
+    # when argv[1]=2, there is only one postscript file,
+    # user wants only download it to save time
+    $cpcmd = "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
 }
 
 if (&runcmd($cpcmd) != 0) {
     print "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
     print $::LOG_FILE "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
 }
+
 # make sure all are executable
 
 my $chcmd = "/bin/chmod +x /xcatpost/*";

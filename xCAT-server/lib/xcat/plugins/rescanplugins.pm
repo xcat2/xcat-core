@@ -11,9 +11,10 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::rescanplugins;
+
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
@@ -34,7 +35,7 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return {rescanplugins => "rescanplugins"};
+    return { rescanplugins => "rescanplugins" };
 }
 
 #-------------------------------------------------------
@@ -48,22 +49,22 @@ sub handled_commands
 #-------------------------------------------------------
 sub preprocess_request
 {
-    my $req  = shift;
+    my $req      = shift;
     my $callback = shift;
-    my $subreq    = shift;
-    $::CALLBACK=$callback; 
-    my $args     = $req->{arg};
-    my $envs     = $req->{env};
+    my $subreq   = shift;
+    $::CALLBACK = $callback;
+    my $args = $req->{arg};
+    my $envs = $req->{env};
 
 
-  #if already preprocessed, go straight to request
-    if (($req->{_xcatpreprocessed}) and 
-        ($req->{_xcatpreprocessed}->[0] == 1) ) { return [$req]; }
+    #if already preprocessed, go straight to request
+    if (($req->{_xcatpreprocessed}) and
+        ($req->{_xcatpreprocessed}->[0] == 1)) { return [$req]; }
 
 
     # do your processing here
     # return info
-   if ($args) {
+    if ($args) {
         @ARGV = @{$args};    # get arguments
     }
     Getopt::Long::Configure("posix_default");
@@ -72,13 +73,13 @@ sub preprocess_request
     my %options = ();
     if (
         !GetOptions(
-            'h|help'                   => \$options{'help'},
-            's|servicenodes'           => \$options{'servicenodes'},
-            'v|version'                => \$options{'version'},
-            'V|Verbose'                => \$options{'verbose'}
+            'h|help'         => \$options{'help'},
+            's|servicenodes' => \$options{'servicenodes'},
+            'v|version'      => \$options{'version'},
+            'V|Verbose'      => \$options{'verbose'}
         )
       )
-    {  
+    {
         &usage;
         exit 1;
     }
@@ -89,39 +90,40 @@ sub preprocess_request
         exit 0;
     }
 
-   if ($options{'version'})
+    if ($options{'version'})
     {
         my $version = xCAT::Utils->Version();
+
         #$version .= "\n";
-        my $rsp={};
-        $rsp->{data}->[0] = $version;        
-        xCAT::MsgUtils->message("I",$rsp,$callback, 0);
+        my $rsp = {};
+        $rsp->{data}->[0] = $version;
+        xCAT::MsgUtils->message("I", $rsp, $callback, 0);
         exit 0;
     }
 
 
-    if ( @ARGV && $ARGV[0] ) {
-        my $rsp={};
-        $rsp->{data}->[0] = "Ignoring arguments ". join(',',@ARGV);
-        xCAT::MsgUtils->message("I",$rsp,$callback, 0);
+    if (@ARGV && $ARGV[0]) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Ignoring arguments " . join(',', @ARGV);
+        xCAT::MsgUtils->message("I", $rsp, $callback, 0);
     }
 
-    if ( $req->{node} && $req->{node}->[0] ) {
-        my $rsp={};
-        $rsp->{data}->[0] = "Ignoring nodes ". join(',',@{$req->{node}});
-        xCAT::MsgUtils->message("I",$rsp,$callback, 0);
-        $req->{node}=[];
+    if ($req->{node} && $req->{node}->[0]) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Ignoring nodes " . join(',', @{ $req->{node} });
+        xCAT::MsgUtils->message("I", $rsp, $callback, 0);
+        $req->{node} = [];
     }
 
     if ($options{'servicenodes'}) {
 
-    # Run rescanplugins on MN and all service nodes
-    # build an individual request for each service node
+        # Run rescanplugins on MN and all service nodes
+        # build an individual request for each service node
         my @requests;
-            my $MNreq = {%$req};
-            $MNreq->{_xcatpreprocessed}->[0] = 1;
-            push @requests, $MNreq;
- 
+        my $MNreq = {%$req};
+        $MNreq->{_xcatpreprocessed}->[0] = 1;
+        push @requests, $MNreq;
+
         foreach my $sn (xCAT::ServiceNodeUtils->getAllSN())
         {
             my $SNreq = {%$req};
@@ -130,10 +132,10 @@ sub preprocess_request
             push @requests, $SNreq;
 
         }
-        return \@requests;  # return requests for all Service nodes
-    } 
+        return \@requests;    # return requests for all Service nodes
+    }
 
-  return [$req];
+    return [$req];
 }
 
 #-------------------------------------------------------
@@ -147,19 +149,20 @@ sub preprocess_request
 #-------------------------------------------------------
 sub process_request
 {
-    my $req  = shift;
+    my $req      = shift;
     my $callback = shift;
-    my $subreq    = shift;
+    my $subreq   = shift;
 
     # The xcatd daemon should intercept this command and process it directly
 
     print "in rescanplugins->process_request -- xcatd should process this request directly.  WE SHOULD NEVER GET HERE \n";
-    my $rsp={};
+    my $rsp = {};
     $rsp->{data}->[0] = "in rescanplugins->process_request:  xcatd should process this request directly. WE SHOULD NEVER GET HERE";
     xCAT::MsgUtils->message("I", $rsp, $callback, 0);
     return;
 
 }
+
 #-------------------------------------------------------------------------------
 
 =head3
@@ -185,10 +188,10 @@ sub process_request
 sub usage
 {
 ## usage message
-      my $usagemsg  = " rescanplugins [-h|--help] \n rescanplugins [-v|--version] \n rescanplugins [-s|--servicenodes]\n";
+    my $usagemsg = " rescanplugins [-h|--help] \n rescanplugins [-v|--version] \n rescanplugins [-s|--servicenodes]\n";
 ###  end usage mesage
-        my $rsp = {};
-        $rsp->{data}->[0] = $usagemsg;
-        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-  return;
+    my $rsp = {};
+    $rsp->{data}->[0] = $usagemsg;
+    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    return;
 }

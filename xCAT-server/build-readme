@@ -6,14 +6,17 @@
 # html version).
 
 use strict;
+
 #use lib '.';
 
-my $toolsdir = 'share/xcat/tools';
+my $toolsdir   = 'share/xcat/tools';
 my $textreadme = "$toolsdir/README.txt";
 my $htmlreadme = "$toolsdir/README.html";
+
 #my $cachedir = '/tmp';
 
 my @tools = getToolList($toolsdir);
+
 #foreach (@tools) { print "$_\n"; }
 
 # Put the intro text in the readme files
@@ -24,14 +27,14 @@ writeintro(\*TXT, \*HTML, @tools);
 
 # Run each tool with --help flag
 foreach my $toolfile (@tools) {
-    my $cmd = "./$toolsdir/$toolfile --help";
+    my $cmd    = "./$toolsdir/$toolfile --help";
     my $output = `$cmd`;
-	if ($?) {
-		my $err = "Error: execution of '$cmd' failed with rc=" . ($?>>8) . ".\n";
-		print $err;
-		$output .= $err;
-	}
-	writetoolhelp(\*TXT, \*HTML, $toolfile, $output);
+    if ($?) {
+        my $err = "Error: execution of '$cmd' failed with rc=" . ($? >> 8) . ".\n";
+        print $err;
+        $output .= $err;
+    }
+    writetoolhelp(\*TXT, \*HTML, $toolfile, $output);
 }
 
 # close files
@@ -44,50 +47,51 @@ exit;
 
 # get the list of tool script files.
 sub getToolList {
-	my $toolsdir = shift;
+    my $toolsdir = shift;
 
-	# 1st get toplevel dir listing
-	opendir(DIR, $toolsdir) or die "Error: could not read $toolsdir.\n";
-	my @files = grep !/^\./, readdir(DIR);		# /
-	close(DIR);
+    # 1st get toplevel dir listing
+    opendir(DIR, $toolsdir) or die "Error: could not read $toolsdir.\n";
+    my @files = grep !/^\./, readdir(DIR);    # /
+    close(DIR);
 
-	# remove files that are not regular files (not dirs) and executable
-	my @newlist;
-	foreach my $f (@files) {
-		my $file = "$toolsdir/$f";
-		if ((-f $file) && (-x $file)) { push @newlist, $f; }
-	}
-	#foreach (@files) { print "$_\n"; }
-	#foreach (@newlist) { print "$_\n"; }
+    # remove files that are not regular files (not dirs) and executable
+    my @newlist;
+    foreach my $f (@files) {
+        my $file = "$toolsdir/$f";
+        if ((-f $file) && (-x $file)) { push @newlist, $f; }
+    }
 
-	return sort @newlist;
+    #foreach (@files) { print "$_\n"; }
+    #foreach (@newlist) { print "$_\n"; }
+
+    return sort @newlist;
 }
 
 
 # print some text to both readmes
 sub printtoboth {
-	my $txt = shift;
-	my $html = shift;
-	my $str = shift;
-	print $txt $str;
-	print $html $str;
+    my $txt  = shift;
+    my $html = shift;
+    my $str  = shift;
+    print $txt $str;
+    print $html $str;
 }
 
 
 # write the up front stuff of the readme
 sub writeintro {
-	my $txt = shift;       # the file handle to the txt readme file
-	my $html = shift;       # the file handle to the html readme file
-	# the rest of @_ contains the tool files in the dir
+    my $txt  = shift;    # the file handle to the txt readme file
+    my $html = shift;    # the file handle to the html readme file
+                         # the rest of @_ contains the tool files in the dir
 
-	# write title part of readmes
-	print $txt <<'TXTEOS1';
+    # write title part of readmes
+    print $txt <<'TXTEOS1';
 xCAT TOOL DESCRIPTIONS
 ----------------------
 
 TXTEOS1
 
-	print $html <<'HTMLEOS1';
+    print $html <<'HTMLEOS1';
 <html>
 <head>
   <title>xCAT Tool Descriptions</title>
@@ -96,17 +100,17 @@ TXTEOS1
 <h1 align="center">xCAT Tool Descriptions</h1>
 HTMLEOS1
 
-	# write the table of contents for the html readme
-	print $html "<ul><li><a href='#Introduction'>Introduction</a>\n";
-	foreach my $tool (@_) {
-		print $html "<li><a href='#$tool'>$tool</a>\n";
-	}
-	print $html "</ul>\n";
+    # write the table of contents for the html readme
+    print $html "<ul><li><a href='#Introduction'>Introduction</a>\n";
+    foreach my $tool (@_) {
+        print $html "<li><a href='#$tool'>$tool</a>\n";
+    }
+    print $html "</ul>\n";
 
-	# write the intro
-	print $html "<a id='Introduction'></a><h2>Introduction</h2><p>\n";
+    # write the intro
+    print $html "<a id='Introduction'></a><h2>Introduction</h2><p>\n";
 
-	printtoboth $txt, $html, <<'EOS1';
+    printtoboth $txt, $html, <<'EOS1';
 This is a list of additional tools that are provided by xCAT.  They are located
 in /opt/xcat/share/xcat/tools/, but should also be in your path.  Many of these
 tools have been contributed by xCAT users that are not part of the core xCAT
@@ -116,20 +120,20 @@ risk.  If you have problems with a tool, post to the xCAT mailing list and
 the author will try to help you.
 EOS1
 
-	print $html "</p>\n";
+    print $html "</p>\n";
 
 }
 
 
 # write the help for one tool
 sub writetoolhelp {
-	my $txt = shift;       # the file handle to the txt readme file
-	my $html = shift;       # the file handle to the html readme file
-	my $toolname = shift;	# the script name of the tool
-	my $toolhelp = shift;	# the --help output from the tool
+    my $txt      = shift;    # the file handle to the txt readme file
+    my $html     = shift;    # the file handle to the html readme file
+    my $toolname = shift;    # the script name of the tool
+    my $toolhelp = shift;    # the --help output from the tool
 
-	# write the heading for this tool
-	print $txt <<"TXTEOS2";
+    # write the heading for this tool
+    print $txt <<"TXTEOS2";
 
 
 $toolname
@@ -137,27 +141,28 @@ $toolname
 
 TXTEOS2
 
-	print $html <<"HTMLEOS2";
+    print $html <<"HTMLEOS2";
 <hr>
 <a id='$toolname'></a>
 <h2>$toolname</h2>
 <pre>
 HTMLEOS2
 
-	# write the actual contents of the tool help
-	printtoboth $txt, $html, $toolhelp;
+    # write the actual contents of the tool help
+    printtoboth $txt, $html, $toolhelp;
 
-	# finish up
-	print $html <<"HTMLEOS3";
+    # finish up
+    print $html <<"HTMLEOS3";
 </pre>
 HTMLEOS3
 }
 
 
 sub writeending {
-	my $html = shift;
-	# finish up the html readme
-	print $html <<'HTMLEOS4';
+    my $html = shift;
+
+    # finish up the html readme
+    print $html <<'HTMLEOS4';
 </body>
 </html>
 HTMLEOS4

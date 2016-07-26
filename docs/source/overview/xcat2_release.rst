@@ -7,6 +7,33 @@ The following table is a summary of the new operating system (OS), hardware, and
 * **SLES** - Suse Linux Enterprise Server
 * **UBT** - Ubuntu
 
+xCAT 2.12.x
+-----------
+
++---------------------------------+---------------+-------------+----------------------------------+
+|xCAT                             |New OS         |New          |New Feature                       |
+|Version                          |               |Hardware     |                                  |
++=================================+===============+=============+==================================+
+|| xCAT 2.12.1                    |               |             |- New xCAT install tool: go-xcat  |
+|| 2016/07/08                     |               |             |- New opt: mkdef/lsdef --template |
+||                                |               |             |- Support rinstall for all OS/ARCH|
+| `2.12.1 Release Notes <https:// |               |             |- site.xcatdebugmode for diskless |
+| github.com/xcat2/xcat-core/wiki |               |             |- Refine discovery framework      |
+| /XCAT_2.12.1_Release_Notes>`_   |               |             |- rscan <kvmhost>                 |
+|                                 |               |             |- New: xcatprobe (experimental)   |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.12                      |- RHEL 6.8     |             |- Docker: xCAT in Docker          |
+|| 2016/5/20                      |- UBT 14.4.4 LE|             |- Docker: container life cycle mgt|
+||                                |- UBT 16.04    |             |- Docker: Set up Docker Registry  |
+| `2.12 Release Notes <https://   |               |             |- New command: getadapter         |
+| github.com/xcat2/xcat-core/     |               |             |- Add get_install_disk (diskful)  |
+| wiki/XCAT_2.12_Release_Notes>`_ |               |             |- Add site.xcatdebugmode          |
+|                                 |               |             |- Add switchdiscover -s snmp      |
+|                                 |               |             |- Disable auditlog by default     |
+|                                 |               |             |- Add site.hierarchicalattrs      |
++---------------------------------+---------------+-------------+----------------------------------+
+
+
 xCAT 2.11.x
 -----------
 
@@ -14,6 +41,13 @@ xCAT 2.11.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.11.1                    |               |             |- Bug fix                         |
+|| 2016/04/22                     |               |             |                                  |
+||                                |               |             |                                  |
+| `2.11.1 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.11.1_Release_Notes>`_   |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.11                      |- RHEL 7.2 LE  |- S822LC(GCA)|- NVIDIA GPU for OpenPOWER        |
 || 2015/12/11                     |- UBT 14.4.3 LE|- S822LC(GTA)|- Infiniband for OpenPOWER        |
 ||                                |- UBT 15.10 LE |- S812LC     |- SW KIT support for OpenPOWER    |

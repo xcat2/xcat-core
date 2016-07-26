@@ -114,7 +114,7 @@ DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n
 #done
 #CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
 
-logger -t $log_label -p local4.info "Beginning echo infomation to discovery packet file..."
+logger -s -t $log_label -p local4.info "Beginning echo infomation to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<sequential>1</sequential>" >> /tmp/discopacket
@@ -258,20 +258,20 @@ cat /tmp/discopacket |while read line; do
 	echo $line >> /tmp/discopacket.new
 done
 mv /tmp/discopacket.new /tmp/discopacket
-logger -t $log_label -p local4.info "Discovery packet file is ready."
+logger -s -t $log_label -p local4.info "Discovery packet file is ready."
 rm -f /tmp/discopacket.gz
 gzip -9 /tmp/discopacket
 	if [ ! -z "$XCATMASTER" ]; then
-		logger -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
+		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
-		logger -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
+		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
 	#cat /tmp/discopacket
-	logger -t $log_label -p local4.info "Sleeping 5 seconds..."
+	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5
 done
-logger -t $log_label -p local4.info "Restart..."
+logger -s -t $log_label -p local4.info "Restart network interfaces..."
 /bin/restart

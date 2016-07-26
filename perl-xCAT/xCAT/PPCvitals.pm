@@ -23,43 +23,43 @@ sub parse_args {
     #############################################
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($command);
-        return( [ $_[0], $usage_string] );
+        return ([ $_[0], $usage_string ]);
     };
     #############################################
     # Process command-line arguments
     #############################################
-    if ( !defined( $args )) {
-        return(usage( "No command specified" ));
+    if (!defined($args)) {
+        return (usage("No command specified"));
     }
     #############################################
     # Checks case in GetOptions, allows opts
     # to be grouped (e.g. -vx), and terminates
     # at the first unrecognized option.
     #############################################
-    @ARGV = @$args;
+    @ARGV                     = @$args;
     $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure( "bundling" );
+    Getopt::Long::Configure("bundling");
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) {
-        return( usage() );
+    if (!GetOptions(\%opt, qw(V|verbose))) {
+        return (usage());
     }
     ####################################
     # Check for "-" with no option
     ####################################
-    if ( grep(/^-$/, @ARGV )) {
-        return(usage( "Missing option: -" ));
+    if (grep(/^-$/, @ARGV)) {
+        return (usage("Missing option: -"));
     }
     ####################################
     # Unsupported command
     ####################################
-    my ($cmd) = grep(/^$ARGV[0]$/, @rvitals );
-    if ( !defined( $cmd )) {
-        return(usage( "Invalid command: $ARGV[0]" ));
+    my ($cmd) = grep(/^$ARGV[0]$/, @rvitals);
+    if (!defined($cmd)) {
+        return (usage("Invalid command: $ARGV[0]"));
     }
-     
-    if($ARGV[0] =~ /^rackenv$/) {
-        if($request->{hwtype} =~ /^hmc$/) {
-            return(usage( "Command $ARGV[0] is not valid when the nodes' hcp is hmc" ));
+
+    if ($ARGV[0] =~ /^rackenv$/) {
+        if ($request->{hwtype} =~ /^hmc$/) {
+            return (usage("Command $ARGV[0] is not valid when the nodes' hcp is hmc"));
         }
     }
 
@@ -67,14 +67,14 @@ sub parse_args {
     # Check for an extra argument
     ####################################
     shift @ARGV;
-    if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
+    if (defined($ARGV[0])) {
+        return (usage("Invalid Argument: $ARGV[0]"));
     }
     ####################################
     # Set method to invoke
     ####################################
     $request->{method} = $cmd;
-    return( \%opt );
+    return (\%opt);
 }
 
 
@@ -87,24 +87,24 @@ sub enumerate_volt {
     my $d   = shift;
 
     my $mtms = @$d[2];
-    my $volt = xCAT::PPCcli::lshwinfo( $exp, "frame", $mtms );
-    my $Rc = shift(@$volt);
+    my $volt = xCAT::PPCcli::lshwinfo($exp, "frame", $mtms);
+    my $Rc   = shift(@$volt);
 
     ####################################
     # Return error
     ####################################
-    if ( $Rc != SUCCESS ) {
-        return( [RC_ERROR, @$volt[0]] );
+    if ($Rc != SUCCESS) {
+        return ([ RC_ERROR, @$volt[0] ]);
     }
     ####################################
-    # Success - return voltages 
+    # Success - return voltages
     ####################################
-    return( [SUCCESS, @$volt[0]] );
+    return ([ SUCCESS, @$volt[0] ]);
 }
 
 
 ##########################################################################
-# Returns cage temperatures 
+# Returns cage temperatures
 ##########################################################################
 sub enumerate_temp {
 
@@ -116,23 +116,23 @@ sub enumerate_temp {
     # Get cage information for frame
     ####################################
     my $filter = "type_model_serial_num,temperature";
-    my $cages  = xCAT::PPCcli::lshwinfo( $exp, "sys", $frame, $filter ); 
-    my $Rc = shift(@$cages);
+    my $cages  = xCAT::PPCcli::lshwinfo($exp, "sys", $frame, $filter);
+    my $Rc     = shift(@$cages);
 
     ####################################
     # Expect error
     ####################################
-    if ( $Rc == EXPECT_ERROR || $Rc == RC_ERROR ) {
-        return( [$Rc,@$cages[0]] );
+    if ($Rc == EXPECT_ERROR || $Rc == RC_ERROR) {
+        return ([ $Rc, @$cages[0] ]);
     }
     ####################################
     # Save frame by CEC MTMS in cage
     ####################################
-    foreach ( @$cages ) {
-        my ($mtms,$temp) = split /,/;
-        $outhash{$mtms}  = $temp;
+    foreach (@$cages) {
+        my ($mtms, $temp) = split /,/;
+        $outhash{$mtms} = $temp;
     }
-    return( [SUCCESS,\%outhash] );
+    return ([ SUCCESS, \%outhash ]);
 }
 
 ##########################################################################
@@ -140,30 +140,31 @@ sub enumerate_temp {
 ##########################################################################
 sub enumerate_lcds {
 
-    my $exp = shift;
-    my $d = shift;
-    my $mtms = @$d[2];
-    my $Rc = undef;
-    my $value = undef;
+    my $exp      = shift;
+    my $d        = shift;
+    my $mtms     = @$d[2];
+    my $Rc       = undef;
+    my $value    = undef;
     my $nodetype = @$d[4];
-    my $lpar_id = @$d[0];
-    my @refcode = ();
-    
+    my $lpar_id  = @$d[0];
+    my @refcode  = ();
+
     my $values = xCAT::PPCcli::lsrefcode($exp, $nodetype, $mtms, $lpar_id);
-    foreach $value (@$values){
+    foreach $value (@$values) {
+
         #Return error
         $Rc = shift @$value;
-        if( @$value[0] =~ /refcode=(\w*)/){
+        if (@$value[0] =~ /refcode=(\w*)/) {
             my $code = $1;
-            if ( ! $code)
+            if (!$code)
             {
-                push @refcode, [$Rc, "blank"];
+                push @refcode, [ $Rc, "blank" ];
             }
             else
             {
-                push @refcode, [$Rc, $code] ;
+                push @refcode, [ $Rc, $code ];
             }
-	    } 
+        }
     }
 
     return \@refcode;
@@ -171,7 +172,7 @@ sub enumerate_lcds {
 
 
 ##########################################################################
-# Returns voltages/currents 
+# Returns voltages/currents
 ##########################################################################
 sub voltage {
 
@@ -181,7 +182,7 @@ sub voltage {
     my $hwtype  = @$exp[2];
     my @result  = ();
     my $text    = "Frame Voltages: ";
-    my @prefix  = ( 
+    my @prefix  = (
         "Frame Voltage (Vab): %sV",
         "Frame Voltage (Vbc): %sV",
         "Frame Voltage (Vca): %sV",
@@ -190,30 +191,30 @@ sub voltage {
         "Frame Current  (Ic): %sA",
     );
 
-    while (my ($mtms,$h) = each(%$hash) ) {
-        while (my ($name,$d) = each(%$h) ) {
-            ################################# 
-            # No frame command on IVM 
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my ($name, $d) = each(%$h)) {
             #################################
-            if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$text Not available",1];
+            # No frame command on IVM
+            #################################
+            if ($hwtype eq "ivm") {
+                push @result, [ $name, "$text Not available", 1 ];
                 next;
             }
-            ################################# 
+            #################################
             # Voltages available in frame
-            ################################# 
-            if ( @$d[4] ne "bpa" ) {
-                push @result, [$name,"$text Only available for BPA",0];
+            #################################
+            if (@$d[4] ne "bpa") {
+                push @result, [ $name, "$text Only available for BPA", 0 ];
                 next;
             }
-            my $volt = enumerate_volt( $exp, $d );
+            my $volt = enumerate_volt($exp, $d);
             my $Rc = shift(@$volt);
 
-            ################################# 
-            # Output error 
             #################################
-            if ( $Rc != SUCCESS ) { 
-                push @result, [$name,"$text @$volt[0]",$Rc];
+            # Output error
+            #################################
+            if ($Rc != SUCCESS) {
+                push @result, [ $name, "$text @$volt[0]", $Rc ];
                 next;
             }
             #################################
@@ -222,13 +223,13 @@ sub voltage {
             my @values = split /,/, @$volt[0];
             my $i = 0;
 
-            foreach ( @prefix ) {
-                my $value = sprintf($_, $values[$i++]);
-                push @result, [$name,$value,$Rc];
-            } 
+            foreach (@prefix) {
+                my $value = sprintf($_, $values[ $i++ ]);
+                push @result, [ $name, $value, $Rc ];
+            }
         }
     }
-    return( \@result );
+    return (\@result);
 }
 
 
@@ -245,65 +246,65 @@ sub temp {
     my %frame   = ();
     my $prefix  = "System Temperature:";
 
-    ######################################### 
+    #########################################
     # Group by frame
-    ######################################### 
-    while (my ($mtms,$h) = each(%$hash) ) {
-        while (my ($name,$d) = each(%$h) ) {
+    #########################################
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my ($name, $d) = each(%$h)) {
             my $mtms = @$d[5];
 
             #################################
-            # No frame commands for IVM 
-            ################################# 
-            if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",0];
+            # No frame commands for IVM
+            #################################
+            if ($hwtype eq "ivm") {
+                push @result, [ $name, "$prefix Not available (No BPA)", 0 ];
                 next;
             }
-            ################################# 
-            # Temperatures not available 
-            ################################# 
-            if ( @$d[4] !~ /^(fsp|cec|lpar)$/ ) {
+            #################################
+            # Temperatures not available
+            #################################
+            if (@$d[4] !~ /^(fsp|cec|lpar)$/) {
                 my $text = "$prefix Only available for CEC/LPAR";
-                push @result, [$name,$text,0];
-                next;
-            }
-            ################################# 
-            # Error - No frame 
-            #################################
-            if ( $mtms eq "0" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",0];
+                push @result, [ $name, $text, 0 ];
                 next;
             }
             #################################
-            # Save node 
-            ################################# 
+            # Error - No frame
+            #################################
+            if ($mtms eq "0") {
+                push @result, [ $name, "$prefix Not available (No BPA)", 0 ];
+                next;
+            }
+            #################################
+            # Save node
+            #################################
             $frame{$mtms}{$name} = $d;
         }
     }
 
-    while (my ($mtms,$h) = each(%frame) ) {
-        ################################# 
-        # Get temperatures this frame 
-        ################################# 
-        my $temp = enumerate_temp( $exp, $mtms );
-        my $Rc = shift(@$temp);
+    while (my ($mtms, $h) = each(%frame)) {
+        #################################
+        # Get temperatures this frame
+        #################################
+        my $temp = enumerate_temp($exp, $mtms);
+        my $Rc   = shift(@$temp);
         my $data = @$temp[0];
 
-        while (my ($name,$d) = each(%$h) ) {
+        while (my ($name, $d) = each(%$h)) {
             my $mtms = @$d[2];
 
             #############################
             # Output error
             #############################
-            if ( $Rc != SUCCESS ) {
-                push @result, [$name,"$prefix $data",$Rc];
+            if ($Rc != SUCCESS) {
+                push @result, [ $name, "$prefix $data", $Rc ];
                 next;
             }
             #############################
-            # CEC not in frame 
+            # CEC not in frame
             #############################
-            if ( !exists( $data->{$mtms} )) {
-                push @result, [$name,"$prefix CEC '$mtms' not found",1];
+            if (!exists($data->{$mtms})) {
+                push @result, [ $name, "$prefix CEC '$mtms' not found", 1 ];
                 next;
             }
             #############################
@@ -312,58 +313,59 @@ sub temp {
             my $cel   = $data->{$mtms};
             my $fah   = ($cel * 1.8) + 32;
             my $value = "$prefix $cel C ($fah F)";
-            push @result, [$name,$value,$Rc];
+            push @result, [ $name, $value, $Rc ];
         }
     }
-    return( \@result );
+    return (\@result);
 }
 
 
 ##########################################################################
-# Returns system power status (on or off) 
+# Returns system power status (on or off)
 ##########################################################################
 sub power {
-    return( xCAT::PPCpower::state(@_,"Current Power Status: ",1));
+    return (xCAT::PPCpower::state(@_, "Current Power Status: ", 1));
 }
 
 ##########################################################################
-# Returns system state 
+# Returns system state
 ##########################################################################
 sub state {
-    return( xCAT::PPCpower::state(@_,"System State: "));
+    return (xCAT::PPCpower::state(@_, "System State: "));
 }
 ###########################################################################
 # Returns system LCD status (LCD1, LCD2)
 ##########################################################################
 sub lcds {
-    my $request = shift;
-    my $hash    = shift;
-    my $exp     = shift;
-    my $hwtype  = @$exp[2];
-    my @result  = ();
-    my $text = "Current LCD:";
-    my $prefix  = "Current LCD%d: %s";
-    my $rcode = undef;
+    my $request  = shift;
+    my $hash     = shift;
+    my $exp      = shift;
+    my $hwtype   = @$exp[2];
+    my @result   = ();
+    my $text     = "Current LCD:";
+    my $prefix   = "Current LCD%d: %s";
+    my $rcode    = undef;
     my $refcodes = undef;
-    my $Rc = undef;
-    my $num = undef;
-    my $value = undef;
+    my $Rc       = undef;
+    my $num      = undef;
+    my $value    = undef;
 
-    while (my ($mtms,$h) = each(%$hash) ) {
-        while(my ($name, $d) = each(%$h) ){
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my ($name, $d) = each(%$h)) {
+
             #Support HMC only
-            if($hwtype ne 'hmc'){
-                push @result, [$name, "$text Not available(NO HMC)", 1];
+            if ($hwtype ne 'hmc') {
+                push @result, [ $name, "$text Not available(NO HMC)", 1 ];
                 next;
             }
             $refcodes = enumerate_lcds($exp, $d);
             $num = 1;
-            foreach $rcode (@$refcodes){
+            foreach $rcode (@$refcodes) {
                 $Rc = shift(@$rcode);
                 $value = sprintf($prefix, $num, @$rcode[0]);
-                push @result, [$name, $value, $Rc];
+                push @result, [ $name, $value, $Rc ];
                 $num = $num + 1;
-	    }
+            }
         }
     }
     return \@result;
@@ -375,16 +377,16 @@ sub lcds {
 ##########################################################################
 sub all {
 
-    my @values = ( 
-        @{temp(@_)}, 
-        @{voltage(@_)}, 
-        @{state(@_)},
-        @{power(@_)},
-        @{lcds(@_)}, 
-    ); 
+    my @values = (
+        @{ temp(@_) },
+        @{ voltage(@_) },
+        @{ state(@_) },
+        @{ power(@_) },
+        @{ lcds(@_) },
+    );
 
-    my @sorted_values = sort {$a->[0] cmp $b->[0]} @values;
-    return( \@sorted_values );
+    my @sorted_values = sort { $a->[0] cmp $b->[0] } @values;
+    return (\@sorted_values);
 }
 
 

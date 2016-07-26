@@ -84,7 +84,7 @@ OPTIONS
 
 \ **-**\ **-template**\  \ *template-object-name*\ 
  
- Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. For the details of xCAT shipped object definition templates, please refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
+ Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. If there are a template and an existing object with the same name \ *template-object-name*\ , the tempalte object takes precedence over the existing object. For the details of xCAT shipped object definition templates, refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
  
 
 
@@ -286,19 +286,19 @@ EXAMPLES
  
 
 
-13
+13.
  
- To create a PowerLE kvm node definition with the xCAT shipped template "powerLEkvm".
+ To create a PowerLE kvm node definition with the xCAT shipped template "ppc64lekvmguest-template".
  
  
  .. code-block:: perl
  
-   mkdef -t node cn1 --template powerLEkvm ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
+   mkdef -t node cn1 --template ppc64lekvmguest-template ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
  
  
 
 
-14
+14.
  
  To create a node definition from an existing node definition "cn1"
  

@@ -8,12 +8,13 @@ use probe_utils;
 use File::Basename;
 use Net::Ping;
 use Getopt::Long qw(:config no_ignore_case);
+
 #use Data::Dumper;
 use warnings;
 
 my $program_name = basename("$0");
 my $help;
-my $installnic;
+my $noderange = "";
 my $test;
 my $output  = "stdout";
 my $verbose = 0;
@@ -21,18 +22,19 @@ my $rst     = 0;
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -t
-    $program_name {-c|-d} [-V]
+    $program_name -T
+    $program_name {-c|-d} [-n noderange] [-V]
 
 Description:
-    Use this command to check if compute nodes have the same images installed as defines in xCAT DB. 
-    Use this command to check if all compute nodes have the same identical installed. 
+    Use this command to check if diskless, pingable compute nodes have the same images installed as defines in xCAT DB. 
+    Use this command to check if all diskless, pingable compute nodes have the same identical installed. 
 
 Options:
     -h : Get usage information of $program_name
-    -t : To verify if $program_name can work, reserve option for probe framework
-    -d : To verify compute nodes have the same images installed as defines in xCAT DB. 
-    -c : To verify compute nodes have the identical images installed.
+    -T : To verify if $program_name can work, reserve option for probe framework
+    -n : Range of nodes to check
+    -d : To verify diskless, pingable compute nodes have the same images installed as defines in xCAT DB. 
+    -c : To verify all diskless, pingable compute nodes have the identical images installed.
     -V : To print additional debug information.
 ";
 
@@ -41,10 +43,11 @@ Options:
 #-------------------------------------
 if (
     !GetOptions("--help|h" => \$help,
-        "t" => \$test,
-        "V" => \$VERBOSE,
-        "c" => \$CONSISTENCY_CHECK,
-        "d" => \$DEFINITION_CHECK))
+        "T"   => \$test,
+        "V"   => \$VERBOSE,
+        "n=s" => \$noderange,
+        "c"   => \$CONSISTENCY_CHECK,
+        "d"   => \$DEFINITION_CHECK))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
     probe_utils->send_msg("$output", "d", "$::USAGE");
@@ -61,7 +64,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "Use this command to check if all compute nodes have the same images installed or if compute nodes are installed with the same image as defined on MN.");
+    probe_utils->send_msg("$output", "o", "Use this command to check if specified compute nodes have the same images installed or if compute nodes are installed with the same image as defined on MN.");
     exit 0;
 }
 
@@ -71,109 +74,223 @@ unless (defined($CONSISTENCY_CHECK) || defined($DEFINITION_CHECK)) {
     exit 1;
 }
 
-my @nodes = `nodels`;
-@nodes = grep(s/^[\s]+|[\s]*$//g, @nodes);
+if (scalar(@ARGV) >= 1) {
+
+    # After processing all the expected flags and arguments,
+    # there is still left over stuff on the command line
+    probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
 
 my @pingable_nodes;
 my @diskless_nodes;
 my $na = "N/A";
 
-# First, extract diskless nodes
-foreach (@nodes) {
-    my $lsdef_provmethod = `lsdef $_ -i provmethod -c`;
-    if ($lsdef_provmethod =~ /netboot/) {
-        push(@diskless_nodes, $_);
-        probe_utils->send_msg("$output", "d", "$_ is diskless");
-    }
-}
-
-# Next, check if all diskless nodes are pingable
-my $p = Net::Ping->new();
-foreach (@diskless_nodes) {
-    if ($p->ping($_, 2)) {
-        probe_utils->send_msg("$output", "o", "Pinging $_");
-        push(@pingable_nodes, $_);
-    }
-    else {
-        probe_utils->send_msg("$output", "f", "Pinging $_");
-    }
-    sleep(1);
-}
-$p->close();
-
 my $defined_UUID = $na;
-my %node_running_image_uuid_hash;
 my %node_defined_image_uuid_hash;
-my %node_running_image_name_hash;
 my %node_defined_image_name_hash;
+my %osimage_defined_provmethod_hash;
 
-foreach (@pingable_nodes) {
-    probe_utils->send_msg("$output", "d", "---- Gathering information from node $_ ----");
+my $all_nodes_provmethod   = `lsdef -i provmethod -c $noderange`;
+my $all_osimage_provmethod = `lsdef -t osimage -i provmethod,rootimgdir -c`;
+chomp($all_nodes_provmethod);
+my @all_nodes_provmethod_lines   = split("[\n\r]", $all_nodes_provmethod);
+my @all_osimage_provmethod_lines = split("[\n\r]", $all_osimage_provmethod);
 
-    # Next, from all pingable nodes get the IMAGENAME and IMAGEUUID entries from xcatinfo file
-    my $output = `xdsh $_ "cat /opt/xcat/xcatinfo"`;
-    my $xcatinfo_image_UUID = ` echo "$output" | awk -F"=" '/IMAGEUUID/ {gsub(/'"'"'/,"",\$2); print \$2}'`;
-    my $xcatinfo_image_name = ` echo "$output" | awk -F"=" '/IMAGENAME/ {gsub(/'"'"'/,"",\$2); print \$2}'`;
-    chomp($xcatinfo_image_UUID);
-    chomp($xcatinfo_image_name);
-    if (length($xcatinfo_image_UUID) <= 0) {
-        $xcatinfo_image_UUID = $na;
-    }
-    if (length($xcatinfo_image_name) <= 0) {
-        $xcatinfo_image_name = $na;
-    }
-    $node_running_image_uuid_hash{$_} = $xcatinfo_image_UUID;
-    $node_running_image_name_hash{$_} = $xcatinfo_image_name;
-    print "Node $_ is running image $node_running_image_name_hash{$_} with UUID $node_running_image_uuid_hash{$_} \n" if ($VERBOSE);
+if ($all_nodes_provmethod =~ /Usage:/) {
 
-    # Next, get UUID from rootimg directory xcatinfo file of the provmethod osimage
-    my $lsdef_provmethod = `lsdef $_ -i provmethod -c | cut -d "=" -f 2`;
-    chomp($lsdef_provmethod);
-    my $rootimagedir = $na;
-    if (length($lsdef_provmethod) > 0) {
-        $rootimagedir = `lsdef -t osimage $lsdef_provmethod -i rootimgdir -c | cut -d "=" -f 2`;
-        chomp($rootimagedir);
-        if (length($rootimagedir) > 0) {
-            $defined_UUID = `awk -F"'" '/IMAGEUUID/ {print \$2}' $rootimagedir/rootimg/opt/xcat/xcatinfo`;
-            chomp($defined_UUID);
-            if (length($defined_UUID) < 1) {
-                $defined_UUID = $na;
+    # lsdef command displayed a Usage message. Must be some noderange formatting problem.
+    # Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
+    exit 1;
+}
+
+if (scalar(@all_nodes_provmethod_lines) <= 0) {
+
+    # There were no nodes matching the noderange. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
+    exit 1;
+}
+
+# Build a hash of key="osimage name + attribute name" value="provmethod and rootimgdir attribute value"
+foreach (@all_osimage_provmethod_lines) {
+    my ($osimage_name, $values) = split "=", $_;
+    $osimage_defined_provmethod_hash{$osimage_name} = $values;
+}
+
+# First, extract diskless nodes
+foreach (@all_nodes_provmethod_lines) {
+
+    # Get osimage name for the node
+    my ($node_name, $junk, $node_osimage_name) = split "[:=]", $_;
+    chomp($node_osimage_name);
+
+    if (length($node_osimage_name) > 0) {
+
+        # Get provmethod and rootimgdir for the osimage
+        my $osimage_provmethod_type = $osimage_defined_provmethod_hash{ $node_osimage_name . ": provmethod" };
+        my $rootimagedir = $osimage_defined_provmethod_hash{ $node_osimage_name . ": rootimgdir" };
+        chomp($osimage_provmethod_type) if ($osimage_provmethod_type);
+        chomp($rootimagedir)            if ($rootimagedir);
+
+        # Check if it is netboot, meaning diskless
+        if ($osimage_provmethod_type && $osimage_provmethod_type eq 'netboot') {
+            push(@diskless_nodes, $node_name);
+            probe_utils->send_msg("$output", "o", "$node_name is diskless") if ($VERBOSE);
+            if (length($rootimagedir) > 0) {
+
+                # For this diskless node, get UUID from rootimg directory xcatinfo file of the provmethod osimage
+                my $xcatinfo_file = $rootimagedir . "/rootimg/opt/xcat/xcatinfo";
+                if (-r $xcatinfo_file) {
+                    $defined_UUID = `awk -F"'" '/IMAGEUUID/ {print \$2}' $xcatinfo_file`;
+                    chomp($defined_UUID);
+                    if (length($defined_UUID) < 1) {
+                        $defined_UUID = $na;
+                    }
+                }
             }
+            $node_defined_image_uuid_hash{$node_name} = $defined_UUID;
+            $node_defined_image_name_hash{$node_name} = $node_osimage_name;
+            print "Node $node_name has defined image $node_osimage_name at $rootimagedir with UUID $defined_UUID\n" if ($VERBOSE);
+        }
+        else {
+            probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.");
         }
     }
     else {
-        $lsdef_provmethod = $na;
+        probe_utils->send_msg("$output", "w", "$node_name has no provision method defined. No image consistency verification will be performed.");
     }
-    $node_defined_image_uuid_hash{$_} = $defined_UUID;
-    $node_defined_image_name_hash{$_} = $lsdef_provmethod;
-    print "Node $_ has defined image $lsdef_provmethod at $rootimagedir with UUID $defined_UUID\n" if ($VERBOSE);
 }
+
+if (scalar(@diskless_nodes) <= 0) {
+
+    # There were no diskless nodes found. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No diskless compute nodes were found.");
+    exit 1;
+}
+
+if (scalar(@diskless_nodes) <= 0) {
+
+    # There were no diskless nodes found. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No diskless compute nodes were found");
+    exit 1;
+}
+
+# Next, check if all diskless nodes are pingable
+my $ping_hosts = join ",", @diskless_nodes;
+my $pping_output = `pping $ping_hosts`;
+chomp($pping_output);
+my @pping_lines = split("[\n\r]", $pping_output);
+foreach (@pping_lines) {
+    my ($hostname, $result) = split ":", $_;
+    my ($token,    $status) = split ' ', $result;
+    chomp($token);
+    if ($token ne 'ping') {
+        probe_utils->send_msg("$output", "f", "Pinging $hostname");
+    }
+    else {
+        probe_utils->send_msg("$output", "o", "Pinging $hostname") if ($VERBOSE);
+        push(@pingable_nodes, $hostname);
+    }
+}
+
+if (scalar(@pingable_nodes) <= 0) {
+
+    # There were no pingable, diskless nodes found. Issue a warning and exit.
+    probe_utils->send_msg("$output", "w", "No diskless, pingable compute nodes were found");
+    exit 1;
+}
+
+if ((scalar(@pingable_nodes) == 1) && ($CONSISTENCY_CHECK)) {
+
+    # There was only one node in noderange and comparison check was requested.
+    # Nothing to compare the single node to.
+    probe_utils->send_msg("$output", "w", "Comparison check for a single diskless pingable node will not be performed. Minimum of 2 nodes are needed for that.");
+    exit 1;
+}
+
+# Next, from all pingable nodes get the IMAGENAME and IMAGEUUID entries from xcatinfo file
+probe_utils->send_msg("$output", "d", "---- Gathering information from all diskless pingable compute nodes ----");
+
+my $pingable_hostname_list = join ",", @pingable_nodes;
+my $all_xdsh_output = `xdsh $pingable_hostname_list "cat /opt/xcat/xcatinfo"`;
+my $xcatinfo_image_UUID = ` echo "$all_xdsh_output" | awk -F"=" '/IMAGEUUID/ {gsub(/IMAGEUUID/,"",\$1); gsub(/'"'"'/,"",\$2);; print \$1 \$2}'`;
+my @xdsh_UUID_lines = split("[\n\r]", $xcatinfo_image_UUID);
+
+my $xcatinfo_image_name = ` echo "$all_xdsh_output" | awk -F"=" '/IMAGENAME/ {gsub(/IMAGENAME/,"",\$1); gsub(/'"'"'/,"",\$2); print \$1 \$2}'`;
+my @xdsh_name_lines = split("[\n\r]", $xcatinfo_image_name);
+
+my %node_running_image_uuid_hash;
+my %node_running_image_name_hash;
+
+# Build a hash of key=hostname, value=running UUID
+foreach (@xdsh_UUID_lines) {
+    my ($hostname, $uuid) = split ": ", $_;
+    chomp($hostname);
+    chomp($uuid);
+    if (length($uuid) > 0) {
+        $node_running_image_uuid_hash{$hostname} = $uuid;
+    }
+    else {
+        $node_running_image_uuid_hash{$hostname} = $na;
+    }
+}
+
+# It is possible that some older version xCAT compute nodes will not have an IMAGEUUID line in
+# the xcatinfo file, for those nodes insert $na as the running UUID value
+foreach (@pingable_nodes) {
+    unless (exists($node_running_image_uuid_hash{$_})) {
+        $node_running_image_uuid_hash{$_} = $na;
+    }
+}
+
+# Build a hash of key="hostname", value="running OS image name"
+foreach (@xdsh_name_lines) {
+    my ($hostname, $osimage_name) = split ": ", $_;
+    chomp($hostname);
+    chomp($osimage_name);
+    if (length($osimage_name) > 0) {
+        $node_running_image_name_hash{$hostname} = $osimage_name;
+    }
+    else {
+        $node_running_image_name_hash{$hostname} = $na;
+    }
+}
+
+# print Dumper(\%node_running_image_uuid_hash);
+# print Dumper(\%node_running_image_name_hash);
 
 # Information gathering is done. Now do veification checking.
 
 # Probe verification step 1 - make sure all nodes are installed with the osimage name and imageUUID as defined on MN
 if ($DEFINITION_CHECK) {
+    my $success_nodes = 0;
+    my $msg;
     foreach (@pingable_nodes) {
-        my $msg;
-        my $status;
         if (($node_running_image_name_hash{$_} eq $node_defined_image_name_hash{$_}) &&
             ($node_running_image_uuid_hash{$_} eq $node_defined_image_uuid_hash{$_})) {
             if ($node_running_image_uuid_hash{$_} eq $na) {
                 $msg = "$_: Not able to determine installed os image name or uuid";
-                $status = "f";
             }
             else {
-                $msg    = "OS image installed on compute node $_ matches the image defined for it on management node";
-                $status = "o";
+                $msg = "OS image installed on compute node $_ matches the image defined for it on management node";
+                probe_utils->send_msg("$output", "o", "$msg") if ($VERBOSE);
+                $success_nodes++;
+                next;
             }
         }
         else {
-            $msg = "$_: Unmatched os image name or image UUID.\n         Defined: name = $node_defined_image_name_hash{$_}" .
+            $msg = "$_: Unmatched os image name or image UUID.\n         Defined:   name = $node_defined_image_name_hash{$_}" .
 " uuid = $node_defined_image_uuid_hash{$_}\n         Installed: name = $node_running_image_name_hash{$_}" .
               " uuid = $node_running_image_uuid_hash{$_}";
-            $status = "f";
         }
-        probe_utils->send_msg("$output", "$status", "$msg");
+        probe_utils->send_msg("$output", "f", "$msg");
+    }
+    if (scalar(@pingable_nodes) eq $success_nodes) {
+
+        # All pingable nodes were tested with success
+        probe_utils->send_msg("$output", "o", "OS image installed on each diskless compute node matches the image defined for it on management node");
     }
 }
 
@@ -210,7 +327,7 @@ if ($CONSISTENCY_CHECK) {
     else {
         my $node_image_table;
         foreach $compute_node (keys %node_running_image_name_hash) {
-            $node_image_table .= sprintf("%-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
+            $node_image_table .= sprintf("         %-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
         }
         $msg = "Not all compute nodes are installed with the same os image.\n" . $node_image_table;
         $status = "f";

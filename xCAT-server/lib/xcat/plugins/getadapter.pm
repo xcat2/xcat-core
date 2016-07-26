@@ -259,8 +259,8 @@ sub clean_up {
     }
     xCAT::MsgUtils->message("S", "Getadapter: clean up task state in database");
 
-   # NOTE(chenglch): Currently xcatd listener process has bug in signal handler,
-   # just comment out these code.
+    # NOTE(chenglch): Currently xcatd listener process has bug in signal handler,
+    # just comment out these code.
     my $taskstate_table = xCAT::Table->new('taskstate');
 
     if ($taskstate_table) {
@@ -313,6 +313,7 @@ sub deploy_genesis {
             $callback->({ error => "failed to run command: nodeset $node runcmd=getadapter", errorcode => 1 });
             return 1;
         }
+
         # TODO: use rinstall to replace the following code when rinstall is ready.
         if ($node_desc_ptr->{mgt} eq "ipmi") {
             $outref = xCAT::Utils->runxcmd(
@@ -362,10 +363,10 @@ sub deploy_genesis {
             }
         } else {
             $callback->({ error => "$node: The mgt configuration is not supported by getadapter.",
-                errorcode => 1 });
+                    errorcode => 1 });
             return 1;
         }
-        $callback->({data=>"$node: Booting into genesis, this could take several minutes..."});
+        $callback->({ data => "$node: Booting into genesis, this could take several minutes..." });
         return 0;
     };    # end of child_process_func
 
@@ -449,7 +450,7 @@ sub update_adapter_result {
     $data   = "";
     $output = "[$node] scan successfully below is result:\n";
     for (my $i = 0 ; $i < $nicnum ; $i++) {
-        $output.= "$node:[$i]->";
+        $output .= "$node:[$i]->";
         $interface_exists = 0;
 
         if (exists($msg->{nic}->[$i]->{interface})) {
@@ -495,7 +496,7 @@ sub update_adapter_result {
     $callback->({ data => "$output" });
     if (!$has_nic) {
         $callback->({ data => "$node: Couldn't find interface name information detected by udevadm,"
-        ." the nics table will not be updated." });
+                  . " the nics table will not be updated." });
         return 0;
     }
     my $nics_table = xCAT::Table->new('nics');
@@ -669,7 +670,7 @@ sub inspect_adapter {
         my $callback       = shift;
         my $nodes_desc_ptr = shift;
         my @nodes          = @{$nodes_ptr};
-        my $nodehm_table = xCAT::Table->new('nodehm');
+        my $nodehm_table   = xCAT::Table->new('nodehm');
         unless ($nodehm_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodehm table, denying");
             return -1;
@@ -681,9 +682,9 @@ sub inspect_adapter {
         }
         $nodehm_table->close();
         foreach my $node (@nodes) {
-            if(!defined($entries->{$node}) || !defined($entries->{$node}->[0]->{mgt})) {
+            if (!defined($entries->{$node}) || !defined($entries->{$node}->[0]->{mgt})) {
                 $callback->({ error => "$node: mgt configuration can not be found.",
-                              errorcode => 1 });
+                        errorcode => 1 });
                 next;
             }
             $nodes_desc_ptr->{$node}->{'mgt'} = $entries->{$node}->[0]->{mgt};
@@ -702,7 +703,7 @@ sub inspect_adapter {
         }
         my $entries = $nics_table->getNodesAttribs($request->{node}, ['nicsadapter']);
         foreach my $node (@{ $request->{node} }) {
-            if($entries->{$node} && $entries->{$node}->[0]->{nicsadapter}) {
+            if ($entries->{$node} && $entries->{$node}->[0]->{nicsadapter}) {
                 $callback->({ data => "$node: Adapter information exists, no need to inspect." });
                 next;
             }

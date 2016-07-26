@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_monitoring::montbhandler;
+
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -16,6 +17,7 @@ use xCAT_monitoring::monitorctrl;
 1;
 
 #-------------------------------------------------------------------------------
+
 =head1  xCAT_monitoring:montbhandler
 =head2    Package Description
   xCAT monitoring table handler module. This is a helper module for monitorctrl module
@@ -24,12 +26,14 @@ use xCAT_monitoring::monitorctrl;
   the changes in the monitoring tables. When changes occurrs, it forward the info
   back to monitorctrl module for handling.
 =cut
+
 #-------------------------------------------------------------------------------
 
 
 
 
 #--------------------------------------------------------------------------------
+
 =head3    regMonitoringNotif
       It registers this module in the notification table to watch for changes in 
       the monitoring table.
@@ -39,26 +43,28 @@ use xCAT_monitoring::monitorctrl;
         0 for successful.
         non-0 for not successful.
 =cut
+
 #--------------------------------------------------------------------------------
 sub regMonitoringNotif {
 
-  #register for nodelist table changes if not already registered
-  my $tab = xCAT::Table->new('notification');
-  my $regged=0;
-  if ($tab) {
-    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, 'tables');
-    if ($ref and $ref->{tables}) {
-       $regged=1;
+    #register for nodelist table changes if not already registered
+    my $tab    = xCAT::Table->new('notification');
+    my $regged = 0;
+    if ($tab) {
+        (my $ref) = $tab->getAttribs({ filename => qw(montbhandler.pm) }, 'tables');
+        if ($ref and $ref->{tables}) {
+            $regged = 1;
+        }
+        $tab->close();
     }
-    $tab->close();
-  }
 
-  if (!$regged) {
-    xCAT_plugin::notification::regNotification([qw(montbhandler.pm monsetting -o a,u,d)]);
-  }
+    if (!$regged) {
+        xCAT_plugin::notification::regNotification([qw(montbhandler.pm monsetting -o a,u,d)]);
+    }
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    unregMonitoringNotif
       It un-registers this module in the notification table.
     Arguments:
@@ -67,25 +73,27 @@ sub regMonitoringNotif {
         0 for successful.
         non-0 for not successful.
 =cut
+
 #--------------------------------------------------------------------------------
 sub unregMonitoringNotif {
-  my $tab = xCAT::Table->new('notification');
-  my $regged=0;
-  if ($tab) {
-    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, "tables");
-    if ($ref and $ref->{tables}) {
-       $regged=1;
+    my $tab    = xCAT::Table->new('notification');
+    my $regged = 0;
+    if ($tab) {
+        (my $ref) = $tab->getAttribs({ filename => qw(montbhandler.pm) }, "tables");
+        if ($ref and $ref->{tables}) {
+            $regged = 1;
+        }
+        $tab->close();
     }
-    $tab->close();
-  }
 
-  if ($regged) {
-    xCAT_plugin::notification::unregNotification([qw(montbhandler.pm)]);
-  }
+    if ($regged) {
+        xCAT_plugin::notification::unregNotification([qw(montbhandler.pm)]);
+    }
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3    processTableChanges
       It is called by the NotifHander module
       when the monitoring tables get changed.  If a plug-in
@@ -107,18 +115,19 @@ sub unregMonitoringNotif {
         0 for successful.
         non-0 for not successful.
 =cut
+
 #--------------------------------------------------------------------------------
 sub processTableChanges {
-  my $action=shift;
-  if ($action =~ /xCAT_plugin::montbhandler/) {
-    $action=shift;
-  }
-  my $tablename=shift;
-  my $old_data=shift;
-  my $new_data=shift;
+    my $action = shift;
+    if ($action =~ /xCAT_plugin::montbhandler/) {
+        $action = shift;
+    }
+    my $tablename = shift;
+    my $old_data  = shift;
+    my $new_data  = shift;
 
 
-  xCAT_monitoring::monitorctrl->processMonitoringTableChanges($action, $tablename, $old_data, $new_data);
-  
+    xCAT_monitoring::monitorctrl->processMonitoringTableChanges($action, $tablename, $old_data, $new_data);
+
 }
 

@@ -3,7 +3,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 
@@ -15,8 +15,8 @@ use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
 
-my $usage_string=
-"Usage:
+my $usage_string =
+  "Usage:
   replaycons node [bps] [tail]
   replaycons -h|--help 
   replaycons -v|--version
@@ -27,93 +27,95 @@ my $usage_string=
     -h|--help    Display this usage statement.
     -v|--version Display the version number.";
 
-my $version_string="Version 2.0";
+my $version_string = "Version 2.0";
 
-$Getopt::Long::ignorecase=0;
-  if(!GetOptions(
-      'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION)) {
+$Getopt::Long::ignorecase = 0;
+if (!GetOptions(
+        'h|help'    => \$::HELP,
+        'v|version' => \$::VERSION)) {
     exit(1);
-  }
-  if ($::HELP) {  
+}
+if ($::HELP) {
     print "$usage_string\n";
     exit(0);
-  }
-  if ($::VERSION) { 
+}
+if ($::VERSION) {
     print "$version_string\n";
     exit(0);
-  }
+}
 
-if (@ARGV<1) { 
-  print "Please specify a node name.\n"; 
-  exit(1);
+if (@ARGV < 1) {
+    print "Please specify a node name.\n";
+    exit(1);
 }
- 
+
 my $node = @ARGV[0];
-my $bps = 19200;
-if (@ARGV>1) { 
-  $bps=@ARGV[1];
-  if ($bps==0) {$bps = 19200;}
+my $bps  = 19200;
+if (@ARGV > 1) {
+    $bps = @ARGV[1];
+    if ($bps == 0) { $bps = 19200; }
 }
-my $tail=0;
-if (@ARGV>2) { $tail=@ARGV[2];}
+my $tail = 0;
+if (@ARGV > 2) { $tail = @ARGV[2]; }
 print "node=$node, bps=$bps, tail=$tail\n";
 
 # get the conserver for the node
 my $conserver;
 my $hmtab = xCAT::Table->new('nodehm');
 if ($hmtab) {
-  my $ent=$hmtab->getNodeAttribs($node,['node', 'conserver']);
-  if ($ent->{conserver}) {$conserver=$ent->{conserver};}
+    my $ent = $hmtab->getNodeAttribs($node, [ 'node', 'conserver' ]);
+    if ($ent->{conserver}) { $conserver = $ent->{conserver}; }
 } else {
-  print "nodehm table cannot be opened\n";
-  exit(1);
+    print "nodehm table cannot be opened\n";
+    exit(1);
 }
 my $file = "/var/log/consoles/$node";
+
 #use confluent if it is there
 if ((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) {
-	$file = "/var/log/confluent/consoles/$node";
+    $file = "/var/log/confluent/consoles/$node";
 }
+
 #print "file=$file\n";
 
 #if has conserver, goto conserver the execute replaycons command
-my @hostinfo=xCAT::NetworkUtils->determinehostname();
-my %iphash=();
-foreach(@hostinfo) {$iphash{$_}=1;}
+my @hostinfo = xCAT::NetworkUtils->determinehostname();
+my %iphash   = ();
+foreach (@hostinfo) { $iphash{$_} = 1; }
 if (($conserver) && ($iphash{$conserver} != 1)) {
-  system("ssh -o BatchMode=yes $conserver $::XCATROOT/bin/replaycons $node $bps $tail 2>&1");
-  exit(0);
+    system("ssh -o BatchMode=yes $conserver $::XCATROOT/bin/replaycons $node $bps $tail 2>&1");
+    exit(0);
 }
- 
 
-my $cps = $bps / 8;
-my $ms = 1 / $cps;
-my $msc = 0;
+
+my $cps   = $bps / 8;
+my $ms    = 1 / $cps;
+my $msc   = 0;
 my $debug = 0;
 my @c;
 
 select(STDOUT);
 $| = 1;
 
-if(!open(FILE,$file)) {
-  print "replaycons: cannot open $file\n";
-  exit(1);
+if (!open(FILE, $file)) {
+    print "replaycons: cannot open $file\n";
+    exit(1);
 }
 
-if($tail > 0) {
-  seek(FILE,-$tail,2);
+if ($tail > 0) {
+    seek(FILE, -$tail, 2);
 }
 
-while(<FILE>) {
-  @c = split(//);
-  foreach(@c) {
-    print $_;
-    $msc += $ms;
-    if($msc > .1) {
-      select(undef, undef, undef, $msc);
-      $msc = 0;
+while (<FILE>) {
+    @c = split(//);
+    foreach (@c) {
+        print $_;
+        $msc += $ms;
+        if ($msc > .1) {
+            select(undef, undef, undef, $msc);
+            $msc = 0;
+        }
     }
-  }
 }
 
 close(FILE);

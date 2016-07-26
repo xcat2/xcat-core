@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 
-# This script is used to configure the mics on the host. 
-# This script is run by xdsh from MN/SN to the host 
+# This script is used to configure the mics on the host.
+# This script is run by xdsh from MN/SN to the host
 # parameters
-#  -m xcatmaster 
+#  -m xcatmaster
 #  -p the path of the mic configuration file. Generally, it's /tftpboot/xcat/miccfg/miccfg.hostname
 
 use strict;
@@ -20,16 +20,17 @@ $| = 1;
 my $tmppath = "/tmp/mictmp";
 my $logpath = "/var/log/xcat/";
 my $logfile = "$logpath/configmic.log";
-my $micmnt = "/var/mpss/mnt";
+my $micmnt  = "/var/mpss/mnt";
 
 mkpath $tmppath;
 mkpath $micmnt;
+
 #open the log file
-open (LOG, ">>$logfile") or die "Error: cannot open $logfile\n";
-print LOG "\n\n====================================================\nStart mic configuratoin: ".`date`."\n";
+open(LOG, ">>$logfile") or die "Error: cannot open $logfile\n";
+print LOG "\n\n====================================================\nStart mic configuratoin: " . `date` . "\n";
 
 my ($master, $cfgpath);
-GetOptions ('m=s'=>\$master, 'p=s'=>\$cfgpath);
+GetOptions('m=s' => \$master, 'p=s' => \$cfgpath);
 unless ($master && $cfgpath) {
     outputmsg("Error: the -m master and -p path arguments must be specified for configmic.\n", 1);
 }
@@ -41,7 +42,7 @@ if ($masterip) {
     chomp($masterip);
     my $myip = `ip route get $masterip| head -n 1 | sed 's/^.*src//g' | awk {'print \$1'}`;
     if ($myip) {
-        my $myipinfo =`getent hosts $myip`;
+        my $myipinfo = `getent hosts $myip`;
 
         if ($myipinfo && $myipinfo =~ /([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
             my $n1 = $2;
@@ -67,22 +68,23 @@ unless ($nodename_short) {
 
 # download the mic configuration file from master
 my $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename_short -P $tmppath";
-my ($rc, $output) = runsyscmd ($cmd);
+my ($rc, $output) = runsyscmd($cmd);
 if ($rc) {
     $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename -P $tmppath";
-    runsyscmd ($cmd, "Error: failed to download mic configuration file from $master\n", 3);
+    runsyscmd($cmd, "Error: failed to download mic configuration file from $master\n", 3);
 } else {
+
     # use the correct short hotname in $nodename_short
-    $nodename=$nodename_short;
+    $nodename = $nodename_short;
 }
 
 unless (-r "$tmppath/miccfg.$nodename") {
-    runsyscmd ("Error: cannot get the mic configuration file from http://$master/$cfgpath/miccfg.$nodename\n", 4);
+    runsyscmd("Error: cannot get the mic configuration file from http://$master/$cfgpath/miccfg.$nodename\n", 4);
 }
 
-# parse the configuration file 
-unless (open (CFGFILE, "<$tmppath/miccfg.$nodename")) {
-    runsyscmd ("Error: cannot open $tmppath/miccfg.$nodename\n", 5);
+# parse the configuration file
+unless (open(CFGFILE, "<$tmppath/miccfg.$nodename")) {
+    runsyscmd("Error: cannot open $tmppath/miccfg.$nodename\n", 5);
 }
 
 # the configureation file should have the following format
@@ -99,11 +101,12 @@ my $brgname;
 my $brgip;
 my $brgtype;
 while (<CFGFILE>) {
+
     if (/(\d+):(.*)/) {
         my $deviceid = $1;
-        my @params = split (/\|/, $2);
+        my @params = split(/\|/, $2);
         foreach (@params) {
-            my ($n, $v) = split (/=/, $_, 2);
+            my ($n, $v) = split(/=/, $_, 2);
             $miccfg{$deviceid}{$n} = $v;
             if ($n eq 'br') {
                 $brgname = $v;
@@ -125,36 +128,39 @@ while (<CFGFILE>) {
         }
     }
 }
-close (CFGFILE);
+close(CFGFILE);
 
 $miclist =~ s/,/ /g;
 
 # add the mount entry for mounting of root fs from master to /etc/fstab
 # e.g. mount $master:/install/mpss3 /var/mpss/mnt
 $cmd = "grep \'$master:$ospath \' $micmnt /etc/fstab ";
-($rc, $output) = runsyscmd ($cmd);
+($rc, $output) = runsyscmd($cmd);
 if ($rc) {
+
     # not found the exact mount entry
     $cmd = "grep $micmnt /etc/fstab";
-    ($rc, $output) = runsyscmd ($cmd);
+    ($rc, $output) = runsyscmd($cmd);
     if (!$rc) {
+
         # found the mount to $micmnt with another master or directory, remove the entry and umount it
         my $trans = $micmnt;
         $trans =~ s/\//\\\//g;
         $cmd = "sed \"/$trans/d\" /etc/fstab > $tmppath/fstab.tmp";
-        runsyscmd ($cmd, "Error: failed to configure fstab.\n", 6);
-        copy ("$tmppath/fstab.tmp", "/etc/fstab");
+        runsyscmd($cmd, "Error: failed to configure fstab.\n", 6);
+        copy("$tmppath/fstab.tmp", "/etc/fstab");
         $cmd = "umount -l -f $micmnt";
-        runsyscmd ($cmd, "Error: failed to run umount -l -f $micmnt\n", 7);
+        runsyscmd($cmd, "Error: failed to run umount -l -f $micmnt\n", 7);
     }
     $cmd = "echo \"$master:$ospath $micmnt nfs timeo=14,intr 1 2\" >>/etc/fstab";
-    runsyscmd ($cmd);
+    runsyscmd($cmd);
     $cmd = "mount -a";
-    runsyscmd ($cmd);
+    runsyscmd($cmd);
 } else {
+
     # run mount -a anyway
     $cmd = "mount -a";
-    runsyscmd ($cmd);
+    runsyscmd($cmd);
 }
 
 # the dir structure in mount opint 'mnt'
@@ -175,27 +181,27 @@ if ($rc) {
 # |           |--xx.filelist
 # |           `--xx
 
-# make sure the remote files are accessable 
+# make sure the remote files are accessable
 unless (-r "$micmnt/common.filelist") {
     outputmsg("Error: cannot access the $micmnt/common.filelist\n", 8);
 }
 
 # initialize mic card if it has not been
-if (! -f "/etc/mpss/default.conf") {
+if (!-f "/etc/mpss/default.conf") {
     $cmd = "micctrl --initdefaults";
-    runsyscmd ($cmd, "Error: failed to initiate the mic configuration file.\n", 200)
+    runsyscmd($cmd, "Error: failed to initiate the mic configuration file.\n", 200)
 }
 
 # start to configure the mic
 # stop the mpss service first
 $cmd = "service mpss stop";
-runsyscmd ($cmd, "Error: failed to stop mpss service.\n", 100);
+runsyscmd($cmd, "Error: failed to stop mpss service.\n", 100);
 
 # make sute the mpss has been stopped
 my $i = 5;
 while ($i > 0) {
-   $cmd = "service mpss status";
-    ($rc, $output) = runsyscmd ($cmd);
+    $cmd = "service mpss status";
+    ($rc, $output) = runsyscmd($cmd);
     if (grep /mpss is stopped/, @$output) {
         last;
     }
@@ -204,16 +210,16 @@ while ($i > 0) {
 }
 
 # remove the mic configuration files and source files for ramfs, them will be recreated base on setting
-unlink ("/etc/mpss/default.conf");
-foreach my $mic (split (/ /, $miclist)) {
-    unlink ("/etc/mpss/$mic.conf");
-    unlink ("/var/mpss/$mic.filelist");
-    rmtree ("/var/mpss/$mic");
+unlink("/etc/mpss/default.conf");
+foreach my $mic (split(/ /, $miclist)) {
+    unlink("/etc/mpss/$mic.conf");
+    unlink("/var/mpss/$mic.filelist");
+    rmtree("/var/mpss/$mic");
 }
 
 # reset the configuration to default
 $cmd = "micctrl --initdefaults $miclist";
-runsyscmd ($cmd, "Error: failed to initiate the mic devices.\n", 200);
+runsyscmd($cmd, "Error: failed to initiate the mic devices.\n", 200);
 
 # configure the base dir
 #$cmd = "micctrl --basedir=/opt/intel/mic/mnt/opt/intel/mic/filesystem/base --list=/opt/intel/mic/mnt/opt/intel/mic/filesystem/base.filelist $miclist";
@@ -221,16 +227,16 @@ runsyscmd ($cmd, "Error: failed to initiate the mic devices.\n", 200);
 
 # configure the commondir
 $cmd = "micctrl --commondir=$micmnt/common --list=$micmnt/common.filelist $miclist";
-runsyscmd ($cmd, "Error: failed to set the common dir for mic file system.\n", 102);
+runsyscmd($cmd, "Error: failed to set the common dir for mic file system.\n", 102);
 
 # configure the overlay file system
-my @ols = split (/,/, $overlay);
+my @ols = split(/,/, $overlay);
 foreach (@ols) {
     if (/^filelist:(.+)/) {
         $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/$1/ --target=$micmnt/overlay/$1.filelist --state=on $miclist";
-    } elsif (/^ofilelist:(.+)/) { # for 2.8.4 and later
+    } elsif (/^ofilelist:(.+)/) {    # for 2.8.4 and later
         $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/rootimg/ --target=$micmnt/overlay/rootimg/opt/mic/$1.filelist --state=on $miclist";
-    } elsif (/^pfilelist:(.+)/) { # only for 2.8.3
+    } elsif (/^pfilelist:(.+)/) {    # only for 2.8.3
         $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/package/ --target=$micmnt/overlay/package/opt/mic/$1.filelist --state=on $miclist";
     } elsif (/^rpm:(.+)/) {
         $cmd = "micctrl --overlay=RPM --source=$micmnt/overlay/rpm/ --state=on $miclist";
@@ -238,26 +244,27 @@ foreach (@ols) {
         $cmd = "micctrl --overlay=Simple --source=$micmnt/overlay/simple/$1 --target=$2 --state=on $miclist";
     }
 
-    runsyscmd ($cmd, "Error: failed to set the overlay dir for mic file system.\n", 103);
+    runsyscmd($cmd, "Error: failed to set the overlay dir for mic file system.\n", 103);
 }
 
 # configure bridge for mic
 my ($netbit, $brc, $mtu);
 if ($brgtype && $brgtype =~ /Internal/i) {
     $cmd = "micctrl --addbridge=$brgname --type=Internal --ip=$brgip";
-    runsyscmd ($cmd, "Error: failed to add bridge for mic.\n", 111);
+    runsyscmd($cmd, "Error: failed to add bridge for mic.\n", 111);
 } else {
+
     # for External bridge, it must has been set up correctly
     # get the ip of the bridge
     $cmd = "ip -4 addr show";
-    ($rc, $output) = runsyscmd ($cmd);
+    ($rc, $output) = runsyscmd($cmd);
     $cmd = "ip -4 route show";
-    my ($rc2, $output2) = runsyscmd ($cmd);
+    my ($rc2, $output2) = runsyscmd($cmd);
     foreach (@$output) {
         if (/inet\s+([\d\.]+)\/(\d+)\s+brd\s+([\d\.]+) scope global $brgname/) {
-            $brgip = $1;
+            $brgip  = $1;
             $netbit = $2;
-            $brc = $3;
+            $brc    = $3;
             last;
         } elsif (/\d+:\s+$brgname:.*mtu\s+(\d+)/) {
             $mtu = $1;
@@ -274,16 +281,18 @@ if ($brgtype && $brgtype =~ /Internal/i) {
     #$cmd = "echo \"Bridge $brg External $brip $netbit $mtu\" >> /etc/sysconfig/mic/default.conf";
     #runsyscmd ($cmd);
     $cmd = "micctrl --addbridge=$brgname --type=external --ip=$brgip --netbits=$netbit --mtu=$mtu";
-    runsyscmd ($cmd, "Error: failed to add bridge for mic.\n", 111);
+    runsyscmd($cmd, "Error: failed to add bridge for mic.\n", 111);
 }
 
 # do the mic specific configuration
 foreach my $micid (keys %miccfg) {
     if ($micid !~ /^\d*$/) {
+
         # not mic specific, return
         next;
     }
     my $micname = $miccfg{$micid}{'name'};
+
     # set the boot device to be staticramfs so that the osimage don't need to generated for every boot
     #$cmd = "micctrl --rootdev=StaticRamFS --target=/opt/intel/mic/filesystem/$micname.image mic$micid";
     #runsyscmd ($cmd, "Error: failed to set root image for mic.\n", 104);
@@ -295,71 +304,73 @@ foreach my $micid (keys %miccfg) {
     # set the autoboot
     if ($miccfg{$micid}{'onboot'} =~ /no/i) {
         $cmd = "micctrl --autoboot=no mic$micid";
-        runsyscmd ($cmd, "Error: failed to set the autoboot for mic.\n", 106);
-    } elsif($miccfg{$micid}{'onboot'} =~ /yes/i) {
+        runsyscmd($cmd, "Error: failed to set the autoboot for mic.\n", 106);
+    } elsif ($miccfg{$micid}{'onboot'} =~ /yes/i) {
         $cmd = "micctrl --autoboot=yes mic$micid";
-        runsyscmd ($cmd, "Error: failed to set the autoboot for mic.\n", 106);
+        runsyscmd($cmd, "Error: failed to set the autoboot for mic.\n", 106);
     }
 
     # set the hostname
     $cmd = "sed \"s/Hostname .*/Hostname \"$micname\"/\" /etc/mpss/mic$micid.conf > $tmppath/mic$micid.conf";
-    runsyscmd ($cmd, "Error: failed to set hostname for mic.\n", 107);
-    copy ("$tmppath/mic$micid.conf", "/etc/mpss/mic$micid.conf");
+    runsyscmd($cmd, "Error: failed to set hostname for mic.\n", 107);
+    copy("$tmppath/mic$micid.conf", "/etc/mpss/mic$micid.conf");
 
     # configure the Verbose log
     if ($miccfg{$micid}{'vlog'} =~ /yes/i) {
         $cmd = "sed \"s/VerboseLogging .*/VerboseLogging \"Enabled\"/\" /etc/mpss/mic$micid.conf > $tmppath/mic$micid.conf";
-        runsyscmd ($cmd, "Error: failed to set Verbose log for mic.\n", 108);
-        copy ("$tmppath/mic$micid.conf", "/etc/mpss/mic$micid.conf");
+        runsyscmd($cmd, "Error: failed to set Verbose log for mic.\n", 108);
+        copy("$tmppath/mic$micid.conf", "/etc/mpss/mic$micid.conf");
     }
 
     # configure the power management
-    if (defined ($miccfg{$micid}{'powermgt'})) {
+    if (defined($miccfg{$micid}{'powermgt'})) {
         $cmd = "micctrl --pm=set ";
-        foreach my $item (split (/!/, $miccfg{$micid}{'powermgt'})) {
+        foreach my $item (split(/!/, $miccfg{$micid}{'powermgt'})) {
             $cmd .= " --$item ";
         }
         $cmd .= " mic$micid";
-        runsyscmd ($cmd, "Error: failed to set power management for mic.\n", 109);
+        runsyscmd($cmd, "Error: failed to set power management for mic.\n", 109);
     }
 
     # configure network for each mic
-    $cmd = "micctrl --network=static --bridge=".$miccfg{$micid}{br}." --ip=".$miccfg{$micid}{ip}." mic$micid";
-    runsyscmd ($cmd, "Error: failed to generate IP configuration for mic.\n", 104);
+    $cmd = "micctrl --network=static --bridge=" . $miccfg{$micid}{br} . " --ip=" . $miccfg{$micid}{ip} . " mic$micid";
+    runsyscmd($cmd, "Error: failed to generate IP configuration for mic.\n", 104);
 
     # configure nfs mount for each mic
-    foreach my $msrc (keys %{$miccfg{'micmount'}}) {
+    foreach my $msrc (keys %{ $miccfg{'micmount'} }) {
         my $mntsrc;
         if (defined $miccfg{$micid}{'statemnt'}) {
             if ($miccfg{$micid}{'statemnt'} =~ /:/) {
+
                 # for 'statemnt' is a nfs server plus dir like 192.168.1:/nfs
-                $mntsrc = $miccfg{$micid}{'statemnt'}."/$msrc";
+                $mntsrc = $miccfg{$micid}{'statemnt'} . "/$msrc";
             } else {
+
                 # for 'statemnt' is a nfs server ip 192.168.0.1
-                $mntsrc = $miccfg{$micid}{'statemnt'}.":/$msrc";
+                $mntsrc = $miccfg{$micid}{'statemnt'} . ":/$msrc";
             }
         } else {
             $mntsrc = "$brgip:/$msrc";
         }
         $cmd = "micctrl --addnfs=$mntsrc --dir=$miccfg{micmount}{$msrc} mic$micid";
-        runsyscmd ($cmd, "Error: failed to add nfs mount for mic.\n", 104);
+        runsyscmd($cmd, "Error: failed to add nfs mount for mic.\n", 104);
 
         # since there's a bug that nfsserver cannot be set, just manully change it
         if ($mntsrc =~ /^(.+):/) {
             if ($1 ne $brgip) {
                 $cmd = "sed -i \'s/$brgip/$1/g\' /var/mpss/mic$micid/etc/fstab";
-                runsyscmd ($cmd, "Error: failed to hack nfs mount for mic.\n", 104);
+                runsyscmd($cmd, "Error: failed to hack nfs mount for mic.\n", 104);
             }
         }
     }
 
     # take the configuration to effect
     $cmd = "micctrl --resetconfig mic$micid";
-    runsyscmd ($cmd, "Error: failed to spread the configuration.\n", 201);
+    runsyscmd($cmd, "Error: failed to spread the configuration.\n", 201);
 
     # back up the /etc/passwd and /etc/shadow which generated by 'micctrl --initdefaults'
-    system ("/bin/cp -rf /var/mpss/mic$micid/etc/passwd /tmp/mictmp/passwd");
-    system ("/bin/cp -rf /var/mpss/mic$micid/etc/shadow /tmp/mictmp/shadow");
+    system("/bin/cp -rf /var/mpss/mic$micid/etc/passwd /tmp/mictmp/passwd");
+    system("/bin/cp -rf /var/mpss/mic$micid/etc/shadow /tmp/mictmp/shadow");
 
     # copy the system files which generated by genimage to the micdir
     # e.g. /etc/hosts /etc/passwd ...
@@ -367,15 +378,15 @@ foreach my $micid (keys %miccfg) {
     my $dst = "/var/mpss/mic$micid";
 
     $cmd = "/bin/cp -rf $src $dst";
-    runsyscmd ($cmd, "Error: failed to copy the overlay dir.\n", 300);
+    runsyscmd($cmd, "Error: failed to copy the overlay dir.\n", 300);
 
     # append /etc/passwd and /etc/shadow which generated by 'micctrl --initdefaults'
-    system ("/bin/grep micuser /tmp/mictmp/passwd >> /var/mpss/mic$micid/etc/passwd");
-    system ("/bin/grep micuser /tmp/mictmp/shadow >> /var/mpss/mic$micid/etc/shadow");
+    system("/bin/grep micuser /tmp/mictmp/passwd >> /var/mpss/mic$micid/etc/passwd");
+    system("/bin/grep micuser /tmp/mictmp/shadow >> /var/mpss/mic$micid/etc/shadow");
 
     # generate the static root file system in ramdisk format
     $cmd = "micctrl --updateramfs mic$micid";
-    runsyscmd ($cmd, "Error: failed to generate the static ramfs.\n", 301);
+    runsyscmd($cmd, "Error: failed to generate the static ramfs.\n", 301);
 }
 
 # start the mpss service after the configuration
@@ -384,8 +395,8 @@ system($cmd);
 
 $i = 5;
 while ($i > 0) {
-   $cmd = "service mpss status";
-    ($rc, $output) = runsyscmd ($cmd, "Error: failed to get the status of mpss.\n", 100);
+    $cmd = "service mpss status";
+    ($rc, $output) = runsyscmd($cmd, "Error: failed to get the status of mpss.\n", 100);
     if (grep /mpss is running/, @$output) {
         last;
     }
@@ -396,29 +407,30 @@ while ($i > 0) {
 # notice nodeset command, the configuratoin has been done
 foreach my $micid (keys %miccfg) {
     if ($micid !~ /^\d*$/) {
+
         # not mic specific, return
         next;
     }
-    outputmsg ("MICMSG:$miccfg{$micid}{'name'}: Done\n");
+    outputmsg("MICMSG:$miccfg{$micid}{'name'}: Done\n");
 }
 
 print LOG "mpss has been started\n";
-print LOG "\nFinish the mic configuratoin: ".`date`."====================================================\n";
+print LOG "\nFinish the mic configuratoin: " . `date` . "====================================================\n";
 
-close (LOG);
+close(LOG);
 
 exit 0;
 
 # run command
 sub runsyscmd {
-    my $cmd = shift;
+    my $cmd    = shift;
     my $errmsg = shift;
-    my $rc = shift;
+    my $rc     = shift;
 
     print LOG "---------------------------------------------\n";
     print LOG "Run command: $cmd\n";
 
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }  
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
     my @output = `$cmd`;
 
     my $errcode = 0;
@@ -439,9 +451,9 @@ sub runsyscmd {
 }
 
 # display the output message
-sub outputmsg{
+sub outputmsg {
     my $msg = shift;
-    my $rc  =shift;
+    my $rc  = shift;
     print LOG $msg;
     print $msg;
     if ($rc) {

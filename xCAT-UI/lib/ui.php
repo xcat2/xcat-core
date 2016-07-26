@@ -25,7 +25,6 @@ function loadPage() {
                 <li><a href="index.php" class="top_link">Nodes</a></li>        
                 <li><a href="configure.php" class="top_link">Configure</a></li>
                 <li><a href="provision.php" class="top_link">Provision</a></li>
-                <li><a href="monitor.php" class="top_link">Monitor</a></li>
                 <li><a href="help.php" class="top_link">Help</a></li>
             </ul>';
             

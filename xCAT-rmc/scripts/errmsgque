@@ -16,34 +16,35 @@ my $key = IPC::SysV::ftok("/var/adm/ras/errlog", $m);
 # my $message =  join " ", @ARGV;
 # $msg->snd(1, "$message");
 
-my $message =  join " ", @ARGV;
+my $message = join " ", @ARGV;
 
 runcmd("/usr/bin/refsensor ErrorLogSensor String=\"$message\" 1>/dev/null 2>/dev/null", 0);
-if($::RUNCMD_RC != 0){
-	my $msg = new IPC::Msg($key, IPC_CREAT|S_IRUSR|S_IWUSR );
-	my $stat = $msg->stat;
-	my $qcurrentlen = $$stat[5];
-	if ($qcurrentlen >= 10000)
-	{
-		if (!-d "/var/opt/xcat_err_mon/")
-		{
-			my $cmd = "mkdir -p \"/var/opt/xcat_err_mon\"";
-			runcmd($cmd, -1);	
-		}
-		open(FILE, ">>/var/opt/xcat_err_mon/errmsgqueerr.log");
-		my $sdate = `/bin/date`;
-		chomp $sdate;
-		print FILE "$sdate:\n";
-		print FILE "Can not write the message to queue because the queue is almost full, the message content is: $message\n\n\n";
-		close FILE;
-		exit 0;
-   	}
-	$msg->snd(1, "$message");
+if ($::RUNCMD_RC != 0) {
+    my $msg         = new IPC::Msg($key, IPC_CREAT | S_IRUSR | S_IWUSR);
+    my $stat        = $msg->stat;
+    my $qcurrentlen = $$stat[5];
+    if ($qcurrentlen >= 10000)
+    {
+        if (!-d "/var/opt/xcat_err_mon/")
+        {
+            my $cmd = "mkdir -p \"/var/opt/xcat_err_mon\"";
+            runcmd($cmd, -1);
+        }
+        open(FILE, ">>/var/opt/xcat_err_mon/errmsgqueerr.log");
+        my $sdate = `/bin/date`;
+        chomp $sdate;
+        print FILE "$sdate:\n";
+        print FILE "Can not write the message to queue because the queue is almost full, the message content is: $message\n\n\n";
+        close FILE;
+        exit 0;
+    }
+    $msg->snd(1, "$message");
 }
 
 exit 0;
 
 #--------------------------------------------------------------------------------
+
 =head3    runcmd
     Run the given cmd and return the output in an array (already chopped).  Alternatively,
     if this function is used in a scalar context, the output is joined into a single string
@@ -69,72 +70,74 @@ exit 0;
         If refoutput is true, then the output will be returned as a reference to
         an array for efficiency.
 =cut
+
 #--------------------------------------------------------------------------------
 sub runcmd
 {
-  my ($cmd, $exitcode, $refoutput) = @_;
-  $::RUNCMD_RC = 0;
-  if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
- 
-  my $outref = [];
-  @$outref = `$cmd`;
-  if ($?)
-  {
-    $::RUNCMD_RC = $? >> 8;
-    my $displayerror = 1;
-    my $rc;
-    if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+    my ($cmd, $exitcode, $refoutput) = @_;
+    $::RUNCMD_RC = 0;
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
+
+    my $outref = [];
+    @$outref = `$cmd`;
+    if ($?)
     {
-      if ($exitcode > 0)
-      {
-	$rc = $exitcode;
-      }    # if not zero, exit with specified code
-      elsif ($exitcode <= 0)
-      {
-	$rc = '';    # if zero or negative, do not exit
-	if ($exitcode < 0) { $displayerror = 0; }
-      }
+        $::RUNCMD_RC = $? >> 8;
+        my $displayerror = 1;
+        my $rc;
+        if (defined($exitcode) && length($exitcode) && $exitcode != -2)
+        {
+            if ($exitcode > 0)
+            {
+                $rc = $exitcode;
+            }    # if not zero, exit with specified code
+            elsif ($exitcode <= 0)
+            {
+                $rc = '';    # if zero or negative, do not exit
+                if ($exitcode < 0) { $displayerror = 0; }
+            }
+        }
+        else
+        {
+            $rc = $::RUNCMD_RC;
+        }    # if exitcode not specified, use cmd exit code
+        if ($displayerror)
+        {
+            my $errmsg = '';
+            if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
+            {
+                $errmsg = "Segmentation fault  $errmsg";
+            }
+            else
+            {
+                # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
+                filterRmcApiOutput($cmd, $outref);
+                $errmsg = join('', @$outref);
+                chomp $errmsg;
+            }
+            print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+        }
+    }
+    if ($refoutput)
+    {
+        chomp(@$outref);
+        return $outref;
+    }
+    elsif (wantarray)
+    {
+        chomp(@$outref);
+        return @$outref;
     }
     else
     {
-      $rc = $::RUNCMD_RC;
-    }    # if exitcode not specified, use cmd exit code
-    if ($displayerror)
-    {
-      my $errmsg = '';
-      if (($^O =~ /^linux/i) && $::RUNCMD_RC == 139)
-      {
-        $errmsg = "Segmentation fault  $errmsg";
-      }
-      else
-      {
-        # The error msgs from the -api cmds are pretty messy.  Clean them up a little.
-        filterRmcApiOutput($cmd, $outref);
-        $errmsg = join('', @$outref);
-        chomp $errmsg;
-      }
-      print "Exit code $::RUNCMD_RC from command: $cmd\nError message from cmd: $errmsg\n"
+        my $line = join('', @$outref);
+        chomp $line;
+        return $line;
     }
-  }
-  if ($refoutput)
-  {
-    chomp(@$outref);
-    return $outref;
-  }
-  elsif (wantarray)
-  {
-    chomp(@$outref);
-    return @$outref;
-  }
-  else
-  {
-    my $line = join('', @$outref);
-    chomp $line;
-    return $line;
-  }
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    filterRmcApiOutput
     filter RMC Api Output
     Arguments:
@@ -152,25 +155,26 @@ sub runcmd
         The error msgs from the RPM -api cmds are pretty messy.
         This routine cleans them up a little bit.
 =cut
+
 #--------------------------------------------------------------------------------
 sub filterRmcApiOutput
 {
-  my ($cmd, $outref) = @_;
-  if (!($cmd =~ m|^/usr/bin/\S+-api |))  {
-    return;
-  }    # give as much info as possible, if verbose
+    my ($cmd, $outref) = @_;
+    if (!($cmd =~ m|^/usr/bin/\S+-api |)) {
+        return;
+    }    # give as much info as possible, if verbose
 
-  # Figure out the output delimiter
-  my ($d) = $cmd =~ / -D\s+(\S+)/;
-  if (length($d))  {
-    $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
-    # escape any chars perl pattern matching would intepret as special chars
-    $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
-  }
-  else
-  {
-    $d = '::';
-  }    # this is the default output delimiter for the -api cmds
-  $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
+    # Figure out the output delimiter
+    my ($d) = $cmd =~ / -D\s+(\S+)/;
+    if (length($d)) {
+        $d =~ s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
+         # escape any chars perl pattern matching would intepret as special chars
+        $d =~ s/([\|\^\*\+\?\.])/\\$1/g;
+    }
+    else
+    {
+        $d = '::';
+    }    # this is the default output delimiter for the -api cmds
+    $$outref[0] =~ s/^ERROR${d}.*${d}.*${d}.*${d}.*${d}//;
 }
 

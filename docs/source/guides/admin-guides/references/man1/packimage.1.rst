@@ -62,7 +62,7 @@ OPTIONS
 
 \ **-a**\           Architecture (ppc64,x86_64,etc)
 
-\ **-m**\           Method (default cpio)
+\ **-m**\           Method (cpio,txc,squashfs, default is cpio)
 
 
 ************

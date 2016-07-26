@@ -425,9 +425,9 @@ elif [ "$1" = "-s" ];then
                 inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
                 if [ ! -z "${inst_nic}" ];then
                     str_inst_ip=`ip -4 -o addr|grep -i ${inst_nic} |awk '{print $4}'|awk -F/ '{print $1}'`
-                    if [ ! -z "str_inst_ip" ];then
+                    if [ ! -z "$str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
-                        if [ ! -z "inst_ip_pre" ];then
+                        if [ ! -z "$inst_ip_pre" ];then
                             str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi
@@ -447,9 +447,9 @@ elif [ "$1" = "-s" ];then
                 inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
                 if [ ! -z "${inst_nic}" ];then
                     str_inst_ip=`ip -4 -o addr|grep -i ${inst_nic} |awk '{print $4}'|awk -F/ '{print $1}'`
-                    if [ ! -z "str_inst_ip" ];then
+                    if [ ! -z "$str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
-                        if [ ! -z "inst_ip_pre" ];then
+                        if [ ! -z "$inst_ip_pre" ];then
                             str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi
@@ -459,7 +459,7 @@ elif [ "$1" = "-s" ];then
             fi
        fi
     else
-        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic* | grep leases`
+        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic* | grep lease`
         if [ -e "$str_lease_file" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
@@ -470,9 +470,9 @@ elif [ "$1" = "-s" ];then
                 inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
                 if [ ! -z "${inst_nic}" ];then
                     str_inst_ip=`ip -4 -o addr|grep -i ${inst_nic} |awk '{print $4}'|awk -F/ '{print $1}'`
-                    if [ ! -z "str_inst_ip" ];then
+                    if [ ! -z "$str_inst_ip" ];then
                         inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
-                        if [ ! -z "inst_ip_pre" ];then
+                        if [ ! -z "$inst_ip_pre" ];then
                             str_inst_mask=`route |grep ^${inst_ip_pre}|awk '{print $3}'|head -1`
                         fi
                     fi

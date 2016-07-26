@@ -18,15 +18,15 @@ my $rst     = 0;
 
 $::USAGE = "Usage:
     $proname -h
-    $proname -t
-    $proname [-n] <install_nic> [-V]
+    $proname -T
+    $proname [-n <install_nic>] [-V]
 
 Description:
     After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. 
 
 Options:
     -h : Get usage information of $proname
-    -t : To verify if $proname can work, reserve option for probe framework
+    -T : To verify if $proname can work, reserve option for probe framework
     -n : Required. Specify the network interface name of provision network
     -V : Output more information for debug
 ";
@@ -46,7 +46,7 @@ sub returncmdoutput {
 #-------------------------------------
 if (
     !GetOptions("--help|h" => \$help,
-        "t"   => \$test,
+        "T"   => \$test,
         "V"   => \$verbose,
         "n=s" => \$installnic))
 {
@@ -75,7 +75,7 @@ if (!defined($installnic)) {
     exit 1;
 }
 
-my $msg = "NIC $installnic exists on current server";
+my $msg  = "NIC $installnic exists on current server";
 my $nics = `ip addr show $installnic >/dev/null 2>&1`;
 if ($?) {
     probe_utils->send_msg("$output", "f", "$msg");
@@ -148,7 +148,7 @@ if ($xcatdproc =~ /xcatd: Command log writer/) {
 exit 1 if ($rst);
 
 
-my $xcatdport = `tabdump site 2>&1 | awk -F',' '/xcatdport/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $xcatdport = `tabdump site 2>&1 | awk -F',' '/^"xcatdport",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($xcatdport);
 probe_utils->send_msg("$output", "d", "The port used by the xcatd daemon for client/server communication is $xcatdport") if ($verbose);
 $msg = "xcatd is listening on port $xcatdport";
@@ -160,7 +160,7 @@ if ($?) {
     probe_utils->send_msg("$output", "o", "$msg");
 }
 
-my $xcatiport = `tabdump site 2>&1| awk -F',' '/xcatiport/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $xcatiport = `tabdump site 2>&1| awk -F',' '/^"xcatiport",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($xcatiport);
 probe_utils->send_msg("$output", "d", "The port used by xcatd to receive install status updates from nodes is $xcatiport") if ($verbose);
 $msg       = "xcatd is listening on port $xcatiport";
@@ -184,7 +184,7 @@ if ($rst) {
     probe_utils->send_msg("$output", "o", "$msg");
 }
 
-my $masteripinsite = `tabdump site | awk -F',' '/master/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($masteripinsite);
 probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table is $masteripinsite") if ($verbose);
 probe_utils->send_msg("$output", "f", "There isn't 'master' definition in 'site' talbe") if ($masteripinsite eq "");
@@ -234,7 +234,7 @@ if ($hit) {
 }
 
 $msg = "There is domain definition in 'site' table";
-my $domain = `tabdump site | awk -F',' '/domain/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $domain = `tabdump site | awk -F',' '/^"domain",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($domain);
 if ($domain) {
     probe_utils->send_msg("$output", "d", "The value of 'domain' in 'site' table is $domain") if ($verbose);
@@ -256,10 +256,10 @@ if ($username eq "" || $pw eq "") {
     probe_utils->send_msg("$output", "o", "$msg");
 }
 
-my $installdir = `tabdump site 2>&1 | awk -F',' '/installdir/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $installdir = `tabdump site 2>&1 | awk -F',' '/^"installdir"/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($installdir);
 probe_utils->send_msg("$output", "d", "The 'install' directory is set to $installdir in 'site' table on current server") if ($verbose);
-my $tftpdir = `tabdump site 2>&1 | awk -F',' '/tftpdir/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+my $tftpdir = `tabdump site 2>&1 | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
 chomp($tftpdir);
 probe_utils->send_msg("$output", "d", "The 'tftp' directory is set to $tftpdir in 'site' talbe on current server") if ($verbose);
 
@@ -354,8 +354,7 @@ if (probe_utils->is_selinux_enable()) {
 
 $msg = "Firewall is closed on current server";
 if (probe_utils->is_firewall_open()) {
-    probe_utils->send_msg("$output", "f", "$msg");
-    $rst = 1;
+    probe_utils->send_msg("$output", "w", "Firewall is configured on current server");
 } else {
     probe_utils->send_msg("$output", "o", "$msg");
 }

@@ -1,4 +1,4 @@
-# 
+#
 # © Copyright 2009 Hewlett-Packard Development Company, L.P.
 # EPL license http://www.eclipse.org/legal/epl-v10.html
 #
@@ -22,49 +22,50 @@ use vars qw(@ISA);
 # Input: oaAddress, the IP address of the OA
 # Output: SOAP::SOM object (SOAP response)
 sub new {
-  my $class = shift;
-  return $class if ref $class;
+    my $class = shift;
+    return $class if ref $class;
 
-  my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new();
 
-  my %args = @_;
+    my %args = @_;
 
-  die "oaAddress is a required parameter"
-    unless defined $args{oaAddress};
+    die "oaAddress is a required parameter"
+      unless defined $args{oaAddress};
 
-  # Some info we'll need
-  $self->{HPOA_HOST} 		= $args{oaAddress}; # OA IP address
-  $self->{HPOA_KEY} 		= undef; # oaSessionKey returned by userLogIn
-  $self->{HPOA_SECURITY_XML} 	= undef; # key placed in proper XML
-  $self->{HPOA_SECURITY_HEADER} = undef; # XML translated to SOAP::Header obj
+    # Some info we'll need
+    $self->{HPOA_HOST} = $args{oaAddress};  # OA IP address
+    $self->{HPOA_KEY}  = undef;             # oaSessionKey returned by userLogIn
+    $self->{HPOA_SECURITY_XML}    = undef;  # key placed in proper XML
+    $self->{HPOA_SECURITY_HEADER} = undef;  # XML translated to SOAP::Header obj
 
-  bless($self, $class);
+    bless($self, $class);
 
-  # We contact the OA via this URL:
-  my $proxy = "https://". $self->{HPOA_HOST} . ":443/hpoa";
+    # We contact the OA via this URL:
+    my $proxy = "https://" . $self->{HPOA_HOST} . ":443/hpoa";
 
-  # One of the cool things about SOAP::Lite is that almost every
-  # method returns $self.  This allows you to string together
-  # as many calls as you need, like this:
-  $self
-    # keep the XML formatted for human readability, in case
-    # we ever have to look at it (unlikely)
-    -> readable(1)
+    # One of the cool things about SOAP::Lite is that almost every
+    # method returns $self.  This allows you to string together
+    # as many calls as you need, like this:
+    $self
 
-    # Need to tell SOAP about some namespaces.  I don't know if they
-    # are all necessary or not, but I got them from the hpoa.wsdl
-    -> ns("http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd", "wsu")
-    -> ns('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', "wsse")
-    -> ns('http://www.w3.org/2001/XMLSchema-instance', 'xsi')
-    -> ns('http://www.w3.org/2003/05/soap-encoding', 'SOAP-ENC')
-    -> ns('http://www.w3.org/2003/05/soap-envelope', 'SOAP-ENV')
-    -> ns('http://www.w3.org/2001/XMLSchema', 'xsd')
-    -> default_ns("hpoa.xsd", "hpoa")
+      # keep the XML formatted for human readability, in case
+      # we ever have to look at it (unlikely)
+      ->readable(1)
 
-    # Inform SOAP of the OA URL
-    -> proxy($proxy);
+      # Need to tell SOAP about some namespaces.  I don't know if they
+      # are all necessary or not, but I got them from the hpoa.wsdl
+      ->ns("http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd", "wsu")
+      ->ns('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', "wsse")
+      ->ns('http://www.w3.org/2001/XMLSchema-instance', 'xsi')
+      ->ns('http://www.w3.org/2003/05/soap-encoding',   'SOAP-ENC')
+      ->ns('http://www.w3.org/2003/05/soap-envelope',   'SOAP-ENV')
+      ->ns('http://www.w3.org/2001/XMLSchema',          'xsd')
+      ->default_ns("hpoa.xsd", "hpoa")
 
-  return $self;
+      # Inform SOAP of the OA URL
+      ->proxy($proxy);
+
+    return $self;
 }
 
 # Method: call
@@ -78,83 +79,84 @@ sub new {
 # results in this call:
 #	$hpoa->call('userLogIn', username=>$name, password=>$pass)
 sub call {
-  my ($self, $method, %args) = @_;
+    my ($self, $method, %args) = @_;
 
-  #
-  # Each item of %args is of the form:
-  #    ($name => $value).
-  #
-  # $value is usually a scalar and SOAP::Lite infers a type.
-  #
-  # If the value needs to be explicitly typed, the $value should be a
-  # reference to an array of the form:
-  #    [ $scalar, $type ]
-  # This should work for any parameter that you want to explicitly
-  # type, but for some reason the OA was not having any of it the
-  # last time I tried.
-  #
-  # If the method calls for an array of values, the $value should be
-  # a reference to an array of the form:
-  #    [ $itemName, $itemArrayRef, $itemType ]
-  #
-  # If the method calls for more complicated structure, the $value
-  # should be a reference to a hash of the form:
-  #    { name1 => value1, name2 => value2 ... }
-  # The values can themselves be scalars, array refs or hash refs,
-  # which will themselves be processed recursively.
-  #
+    #
+    # Each item of %args is of the form:
+    #    ($name => $value).
+    #
+    # $value is usually a scalar and SOAP::Lite infers a type.
+    #
+    # If the value needs to be explicitly typed, the $value should be a
+    # reference to an array of the form:
+    #    [ $scalar, $type ]
+    # This should work for any parameter that you want to explicitly
+    # type, but for some reason the OA was not having any of it the
+    # last time I tried.
+    #
+    # If the method calls for an array of values, the $value should be
+    # a reference to an array of the form:
+    #    [ $itemName, $itemArrayRef, $itemType ]
+    #
+    # If the method calls for more complicated structure, the $value
+    # should be a reference to a hash of the form:
+    #    { name1 => value1, name2 => value2 ... }
+    # The values can themselves be scalars, array refs or hash refs,
+    # which will themselves be processed recursively.
+    #
 
-  # Put the params in a form SOAP likes.
-  my @soapargs = ();
-  while (my ($k, $v) = each %args) {
-    push @soapargs, $self->process_args($k, $v);
-  }
-  # This is required if there are no params, otherwise SOAP::Lite
-  # makes an XML construct that the OA doesn't like.
-  @soapargs = SOAP::Data->type('xml'=> undef)
-    unless @soapargs;
+    # Put the params in a form SOAP likes.
+    my @soapargs = ();
+    while (my ($k, $v) = each %args) {
+        push @soapargs, $self->process_args($k, $v);
+    }
 
-  # Add the security header if it's not the login method.
-  # I'm hoping that the header will be ignored by the few methods
-  # that don't require security.
-  push (@soapargs, $self->{HPOA_SECURITY_HEADER})
-    unless ($method eq 'userLogIn') || !defined $self->{HPOA_SECURITY_HEADER};
+    # This is required if there are no params, otherwise SOAP::Lite
+    # makes an XML construct that the OA doesn't like.
+    @soapargs = SOAP::Data->type('xml' => undef)
+      unless @soapargs;
 
-  # Make sure we're using the correct version of SOAP, but
-  # don't mess up packages that use a different version.
-  my $version = xCAT::hpoa->soapversion();
-  xCAT::hpoa->soapversion('1.2');
+    # Add the security header if it's not the login method.
+    # I'm hoping that the header will be ignored by the few methods
+    # that don't require security.
+    push(@soapargs, $self->{HPOA_SECURITY_HEADER})
+      unless ($method eq 'userLogIn') || !defined $self->{HPOA_SECURITY_HEADER};
 
-  # Call the method and put the response in $r
-  my $r = $self->SUPER::call($method, @soapargs);
+    # Make sure we're using the correct version of SOAP, but
+    # don't mess up packages that use a different version.
+    my $version = xCAT::hpoa->soapversion();
+    xCAT::hpoa->soapversion('1.2');
 
-  # Reset the SOAP version
-  xCAT::hpoa->soapversion($version);
+    # Call the method and put the response in $r
+    my $r = $self->SUPER::call($method, @soapargs);
 
-  # If this was the login method and it was successful, then extract
-  # the session key and remember it for subsequent calls.
-  if ($method eq 'userLogIn' && !$r->fault) {
+    # Reset the SOAP version
+    xCAT::hpoa->soapversion($version);
 
-    my $key = $r->result()->{oaSessionKey};
+    # If this was the login method and it was successful, then extract
+    # the session key and remember it for subsequent calls.
+    if ($method eq 'userLogIn' && !$r->fault) {
 
-    # Got this XML code from the HP Insight Onboard Administrator SOAP
-    # Interface Guide 0.9.7
-    my $xml = '
+        my $key = $r->result()->{oaSessionKey};
+
+        # Got this XML code from the HP Insight Onboard Administrator SOAP
+        # Interface Guide 0.9.7
+        my $xml = '
 <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" SOAP-ENV:mustUnderstand="true">
   <hpoa:HpOaSessionKeyToken xmlns:hpoa="hpoa.xsd">
      <hpoa:oaSessionKey>'
-       . $key .
-    '</hpoa:oaSessionKey>
+          . $key .
+          '</hpoa:oaSessionKey>
   </hpoa:HpOaSessionKeyToken>
 </wsse:Security>';
 
-    $self->{HPOA_KEY} 		  = $key;
-    $self->{HPOA_SECURITY_XML} 	  = $xml;
-    $self->{HPOA_SECURITY_HEADER} = SOAP::Header->type('xml' => $xml);
-  }
+        $self->{HPOA_KEY}             = $key;
+        $self->{HPOA_SECURITY_XML}    = $xml;
+        $self->{HPOA_SECURITY_HEADER} = SOAP::Header->type('xml' => $xml);
+    }
 
-  # Return the response
-  return $r;
+    # Return the response
+    return $r;
 }
 
 ## Create the correct SOAP::Data structure for the given args
@@ -184,47 +186,47 @@ sub call {
 ##	 	    </name>
 
 sub process_args {
-  my ($self, $n, $v, $t) = @_;
-  print "process args: $n => $v\n"					if 0;
+    my ($self, $n, $v, $t) = @_;
+    print "process args: $n => $v\n" if 0;
 
-  if (!ref $v) {		# untyped scalar
-    print "\nUNTYPED SCALAR: $n => $v\n"				if 0;
-    return SOAP::Data->new(name => $n, value => $v, type => '');
-  }
-
-  if (ref $v eq 'HASH') {	# structure
-    my ($nn, $vv, @ar);
-    while (($nn, $vv) = each %$v) {
-      print "\nSTRUCTURE $n: $nn => $vv\n"				if 0;
-      unshift @ar, $self->process_args($nn, $vv);
-    }
-    return SOAP::Data->name($n => \SOAP::Data->value(@ar));
-  }
-
-  if (ref $v eq 'ARRAY') {
-
-    if (scalar @$v == 2) {	# typed scalar
-      my ($value, $type) = @$v;
-      print "\nTYPED SCALAR: $n => $value ($type)\n"			if 0;
-      return SOAP::Data->new(name => $n, value => $value, type => $type);
+    if (!ref $v) {    # untyped scalar
+        print "\nUNTYPED SCALAR: $n => $v\n" if 0;
+        return SOAP::Data->new(name => $n, value => $v, type => '');
     }
 
-    # Else an array of values
-    my ($itemName, $aref, $type) = @$v;
-    my (@ar, $item);
-    foreach $item (@$aref) {
-      if (ref $item eq 'HASH') {
-	print "\nSUB STRUCTURE $n: $itemName => $item ($type)\n"	if 0;
-	unshift @ar, $self->process_args("$itemName", $item);
-      } else {
-	print "\nARRAY $n: $itemName => $item ($type)\n"		if 0;
-	unshift @ar, $self->process_args($itemName, [$item, $type]);
-      }
+    if (ref $v eq 'HASH') {    # structure
+        my ($nn, $vv, @ar);
+        while (($nn, $vv) = each %$v) {
+            print "\nSTRUCTURE $n: $nn => $vv\n" if 0;
+            unshift @ar, $self->process_args($nn, $vv);
+        }
+        return SOAP::Data->name($n => \SOAP::Data->value(@ar));
     }
-    return SOAP::Data->name($n => \SOAP::Data->value(@ar));
-  }
 
-  die "Unexpected input parameter value: $n => $v\n";
+    if (ref $v eq 'ARRAY') {
+
+        if (scalar @$v == 2) {    # typed scalar
+            my ($value, $type) = @$v;
+            print "\nTYPED SCALAR: $n => $value ($type)\n" if 0;
+            return SOAP::Data->new(name => $n, value => $value, type => $type);
+        }
+
+        # Else an array of values
+        my ($itemName, $aref, $type) = @$v;
+        my (@ar, $item);
+        foreach $item (@$aref) {
+            if (ref $item eq 'HASH') {
+                print "\nSUB STRUCTURE $n: $itemName => $item ($type)\n" if 0;
+                unshift @ar, $self->process_args("$itemName", $item);
+            } else {
+                print "\nARRAY $n: $itemName => $item ($type)\n" if 0;
+                unshift @ar, $self->process_args($itemName, [ $item, $type ]);
+            }
+        }
+        return SOAP::Data->name($n => \SOAP::Data->value(@ar));
+    }
+
+    die "Unexpected input parameter value: $n => $v\n";
 }
 
 ###
@@ -258,117 +260,117 @@ sub process_args {
 
 # The OA's fault structure
 sub SOAP::SOM::oaFaultInfo {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  return $self->fault->{Detail}->{faultInfo}
-    if (defined $self->fault &&
-	defined $self->fault->{Detail} &&
-	defined $self->fault->{Detail}->{faultInfo});
+    return $self->fault->{Detail}->{faultInfo}
+      if (defined $self->fault &&
+        defined $self->fault->{Detail} &&
+        defined $self->fault->{Detail}->{faultInfo});
 
-  return undef;
+    return undef;
 }
 
 # The name of the method producing the fault
 sub SOAP::SOM::oaOperationName {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $oafi = $self->oaFaultInfo;
+    my $oafi = $self->oaFaultInfo;
 
-  return $oafi->{operationName}
-    if defined $oafi &&
+    return $oafi->{operationName}
+      if defined $oafi &&
       defined $oafi->{operationName};
 
-  return undef;
+    return undef;
 }
 
 # Text of the OA fault
 sub SOAP::SOM::oaErrorText {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $oafi = $self->oaFaultInfo;
+    my $oafi = $self->oaFaultInfo;
 
-  return $oafi->{errorText}
-    if defined $oafi &&
+    return $oafi->{errorText}
+      if defined $oafi &&
       defined $oafi->{errorText};
 
-  return undef;
+    return undef;
 }
 
 # Numeric code of the OA fault
 sub SOAP::SOM::oaErrorCode {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $oafi = $self->oaFaultInfo;
+    my $oafi = $self->oaFaultInfo;
 
-  if (defined $oafi) {
+    if (defined $oafi) {
 
-    return $oafi->{errorCode}
-      if defined $oafi->{errorCode};
+        return $oafi->{errorCode}
+          if defined $oafi->{errorCode};
 
-    return $oafi->{internalErrorCode}
-      if defined $oafi->{internalErrorCode};
-  }
+        return $oafi->{internalErrorCode}
+          if defined $oafi->{internalErrorCode};
+    }
 
-  return undef;
+    return undef;
 }
 
 # Bay Number of the OA fault
 sub SOAP::SOM::oaOperationBayNumber {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $oafi = $self->oaFaultInfo;
+    my $oafi = $self->oaFaultInfo;
 
-  return $oafi->{operationBayNumber}
-    if defined $oafi &&
+    return $oafi->{operationBayNumber}
+      if defined $oafi &&
       defined $oafi->{operationBayNumber};
 
-  return undef;
+    return undef;
 }
 
 # Sometimes there's extra fault information
 # (Haven't seen any yet!)
 sub SOAP::SOM::oaExtraFaultData {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $oafi = $self->oaFaultInfo;
+    my $oafi = $self->oaFaultInfo;
 
-  return $oafi->{extraData}
-    if defined $oafi &&
+    return $oafi->{extraData}
+      if defined $oafi &&
       defined $oafi->{extraData};
 
-  return undef;
+    return undef;
 }
 
 # Nicely formatted error message for human consumption.
 # Tries to use the oaErrorText and oaErrorCode, if defined,
 # else uses the reason text.
 sub SOAP::SOM::oaErrorMessage {
-  my ($self, @args) = @_;
+    my ($self, @args) = @_;
 
-  my $errorText  = $self->oaErrorText;
+    my $errorText = $self->oaErrorText;
 
-  # Reason text is either an error message from SOAP (as when
-  # the method or argument doesn't exist), or it's a formatted
-  # form of the faultInfo->errorType enumeration.
-  my $reasonText = $self->fault->{Reason}->{Text};
+    # Reason text is either an error message from SOAP (as when
+    # the method or argument doesn't exist), or it's a formatted
+    # form of the faultInfo->errorType enumeration.
+    my $reasonText = $self->fault->{Reason}->{Text};
 
-  return $reasonText
-    unless defined $errorText;
+    return $reasonText
+      unless defined $errorText;
 
-  my $operationName = $self->oaOperationName;
-  my $operationBay  = $self->oaOperationBayNumber;
-  my $errorCode     = $self->oaErrorCode;
-  my $extraData     = $self->oaExtraFaultData;
+    my $operationName = $self->oaOperationName;
+    my $operationBay  = $self->oaOperationBayNumber;
+    my $errorCode     = $self->oaErrorCode;
+    my $extraData     = $self->oaExtraFaultData;
 
-  my $operation = "'$operationName' call";
-  $operation .= " on bay $operationBay"
-    if $operationBay;
+    my $operation = "'$operationName' call";
+    $operation .= " on bay $operationBay"
+      if $operationBay;
 
-  my $completeText =
-    "$reasonText $errorCode during $operation: $errorText";
-  $completeText .= "\n\t$extraData" if $extraData;
+    my $completeText =
+      "$reasonText $errorCode during $operation: $errorText";
+    $completeText .= "\n\t$extraData" if $extraData;
 
-  return $completeText;
+    return $completeText;
 }
 
 1;

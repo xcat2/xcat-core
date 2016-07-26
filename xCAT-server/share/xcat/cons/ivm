@@ -2,21 +2,23 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 use Fcntl qw(:DEFAULT :flock);
 use strict;
+
 sub get_lock {
-    unless (flock(LOCKHANDLE,LOCK_EX|LOCK_NB)) {
+    unless (flock(LOCKHANDLE, LOCK_EX | LOCK_NB)) {
         $| = 1;
         print "Acquiring startup lock...";
-        flock(LOCKHANDLE,LOCK_EX) or die "Error trying to secure a startup lock";
+        flock(LOCKHANDLE, LOCK_EX) or die "Error trying to secure a startup lock";
         print "done\n";
     }
-    truncate(LOCKHANDLE,0);
-    print LOCKHANDLE $$."\n";
+    truncate(LOCKHANDLE, 0);
+    print LOCKHANDLE $$ . "\n";
 }
 
 sub release_lock {
-    truncate(LOCKHANDLE,0);
-    flock(LOCKHANDLE,LOCK_UN);
+    truncate(LOCKHANDLE, 0);
+    flock(LOCKHANDLE, LOCK_UN);
 }
+
 BEGIN
 {
     use Time::HiRes qw(sleep);
@@ -25,20 +27,21 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
     umask 0077;
     mkpath("/tmp/xcat/");
-    unless (sysopen(LOCKHANDLE,"/tmp/xcat/consolelock",O_WRONLY | O_CREAT)) {
+    unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
         sleep 15;
         print "Unable to open lock file";
         exit 0;
     }
     get_lock();
-    my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
-    print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
+    my $sleepint = int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
+    print "Opening console in " . (2 + (0.5 * $sleepint)) . " seconds...\n";
     sleep $sleepint;
 }
-my $sleepint=int(rand(10)); 
+my $sleepint = int(rand(10));
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
 use strict;
+
 #use Getopt::Long;
 #use xCAT::Table;
 #use xCAT::PPCdb;
@@ -89,7 +92,7 @@ my $credencial;
 #        if ( defined( $_[0] )) {
 #            print STDERR "$_[0]\n";
 #        }
-#        my @msg = ( 
+#        my @msg = (
 #            "$cmd -h|--help\n",
 #            "$cmd -v|--version\n",
 #            "$cmd singlenode [-V|-Verbose]\n" );
@@ -162,7 +165,7 @@ my $credencial;
 
 
 ##########################################################################
-# Open remote console 
+# Open remote console
 ##########################################################################
 sub invoke_cmd {
 
@@ -180,7 +183,7 @@ sub invoke_cmd {
     #    }
     #}
     ###################################
-    ## Get node power type 
+    ## Get node power type
     ###################################
     #my $hwtype = __FILE__;
     #$hwtype    =~ s/.*([\w]{3})$/$1/;
@@ -244,15 +247,15 @@ sub invoke_cmd {
     #my $host   = $att->{hcp};
     #my $lparid = $att->{id};
     #$type      = "lpar";
-	
-	my $type     = "lpar";
-    my $hwtype   = "ivm";
+
+    my $type    = "lpar";
+    my $hwtype  = "ivm";
     my %request = (
         ppcretry => 1,
         verbose  => $verbose
     );
     #################################
-    # Get userid and password 
+    # Get userid and password
     #################################
     #my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
     @cred = split(/,/, $credencial);
@@ -260,61 +263,61 @@ sub invoke_cmd {
     #################################
     # Connect to the remote server
     #################################
-    my @exp = xCAT::PPCcli::connect( \%request, $hwtype, $host );
-    if ( ref($exp[0]) ne "Expect" ) {
-        return( $exp[0] );
+    my @exp = xCAT::PPCcli::connect(\%request, $hwtype, $host);
+    if (ref($exp[0]) ne "Expect") {
+        return ($exp[0]);
     }
     #################################
-    # Open console connection 
+    # Open console connection
     #################################
-    my $result = xCAT::PPCcli::mkvterm( \@exp, $type, $lparid, $mtms );
+    my $result = xCAT::PPCcli::mkvterm(\@exp, $type, $lparid, $mtms);
     my $Rc = shift(@$result);
 
-    if ( $Rc != SUCCESS ) {
-        return( @$result[0] );
+    if ($Rc != SUCCESS) {
+        return (@$result[0]);
     }
-    return(0);
+    return (0);
 }
 ##############################################
-# Start main body of code                                                 
+# Start main body of code
 ##############################################
 #if ( parse_args() ) {
 #    exit(1);
 #}
 sub getans {
-    my $rsp = shift; 
-    
+    my $rsp = shift;
+
     if ($rsp->{node}) {
-        $host = $rsp->{node}->[0]->{host}->[0];
-        $lparid = $rsp->{node}->[0]->{lparid}->[0];
-        $mtms = $rsp->{node}->[0]->{mtms}->[0];
-		$credencial = $rsp->{node}->[0]->{cred}->[0];
-		
+        $host       = $rsp->{node}->[0]->{host}->[0];
+        $lparid     = $rsp->{node}->[0]->{lparid}->[0];
+        $mtms       = $rsp->{node}->[0]->{mtms}->[0];
+        $credencial = $rsp->{node}->[0]->{cred}->[0];
+
     }
 }
 
-my $cmdref={
-    command=>["gethmccon"],
-    arg=>["text"],
-    noderange=>[$ARGV[0]]
+my $cmdref = {
+    command   => ["gethmccon"],
+    arg       => ["text"],
+    noderange => [ $ARGV[0] ]
 };
 
 
-xCAT::Client::submit_request($cmdref,\&getans);
+xCAT::Client::submit_request($cmdref, \&getans);
 until ($lparid and $host and $mtms) {
-    release_lock(); #Let other clients have a go
-    $sleepint=10+int(rand(20)); #Stagger to minimize lock collisions, but no big deal when it does happen
+    release_lock();    #Let other clients have a go
+    $sleepint = 10 + int(rand(20)); #Stagger to minimize lock collisions, but no big deal when it does happen
     print "Console not ready, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip delay)\n";
     sleep $sleepint;
     get_lock();
-    xCAT::Client::submit_request($cmdref,\&getans);
+    xCAT::Client::submit_request($cmdref, \&getans);
 }
-release_lock(); #done with xcatd, can run with near impunity
+release_lock();                     #done with xcatd, can run with near impunity
 
 $node = $ARGV[0];
-	
+
 my $result = invoke_cmd($host, $lparid, $mtms);
-if ( $result ne "0" ) {
+if ($result ne "0") {
     print STDERR "$node: $result\n";
     exit(1);
 }

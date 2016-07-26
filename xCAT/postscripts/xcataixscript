@@ -9,12 +9,12 @@
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use File::Path;
 use IO::Socket;
-my $useSocketSSL=eval { require IO::Socket::SSL; };
+my $useSocketSSL = eval { require IO::Socket::SSL; };
 use Getopt::Long;
 use XML::Simple;
 
@@ -23,7 +23,7 @@ use XML::Simple;
 $logdir = "/var/log/xcat";
 
 if (!-d $logdir) {
-	mkpath($logdir);
+    mkpath($logdir);
 }
 
 $::sdate = `/bin/date`;
@@ -32,7 +32,7 @@ my $logfile = $logdir . "/xcat.log";
 
 # this log should not contain much so it might be ok to let it grow?
 # at least we'll have the errors preserved
-open(LOGFILE,">>",$logfile);
+open(LOGFILE, ">>", $logfile);
 $::LOG_FILE = \*LOGFILE;
 
 # get hostname
@@ -40,22 +40,23 @@ $::shorthost = `hostname -s`;
 chomp $::shorthost;
 
 my $servnode;
+
 # get the name of my service node/NIM master from the /etc/niminfo file
 if (-f "/etc/niminfo") {
-   	$cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
-   	&runcmd($cmd);
-   	my $SNline = $::outref;
-	my $junk;
-   	($junk, $servnode) =  split(/=/, $SNline);
+    $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
+    &runcmd($cmd);
+    my $SNline = $::outref;
+    my $junk;
+    ($junk, $servnode) = split(/=/, $SNline);
 
-	# save the servnode from niminfo in xcatinfo
-	my $xcatinfo="/etc/xcatinfo";
-	open(XCATINFO,">",$xcatinfo);
-	print XCATINFO "XCATSERVER=$servnode\n";
-	close(XCATINFO);
+    # save the servnode from niminfo in xcatinfo
+    my $xcatinfo = "/etc/xcatinfo";
+    open(XCATINFO, ">", $xcatinfo);
+    print XCATINFO "XCATSERVER=$servnode\n";
+    close(XCATINFO);
 } else {
-	print "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
-   	print $::LOG_FILE "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
+    print "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
+    print $::LOG_FILE "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
 }
 $servnode =~ s/^\s*//;
 chomp $servnode;
@@ -63,24 +64,24 @@ chomp $servnode;
 # create the xcatpost dir
 my $cmd = "/bin/mkdir -m 755 -p /xcatpost";
 if (&runcmd($cmd) != 0) {
-	print "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
-	print $::LOG_FILE "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
+    print "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
 }
 
-# Set a temporary root password 
+# Set a temporary root password
 # - the user-provided root passwd will be set by xcataixpost
 my $pwcmd = qq~/bin/echo "root:xcatroot" | /bin/chpasswd -c >/dev/null 2>&1~;
 if (&runcmd($pwcmd) != 0) {
-	print "$::sdate xcataixscript: Could not set password.\n";
-	print $::LOG_FILE "$::sdate xcataixscript: Could not set password.\n";
+    print "$::sdate xcataixscript: Could not set password.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not set password.\n";
 }
 
 #  need fix to support INSTALLDIR !!!!!
-#  socket doesn't work at this point of install so need another 
+#  socket doesn't work at this point of install so need another
 #	way to get INSTALLDIR value!!!
 my $installdir;
 if (!$installdir) {
-	$installdir="/install";
+    $installdir = "/install";
 }
 
 # get the contents of the $installdir/postscripts dir on the server
@@ -100,12 +101,13 @@ if (&runcmd($mcmd) != 0) {
 }
 
 my $cpcmd;
-if ((@ARGV==0) || ($ARGV[0] != 2)) {
+if ((@ARGV == 0) || ($ARGV[0] != 2)) {
     $cpcmd = "/bin/cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
 } else {
+
     # when argv[1]=2, there is only one postscript file,
     #   user wants only download it to save time
-    $cpcmd= "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+    $cpcmd = "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
 }
 
 if (&runcmd($cpcmd) != 0) {
@@ -130,12 +132,13 @@ if (&runcmd($ucmd) != 0) {
 # see if it is already there
 my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
 if (&runcmd($lsicmd) != 0) {
-	# ok - create the entry
-	my $mkitab_cmd = '/usr/sbin/mkitab "xcat:2:wait:/xcatpost/xcataixpost > /dev/console 2>&1"';
-	if (&runcmd($mkitab_cmd) != 0) {
-		print "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
-		print $::LOG_FILE "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
-	}
+
+    # ok - create the entry
+    my $mkitab_cmd = '/usr/sbin/mkitab "xcat:2:wait:/xcatpost/xcataixpost > /dev/console 2>&1"';
+    if (&runcmd($mkitab_cmd) != 0) {
+        print "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
+        print $::LOG_FILE "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
+    }
 }
 
 close($::LOG_FILE);
@@ -150,17 +153,17 @@ exit 0;
 sub runcmd
 {
     my ($cmd) = @_;
-	my $rc=0;
-    $cmd .= ' 2>&1' ;
+    my $rc = 0;
+    $cmd .= ' 2>&1';
     $::outref = `$cmd`;
     if ($?)
     {
         $rc = $? >> 8;
         if ($rc > 0)
         {
-		print "$::sdate  xcataixscript: $::outref\n";
-		print $::LOG_FILE "$::sdate  xcataixscript: $::outref\n";
+            print "$::sdate  xcataixscript: $::outref\n";
+            print $::LOG_FILE "$::sdate  xcataixscript: $::outref\n";
         }
     }
- return $rc;
+    return $rc;
 }

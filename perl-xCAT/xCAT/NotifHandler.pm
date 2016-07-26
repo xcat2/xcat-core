@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::NotifHandler;
+
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -25,15 +26,18 @@ my $dbworkerid;
 1;
 
 #-------------------------------------------------------------------------------
+
 =head1  xCATi::NotifHandler
 =head2    Package Description
   This mondule caches the notification table and tracks the changes of it.
   It also handles the event notification when xCAT database changes.
 =cut
+
 #-------------------------------------------------------------------------------
 
 
 #--------------------------------------------------------------------------------
+
 =head3  setup
       It is called by xcatd to get set the pid of the parent of all this object.
       Setup the signal to trap any changes in the notification table. It also
@@ -45,21 +49,23 @@ my $dbworkerid;
     Returns:
       none
 =cut
+
 #-------------------------------------------------------------------------------
 sub setup
 {
-  $masterpid=shift;
-  if ($masterpid =~ /xCAT::NotifHandler/) {
-    $masterpid=shift;
-  }
-  $dbworkerid=shift;
+    $masterpid = shift;
+    if ($masterpid =~ /xCAT::NotifHandler/) {
+        $masterpid = shift;
+    }
+    $dbworkerid = shift;
 
-  refreshNotification();
+    refreshNotification();
 
-  $SIG{USR1}=\&handleNotifSignal;
+    $SIG{USR1} = \&handleNotifSignal;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3  handleNotifSignal
       It is called when the signal is received. It then update the cache with the
       latest data in the notification table.
@@ -68,14 +74,17 @@ sub setup
     Returns:
       none
 =cut
+
 #-------------------------------------------------------------------------------
 sub handleNotifSignal {
-   #print "handleNotifSignal pid=$$\n";
-   refreshNotification();
-   $SIG{USR1}=\&handleNotifSignal;
+
+    #print "handleNotifSignal pid=$$\n";
+    refreshNotification();
+    $SIG{USR1} = \&handleNotifSignal;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3  sendNotifSignal
       It is called by any module that has made changes to the notification table.
     Arguments:
@@ -83,18 +92,20 @@ sub handleNotifSignal {
     Returns:
       none
 =cut
+
 #-------------------------------------------------------------------------------
 sub sendNotifSignal {
-  if ($masterpid) {
-    kill('USR1', $masterpid);
-  }
-  if ($dbworkerid) {
-    kill('USR1', $dbworkerid);
-  }
+    if ($masterpid) {
+        kill('USR1', $masterpid);
+    }
+    if ($dbworkerid) {
+        kill('USR1', $dbworkerid);
+    }
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   refreshNotification
       It loads the notification info from the "notification"
       table and store it into %notif variable.
@@ -105,77 +116,81 @@ sub sendNotifSignal {
     Returns:
       none
 =cut
+
 #-------------------------------------------------------------------------------
 sub refreshNotification
 {
-  #print "refreshNotification get called\n";
-  #flush the cache
-  %notif=();
-  my $table=xCAT::Table->new("notification", -create =>0);
-  if ($table) {
-    #get array of rows out of the notification table
-    my @row_array= $table->getTable;
-    if (@row_array) {
-      #store the information to the cache
-      foreach(@row_array) {
-        my $module=$_->{filename};
-        my $ops=$_->{tableops};
-        my $disable= $_->{disable};
-        my @tablenames=split(/,/, $_->{tables});
+    #print "refreshNotification get called\n";
+    #flush the cache
+    %notif = ();
+    my $table = xCAT::Table->new("notification", -create => 0);
+    if ($table) {
 
-        foreach(@tablenames) {
-          if (!exists($notif{$_})) {
-            $notif{$_}={};
-          }
+        #get array of rows out of the notification table
+        my @row_array = $table->getTable;
+        if (@row_array) {
+
+            #store the information to the cache
+            foreach (@row_array) {
+                my $module     = $_->{filename};
+                my $ops        = $_->{tableops};
+                my $disable    = $_->{disable};
+                my @tablenames = split(/,/, $_->{tables});
+
+                foreach (@tablenames) {
+                    if (!exists($notif{$_})) {
+                        $notif{$_} = {};
+                    }
 
 
-          my $tempdisable=0;
-          if ($disable) {
-            if ($disable =~ m/^(yes|YES|Yes|Y|y|1)$/) {
-              $tempdisable=1;
-            }
-          }
+                    my $tempdisable = 0;
+                    if ($disable) {
+                        if ($disable =~ m/^(yes|YES|Yes|Y|y|1)$/) {
+                            $tempdisable = 1;
+                        }
+                    }
 
-          if (!$disable) {
-            if ($ops) {
-              if ($ops =~ m/a/) {
-                if (exists($notif{$_}->{a})) {
-                  my $pa=$notif{$_}->{a};
-                  push(@$pa, $module);
-                } else {
-                  $notif{$_}->{a}=[$module];
-                }
-              }
-              if ($ops =~ m/d/) {
-                if (exists($notif{$_}->{d})) {
-                  my $pa=$notif{$_}->{d};
-                  push(@$pa, $module);
-                } else {
-                  $notif{$_}->{d}=[$module];
-                }
-              }
-              if ($ops =~ m/u/) {
-                if (exists($notif{$_}->{u})) {
-                  my $pa=$notif{$_}->{u};
-                  push(@$pa, $module);
-                } else {
-                  $notif{$_}->{u}=[$module];
-                }
-              }
-            } #end if
-          }
-        } #end foreach
+                    if (!$disable) {
+                        if ($ops) {
+                            if ($ops =~ m/a/) {
+                                if (exists($notif{$_}->{a})) {
+                                    my $pa = $notif{$_}->{a};
+                                    push(@$pa, $module);
+                                } else {
+                                    $notif{$_}->{a} = [$module];
+                                }
+                            }
+                            if ($ops =~ m/d/) {
+                                if (exists($notif{$_}->{d})) {
+                                    my $pa = $notif{$_}->{d};
+                                    push(@$pa, $module);
+                                } else {
+                                    $notif{$_}->{d} = [$module];
+                                }
+                            }
+                            if ($ops =~ m/u/) {
+                                if (exists($notif{$_}->{u})) {
+                                    my $pa = $notif{$_}->{u};
+                                    push(@$pa, $module);
+                                } else {
+                                    $notif{$_}->{u} = [$module];
+                                }
+                            }
+                        }    #end if
+                    }
+                }    #end foreach
 
-      } #end foreach(@row_array)
-    }#end if (@row_array)
-  } #end if ($table)
+            }    #end foreach(@row_array)
+        }    #end if (@row_array)
+    }    #end if ($table)
 
-   #print Dumper(%notif);
-  return 1;
+    #print Dumper(%notif);
+    return 1;
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   dumpNotificationCache
       It print out the content of the notification cache for debugging purpose.
     Arguments:
@@ -183,34 +198,36 @@ sub refreshNotification
     Returns:
       0
 =cut
+
 #-------------------------------------------------------------------------------
 sub dumpNotificationCache {
-  print "dump the notification cache:\n";
-  foreach(keys(%notif)) {
-    my $tmptn=$_;
-    print " $tmptn: \n";
+    print "dump the notification cache:\n";
+    foreach (keys(%notif)) {
+        my $tmptn = $_;
+        print " $tmptn: \n";
 
-    if (exists($notif{$_}->{a})) {
-      print "   a--:";
-      my $files=$notif{$_}->{a};
-      print "@$files\n";
+        if (exists($notif{$_}->{a})) {
+            print "   a--:";
+            my $files = $notif{$_}->{a};
+            print "@$files\n";
+        }
+        if (exists($notif{$_}->{u})) {
+            print "   u--:";
+            my $files = $notif{$_}->{u};
+            print "@$files\n";
+        }
+        if (exists($notif{$_}->{d})) {
+            print "   d--:";
+            my $files = $notif{$_}->{d};
+            print "@$files\n";
+        }
     }
-    if (exists($notif{$_}->{u})) {
-      print "   u--:";
-      my $files=$notif{$_}->{u};
-      print "@$files\n";
-    }
-    if (exists($notif{$_}->{d})) {
-      print "   d--:";
-      my $files=$notif{$_}->{d};
-      print "@$files\n";
-    }
-  }
-  return 0;
+    return 0;
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   needToNotify
       It check if the given table has interested parties watching for its changes.
     Arguments:
@@ -221,34 +238,37 @@ sub dumpNotificationCache {
       1 - if the table has interested parties.
       0 - if no parties are interested in its changes.
 =cut
+
 #-------------------------------------------------------------------------------
 sub needToNotify {
 
-  #print "needToNotify pid=$$, notify=" . Dumper(%notif) . "\n";
+    #print "needToNotify pid=$$, notify=" . Dumper(%notif) . "\n";
 
-  if (!%notif) {
-    # print "notif not defined\n";
-    refreshNotification();
-  }
+    if (!%notif) {
 
-  my $tablename=shift;
-  if ($tablename =~ /xCAT::NotifHandler/) {
-    $tablename=shift;
-  }
-  my $tableop=shift;
-
-  if (%notif) {
-    if (exists($notif{$tablename})) {
-      if (exists($notif{$tablename}->{$tableop})) {
-        return 1;
-      }
+        # print "notif not defined\n";
+        refreshNotification();
     }
-  }
-  return 0;
+
+    my $tablename = shift;
+    if ($tablename =~ /xCAT::NotifHandler/) {
+        $tablename = shift;
+    }
+    my $tableop = shift;
+
+    if (%notif) {
+        if (exists($notif{$tablename})) {
+            if (exists($notif{$tablename}->{$tableop})) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 
 #--------------------------------------------------------------------------------
+
 =head3   notify
       It notifies the registered the modules with the latest changes in
       a DB table.
@@ -284,79 +304,83 @@ sub needToNotify {
          ...
 
 =cut
+
 #-------------------------------------------------------------------------------
 sub notify {
-  my $action=shift;
-  if ($action =~ /xCAT::NotifHandler/) {
-    $action=shift;
-  }
-  my $tablename=shift;
-  my $old_data=shift;
-  my $new_data=shift;
-
-  # print "notify called: tablename=$tablename, action=$action\n";
-
-  my @filenames=();
-  if (%notif) {
-    if (exists($notif{$tablename})) {
-      if (exists($notif{$tablename}->{$action})) {
-        my $pa=$notif{$tablename}->{$action};
-        @filenames=@$pa;
-      }
+    my $action = shift;
+    if ($action =~ /xCAT::NotifHandler/) {
+        $action = shift;
     }
-  }
+    my $tablename = shift;
+    my $old_data  = shift;
+    my $new_data  = shift;
 
+    # print "notify called: tablename=$tablename, action=$action\n";
 
-  foreach(@filenames) {
-    my ($modname, $path, $suffix) = fileparse($_, ".pm");
-     # print "modname=$modname, path=$path, suffix=$suffix\n";
-    if ($suffix =~ /.pm/) { #it is a perl module
-	my $fname;
-        if (($path eq "") || ($path eq ".\/")) {
-          #default path is /opt/xcat/lib/perl/xCAT_monitoring/ if there is no path specified
-          $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/".$modname.".pm";
-        } else {
-          $fname = $_;
+    my @filenames = ();
+    if (%notif) {
+        if (exists($notif{$tablename})) {
+            if (exists($notif{$tablename}->{$action})) {
+                my $pa = $notif{$tablename}->{$action};
+                @filenames = @$pa;
+            }
         }
-        eval {require($fname)};
-        if ($@) {
-          print "The file $fname cannot be located or has compiling errors.\n";
-        }
-        else {
-          ${"xCAT_monitoring::".$modname."::"}{processTableChanges}->($action, $tablename, $old_data, $new_data);
-        }
-        return 0;
     }
-    else { #it is a command
-      my $pid;
-      if ($pid=xCAT::Utils->xfork()) { }
-      elsif (defined($pid)) {
-        # print "command=$_\n";
-        if (open(CMD, "|$_")) {
-          print(CMD "$action\n");
-          print(CMD "$tablename\n");
 
-          print(CMD  "[old data]\n");
-          foreach (@$old_data) {
-            print(CMD join(',', @$_)."\n");
-          }
 
-          print(CMD  "[new data]\n");
-          if (%$new_data) {
-            print(CMD join(',', keys %$new_data) . "\n");
-            print(CMD join(',', values %$new_data) . "\n");
-          }
-          close(CMD) or print "Cannot close the command $_\n";
+    foreach (@filenames) {
+        my ($modname, $path, $suffix) = fileparse($_, ".pm");
+
+        # print "modname=$modname, path=$path, suffix=$suffix\n";
+        if ($suffix =~ /.pm/) {    #it is a perl module
+            my $fname;
+            if (($path eq "") || ($path eq ".\/")) {
+
+                #default path is /opt/xcat/lib/perl/xCAT_monitoring/ if there is no path specified
+                $fname = "$::XCATROOT/lib/perl/xCAT_monitoring/" . $modname . ".pm";
+            } else {
+                $fname = $_;
+            }
+            eval { require($fname) };
+            if ($@) {
+                print "The file $fname cannot be located or has compiling errors.\n";
+            }
+            else {
+                ${ "xCAT_monitoring::" . $modname . "::" }{processTableChanges}->($action, $tablename, $old_data, $new_data);
+            }
+            return 0;
         }
-        else {
-          print "Command $_ cannot be found\n";
+        else {    #it is a command
+            my $pid;
+            if ($pid = xCAT::Utils->xfork()) { }
+            elsif (defined($pid)) {
+
+                # print "command=$_\n";
+                if (open(CMD, "|$_")) {
+                    print(CMD "$action\n");
+                    print(CMD "$tablename\n");
+
+                    print(CMD "[old data]\n");
+                    foreach (@$old_data) {
+                        print(CMD join(',', @$_) . "\n");
+                    }
+
+                    print(CMD "[new data]\n");
+                    if (%$new_data) {
+                        print(CMD join(',', keys %$new_data) . "\n");
+                        print(CMD join(',', values %$new_data) . "\n");
+                    }
+                    close(CMD) or print "Cannot close the command $_\n";
+                }
+                else {
+                    print "Command $_ cannot be found\n";
+                }
+
+                exit 0;
+            }    #elsif
         }
+    }    #foreach
 
-        exit 0;
-      } #elsif
-    }
-  }  #foreach
-
-  return 0;
+    return 0;
 }
 

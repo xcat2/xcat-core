@@ -1,0 +1,3 @@
+xcatprobe opt/xcat/bin
+subcmds opt/xcat/probe
+lib opt/xcat/probe

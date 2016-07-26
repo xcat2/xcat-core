@@ -223,7 +223,7 @@ then
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
         fi
-        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent"
+        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
         target_archs=(amd64 ppc64el)
         for file in `echo $packages`
         do
@@ -242,9 +242,29 @@ then
                     cd $file
                     dch -v $pkg_version -b -c debian/changelog $build_string
                     if [ "$target_arch" = "all" ]; then
+                        #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
+                        #1 make xcat probe code to be self-contained
+                        #2 don't maintain two files for each script
+                        #3 symbolic link can't work during package
+                        if [ $file_low = "xcat-probe" ]; then
+                            CURDIR=$(pwd)
+                            mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                            cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                            cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                        fi
                         dpkg-buildpackage -uc -us
                     else
+                        if [ "$file" = "xCAT-genesis-scripts" ]; then
+                            CURDIR=$(pwd)
+                            echo "Rename control file to build pkg: mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control"
+                            mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control
+                        fi
                         dpkg-buildpackage -uc -us -a$target_arch
+                        if [ "$file" = "xCAT-genesis-scripts" ]; then
+                            CURDIR=$(pwd)
+                            echo "Move control file back: mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}"
+                            mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}
+                        fi
                     fi
                     rc=$?
                     if [ $rc -gt 0 ]; then

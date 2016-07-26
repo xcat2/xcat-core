@@ -2,6 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
 use lib "$::XCATROOT/lib/perl";
+
 #use Data::Dumper;
 use xCAT::Client;
 use Getopt::Long;
@@ -12,30 +13,31 @@ my $option;
 my $printcount;
 my $individual;
 
-GetOptions("n"=>\$option,
-           "i"=>\$individual,
-           "c"=>\$printcount);
+GetOptions("n" => \$option,
+    "i" => \$individual,
+    "c" => \$printcount);
 
 while (<STDIN>) {
     my $node;
     my $output;
     if (/:/) {
-        ($node,$output) = split /:/,$_,2;
+        ($node, $output) = split /:/, $_, 2;
     } else {
-        $node= "UNKNOWN";
+        $node   = "UNKNOWN";
         $output = $_;
     }
     $output =~ s/^ //;
-    $output{$node}.=$output;
+    $output{$node} .= $output;
 }
 my %collated;
 unless ($individual) {
     foreach (keys %output) {
-        $collated{$output{$_}}->{$_}=1;
+        $collated{ $output{$_} }->{$_} = 1;
     }
 }
 
 my $nodes;
+
 sub fillerup {
     my $response = shift;
     if ($response->{data}->[0]) {
@@ -53,20 +55,20 @@ if ($individual) {
     exit(0);
 }
 foreach my $output (keys %collated) {
-    $nodes = join(',',sort (keys %{$collated{$output}}));
+    $nodes = join(',', sort (keys %{ $collated{$output} }));
     my $cmdref = {
         noderange => [$nodes],
-        command => ['rnoderange'],
+        command   => ['rnoderange'],
     };
     unless ($option) {
-        xCAT::Client::submit_request($cmdref,\&fillerup);
+        xCAT::Client::submit_request($cmdref, \&fillerup);
     }
     print "====================================\n";
     print "$nodes\n";
     print "====================================\n";
     if ($printcount) {
-       print "Node count = ".scalar( keys %{$collated{$output}})." \n";
-       print "====================================\n";
+        print "Node count = " . scalar(keys %{ $collated{$output} }) . " \n";
+        print "====================================\n";
     }
     print $output;
     print "\n";

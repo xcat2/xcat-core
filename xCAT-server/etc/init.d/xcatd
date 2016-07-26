@@ -6,7 +6,7 @@
 
 ### BEGIN INIT INFO
 # Provides: xcatd
-# Required-Start: $network $syslog sshd
+# Required-Start: $network $syslog 
 # Required-Stop: 
 # Should-Start: mysql
 # Default-Start: 3 4 5
@@ -101,7 +101,7 @@ stop)
     echo
     exit 0
   fi
-  kill -TERM -`cat /var/run/xcatd.pid`
+  kill -TERM `cat /var/run/xcatd.pid`
   i=0;
   while $STATUS > /dev/null 2>&1 && [ $i -lt 30 ]; do
     sleep .1

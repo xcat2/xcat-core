@@ -6,22 +6,24 @@ use Getopt::Long;
 use xCAT::Utils;
 
 #-------------------------------------------------------------------------------
+
 =head1  xCAT::Usage
 =head2    Package Description
   xCAT usage module. Some commands such as rpower have different implementations 
   for different hardware. This module holds the usage string for these kind
   of commands so that the usage can be referenced from different modules.
 =cut
+
 #-------------------------------------------------------------------------------
 
 
 my %usage = (
-    "rnetboot" => 
+    "rnetboot" =>
 "Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rnetboot [-h|--help|-v|--version]
      zVM specific:
        rnetboot <noderange> [ipl= address]",
-    "rpower" => 
+    "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
      KVM Virtualization specific:
@@ -49,11 +51,11 @@ my %usage = (
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
 ",
-    "rbeacon" => 
-"Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
+    "rbeacon" =>
+      "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
        rbeacon [-h|--help|-v|--version]",
-    "rvitals" => 
-"Usage:
+    "rvitals" =>
+      "Usage:
   Common:
       rvitals [-h|--help|-v|--version]
   FSP/LPAR (with HMC) specific:
@@ -68,11 +70,11 @@ my %usage = (
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}
   MIC specific:
       rvitals noderange {thermal|all}",
-    "reventlog" => 
+    "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
-    "rinv" => 
-"Usage: 
+    "rinv" =>
+      "Usage: 
     Common:
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
@@ -95,22 +97,22 @@ my %usage = (
        rinv noderange [all|config]
     MIC specific:
        rinv noderange [system|ver|board|core|gddr|all]",
-    "rsetboot" => 
+    "rsetboot" =>
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
-    "rbootseq" => 
-"Usage: 
+    "rbootseq" =>
+      "Usage: 
        Common:
            rbootseq [-h|--help|-v|--version|-V|--verbose]
        Blade specific:
            rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...
        PPC (using Direct FSP Management) specific:
            rbootseq <noderange> [hfi|net]",
-    "rscan" => 
-"Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
+    "rscan" =>
+      "Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
        rscan [-h|--help|-v|--version]",
-    "rspconfig" => 
-"Usage: 
+    "rspconfig" =>
+      "Usage: 
    Common:
        rspconfig [-h|--help|-v|--version|-V|--verbose]
    BMC/MPA Common:
@@ -190,8 +192,8 @@ my %usage = (
        rspconfig <noderange>  [dev=<enable|disable>]|
        rspconfig <noderange>  [celogin1=<enable|disable>]
     ",
-    "getmacs" => 
-"Usage: 
+    "getmacs" =>
+      "Usage: 
    Common:
        getmacs [-h|--help|-v|--version]
    PPC specific:
@@ -201,8 +203,8 @@ my %usage = (
    blade specific:
        getmacs <noderange> [-V| --verbose] [-d] [--arp] [-i ethN|enN]
 ",
-    "mkvm" => 
-"Usage:
+    "mkvm" =>
+      "Usage:
     Common:
        mkvm [-h|--help|-v|--version]
     For PPC(with HMC) specific:
@@ -219,8 +221,8 @@ my %usage = (
     For zVM
        mkvm noderange directory_entry_file_path
        mkvm noderange source_virtual_machine pool=disk_pool pw=multi_password",
-    "lsvm" => 
-"Usage:
+    "lsvm" =>
+      "Usage:
    Common:
        lsvm <noderange> [-V|--verbose]
        lsvm [-h|--help|-v|--version]
@@ -235,8 +237,8 @@ my %usage = (
        lsvm noderange --getnetwork network_name
        lsvm noderange --diskpoolnames
        lsvm noderange --diskpool pool_name",
-    "chvm" => 
-"Usage:
+    "chvm" =>
+      "Usage:
    Common:
        chvm [-h|--help|-v|--version]
    PPC (with HMC) specific:
@@ -284,8 +286,8 @@ my %usage = (
        chvm noderange [--replacevs directory_entry]
        chvm noderange [--setipl ipl_target load_parms parms]
        chvm noderange [--setpassword password]",
-    "rmvm" => 
-"Usage: rmvm <noderange> [--service][-V|--verbose] 
+    "rmvm" =>
+      "Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version],
        rmvm [-p] [-f]
        PPC (using Direct FSP Management) specific:
@@ -293,24 +295,24 @@ my %usage = (
     "mkdocker" =>
 "Usage: mkdocker <noderange> [image=<image_name> [command=<command>]] [dockerflag=<docker_flags>]",
     "lsdocker" =>
-"Usage: lsdocker <noderange>
+      "Usage: lsdocker <noderange>
        lsdocker <noderange> [-l|--logs]",
     "rmdocker" =>
-"Usage: rmdocker <noderage>",
+      "Usage: rmdocker <noderage>",
     "lsslp" =>
-"Usage: lsslp [-h|--help|-v|--version]
+      "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
     "switchdiscover" =>
-"Usage: switchdiscover [-h|--help|-v|--version]
+      "Usage: switchdiscover [-h|--help|-v|--version]
        switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
-    "switchprobe" => 
-"Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
+    "switchprobe" =>
+      "Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>
-"Usage: makentp [-h|--help|-v|--version]
+      "Usage: makentp [-h|--help|-v|--version]
        makentp [-a|--all] [-V|--verbose]",
-  "rflash" =>
-"Usage: 
+    "rflash" =>
+      "Usage: 
     rflash [ -h|--help|-v|--version]
     PPC (with HMC) specific:
 	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
@@ -322,7 +324,7 @@ my %usage = (
     PPC64LE (using BMC Management) specific:
         rflash <noderange> [-c | --check] <hpm_file>",
     "mkhwconn" =>
-"Usage:
+      "Usage:
     mkhwconn [-h|--help]
     
     PPC (with HMC) specific:
@@ -333,7 +335,7 @@ my %usage = (
     mkhwconn noderange -t [-T tooltype] [--port port_value]
     mkhwconn noderange -s [hmcnode] [-P HMC passwd] [-V|--verbose]",
     "rmhwconn" =>
-"Usage:
+      "Usage:
     rmhwconn [-h|--help]
     
     PPC (with HMC) specific:
@@ -343,7 +345,7 @@ my %usage = (
     rmhwconn noderange [-T tooltype]
     rmhwconn noderange -s",
     "lshwconn" =>
-"Usage:
+      "Usage:
     lshwconn [-h|--help]
     
     PPC (with HMC) specific:
@@ -353,7 +355,7 @@ my %usage = (
     lshwconn noderange [-T tooltype]
     lshwconn noderange -s",
     "renergy" =>
-"Usage:
+      "Usage:
     renergy [-h | --help] 
     renergy [-v | --version] 
 
@@ -391,8 +393,8 @@ my %usage = (
     OpenPOWER server specific :
       renergy noderange [ powerusage | temperature]
 ",
-  "updatenode" =>
-"Usage:
+    "updatenode" =>
+      "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]
     or
     updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
@@ -449,31 +451,31 @@ Options:
 
     [attr=val [attr=val...]]  Specifies one or more 'attribute equals value' 
         pairs, separated by spaces. (AIX only)",
-  "lsflexnode" =>
-"Usage:
+    "lsflexnode" =>
+      "Usage:
     lsflexnode [-h|--help|-v|--version]
     lsflexnode <noderange>",
-  "mkflexnode" =>
-"Usage:
+    "mkflexnode" =>
+      "Usage:
     mkflexnode [-h|--help|-v|--version]
     mkflexnode <noderange>",
-  "nodeset" =>
-"Usage:
+    "nodeset" =>
+      "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline|shutdown|stat]",
-  "rmflexnode" =>
-"Usage:
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat]",
+    "rmflexnode" =>
+      "Usage:
     rmflexnode [-h|--help|-v|--version]
     rmflexnode <noderange>",
-  "lsve" =>
-"Usage:
+    "lsve" =>
+      "Usage:
     lsve [-t type] [-m manager] [-o object]
       -t: dc - 'Data Center', cl - 'Cluster', sd - 'Storage Domain', nw - 'Network', tpl -'Template'
       -m: FQDN (Fully Qualified Domain Name) of the rhev manager
       -o: Target object to display",
- "cfgve" =>
-"Usage:
+    "cfgve" =>
+      "Usage:
     cfgve -t dc -m manager -o object [-c -k nfs|localfs | -r]
     cfgve -t cl -m manager -o object [-c -p cpu type | -r -f]
     cfgve -t sd -m manager -o object [-c | -g | -s | -a | -b | -r -f]
@@ -482,50 +484,51 @@ Options:
       -o: Target object to configure
     cfgve -t nw -m manager -o object [-c -d data center -n vlan ID | -a -l cluster| -b | -r]
     cfgve -t tpl -m manager -o object [-r]",
- "chhypervisor" =>
-"Usage:
+    "chhypervisor" =>
+      "Usage:
     chhypervisor noderange [-a | -n | -p | -e | -d | -h]",
- "rmhypervisor" =>
-"Usage:
+    "rmhypervisor" =>
+      "Usage:
     rmhypervisor noderange [-f | -h]",
- "clonevm" =>
-"Usage:
+    "clonevm" =>
+      "Usage:
     clonevm noderange [-t createmaster -f | -b basemaster -d | -h]",
 );
-my $vers = xCAT::Utils->Version();
+my $vers    = xCAT::Utils->Version();
 my %version = (
-    "rnetboot" => "$vers",
-    "rpower" => "$vers",
-    "rbeacon" => "$vers",
-    "rvitals" => "$vers",
-    "reventlog" => "$vers",
-    "rinv" => "$vers",
-    "rsetboot" => "$vers",
-    "rbootseq" => "$vers",
-    "rscan" => "$vers",
-    "rspconfig" => "$vers",
-    "getmacs" => "$vers",
-    "mkvm" => "$vers",
-    "lsvm" => "$vers",
-    "chvm" => "$vers",
-    "rmvm" => "$vers",
-    "lsslp" => "$vers",
+    "rnetboot"       => "$vers",
+    "rpower"         => "$vers",
+    "rbeacon"        => "$vers",
+    "rvitals"        => "$vers",
+    "reventlog"      => "$vers",
+    "rinv"           => "$vers",
+    "rsetboot"       => "$vers",
+    "rbootseq"       => "$vers",
+    "rscan"          => "$vers",
+    "rspconfig"      => "$vers",
+    "getmacs"        => "$vers",
+    "mkvm"           => "$vers",
+    "lsvm"           => "$vers",
+    "chvm"           => "$vers",
+    "rmvm"           => "$vers",
+    "lsslp"          => "$vers",
     "switchdiscover" => "$vers",
-    "makentp" => "$vers",
-    "rflash" => "$vers",
-    "renergy" => "$vers",
-    "lsflexnode" => "$vers",
-    "mkflexnode" => "$vers",
-    "rmflexnode" => "$vers",
-    "nodeset" => "$vers",
-    "lsve" => "$vers",
-    "cfgve" => "$vers",
-    "chhypervisor" => "$vers",
-    "rmhypervisor" => "$vers",
-    "clonevm" => "$vers",
+    "makentp"        => "$vers",
+    "rflash"         => "$vers",
+    "renergy"        => "$vers",
+    "lsflexnode"     => "$vers",
+    "mkflexnode"     => "$vers",
+    "rmflexnode"     => "$vers",
+    "nodeset"        => "$vers",
+    "lsve"           => "$vers",
+    "cfgve"          => "$vers",
+    "chhypervisor"   => "$vers",
+    "rmhypervisor"   => "$vers",
+    "clonevm"        => "$vers",
 );
 
 #--------------------------------------------------------------------------------
+
 =head3   getUsage
       It returns the usage string for the given command.
     Arguments:
@@ -533,14 +536,16 @@ my %version = (
     Returns:
         the usage string for the command.
 =cut
+
 #-------------------------------------------------------------------------------
 sub getUsage {
-  my ($class, $command)=@_;
-  if (exists($usage{$command})) { return $usage{$command};}  
-  else { return "Usage for command $command cannot be found\n"; }
+    my ($class, $command) = @_;
+    if (exists($usage{$command})) { return $usage{$command}; }
+    else { return "Usage for command $command cannot be found\n"; }
 }
 
 #--------------------------------------------------------------------------------
+
 =head3   getVersion
       It returns the version string for the given command.
     Arguments:
@@ -548,14 +553,16 @@ sub getUsage {
     Returns:
         the version string for the command.
 =cut
+
 #-------------------------------------------------------------------------------
 sub getVersion {
-  my ($class, $command)=@_;
-  if (exists($version{$command})) { return $version{$command};}  
-  else { return "Version string for command $command cannot be found\n"; }
+    my ($class, $command) = @_;
+    if (exists($version{$command})) { return $version{$command}; }
+    else { return "Version string for command $command cannot be found\n"; }
 }
 
 #--------------------------------------------------------------------------------
+
 =head3   parseCommand
       This function parses the given command to see if the usage or version string
       need to be returned. 
@@ -567,29 +574,30 @@ sub getVersion {
            string and then exit.
         none, if no usage or version strings are needed. The caller can keep going.
 =cut
+
 #-------------------------------------------------------------------------------
 sub parseCommand {
-  my $command=shift;
-  if ($command =~ /xCAT::Usage/) { $command=shift; }
-  my @exargs=@_;
-  
-  @ARGV=@exargs;
+    my $command = shift;
+    if ($command =~ /xCAT::Usage/) { $command = shift; }
+    my @exargs = @_;
 
-  #print "command=$command, args=@exargs, ARGV=@ARGV\n";
+    @ARGV = @exargs;
 
-  Getopt::Long::Configure('pass_through','no_ignore_case');
+    #print "command=$command, args=@exargs, ARGV=@ARGV\n";
 
-  # parse the options
-  if(!GetOptions(
-      'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION)) {
-    
+    Getopt::Long::Configure('pass_through', 'no_ignore_case');
+
+    # parse the options
+    if (!GetOptions(
+            'h|help'    => \$::HELP,
+            'v|version' => \$::VERSION)) {
+
+        return "";
+    }
+
+    if ($::HELP)    { return xCAT::Usage->getUsage($command); }
+    if ($::VERSION) { return xCAT::Usage->getVersion($command); }
+
     return "";
-  }
-
-  if ($::HELP) { return xCAT::Usage->getUsage($command); }
-  if ($::VERSION) { return xCAT::Usage->getVersion($command); }
-
-  return "";
 }
 

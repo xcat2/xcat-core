@@ -10,34 +10,37 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
+
 # do not put a use or require for  xCAT::Table here. Add to each new routine
-# needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call 
+# needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call
 use POSIX qw(ceil);
 use File::Path;
 use Socket;
 use strict;
 use Symbol;
 my $sha1support;
-if ( -f "/etc/debian_version" ){
-    $sha1support = eval {require Digest::SHA; 1;};
+if (-f "/etc/debian_version") {
+    $sha1support = eval { require Digest::SHA; 1; };
 }
 else {
-    $sha1support = eval { require Digest::SHA1; 1;};
+    $sha1support = eval { require Digest::SHA1; 1; };
 }
 use IPC::Open3;
 use IO::Select;
 use xCAT::GlobalDef;
 eval {
-  require xCAT::RemoteShellExp;
+    require xCAT::RemoteShellExp;
 };
 use warnings "all";
 require xCAT::InstUtils;
+
 #require xCAT::NetworkUtils;
 require xCAT::Schema;
+
 #require Data::Dumper;
 require xCAT::NodeRange;
 require xCAT::Version;
@@ -139,15 +142,15 @@ This program module file, is a set of utilities used by xCAT commands.
 #-------------------------------------------------------
 sub clroptionvars
 {
-	# skip the class arg and set the rest to undef
-	my $skippedclass=0;
-	foreach (@_) {
-		if ($skippedclass) {
-			$_ = undef;
-		}
-		$skippedclass=1;
-	}
-	return 0;
+    # skip the class arg and set the rest to undef
+    my $skippedclass = 0;
+    foreach (@_) {
+        if ($skippedclass) {
+            $_ = undef;
+        }
+        $skippedclass = 1;
+    }
+    return 0;
 }
 
 #-------------------------------------------------------------
@@ -172,71 +175,71 @@ sub genUUID
     #the chances of a cluster the size of the entire internet generating
     #two identical UUIDs is 4 in 10 octillion.
     my %args = @_;
-    if ($args{mac}) { #if a mac address was supplied, generate a uuidv1 instead
+    if ($args{mac}) {  #if a mac address was supplied, generate a uuidv1 instead
         use Math::BigInt;
         no warnings 'portable';
         use Time::HiRes qw/gettimeofday/;
         my $sec;
         my $usec;
-        ($sec,$usec) = gettimeofday();
+        ($sec, $usec) = gettimeofday();
         my $uuidtime = Math::BigInt->new($sec);
         $uuidtime->bmul('10000000');
-        $uuidtime->badd($usec*10);
+        $uuidtime->badd($usec * 10);
         $uuidtime->badd('0x01B21DD213814000');
-        my $timelow=$uuidtime->copy();
-        $timelow->band('0xffffffff');# get lower 32bit
-        my $timemid=$uuidtime->copy();
+        my $timelow = $uuidtime->copy();
+        $timelow->band('0xffffffff');    # get lower 32bit
+        my $timemid = $uuidtime->copy();
         $timemid->band('0xffff00000000');
-        my $timehigh=$uuidtime->copy();
+        my $timehigh = $uuidtime->copy();
         $timehigh->band('0xffff000000000000');
         $timemid->brsft(32);
         $timehigh->brsft(48);
         $timehigh->bior('0x1000'); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
-        my $clockseq=rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
-        #also, randomness matters very little, as the time+mac is here
-        $clockseq = $clockseq | 0x8000; #RFC4122 variant
-        #time to assemble...
-        $timelow = $timelow->bstr();
-        $usec=$timelow == 0; # doing numeric comparison induces perl to 'int'-ify it.  Safe at this point as the subpieces are all sub-32 bit now
-        #assign to $usec the result so that perl doesn't complain about this trickery
-        $timemid = $timemid->bstr();
-        $usec=$timemid == 0;
+        my $clockseq = rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
+                                   #also, randomness matters very little, as the time+mac is here
+        $clockseq = $clockseq | 0x8000;    #RFC4122 variant
+                                           #time to assemble...
+        $timelow  = $timelow->bstr();
+        $usec = $timelow == 0; # doing numeric comparison induces perl to 'int'-ify it.  Safe at this point as the subpieces are all sub-32 bit now
+                               #assign to $usec the result so that perl doesn't complain about this trickery
+        $timemid  = $timemid->bstr();
+        $usec     = $timemid == 0;
         $timehigh = $timehigh->bstr();
-        $usec=$timehigh == 0;
-        my $uuid=sprintf("%08x-%04x-%04x-%04x-",$timelow,$timemid,$timehigh,$clockseq);
+        $usec     = $timehigh == 0;
+        my $uuid = sprintf("%08x-%04x-%04x-%04x-", $timelow, $timemid, $timehigh, $clockseq);
         my $mac = $args{mac};
         $mac =~ s/://g;
         $mac = lc($mac);
         $uuid .= $mac;
         return $uuid;
-    } elsif ($args{url} and $sha1support) { #generate a UUIDv5 from URL
-        #6ba7b810-9dad-11d1-80b4-00c04fd430c8 is the uuid for URL namespace
+    } elsif ($args{url} and $sha1support) {    #generate a UUIDv5 from URL
+            #6ba7b810-9dad-11d1-80b4-00c04fd430c8 is the uuid for URL namespace
         my $sum = '';
-        if ( -f "/etc/debian_version" ){
-            $sum = Digest::SHA::sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8'.$args{url});
+        if (-f "/etc/debian_version") {
+            $sum = Digest::SHA::sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8' . $args{url});
         }
-        else{
-            $sum = Digest::SHA1::sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8'.$args{url});
+        else {
+            $sum = Digest::SHA1::sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8' . $args{url});
         }
-        my @data = unpack("C*",$sum);
-        splice @data,16;
+        my @data = unpack("C*", $sum);
+        splice @data, 16;
         $data[6] = $data[6] & 0xf;
-        $data[6] = $data[6] | (5<<4);
+        $data[6] = $data[6] | (5 << 4);
         $data[8] = $data[8] & 127;
         $data[8] = $data[8] | 64;
-        my $uuid = unpack("H*",pack("C*",splice @data,0,4));
-        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
-        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
-        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
-        $uuid .= "-". unpack("H*",pack("C*",@data));
+        my $uuid = unpack("H*", pack("C*", splice @data, 0, 4));
+        $uuid .= "-" . unpack("H*", pack("C*", splice @data, 0, 2));
+        $uuid .= "-" . unpack("H*", pack("C*", splice @data, 0, 2));
+        $uuid .= "-" . unpack("H*", pack("C*", splice @data, 0, 2));
+        $uuid .= "-" . unpack("H*", pack("C*", @data));
         return $uuid;
     }
     srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
     $uuid =
       sprintf("%08x-%04x-4%03x-",
-              int(rand(4294967295)),
-              int(rand(65535)), int(rand(4095)));
+        int(rand(4294967295)),
+        int(rand(65535)), int(rand(4095)));
     my $num = 32768;
     $num = $num | int(rand(16383));
     $uuid .=
@@ -269,7 +272,7 @@ sub genpassword
     #Generate a pseudo-random password of specified length
     my $length = shift;
     unless ($length) { $length = 8; }
-    my $password   = '';
+    my $password = '';
     my $characters =
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
     srand;    #have to reseed, rand is not rand otherwise
@@ -354,8 +357,8 @@ sub quote
 #-------------------------------------------------------------------------------
 sub isAIX
 {
-    if ($^O =~ /^aix/i) { return 1; }
-    else { return 0; }
+    if   ($^O =~ /^aix/i) { return 1; }
+    else                  { return 0; }
 }
 
 #-------------------------------------------------------------------------------
@@ -376,20 +379,20 @@ sub isAIX
 #-------------------------------------------------------------------------------
 sub get_OS_VRMF
 {
-	my $version;
-	if (xCAT::Utils->isAIX()) {
-		my $cmd = "/usr/bin/lslpp -cLq bos.rte";
-		my $output = xCAT::Utils->runcmd($cmd);
-		chomp($output);
+    my $version;
+    if (xCAT::Utils->isAIX()) {
+        my $cmd    = "/usr/bin/lslpp -cLq bos.rte";
+        my $output = xCAT::Utils->runcmd($cmd);
+        chomp($output);
 
-		# The third field in the lslpp output is the VRMF
-		$version = (split(/:/, $output))[2];
+        # The third field in the lslpp output is the VRMF
+        $version = (split(/:/, $output))[2];
 
-		# not sure if the field would ever contain more than 4 parts?
-		my ($v1, $v2, $v3, $v4, $rest) = split(/\./, $version);
-		$version = join(".", $v1, $v2, $v3, $v4); 
-	}
-	return (length($version) ? $version : undef);
+        # not sure if the field would ever contain more than 4 parts?
+        my ($v1, $v2, $v3, $v4, $rest) = split(/\./, $version);
+        $version = join(".", $v1, $v2, $v3, $v4);
+    }
+    return (length($version) ? $version : undef);
 }
 
 #----------------------------------------------------------------------------
@@ -424,7 +427,7 @@ sub testversion
 {
     my ($class, $version1, $operator, $version2, $release1, $release2) = @_;
 
-	my @a1 = split(/\./, $version1);
+    my @a1 = split(/\./, $version1);
     my @a2 = split(/\./, $version2);
     my $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
     $#a1 = $len - 1;  # make the arrays the same length before appending release
@@ -446,12 +449,12 @@ sub testversion
             $num1 .= $d1;
             $num2 .= ('0' x $diff) . $d2;
         }
-		elsif ($diff < 0)                  # pad d1
+        elsif ($diff < 0)                  # pad d1
         {
             $num1 .= ('0' x abs($diff)) . $d1;
             $num2 .= $d2;
         }
-        else   # they are the same length
+        else                               # they are the same length
         {
             $num1 .= $d1;
             $num2 .= $d2;
@@ -463,21 +466,22 @@ sub testversion
     $num2 =~ s/^0+//;
 
     #SLES Changes ??
-    # if $num1="", the "eval '$num1 $operator $num2'" will fail. 
-	#	So MUST BE be sure that $num1 is not a "".
+    # if $num1="", the "eval '$num1 $operator $num2'" will fail.
+    #	So MUST BE be sure that $num1 is not a "".
     if (length($num1) == 0) { $num1 = 0; }
     if (length($num2) == 0) { $num2 = 0; }
-	#End of SLES Changes
+
+    #End of SLES Changes
 
     if ($operator eq '=') { $operator = '=='; }
     my $bool = eval "$num1 $operator $num2";
 
-	if (length($@))
+    if (length($@))
     {
-		# error msg ?
-	}
+        # error msg ?
+    }
 
-	return $bool;
+    return $bool;
 }
 
 
@@ -506,7 +510,7 @@ sub xfork
         #my %drivers = DBI->installed_drivers;
         foreach (values %{$::XCAT_DBHS})
         {    #@{$drh->{ChildHandles}}) {
-            #if ($_) { $_->disconnect(); }
+                #if ($_) { $_->disconnect(); }
             $_->{InactiveDestroy} = 1;
             undef $_;
         }
@@ -517,7 +521,7 @@ sub xfork
 sub close_all_dbhs
 {
     foreach (values %{$::XCAT_DBHS})
-    {        #@{$drh->{ChildHandles}}) {
+    {           #@{$drh->{ChildHandles}}) {
         $_->disconnect;
         undef $_;
     }
@@ -545,8 +549,8 @@ sub close_all_dbhs
 #-------------------------------------------------------------------------------
 sub isLinux
 {
-    if ($^O =~ /^linux/i) { return 1; }
-    else { return 0; }
+    if   ($^O =~ /^linux/i) { return 1; }
+    else                    { return 0; }
 }
 
 #-------------------------------------------------------------------------------
@@ -737,15 +741,15 @@ sub list_nodes_in_nodegroups
 =cut
 
 #------------------------------------------------------------------------
-sub isMemberofGroup 
+sub isMemberofGroup
 {
-    my ($class, $node,$group ) = @_;
+    my ($class, $node, $group) = @_;
     my $ismember;
-    my @nodes=xCAT::Utils->list_nodes_in_nodegroups($group); 
+    my @nodes = xCAT::Utils->list_nodes_in_nodegroups($group);
     if (grep(/^$node$/, @nodes)) {
-      $ismember =1;
+        $ismember = 1;
     } else {
-      $ismember =0;
+        $ismember = 0;
     }
     return $ismember;
 }
@@ -868,6 +872,7 @@ sub remove_cron_job
 }
 
 #-------------------------------------------------------------------------------
+
 =head3    runcmd3
     Run the specified command with optional input and return stderr, stdout, and exit code
 
@@ -877,29 +882,30 @@ sub remove_cron_job
     Returns:
         { exitcode => number, output=> $string, errors => string }
 =cut
+
 sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and accepts a stdin
     my %args = @_;
     my @indata;
     my $output;
     my $errors;
     if ($args{input}) {
-        if (ref $args{input}) { #array ref
-            @indata = @{$args{input}};
-        } else { #just a string
-            @indata=($args{input});
+        if (ref $args{input}) {    #array ref
+            @indata = @{ $args{input} };
+        } else {                   #just a string
+            @indata = ($args{input});
         }
     }
     my @cmd;
     if (ref $args{command}) {
-        @cmd = @{$args{command}};
+        @cmd = @{ $args{command} };
     } else {
         @cmd = ($args{command});
     }
     my $cmdin;
     my $cmdout;
     my $cmderr = gensym;
-    my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-    my $cmdsel = IO::Select->new($cmdout,$cmderr);
+    my $cmdpid = open3($cmdin, $cmdout, $cmderr, @cmd);
+    my $cmdsel = IO::Select->new($cmdout, $cmderr);
     foreach (@indata) {
         print $cmdin $_;
     }
@@ -909,7 +915,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
         @handles = $cmdsel->can_read();
         foreach (@handles) {
             my $line;
-            my $done = sysread $_,$line,180;
+            my $done = sysread $_, $line, 180;
             if ($done) {
                 if ($_ eq $cmdout) {
                     $output .= $line;
@@ -922,7 +928,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
             }
         }
     }
-    waitpid($cmdpid,0);
+    waitpid($cmdpid, 0);
     my $exitcode = $? >> 8;
     return { 'exitcode' => $exitcode, 'output' => $output, 'errors' => $errors }
 }
@@ -971,52 +977,55 @@ sub runcmd
 
     my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
     $::RUNCMD_RC = 0;
+
     # redirect stderr to stdout
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
+    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
 
-	if ($::VERBOSE)
-	{
-		# get this systems name as known by xCAT management node
-      my $hostname = `/bin/hostname`;
-      chomp $hostname;
-		my $msg="Running command on $hostname: $cmd";
+    if ($::VERBOSE)
+    {
+        # get this systems name as known by xCAT management node
+        my $hostname = `/bin/hostname`;
+        chomp $hostname;
+        my $msg = "Running command on $hostname: $cmd";
 
-		if ($::CALLBACK){
-			my $rsp    = {};
-			$rsp->{data}->[0] = "$msg\n";
-			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-		} else {
-			xCAT::MsgUtils->message("I", "$msg\n");
-		}
-	}
-
-    my $outref = [];
-    if (!defined($stream) || (length($stream) == 0)) { # do not stream
-      @$outref = `$cmd`;
-    } else {  # streaming mode
-      my @cmd;
-      push @cmd,$cmd;
-      my $rsp    = {};
-      my $output;
-      my $errout;
-      open (PIPE, "$cmd |");
-      while (<PIPE>) {
-        push @$outref, $_;
-        chomp;      # get rid of the newline, because the client will add one
-        if ($::CALLBACK){
-           $rsp->{data}->[0] = $_;
-           $::CALLBACK->($rsp);
+        if ($::CALLBACK) {
+            my $rsp = {};
+            $rsp->{data}->[0] = "$msg\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         } else {
-          xCAT::MsgUtils->message("D", "$_");
+            xCAT::MsgUtils->message("I", "$msg\n");
         }
-        #$output .= $_;
-      }
-      # store the return string
-      #push  @$outref,$output;   
-      close(PIPE);  # This will set the $? properly
     }
 
-    # now if not streaming process errors 
+    my $outref = [];
+    if (!defined($stream) || (length($stream) == 0)) {    # do not stream
+        @$outref = `$cmd`;
+    } else {                                              # streaming mode
+        my @cmd;
+        push @cmd, $cmd;
+        my $rsp = {};
+        my $output;
+        my $errout;
+        open(PIPE, "$cmd |");
+        while (<PIPE>) {
+            push @$outref, $_;
+            chomp;    # get rid of the newline, because the client will add one
+            if ($::CALLBACK) {
+                $rsp->{data}->[0] = $_;
+                $::CALLBACK->($rsp);
+            } else {
+                xCAT::MsgUtils->message("D", "$_");
+            }
+
+            #$output .= $_;
+        }
+
+        # store the return string
+        #push  @$outref,$output;
+        close(PIPE);    # This will set the $? properly
+    }
+
+    # now if not streaming process errors
     if ($?)
     {
         $::RUNCMD_RC = $? >> 8;
@@ -1062,7 +1071,7 @@ sub runcmd
             else
             {
                 xCAT::MsgUtils->message("E",
-                             "Command failed: $cmd. Error message: $errmsg.\n");
+                    "Command failed: $cmd. Error message: $errmsg.\n");
             }
             $xCAT::Utils::errno = 29;
         }
@@ -1177,27 +1186,27 @@ sub runxcmd
     {
         if (ref($cmd) eq "HASH")
         {
-			if ($::CALLBACK){
-            	my $rsp    = {};
-            	$rsp->{data}->[0] = "Running internal xCAT command: $cmd->{command}->[0] ... \n";
-            	xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        	} else {
-            	xCAT::MsgUtils->message("I", "Running internal xCAT command: $cmd->{command}->[0] ... \n");
-			}
+            if ($::CALLBACK) {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Running internal xCAT command: $cmd->{command}->[0] ... \n";
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            } else {
+                xCAT::MsgUtils->message("I", "Running internal xCAT command: $cmd->{command}->[0] ... \n");
+            }
         }
         else
         {
-			if ($::CALLBACK){
-                my $rsp    = {};
+            if ($::CALLBACK) {
+                my $rsp = {};
                 $rsp->{data}->[0] = "Running Command: $cmd\n";
                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
             } else {
-            	xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
-			}
+                xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+            }
         }
     }
 
-    $::xcmd_outref = [];
+    $::xcmd_outref      = [];
     %::xcmd_outref_hash = ();
     my $req;
     if (ref($cmd) eq "HASH")
@@ -1212,7 +1221,7 @@ sub runxcmd
         my $arg = shift(@cmdargs);
         while ($arg =~ /^-/)
         {
-            push(@{$req->{arg}}, $arg);
+            push(@{ $req->{arg} }, $arg);
             $arg = shift(@cmdargs);
         }
         if ($arg ne "NO_NODE_RANGE")
@@ -1220,35 +1229,36 @@ sub runxcmd
             my @nodes = split(",", $arg);
             $req->{node} = \@nodes;
         }
-        push(@{$req->{arg}}, @cmdargs);
+        push(@{ $req->{arg} }, @cmdargs);
     }
+
     # call the plugin
     my $outref;
-    if (defined ($refoutput)) {
-      if ($refoutput != 2)  {
+    if (defined($refoutput)) {
+        if ($refoutput != 2) {
+            $subreq->($req, \&runxcmd_output);
+            $outref = $::xcmd_outref;
+        } else {    # return response hash
+            $subreq->($req, \&runxcmd_output2);
+            $outref = $::xcmd_outref_hash;
+        }
+    } else {
         $subreq->($req, \&runxcmd_output);
         $outref = $::xcmd_outref;
-      } else {  # return response hash 
-         $subreq->($req, \&runxcmd_output2); 
-         $outref = $::xcmd_outref_hash;
-      }
-    } else { 
-        $subreq->($req, \&runxcmd_output);
-         $outref = $::xcmd_outref;
     }
-   
+
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
-    
+
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
 
         # Do not display error for  refoutput=2
         # we do not parse the returned structure
-        if (defined ($refoutput)) {
-          if ($refoutput == 2)  {
-             $displayerror = 0;
-          }
+        if (defined($refoutput)) {
+            if ($refoutput == 2) {
+                $displayerror = 0;
+            }
         }
         my $rc;
         if (defined($exitcode) && length($exitcode) && $exitcode != -2)
@@ -1256,11 +1266,11 @@ sub runxcmd
             if ($exitcode > 0)
             {
                 $rc = $exitcode;
-            }                        # if not zero, exit with specified code
+            }    # if not zero, exit with specified code
             elsif ($exitcode <= 0)
             {
-                $rc = '';            # if zero or negative, do not exit
-                
+                $rc = '';    # if zero or negative, do not exit
+
                 if ($exitcode < 0) { $displayerror = 0; }
             }
         }
@@ -1288,28 +1298,30 @@ sub runxcmd
             else
             {
                 xCAT::MsgUtils->message("E",
-                      "Command failed: $displaycmd. Error message: $errmsg.\n");
+                    "Command failed: $displaycmd. Error message: $errmsg.\n");
             }
             $xCAT::Utils::errno = 29;
         }
     }
     if ((defined($refoutput)) && ($refoutput == 1))
-        # output is reference to array
+
+      # output is reference to array
     {
         chomp(@$outref);
         return $outref;
     }
     elsif ((defined($refoutput)) && ($refoutput == 2))
-       # output is structure returned from plugin
+
+      # output is structure returned from plugin
     {
         return $outref;
     }
-    elsif (wantarray)   # array
+    elsif (wantarray)    # array
     {
         chomp(@$outref);
         return @$outref;
     }
-    else   # string
+    else                 # string
     {
         my $line = join('', @$outref);
         chomp $line;
@@ -1335,19 +1347,19 @@ sub runxcmd_output
     my $resp = shift;
     if (defined($resp->{info}))
     {
-        push @$::xcmd_outref, @{$resp->{info}};
+        push @$::xcmd_outref, @{ $resp->{info} };
     }
     if (defined($resp->{sinfo}))
     {
-        push @$::xcmd_outref, @{$resp->{sinfo}};
+        push @$::xcmd_outref, @{ $resp->{sinfo} };
     }
     if (defined($resp->{data}))
     {
-        push @$::xcmd_outref, @{$resp->{data}};
+        push @$::xcmd_outref, @{ $resp->{data} };
     }
     if (defined($resp->{status}))
     {
-        push @$::xcmd_outref, @{$resp->{status}};
+        push @$::xcmd_outref, @{ $resp->{status} };
     }
     if (defined($resp->{node}))
     {
@@ -1382,25 +1394,25 @@ sub runxcmd_output
         {
             if (ref(\($node->{errorcode}->[0])) eq 'SCALAR')
             {
-                $::RUNCMD_RC |=  $node->{errorcode}->[0];
+                $::RUNCMD_RC |= $node->{errorcode}->[0];
             }
         }
         push @$::xcmd_outref, $desc;
     }
     if (defined($resp->{error}))
     {
-      if (ref($resp->{error}) eq 'ARRAY')
-      {
-        push @$::xcmd_outref, @{$resp->{error}};
-      } else {
-        push @$::xcmd_outref, $resp->{error};
-      }
+        if (ref($resp->{error}) eq 'ARRAY')
+        {
+            push @$::xcmd_outref, @{ $resp->{error} };
+        } else {
+            push @$::xcmd_outref, $resp->{error};
+        }
     }
     if (defined($resp->{errorcode}))
     {
         if (ref($resp->{errorcode}) eq 'ARRAY')
         {
-            foreach my $ecode (@{$resp->{errorcode}})
+            foreach my $ecode (@{ $resp->{errorcode} })
             {
                 $::RUNCMD_RC |= $ecode;
             }
@@ -1415,6 +1427,7 @@ sub runxcmd_output
 
     return 0;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3    runxcmd_output2
@@ -1429,34 +1442,34 @@ sub runxcmd_output2
     my $resp = shift;
     if (defined($resp->{info}))
     {
-        push  @{$::xcmd_outref_hash->{info}},  @{$resp->{info}};
+        push @{ $::xcmd_outref_hash->{info} }, @{ $resp->{info} };
     }
     if (defined($resp->{sinfo}))
     {
-        push  @{$::xcmd_outref_hash->{sinfo}},  @{$resp->{sinfo}};
+        push @{ $::xcmd_outref_hash->{sinfo} }, @{ $resp->{sinfo} };
     }
     if (defined($resp->{data}))
     {
-        push  @{$::xcmd_outref_hash->{data}},  @{$resp->{data}};
+        push @{ $::xcmd_outref_hash->{data} }, @{ $resp->{data} };
     }
     if (defined($resp->{status}))
     {
-        push  @{$::xcmd_outref_hash->{status}},  @{$resp->{status}};
+        push @{ $::xcmd_outref_hash->{status} }, @{ $resp->{status} };
     }
     if (defined($resp->{node}))
     {
-        push  @{$::xcmd_outref_hash->{node}},  @{$resp->{node}};
+        push @{ $::xcmd_outref_hash->{node} }, @{ $resp->{node} };
     }
     if (defined($resp->{error}))
     {
-        push  @{$::xcmd_outref_hash->{error}},  @{$resp->{error}};
+        push @{ $::xcmd_outref_hash->{error} }, @{ $resp->{error} };
     }
     if (defined($resp->{errorcode}))
     {
         if (ref($resp->{errorcode}) eq 'ARRAY')
         {
-            push  @{$::xcmd_outref_hash->{errorcode}},  @{$resp->{errorcode}};
-            foreach my $ecode (@{$resp->{errorcode}})
+            push @{ $::xcmd_outref_hash->{errorcode} }, @{ $resp->{errorcode} };
+            foreach my $ecode (@{ $resp->{errorcode} })
             {
                 $::RUNCMD_RC |= $ecode;
             }
@@ -1468,7 +1481,7 @@ sub runxcmd_output2
             $::RUNCMD_RC |= $resp->{errorcode};
         }
     }
-    return 0 ;
+    return 0;
 }
 
 #--------------------------------------------------------------------------------
@@ -1507,15 +1520,15 @@ sub getHomeDir
     }
     else
     {
-        @user = getpwuid($>);
-        $username=$user[0];
+        @user     = getpwuid($>);
+        $username = $user[0];
     }
-    
-    if ($user[7]) { #  if homedir 
-      $homedir= $user[7];
-    } else { # no home
-      $homedir=`su - $username -c  pwd`;
-      chop $homedir; 
+
+    if ($user[7]) {    #  if homedir
+        $homedir = $user[7];
+    } else {           # no home
+        $homedir = `su - $username -c  pwd`;
+        chop $homedir;
     }
     return $homedir;
 }
@@ -1612,7 +1625,7 @@ sub exportDBConfig
         {
             open(CFGFILE, "<$configfile")
               or xCAT::MsgUtils->message('S',
-                                   "Cannot open $configfile for DB access. \n");
+                "Cannot open $configfile for DB access. \n");
             foreach my $line (<CFGFILE>)
             {
                 chop $line;
@@ -1697,7 +1710,7 @@ sub isSN
         return 0;
 
     }
-    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver'],undef,prefetchcache=>1);
+    my @nodes = $servicenodetab->getAllNodeAttribs(['tftpserver'], undef, prefetchcache => 1);
     $servicenodetab->close;
     foreach my $nodes (@nodes)
     {
@@ -1735,32 +1748,32 @@ sub isMounted
     my ($class, $directory) = @_;
     my $cmd;
     my @output;
-    if (-e $directory) {  # does the directory exist
-      if (xCAT::Utils->isLinux()) {
-        $cmd = "df -T -P $directory";
-        @output= xCAT::Utils->runcmd($cmd, -1);
-        foreach my $line (@output){
-          my ($file_sys, $type, $blocks, $used, $avail, $per, $mount_point) = 
-           split(' ', $line);
-          $type=~ s/\s*//g; # remove blanks
-          if ( $type =~ /^nfs/ )
-          {
-             return 1;
-          }
+    if (-e $directory) {    # does the directory exist
+        if (xCAT::Utils->isLinux()) {
+            $cmd = "df -T -P $directory";
+            @output = xCAT::Utils->runcmd($cmd, -1);
+            foreach my $line (@output) {
+                my ($file_sys, $type, $blocks, $used, $avail, $per, $mount_point) =
+                  split(' ', $line);
+                $type =~ s/\s*//g;    # remove blanks
+                if ($type =~ /^nfs/)
+                {
+                    return 1;
+                }
+            }
+        } else {    #AIX
+            $cmd = "/usr/sysv/bin/df -n $directory";
+            @output = xCAT::Utils->runcmd($cmd, -1);
+            foreach my $line (@output) {
+                my ($dir, $colon, $type) =
+                  split(' ', $line);
+                $type =~ s/\s*//g;    # remove blanks
+                if ($type =~ /^nfs/)
+                {
+                    return 1;
+                }
+            }
         }
-      } else { #AIX
-       $cmd = "/usr/sysv/bin/df -n $directory";
-       @output = xCAT::Utils->runcmd($cmd, -1);
-       foreach my $line (@output){
-          my ($dir, $colon, $type) = 
-           split(' ', $line);
-          $type=~ s/\s*//g; # remove blanks
-          if ( $type =~ /^nfs/ )
-          {
-             return 1;
-          }
-       }
-      }
     }
     return 0;
 }
@@ -1791,7 +1804,7 @@ sub runxcatd
     if (!(xCAT::Utils->isAIX()))
     {    # only runs on AIX
         xCAT::MsgUtils->message("E",
-                                "This command should only be run on AIX.\n");
+            "This command should only be run on AIX.\n");
         return 1;
     }
 
@@ -1820,7 +1833,7 @@ sub runxcatd
                 if ($::RUNCMD_RC != 0)
                 {
                     xCAT::MsgUtils->message('E',
-                                        "Could not stop xcatd process $pid.\n");
+                        "Could not stop xcatd process $pid.\n");
                     return 1;
                 }
             }
@@ -1986,17 +1999,17 @@ sub startService
             if (($service ne "conserver") && ($service ne "nfs"))
             {
                 $cmd = "service $service stop";
-                print ' ';		# indent service output to separate it from the xcatd service output
+                print ' '; # indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
-                {    # error
+                {          # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                 }
                 $cmd = "service $service start";
-                print ' ';		# indent service output to separate it from the xcatd service output
+                print ' '; # indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
-                {    # error
+                {          # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                     return 1;
                 }
@@ -2009,20 +2022,20 @@ sub startService
                 if (grep(/running/, @output))
                 {
                     $cmd = "service $service stop";
-	                print ' ';		# indent service output to separate it from the xcatd service output
+                    print ' '; # indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
-                    {    # error
+                    {          # error
                         xCAT::MsgUtils->message("S",
-                                                "Error on command: $cmd\n");
+                            "Error on command: $cmd\n");
                     }
                     $cmd = "service $service start";
-                	print ' ';		# indent service output to separate it from the xcatd service output
+                    print ' '; # indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
-                    {    # error
+                    {          # error
                         xCAT::MsgUtils->message("S",
-                                                "Error on command: $cmd\n");
+                            "Error on command: $cmd\n");
                         return 1;
                     }
                     return 0;
@@ -2032,12 +2045,12 @@ sub startService
 
                     # not running , just start
                     $cmd = "service $service start";
-	                print ' ';		# indent service output to separate it from the xcatd service output
+                    print ' '; # indent service output to separate it from the xcatd service output
                     system $cmd;
                     if ($? > 0)
-                    {    # error
+                    {          # error
                         xCAT::MsgUtils->message("S",
-                                                "Error on command: $cmd\n");
+                            "Error on command: $cmd\n");
                         return 1;
                     }
                     return 0;
@@ -2052,28 +2065,28 @@ sub startService
             if (grep(/stopped/, @output))    # stopped
             {
                 $cmd = "service $service start";
-                print ' ';		# indent service output to separate it from the xcatd service output
+                print ' '; # indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
-                {                            # error
+                {          # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                     return 1;
                 }
             }
             else
-            {                                # not sure
+            {              # not sure
                 $cmd = "service $service stop";
-                print ' ';		# indent service output to separate it from the xcatd service output
+                print ' '; # indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
-                {                            # error
+                {          # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                 }
                 $cmd = "service $service start";
-                print ' ';		# indent service output to separate it from the xcatd service output
+                print ' '; # indent service output to separate it from the xcatd service output
                 system $cmd;
                 if ($? > 0)
-                {                            # error
+                {          # error
                     xCAT::MsgUtils->message("S", "Error on command: $cmd\n");
                     return 1;
                 }
@@ -2113,7 +2126,7 @@ sub CheckVersion
     my $len_a = @a;
     my $len_b = @b;
 
-    my $index     = 0;
+    my $index = 0;
     my $max_index = ($len_a > $len_b) ? $len_a : $len_b;
 
     for ($index = 0 ; $index <= $max_index ; $index++)
@@ -2153,7 +2166,7 @@ sub osver
     my $type = shift;
     if ($type =~ /xCAT::Utils/)
     {
-        $type  = shift;
+        $type = shift;
     }
 
     my $osver = "unknown";
@@ -2163,8 +2176,8 @@ sub osver
     my $line  = '';
     my @lines;
     my $relfile;
-  
-    if (-f "/etc/os-release"){
+
+    if (-f "/etc/os-release") {
         my $version;
         my $version_id;
         my $id;
@@ -2172,89 +2185,91 @@ sub osver
         my $name;
         my $prettyname;
         my $verrel;
-        if (open($relfile,"<","/etc/os-release")) {
-                    my @text = <$relfile>;
-                    close($relfile);
-                    chomp(@text);
-                    #print Dumper(\@text);
-                    foreach my $line (@text){
-                    if($line =~ /^\s*VERSION=\"?([0-9\.]+).*/){
-                    $version=$1;
-                    }
-                    if($line =~ /^\s*VERSION_ID=\"?([0-9\.]+).*/){
-                    $version_id=$1;
-                    }
+        if (open($relfile, "<", "/etc/os-release")) {
+            my @text = <$relfile>;
+            close($relfile);
+            chomp(@text);
+
+            #print Dumper(\@text);
+            foreach my $line (@text) {
+                if ($line =~ /^\s*VERSION=\"?([0-9\.]+).*/) {
+                    $version = $1;
+                }
+                if ($line =~ /^\s*VERSION_ID=\"?([0-9\.]+).*/) {
+                    $version_id = $1;
+                }
 
 
-                    if($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/){
-                    $id=$1;
-                    }
-                    if($line =~ /^\s*ID_LIKE=\"?([0-9a-z\_\-\.]+).*/){
-                    $id_like=$1;
-                    }
+                if ($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/) {
+                    $id = $1;
+                }
+                if ($line =~ /^\s*ID_LIKE=\"?([0-9a-z\_\-\.]+).*/) {
+                    $id_like = $1;
+                }
 
 
-                    if($line =~ /^\s*NAME=\"?(.*)/){
-                    $name=$1;
-                    }
-                    if($line =~ /^\s*PRETTY_NAME=\"?(.*)/){
-                    $prettyname=$1;
-                    }
-                    }
-        }   
+                if ($line =~ /^\s*NAME=\"?(.*)/) {
+                    $name = $1;
+                }
+                if ($line =~ /^\s*PRETTY_NAME=\"?(.*)/) {
+                    $prettyname = $1;
+                }
+            }
+        }
 
-        $os=$id;
+        $os = $id;
         if (!$os and $id_like) {
-           $os=$id_like;
+            $os = $id_like;
         }
 
-        $verrel=$version;
+        $verrel = $version;
         if (!$verrel and $version_id) {
-           $verrel=$version_id;
+            $verrel = $version_id;
         }
-     
-      
-        if(!$name and $prettyname){
-           $name=$prettyname;
+
+
+        if (!$name and $prettyname) {
+            $name = $prettyname;
         }
-        
-        if($os =~ /rhel/ and $name =~ /Server/i){
-           $os="rhels";
+
+        if ($os =~ /rhel/ and $name =~ /Server/i) {
+            $os = "rhels";
         }
-        
-        if($verrel =~ /([0-9]+)\.?(.*)/) {
-           $ver=$1;
-           $rel=$2;
+
+        if ($verrel =~ /([0-9]+)\.?(.*)/) {
+            $ver = $1;
+            $rel = $2;
         }
-#     print "$ver -- $rel";    
+
+        #     print "$ver -- $rel";
     }
     elsif (-f "/etc/redhat-release")
     {
-        open($relfile,"<","/etc/redhat-release");
+        open($relfile, "<", "/etc/redhat-release");
         $line = <$relfile>;
         close($relfile);
         chomp($line);
         $os = "rh";
-        my $verrel=$line;
-        $ver=$line;
-        if ( $type ) {
+        my $verrel = $line;
+        $ver = $line;
+        if ($type) {
             $verrel =~ s/[^0-9]*([0-9.]+).*/$1/;
-            ($ver,$rel) = split /\./, $verrel;
+            ($ver, $rel) = split /\./, $verrel;
         } else {
-            $ver=~ tr/\.//;
+            $ver =~ tr/\.//;
             $ver =~ s/[^0-9]*([0-9]+).*/$1/;
         }
-        if    ($line =~ /AS/)     { $os = 'rhas' }
-        elsif ($line =~ /ES/)     { $os = 'rhes' }
-        elsif ($line =~ /WS/)     { $os = 'rhws' }
-        elsif ($line =~ /Server/) { 
-            if ( $type ) {
+        if    ($line =~ /AS/) { $os = 'rhas' }
+        elsif ($line =~ /ES/) { $os = 'rhes' }
+        elsif ($line =~ /WS/) { $os = 'rhws' }
+        elsif ($line =~ /Server/) {
+            if ($type) {
                 $os = 'rhels';
             } else {
                 $os = 'rhserver';
             }
-        } elsif ($line =~ /Client/) { 
-            if ( $type ) {
+        } elsif ($line =~ /Client/) {
+            if ($type) {
                 $os = 'rhel';
             } else {
                 $os = 'rhclient';
@@ -2264,7 +2279,7 @@ sub osver
     }
     elsif (-f "/etc/SuSE-release")
     {
-        open($relfile,"<","/etc/SuSE-release");
+        open($relfile, "<", "/etc/SuSE-release");
         @lines = <$relfile>;
         close($relfile);
         chomp(@lines);
@@ -2284,48 +2299,48 @@ sub osver
     {
 
         $os = "ul";
-        open($relfile,"<","/etc/UnitedLinux-release");
+        open($relfile, "<", "/etc/UnitedLinux-release");
         $ver = <$relfile>;
         close($relfile);
         $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
     }
-    elsif (-f "/etc/lsb-release")   # Possibly Ubuntu
+    elsif (-f "/etc/lsb-release")    # Possibly Ubuntu
     {
 
-        if (open($relfile,"<","/etc/lsb-release")) {
+        if (open($relfile, "<", "/etc/lsb-release")) {
             my @text = <$relfile>;
             close($relfile);
             chomp(@text);
-            my $distrib_id = '';
+            my $distrib_id  = '';
             my $distrib_rel = '';
 
             foreach (@text) {
-                if ( $_ =~ /^\s*DISTRIB_ID=(.*)$/ ) {
-                    $distrib_id = $1;                   # last DISTRIB_ID value in file used
-                } elsif ( $_ =~ /^\s*DISTRIB_RELEASE=(.*)$/ ) {
-                    $distrib_rel = $1;                  # last DISTRIB_RELEASE value in file used
+                if ($_ =~ /^\s*DISTRIB_ID=(.*)$/) {
+                    $distrib_id = $1;    # last DISTRIB_ID value in file used
+                } elsif ($_ =~ /^\s*DISTRIB_RELEASE=(.*)$/) {
+                    $distrib_rel = $1; # last DISTRIB_RELEASE value in file used
                 }
             }
 
-            if ( $distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/ ) {
+            if ($distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/) {
                 $os = "ubuntu";
 
-                if ( $distrib_rel =~ /^(.*?)\s*$/ ) {       # eliminate trailing blanks, if any
+                if ($distrib_rel =~ /^(.*?)\s*$/) { # eliminate trailing blanks, if any
                     $distrib_rel = $1;
                 }
-                if ( $distrib_rel =~ /^"(.*?)"$/ ) {        # eliminate enclosing quotes, if any
+                if ($distrib_rel =~ /^"(.*?)"$/) { # eliminate enclosing quotes, if any
                     $distrib_rel = $1;
                 }
                 $ver = $distrib_rel;
             }
         }
     }
-    elsif (-f "/etc/debian_version") #possible debian
+    elsif (-f "/etc/debian_version")               #possible debian
     {
-        if (open($relfile, "<", "/etc/issue")){
+        if (open($relfile, "<", "/etc/issue")) {
             $line = <$relfile>;
-            if ( $line =~ /debian.*/i){
+            if ($line =~ /debian.*/i) {
                 $os = "debian";
                 my $relfile1;
                 open($relfile1, "<", "/etc/debian_version");
@@ -2335,26 +2350,29 @@ sub osver
             close($relfile);
         }
     }
-#print "xxxx $type === $rel \n";
-    if ( $type and $type =~ /all/ ) {
-        if ( $rel ne "") {
-#    print "xxx $os-$ver-$rel  \n";
-            return( "$os" . "," . "$ver" . ".$rel" );
+
+    #print "xxxx $type === $rel \n";
+    if ($type and $type =~ /all/) {
+        if ($rel ne "") {
+
+            #    print "xxx $os-$ver-$rel  \n";
+            return ("$os" . "," . "$ver" . ".$rel");
         } else {
-            return( "$os" . "," . "$ver" );
+            return ("$os" . "," . "$ver");
         }
-    } elsif ( $type and $type =~ /os/ ) {
-        return( $os );
-    } elsif ( $type and $type =~ /version/ ) {
-        return( $ver );
-    } elsif ( $type and $type =~ /release/ ) {
-        return( $rel );
+    } elsif ($type and $type =~ /os/) {
+        return ($os);
+    } elsif ($type and $type =~ /version/) {
+        return ($ver);
+    } elsif ($type and $type =~ /release/) {
+        return ($rel);
     } else {
         return ("$os" . "$ver");
     }
 }
 
 #-----------------------------------------------------------------------------
+
 =head3 acquire_lock
     Get a lock on an arbirtrary named resource.  For now, this is only across the scope of one service node/master node, an argument may be added later if/when 'global' locks are supported. This call will block until the lock is free.
     Arguments:
@@ -2366,29 +2384,30 @@ sub osver
 =cut
 
 sub acquire_lock {
-    my $class = shift;
-    my $lock_name = shift;
+    my $class         = shift;
+    my $lock_name     = shift;
     my $nonblock_mode = shift;
 
     use File::Path;
     mkpath("/var/lock/xcat/");
     use Fcntl ":flock";
     my $tlock;
-    $tlock->{path}="/var/lock/xcat/".$lock_name;
-    open($tlock->{fd},">",$tlock->{path}) or return undef;
+    $tlock->{path} = "/var/lock/xcat/" . $lock_name;
+    open($tlock->{fd}, ">", $tlock->{path}) or return undef;
     unless ($tlock->{fd}) { return undef; }
 
-    if ($nonblock_mode){
-        flock($tlock->{fd},LOCK_EX|LOCK_NB) or return undef;
-    } else{
-        flock($tlock->{fd},LOCK_EX) or return undef;
+    if ($nonblock_mode) {
+        flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
+    } else {
+        flock($tlock->{fd}, LOCK_EX) or return undef;
     }
-    print {$tlock->{fd}} $$;
+    print { $tlock->{fd} } $$;
     $tlock->{fd}->autoflush(1);
     return $tlock;
 }
-        
+
 #---------------------
+
 =head3 release_lock
     Release an acquired lock
     Arguments:
@@ -2399,15 +2418,15 @@ sub acquire_lock {
 =cut
 
 sub release_lock {
-    my $class = shift;
-    my $tlock = shift;
+    my $class         = shift;
+    my $tlock         = shift;
     my $nonblock_mode = shift;
 
     unlink($tlock->{path});
-    if($nonblock_mode){
-        flock($tlock->{fd},LOCK_UN|LOCK_NB);
-    } else{
-        flock($tlock->{fd},LOCK_UN);
+    if ($nonblock_mode) {
+        flock($tlock->{fd}, LOCK_UN | LOCK_NB);
+    } else {
+        flock($tlock->{fd}, LOCK_UN);
     }
     close($tlock->{fd});
 }
@@ -2425,11 +2444,11 @@ sub release_lock {
 #-------------------------------------------------------------------------------
 sub is_locked
 {
-    my $class = shift;
+    my $class  = shift;
     my $action = shift;
 
     my $lock = xCAT::Utils->acquire_lock($action, 1);
-    if (! $lock){
+    if (!$lock) {
         return 1;
     }
 
@@ -2472,27 +2491,27 @@ sub parse_selection_string()
         my $attr;
         my $val;
         my $matchtype;
-        if ($m =~ /^[^=]*\==/) { #attr==val
-            ($attr, $val) = split /==/,$m,2;
-            $matchtype='match';
-        } elsif ($m =~ /^[^=]*=~/) { #attr=~val
-            ($attr, $val) = split /=~/,$m,2;
+        if ($m =~ /^[^=]*\==/) {    #attr==val
+            ($attr, $val) = split /==/, $m, 2;
+            $matchtype = 'match';
+        } elsif ($m =~ /^[^=]*=~/) {    #attr=~val
+            ($attr, $val) = split /=~/, $m, 2;
             $val =~ s/^\///;
             $val =~ s/\/$//;
-            $matchtype='regex';
-        } elsif ($m =~ /^[^=]*\!=/) { #attr!=val
-             ($attr,$val) = split /!=/,$m,2;
-             $matchtype='natch';
-        } elsif ($m =~ /[^=]*!~/) { #attr!~val
-            ($attr,$val) = split /!~/,$m,2;
+            $matchtype = 'regex';
+        } elsif ($m =~ /^[^=]*\!=/) {    #attr!=val
+            ($attr, $val) = split /!=/, $m, 2;
+            $matchtype = 'natch';
+        } elsif ($m =~ /[^=]*!~/) {      #attr!~val
+            ($attr, $val) = split /!~/, $m, 2;
             $val =~ s/^\///;
             $val =~ s/\/$//;
-            $matchtype='negex';
-        } elsif ($m =~ /^[^=]*=[^=]+$/) { # attr=val is the same as attr==val
-            ($attr, $val) = split /=/,$m,2;
-            $matchtype='match';
+            $matchtype = 'negex';
+        } elsif ($m =~ /^[^=]*=[^=]+$/) {    # attr=val is the same as attr==val
+            ($attr, $val) = split /=/, $m, 2;
+            $matchtype = 'match';
         } else {
-           return 1;
+            return 1;
         }
 
         if (!defined($attr) || !defined($val))
@@ -2500,7 +2519,7 @@ sub parse_selection_string()
             return 1;
         }
 
-        $wherehash_ref->{$attr}->{'val'} = $val;
+        $wherehash_ref->{$attr}->{'val'}       = $val;
         $wherehash_ref->{$attr}->{'matchtype'} = $matchtype;
     }
     return 0;
@@ -2532,45 +2551,47 @@ sub parse_selection_string()
 #-----------------------------------------------------------------------------
 sub selection_string_match()
 {
-     my ($class, $objhash_ref, $objname, $wherehash_ref) = @_;
-       
-     my %wherehash = %$wherehash_ref;
-     my $match = 1;
-     foreach my $testattr (keys %wherehash) {
-         # access non-exists hash entry will create an empty one
-         # we should not modify the $objhash_ref
-         if (exists($objhash_ref->{$objname}) && exists($objhash_ref->{$objname}->{$testattr})) { 
-             if($wherehash{$testattr}{'matchtype'} eq 'match') { #attr==val or attr=val
-                 if ($objhash_ref->{$objname}->{$testattr} ne $wherehash{$testattr}{'val'}) {
-                     $match = 0;
-                     last;
-                 }
-             }
-             if($wherehash{$testattr}{'matchtype'} eq 'natch') { #attr!=val
-                 if ($objhash_ref->{$objname}->{$testattr} eq $wherehash{$testattr}{'val'}) {
-                     $match = 0;
-                     last;
-                 }
-             }
-             if($wherehash{$testattr}{'matchtype'} eq 'regex') { #attr=~val
-                 if ($objhash_ref->{$objname}->{$testattr} !~ $wherehash{$testattr}{'val'}) {
-                     $match = 0;
-                     last;
-                 }
-             }
-             if($wherehash{$testattr}{'matchtype'} eq 'negex') { #attr!~val
-                 if ($objhash_ref->{$objname}->{$testattr} =~ $wherehash{$testattr}{'val'}) {
-                     $match = 0;
-                     last;
-                 }
-             }
-        } else { #$objhash_ref->{$objname}->{$testattr} does not exist
+    my ($class, $objhash_ref, $objname, $wherehash_ref) = @_;
+
+    my %wherehash = %$wherehash_ref;
+    my $match     = 1;
+    foreach my $testattr (keys %wherehash) {
+
+        # access non-exists hash entry will create an empty one
+        # we should not modify the $objhash_ref
+        if (exists($objhash_ref->{$objname}) && exists($objhash_ref->{$objname}->{$testattr})) {
+            if ($wherehash{$testattr}{'matchtype'} eq 'match') { #attr==val or attr=val
+                if ($objhash_ref->{$objname}->{$testattr} ne $wherehash{$testattr}{'val'}) {
+                    $match = 0;
+                    last;
+                }
+            }
+            if ($wherehash{$testattr}{'matchtype'} eq 'natch') {    #attr!=val
+                if ($objhash_ref->{$objname}->{$testattr} eq $wherehash{$testattr}{'val'}) {
+                    $match = 0;
+                    last;
+                }
+            }
+            if ($wherehash{$testattr}{'matchtype'} eq 'regex') {    #attr=~val
+                if ($objhash_ref->{$objname}->{$testattr} !~ $wherehash{$testattr}{'val'}) {
+                    $match = 0;
+                    last;
+                }
+            }
+            if ($wherehash{$testattr}{'matchtype'} eq 'negex') {    #attr!~val
+                if ($objhash_ref->{$objname}->{$testattr} =~ $wherehash{$testattr}{'val'}) {
+                    $match = 0;
+                    last;
+                }
+            }
+        } else {    #$objhash_ref->{$objname}->{$testattr} does not exist
             $match = 0;
             last;
         }
-     }
-     return $match;
+    }
+    return $match;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3 check_deployment_monitoring_settings 
@@ -2595,13 +2616,13 @@ sub selection_string_match()
 sub check_deployment_monitoring_settings()
 {
     my ($class, $request, $opt_ref) = @_;
-    
+
     my $callback = $request->{callback};
-    my @mstring = @{$opt_ref->{'m'}};
-    
+    my @mstring  = @{ $opt_ref->{'m'} };
+
     # -r flag is required with -m flag
     if (!defined($opt_ref->{'t'})) {
-        my $rsp={};
+        my $rsp = {};
         $rsp->{data}->[0] = "Flag missing, the -t flag is required";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
@@ -2609,43 +2630,44 @@ sub check_deployment_monitoring_settings()
 
     foreach my $m (@mstring) {
         if ($m eq '') {
+
             #No value specified with -m flag
             next;
         }
         my $attr;
         my $val;
         if ($m =~ /[^=]*==/) {
-           ($attr, $val) = split /==/,$m,2;
+            ($attr, $val) = split /==/, $m, 2;
         } elsif ($m =~ /^[^=]*=~/) {
-           ($attr, $val) = split /=~/,$m,2;
-           $val =~ s/^\///;
-           $val =~ s/\/$//;
+            ($attr, $val) = split /=~/, $m, 2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
         } elsif ($m =~ /^[^=]*!=/) {
-           ($attr, $val) = split /!=/,$m,2;
+            ($attr, $val) = split /!=/, $m, 2;
         } elsif ($m =~ /^[^=]*!~/) {
-           ($attr, $val) = split /!~/,$m,2;
-           $val =~ s/^\///;
-           $val =~ s/\/$//;
+            ($attr, $val) = split /!~/, $m, 2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
         } else {
-           my $rsp={};
-           $rsp->{data}->[0] = "Invalid string \"$m\" specified with -m flag";
-           xCAT::MsgUtils->message("E", $rsp, $callback);
+            my $rsp = {};
+            $rsp->{data}->[0] = "Invalid string \"$m\" specified with -m flag";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
 
         # The attr is table.column
         if ($attr !~ /\..*$/) {
-            my $rsp={};
+            my $rsp = {};
             $rsp->{data}->[0] = "Invalid attribute \"$attr\" specified with -m flag, should be table.column";
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
-        if($val eq '') {
-           my $rsp={};
-           $rsp->{data}->[0] = "The value of attribute \"$attr\" can not be NULL";
-           xCAT::MsgUtils->message("E", $rsp, $callback);
-           return 1;
-        } 
+        if ($val eq '') {
+            my $rsp = {};
+            $rsp->{data}->[0] = "The value of attribute \"$attr\" can not be NULL";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
     }
     return 0;
 }
@@ -2673,41 +2695,42 @@ sub generate_monsettings()
 {
     my ($class, $request, $monnodes_ref) = @_;
 
-    my @monnodes = @$monnodes_ref;
-    my $callback = $request->{callback};
-    my @mstring = @{$request->{opt}->{m}};
+    my @monnodes    = @$monnodes_ref;
+    my $callback    = $request->{callback};
+    my @mstring     = @{ $request->{opt}->{m} };
     my %monsettings = ();
 
     #set default value for each attribute,
     #to avoid ugly perl syntax error
     my %defaultattrs = (
-                       "timeout"        => "10",
-                       "retrycount"        => "3"
-                        );
+        "timeout"    => "10",
+        "retrycount" => "3"
+    );
 
     #Monitoring settings check already done in parse_args,
     #Assume it is correct.
     foreach my $m (@mstring) {
         if ($m eq '') {
-           # No value specified with -m flag
-           next;
+
+            # No value specified with -m flag
+            next;
         }
         my $attr;
         my $val;
-        my $matchtype; 
+        my $matchtype;
         if ($m =~ /^[^=]*\==/) {
-            ($attr, $val) = split /==/,$m,2;
-            $matchtype='match';
+            ($attr, $val) = split /==/, $m, 2;
+            $matchtype = 'match';
         } elsif ($m =~ /^[^=]*=~/) {
-            ($attr, $val) = split /=~/,$m,2;
+            ($attr, $val) = split /=~/, $m, 2;
             $val =~ s/^\///;
             $val =~ s/\/$//;
-            $matchtype='regex';
+            $matchtype = 'regex';
         }
-            
+
         #This is a table.column
         my ($tab, $col) = split '\.', $attr;
-        $monsettings{'monattrs'}{$tab}{$col}{'val'} = $val;
+        $monsettings{'monattrs'}{$tab}{$col}{'val'}       = $val;
         $monsettings{'monattrs'}{$tab}{$col}{'matchtype'} = $matchtype;
     }
 
@@ -2724,21 +2747,22 @@ sub generate_monsettings()
             $monsettings{$attr} = $defaultattrs{$attr};
         }
     }
-    if(!defined($monsettings{'monattrs'}) || (scalar(keys %{$monsettings{'monattrs'}}) == 0)) {
-        $monsettings{'monattrs'}{'nodelist'}{'status'}{'val'} = "booted";
+    if (!defined($monsettings{'monattrs'}) || (scalar(keys %{ $monsettings{'monattrs'} }) == 0)) {
+        $monsettings{'monattrs'}{'nodelist'}{'status'}{'val'}       = "booted";
         $monsettings{'monattrs'}{'nodelist'}{'status'}{'matchtype'} = "match";
     }
-    
+
     #Initialize the %{$monsettings{'nodes'}} hash
     foreach my $node (@monnodes) {
-        foreach my $tab (keys %{$monsettings{'monattrs'}}) {
-            foreach my $col (keys %{$monsettings{'monattrs'}{$tab}}) {
+        foreach my $tab (keys %{ $monsettings{'monattrs'} }) {
+            foreach my $col (keys %{ $monsettings{'monattrs'}{$tab} }) {
                 $monsettings{'nodes'}{$node}{'status'}{$tab}{$col} = '';
             }
         }
     }
     return \%monsettings;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3 monitor_installation
@@ -2765,96 +2789,104 @@ sub monitor_installation()
     my $callback = $request->{callback};
 
     my $mstring = $request->{opt}->{m};
+
     #This is the first time the monitor_installation is called,
 
-#    my $rsp={};
-#    my $monnodes = join ',', @monitornodes;
-#    $rsp->{data}->[0] = "Start monitoring the installation progress with settings \"$mstring\" for nodes $monnodes";
-#    xCAT::MsgUtils->message("I", $rsp, $callback);
+    #    my $rsp={};
+    #    my $monnodes = join ',', @monitornodes;
+    #    $rsp->{data}->[0] = "Start monitoring the installation progress with settings \"$mstring\" for nodes $monnodes";
+    #    xCAT::MsgUtils->message("I", $rsp, $callback);
 
     $monsettings->{'timeelapsed'} = 0;
-    while(($monsettings->{'timeelapsed'} < $monsettings->{'timeout'}) &&(scalar(keys %{$monsettings->{'nodes'}}))) {
-        #polling interval is 1 minute, 
+    while (($monsettings->{'timeelapsed'} < $monsettings->{'timeout'}) && (scalar(keys %{ $monsettings->{'nodes'} }))) {
+
+        #polling interval is 1 minute,
         #do not do the first check until 1 minute after the os installation starts
-        sleep 60; 
+        sleep 60;
 
 
         #update the timeelapsed
         $monsettings->{'timeelapsed'}++;
 
-        my @monitornodes = keys %{$monsettings->{'nodes'}};
+        my @monitornodes = keys %{ $monsettings->{'nodes'} };
+
         # Look up tables, do not look up the same table more than once
         my %tabattrs = ();
-        foreach my $tab (keys %{$monsettings->{'monattrs'}}) {
-            foreach my $col (keys %{$monsettings->{'monattrs'}->{$tab}}) {
-                if (!grep(/^$col$/, @{$tabattrs{$tab}})) {
-                    push @{$tabattrs{$tab}}, $col;
+        foreach my $tab (keys %{ $monsettings->{'monattrs'} }) {
+            foreach my $col (keys %{ $monsettings->{'monattrs'}->{$tab} }) {
+                if (!grep(/^$col$/, @{ $tabattrs{$tab} })) {
+                    push @{ $tabattrs{$tab} }, $col;
                 }
             }
         }
 
-        foreach my $node (keys %{$monsettings->{'nodes'}}) {
+        foreach my $node (keys %{ $monsettings->{'nodes'} }) {
             foreach my $montable (keys %tabattrs) {
+
                 #Get the new status of the node
                 my $montab_ref = xCAT::Table->new($montable);
                 if ($montab_ref) {
-                    my @attrs = @{$tabattrs{$montable}};
+                    my @attrs = @{ $tabattrs{$montable} };
                     my $tabdata = $montab_ref->getNodesAttribs(\@monitornodes, \@attrs);
-                    foreach my $attr (@{$tabattrs{$montable}}) {
+                    foreach my $attr (@{ $tabattrs{$montable} }) {
+
                         # nodestatus changed, print a message
-                        if (($monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} ne '') 
+                        if (($monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} ne '')
                             && ($monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} ne $tabdata->{$node}->[0]->{$attr})) {
-                             my $rsp={};
-                             $rsp->{data}->[0] = "$node $montable.$attr: $monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} => $tabdata->{$node}->[0]->{$attr}";
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "$node $montable.$attr: $monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} => $tabdata->{$node}->[0]->{$attr}";
                             xCAT::MsgUtils->message("I", $rsp, $callback);
                         }
+
                         #set the new status
                         $monsettings->{'nodes'}->{$node}->{'status'}->{$montable}->{$attr} = $tabdata->{$node}->[0]->{$attr};
                     }
-                $montab_ref->close();
-             } else { #can not open the table
-                 my $rsp={};
-                 $rsp->{data}->[0] = "Open table $montable failed";
-                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                 return ();
-             }
-         }
-         #expected status??
-         my $statusmatch = 1;
-         foreach my $temptab (keys %{$monsettings->{'monattrs'}}) {
-            foreach my $tempcol (keys %{$monsettings->{'monattrs'}->{$temptab}}) {
-               my $currentstatus = $monsettings->{'nodes'}->{$node}->{'status'}->{$temptab}->{$tempcol};
-               my $expectedstatus = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'val'};
-               my $matchtype = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'matchtype'};
-               #regular expression
-               if($matchtype eq 'match') {
-                   if ($currentstatus ne $expectedstatus) {
-                       $statusmatch = 0;
-                   }
-               } elsif($matchtype eq 'regex') {
-                   if ($currentstatus !~ /$expectedstatus/) { 
-                       $statusmatch = 0;
-                   }
-               }
-             } #end foreach
-         } #end foreach
-         if ($statusmatch == 1) {
-            my $rsp={};
-            $rsp->{data}->[0] = "$node: Reached the expected status";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-            delete $monsettings->{'nodes'}->{$node};
-         } 
- 
+                    $montab_ref->close();
+                } else {    #can not open the table
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Open table $montable failed";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return ();
+                }
+            }
 
-       } #end foreach my $node
-    } #end while
+            #expected status??
+            my $statusmatch = 1;
+            foreach my $temptab (keys %{ $monsettings->{'monattrs'} }) {
+                foreach my $tempcol (keys %{ $monsettings->{'monattrs'}->{$temptab} }) {
+                    my $currentstatus = $monsettings->{'nodes'}->{$node}->{'status'}->{$temptab}->{$tempcol};
+                    my $expectedstatus = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'val'};
+                    my $matchtype = $monsettings->{'monattrs'}->{$temptab}->{$tempcol}->{'matchtype'};
 
-    if(scalar(keys %{$monsettings->{'nodes'}}) > 0)
+                    #regular expression
+                    if ($matchtype eq 'match') {
+                        if ($currentstatus ne $expectedstatus) {
+                            $statusmatch = 0;
+                        }
+                    } elsif ($matchtype eq 'regex') {
+                        if ($currentstatus !~ /$expectedstatus/) {
+                            $statusmatch = 0;
+                        }
+                    }
+                }    #end foreach
+            }    #end foreach
+            if ($statusmatch == 1) {
+                my $rsp = {};
+                $rsp->{data}->[0] = "$node: Reached the expected status";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                delete $monsettings->{'nodes'}->{$node};
+            }
+
+
+        }    #end foreach my $node
+    }    #end while
+
+    if (scalar(keys %{ $monsettings->{'nodes'} }) > 0)
     {
-        foreach my $n (keys %{$monsettings->{'nodes'}}) {
-             my $rsp={};
-             $rsp->{data}->[0] = "$n: does not transit to the expected status";
-             xCAT::MsgUtils->message("E",$rsp, $callback);
+        foreach my $n (keys %{ $monsettings->{'nodes'} }) {
+            my $rsp = {};
+            $rsp->{data}->[0] = "$n: does not transit to the expected status";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
         }
     }
     return $monsettings;
@@ -2887,7 +2919,7 @@ sub monitor_installation()
 sub get_unique_members
 {
     my @orig_array = @_;
-    my %tmp_hash = ();
+    my %tmp_hash   = ();
     for my $ent (@orig_array)
     {
         $tmp_hash{$ent} = 1;
@@ -2920,49 +2952,50 @@ sub get_unique_members
 ##########################################################################
 sub updateEtcHosts
 {
-    my $host = shift;
-    my $ip = shift;
+    my $host  = shift;
+    my $ip    = shift;
     my $fname = "/etc/hosts";
-    unless ( open( HOSTS,"<$fname" )) {
+    unless (open(HOSTS, "<$fname")) {
         return undef;
     }
     my @rawdata = <HOSTS>;
     my @newdata = ();
-    close( HOSTS );
+    close(HOSTS);
     chomp @rawdata;
 
     ######################################
     # Remove old entry
     ######################################
     my $updated = 0;
-    foreach my $line ( @rawdata ) {
-        if ( $line =~ /^#/ or $line =~ /^\s*$/ ) {
+    foreach my $line (@rawdata) {
+        if ($line =~ /^#/ or $line =~ /^\s*$/) {
             next;
         }
-        if ( $line =~ /^\s*\Q$ip\E\s+(.*)$/ )
+        if ($line =~ /^\s*\Q$ip\E\s+(.*)$/)
         {
-            $host = $1;
+            $host    = $1;
             $updated = 1;
             last;
         }
     }
-    if ( !$updated)
+    if (!$updated)
     {
         push @rawdata, "$ip\t$host";
     }
     ######################################
     # Rewrite file
     ######################################
-    unless ( open( HOSTS,">$fname" )) {
+    unless (open(HOSTS, ">$fname")) {
         return undef;
     }
     for my $line (@rawdata)
     {
         print HOSTS "$line\n";
     }
-    close( HOSTS );
-    return [$host,$ip];
+    close(HOSTS);
+    return [ $host, $ip ];
 }
+
 #-------------------------------------------------------------------------------
 
 =head3   getDBName 
@@ -2986,24 +3019,24 @@ sub updateEtcHosts
 #-------------------------------------------------------------------------------
 sub get_DBName
 {
-    my $name = "SQLITE";  # default
+    my $name = "SQLITE";    # default
     my $xcatcfg;
     if (-r "/etc/xcat/cfgloc") {
-      my $cfgl;
-      open($cfgl,"<","/etc/xcat/cfgloc");
-      $xcatcfg = <$cfgl>;
-      close($cfgl);
-      if ($xcatcfg =~ /^mysql:/) {
-        $name="MYSQL"
-      } else {
-          if ($xcatcfg =~ /^DB2:/) {
-             $name="DB2"
-          } else {
-            if ($xcatcfg =~ /^Pg:/) {
-             $name="PG"
+        my $cfgl;
+        open($cfgl, "<", "/etc/xcat/cfgloc");
+        $xcatcfg = <$cfgl>;
+        close($cfgl);
+        if ($xcatcfg =~ /^mysql:/) {
+            $name = "MYSQL"
+        } else {
+            if ($xcatcfg =~ /^DB2:/) {
+                $name = "DB2"
+            } else {
+                if ($xcatcfg =~ /^Pg:/) {
+                    $name = "PG"
+                }
             }
-          }
-      }
+        }
     }
     return $name;
 }
@@ -3037,7 +3070,7 @@ sub full_path
 
     my $fullpath;
 
-    if (!$cwdir) { #cwdir is not specified
+    if (!$cwdir) {    #cwdir is not specified
         $fullpath = Cwd::abs_path($relpath);
     } else {
         $fullpath = $cwdir . "/$relpath";
@@ -3069,12 +3102,12 @@ sub full_path
 #-------------------------------------------------------------------------------
 sub isStateful
 {
-    # check to see if / is a real directory 
-    my $dir = "\/";
-    my $cmd = "df -P $dir ";
+    # check to see if / is a real directory
+    my $dir    = "\/";
+    my $cmd    = "df -P $dir ";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
-    {    # error 
+    {    # error
         xCAT::MsgUtils->message("", " Could not determine Stateful\n");
         return 0;
     }
@@ -3082,17 +3115,17 @@ sub isStateful
     {
         my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
           split(' ', $line);
-        $mount_point=~ s/\s*//g; # remove blanks
+        $mount_point =~ s/\s*//g;    # remove blanks
         if ($mount_point eq $dir) {
-         if ( -e ($file_sys))
-         {
-             return 1;
-         } else {
-             return 0;
-         }
+            if (-e ($file_sys))
+            {
+                return 1;
+            } else {
+                return 0;
+            }
         }
     }
-   return 0; 
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
@@ -3140,15 +3173,15 @@ sub setupAIXconserver
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver."
-                );
+"Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver."
+            );
         }
-        else 
-        {  
-           $msg = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.";
-           if( $verbose ) {
-               xCAT::MsgUtils->message("I", $msg);
-           }  
+        else
+        {
+            $msg = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.";
+            if ($verbose) {
+                xCAT::MsgUtils->message("I", $msg);
+            }
         }
     }
     if (!-f "/usr/bin/console")
@@ -3158,17 +3191,17 @@ sub setupAIXconserver
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message(
-                  'E',
-                  "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
-                  );
+                'E',
+                "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
+            );
         }
-        else 
+        else
         {
-           
-           $msg = "ln -sf /opt/freeware/bin/console /usr/sbin/console.";
-           if( $verbose ) {
-               xCAT::MsgUtils->message("I", $msg);
-           }  
+
+            $msg = "ln -sf /opt/freeware/bin/console /usr/sbin/console.";
+            if ($verbose) {
+                xCAT::MsgUtils->message("I", $msg);
+            }
         }
     }
 
@@ -3177,7 +3210,7 @@ sub setupAIXconserver
     if ($::RUNCMD_RC != 0)
     {
         $cmd =
-          "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
+"mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
         $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -3189,11 +3222,11 @@ sub setupAIXconserver
 
             # Remove old setting
             my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-            $rc         = system($rmitab_cmd);
+            $rc = system($rmitab_cmd);
 
             # add to the /etc/inittab file
             my $mkitab_cmd =
-              'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
             $rc = system($mkitab_cmd);    # may already be there no error check
         }
     }
@@ -3201,11 +3234,11 @@ sub setupAIXconserver
     {                                     # conserver already a service
                                           # Remove old setting
         my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-        $rc         = system($rmitab_cmd);
+        $rc = system($rmitab_cmd);
 
         # make sure it is registered in /etc/inittab file
         my $mkitab_cmd =
-          'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
         $rc = system($mkitab_cmd);        # may already be there no error check
     }
 
@@ -3237,14 +3270,14 @@ sub setupAIXconserver
 sub isSELINUX
 {
     if (-e "/usr/sbin/selinuxenabled") {
-       `/usr/sbin/selinuxenabled`;
-       if ($? == 0) {
-         return 0;
-       } else {
-         return 1;
-       }
+        `/usr/sbin/selinuxenabled`;
+        if ($? == 0) {
+            return 0;
+        } else {
+            return 1;
+        }
     } else {
-       return 1;
+        return 1;
     }
 }
 
@@ -3269,39 +3302,41 @@ sub isSELINUX
 =cut
 
 #-------------------------------------------------------------------------------
-sub noderangecontainsMn 
+sub noderangecontainsMn
 {
- my ($class, @noderange)=@_;
- # check if any node in the noderange is the Management Node return the
- # name
- my @mnames; # management node names in the database, members of __mgmtnode
- my $tab = xCAT::Table->new('nodelist');
- my @nodelist=$tab->getAllNodeAttribs(['node','groups']);
- foreach my $n (@nodelist) {
-  if (defined($n->{'groups'})) {
-   my @groups=split(",",$n->{'groups'});
-   if ((grep (/__mgmtnode/,@groups))) {  # this is the MN
-     push @mnames,$n->{'node'};
-   }
-  }
- }
- my @MNs;  # management node names found the noderange
- if (@mnames) { # if any Management Node defined in the database
-   foreach my $mn (@mnames) {
-     if (grep(/^$mn$/, @noderange)) { # if  MN in the noderange
-       push @MNs, $mn;
-     }
-   }
-   if (@MNs) { # management nodes in the noderange
-       return @MNs;
-   }
- }
- return;   # if no MN in the noderange, return nothing
+    my ($class, @noderange) = @_;
+
+    # check if any node in the noderange is the Management Node return the
+    # name
+    my @mnames;   # management node names in the database, members of __mgmtnode
+    my $tab = xCAT::Table->new('nodelist');
+    my @nodelist = $tab->getAllNodeAttribs([ 'node', 'groups' ]);
+    foreach my $n (@nodelist) {
+        if (defined($n->{'groups'})) {
+            my @groups = split(",", $n->{'groups'});
+            if ((grep (/__mgmtnode/, @groups))) {    # this is the MN
+                push @mnames, $n->{'node'};
+            }
+        }
+    }
+    my @MNs;    # management node names found the noderange
+    if (@mnames) {    # if any Management Node defined in the database
+        foreach my $mn (@mnames) {
+            if (grep(/^$mn$/, @noderange)) {    # if  MN in the noderange
+                push @MNs, $mn;
+            }
+        }
+        if (@MNs) {    # management nodes in the noderange
+            return @MNs;
+        }
+    }
+    return;            # if no MN in the noderange, return nothing
 }
 
 
 # the MTM of P6 and P7 machine
 my %MTM_P6P7 = (
+
     # P6 systems
     '7998-60X' => 1,
     '7998-61X' => 1,
@@ -3341,10 +3376,10 @@ my %MTM_P6P7 = (
 sub isP6P7
 {
     my $class = shift;
-    my $mtm = shift;
+    my $mtm   = shift;
 
     if ($class !~ /Utils/) {
-        $mtm = $class; 
+        $mtm = $class;
     }
 
     if (defined $MTM_P6P7{$mtm} && $MTM_P6P7{$mtm} == 1) {
@@ -3367,47 +3402,48 @@ sub isP6P7
 ##########################################################################
 =cut
 
-sub filter_nodes{
+sub filter_nodes {
     my ($class, $req, $mpnodes, $fspnodes, $bmcnodes, $nohandle) = @_;
 
-    my (@nodes,@args,$cmd);
+    my (@nodes, @args, $cmd);
     if (defined($req->{'node'})) {
-      @nodes = @{$req->{'node'}};
+        @nodes = @{ $req->{'node'} };
     } else {
-      return 1;
+        return 1;
     }
     if (defined($req->{'command'})) {
-      $cmd = $req->{'command'}->[0];
+        $cmd = $req->{'command'}->[0];
     }
     if (defined($req->{'arg'})) {
-      @args = @{$req->{'arg'}};
+        @args = @{ $req->{'arg'} };
     }
+
     # get the nodes in the mp table
     my $mptabhash;
     my $mptab = xCAT::Table->new("mp");
     if ($mptab) {
-        $mptabhash = $mptab->getNodesAttribs(\@nodes, ['mpa','nodetype']);
+        $mptabhash = $mptab->getNodesAttribs(\@nodes, [ 'mpa', 'nodetype' ]);
     }
 
     # get the nodes in the ppc table
     my $ppctabhash;
     my $ppctab = xCAT::Table->new("ppc");
     if ($ppctab) {
-        $ppctabhash = $ppctab->getNodesAttribs(\@nodes,['hcp']);
+        $ppctabhash = $ppctab->getNodesAttribs(\@nodes, ['hcp']);
     }
 
     # get the nodes in the ipmi table
     my $ipmitabhash;
     my $ipmitab = xCAT::Table->new("ipmi");
     if ($ipmitab) {
-        $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes,['bmc']);
+        $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes, ['bmc']);
     }
 
     # get the node attributes from the nodehm table
     my $nodehmhash;
     my $nodehmtab = xCAT::Table->new("nodehm");
     if ($nodehmtab) {
-        $nodehmhash = $nodehmtab->getNodesAttribs(\@nodes,['mgt']);
+        $nodehmhash = $nodehmtab->getNodesAttribs(\@nodes, ['mgt']);
     }
 
     # get the node attributes from the nodetype table
@@ -3419,7 +3455,7 @@ sub filter_nodes{
 
     # get the node attributes from the vpd table
     my $vpdhash,
-    my $vpdtab = xCAT::Table->new("vpd");
+      my $vpdtab = xCAT::Table->new("vpd");
     if ($vpdtab) {
         $vpdhash = $vpdtab->getNodesAttribs(\@nodes, ['mtm']);
     }
@@ -3432,44 +3468,50 @@ sub filter_nodes{
     # if only in 'ipmi', a common x86 node
     # if in ipmi and arch =~ /ppc64/, a pp64le node
     foreach (@nodes) {
-        if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
+        if (defined($mptabhash->{$_}->[0]) && defined($mptabhash->{$_}->[0]->{'mpa'})) {
             if ($mptabhash->{$_}->[0]->{'mpa'} eq $_) {
-                if (defined($nodehmhash->{$_}->[0]) && defined($nodehmhash->{$_}->[0]->{'mgt'}) && 
+                if (defined($nodehmhash->{$_}->[0]) && defined($nodehmhash->{$_}->[0]->{'mgt'}) &&
                     $nodehmhash->{$_}->[0]->{'mgt'} eq "blade") {
                     push @mp, $_;
                 } else {
                     push @unknow, $_;
                 }
                 next;
-            } 
-            if (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) {
-              # flex power node
-              push @ngpfsp, $_;
-              next;
-            } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) {
-              # flex x86 node
-              push @ngpbmc, $_;
-              next;
-            } 
-            else {
-              # Non flex blade, but blade node
-              push @mp, $_;
-              next;
             }
-        } elsif (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) { 
+            if (defined($ppctabhash->{$_}->[0]) && defined($ppctabhash->{$_}->[0]->{'hcp'})) {
+
+                # flex power node
+                push @ngpfsp, $_;
+                next;
+            } elsif (defined($ipmitabhash->{$_}->[0]) && defined($ipmitabhash->{$_}->[0]->{'bmc'})) {
+
+                # flex x86 node
+                push @ngpbmc, $_;
+                next;
+            }
+            else {
+                # Non flex blade, but blade node
+                push @mp, $_;
+                next;
+            }
+        } elsif (defined($ppctabhash->{$_}->[0]) && defined($ppctabhash->{$_}->[0]->{'hcp'})) {
+
             # common power node
             push @commonfsp, $_;
+
             # whether is a Power 8 or higher with FSP
-            if (defined ($vpdhash->{$_}->[0]) && defined ($vpdhash->{$_}->[0]->{'mtm'})) {
+            if (defined($vpdhash->{$_}->[0]) && defined($vpdhash->{$_}->[0]->{'mtm'})) {
                 if (isP6P7($vpdhash->{$_}->[0]->{'mtm'})) {
                     push @p6p7, $_;
                 }
             }
-        } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) { 
+        } elsif (defined($ipmitabhash->{$_}->[0]) && defined($ipmitabhash->{$_}->[0]->{'bmc'})) {
+
             # common bmc node
             push @commonbmc, $_;
+
             # whether is a Power 8 or higher with FSP
-            if (defined ($nodetypehash->{$_}->[0]) && defined ($nodetypehash->{$_}->[0]->{'arch'})) {
+            if (defined($nodetypehash->{$_}->[0]) && defined($nodetypehash->{$_}->[0]->{'arch'})) {
                 if ($nodetypehash->{$_}->[0]->{'arch'} !~ /^ppc64/i) {
                     push @nonppcle, $_;
                 }
@@ -3479,11 +3521,11 @@ sub filter_nodes{
         }
     }
 
-    push @{$mpnodes}, @mp;#blade.pm
+    push @{$mpnodes},  @mp;          #blade.pm
     push @{$fspnodes}, @commonfsp;
     push @{$bmcnodes}, @commonbmc;
     if (@args && ($cmd eq "rspconfig")) {
-        if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args))  {
+        if (!(grep /^(cec_off_policy|pending_power_on_side)/, @args)) {
             push @{$mpnodes}, @ngpfsp;
         } else {
             push @{$fspnodes}, @ngpfsp;
@@ -3493,20 +3535,21 @@ sub filter_nodes{
         } else {
             push @{$bmcnodes}, @ngpbmc;
         }
-    } elsif($cmd eq "getmacs") {
-        if (@args && (grep /^-D$/,@args)) {
-          push @{$fspnodes}, @ngpfsp;
-        } else { 
-          push @{$mpnodes}, @ngpfsp;
+    } elsif ($cmd eq "getmacs") {
+        if (@args && (grep /^-D$/, @args)) {
+            push @{$fspnodes}, @ngpfsp;
+        } else {
+            push @{$mpnodes}, @ngpfsp;
         }
         push @{$mpnodes}, @ngpbmc;
     } elsif ($cmd eq "rvitals") {
-        if (@args && (grep /^lcds$/,@args)) {
-            push @{$fspnodes},@ngpfsp;
+        if (@args && (grep /^lcds$/, @args)) {
+            push @{$fspnodes}, @ngpfsp;
         } else {
             push @{$mpnodes}, @ngpfsp;
         }
     } elsif ($cmd eq "renergy") {
+
         # for renergy command, only the p6,p7 get to the general fsp.pm
         # P8 and higher will get in the energy.pm
         @{$fspnodes} = ();
@@ -3515,14 +3558,15 @@ sub filter_nodes{
         # for renergy command, only the non-ppcle nodes get to the general ipmi.pm
         # ppcle of P8 and higher will get in the energy.pm
         # But for option powerusage and temperature of renergy, they are only implementated in ipmi.pm
-        # So, all bmc node shall go to ipmi.pm. 
+        # So, all bmc node shall go to ipmi.pm.
 
         @{$bmcnodes} = ();
         push @{$bmcnodes}, @nonppcle;
 
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
-        }elsif (grep /^(powerusage|temperature)/, @args) {
+        } elsif (grep /^(powerusage|temperature)/, @args) {
+
             # Clear the bmc nodes to avoid duplication for non ppc64* nodes.
             @{$bmcnodes} = ();
             push @{$bmcnodes}, @commonbmc;
@@ -3531,7 +3575,7 @@ sub filter_nodes{
         }
         push @{$mpnodes}, @ngpfsp;
     } else {
-      push @{$fspnodes}, @ngpfsp;
+        push @{$fspnodes}, @ngpfsp;
     }
 
     push @{$nohandle}, @unknow;
@@ -3541,6 +3585,7 @@ sub filter_nodes{
 }
 
 #-------------------------------------------------------------------------------
+
 =head3   filter_nostatusupdate() 
      
     filter out the nodes which support provision status feedback from the status-nodes hash
@@ -3556,43 +3601,45 @@ sub filter_nodes{
     my $mn=xCAT::Utils->filter_nostatusupdate(\%statusnodehash);
     Comments:
 =cut
-#-------------------------------------------------------------------------------
-sub filter_nostatusupdate{
 
-    my ($class,$inref)=@_;
+#-------------------------------------------------------------------------------
+sub filter_nostatusupdate {
+
+    my ($class, $inref) = @_;
     my $nttabdata;
-    my @allnodes=();
-    #read "nodetype" table to get the "os" attribs for all the nodes with status "installing" or "netbooting" 
-    if(exists $inref->{$::STATUS_INSTALLING}){
-      push @allnodes, @{$inref->{$::STATUS_INSTALLING}};
+    my @allnodes = ();
+
+    #read "nodetype" table to get the "os" attribs for all the nodes with status "installing" or "netbooting"
+    if (exists $inref->{$::STATUS_INSTALLING}) {
+        push @allnodes, @{ $inref->{$::STATUS_INSTALLING} };
     }
-    if(exists $inref->{$::STATUS_NETBOOTING}){
-      push @allnodes, @{$inref->{$::STATUS_NETBOOTING}};
+    if (exists $inref->{$::STATUS_NETBOOTING}) {
+        push @allnodes, @{ $inref->{$::STATUS_NETBOOTING} };
     }
 
     my $nodetypetab = xCAT::Table->new('nodetype');
     if ($nodetypetab) {
-           $nttabdata     = $nodetypetab->getNodesAttribs(\@allnodes, ['node', 'os']);
-           $nodetypetab->close();
+        $nttabdata = $nodetypetab->getNodesAttribs(\@allnodes, [ 'node', 'os' ]);
+        $nodetypetab->close();
     }
 
     #filter out the nodes which support the node provision status feedback
-    my @nodesfiltered=();
-    if(exists $inref->{$::STATUS_INSTALLING}){
-      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_INSTALLING}};
-      delete $inref->{$::STATUS_INSTALLING};
-      if(@nodesfiltered){
-        @{$inref->{$::STATUS_INSTALLING}}=@nodesfiltered;
-      }
+    my @nodesfiltered = ();
+    if (exists $inref->{$::STATUS_INSTALLING}) {
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_INSTALLING} };
+        delete $inref->{$::STATUS_INSTALLING};
+        if (@nodesfiltered) {
+            @{ $inref->{$::STATUS_INSTALLING} } = @nodesfiltered;
+        }
     }
 
-    @nodesfiltered=();
-    if(exists $inref->{$::STATUS_NETBOOTING}){
-      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
-      delete $inref->{$::STATUS_NETBOOTING};
-      if(@nodesfiltered){
-        @{$inref->{$::STATUS_NETBOOTING}}=@nodesfiltered;
-      }
+    @nodesfiltered = ();
+    if (exists $inref->{$::STATUS_NETBOOTING}) {
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_NETBOOTING} };
+        delete $inref->{$::STATUS_NETBOOTING};
+        if (@nodesfiltered) {
+            @{ $inref->{$::STATUS_NETBOOTING} } = @nodesfiltered;
+        }
     }
 
 }
@@ -3612,30 +3659,31 @@ sub version_cmp {
     my ($a, $b);
     my $len_a = @array_a;
     my $len_b = @array_b;
-    my $len = $len_a;
-    if ( $len_b < $len_a ) {
+    my $len   = $len_a;
+    if ($len_b < $len_a) {
         $len = $len_b;
     }
-    for ( my $i = 0; $i < $len; $i++ ) {
+    for (my $i = 0 ; $i < $len ; $i++) {
         $a = $array_a[$i];
         $b = $array_b[$i];
         if ($a eq $b) {
             next;
-        } elsif ( $a eq '-' ) {
+        } elsif ($a eq '-') {
             return -1;
-        } elsif ( $b eq '-') {
+        } elsif ($b eq '-') {
             return 1;
-        } elsif ( $a eq '.' ) {
+        } elsif ($a eq '.') {
             return -1;
-        } elsif ( $b eq '.' ) {
+        } elsif ($b eq '.') {
             return 1;
         } elsif ($a =~ /^\d+$/ and $b =~ /^\d+$/) {
-#            if ($a =~ /^0/ || $b =~ /^0/) {
-#                return ($a cmp $b);
-#            } else {
-#                return ($a <=> $b);
-#            }
-            if($a != $b ){
+
+            #            if ($a =~ /^0/ || $b =~ /^0/) {
+            #                return ($a cmp $b);
+            #            } else {
+            #                return ($a <=> $b);
+            #            }
+            if ($a != $b) {
                 return ($a <=> $b);
             }
         } else {
@@ -3644,10 +3692,11 @@ sub version_cmp {
             return ($a cmp $b);
         }
     }
-    return ( $len_a <=> $len_b )
+    return ($len_a <=> $len_b)
 }
 
 #--------------------------------------------------------------------------------
+
 =head3    fullpathbin
     returns the full path of a specified binary executable file
     Arguments:
@@ -3664,29 +3713,31 @@ sub version_cmp {
         none
 
 =cut
+
 #--------------------------------------------------------------------------------
 sub fullpathbin
 {
-  my $bin=shift;
-  if( $bin =~ /xCAT::Utils/)
-  {
-     $bin=shift;
-  }
+    my $bin = shift;
+    if ($bin =~ /xCAT::Utils/)
+    {
+        $bin = shift;
+    }
 
-  my @paths= ("/bin","/usr/bin","/sbin","/usr/sbin");
-  my $fullpath=$bin;
+    my @paths = ("/bin", "/usr/bin", "/sbin", "/usr/sbin");
+    my $fullpath = $bin;
 
-  foreach my $path (@paths)
-  {
-     if (-x $path.'/'.$bin)
-     {
-        $fullpath= $path.'/'.$bin;
-        last;
-     }
-  }
+    foreach my $path (@paths)
+    {
+        if (-x $path . '/' . $bin)
+        {
+            $fullpath = $path . '/' . $bin;
+            last;
+        }
+    }
 
-  return $fullpath;
+    return $fullpath;
 }
+
 #--------------------------------------------------------------------------------
 
 =head3   gettimezone
@@ -3711,34 +3762,34 @@ sub fullpathbin
 #--------------------------------------------------------------------------------
 sub gettimezone
 {
-  my ($class) = @_;
+    my ($class) = @_;
 
-  my $tz;
-  if (xCAT::Utils->isAIX()) {
-    $tz= $ENV{'TZ'};
-  } else {   # all linux
+    my $tz;
+    if (xCAT::Utils->isAIX()) {
+        $tz = $ENV{'TZ'};
+    } else {    # all linux
         my $localtime = "/etc/localtime";
-        my $zoneinfo = "/usr/share/zoneinfo";
+        my $zoneinfo  = "/usr/share/zoneinfo";
         my $cmd = "find $zoneinfo -xtype f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV | grep -v right | grep -v localtime ";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-           $tz="Could not determine timezone checksum";
+            $tz = "Could not determine timezone checksum";
             return $tz;
         }
         my @zones = split /\n/, $zone_result;
 
         $zones[0] =~ s/$zoneinfo\///;
-        if (!$zones[0]) {  # if we still did not get one, then default
-                $tz = `cat /etc/timezone`;
-                chomp $tz;
+        if (!$zones[0]) {    # if we still did not get one, then default
+            $tz = `cat /etc/timezone`;
+            chomp $tz;
         } else {
-             $tz=$zones[0];
+            $tz = $zones[0];
         }
 
 
-  }
-  return $tz;
+    }
+    return $tz;
 
 
 }
@@ -3775,63 +3826,63 @@ sub gettimezone
 =cut
 
 #--------------------------------------------------------------------------------
-sub specialservicemgr{
-    my $svcname=shift;
-    my $action=shift;
-    my $outputoption=shift;
-    my %ret; 
- 
-    $ret{retcode}=127;
-    if($svcname eq "firewall") 
+sub specialservicemgr {
+    my $svcname      = shift;
+    my $action       = shift;
+    my $outputoption = shift;
+    my %ret;
+
+    $ret{retcode} = 127;
+    if ($svcname eq "firewall")
     {
 
-       my $cmd="type -P SuSEfirewall2 >/dev/null 2>&1";
-       xCAT::Utils->runcmd($cmd,-1);
-       if($::RUNCMD_RC)
-       {
-          $ret{retcode}=127;
-          if(defined $outputoption and $outputoption == 1){
-             return \%ret;
-          }else{
-             return $ret{retcode};
-          }
-       }else{
-          if(($action eq "start") || ($action eq "stop")) 
-          {
-             $cmd="SuSEfirewall2 $action";
-          }elsif($action eq "restart"){
-             $cmd="SuSEfirewall2 stop;SuSEfirewall2 start";
-          }elsif($action eq "disable"){
-             $cmd="SuSEfirewall2 off";
-          }elsif($action eq "enable"){
-             $cmd="SuSEfirewall2 on";
-          }elsif($action eq "status"){
-             $cmd="service SuSEfirewall2_setup status";
-          }else{
-            
-             $ret{retcode}=127;
-             if(defined $outputoption and $outputoption == 1){
+        my $cmd = "type -P SuSEfirewall2 >/dev/null 2>&1";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC)
+        {
+            $ret{retcode} = 127;
+            if (defined $outputoption and $outputoption == 1) {
                 return \%ret;
-             }else{
+            } else {
                 return $ret{retcode};
-             }
-          }
-      
-          $ret{retmsg}=xCAT::Utils->runcmd($cmd,-1);
-          $ret{retcode}= $::RUNCMD_RC;
-          if(defined $outputoption and $outputoption == 1){
-             return \%ret;
-          }else{
-             return $ret{retcode};
-          }
-       }
+            }
+        } else {
+            if (($action eq "start") || ($action eq "stop"))
+            {
+                $cmd = "SuSEfirewall2 $action";
+            } elsif ($action eq "restart") {
+                $cmd = "SuSEfirewall2 stop;SuSEfirewall2 start";
+            } elsif ($action eq "disable") {
+                $cmd = "SuSEfirewall2 off";
+            } elsif ($action eq "enable") {
+                $cmd = "SuSEfirewall2 on";
+            } elsif ($action eq "status") {
+                $cmd = "service SuSEfirewall2_setup status";
+            } else {
+
+                $ret{retcode} = 127;
+                if (defined $outputoption and $outputoption == 1) {
+                    return \%ret;
+                } else {
+                    return $ret{retcode};
+                }
+            }
+
+            $ret{retmsg} = xCAT::Utils->runcmd($cmd, -1);
+            $ret{retcode} = $::RUNCMD_RC;
+            if (defined $outputoption and $outputoption == 1) {
+                return \%ret;
+            } else {
+                return $ret{retcode};
+            }
+        }
 
     }
 
-    if(defined $outputoption and $outputoption == 1){
-       return \%ret;
-    }else{
-       return $ret{retcode};
+    if (defined $outputoption and $outputoption == 1) {
+        return \%ret;
+    } else {
+        return $ret{retcode};
     }
 }
 
@@ -3860,94 +3911,97 @@ sub specialservicemgr{
 =cut
 
 #--------------------------------------------------------------------------------
-sub servicemap{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
-  }
-  
-  my $svcmgrtype=shift;
+sub servicemap {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
+    }
+
+    my $svcmgrtype = shift;
 
 
-  #hash structure: 
-  #"service name $svcname" =>{
-  #"service manager name(SYSVinit/systemd) $svcmgrtype" 
-  #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
-  # }
-  #
-  #
-  # if there are more than 1 possible service names for a service among 
-  # different os distributions and os releases, the service should be 
-  # specified in %svchash with structure 
-  # (general service name) => {list of possible service names}
-  #
-  my %svchash=(
-     "dhcp"  =>    ["dhcp3-server","dhcpd","isc-dhcp-server"],
-     "nfs"   =>    ["nfsserver","nfs-server","nfs","nfs-kernel-server"],
-     "named" =>    ["named","bind9"],
-     "syslog" =>   ["syslog","syslogd","rsyslog"],
-     "firewall" => ["iptables","firewalld","ufw"],
-     "http" =>     ["apache2","httpd"],
-     "ntpserver" =>["ntpd","ntp"],
-     "mysql" =>    ["mysqld","mysql"],
-  );
+    #hash structure:
+    #"service name $svcname" =>{
+    #"service manager name(SYSVinit/systemd) $svcmgrtype"
+    #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
+    # }
+    #
+    #
+    # if there are more than 1 possible service names for a service among
+    # different os distributions and os releases, the service should be
+    # specified in %svchash with structure
+    # (general service name) => {list of possible service names}
+    #
+    my %svchash = (
+        "dhcp" => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
+        "nfs" => [ "nfsserver", "nfs-server", "nfs", "nfs-kernel-server" ],
+        "named"     => [ "named",    "bind9" ],
+        "syslog"    => [ "syslog",   "syslogd", "rsyslog" ],
+        "firewall"  => [ "iptables", "firewalld", "ufw" ],
+        "http"      => [ "apache2",  "httpd" ],
+        "ntpserver" => [ "ntpd",     "ntp" ],
+        "mysql"     => [ "mysqld",   "mysql" ],
+    );
 
-  my $path=undef;
-  my $postfix="";
-  my $retdefault=$svcname;
-  my $svcmgrcmd;
-  if($svcmgrtype == 0){
-     #for sysvinit
-     $path="/etc/init.d/";
-     $svcmgrcmd="service";
-  }elsif ($svcmgrtype == 1){
-     #for systemd
-     #ubuntu 16.04 replace upstart with systemd, 
-     #all the service unit files are placed under /lib/systemd/system/ on ubuntu
-     #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
-     #$path delimited with space
-     $path="/usr/lib/systemd/system/ /lib/systemd/system/";
-     $postfix=".service";
-     $svcmgrcmd="systemctl";
-#     $retdefault=$svcname.".service";
-  }elsif ($svcmgrtype == 2){
-     $path="/etc/init/";
-     $postfix=".conf";
-     $svcmgrcmd="initctl";
-  }
-  
-  #check whether service management command is available
-  system "type $svcmgrcmd >/dev/null 2>&1";
-  if($? != 0){
-    return undef;
-  }
+    my $path       = undef;
+    my $postfix    = "";
+    my $retdefault = $svcname;
+    my $svcmgrcmd;
+    if ($svcmgrtype == 0) {
 
-  my @paths=split(" ",$path);
-  my $ret=undef;
-  if($svchash{$svcname}){
-      foreach my $file (@{$svchash{$svcname}}){
-          foreach my $ipath (@paths){
-              if(-e $ipath.$file.$postfix ){
-                  $ret=$file;
-                  last;
-              }
-          }
- 
-          if(defined $ret){
-              last; 
-          }
-      }      
-  }else{
-      foreach my $ipath (@paths){
-          if(-e $ipath.$retdefault.$postfix){
-              $ret=$retdefault;
-              last;
-          } 
-      }
- }
- 
- return $ret;  
+        #for sysvinit
+        $path      = "/etc/init.d/";
+        $svcmgrcmd = "service";
+    } elsif ($svcmgrtype == 1) {
+
+        #for systemd
+        #ubuntu 16.04 replace upstart with systemd,
+        #all the service unit files are placed under /lib/systemd/system/ on ubuntu
+        #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
+        #$path delimited with space
+        $path      = "/usr/lib/systemd/system/ /lib/systemd/system/";
+        $postfix   = ".service";
+        $svcmgrcmd = "systemctl";
+
+        #     $retdefault=$svcname.".service";
+    } elsif ($svcmgrtype == 2) {
+        $path      = "/etc/init/";
+        $postfix   = ".conf";
+        $svcmgrcmd = "initctl";
+    }
+
+    #check whether service management command is available
+    system "type $svcmgrcmd >/dev/null 2>&1";
+    if ($? != 0) {
+        return undef;
+    }
+
+    my @paths = split(" ", $path);
+    my $ret = undef;
+    if ($svchash{$svcname}) {
+        foreach my $file (@{ $svchash{$svcname} }) {
+            foreach my $ipath (@paths) {
+                if (-e $ipath . $file . $postfix) {
+                    $ret = $file;
+                    last;
+                }
+            }
+
+            if (defined $ret) {
+                last;
+            }
+        }
+    } else {
+        foreach my $ipath (@paths) {
+            if (-e $ipath . $retdefault . $postfix) {
+                $ret = $retdefault;
+                last;
+            }
+        }
+    }
+
+    return $ret;
 
 }
 
@@ -3972,54 +4026,58 @@ sub servicemap{
 =cut
 
 #--------------------------------------------------------------------------------
-sub startservice{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
-  }
+sub startservice {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
+    }
 
-  my $retval=0;
-  $retval=specialservicemgr($svcname,"start");
-  if($retval != 127)
-  {
-     return $retval;
-  }
+    my $retval = 0;
+    $retval = specialservicemgr($svcname, "start");
+    if ($retval != 127)
+    {
+        return $retval;
+    }
 
-  my $cmd="";
-  #for Systemd
-  my $svcunit=undef;
-  #for sysVinit
-  my $svcd=undef;
-  #for upstart
-  my $svcjob=undef;
+    my $cmd = "";
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  if($svcunit)
-  {
-      $cmd="systemctl start $svcunit";
-  }
-  elsif( $svcjob )
-  {
-      $cmd="initctl start $svcjob";
-  }
-  elsif( $svcd )
-  {
-      $cmd="service $svcd start";
-  }
+    #for Systemd
+    my $svcunit = undef;
 
-  #print "$cmd\n"; 
-  if( $cmd eq "" )
-  {
-     return -1;
-  }
-  #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
-  system($cmd);
-  $::RUNCMD_RC=$?;
-  return $::RUNCMD_RC;
- 
+    #for sysVinit
+    my $svcd = undef;
+
+    #for upstart
+    my $svcjob = undef;
+
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    if ($svcunit)
+    {
+        $cmd = "systemctl start $svcunit";
+    }
+    elsif ($svcjob)
+    {
+        $cmd = "initctl start $svcjob";
+    }
+    elsif ($svcd)
+    {
+        $cmd = "service $svcd start";
+    }
+
+    #print "$cmd\n";
+    if ($cmd eq "")
+    {
+        return -1;
+    }
+
+    #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
+    system($cmd);
+    $::RUNCMD_RC = $?;
+    return $::RUNCMD_RC;
+
 }
 
 
@@ -4043,55 +4101,55 @@ sub startservice{
 =cut
 
 #--------------------------------------------------------------------------------
-sub stopservice{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
-  }
+sub stopservice {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
+    }
 
 
-  my $retval=0;
-  $retval=specialservicemgr($svcname,"stop");
-  if($retval != 127)
-  {
-     return $retval;
-  }
+    my $retval = 0;
+    $retval = specialservicemgr($svcname, "stop");
+    if ($retval != 127)
+    {
+        return $retval;
+    }
 
 
 
-  my $cmd="";
-  my $svcunit=undef;
-  my $svcd=undef;
-  my $svcjob=undef; 
+    my $cmd     = "";
+    my $svcunit = undef;
+    my $svcd    = undef;
+    my $svcjob  = undef;
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  if($svcunit)
-  {
-      $cmd="systemctl stop $svcunit";
-  }
-  elsif( $svcjob )
-  {
-      $cmd="initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl  stop $svcjob ; fi";
-  }
-  elsif( $svcd )
-  {
-      $cmd="service $svcd stop";
-  }
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    if ($svcunit)
+    {
+        $cmd = "systemctl stop $svcunit";
+    }
+    elsif ($svcjob)
+    {
+        $cmd = "initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl  stop $svcjob ; fi";
+    }
+    elsif ($svcd)
+    {
+        $cmd = "service $svcd stop";
+    }
 
 
-  #print "$cmd\n"; 
-  if( $cmd eq "" )
-  {
-     return -1;
-  }
- 
-  #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
-  system($cmd);
-  $::RUNCMD_RC=$?;
-  return $::RUNCMD_RC;
+    #print "$cmd\n";
+    if ($cmd eq "")
+    {
+        return -1;
+    }
+
+    #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
+    system($cmd);
+    $::RUNCMD_RC = $?;
+    return $::RUNCMD_RC;
 }
 
 
@@ -4115,52 +4173,52 @@ sub stopservice{
 =cut
 
 #--------------------------------------------------------------------------------
-sub restartservice{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
-  }
+sub restartservice {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
+    }
 
 
-  my $retval=0;
-  $retval=specialservicemgr($svcname,"restart");
-  if($retval != 127)
-  {
-     return $retval;
-  }
+    my $retval = 0;
+    $retval = specialservicemgr($svcname, "restart");
+    if ($retval != 127)
+    {
+        return $retval;
+    }
 
-  my $cmd="";
-  my $svcunit=undef;
-  my $svcd=undef;
-  my $svcjob=undef; 
+    my $cmd     = "";
+    my $svcunit = undef;
+    my $svcd    = undef;
+    my $svcjob  = undef;
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  if($svcunit)
-  {
-      $cmd="systemctl restart $svcunit";
-  }
-  elsif( $svcd )
-  {
-      $cmd="service $svcd restart";
-  }
-  elsif( $svcjob )
-  {
-      $cmd="initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl restart $svcjob ; else initctl start $svcjob; fi";
-  }
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    if ($svcunit)
+    {
+        $cmd = "systemctl restart $svcunit";
+    }
+    elsif ($svcd)
+    {
+        $cmd = "service $svcd restart";
+    }
+    elsif ($svcjob)
+    {
+        $cmd = "initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl restart $svcjob ; else initctl start $svcjob; fi";
+    }
 
-  #print "$cmd\n"; 
-  if( $cmd eq "" )
-  {
-     return -1;
-  }
- 
-  #xCAT::Utils->runcmd($cmd, -1);
-  system($cmd);
-  $::RUNCMD_RC=$?;
-  return $::RUNCMD_RC;
+    #print "$cmd\n";
+    if ($cmd eq "")
+    {
+        return -1;
+    }
+
+    #xCAT::Utils->runcmd($cmd, -1);
+    system($cmd);
+    $::RUNCMD_RC = $?;
+    return $::RUNCMD_RC;
 }
 
 #--------------------------------------------------------------------------------
@@ -4193,89 +4251,90 @@ sub restartservice{
 =cut
 
 #--------------------------------------------------------------------------------
-sub checkservicestatus{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
-  }
+sub checkservicestatus {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
+    }
 
-  my $outputoption=shift;
+    my $outputoption = shift;
 
-  my $retval;
-  $retval=specialservicemgr($svcname,"status",1);
-  if($retval->{retcode} != 127)
-  {
-     if(defined $outputoption and $outputoption == 1 ){
-        return $retval;
-     }elsif(exists $retval->{retcode}){
-        return $retval->{retcode};
-     }
-  }
+    my $retval;
+    $retval = specialservicemgr($svcname, "status", 1);
+    if ($retval->{retcode} != 127)
+    {
+        if (defined $outputoption and $outputoption == 1) {
+            return $retval;
+        } elsif (exists $retval->{retcode}) {
+            return $retval->{retcode};
+        }
+    }
 
 
-  my $cmd="";
-  my $svcunit=undef;
-  my $svcd=undef;
-  my $svcjob=undef;
-  my %ret;
+    my $cmd     = "";
+    my $svcunit = undef;
+    my $svcd    = undef;
+    my $svcjob  = undef;
+    my %ret;
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  my $output=undef;
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    my $output = undef;
 
-  if($svcunit)
-  {
-      #for systemd, parse the output since it is formatted
-      $cmd="systemctl show --property=ActiveState $svcunit|awk -F '=' '{print \$2}'";
-      $output=xCAT::Utils->runcmd($cmd, -1);
-      if($output =~ /^active$/i){
-         $ret{retcode}=0;
-      }elsif($output =~ /^failed$/i){
-         $ret{retcode}=2;
-       
-      }elsif($output =~ /^inactive$/i){
-         $ret{retcode}=1;
-      }
-  }
-  elsif ( $svcjob  )
-  {
-      #for upstart, parse the output 
-      $cmd="initctl status $svcjob";
-      $output=xCAT::Utils->runcmd($cmd, -1);
-      if($output =~ /waiting/i){
-         $ret{retcode}=2;
-      }elsif($output =~ /running/i){
-         $ret{retcode}=0;
-      }
-      
-  }
-  elsif( $svcd )
-  {
-      #for SYSVinit, check the return value since the "service" command output is confused
-      $cmd="service $svcd status";
-      $output=xCAT::Utils->runcmd($cmd, -1);
-      $ret{retcode}=$::RUNCMD_RC; 
-#      if($output =~ /stopped|not running/i){
-#        $ret{retcode}=1;
-#      }elsif($output =~ /running/i){
-#        $ret{retcode}=0;
-#      }
-  }
-  if($output)
-  {
-     $ret{retmsg}=$output;
-  }
-  
+    if ($svcunit)
+    {
+        #for systemd, parse the output since it is formatted
+        $cmd = "systemctl show --property=ActiveState $svcunit|awk -F '=' '{print \$2}'";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($output =~ /^active$/i) {
+            $ret{retcode} = 0;
+        } elsif ($output =~ /^failed$/i) {
+            $ret{retcode} = 2;
 
-  if(defined $outputoption and $outputoption == 1 ){
-     return \%ret;
-  }elsif(exists $ret{retcode}){
-     return $ret{retcode};
-  }
+        } elsif ($output =~ /^inactive$/i) {
+            $ret{retcode} = 1;
+        }
+    }
+    elsif ($svcjob)
+    {
+        #for upstart, parse the output
+        $cmd = "initctl status $svcjob";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($output =~ /waiting/i) {
+            $ret{retcode} = 2;
+        } elsif ($output =~ /running/i) {
+            $ret{retcode} = 0;
+        }
 
-   return undef;
+    }
+    elsif ($svcd)
+    {
+        #for SYSVinit, check the return value since the "service" command output is confused
+        $cmd          = "service $svcd status";
+        $output       = xCAT::Utils->runcmd($cmd, -1);
+        $ret{retcode} = $::RUNCMD_RC;
+
+        #      if($output =~ /stopped|not running/i){
+        #        $ret{retcode}=1;
+        #      }elsif($output =~ /running/i){
+        #        $ret{retcode}=0;
+        #      }
+    }
+    if ($output)
+    {
+        $ret{retmsg} = $output;
+    }
+
+
+    if (defined $outputoption and $outputoption == 1) {
+        return \%ret;
+    } elsif (exists $ret{retcode}) {
+        return $ret{retcode};
+    }
+
+    return undef;
 
 }
 
@@ -4300,59 +4359,59 @@ sub checkservicestatus{
 =cut
 
 #--------------------------------------------------------------------------------
-sub enableservice{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
+sub enableservice {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
 
-  }
+    }
 
-  my $retval=0;
-  $retval=specialservicemgr($svcname,"enable");
-  if($retval != 127)
-  {
-     return $retval;
-  }
+    my $retval = 0;
+    $retval = specialservicemgr($svcname, "enable");
+    if ($retval != 127)
+    {
+        return $retval;
+    }
 
 
 
-  my $cmd="";
-  my $svcunit=undef;
-  my $svcd=undef;
-  my $svcjob=undef;
+    my $cmd     = "";
+    my $svcunit = undef;
+    my $svcd    = undef;
+    my $svcjob  = undef;
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  if($svcunit)
-  {
-      $cmd="systemctl enable $svcunit";
-  }
-  elsif($svcjob)
-  {
-      $cmd="update-rc.d $svcjob defaults";
-  
-  }
-  elsif( $svcd )
-  {
-      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
-      if($CHKCONFIG ne "chkconfig"){
-          $cmd="$CHKCONFIG $svcd on";
-      }else{
-        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
-        if($CHKCONFIG ne "update-rc.d"){
-            $cmd="$CHKCONFIG $svcd defaults";
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    if ($svcunit)
+    {
+        $cmd = "systemctl enable $svcunit";
+    }
+    elsif ($svcjob)
+    {
+        $cmd = "update-rc.d $svcjob defaults";
+
+    }
+    elsif ($svcd)
+    {
+        my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+        if ($CHKCONFIG ne "chkconfig") {
+            $cmd = "$CHKCONFIG $svcd on";
+        } else {
+            $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+            if ($CHKCONFIG ne "update-rc.d") {
+                $cmd = "$CHKCONFIG $svcd defaults";
+            }
         }
-      }
-  }
-  if( $cmd eq "" )
-  {
-     return -1;
-  }
+    }
+    if ($cmd eq "")
+    {
+        return -1;
+    }
 
-  xCAT::Utils->runcmd($cmd, -1);
-  return $::RUNCMD_RC;
+    xCAT::Utils->runcmd($cmd, -1);
+    return $::RUNCMD_RC;
 }
 
 
@@ -4376,85 +4435,85 @@ sub enableservice{
 =cut
 
 #--------------------------------------------------------------------------------
-sub disableservice{
-  my $svcname=shift;
-  if( $svcname =~ /xCAT::Utils/)
-  {
-     $svcname=shift;
+sub disableservice {
+    my $svcname = shift;
+    if ($svcname =~ /xCAT::Utils/)
+    {
+        $svcname = shift;
 
-  }
-
-
-
-  my $retval=0;
-  $retval=specialservicemgr($svcname,"disable");
-  if($retval != 127)
-  {
-     return $retval;
-  }
+    }
 
 
-  my $cmd="";
-  my $svcunit=undef;
-  my $svcjob=undef;
-  my $svcd=undef;
 
-  $svcunit=servicemap($svcname,1);
-  $svcjob=servicemap($svcname,2);
-  $svcd=servicemap($svcname,0);
-  if($svcunit)
-  {
-      $cmd="systemctl disable $svcunit";
-  }
-  elsif($svcjob)
-  {
-      $cmd="update-rc.d -f $svcjob remove";
-    
-  }
-  elsif( $svcd )
-  {
-      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
-      if($CHKCONFIG ne "chkconfig"){
-          $cmd="$CHKCONFIG $svcd off";
-      }else{
-        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
-        if($CHKCONFIG ne "update-rc.d"){
-            $cmd="$CHKCONFIG -f $svcd remove";
+    my $retval = 0;
+    $retval = specialservicemgr($svcname, "disable");
+    if ($retval != 127)
+    {
+        return $retval;
+    }
+
+
+    my $cmd     = "";
+    my $svcunit = undef;
+    my $svcjob  = undef;
+    my $svcd    = undef;
+
+    $svcunit = servicemap($svcname, 1);
+    $svcjob  = servicemap($svcname, 2);
+    $svcd    = servicemap($svcname, 0);
+    if ($svcunit)
+    {
+        $cmd = "systemctl disable $svcunit";
+    }
+    elsif ($svcjob)
+    {
+        $cmd = "update-rc.d -f $svcjob remove";
+
+    }
+    elsif ($svcd)
+    {
+        my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+        if ($CHKCONFIG ne "chkconfig") {
+            $cmd = "$CHKCONFIG $svcd off";
+        } else {
+            $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+            if ($CHKCONFIG ne "update-rc.d") {
+                $cmd = "$CHKCONFIG -f $svcd remove";
+            }
         }
-      }
-  }
+    }
 
-#  print "$cmd\n";
-  if( $cmd eq "" )
-  {
-     return -1;
-  }
+    #  print "$cmd\n";
+    if ($cmd eq "")
+    {
+        return -1;
+    }
 
-  xCAT::Utils->runcmd($cmd, -1);
-  return $::RUNCMD_RC;
+    xCAT::Utils->runcmd($cmd, -1);
+    return $::RUNCMD_RC;
 }
 
 sub cleanup_for_powerLE_hardware_discovery {
     my $request = shift;
-    if( $request =~ /xCAT::Utils/)
+    if ($request =~ /xCAT::Utils/)
     {
-        $request=shift;
+        $request = shift;
     }
-    my $subreq = shift;
+    my $subreq    = shift;
     my $host_node = $request->{node}->[0];
-    my $bmc_node = undef;
+    my $bmc_node  = undef;
     if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
         $bmc_node = $request->{bmc_node}->[0];
     }
 
     my $ipmitab = xCAT::Table->new("ipmi");
-    unless($ipmitab) {
+    unless ($ipmitab) {
         xCAT::MsgUtils->message("S", "Discovery Error: can not open ipmi table.");
         return;
     }
-    my $ipmihash = $ipmitab->getNodesAttribs([$host_node], ['node', 'bmc', 'username', 'password']);
+    my $ipmihash = $ipmitab->getNodesAttribs([$host_node], [ 'node', 'bmc', 'username', 'password' ]);
     if ($ipmihash) {
-        my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
+        my $new_bmc_ip       = $ipmihash->{$host_node}->[0]->{bmc};
         my $new_bmc_username = $ipmihash->{$host_node}->[0]->{username};
         my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
         if (!defined($bmc_node)) {
@@ -4465,18 +4524,22 @@ sub cleanup_for_powerLE_hardware_discovery {
         xCAT::MsgUtils->message("S", "Discovery info: configure password for bmc_node:$bmc_node.");
         if (defined($new_bmc_username) and $new_bmc_username ne '') {
             if ($new_bmc_username eq "ADMIN" or $new_bmc_username eq 'USERID') {
+
                 # ADMIN is username for OpenPOWER server, it is not allowed to modify at present
                 # USERID is username for IBM system x server, just modify password
                 `rspconfig $bmc_node userid=2 password=$new_bmc_password`;
             } else {
+
                 # For other username, we'd better create new user for them
-                `rspconfig $bmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
+`rspconfig $bmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
             }
         } else {
             `rspconfig $bmc_node password=$new_bmc_password`;
         }
+
         # the rspconfig doesn't update node definition, need to modify manually for modifying bmc ip address
-        `chdef $bmc_node bmcusername=$new_bmc_username bmcpassword=$new_bmc_password`;
+`chdef $bmc_node bmcusername=$new_bmc_username bmcpassword=$new_bmc_password`;
+
         #if ($new_bmc_password) {
         #    xCAT::Utils->runxcmd(
         #        {
@@ -4493,6 +4556,7 @@ sub cleanup_for_powerLE_hardware_discovery {
 
         xCAT::MsgUtils->message("S", "Discover info: configure ip:$new_bmc_ip for bmc_node:$bmc_node.");
         `rspconfig $bmc_node ip=$new_bmc_ip`;
+
         #if($new_bmc_ip) {
         #    xCAT::Utils->runxcmd(
         #        {
@@ -4508,6 +4572,7 @@ sub cleanup_for_powerLE_hardware_discovery {
         #}
         xCAT::MsgUtils->message("S", "Discovery info: remove bmc_node:$bmc_node.");
         `rmdef $bmc_node`;
+
         #xCAT::Utils->runxcmd(
         #   {
         #   command => ["rmdef"],
@@ -4518,7 +4583,7 @@ sub cleanup_for_powerLE_hardware_discovery {
 }
 
 
-#The parseMacTabEntry parses the mac table entry and return the mac address of nic in management network 
+#The parseMacTabEntry parses the mac table entry and return the mac address of nic in management network
 #Arguments:
 #macString : the string of mac table entry
 #HostName  : the hostname of the node
@@ -4526,26 +4591,26 @@ sub cleanup_for_powerLE_hardware_discovery {
 #1. the mac addr does not have a suffix "!xxxx"
 #2. the mac addr has a fuffix "!<the node name in xcat nodelist table>"
 #The schema description of mac table is:
-#  mac:            The mac address or addresses for which xCAT will manage static bindings for this node.  
-#This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  
+#  mac:            The mac address or addresses for which xCAT will manage static bindings for this node.
+#This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").
 #This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").
-sub parseMacTabEntry{
-    my $macString=shift;
-    if( $macString =~ /xCAT::Utils/){
-        $macString=shift;
+sub parseMacTabEntry {
+    my $macString = shift;
+    if ($macString =~ /xCAT::Utils/) {
+        $macString = shift;
     }
-    
-    my $HostName=shift;
+
+    my $HostName = shift;
     my $mac_ret;
-    my @macEntry=split(/\|/,$macString);
-    foreach my $mac_t  (@macEntry){
-        unless($mac_t =~ /!/){
-            $mac_ret=$mac_t;
+    my @macEntry = split(/\|/, $macString);
+    foreach my $mac_t (@macEntry) {
+        unless ($mac_t =~ /!/) {
+            $mac_ret = $mac_t;
         }
 
-        if($HostName and $mac_t =~ /(.+)\!$HostName$/){
-                $mac_ret=$1;
-                last;
+        if ($HostName and $mac_t =~ /(.+)\!$HostName$/) {
+            $mac_ret = $1;
+            last;
         }
     }
 
@@ -4559,7 +4624,7 @@ sub parseMacTabEntry{
 }
 
 
-#The splitkcmdline subroutine is used to split the "persistent kernel options" 
+#The splitkcmdline subroutine is used to split the "persistent kernel options"
 #and "provision-time kernel options" out of the kernel cmdline string
 #Arguments:
 #          $kcmdline:  the native kernel cmdline string
@@ -4567,50 +4632,50 @@ sub parseMacTabEntry{
 #          a reference of hash with the following KEY-VALUE def:
 #          "persistent" ==> string of persistent kernel options,delimited with space " "
 #          "volatile"   ==> string of provision-time kernel options,delimited with space " "
-sub splitkcmdline{
- my $kcmdline=shift;
- if( $kcmdline =~ /xCAT::Utils/)     {
-     $kcmdline=shift;
- }
-
- my %cmdhash;
-
- my @cmdlist=split(/[, ]/,$kcmdline);
- foreach my $cmd (@cmdlist){
-    if($cmd =~ /^R::(.*)$/){
-      $cmdhash{persistent}.="$1 ";
-    }else{
-      $cmdhash{volatile}.="$cmd ";
+sub splitkcmdline {
+    my $kcmdline = shift;
+    if ($kcmdline =~ /xCAT::Utils/) {
+        $kcmdline = shift;
     }
 
- }
+    my %cmdhash;
 
- return \%cmdhash;
+    my @cmdlist = split(/[, ]/, $kcmdline);
+    foreach my $cmd (@cmdlist) {
+        if ($cmd =~ /^R::(.*)$/) {
+            $cmdhash{persistent} .= "$1 ";
+        } else {
+            $cmdhash{volatile} .= "$cmd ";
+        }
+
+    }
+
+    return \%cmdhash;
 }
 
 
 ###################################################################################
-#subroutine lookupNetboot 
-#Usage: determine the possible noderes.netboot values of the osimage 
+#subroutine lookupNetboot
+#Usage: determine the possible noderes.netboot values of the osimage
 #       according to the "osvers" and "osarch" attributes.
-#Input Params: 
+#Input Params:
 #       $osvers: the osname of the osimage,i.e,rhels7.1,sles11.3,ubuntu14.04.1 ...
 #       $osarch: the osarch of the osimage,i.e, x86_64,ppc64,ppc64le ...
 #       $imagetype: the osimage.imagetype, i.e, Linux,NIM
 #Return value:
 #       a string of the possible noderes.netboot values delimited with comma ","
-#       i.e, "pxe,xnba", empty on fail.        
+#       i.e, "pxe,xnba", empty on fail.
 ###################################################################################
 
-sub lookupNetboot{
-    my $osvers=shift;
-    if ( $osvers =~ /xCAT::Utils/ ){
-       $osvers=shift;
+sub lookupNetboot {
+    my $osvers = shift;
+    if ($osvers =~ /xCAT::Utils/) {
+        $osvers = shift;
     }
-    my $osarch=shift;
-    my $imgtype=shift;
+    my $osarch  = shift;
+    my $imgtype = shift;
 
-    my $ret="";
+    my $ret = "";
     my $osv;
     my $osn;
     my $osm;
@@ -4619,29 +4684,29 @@ sub lookupNetboot{
         $osn = $2;
         $osm = $3;
 
-    } elsif ($osvers =~ /(\D+)(\d+)/){
+    } elsif ($osvers =~ /(\D+)(\d+)/) {
         $osv = $1;
         $osn = $2;
         $osm = 0;
     }
 
-    if($imgtype =~ /^NIM$/i){
-       $ret="nimol";
-    }elsif($imgtype =~ /^Linux$/i){
-       if ($osarch =~ /^x86_64$/i){
-           $ret= "xnba,pxe";
-       }elsif($osarch =~ /^ppc64$/i){
-          if(($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and ($osn < 11 or ($osn == 11 and $osm < 4)))){
-             $ret="yaboot";
-          }elsif($osv =~ /pkvm/i){
-             $ret="petitboot";
-          }else{
-             $ret="grub2,grub2-tftp,grub2-http";
-          }
-       }elsif($osarch =~ /^ppc64le$/i or $osarch =~ /^ppc64el$/i){
-          $ret="petitboot,grub2,grub2-tftp,grub2-http"; 
-       }
-    } 
+    if ($imgtype =~ /^NIM$/i) {
+        $ret = "nimol";
+    } elsif ($imgtype =~ /^Linux$/i) {
+        if ($osarch =~ /^x86_64$/i) {
+            $ret = "xnba,pxe";
+        } elsif ($osarch =~ /^ppc64$/i) {
+            if (($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and ($osn < 11 or ($osn == 11 and $osm < 4)))) {
+                $ret = "yaboot";
+            } elsif ($osv =~ /pkvm/i) {
+                $ret = "petitboot";
+            } else {
+                $ret = "grub2,grub2-tftp,grub2-http";
+            }
+        } elsif ($osarch =~ /^ppc64le$/i or $osarch =~ /^ppc64el$/i) {
+            $ret = "petitboot,grub2,grub2-tftp,grub2-http";
+        }
+    }
     return $ret;
 }
 
@@ -4665,9 +4730,10 @@ sub lookupNetboot{
 =cut
 
 #--------------------------------------------------------------------------------
-sub is_process_exists{
+sub is_process_exists {
     my $pid = shift;
     return 1 if $pid == 0;
+
     # NOTE: Add eval and require to process dependency missing of perl-Error
     # package before sles 12 system.
     my $miss = undef;
@@ -4684,13 +4750,14 @@ sub is_process_exists{
         return 1 if ($!{EPERM});
     }
 
-    if ($ret != 0 ) {
+    if ($ret != 0) {
         return 1;
     }
     return 0;
 }
 
 #--------------------------------------------------------------------------------
+
 =head3  get_nmapversion
       for nmap version 5.10 above, the sP option changed to sn.
       the output of some commands also have differents.
@@ -4700,12 +4767,13 @@ sub is_process_exists{
     Returns:
       result: version of nmap on the system
 =cut
+
 #--------------------------------------------------------------------------------
 
 sub get_nmapversion {
     my $nmap_version;
-    my $ccmd = "nmap -V | grep version";
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    my $ccmd          = "nmap -V | grep version";
+    my $result        = xCAT::Utils->runcmd($ccmd, 0);
     my @version_array = split / /, $result;
     $nmap_version = $version_array[2];
     return $nmap_version;

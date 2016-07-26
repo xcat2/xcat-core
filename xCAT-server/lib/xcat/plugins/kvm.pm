@@ -39,6 +39,7 @@ my $parser;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
+my %allnodestatus;
 require Sys::Virt;
 
 if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
@@ -75,11 +76,12 @@ sub handled_commands {
         rinv     => 'nodehm:power,mgt',
         rmigrate => 'nodehm:mgt',
         getcons  => 'nodehm:mgt',
-        rscan => 'nodehm:mgt=ipmi',
+        rscan    => 'nodehm:mgt=ipmi',
+
         #rvitals => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
         getrvidparms  => 'nodehm:mgt',
-        lsvm => 'nodehm:mgt=ipmi',
+        lsvm          => 'nodehm:mgt=ipmi',
         rbeacon       => 'nodehm:mgt',
         revacuate     => 'hypervisor:type',
         vmstatenotify => 'hypervisor:type',
@@ -234,9 +236,10 @@ sub get_storage_pool_by_url {
     eval { $poolobj->build(); };
     if ($@) {
         my $error = $@;
-	# Some errors from building storage pool object are safe to ignore.
-	# For example, "File exists" is returned when a directory location for storage pool is already there. 
-	# The storage pool still gets built, and the next statement to create storage pool will work.
+
+        # Some errors from building storage pool object are safe to ignore.
+        # For example, "File exists" is returned when a directory location for storage pool is already there.
+        # The storage pool still gets built, and the next statement to create storage pool will work.
         unless ($error =~ /vgcreate.*exit status 3/ or $error =~ /pvcreate.*exit status 5/ or $error =~ /File exists/) {
             die $@;
         }
@@ -536,7 +539,7 @@ sub build_diskstruct {
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/ or $disk_parts[0] =~ m/^dir:\/\/(.*)$/ or $disk_parts[0] =~ m/^lvm:\/\/(.*)$/) {
                 my %disks = %{ get_multiple_paths_by_url(url => $disk_parts[0], node => $node) };
                 unless (keys %disks) {
-                    return(1,"Unable to find any persistent disks at $disk_parts[0] for $node");
+                    return (1, "Unable to find any persistent disks at $disk_parts[0] for $node");
                 }
                 foreach (keys %disks) {
                     my $tdiskhash;
@@ -855,12 +858,12 @@ sub build_xmldesc {
         }
     }
 
-    $xtree{features}->{pae}      = {};
-    $xtree{features}->{acpi}     = {};
-    $xtree{features}->{apic}     = {};
-    $xtree{features}->{content}  = "\n";
+    $xtree{features}->{pae}     = {};
+    $xtree{features}->{acpi}    = {};
+    $xtree{features}->{apic}    = {};
+    $xtree{features}->{content} = "\n";
     ($xtree{devices}->{disk}, my $errstr) = build_diskstruct($cdloc);
-     if ($errstr) {
+    if ($errstr) {
         return (-1, $errstr);
     }
     $xtree{devices}->{interface} = build_nicstruct($node);
@@ -895,7 +898,7 @@ sub build_xmldesc {
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
     } else {
-        $xtree{devices}->{sound}->{model}='ac97';
+        $xtree{devices}->{sound}->{model} = 'ac97';
     }
 
     $xtree{devices}->{console}->{type} = 'pty';
@@ -1766,17 +1769,18 @@ sub rmvm {
             my $retry = 0;
             my $vol;
             while ($retry < 10) {
-                eval { $vol  = $hypconn->get_storage_volume_by_path($file); };
+                eval { $vol = $hypconn->get_storage_volume_by_path($file); };
                 if ($@) {
+
                     # Cannot find volumn, then stop delete
                     xCAT::MsgUtils->trace(0, "e", "kvm: $@") if ($retry == 0);
                     last;
                 }
                 if ($vol) {
-                    eval { 
+                    eval {
                         # Need to call get_info() before deleting a volume, without that, delete() will sometimes fail. Issue #455
-                        $vol->get_info(); 
-                        $vol->delete(); 
+                        $vol->get_info();
+                        $vol->delete();
                     };
                     if ($@) {
                         xCAT::MsgUtils->trace(0, "e", "kvm: $@");
@@ -2049,8 +2053,8 @@ sub chvm {
                 die "TODO: relative paths, use client cwd as hint?";
             }
         }
-        unless ($cdpath) { 
-                die "unable to understand cd path specification"; 
+        unless ($cdpath) {
+            die "unable to understand cd path specification";
         }
         $newcdxml = "<disk type='file' device='cdrom'><source file='$cdpath'/><target dev='hdc'/><readonly/></disk>";
     } elsif ($eject) {
@@ -2949,6 +2953,7 @@ sub mkvm {
                 my $xml;
                 ($xml, $errstr) = build_xmldesc($node, cpus => $cpucount, memory => $memory);
                 if ($errstr) {
+
                     # The caller splits the error message on ":", prepend ":" so that if actual
                     # error message contains ":" it will not be split in the middle
                     return (1, ":" . $errstr);
@@ -2962,6 +2967,7 @@ sub mkvm {
         } else { # ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
             ($xml, $errstr) = build_xmldesc($node, cpus => $cpucount, memory => $memory);
             if ($errstr) {
+
                 # The caller splits the error message on ":", prepend ":" so that if actual
                 # error message contains ":" it will not be split in the middle
                 return (1, ":" . $errstr);
@@ -3000,8 +3006,6 @@ sub power {
         }
     }
     my $errstr;
-    my $newstat;
-    my %newnodestatus=();
 
     if ($subcommand eq 'on') {
         unless ($dom) {
@@ -3016,10 +3020,11 @@ sub power {
             ($dom, $errstr) = makedom($node, $cdloc);
             if ($errstr) { return (1, $errstr); }
             else {
-                $newstat = $::STATUS_POWERING_ON;
+                $allnodestatus{$node} = $::STATUS_POWERING_ON;
             }
         } elsif (not $dom->is_active()) {
             $dom->create();
+            $allnodestatus{$node} = $::STATUS_POWERING_ON;
         } else {
             $retstring .= "$status_noop";
         }
@@ -3029,7 +3034,7 @@ sub power {
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             if ($dom->is_active()) {
                 $dom->destroy();
-                $newstat=$::STATUS_POWERING_OFF;
+                $allnodestatus{$node} = $::STATUS_POWERING_OFF;
             }
             undef $dom;
         } else { $retstring .= "$status_noop"; }
@@ -3038,7 +3043,7 @@ sub power {
             my $newxml = $dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
             $dom->shutdown();
-            $newstat=$::STATUS_POWERING_OFF;
+            $allnodestatus{$node} = $::STATUS_POWERING_OFF;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'reset') {
         if ($dom && $dom->is_active()) {
@@ -3051,7 +3056,7 @@ sub power {
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
                 my $persist = $dom->is_persistent();
                 $dom->destroy();
-                $newstat=$::STATUS_POWERING_OFF;
+                $allnodestatus{$node} = $::STATUS_POWERING_OFF;
                 if ($persist) { $dom->undefine(); }
                 undef $dom;
                 if ($use_xhrm) {
@@ -3060,9 +3065,9 @@ sub power {
                 ($dom, $errstr) = makedom($node, $cdloc, $newxml);
                 if ($errstr) { return (1, $errstr); }
                 else {
-                    $newstat=$::STATUS_POWERING_ON;
+                    $allnodestatus{$node} = $::STATUS_POWERING_ON;
                 }
-                
+
             } else { #no changes, just restart the domain TODO when possible, stupid lack of feature...
             }
             $retstring .= "reset";
@@ -3073,10 +3078,6 @@ sub power {
         }
     }
 
-    $newnodestatus{$newstat}=[$node];
-    xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
-    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
-
     unless ($retstring =~ /reset/) {
         $retstring = $retstring . getpowstate($dom);
     }
@@ -3085,7 +3086,7 @@ sub power {
 
 sub rscan {
     my $hyper = shift;
-    @ARGV=@_;
+    @ARGV = @_;
     my ($write, $update, $create);
     GetOptions(
         'w' => \$write,
@@ -3098,44 +3099,44 @@ sub rscan {
         @doms = $hypconn->list_all_domains();
     };
     if ($@) {
-        xCAT::SvrUtils::sendmsg([1,"Unable to list all domains for $hyper: $@"], $callback);
+        xCAT::SvrUtils::sendmsg([ 1, "Unable to list all domains for $hyper: $@" ], $callback);
     }
     my %host2kvm;
     my @displaymsg;
     my $handle_vmtab;
-    $handle_vmtab = xCAT::Table->new( "vm", -create=>1, -autocommit=>0 );
+    $handle_vmtab = xCAT::Table->new("vm", -create => 1, -autocommit => 0);
     if (!$handle_vmtab) {
-        xCAT::SvrUtils::sendmsg([1,"Can't open vm table"], $callback,$hyper);
+        xCAT::SvrUtils::sendmsg([ 1, "Can't open vm table" ], $callback, $hyper);
         return;
     }
 
     #get existing 'node' and 'host' attributes in current vm table...
     my %hash_vm2host;
-    my @vm_nodes_hosts = $handle_vmtab->getAllNodeAttribs(['node','host']);
+    my @vm_nodes_hosts = $handle_vmtab->getAllNodeAttribs([ 'node', 'host' ]);
     foreach my $vm_node_host (@vm_nodes_hosts) {
-        $hash_vm2host{$vm_node_host->{node}} = $vm_node_host->{host};
+        $hash_vm2host{ $vm_node_host->{node} } = $vm_node_host->{host};
     }
 
     my @maxlength;
     my @rscan_header = (
-        ["type",          "" ],
-        ["name",          "" ],
-        ["hypervisor",    "" ],
-        ["id",            "" ],
-        ["cpu",           "" ],
-        ["memory",        "" ],
-        ["nic",           "" ],
-        ["disk",          "" ]);
+        [ "type",       "" ],
+        [ "name",       "" ],
+        [ "hypervisor", "" ],
+        [ "id",         "" ],
+        [ "cpu",        "" ],
+        [ "memory",     "" ],
+        [ "nic",        "" ],
+        [ "disk",       "" ]);
 
     #operate every domain in current hypervisor
     foreach $dom (@doms) {
-        my $name=$dom->get_name();
-        my $currxml=$dom->get_xml_description();
+        my $name    = $dom->get_name();
+        my $currxml = $dom->get_xml_description();
         unless ($currxml) {
-            xCAT::SvrUtils::sendmsg([1,"fail to get the xml definition of $name"], $callback,$hyper);
+            xCAT::SvrUtils::sendmsg([ 1, "fail to get the xml definition of $name" ], $callback, $hyper);
             next;
         }
-        my $domain=$parser->parse_string($currxml);
+        my $domain = $parser->parse_string($currxml);
         my ($uuid, $node, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
         my @uuidobj = $domain->findnodes("/domain/uuid");
         if (@uuidobj) {
@@ -3170,26 +3171,26 @@ sub rscan {
         }
         my @vmmemoryobj = $domain->findnodes("/domain/memory");
         if (@vmmemoryobj) {
-            my $mem = $vmmemoryobj[0]->to_literal;
+            my $mem  = $vmmemoryobj[0]->to_literal;
             my $unit = $vmmemoryobj[0]->getAttribute("unit");
             if (($unit eq "KiB") or ($unit eq "k")) {
-                $vmmemory=($mem*1024)/(1024*1024);
+                $vmmemory = ($mem * 1024) / (1024 * 1024);
             } elsif ($unit eq "KB") {
-                $vmmemory=($mem*1000)/(1024*1024);
+                $vmmemory = ($mem * 1000) / (1024 * 1024);
             } elsif (($unit eq "MiB") or ($unit eq "M")) {
-                $vmmemory=$mem;
+                $vmmemory = $mem;
             } elsif ($unit eq "MB") {
-                $vmmemory=($mem*1000000)/(1024*1024);
+                $vmmemory = ($mem * 1000000) / (1024 * 1024);
             } elsif (($unit eq "GiB") or ($unit eq "G")) {
-                $vmmemory=$mem*1024;
+                $vmmemory = $mem * 1024;
             } elsif ($unit eq "GB") {
-                $vmmemory=($mem*1000000000)/(1024*1024);
+                $vmmemory = ($mem * 1000000000) / (1024 * 1024);
             } elsif (($unit eq "TiB") or ($unit eq "T")) {
-                $vmmemory=$mem*1024*1024;
+                $vmmemory = $mem * 1024 * 1024;
             } elsif ($unit eq "TB") {
-                $vmmemory=($mem*1000000000000)/(1024*1024);
+                $vmmemory = ($mem * 1000000000000) / (1024 * 1024);
             } else {
-                $vmmemory=($mem*1024)/(1024*1024);
+                $vmmemory = ($mem * 1024) / (1024 * 1024);
             }
         }
         if (length($vmmemory) > $maxlength[5]) {
@@ -3223,10 +3224,10 @@ sub rscan {
         }
         my @interfaceobjs = $domain->findnodes("/domain/devices/interface");
         foreach my $interfaceobj (@interfaceobjs) {
-            if (($interfaceobj->getAttribute("type")) eq "bridge" ) {
+            if (($interfaceobj->getAttribute("type")) eq "bridge") {
                 my ($vmnics_obj, $mac_obj, $vmnicnicmodel_obj);
-                my @vmnicsobj = $interfaceobj->findnodes("./source");
-                my @macobj = $interfaceobj->findnodes("./mac");
+                my @vmnicsobj        = $interfaceobj->findnodes("./source");
+                my @macobj           = $interfaceobj->findnodes("./mac");
                 my @vmnicnicmodelobj = $interfaceobj->findnodes("./model");
                 if (@vmnicsobj) {
                     $vmnics_obj = $vmnicsobj[0]->getAttribute("bridge");
@@ -3237,8 +3238,8 @@ sub rscan {
                 if (@vmnicnicmodelobj) {
                     $vmnicnicmodel_obj = $vmnicnicmodelobj[0]->getAttribute("type");
                 }
-                $vmnics .= "$vmnics_obj,";
-                $mac .= "$mac_obj,";
+                $vmnics        .= "$vmnics_obj,";
+                $mac           .= "$mac_obj,";
                 $vmnicnicmodel .= "$vmnicnicmodel_obj,";
             }
         }
@@ -3248,79 +3249,79 @@ sub rscan {
         if (length($vmnics) > $maxlength[6]) {
             $maxlength[6] = length($vmnics);
         }
-        push @{$host2kvm{$uuid}}, join( ":", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
+        push @{ $host2kvm{$uuid} }, join(":", $type, $node, $hypervisor, $id, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
         if ($write) {
             unless (exists $hash_vm2host{$node}) {
-                $updatetable->{vm}->{$node}->{host} = $hypervisor;
-                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
-                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
-                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
-                $updatetable->{vm}->{$node}->{nics} = $vmnics;
-                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
-                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                $updatetable->{mac}->{$node}->{mac} = $mac;
-                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
-                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
-                $updatetable->{nodetype}->{$node}->{arch} = $arch;
-                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{vm}->{$node}->{host}           = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage}        = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory}         = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus}           = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics}           = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel}       = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings}  = "nodefromrscan";
+                $updatetable->{mac}->{$node}->{mac}           = $mac;
+                $updatetable->{vpd}->{$node}->{uuid}          = $uuid;
+                $updatetable->{nodelist}->{$node}->{groups}   = "vm,all";
+                $updatetable->{nodetype}->{$node}->{arch}     = $arch;
+                $updatetable->{nodehm}->{$node}->{mgt}        = "kvm";
                 $updatetable->{nodehm}->{$node}->{serialport} = "0";
                 $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
-                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
+                $updatetable->{kvm_nodedata}->{$node}->{xml}   = $currxml;
             }
             else {
                 if ($hash_vm2host{$node} eq $hypervisor) {
 
-                #mark this node to delete in 'vm' 'mac' vpd' 'nodelist' 'nodetype' 'nodehm' tables
-                $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    #mark this node to delete in 'vm' 'mac' vpd' 'nodelist' 'nodetype' 'nodehm' tables
+                    $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
 
-                $updatetable->{vm}->{$node}->{host} = $hypervisor;
-                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
-                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
-                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
-                $updatetable->{vm}->{$node}->{nics} = $vmnics;
-                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
-                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{mac}->{$node}->{mac} = $mac;
-                $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
-                $updatetable->{nodelist}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
-                $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{nodetype}->{$node}->{arch} = $arch;
-                $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
-                $updatetable->{nodehm}->{$node}->{serialport} = "0";
-                $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
-                $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
+                    $updatetable->{vm}->{$node}->{host}     = $hypervisor;
+                    $updatetable->{vm}->{$node}->{storage}  = $vmstorage;
+                    $updatetable->{vm}->{$node}->{memory}   = $vmmemory;
+                    $updatetable->{vm}->{$node}->{cpus}     = $vmcpus;
+                    $updatetable->{vm}->{$node}->{nics}     = $vmnics;
+                    $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                    $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
+                    $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{mac}->{$node}->{mac} = $mac;
+                    $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                    $updatetable->{nodelist}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
+                    $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{nodetype}->{$node}->{arch} = $arch;
+                    $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{nodehm}->{$node}->{mgt}         = "kvm";
+                    $updatetable->{nodehm}->{$node}->{serialport}  = "0";
+                    $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
+                    $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                    $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
                 }
                 else {
-                    $callback->({data=>"the name of KVM guest $node on $hypervisor conflicts with the existing node in xCAT table."});
+                    $callback->({ data => "the name of KVM guest $node on $hypervisor conflicts with the existing node in xCAT table." });
                 }
             }
         }
         if ($update) {
             if ((exists $hash_vm2host{$node}) and ($hash_vm2host{$node} eq $hypervisor)) {
                 $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{vm}->{$node}->{host} = $hypervisor;
-                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
-                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
-                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
-                $updatetable->{vm}->{$node}->{nics} = $vmnics;
-                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{host}          = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage}       = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory}        = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus}          = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics}          = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel}      = $vmnicnicmodel;
                 $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
                 $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{mac}->{$node}->{mac} = $mac;
+                $updatetable->{mac}->{$node}->{mac}                     = $mac;
                 $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{vpd}->{$node}->{uuid}                    = $uuid;
                 $updatetable->{nodelist}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
                 $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodetype}->{$node}->{arch} = $arch;
                 $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
-                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
-                $updatetable->{nodehm}->{$node}->{serialport} = "0";
+                $updatetable->{nodehm}->{$node}->{mgt}         = "kvm";
+                $updatetable->{nodehm}->{$node}->{serialport}  = "0";
                 $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
                 $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
@@ -3328,45 +3329,45 @@ sub rscan {
         }
         if ($create) {
             unless (exists $hash_vm2host{$node}) {
-                $updatetable->{vm}->{$node}->{host} = $hypervisor;
-                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
-                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
-                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
-                $updatetable->{vm}->{$node}->{nics} = $vmnics;
-                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
-                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                $updatetable->{mac}->{$node}->{mac} = $mac;
-                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
-                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
-                $updatetable->{nodetype}->{$node}->{arch} = $arch;
-                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{vm}->{$node}->{host}           = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage}        = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory}         = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus}           = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics}           = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel}       = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings}  = "nodefromrscan";
+                $updatetable->{mac}->{$node}->{mac}           = $mac;
+                $updatetable->{vpd}->{$node}->{uuid}          = $uuid;
+                $updatetable->{nodelist}->{$node}->{groups}   = "vm,all";
+                $updatetable->{nodetype}->{$node}->{arch}     = $arch;
+                $updatetable->{nodehm}->{$node}->{mgt}        = "kvm";
                 $updatetable->{nodehm}->{$node}->{serialport} = "0";
                 $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
-                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
+                $updatetable->{kvm_nodedata}->{$node}->{xml}   = $currxml;
             }
         }
     }
 
     if ((!$write) and (!$update) and (!$create)) {
         my $header;
-        $rscan_header[0][1] = sprintf "%%-%ds",($maxlength[0]+3);
-        $rscan_header[1][1] = sprintf "%%-%ds",($maxlength[1]+3);
-        $rscan_header[2][1] = sprintf "%%-%ds",($maxlength[2]+3);
-        $rscan_header[3][1] = sprintf "%%-%ds",($maxlength[3]+3);
-        $rscan_header[4][1] = sprintf "%%-%ds",($maxlength[4]+3);
-        $rscan_header[5][1] = sprintf "%%-%ds",($maxlength[5]+3);
-        $rscan_header[6][1] = sprintf "%%-%ds",($maxlength[6]+3);
-        $rscan_header[7][1] = sprintf "%%-%ds",($maxlength[7]+3);
+        $rscan_header[0][1] = sprintf "%%-%ds", ($maxlength[0] + 3);
+        $rscan_header[1][1] = sprintf "%%-%ds", ($maxlength[1] + 3);
+        $rscan_header[2][1] = sprintf "%%-%ds", ($maxlength[2] + 3);
+        $rscan_header[3][1] = sprintf "%%-%ds", ($maxlength[3] + 3);
+        $rscan_header[4][1] = sprintf "%%-%ds", ($maxlength[4] + 3);
+        $rscan_header[5][1] = sprintf "%%-%ds", ($maxlength[5] + 3);
+        $rscan_header[6][1] = sprintf "%%-%ds", ($maxlength[6] + 3);
+        $rscan_header[7][1] = sprintf "%%-%ds", ($maxlength[7] + 3);
         foreach (@rscan_header) {
-            $header .= sprintf ( @$_[1], @$_[0] );
+            $header .= sprintf(@$_[1], @$_[0]);
         }
         push @displaymsg, $header;
         foreach (keys %host2kvm) {
             my $entry;
             my $host = $_;
-            my $i = 0;
+            my $i    = 0;
             my @data;
-            foreach (@{$host2kvm{$host}}) {
+            foreach (@{ $host2kvm{$host} }) {
                 my $info = $_;
                 foreach (split(':', $info)) {
                     my $attr = $_;
@@ -3374,12 +3375,12 @@ sub rscan {
                 }
             }
             foreach (@rscan_header) {
-                $entry .= sprintf ( @$_[1], $data[$i++] );
+                $entry .= sprintf(@$_[1], $data[ $i++ ]);
             }
             push @displaymsg, $entry;
         }
     }
-    $callback->({data=>\@displaymsg});
+    $callback->({ data => \@displaymsg });
     return;
 }
 
@@ -3423,29 +3424,6 @@ sub guestcmd {
     } elsif ($command eq "rscan") {
         return rscan($node, @args);
     }
-
-=cut
-  } elsif ($command eq "rvitals") {
-    return vitals(@args);
-  } elsif ($command =~ /r[ms]preset/) {
-    return resetmp(@args);
-  } elsif ($command eq "rspconfig") {
-    return mpaconfig($mpa,$user,$pass,$node,$slot,@args);
-  } elsif ($command eq "rbootseq") {
-    return bootseq(@args);
-  } elsif ($command eq "switchblade") {
-     return switchblade(@args);
-  } elsif ($command eq "getmacs") {
-    return getmacs(@args);
-  } elsif ($command eq "rinv") {
-    return inv(@args);
-  } elsif ($command eq "reventlog") {
-    return eventlog(@args);
-  } elsif ($command eq "rscan") {
-    return rscan(\@args);
-  }
-  
-=cut
 
     return (1, "$command not a supported command by kvm method");
 }
@@ -3704,7 +3682,7 @@ sub process_request {
     my $inputs  = new IO::Select;
     my $sub_fds = new IO::Select;
     %hyphash = ();
-    if ($command eq 'lsvm' or $command eq 'rscan') {    #command intended for hypervisors, not guests
+    if ($command eq 'lsvm' or $command eq 'rscan') { #command intended for hypervisors, not guests
         foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
     } else {
         foreach (keys %{ $confdata->{vm} }) {
@@ -3762,51 +3740,12 @@ sub process_request {
         return;
     }
 
-    #get new node status
-    my %oldnodestatus = ();    #saves the old node status
-    my @allerrornodes = ();
-    my $check         = 0;
-    my $global_check  = 1;
-    if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check = 0; }
-
-
-    if ($command eq 'rpower') {
-        my $subcommand = $exargs[0];
-        if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status')) {
-            $check = 1;
-            my @allnodes = @$noderange;
-
-            #save the old status
-            my $nodelisttab = xCAT::Table->new('nodelist');
-            if ($nodelisttab) {
-                my $tabdata = $nodelisttab->getNodesAttribs(\@allnodes, [ 'node', 'status' ]);
-                foreach my $node (@allnodes)
-                {
-                    my $tmp1 = $tabdata->{$node}->[0];
-                    if ($tmp1) {
-                        if ($tmp1->{status}) { $oldnodestatus{$node} = $tmp1->{status}; }
-                        else                 { $oldnodestatus{$node} = ""; }
-                    }
-                }
-            }
-
-            #print "oldstatus:" . Dumper(\%oldnodestatus);
-        }
-    }
-
     if ($::XCATSITEVALS{masterimgdir}) { $xCAT_plugin::kvm::masterdir = $::XCATSITEVALS{masterimgdir} }
-
-
 
     foreach $hyp (sort (keys %hyphash)) {
         while ($children > $vmmaxp) {
             my $handlednodes = {};
             forward_data($callback, $sub_fds, $handlednodes);
-
-            #update the node status to the nodelist.status table
-            if ($check) {
-                updateNodeStatus($handlednodes, \@allerrornodes);
-            }
         }
         $children++;
         my $cfd;
@@ -3829,11 +3768,6 @@ sub process_request {
     while ($sub_fds->count > 0) { # or $children > 0) { #if count is zero, even if we have live children, we can't possibly get data from them
         my $handlednodes = {};
         forward_data($callback, $sub_fds, $handlednodes);
-
-        #update the node status to the nodelist.status table
-        if ($check) {
-            updateNodeStatus($handlednodes, \@allerrornodes);
-        }
     }
 
     #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
@@ -3849,23 +3783,6 @@ sub process_request {
     #  }
     #}
 
-    if ($check) {
-
-        #print "allerrornodes=@allerrornodes\n";
-        #revert the status back for there is no-op for the nodes
-        my %old = ();
-        foreach my $node (@allerrornodes) {
-            my $stat = $oldnodestatus{$node};
-            if (exists($old{$stat})) {
-                my $pa = $old{$stat};
-                push(@$pa, $node);
-            }
-            else {
-                $old{$stat} = [$node];
-            }
-        }
-        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
-    }
 }
 
 sub updateNodeStatus {
@@ -3898,7 +3815,7 @@ sub forward_data {
 
                 #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
                 my $no_op = 0;
-                if ($_->{node}->[0]->{errorcode}) { $no_op = 1; }
+                if ($_->{node}->[0]->{errorcode}->[0]) { $no_op = 1; }
                 else {
                     my $text = $_->{node}->[0]->{data}->[0]->{contents}->[0];
 
@@ -3996,6 +3913,15 @@ sub dohyp {
         }
     }
 
+    if ($command eq 'rpower') {
+        my $subcommand = $exargs[0];
+        if (($subcommand ne 'stat') && ($subcommand ne 'status')) {
+            %allnodestatus = ();
+        }
+    }
+
+    my %newnodestatus;
+
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         if ($confdata->{$hyp}->{cpumodel} and $confdata->{$hyp}->{cpumodel} =~ /ppc64/i) {
             $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
@@ -4037,12 +3963,25 @@ sub dohyp {
             } else {
                 $output{node}->[0]->{error} = $text;
             }
+
+            if ($command eq 'rpower') {
+                if (!$rc and $text !~ /$status_noop/) {
+                    if (%allnodestatus) {
+                        push @{ $newnodestatus{ $allnodestatus{$node} } }, $node;
+                    }
+                }
+            }
             store_fd([ \%output ], $out);
             yield();
             waitforack($out);
         }
         yield();
     }
+
+    if ($command eq 'rpower') {
+        xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
+    }
+
     foreach (keys %$updatetable) {
         my $tabhandle = xCAT::Table->new($_, -create => 1);
         my $updates = $updatetable->{$_};

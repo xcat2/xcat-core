@@ -1,12 +1,12 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# This script is used by LogEventToxCATDatabase event response to put RMC events into 
+# This script is used by LogEventToxCATDatabase event response to put RMC events into
 # the xCAT evnetlog table.  It handles both batch and non-batching events.
 
 BEGIN
 {
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -17,90 +17,91 @@ use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use IO::File;
 
-my $batch=0;
-if (exists($ENV{ERRM_COND_BATCH})) { $batch=$ENV{ERRM_COND_BATCH}; }
-my @a=();
-my $condname=$ENV{ERRM_COND_NAME};
-my $respname=$ENV{ERRM_ER_NAME};
+my $batch = 0;
+if (exists($ENV{ERRM_COND_BATCH})) { $batch = $ENV{ERRM_COND_BATCH}; }
+my @a        = ();
+my $condname = $ENV{ERRM_COND_NAME};
+my $respname = $ENV{ERRM_ER_NAME};
 
-if (!$batch) { #handle single event
-    my $time=$ENV{ERRM_TIME};
-    my $nodenamelist=$ENV{ERRM_NODE_NAMELIST};
+if (!$batch) {    #handle single event
+    my $time         = $ENV{ERRM_TIME};
+    my $nodenamelist = $ENV{ERRM_NODE_NAMELIST};
     $nodenamelist =~ s/\{(.*)\}/$1/;
-    
-    my $event={
-	eventtype => $ENV{ERRM_TYPE}, 
-	monitor => $ENV{ERRM_COND_NAME}, 
-	monnode => $ENV{ERRM_NODE_NAME},
-	node => $nodenamelist,
-	application => 'RMC',
-	component => $ENV{ERRM_RSRC_CLASS_PNAME},
-	id => $ENV{ERRM_RSRC_NAME} . "," . $ENV{ERRM_ATTR_PNAME},
-	severity => $ENV{ERRM_COND_SEVERITY},
-	message => '',
-	rawdata => $ENV{ERRM_ATTR_PNAME} . "=" . $ENV{ERRM_VALUE},
-    }; 
-    
+
+    my $event = {
+        eventtype   => $ENV{ERRM_TYPE},
+        monitor     => $ENV{ERRM_COND_NAME},
+        monnode     => $ENV{ERRM_NODE_NAME},
+        node        => $nodenamelist,
+        application => 'RMC',
+        component   => $ENV{ERRM_RSRC_CLASS_PNAME},
+        id          => $ENV{ERRM_RSRC_NAME} . "," . $ENV{ERRM_ATTR_PNAME},
+        severity    => $ENV{ERRM_COND_SEVERITY},
+        message     => '',
+        rawdata     => $ENV{ERRM_ATTR_PNAME} . "=" . $ENV{ERRM_VALUE},
+    };
+
     push(@a, $event);
-} else { #handle event batching
+} else {    #handle event batching
     if ($ENV{ERRM_COND_BATCH_NUM} > 0) {
+
         #check if event detail file exist
-        if (!exists($ENV{ERRM_EVENT_DETAIL_FILE})){
-	     xCAT::MsgUtils->message('S', "logeventtoxcat: no event detail file specified in the response $respname for condition $condname.\n");
-             exit (1);
-	}
-	
-	my $filename=$ENV{ERRM_EVENT_DETAIL_FILE};
-	if (! -f $filename) {
-	    xCAT::MsgUtils->message('S', "logeventtoxcat: cannot find event detail file $filename in response $respname for condition $condname.\n");
-            exit (1);
-	}
+        if (!exists($ENV{ERRM_EVENT_DETAIL_FILE})) {
+            xCAT::MsgUtils->message('S', "logeventtoxcat: no event detail file specified in the response $respname for condition $condname.\n");
+            exit(1);
+        }
 
-	open(FILE1, "<$filename");
-        readline(FILE1);#skip first 2 lines
+        my $filename = $ENV{ERRM_EVENT_DETAIL_FILE};
+        if (!-f $filename) {
+            xCAT::MsgUtils->message('S', "logeventtoxcat: cannot find event detail file $filename in response $respname for condition $condname.\n");
+            exit(1);
+        }
+
+        open(FILE1, "<$filename");
+        readline(FILE1);    #skip first 2 lines
         readline(FILE1);
-	my $line1=readline(FILE1);
-	my @aTemp=split(/=/, $line1);
-	my $num_events=$aTemp[1];
-	close(FILE1);
+        my $line1      = readline(FILE1);
+        my @aTemp      = split(/=/, $line1);
+        my $num_events = $aTemp[1];
+        close(FILE1);
 
-	my $count;
-	for ($count = 1; $count <= $num_events; $count++) {
-	    my $content=`sed -n "/Event $count:/,/ERRM_COND_BATCH/ p" $filename`;
-	    
-	    my @content_array=split(/\n/, $content);
-	    pop(@content_array);  #get rid of last line
-	    shift(@content_array); #get rid of firt line
-    
-	    my %content_hash=();
-	    foreach(@content_array) {
+        my $count;
+        for ($count = 1 ; $count <= $num_events ; $count++) {
+            my $content = `sed -n "/Event $count:/,/ERRM_COND_BATCH/ p" $filename`;
+
+            my @content_array = split(/\n/, $content);
+            pop(@content_array);      #get rid of last line
+            shift(@content_array);    #get rid of firt line
+
+            my %content_hash = ();
+            foreach (@content_array) {
                 /([^\=]+)\=(.*)/;
-		$content_hash{$1}=$2;
-	    }    
+                $content_hash{$1} = $2;
+            }
 
-	    my $time=$content_hash{ERRM_TIME};
-	    my $nodenamelist=$content_hash{ERRM_NODE_NAMELIST};
-	    $nodenamelist =~ s/\{(.*)\}/$1/;
-	    my $event={
-		eventtype => $content_hash{ERRM_TYPE}, 
-		monitor => $content_hash{ERRM_COND_NAME}, 
-		monnode => $content_hash{ERRM_NODE_NAME},
-		node => $nodenamelist,
-		application => 'RMC',
-		component => $content_hash{ERRM_RSRC_CLASS_PNAME},
-		id => $content_hash{ERRM_RSRC_NAME} . "," . $content_hash{ERRM_ATTR_PNAME},
-		severity => $content_hash{ERRM_COND_SEVERITY},
-		message => '',
-		rawdata => $content_hash{ERRM_ATTR_PNAME} . "=" . $content_hash{ERRM_VALUE},
-	    }; 
-	    push(@a, $event);
-	}   
+            my $time         = $content_hash{ERRM_TIME};
+            my $nodenamelist = $content_hash{ERRM_NODE_NAMELIST};
+            $nodenamelist =~ s/\{(.*)\}/$1/;
+            my $event = {
+                eventtype   => $content_hash{ERRM_TYPE},
+                monitor     => $content_hash{ERRM_COND_NAME},
+                monnode     => $content_hash{ERRM_NODE_NAME},
+                node        => $nodenamelist,
+                application => 'RMC',
+                component   => $content_hash{ERRM_RSRC_CLASS_PNAME},
+                id => $content_hash{ERRM_RSRC_NAME} . "," . $content_hash{ERRM_ATTR_PNAME},
+                severity => $content_hash{ERRM_COND_SEVERITY},
+                message  => '',
+                rawdata => $content_hash{ERRM_ATTR_PNAME} . "=" . $content_hash{ERRM_VALUE},
+            };
+            push(@a, $event);
+        }
     }
-}    
+}
 
-my ($rc, $msg)=xCAT::TableUtils->logEventsToDatabase(\@a);
+my ($rc, $msg) = xCAT::TableUtils->logEventsToDatabase(\@a);
 if ($rc) {
-   xCAT::MsgUtils->message('S', "logeventtoxcat:$msg. The condition is $condname. The response is $respname.\n");
+    xCAT::MsgUtils->message('S', "logeventtoxcat:$msg. The condition is $condname. The response is $respname.\n");
 }
 
 exit $rc;
