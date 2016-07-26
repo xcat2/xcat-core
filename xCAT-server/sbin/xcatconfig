@@ -452,6 +452,12 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     }
     else
     {
+        #since the xcatd service unit file is updated on xcat upgrade
+        #"systemctl daemon-reload" need to be run to update the service unit
+        if ($::UPDATEINSTALL) {
+            $xcmd="type systemctl >/dev/null 2>&1 && systemctl daemon-reload";
+            xCAT::Utils->runcmd("$xcmd", 0);
+        }
         #$xcmd = "/etc/init.d/xcatd restart";
         xCAT::Utils->restartservice("xcatd");
     }
