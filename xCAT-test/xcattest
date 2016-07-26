@@ -444,7 +444,7 @@ sub Get_Files_Recursive
             }
             else
             { my $dirpath = $dir . '/' . $direntry . "\n";
-                print $dir. '/' . $direntry . "\n";
+                print $dirpath;
 
                 #print $dir."\n";
                 push(@filespath, glob("$dirpath"));

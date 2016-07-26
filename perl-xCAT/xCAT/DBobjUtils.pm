@@ -990,7 +990,7 @@ sub setobjdefs
                         }
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
                         $checkedattrs{$attr_name} = 1;
-                        if ($invalidattr->{$attr_name}->{valid} ne 1) {
+                        if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
                             $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
                         }
@@ -999,7 +999,7 @@ sub setobjdefs
                     }
 
                     if (!($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) && !($DBattrvals{$objname}{$check_attr} =~ /\b$check_value\b/)) {
-                        if ($invalidattr->{$attr_name}->{valid} ne 1) {
+                        if ($invalidattr->{$attr_name}->{valid} != 1) {
                             $invalidattr->{$attr_name}->{valid} = 0;
                             $invalidattr->{$attr_name}->{condition} = "\'$check_attr=$check_value\'";
 
@@ -1126,7 +1126,7 @@ sub setobjdefs
 
         my $rsp;
         foreach my $att (keys %$invalidattr) {
-            if ($invalidattr->{$att}->{valid} ne 1) {
+            if ($invalidattr->{$att}->{valid} != 1) {
                 my $tt = $invalidattr->{$att}->{valid};
                 push @{ $rsp->{data} }, "Cannot set the attr=\'$att\' attribute unless $invalidattr->{$att}->{condition}.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);

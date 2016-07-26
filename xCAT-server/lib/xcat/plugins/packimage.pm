@@ -701,7 +701,7 @@ sub parseLiteFiles {
             my @res = grep { $_ =~ m/\Q$parent\E$/ } @entries;
             my $found = scalar @res;
 
-            if ($found eq 1) {    # $parent is found in @entries
+            if ($found == 1) {    # $parent is found in @entries
                                   # handle $res[0];
                 my @tmpresentry = split /\s+/, $res[0];
                 shift @tmpresentry;

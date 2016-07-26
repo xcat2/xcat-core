@@ -1347,7 +1347,6 @@ else {
 sub isGET    { return uc($requestType) eq "GET"; }
 sub isPost   { return uc($requestType) eq "POST"; }
 sub isPut    { return uc($requestType) eq "PUT"; }
-sub isPost   { return uc($requestType) eq "POST"; }
 sub isPatch  { return uc($requestType) eq "PATCH"; }
 sub isDelete { return uc($requestType) eq "DELETE"; }
 

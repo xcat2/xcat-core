@@ -770,7 +770,7 @@ sub classful_networks_for_net_and_mask
 
     my @results;
     my $bitstoeven = (8 - ($mask % 8));
-    if ($bitstoeven eq 8) { $bitstoeven = 0; }
+    if ($bitstoeven == 8) { $bitstoeven = 0; }
     my $resultmask = $mask + $bitstoeven;
     if ($given_mask)
     {
@@ -828,7 +828,7 @@ sub my_hexnets
         }
         (my $curnet, my $maskbits) = split /\//, $elems[2];
         my $bitstoeven = (4 - ($maskbits % 4));
-        if ($bitstoeven eq 4) { $bitstoeven = 0; }
+        if ($bitstoeven == 4) { $bitstoeven = 0; }
         my $padbits  = (32 - ($bitstoeven + $maskbits));
         my $numchars = int(($maskbits + $bitstoeven) / 4);
         my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);

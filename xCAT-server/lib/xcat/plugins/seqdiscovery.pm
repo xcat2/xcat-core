@@ -919,7 +919,7 @@ Usage:
     }
     if (@discoverednodes) {
         unless ($long) {
-            push @{ $rsp->{data} }, sprintf("  %-40s%-20s%-15s%-10s%-13s", 'UUID', 'NODE',, 'METHOD', 'MTM', 'SERIAL');
+            push @{ $rsp->{data} }, sprintf("  %-40s%-20s%-15s%-10s%-13s", 'UUID', 'NODE', 'METHOD', 'MTM', 'SERIAL');
         }
         foreach (@discoverednodes) {
             push @{ $rsp->{data} }, "$_";

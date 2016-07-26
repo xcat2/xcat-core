@@ -490,8 +490,8 @@ sub writeframe {
             my $num1 = int((int($num) - $fnum) / $framesperhmc) + $umb;
             my $num2 = length($$hmchash{'primary-start'}) - length($num1);
             $FRAMESFP{$nn}{sfp} = $hmcbase . $num1 . $hmcattch if ($num2 <= 0);
-            $FRAMESFP{$nn}{sfp} = $hmcbase . '0' . $num1 . $hmcattch if ($num2 eq 1);
-            $FRAMESFP{$nn}{sfp} = $hmcbase . '00' . $num1 . $hmcattch if ($num2 eq 2);
+            $FRAMESFP{$nn}{sfp} = $hmcbase . '0' . $num1 . $hmcattch if ($num2 == 1);
+            $FRAMESFP{$nn}{sfp} = $hmcbase . '00' . $num1 . $hmcattch if ($num2 == 2);
         }
         $tables{'ppc'}->setNodesAttribs(\%FRAMESFP);
     }
@@ -533,10 +533,10 @@ sub writechildren {
         } else {
             $trange = 1;
         }
-        $ranges{'A-0'} = $trange if ($tt eq 0);
-        $ranges{'A-1'} = $trange if ($tt eq 1);
-        $ranges{'B-0'} = $trange if ($tt eq 2);
-        $ranges{'B-1'} = $trange if ($tt eq 3);
+        $ranges{'A-0'} = $trange if ($tt == 0);
+        $ranges{'A-1'} = $trange if ($tt == 1);
+        $ranges{'B-0'} = $trange if ($tt == 2);
+        $ranges{'B-1'} = $trange if ($tt == 3);
         $tt++;
     }
     if ($DELETENODES) {

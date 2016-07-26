@@ -54,7 +54,7 @@ sub getans {
         $password = $rsp->{node}->[0]->{bmcpass}->[0];
         if (exists $rsp->{node}->[0]->{error}) {
             my $error = $rsp->{node}->[0]->{error}->[0];
-            print $error. "\n";
+            print "$error\n";
         }
     }
 }

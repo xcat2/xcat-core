@@ -1947,7 +1947,7 @@ sub nodels
                 foreach my $rnode (@$nodes) {
                     unless (defined($listHash->{$rnode}->[0]->{hidden})) {
                         push(@newnodes, $rnode);
-                    } elsif ($listHash->{$rnode}->[0]->{hidden} ne 1) {
+                    } elsif ($listHash->{$rnode}->[0]->{hidden} != 1) {
                         push(@newnodes, $rnode);
                     }
                 }
@@ -2181,7 +2181,7 @@ sub nodels
                     foreach my $rnode (@nodes) {
                         unless (defined($listHash->{$rnode}->[0]->{hidden})) {
                             push(@newnodes, $rnode);
-                        } elsif ($listHash->{$rnode}->[0]->{hidden} ne 1) {
+                        } elsif ($listHash->{$rnode}->[0]->{hidden} != 1) {
                             push(@newnodes, $rnode);
                         }
                     }

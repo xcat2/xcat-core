@@ -364,8 +364,10 @@ sub delete_user_account { #provide enough data to construct an /etc/passwd looki
     }
 }
 
-=cut
+=head3 add_user_account
+
   example: add_user_account(username=>'fred',fullname=>'fred the great');
+
 =cut
 
 sub add_user_account {
@@ -479,10 +481,11 @@ sub add_user_account {
     return { password => $newpassword };
 }
 
-=cut
-add_host_account
+=head3 add_host_account
+
 Arguments are in a hash:
     node=>name of machine to add
+
 =cut
 
 sub add_host_account {

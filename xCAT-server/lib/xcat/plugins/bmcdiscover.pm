@@ -82,7 +82,7 @@ sub process_request
         return 2;
     }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         return 2;
     }
 

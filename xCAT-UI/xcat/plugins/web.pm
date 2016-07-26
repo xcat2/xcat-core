@@ -1982,8 +1982,8 @@ sub web_summary {
     while (my ($key, $value) = each(%{$attrs})) {
         web_attrcount($value->[0]->{'os'},          \%oshash);
         web_attrcount($value->[0]->{'arch'},        \%archhash);
-        web_attrcount($value->[0]->{'provmethod'},, \%provhash);
-        web_attrcount($value->[0]->{'nodetype'},,   \%typehash);
+        web_attrcount($value->[0]->{'provmethod'}, \%provhash);
+        web_attrcount($value->[0]->{'nodetype'},   \%typehash);
     }
 
     $attrs = $nodelistTab->getNodesAttribs(\@nodes, ['status']);

@@ -406,7 +406,7 @@ sub processArgs
         }
     }
     if (defined($::args) && @{$::args}) {
-        if (scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+        if (scalar(@{$::args}) == 1 and $::args->[0] eq '-S')
         {
             if ($::command eq "lsdef") {
                 push @ARGV, "-t";
@@ -3649,7 +3649,7 @@ sub defls
                 my @def_nodes = keys %defhash;
                 my $hidden_nodes = $listtab->getNodesAttribs(\@def_nodes, ['hidden']);
                 foreach my $n (keys %{$hidden_nodes}) {
-                    if (defined($hidden_nodes->{$n}->[0]->{'hidden'}) && $hidden_nodes->{$n}->[0]->{'hidden'} eq 1) {
+                    if (defined($hidden_nodes->{$n}->[0]->{'hidden'}) && $hidden_nodes->{$n}->[0]->{'hidden'} == 1) {
                         delete $defhash{$n};
                     }
                 }
