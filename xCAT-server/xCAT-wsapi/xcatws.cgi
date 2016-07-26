@@ -223,8 +223,8 @@ my %URIdef = (
             PUT     => {
                 desc => "Update conserver configuration for the node {noderange}.",
                 usage => "|Json Formatted DataBody: {action:on/off}.|$usagemsg{non_getreturn}|",
-                example => "|Enable the console capability for node1|PUT|/nodes/node1/console {\"action\":\"on\"}||",
-                cmd      => "makeconservercf",
+                example => "|Enable the console capability for node1|PUT|/nodes/node1/console {\"action\":\"on\", \"trust_host\": \"host\"}||",
+                cmd => "makeconservercf",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
               }
@@ -2195,9 +2195,12 @@ sub actionhdl {
 
     } elsif ($params->{'resourcename'} eq "console") {
         if ($paramhash->{'action'}) {
-            my $option = $paramhash->{'action'};
-            my %op_hash = ('on' => '', 'off' => '-d');
-            push @args, $op_hash{ $paramhash->{'action'} };
+            my %action = ('on' => '', 'off' => '-d');
+            push @args, $action{$paramhash->{'action'}};
+            if ($paramhash->{'trust_host'}) {
+                push @args, '-t';
+                push @args, $paramhash->{'trust_host'};
+            }
         } else {
             error("Missed Action.", $STATUS_NOT_FOUND);
         }
