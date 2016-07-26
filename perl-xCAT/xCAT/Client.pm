@@ -838,7 +838,7 @@ sub submit_request {
             #----- end added to Client.pm -----#
 
             if (ref $_->{'_xcatdest'} and (ref $_->{'_xcatdest'}) eq 'ARRAY') {
-                _->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
+                $_->{'_xcatdest'} = $_->{'_xcatdest'}->[0];
             }
             if ($onlyone and not($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
                 $SIG{CHLD} = 'DEFAULT';
