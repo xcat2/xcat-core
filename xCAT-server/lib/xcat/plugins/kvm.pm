@@ -1081,6 +1081,25 @@ sub getpowstate {
     }
 }
 
+# Return storageformat definition
+sub getstorageformat {
+    my $cfginfo = shift;
+
+    my @flags = split /,/, $cfginfo->{virtflags};
+    my $format;
+    foreach (@flags) {
+        if (/^imageformat=(.*)\z/) {
+            $format = $1;
+        } elsif (/^clonemethod=(.*)\z/) {
+            $clonemethod = $1;
+        }
+    }
+    if ($cfginfo->{storageformat}) {
+        $format = $cfginfo->{storageformat};
+    }
+    return $format;
+}
+
 sub xhrm_satisfy {
     my $node = shift;
     my $hyp = shift;
@@ -1256,22 +1275,10 @@ sub createstorage {
     my $size=shift;
     my $cfginfo = shift;
     my $force = shift;
-    #my $diskstruct = shift;
     my $node = $cfginfo->{node};
-    my @flags = split /,/,$cfginfo->{virtflags};
-    my $format;
-    foreach (@flags) {
-        if (/^imageformat=(.*)\z/) {
-            $format=$1;
-        } elsif (/^clonemethod=(.*)\z/) {
-            $clonemethod=$1;
-        }
-    }
-    if ($cfginfo->{storageformat}) {
-        $format = $cfginfo->{storageformat};
-    }
     my $mountpath;
     my $pathappend;
+    my $format = getstorageformat($cfginfo);
 
 
     #for nfs paths and qemu-img, we do the magic locally only for now
@@ -1671,6 +1678,11 @@ sub chvm {
     if (@addsizes) { #need to add disks, first identify used devnames
         my @diskstoadd;
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
+        unless ($location) {
+            # Calling add disk for a vm with no storage defined
+            xCAT::SvrUtils::sendmsg([ 1, "Can not add storage, vmstorage attribute not defined." ], $callback, $node);
+            return;
+        }
         $location =~ s/.*\|//; #use the rightmost location for making new devices
         $location =~ s/,.*//; #no comma specified parameters are valid
         $location =~ s/=(.*)//; #store model if specified here
@@ -1699,13 +1711,14 @@ sub chvm {
         foreach (@addsizes) {
             push @newsizes,split /,/,$_;
         }
+        my $format = getstorageformat($confdata->{vm}->{$node}->[0]);
         foreach (@newsizes) {
             my $dev;
             do {
                 $dev = $prefix.shift(@suffixes);
             } while ($useddisks{$dev});
             #ok, now I need a volume created to attach
-            push @diskstoadd,get_filepath_by_url(url=>$location,dev=>$dev,create=>$_);
+            push @diskstoadd,get_filepath_by_url(url=>$location,dev=>$dev,create=>$_,format=>$format);
         }
         #now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
         foreach (@diskstoadd) {
