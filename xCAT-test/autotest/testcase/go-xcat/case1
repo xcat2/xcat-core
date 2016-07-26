@@ -47,10 +47,10 @@ cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /e
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:xdsh $$CN "cd /; ./go-xcat -x 2.11 -y install"
+cmd:xdsh $$CN "cd /; ./go-xcat -x $$MIGRATION1_VERSION -y install"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
-check:output=~Version 2.11
+check:output=~Version $$MIGRATION1_VERSION 
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
