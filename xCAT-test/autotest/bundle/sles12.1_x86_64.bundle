@@ -213,3 +213,11 @@ sles_migration1
 sles_migration2
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
+go_xcat_local_repo_case1
+go_xcat_local_repo_case2
+go_xcat_local_repo_case3
+go_xcat_local_repo_case4
+go_xcat_local_repo_case5
+go_xcat_local_repo_case6
+go_xcat_local_repo_case7
+go_xcat_noinput
