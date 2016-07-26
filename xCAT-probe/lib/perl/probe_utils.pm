@@ -50,6 +50,8 @@ sub send_msg {
 
     if ($output eq "stdout") {
         print "$flag$msg\n";
+    } elsif($output) {
+        syswrite $output, "$flag$msg\n";
     } else {
         if (!open(LOGFILE, ">> $output")) {
             return 1;
@@ -324,20 +326,21 @@ sub is_tftp_ready {
 sub is_dns_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $serverip = shift;
     my $hostname = shift;
     my $domain   = shift;
 
-    my $output = `nslookup $mnip $mnip 2>&1`;
+    my $output = `nslookup $mnip $serverip 2>&1`;
 
     if ($?) {
         return 0;
     } else {
         chomp($output);
-        my $tmp = `echo "$output" |grep "Server:[\t\s]*$mnip" >/dev/null 2>&1`;
-        print "$tmp";
-        return 0 if ($?);
-        $tmp = `echo "$output"|grep "name ="|grep "$hostname\.$domain" >/dev/null 2>&1`;
-        return 0 if ($?);
+        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split(/\n/, $output);
+        return 0 if ($tmp == 0);
+
+        $tmp = grep {$_ =~ "name = $hostname\.$domain"} split(/\n/, $output);
+        return 0 if ($tmp == 0);
         return 1;
     }
 }
