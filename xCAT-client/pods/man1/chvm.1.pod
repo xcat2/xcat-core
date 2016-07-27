@@ -38,7 +38,7 @@ B<chvm> I<noderange> [B<--devdetach> I<pcidevice>...]
    
 =head2 VMware/KVM specific:
 
-B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
+B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> I<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
 
 =head2 zVM specific:
 
@@ -236,7 +236,7 @@ Set the number of CPUs.
 
 =item B<-d> I<disk>
 
-Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
 
 =item B<--mem> I<memory>
 
@@ -244,11 +244,11 @@ Set the memory, defaults to MB.
 
 =item B<-p> I<disk>
 
-Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
 
-=item B<--resize> B<disk>=I<size>
+=item B<--resize> I<disk>=I<size>
 
-Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
+Change the size of the Hard disk.  The disk in I<qcow2> format can not be set to less than it's current size. The disk in I<raw> format can be resized smaller, please use caution. Multiple disks can be resized by using comma separated I<disk>B<=>I<size> pairs.  The disks are specified by SCSI id.  Size defaults to GB.
 
 =back
 
@@ -639,6 +639,10 @@ Output is similar to:
 Output is similar to:
 
   gpok3: Replacing user entry of LNX3... Done
+
+8. To resize virtual machine's disk sdb to 10G and sdc to 15G:
+
+  chvm gpok3 --resize sdb=10G,sdc=15G
 
 =head1 FILES
 
