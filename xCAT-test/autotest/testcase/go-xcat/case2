@@ -1,0 +1,184 @@
+start:go_xcat_online_repo_case1
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.repo install. This case is only for rh and suse 
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/$$BRANCH/core-snap/xCAT-core.repo -y install"
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+check:output=~Version $$BRANCH
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+end
+
+start:go_xcat_online_repo_case2
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core install
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/apt/$$BRANCH/core-snap/";else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/$$BRANCH/core-snap/ -y install"; fi
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+check:output=~Version $$BRANCH
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+end
+
+start:go_xcat_online_repo_case3
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2";else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 -y install"; fi
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+check:output=~Version 2.12
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+end
+
+start:go_xcat_online_repo_case4
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.repo --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install. This is for rh and suse.
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:dir="__GETNODEATTR($$CN,os)__"; if grep SUSE /etc/*release;then os=`echo $dir |cut -c 1-6` && xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/xCAT-core.repo --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/$os/__GETNODEATTR($$CN,arch)__/xCAT-dep.repo -y install" ; elif grep "Red Hat" /etc/*release;then os=`echo $dir |cut -c 1-2` && xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/xCAT-core.repo --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/$os`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/xCAT-dep.repo -y install";fi
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+end
+
+
+start:go_xcat_online_repo_case5
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core --xcat-dep=http://xcat.org/path/to/xcat-dep install
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /xcat-core* /xcat-dep* /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:dir="__GETNODEATTR($$CN,os)__"; if grep SUSE /etc/*release;then os=`echo $dir |cut -c 1-6` && xdsh $$CN "cd /xcat-dep/$os/__GETNODEATTR($$CN,arch)__/; ./mklocalrepo.sh" ; elif grep "Red Hat" /etc/*release;then os=`echo $dir |cut -c 1-2` && xdsh $$CN "cd /xcat-dep/$os`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/; ./mklocalrepo.sh"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /xcat-dep; ./mklocalrepo.sh"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/apt/devel/core-snap/ --xcat-dep=http://xcat.org/files/xcat/repos/apt/xcat-dep/ -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/repos/yum/devel/core-snap/ --xcat-dep=http://xcat.org/files/xcat/repos/yum/xcat-dep/ -y install"; fi
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+cmd:xdsh $$CN "service xcatd status"
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /xcat-core* /xcat-dep* /go-xcat"
+end
+
+start:go_xcat_online_repo_case6
+description:test go_xcat with the option --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+os:Linux
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
+check:rc!=0
+cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
+check:rc==0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+check:rc==0
+cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then  xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2 --xcat-dep=http://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-2.12-ubuntu.tar.bz2 -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 --xcat-dep=http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-2.12-linux.tar.bz2 -y install"; fi
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
+check:rc==0
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "service xcatd stop"
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
+check:rc!=0
+cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
+end

@@ -1,0 +1,3 @@
+deb http://security.ubuntu.com/ubuntu xenial-security main restricted
+deb http://archive.ubuntu.com/ubuntu xenial universe main
+deb http://archive.ubuntu.com/ubuntu xenial-updates universe main

@@ -206,3 +206,11 @@ disable_root_permission_in_policy_table_systemd
 assign_certain_command_permission_systemd
 sles_migration1
 sles_migration2
+go_xcat_local_repo_case1
+go_xcat_local_repo_case2
+go_xcat_local_repo_case3
+go_xcat_local_repo_case4
+go_xcat_local_repo_case5
+go_xcat_local_repo_case6
+go_xcat_local_repo_case7
+go_xcat_noinput
