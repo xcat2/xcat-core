@@ -102,16 +102,6 @@ if [ "$c_flag" -a "$d_flag" ];then
 fi
 
 
-
-uploader="litingt"
-USER="xcat"
-SERVER="xcat.org"
-FILES_PATH="files"
-FRS="/var/www/${SERVER}/${FILES_PATH}"
-release="github.com/xcat2/xcat-core/releases"
-APT_DIR="${FRS}/xcat"
-APT_REPO_DIR="${APT_DIR}/repos/apt"
-
 # Find where this script is located to set some build variables
 old_pwd=`pwd`
 cd `dirname $0`
@@ -120,11 +110,6 @@ curdir=`pwd`
 #define the dep source code path, core build target path and dep build target path
 local_core_repo_path="$curdir/../../xcat-core"
 local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
-
-#define the url used for creating the source list file
-#define the upload dir used for uploading packages
-sf_repo_url="https://xcat.org/files/ubuntu"
-sf_dir="/var/www/xcat.org/files"
 
 #use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
@@ -365,7 +350,6 @@ __EOF__
     chmod 775 mklocalrepo.sh
 
     #create the xcat-core.list file 
-    #echo "deb ${sf_repo_url}/${REL}/${upload_dir}/ precise main" > xcat-core.list
 
     cd ../
     if ! grep xcat /etc/group ; then
@@ -384,26 +368,8 @@ __EOF__
         ln -s xcat-core core-snap
     fi
 
-    # Decide whether to upload or not (default NOT to upload)
-    if [ "$UP" != "1" ]; then 
-        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
-        cd $old_pwd
-        exit 0
-    fi
-
-    #upload the deb packages
-    i=0
-    echo "Uploading RPMs from $upload_dir to ${APT_REPO_DIR}/${REL}/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir  $USER@${SERVER}:${APT_REPO_DIR}/${REL}/
-    do : ; done
-
-    #upload the tar ball
-    i=0
-    echo "Uploading $tar_name to ${APT_DIR}/xcat-core/${REL}/Ubuntu/core-snap/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  $USER@${SERVER}:${APT_DIR}/xcat-core/${REL}/Ubuntu/core-snap/
-    do : ; done
-    
-    cd $old_pwd   
+    cd $old_pwd
+    exit 0
 fi
 
 if [ "$d_flag" ]
@@ -493,8 +459,6 @@ __EOF__
 
     chmod 775 mklocalrepo.sh
 
-    #echo ""deb ${sf_repo_url}/xcat-dep/ precise main"" > xcat-dep.list
-
     cd ..
     if ! grep xcat /etc/group ; then
         groupadd xcat
@@ -509,32 +473,7 @@ __EOF__
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
-    # Decide whether to upload or not (default NOT to upload)
-    if [ "$UP" != "1" ]; then 
-        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
-        cd $old_pwd
-        exit 0
-    fi
-
-    #upload the dep packages
-    i=0
-    echo "Uploading debs from xcat-dep to ${APT_REPO_DIR}/xcat-dep/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep $USER@${SERVER}:${APT_REPO_DIR}/
-    do : ; done
-
-    #upload the tarball
-    i=0
-    echo "Uploading $dep_tar_name to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
-    do : ; done
-
-    #upload the README file
-    cd debs
-    i=0
-    echo "Uploading README to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
-    do : ; done
-
     cd $old_pwd
+    exit 0
 fi
 exit 0
