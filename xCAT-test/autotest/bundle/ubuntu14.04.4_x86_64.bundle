@@ -1,5 +1,13 @@
 Ubuntu_diskless_installation_flat_x86_vm
 Ubuntu_full_installation_flat_x86_vm
+go_xcat_local_repo_case1
+go_xcat_local_repo_case2
+go_xcat_local_repo_case3
+go_xcat_local_repo_case4
+go_xcat_local_repo_case5
+go_xcat_local_repo_case6
+go_xcat_local_repo_case7
+go_xcat_noinput
 makehosts_h
 makehosts_help
 makehosts_n_noderange
@@ -258,11 +266,3 @@ rmdocker_command
 rmdocker_f_command
 lsdocker_h_command
 lsdocker_l_command
-go_xcat_local_repo_case1
-go_xcat_local_repo_case2
-go_xcat_local_repo_case3
-go_xcat_local_repo_case4
-go_xcat_local_repo_case5
-go_xcat_local_repo_case6
-go_xcat_local_repo_case7
-go_xcat_noinput

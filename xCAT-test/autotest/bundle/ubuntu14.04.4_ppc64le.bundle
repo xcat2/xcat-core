@@ -1,5 +1,13 @@
 Diskless_installation_flat_p8_le
 Full_installation_flat_p8_le
+go_xcat_local_repo_case1
+go_xcat_local_repo_case2
+go_xcat_local_repo_case3
+go_xcat_local_repo_case4
+go_xcat_local_repo_case5
+go_xcat_local_repo_case6
+go_xcat_local_repo_case7
+go_xcat_noinput
 makehosts_h
 makehosts_help
 makehosts_n_noderange
@@ -241,11 +249,3 @@ xcatd_restart
 run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
-go_xcat_local_repo_case1
-go_xcat_local_repo_case2
-go_xcat_local_repo_case3
-go_xcat_local_repo_case4
-go_xcat_local_repo_case5
-go_xcat_local_repo_case6
-go_xcat_local_repo_case7
-go_xcat_noinput
