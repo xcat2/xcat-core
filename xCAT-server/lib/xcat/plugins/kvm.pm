@@ -2127,10 +2127,15 @@ sub chvm {
                             eval {
                                 $vol->resize($value, &Sys::Virt::StorageVol::RESIZE_SHRINK);
                             };
-                            if (($@) && ($@ =~ /$shrinking_not_supported/)) {
-                                # qcow2 does not support shrining volumes, display more readable error
-                
-                                xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $shrinking_not_supported" ], $callback, $node);
+                            if ($@) {
+                                if ($@ =~ /$shrinking_not_supported/) {
+                                    # qcow2 does not support shrinking volumes, display more readable error
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $shrinking_not_supported" ], $callback, $node);
+                                }
+                                else {
+                                    # some other resize error from libvirt, just display it
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $@" ], $callback, $node);
+                                }
                             }
                             else {
                                 # success
