@@ -11,3 +11,5 @@ wget
 rsync
 timezone
 ntp
+tar
+gzip

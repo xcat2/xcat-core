@@ -24,4 +24,5 @@ irqbalance
 procps-ng
 parted
 net-tools
-xz
+gzip
+tar

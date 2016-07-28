@@ -87,7 +87,7 @@ elif [ -r /rootimg.gz ]; then
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
-elif [ -r /rootimg.txz ]; then
+elif [ -r /rootimg.tgz ]; then
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -97,7 +97,7 @@ elif [ -r /rootimg.txz ]; then
 
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
-  tar -Jxvf /rootimg.txz
+  tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz
   $NEWROOT/etc/init.d/localdisk
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then

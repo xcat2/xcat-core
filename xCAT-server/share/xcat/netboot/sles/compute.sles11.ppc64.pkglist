@@ -19,3 +19,5 @@ lsvpd
 irqbalance
 procps
 ntp
+gzip
+tar

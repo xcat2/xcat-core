@@ -1172,7 +1172,7 @@ sub mknetboot
         $platform = xCAT_plugin::debian::getplatform($osver);
         my $suffix = 'gz';
         $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'txz' if (-r "$rootimgdir/rootimg.txz");
+        $suffix = 'tgz' if (-r "$rootimgdir/rootimg.tgz");
 
         # statelite images are not packed.
         if ($statelite) {
@@ -1222,7 +1222,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.txz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.tgz" or -r "$rootimgdir/rootimg.sfs") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });

@@ -19,4 +19,5 @@ rsyslog
 e2fsprogs
 parted
 net-tools
-xz
+gzip
+tar

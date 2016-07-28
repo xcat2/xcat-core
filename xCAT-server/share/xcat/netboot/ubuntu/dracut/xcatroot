@@ -50,12 +50,12 @@ elif [ -r /rootimg.gz ]; then
     gzip -cd /rootimg.gz |cpio -idum
   fi
   echo Done
-elif [ -r /rootimg.txz ]; then
+elif [ -r /rootimg.tgz ]; then
   echo Setting up RAM-root tmpfs.
   mount -t tmpfs -o mode=755 rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
-  tar -Jxvf /rootimg.txz
+  tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
