@@ -1,7 +1,7 @@
 start:go_xcat_local_repo_case1
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core.repo install 
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -29,7 +29,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -39,7 +39,7 @@ end
 start:go_xcat_local_repo_case2
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core install
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -65,7 +65,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -75,7 +75,7 @@ end
 start:go_xcat_local_repo_case3
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core.tar install
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -101,7 +101,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -111,7 +111,7 @@ end
 start:go_xcat_local_repo_case4
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core.tar.bz2 --xcat-dep=/path/to/xcat-dep.tar.bz2 install
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -137,7 +137,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -147,7 +147,7 @@ end
 start:go_xcat_local_repo_case5
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core.repo --xcat-dep=/path/to/xcat-dep.repo install 
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -180,7 +180,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -190,7 +190,7 @@ end
 start:go_xcat_local_repo_case6
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core --xcat-dep=/path/to/xcat-dep install 
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -220,7 +220,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
@@ -230,7 +230,7 @@ end
 start:go_xcat_local_repo_case7
 description:test go_xcat with the option --xcat-core=/path/to/xcat-core.tar.bz2  --xcat-dep=/path/to/xcat-dep.tar.bz2 install 
 os:Linux
-cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat"; else echo "Sorry,this is not supported os"; fi
+cmd:if xdsh $$CN "zypper -h"; then  xdsh $$CN "zypper remove -y *xCAT*"; elif xdsh $$CN "yum -h";then xdsh $$CN  "yum remove -y *xCAT*"; elif xdsh $$CN "apt-get -h";then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa |grep -i perl-xcat";fi
 check:rc!=0
 cmd:if xdsh $$CN "grep \"Red Hat\" /etc/*release >/dev/null"; then xdsh $$CN "yum install -y yum-utils bzip2"; fi
@@ -254,7 +254,7 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:xdsh $$CN "service xcatd stop"
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get remove perl-xcat xcat-client xcat-server xcat" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "zypper remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/zypp/repos.d/xCAT-*.repo"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "yum remove -y *xCAT*" && xdsh $$CN "rm -rf /etc/yum.repos.d/xCAT-*.repo"; elif grep Ubuntu /etc/*release;then xdsh $$CN "apt-get purge perl-xcat xcat-client xcat-server xcat -y" && xdsh $$CN "rm -rf /etc/apt/sources.list.d/xcat-*.list"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "dpkg -l |grep -i perl-xcat";else xdsh $$CN "rpm -qa|grep -i perl-xcat";fi
 check:rc!=0
