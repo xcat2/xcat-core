@@ -1,0 +1,421 @@
+#!/bin/bash
+
+function step_0100_welcome()
+{
+	local -i ret=0
+	dialog --backtitle 'xCAT Wizard' \
+		--yes-label 'Next' --no-label 'Cancel' \
+		--title 'Welcome' \
+		--cr-wrap \
+		--yesno \
+		"Welcome to use xCAT Wizard.\n\nDuring this wizard session, a bunch of questions are going to be asked. Based on the answers of these questions, xCAT will be configured afterward." \
+		18 72
+	ret="$?"
+	case "${ret}" in
+	0)	XCAT_WIZARD_STAGE="0200" ;;
+	*)	
+		clear
+		exit 255 ;;
+	esac
+}
+
+function step_0200_how_many_nodes()
+{
+	local -i ret=0
+	exec 3>&1
+	XCAT_WIZARD_0200_NODES="$(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--title 'How many nodes' \
+		--inputbox \
+		"In the cluster of which this xCAT management node will manage, how many nodes are plan to have? Based on the number of this answer, xCAT Wizard will do some optimization and performance tunning.\n\nA precise number is not needed, but please enter a rough number below." \
+		18 72 "${XCAT_WIZARD_0200_NODES:-100}" \
+		2>&1 1>&3)"
+	ret="$?"
+	exec 3>&-
+	# Treat the hostname properly
+	case "${ret}" in
+	0)	XCAT_WIZARD_STAGE="0300" ;;
+	1)	XCAT_WIZARD_STAGE="0100" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0300"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0300_network_adapter()
+{
+	local -i ret=0
+	local oIFS="${IFS}"
+	IFS=$'\n'
+	local -a items=(`
+		IFS="${oIFS}"
+		while read -r nic blah
+		do
+			[[ ${nic} =~ : ]] || continue
+			nic="${nic%:}"
+			[[ "${nic}" = "lo" ]] && continue
+			mac=""
+			inet=""
+			inet6=""
+			while read -r key addr blah
+			do
+				case "${key}" in
+				"link/"*)
+					mac="${addr}"
+					;;
+				"inet")
+					inet="${addr}"
+					;;
+				"inet6")
+					inet6="${addr}"
+					;;
+				esac
+			done < <(ip addr show "${nic}")
+			echo "${nic}"
+			echo "${mac} ${inet}"
+		done </proc/net/dev
+	`)
+	IFS="${oIFS}"
+	exec 3>&1
+	XCAT_WIZARD_0300_NIC="$(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--default-item "${XCAT_WIZARD_0300_NIC}" \
+		--title 'Network adapter' \
+		--menu \
+		"Please choose the network adapter which connected to the cluster management network.\n\nThe xCAT management network is the network used by the management node to do the operating system deployment.\n\nIf you have a large cluster in which service nodes are involved, please choose the network adapter which connected to the management network in which multiple service nodes are connected." \
+		18 72 12 "${items[@]}" \
+		2>&1 1>&3)"
+	ret="$?"
+	exec 3>&-
+	case "${ret}" in
+	0)
+		XCAT_WIZARD_MASTER="`
+			while read -r key addr blah
+			do
+				case "${key}" in
+				"link/"*)
+					mac="${addr}"
+					;;
+				"inet")
+					inet="${addr}"
+					;;
+				"inet6")
+					inet6="${addr}"
+					;;
+				esac
+			done < <(ip addr show "${XCAT_WIZARD_0300_NIC}")
+			echo "${inet}"
+		`"
+		chdef -t site "master=${XCAT_WIZARD_MASTER%%/*}" >/dev/null 2>&1
+		XCAT_WIZARD_STAGE="0400"
+		;;
+	1)	XCAT_WIZARD_STAGE="0200" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0400"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0400_act_as_dns_server()
+{
+	local -i ret=0
+	local use_external_dns=""
+	exec 3>&1
+	XCAT_WIZARD_0400_DNS_SERVER="$(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--default-item "${XCAT_WIZARD_0400_DNS_SERVER}" \
+		--title 'Be primary master name server?' \
+		--menu \
+		"Will this cluster have a separate DNS subdomain?\n\nIf you only have a small amount of nodes in this cluster, use external DNS server to do all the name resolution may be preferred. In this case, either all nodes in this cluster can be resolved with external DNS server, or a simple /etc/hosts file will be used to do all the name resolving in this cluster.\n\nOn the other hand, If you have a really large cluster with a great number of nodes, use a separate DNS subdomain for the whole cluster may be a good idea. In this case, this management node will act as the primary master name server of this subdomain." \
+		20 74 14 \
+		"No" "use external DNS server" \
+		"Yes" "use separate subdomain, and act as primary master name server" \
+		2>&1 1>&3)"
+	ret="$?"
+	exec 3>&-
+	case "${ret}" in
+	0)
+		if [[ "${XCAT_WIZARD_0400_DNS_SERVER}" = "Yes" ]]
+		then
+			chdef -t site "nameservers=${XCAT_WIZARD_MASTER%%/*}" >/dev/null 2>&1
+		fi
+		XCAT_WIZARD_STAGE="0500"
+		;;
+	1)	XCAT_WIZARD_STAGE="0300" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0500"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0500_hostname()
+{
+	local -i ret=0
+	local hostname="$(hostname -s 2>/dev/null)"
+	XCAT_WIZARD_0500_HOSTNAME="${hostname%%.*}"
+	exec 3>&1
+	XCAT_WIZARD_0500_HOSTNAME="$(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--title 'Hostname' \
+		--inputbox \
+		"In order to make the xCAT management node running properly, the hostname of this machine must be configured correctly.\n\nPlease enter the hostname for this system.\n\nThe hostname is a single word that identifies your system to the network. If you do not know what your hostname should be, please consult your network administrator." \
+		18 72 "${XCAT_WIZARD_0500_HOSTNAME}" \
+		2>&1 1>&3)"
+	ret="$?"
+	exec 3>&-
+	# Treat the hostname properly
+	case "${ret}" in
+	0)	XCAT_WIZARD_STAGE="0600" ;;
+	1)	XCAT_WIZARD_STAGE="0400" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0600"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0600_dns_domain_name()
+{
+	local -i ret=0
+	local dns_domain_name="$(hostname -d 2>/dev/null)"
+	XCAT_WIZARD_0600_DNS_DOMAIN_NAME="${dns_domain_name}"
+	exec 3>&1
+	XCAT_WIZARD_0600_DNS_DOMAIN_NAME="$(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--title 'DNS domain name' \
+		--inputbox \
+		"Please enter the FQDN (Fully Qualified Domain Name) of this system.\n\nThe FQDN (Fully Qualified Domain Name) of the system is the name that the resolver returns for the host name, such as, ursula.example.com. It is usually the hostname followed by the DNS domain name (the part after the first dot).\n\nIf you do not know what your domain name should be, please consult your network administrator." \
+		18 72 "${XCAT_WIZARD_0600_DNS_DOMAIN_NAME}" \
+		2>&1 1>&3)"
+	ret="$?"
+	exec 3>&-
+	# Treat the DNS domain name properly
+	case "${ret}" in
+	0)
+		chdef -t site "domain=${XCAT_WIZARD_0600_DNS_DOMAIN_NAME}" >/dev/null 2>&1
+		XCAT_WIZARD_STAGE="0700"
+		;;
+	1)	XCAT_WIZARD_STAGE="0500" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0700"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0700_name_servers()
+{
+	local -i ret=0
+	local -a nameservers=()
+	while read -r
+	do
+		REPLY="${REPLY%%#*}"
+		set -- ${REPLY}
+		[[ "$1" = "nameserver" ]] && nameservers+=("$2")
+	done </etc/resolv.conf
+	exec 3>&1
+	local oIFS="${IFS}"
+	IFS=$'\n'
+	XCAT_WIZARD_0700_NAME_SERVERS=($(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--title 'DNS Servers' \
+		--form \
+		"Please input the IP address of your DNS servers below.\n\nThese are Internet address of a name servers that the resolver should query, either an IPv4 address (in dot notation), or an IPv6 address in colon (and possibly dot) notation as per RFC 2373. Up to 3 DNS servers can be listed here.\n\nYou may consult your network administrator if needed." \
+		18 72 3 \
+		"Primary DNS Server"   1 1 "${nameservers[0]}" 1 25 40 255 \
+		"Secondary DNS Server" 2 1 "${nameservers[1]}" 2 25 40 255 \
+		"Tertiary DNS Server"  3 1 "${nameservers[2]}" 3 25 40 255 \
+		2>&1 1>&3
+	))
+	ret="$?"
+	IFS="${oIFS}"
+	exec 3>&-
+	case "${ret}" in
+	0)
+		# Save the configuration to /etc/resolv.conf
+		while read -r ; do echo "${REPLY}" ; done \
+			>/etc/resolv.conf <<-EOF
+			# Generated by xCAT Wizard
+			$(
+				for n in "${XCAT_WIZARD_0700_NAME_SERVERS[@]}"
+				do
+					echo "nameserver ${n}"
+				done
+			)
+			domain ${XCAT_WIZARD_0600_DNS_DOMAIN_NAME}
+			search ${XCAT_WIZARD_0600_DNS_DOMAIN_NAME}
+		EOF
+		chdef -t site "forwarders=${XCAT_WIZARD_0700_NAME_SERVERS[0]}" >/dev/null 2>&1
+		if [[ "${XCAT_WIZARD_0400_DNS_SERVER}" = "No" ]]
+		then
+			chdef -t site "nameservers=${XCAT_WIZARD_0700_NAME_SERVERS[0]}" >/dev/null 2>&1
+		fi
+		XCAT_WIZARD_STAGE="0800"
+		;;
+	1)	XCAT_WIZARD_STAGE="0600" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="0800"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_0800_ntp_servers()
+{
+	local -i ret=0
+	local -a ntp_servers=()
+	while read -r
+	do
+		REPLY="${REPLY%%#*}"
+		set -- ${REPLY}
+		if [[ "$1" = "server" ]]
+		then
+			[[ $2 =~ ^127\. ]] && continue
+			ntp_servers+=("$2")
+		fi
+	done </etc/ntp.conf
+	local -i i
+	for i in {0..3}
+	do
+		[[ "${#ntp_server}" -ge 4 ]] && break
+		ntp_servers+=("${i}.pool.ntp.org")
+	done
+	exec 3>&1
+	local oIFS="${IFS}"
+	IFS=$'\n'
+	XCAT_WIZARD_0800_NTP_SERVERS=($(dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --cancel-label 'Prev' \
+		--extra-button --extra-label 'Skip' \
+		--title 'NTP Servers' \
+		--form \
+		"Please input the IP address of your NTP servers below.\n\nNetwork Time Protocol (NTP) is a networking protocol for clock synchronization between computer systems over packet-switched, variable-latency data networks. Up to 4 NTP servers can be listed here.\n\nYou may consult your network administrator if needed." \
+		18 72 4 \
+		"Primary NTP Server"    1 1 "${ntp_servers[0]}" 1 25 40 255 \
+		"Secondary NTP Server"  2 1 "${ntp_servers[1]}" 2 25 40 255 \
+		"Tertiary NTP Server"   3 1 "${ntp_servers[2]}" 3 25 40 255 \
+		"Quaternary NTP Server" 4 1 "${ntp_servers[3]}" 4 25 40 255 \
+		2>&1 1>&3
+	))
+	ret="$?"
+	IFS="${oIFS}"
+	exec 3>&-
+	case "${ret}" in
+	0)
+		chdef -t site "extntpservers=${XCAT_WIZARD_0800_NTP_SERVERS[0]}${XCAT_WIZARD_0800_NTP_SERVERS[1]:+,}${XCAT_WIZARD_0800_NTP_SERVERS[1]}${XCAT_WIZARD_0800_NTP_SERVERS[2]:+,}${XCAT_WIZARD_0800_NTP_SERVERS[2]}${XCAT_WIZARD_0800_NTP_SERVERS[3]:+,}${XCAT_WIZARD_0800_NTP_SERVERS[3]}" >/dev/null 2>&1
+		makentp >/dev/null 2>&1
+		XCAT_WIZARD_STAGE="9900"
+		;;
+	1)	XCAT_WIZARD_STAGE="0700" ;;
+	3)
+		answer_later
+		XCAT_WIZARD_STAGE="9900"
+		;;	
+	*)	exit 255 ;;
+	esac
+}
+
+function step_9900_accomplished()
+{
+	local -i ret=0
+	dialog --backtitle 'xCAT Wizard' \
+		--yes-label 'Okay' --no-label 'Prev' \
+		--title 'Accomplished' \
+		--cr-wrap \
+		--yesno \
+		"The basic configuration of xCAT is accomplished. You may continue setup the cluster by refer the document below.\n\nhttps://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/" \
+		18 72
+	ret="$?"
+	case "${ret}" in
+	0)	XCAT_WIZARD_STAGE="" ;;
+	1)	XCAT_WIZARD_STAGE="0800" ;;
+	*)	
+		clear
+		exit 255 ;;
+	esac
+}
+
+function answer_later()
+{
+	dialog --backtitle 'xCAT Wizard' \
+		--ok-label 'Next' --title 'Answer later' \
+		--msgbox 'Cool, you can answer later if you want.' \
+		6 48
+}
+
+function var_export()
+{
+	local var="$1"
+	local -i i
+	local v=""
+	if [[ "$(declare -p "${var}")" =~ "declare -a" ]]
+	then
+		# Is array
+		echo -n "${var}=("
+		for i in $(eval echo "\${!${var}[@]}")
+		do
+			[[ -n "${v}" ]] && echo -n " "
+			v="${var}[${i}]"
+			echo -n "[${i}]=\"${!v}\""
+		done
+		echo ")"
+	else
+		echo "${var}=\"${!var}\""
+	fi
+}
+
+XCAT_WIZARD_CONFIG_FILE="${HOME}/.xcat-wizard"
+
+function save_config_file()
+{
+	local var=""
+	for var in "${!XCAT_WIZARD_0@}"
+	do
+		var_export "${var}"
+	done >"${XCAT_WIZARD_CONFIG_FILE}"
+}
+
+function load_config_file()
+{
+	source "${XCAT_WIZARD_CONFIG_FILE}" 2>/dev/null
+}
+
+XCAT_WIZARD_STAGE=""
+
+function xcat_wizard_engine()
+{
+	local stage=""
+	XCAT_WIZARD_STAGE="0100"
+	while [[ -n "${XCAT_WIZARD_STAGE}" ]]
+	do
+		stage="$(compgen -A function "step_${XCAT_WIZARD_STAGE}_")"
+		if [[ -z "${stage}" ]]
+		then
+			clear
+			echo "${0##*/}: unknown xCAT Wizard stage ${XCAT_WIZARD_STAGE}" >&2
+			exit 1
+		fi
+		"${stage}"
+	done
+}
+
+export PATH="/opt/xcat/bin:/opt/xcat/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+load_config_file
+xcat_wizard_engine
+save_config_file
+clear
