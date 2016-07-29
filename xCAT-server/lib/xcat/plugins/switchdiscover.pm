@@ -163,7 +163,7 @@ sub parse_args {
     #############################################
     # Check for node range
     #############################################
-    if ( scalar(@ARGV) eq 1 ) {
+    if ( scalar(@ARGV) == 1 ) {
         my @nodes = xCAT::NodeRange::noderange( @ARGV );
         if (nodesmissed) {
             return (usage( "The following nodes are not defined in xCAT DB:\n  " . join(',', nodesmissed)));
@@ -456,7 +456,7 @@ sub process_request {
             if (exists($result->{$key}->{vendor})) {
                 $vendor = $result->{$key}->{vendor};
             }
-            if ($key != /nomac/) {
+            if ($key !~ /nomac/) {
                 $mac = $key;
             }
             my $msg = sprintf $format, $ip, $name, $vendor, $key;
@@ -472,11 +472,6 @@ sub process_request {
     }
 
     if (exists($globalopt{setup})) {
-        #discovered switches need to write to xcatdb before we can set them up
-        # It will be removed once we found predefine switch.
-        if (!exists($globalopt{w})) {
-            xCATdB($result, \%request, $sub_req);
-        }
         switchsetup($result, \%request, $sub_req);
     }
 
@@ -1376,6 +1371,8 @@ sub switchsetup {
     my $static_ip;
     my $discover_switch;
     my @rmnodes;
+    my @BNTswitches;
+    my @MLNXswitches;
 
     #print Dumper($outhash);
     my $macmap = xCAT::MacMap->new();
@@ -1392,14 +1389,9 @@ sub switchsetup {
         # issue makehosts so we can use xdsh
         my $dswitch = get_hostname($outhash->{$mac}->{name}, $ip);
 
-        #add discovered switch to /etc/hosts
-        $output = xCAT::Utils->runxcmd({command => ["makehosts"],
-                                        node =>[$dswitch]}, $sub_req, 0, 1);
-
         my $node = $macmap->find_mac($mac,0);
         if (!$node) {
-            send_msg($request, 0, "NO predefined switch matched this switch $dswitch with mac address $mac");
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$dswitch,"ip=$ip",'status=no predefined switch'] }, $sub_req, 0, 1);
+            send_msg($request, 0, "NO predefined switch matched this switch $dswitch with ip address $ip and mac address $mac");
             next;
         }
 
@@ -1416,208 +1408,34 @@ sub switchsetup {
 
         # BNT switches
         if ( $stype =~ /BNT/ ) {
-            $ret = config_BNT($dswitch, $node, $static_ip, $request, $sub_req);
-            if ($ret == 1) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=dhcp:$ip",'status=config failed'] }, $sub_req, 0, 1);
-            }
+            push (@BNTswitches, $node);
+            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=$ip",'status=Matched',"mac=$mac",'switchtype=BNT','username=root','password=admin'] }, $sub_req, 0, 1);
         } 
         # Mellanox switches
         elsif ( $stype =~ /Mellanox/ ) {
-            #set static ip address the mgmt0, we don't have EthSwitch yet, will use IBSwitch for now
-            #NOTE:  this expect routine will timeout after set up address
-            $ret = config_Mellanox($dswitch, $node, $static_ip, $request, $sub_req);
-            if ($ret == 1) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=dhcp:$ip",'status=config failed'] }, $sub_req, 0, 1);
-            }
+            push (@MLNXswitches, $node);
+            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=$ip",'status=Matched',"mac=$mac",'switchtype=Mellanox','username=admin'] }, $sub_req, 0, 1);
 
         } 
         else {
-            send_msg($request, 0, "the switch $dswitch type $stype is not support\n");
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype","otherinterfaces=dhcp:$ip",'status=switch type is not supported yet'] }, $sub_req, 0, 1);
+            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype","otherinterfaces=$ip",'status=not supported',"mac=$mac"] }, $sub_req, 0, 1);
         }
-
-        # save for update mac address and remove node definition
-        $discovered_switch->{$node}->{mac}=$mac;
-        push (@rmnodes, $dswitch);
     }
-
-    #after switch ip address is setup to static ip
-    #remove discover switch definition
-    $output = xCAT::Utils->runxcmd({command => ["makehosts"],
-                                    node => \@rmnodes,
-                                    arg => ['-d'] }, $sub_req, 0, 1);
-    my $remove_nodes = join(",", @rmnodes);
-    my $ccmd = "rmdef $remove_nodes";
-    $output = xCAT::Utils->runcmd($ccmd, 0);
-    #send_msg($request, 0, Dumper($output));
     
-    #update mac address
-    my $mactab = xCAT::Table->new('mac');
-    if ($mactab) {
-        $mactab->setNodesAttribs($discovered_switch);
+    if (@BNTswitches) {
+        my $bntsw = join(",",@BNTswitches);
+        send_msg($request, 0, "call to config BNT switches $bntsw\n");
+        my $out = `/opt/xcat/share/xcat/tools/configBNT --range $bntsw --all`;
+        send_msg($request, 0, "output = $out\n");
+    }
+    if (@MLNXswitches) {
+        my $mlnxsw = join(",",@MLNXswitches);
+        send_msg($request, 0, "call to config Mellanox switches $mlnxsw\n");
+        my $out = `/opt/xcat/share/xcat/tools/configMellanox --range $mlnxsw --all`;
+        send_msg($request, 0, "output = $out\n");
     }
     return;
 }
-
-#--------------------------------------------------------------------------------
-=head3 config_BNT 
-      config BNT switches 
-          ---setup static ip address
-          ---setup hostname
-          ---set default user/password
-    Arguments:
-      dswitch: discovered switch 
-      node:    predefine switch
-      ip:      static ip address
-    Returns:
-      result:
-=cut
-#--------------------------------------------------------------------------------
-
-sub config_BNT {
-    my $dswitch=shift;
-    my $node = shift;
-    my $static_ip = shift;
-    my $request = shift;
-    my $sub_req = shift;
-    my $dshcmd;
-    my $ret;
-
-    #xdsh switch-192-168-5-152 --devicetype EthSwitch::BNT
-    #    "enable;configure terminal;show interface ip;interface ip 1;ip address 192.168.5.22"
-    $dshcmd="enable;configure terminal;show interface ip;interface ip 1;ip address $static_ip;exit;exit";
-    $output = xCAT::Utils->runxcmd({command => ["xdsh"],
-                                    node =>[$dswitch],
-                                    arg => ["--devicetype", "EthSwitch::BNT", "$dshcmd"] }, $sub_req, 0, 1);
-    #send_msg($request, 0, Dumper($output));
-    
-    #add default attribute for BNT switch
-    my $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=root','password=admin','protocol=telnet','switchtype=BNT','otherinterfaces=','status='] }, $sub_req, 0, 1);
-    #send_msg($request, 0, Dumper($ret));
-
-    #set up hostname
-    $dshcmd="enable;configure terminal;hostname $node;write memory";
-    $output = xCAT::Utils->runxcmd({command => ["xdsh"],
-                                    node =>[$node],
-                                    arg => ["--devicetype", "EthSwitch::BNT", "$dshcmd"] }, $sub_req, 0, 1);
-    if ($::RUNCMD_RC != 0)
-    {
-        send_msg($request, 0, "Failed to change hostname on $node");
-        return 1;
-    }
-   
-    return 0;
-}
-
-#--------------------------------------------------------------------------------
-=head3 config_Mellanox 
-      config Mellanox switches 
-          ---setup static ip address
-          ---setup hostname
-          ---set default user/password
-    Arguments:
-      dswitch: discovered switch 
-      node:    predefine switch
-      ip:      static ip address
-    Returns:
-      result:
-=cut
-#--------------------------------------------------------------------------------
-
-sub config_Mellanox {
-    my $dswitch=shift;
-    my $node = shift;
-    my $static_ip = shift;
-    my $request = shift;
-    my $sub_req = shift;
-    my $dshcmd;
-    my $mask;
-
-    # get netmask from network table
-    my $nettab = xCAT::Table->new("networks");
-    if ($nettab) {
-        my @nets = $nettab->getAllAttribs('net','mask');
-        foreach my $net (@nets) {
-            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
-                $mask=$net->{'mask'};
-            }
-        }
-    }
-
-    #set static ip address the mgmt0, we don't have EthSwitch yet, will use IBSwitch for now
-    #NOTE:  this expect routine will timeout after set up address
-
-    my $myexp = new Expect;
-    my $timeout = 10;
-    my $login_cmd = "ssh -ladmin $dswitch\r";
-    my $first_prompt = "^.*>";
-    my $config_prompt="^.*#";
-    my $cfg_ip="no interface mgmt0 dhcp\r";
-    my $cfg_ip1="interface mgmt0 ip address $static_ip $mask\r";
-
-    unless ($myexp->spawn($login_cmd))
-    {
-        $myexp->soft_close();
-        send_msg($request, 0, "Unable to run $login_cmd\n");
-        next;
-    }
-
-    my @result = $myexp->expect(
-        $timeout,
-        [
-            "-re", $first_prompt,
-            sub {
-                $myexp->clear_accum();
-                $myexp->send("enable\r");
-                $myexp->clear_accum();
-                $myexp->send("configure terminal\r");
-                $myexp->clear_accum();
-                $myexp->exp_continue();
-            }
-        ],
-        [
-            "-re", $config_prompt,
-            sub {
-                $myexp->clear_accum();
-                $myexp->send($cfg_ip);
-                $myexp->send($cfg_ip1);
-                $myexp->clear_accum();
-                $myexp->send("configuration write\r");
-                $myexp->send("exit\r");
-                $myexp->send("exit\r");
-            }
-        ],
-    );
-    if (defined($result[1]))
-    {
-        my $errmsg = $result[1];
-        $myexp->soft_close();
-        send_msg($request,0,"Failed expect command $errmsg\n");
-    }
-
-    $myexp->soft_close();
-
-    #add default attribute for Mellanox switch
-    $output = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip",'username=admin','switchtype=Mellanox','otherinterfaces=','status='] }, $sub_req, 0, 1);
-    #send_msg($request, 0, Dumper($output));
-
-
-    #set up hostname
-    $dshcmd="enable;configure terminal;hostname $node;configuration write";
-    $output = xCAT::Utils->runxcmd({command => ["xdsh"],
-                                    node =>[$node],
-                                    arg => ["-l", "admin", "--devicetype", "IBSwitch::Mellanox", "$dshcmd"] }, $sub_req, 0, 1);
-    if ($::RUNCMD_RC != 0)
-    {
-        send_msg($request, 0, "Failed to change hostname on $node");
-        return 1;
-    }
-
-    return 0;
-}
-
-
-
 
 
 1;
