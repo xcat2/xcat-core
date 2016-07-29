@@ -1221,25 +1221,19 @@ $SIG{TERM} = $SIG{INT} = sub {
             #try INT up to 4 times if need
             if($try < 5){
                 kill 'INT', $pid;
-                send_msg(2, "send INT to subprocess $pid...[$try]");
             #try TERM up to 4 times if need
             }elsif($try < 9){
                 kill 'TERM', $pid;
-                send_msg(2, "send TERM to subprocess $pid...[$try]");
             #force to kill finally
             }elsif($try < 100){
                 kill 'KILL', $pid;
-                send_msg(2, "send KILL to subprocess $pid...[$try]");
             }else{
-                send_msg(2, "Can't stop pid $pid");
                 last;
             }
-            sleep 1;
         }
     }
 
     &cleanup;
-    send_msg(2, "receive TERM or INT signal to exit");
     exit 0;
 };
 
