@@ -1214,13 +1214,28 @@ if ( !defined($pid) ) {
 
 $SIG{TERM} = $SIG{INT} = sub {
     if($pid) {
-        my $try=1;
-        do{
-            kill 'INT', $pid;
-            send_msg(2, "send INT to subprocess $pid...[$try]");
-            $try++;
+        my $try=0;
+        kill 'INT', $pid;
+        while(waitpid($pid,  WNOHANG)==0){
+            ++$try;
+            #try INT up to 4 times if need
+            if($try < 5){
+                kill 'INT', $pid;
+                send_msg(2, "send INT to subprocess $pid...[$try]");
+            #try TERM up to 4 times if need
+            }elsif($try < 9){
+                kill 'TERM', $pid;
+                send_msg(2, "send TERM to subprocess $pid...[$try]");
+            #force to kill finally
+            }elsif($try < 100){
+                kill 'KILL', $pid;
+                send_msg(2, "send KILL to subprocess $pid...[$try]");
+            }else{
+                send_msg(2, "Can't stop pid $pid");
+                last;
+            }
             sleep 1;
-        }while(waitpid($pid,  WNOHANG)==0)
+        }
     }
 
     &cleanup;
@@ -1274,13 +1289,28 @@ if($sub_process_rt) {
 }else{
     send_msg(0, "[[main]]: regression test return out of time");
     if($pid) {
-        my $try=1;
-        do{
-            kill 'INT', $pid;
-            send_msg(2, "[[main]]: send INT to subprocess $pid...[$try]");
-            $try++;
+        my $try=0;
+        kill 'INT', $pid;
+        while(waitpid($pid,  WNOHANG)==0){
+            ++$try;
+            #try INT up to 4 times if need
+            if($try < 5){
+                kill 'INT', $pid;
+                send_msg(2, "send INT to subprocess $pid...[$try]");
+            #try TERM up to 4 times if need
+            }elsif($try < 9){
+                kill 'TERM', $pid;
+                send_msg(2, "send TERM to subprocess $pid...[$try]");
+            #force to kill finally
+            }elsif($try < 100){
+                kill 'KILL', $pid;
+                send_msg(2, "send KILL to subprocess $pid...[$try]");
+            }else{
+                send_msg(2, "Can't stop pid $pid");
+                last;
+            }
             sleep 1;
-        }while(waitpid($pid,  WNOHANG)==0)
+        }
     }
 }
 
