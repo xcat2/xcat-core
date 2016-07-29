@@ -1179,6 +1179,7 @@ sub runxcmd
 {
 
     my $save_CALLBACK = $::CALLBACK;
+    my $save_callback = $::callback;
     my ($class, $cmd, $subreq, $exitcode, $refoutput) = @_;
     $::RUNCMD_RC = 0;
 
@@ -1248,7 +1249,7 @@ sub runxcmd
     }
 
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
-
+    $::callback = $save_callback;    # To keep $::callback also since some module use this global variable
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
