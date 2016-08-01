@@ -2522,6 +2522,31 @@ sub chvm {
     }
 }
 
+#######################################################################
+# get_disks_by_userspecs
+# Description: get the storage device info ( xml and source file ) of 
+#              the user specified disk devices 
+# Arguments:   
+#              $specs : ref to the user specified disk name list           
+#              $xml   : the xml string of the domain
+#              $returnmoddedxml : switch on whether to prepend
+#              the domain xml with the user specified disk removed
+#              to the beginning of the return array  
+# Return   :
+#              An array with the structure 
+#             [
+#              <domain xml>(optional: with the user specified disk removed, 
+#                           exist only if $returnmoddedxml specified),
+#              [<the disk device xml>, <the source file of the disk device>],
+#              [<the disk device xml>, <the source file of the disk device>],
+#              ...
+#             ]
+# Example  :   
+#             1. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml, 'returnmoddedxml');
+#                my $moddedxml = shift @disklist;
+#             2. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml)
+#
+#######################################################################
 sub get_disks_by_userspecs {
     my $specs           = shift;
     my $xml             = shift;
