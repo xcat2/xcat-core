@@ -246,6 +246,8 @@ sub process_request {
         my $mactab = xCAT::Table->new("mac", -create => 1);
         my @ifinfo;
         my %usednames;
+        my %usednames_for_net;
+        my @hostnames_to_update = ();
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
         foreach (@{ $request->{mac} }) {
@@ -284,9 +286,19 @@ sub process_request {
                     my $mask = 2**$netbits - 1 << (32 - $netbits);
                     my $netn = inet_ntoa(pack("N", $ipn & $mask));
                     my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
+                    unless ($hosttag) {
+                        my $nettagname = $usednames_for_net{$netn};
+                        # For nics not in the install network, don't deal with them if not an avaliable hostname get 
+                        # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
+                        if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
+                            $hosttag = "$node-$ifinfo[1]";
+                            push @hostnames_to_update, $hosttag;
+                        }
+                    }
                     print Dumper($hosttag) . "\n";
                     if ($hosttag) {
                         $usednames{$hosttag} = 1;
+                        $usednames_for_net{$netn} = $hosttag;
                         if ($hosttag eq $node) {
                             $macstring .= $currmac . "|";
                         } else {
@@ -308,6 +320,25 @@ sub process_request {
         }
         $macstring =~ s/\|\z//;
         $mactab->setNodeAttribs($node, { mac => $macstring });
+        if (scalar @hostnames_to_update) {
+            my $hosttab = xCAT::Table->new('hosts');
+            if ($hosttab) {
+                my ($ent) = $hosttab->getNodeAttribs($node, ['hostnames']);
+                if ($ent and $ent->{hostnames})  {
+                    my @hostnames_array = split /,/, $ent->{hostnames};
+                    push @hostnames_to_update,@hostnames_array;
+                }
+                my %allhostnames = map { $_=>1 } @hostnames_to_update;
+                my $hostnames = join(",", (keys %allhostnames));
+                $hosttab->setNodeAttribs($node, { hostnames => $hostnames });
+                $hosttab->commit();
+            }
+            my %request = (
+                command => ['makehosts'],
+                node    => [$node]
+            );
+            $doreq->(\%request);
+        }
         my %request = (
             command => ['makedhcp'],
             node    => [$node]
