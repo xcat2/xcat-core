@@ -298,7 +298,9 @@ sub process_request {
                     print Dumper($hosttag) . "\n";
                     if ($hosttag) {
                         $usednames{$hosttag} = 1;
-                        $usednames_for_net{$netn} = $hosttag;
+                        unless ($usednames_for_net{$netn}) {
+                            $usednames_for_net{$netn} = $hosttag;
+                        }
                         if ($hosttag eq $node) {
                             $macstring .= $currmac . "|";
                         } else {
