@@ -285,15 +285,15 @@ sub process_request {
                     my $ipn = unpack("N", inet_aton($ip));
                     my $mask = 2**$netbits - 1 << (32 - $netbits);
                     my $netn = inet_ntoa(pack("N", $ipn & $mask));
-                    my $hosttag;
-                    if ($usednames_for_net{$netn}) {
-                        $hosttag = $usednames_for_net{$netn};
-                        if ($hosttag eq $node) {
-                            $hosttag .= "-$ifinfo[1]";
+                    my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
+                    unless ($hosttag) {
+                        my $nettagname = $usednames_for_net{$netn};
+                        # For nics not in the install network, don't deal with them if not an avaliable hostname get 
+                        # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
+                        if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
+                            $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
                         }
-                    } else {
-                        $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
                     }
                     print Dumper($hosttag) . "\n";
                     if ($hosttag) {
