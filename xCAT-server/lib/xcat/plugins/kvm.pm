@@ -2113,17 +2113,21 @@ sub chvm {
                 $value = getUnits($value, "G", 1);
                 # Now search kvm_nodedata table to find the volume for this disk
                 my $myxml    = $parser->parse_string($vmxml);
-                my @alldisks = $myxml->findnodes("/domain/devices/disk/source");
-                foreach my $disk (@alldisks) {
-                    my $disktype = $disk->parentNode()->getAttribute("device");
-                    if ($disktype eq "cdrom") { next; }
-                    my $file = $disk->getAttribute("file");
+                my @alldisks = $myxml->findnodes("/domain/devices/disk");
+                # Look through all the disk entries
+                foreach my $disknode (@alldisks) {
+                    my $devicetype = $disknode->getAttribute("device");
+                    # Skip cdrom devices
+                    if ($devicetype eq "cdrom") { next; }
+                    # Get name of the disk
+                    my $diskname = $disknode->findnodes('./target')->[0]->getAttribute('dev');
                     # Is this a disk we were looking for to resize ?
-                    if ($file =~ /\.$disk_to_resize\./) {
+                    if ($diskname eq $disk_to_resize) {
+                        my $file = $disknode->findnodes('./source')->[0]->getAttribute('file');
                         my $vol = $hypconn->get_storage_volume_by_path($file);
                         if ($vol) {
                             # Always pass RESIZE_SHRINK flag to resize(). It is required when shrinking
-                            #the volume size and is ignored when growing volume size
+                            # the volume size and is ignored when growing volume size
                             eval {
                                 $vol->resize($value, &Sys::Virt::StorageVol::RESIZE_SHRINK);
                             };
