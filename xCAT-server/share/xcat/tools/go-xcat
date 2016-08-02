@@ -1502,18 +1502,11 @@ case "${GO_XCAT_ACTION}" in
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 
+	xCAT has been installed!  
+	========================
 
-	Congratulations
-	===============
-
-	The fact that you got this far is a strong indication that xCAT bas been
-	installed correctly.
-
-	Please notice if this is the first time you install xCAT. You need to do one
-	of the following.
-
-	1. Log out and then log in again, or
-	2. run the following command to set the environment variables.
+	If this is the very first time xCAT has been installed, run the following
+	commands to set environment variables into your PATH:
 
 	    for sh,
 	        \`source /etc/profile.d/xcat.sh\`
