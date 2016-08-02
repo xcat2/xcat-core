@@ -75,6 +75,7 @@ sub remote_shell_command {
     if ($ssh_version eq 'OpenSSH') {
         push @command, '-o';
         push @command, 'BatchMode=yes';
+        push @command, '-tt';
 
         ($$config{'options'} !~ /-X/) && push @command, '-x';
     }
