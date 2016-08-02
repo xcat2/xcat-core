@@ -265,12 +265,17 @@ unless ($onlyinitrd) {
     @yumdirs = ();
 
     my @pkgdirs = split(",", $srcdir);
+    my @pkgdir_internet; #Put all of the http mirrors in this array
     my $dir;
     foreach $dir (@pkgdirs) {
+      if ($dir =~ /^http.*/) {
+        push @pkgdir_internet, $dir;
+      } else {
         find(\&isyumdir, <$dir/>);
         if (!grep /$dir/, @yumdirs) {
             print "The repository for $dir should be created before running the genimge. Try to run [createrepo $dir].\n";
         }
+      }
     }
 
     # Add the dir for kernel rpm to be installed
@@ -280,8 +285,8 @@ unless ($onlyinitrd) {
             print "The repository for $kerneldir should be created before running the genimge. Try to run [createrepo $kerneldir].\n";
         }
     }
-    unless (scalar(@yumdirs)) {
-        print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
+    unless (scalar(@yumdirs) || scalar(@pkgdir_internet)) {
+       print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch or correct web repo\n";
         exit 1;
     }
 
@@ -299,6 +304,10 @@ unless ($onlyinitrd) {
     foreach $srcdir (@yumdirs) {
         print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
         $repnum += 1;
+    }
+    foreach $srcdir (@pkgdir_internet) {
+       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=$srcdir\ngpgpcheck=0\n\n";
+       $repnum += 1;
     }
     $repnum -= 1;
     close($yumconfig);
