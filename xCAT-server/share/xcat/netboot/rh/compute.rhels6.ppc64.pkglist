@@ -24,4 +24,5 @@ lsvpd
 irqbalance
 procps
 parted
-xz
+gzip
+tar

@@ -329,7 +329,7 @@ sub mknetboot
 
         my $suffix = 'gz';
         $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'txz' if (-r "$rootimgdir/rootimg.txz");
+        $suffix = 'tgz' if (-r "$rootimgdir/rootimg.tgz");
 
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -381,7 +381,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.txz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.tgz" or -r "$rootimgdir/rootimg.sfs") {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]

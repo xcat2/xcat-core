@@ -12,3 +12,5 @@ rsyslog
 rsync
 busybox-static
 gawk
+tar
+gzip

@@ -1459,8 +1459,8 @@ EOMS
     print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
-    print $inifile "elif [ -r /rootimg.txz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.txz downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "elif [ -r /rootimg.tgz ]; then\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.tgz downloaded,setting up RAM-root tmpfs...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1471,7 +1471,7 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar -Jxvf /rootimg.txz\n";
+    print $inifile "    tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
@@ -1612,7 +1612,7 @@ EOMS
     }
 
     # add rsync for statelite
-    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz") {
+    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/gzip", "usr/bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
     }

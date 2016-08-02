@@ -1612,7 +1612,7 @@ EOMS
     print $inifile "  zcat /rootimg.gz |cpio -idum\n";
     print $inifile "  fi\n";
     print $inifile "  echo Done\n";
-    print $inifile "elif [ -r /rootimg.txz ]; then\n";
+    print $inifile "elif [ -r /rootimg.tgz ]; then\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1622,7 +1622,7 @@ EOMS
     }
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar -Jxvf /rootimg.txz\n";
+    print $inifile "    tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
     print $inifile "  echo -n Failed to download image, panicing in 5...\n";
@@ -1699,7 +1699,7 @@ EOMS
     }
 
     # add rsync for statelite
-    foreach ("bin/cpio", "sbin/nash", "sbin/busybox.anaconda", "sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc", "usr/bin/xz") {
+    foreach ("bin/cpio", "sbin/nash", "sbin/busybox.anaconda", "sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc", "usr/bin/gzip", "usr/bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
     }

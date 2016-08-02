@@ -13,4 +13,5 @@ rsync
 busybox-static
 gawk
 dnsutils
-xz-utils
+tar
+gzip
