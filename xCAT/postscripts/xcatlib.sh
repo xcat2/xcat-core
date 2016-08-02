@@ -761,7 +761,22 @@ function msgutil_r {
 
 
    if [ -n "$logserver" ];then
-      logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+       #In Ubuntu, there is a bug in some logger version that "-n" is ignored. The workaround is to specify the 
+       #"-u <some dummy file>"  option together with "-n"  option.
+       #So far as we know, this bug exists in logger 2.20 shipped in ubuntu 14.04.4 and
+       #has been fixed in logger 2.25 shipped in ubuntu 15.04. Since "-u" option won't break anything,
+       #use "-u xxxx" for the logger versions under 2.25
+        if [ -f /etc/os-release ] && cat /etc/os-release |grep -i NAME|grep -i Ubuntu>/dev/null 2>&1
+        then
+            eval $(logger -V 2>/dev/null | awk '{print $4}' | awk -F '.' '{printf("var1=%s; var2=%s",$1,$2)}')
+            if [ $var1 -eq 2 ] && [ $var2 -lt 25 ]; then
+                logger -u /tmp/ignored -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+            else
+                logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+            fi
+        else
+            logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+        fi
       if [ "$?" != "0" ];then
          exec 3<>/dev/udp/$logserver/514 && logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1 && exec 3>&-
          if [ "$?" != "0" ];then
