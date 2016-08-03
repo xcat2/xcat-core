@@ -23,10 +23,6 @@ use xCAT::Utils;
 use xCAT::Table;
 use xCAT::MsgUtils;
 
-
-my $args = join ' ', @ARGV;
-$::command = "$0 $args";
-
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
@@ -41,17 +37,17 @@ my @filternodes;
 # parse the options
 if (
     !GetOptions(
-                'h|help'       => \$::HELP,
-                'range=s'    => \$::SWITCH,  
+                'h|help'     => \$::HELP,
+                'switches=s' => \$::SWITCH,  
                 'port=s'     => \$::PORT,  
                 'vlan=s'     => \$::VLAN,
                 'user=s'     => \$::USER,
                 'password=s' => \$::PASSWORD,
                 'group=s'    => \$::GROUP,
-                'snmp'         => \$::SNMP,
-		'ip'           => \$::IP,
-                'name'         => \$::NAME,
-                'all'          => \$::ALL,
+                'snmp'       => \$::SNMP,
+		'ip'         => \$::IP,
+                'name'       => \$::NAME,
+                'all'        => \$::ALL,
     )
   )
 {
@@ -72,15 +68,22 @@ if ($::SWITCH) {
         my $nodenotdefined = join(',', nodesmissed);
         xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT DB: $nodenotdefined");
     }
-    foreach (@filternodes)  {
-        push @nodes, $_;
+    # check switch type
+    my $switchestab =  xCAT::Table->new('switches');
+    my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
+    foreach my $fsw (@filternodes)  {
+        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /BNT/) {
+            push @nodes, $fsw;
+        } else {
+            xCAT::MsgUtils->message("E","The $fsw is not BNT switch, will not config");
+        }
     }
     unless (@nodes) {
         xCAT::MsgUtils->message("E","No Valid Switch to process");
         exit(1);
     }
 } else {
-    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --range");
+    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --switches");
     &usage;
     exit(1);
 }
@@ -90,25 +93,18 @@ my $cmd;
 my $vlan;
 my $port;
 my $sub_req;
-my $switch;
 my $rc;
 
-if ($::ALL) {
-    config_ip();
-    config_hostname();
-    config_snmp();
-}
-
-if ($::IP)
+if (($::IP) || ($::ALL))
 {
     config_ip();
 }
 
-if ($::NAME)
+if (($::NAME) || ($::ALL))
 {
     config_hostname();
 }
-if ($::SNMP)
+if (($::SNMP) || ($::ALL))
 {
     config_snmp();
 }
@@ -118,12 +114,14 @@ if ($::VLAN)
 }
 
 sub config_ip {
-
+    my @config_switches;
+    my @discover_switches;
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
     foreach my $switch (@nodes) {
         print "change $switch to static ip address\n";
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
+        my $static_ip= $nodehash->{$switch}->[0]->{ip};
 
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
@@ -133,20 +131,12 @@ sub config_ip {
             my $ip_str = $dip;
             $ip_str =~ s/\./\-/g;
             $dswitch = "switch-$ip_str";
-            #is there other way we can check if this node is defined in the xCATdb
-            $cmd = "lsdef $dswitch";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0) {
-                $cmd = "mkdef -t node -o $dswitch groups=switch ip=$dip switchtype=BNT username=root password=admin protocol=telnet nodetype=switch";
-                $rc= xCAT::Utils->runcmd($cmd, 0);
-            }
         }
-        #check if it is in the /etc/hosts
-        my $output = `grep $dswitch /etc/hosts`;
-        if ( !$output ) {
-            $cmd = "makehosts $dswitch";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
-        }
+        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=BNT username=root password=admin protocol=telnet nodetype=switch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "makehosts $dswitch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
         # verify if xdsh works
         $cmd = "xdsh $dswitch --devicetype EthSwitch::BNT 'enable;configure terminal;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -154,29 +144,30 @@ sub config_ip {
             xCAT::MsgUtils->message("E","Couldn't communicate with $dswitch, $dip");
             next;
         }
-        #change to static ip address
-        my $static_ip = xCAT::NetworkUtils->getipaddr($switch);
-        if (!$static_ip){
-            xCAT::MsgUtils->message("E","static ip is not defined for $switch");
-            next;
-        }
         $cmd="xdsh $dswitch -t 10 --devicetype EthSwitch::BNT 'enable;configure terminal;show interface ip;interface ip 1;ip address $static_ip;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         print "finish setup static ip address for $switch\n";
-
+        push (@discover_switches, $dswitch);
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=ip_configed otherinterface=";
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=ip_configed otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-
+    }
+    if (@discover_switches) {
+        my $dsw = join(",",@discover_switches);
         #remove discover switch from xCATdb and /etc/hosts
-        $cmd = "makehosts -d $dswitch";
+        $cmd = "makehosts -d $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "rmdef $dswitch";
+        $cmd = "rmdef $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
 
 sub config_hostname {
+    my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','sshpassword']);
     foreach my $switch (@nodes) {
@@ -193,8 +184,12 @@ sub config_hostname {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
             next;
         }
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=hostname_configed" ;
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=hostname_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
@@ -205,6 +200,7 @@ sub config_snmp {
     my $snmp_user;
     my $snmp_passwd;
     my $snmp_group;
+    my @config_switches;
 
     if ($::USER) {
         $snmp_user = $::USER;
@@ -326,9 +322,14 @@ sub config_snmp {
             exit(1);
         }
         $mysw->soft_close();
-
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=switch_configed" ;
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=switch_configed" ;
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "chtab switch=$csw switches.snmpversion=3 switches.auth=sha switches.username=$snmp_user switches.password=$snmp_passwd" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
@@ -361,11 +362,11 @@ sub usage
 {
     print "Usage:
     configBNT [-?│-h│--help] 
-    configBNT [--range switchnames] [--all] 
-    configBNT [--range switchnames] [--ip] 
-    configBNT [--range switchnames] [--name ] 
-    configBNT [--range switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
-    configBNT [--range switchnames] [--port port] [--vlan vlan]
+    configBNT [--switches switchnames] [--all] 
+    configBNT [--switches switchnames] [--ip] 
+    configBNT [--switches switchnames] [--name ] 
+    configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configBNT [--switches switchnames] [--port port] [--vlan vlan]
     \n";
 }
 
