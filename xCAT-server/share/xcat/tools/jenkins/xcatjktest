@@ -927,6 +927,8 @@ sub do_test {
     }else{
         #to do part
     }
+
+
     
     return 2 if($casestop);
     return 0;
@@ -1205,6 +1207,12 @@ if ( !defined($pid) ) {
         exit 1;
     }
     send_msg(2, "[$$] Run do_test...............[OK]");
+
+    #below code has nothing to do with xCAT autotest main job
+    #just in order to collect logs and data to do xCAT product further analyse
+    #----------start----------------
+    &runcmd("scp -r $mn:/var/log/messages $mn:/var/log/xcat/computes.log $mn:/var/log/xcat/cluster.log $mn:/var/log/xcat/commands.log  $logfiledir >/dev/null 2>&1");
+    #-----------end-----------------
 
     send_msg(2, "[$$]:whole regression test on $cluster_name finished");
     syswrite MNWRITE,"[$$][$deployenvtime]:whole regression test are successful\n";
