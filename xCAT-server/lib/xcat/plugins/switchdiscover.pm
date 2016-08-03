@@ -459,7 +459,7 @@ sub process_request {
             if ($key !~ /nomac/) {
                 $mac = $key;
             }
-            my $msg = sprintf $format, $ip, $name, $vendor, $key;
+            my $msg = sprintf $format, $ip, $name, $vendor, $mac;
             send_msg(\%request, 0, $msg);
         }
     }
@@ -1363,11 +1363,7 @@ sub switchsetup {
     my $outhash = shift;
     my $request = shift;
     my $sub_req = shift;
-    my $ret;
     my @switchnode = ();
-    my $switchInfo;
-    my $output;
-    my $dshcmd;
     my $static_ip;
     my $discover_switch;
     my $nodes_to_config;

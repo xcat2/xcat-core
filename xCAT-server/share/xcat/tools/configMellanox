@@ -78,7 +78,7 @@ if ($::SWITCH)
         exit(1);
     }
 } else {
-    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --range");
+    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --switches");
     &usage;
     exit(1);
 }
@@ -248,10 +248,10 @@ sub usage
 {
     print "Usage:
     configMellonax [-?│-h│--help] 
-    configMellonax [--range switchnames] [--all]
-    configMellonax [--range switchnames] [--ip]
-    configMellonax [--range switchnames] [--name]
-    configMellonax [--range switchnames] [--config]  
+    configMellonax [--switches switchnames] [--all]
+    configMellonax [--switches switchnames] [--ip]
+    configMellonax [--switches switchnames] [--name]
+    configMellonax [--switches switchnames] [--config]  
     \n";
 }
 
