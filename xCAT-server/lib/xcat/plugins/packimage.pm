@@ -419,7 +419,7 @@ sub process_request {
     unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.sfs");
 
-    $callback->({ info => ["compress method:$method"] });
+    $callback->({ info => ["archive method:$method"] });
     if ($method =~ /cpio/) {
         my $compress = "gzip";
 
@@ -428,6 +428,7 @@ sub process_request {
         if ($ispigz == 0) {
             $compress = "pigz";
         }
+        $callback->({ info => ["compress method:$compress"] });
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.gz";
         } else {
@@ -453,6 +454,7 @@ sub process_request {
                 return 1;
             }
         }
+        $callback->({ info => ["compress method:$compress"] });
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --null -T - -c | $compress -c - > ../rootimg.tgz";
         } else {
