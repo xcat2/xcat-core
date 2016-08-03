@@ -22,10 +22,6 @@ use xCAT::Utils;
 use xCAT::Table;
 use xCAT::MsgUtils;
 
-
-my $args = join ' ', @ARGV;
-$::command = "$0 $args";
-
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
@@ -41,7 +37,7 @@ my @filternodes;
 if (
     !GetOptions(
                 'h|help'     => \$::HELP,
-                'range=s'    => \$::SWITCH,  
+                'switches=s' => \$::SWITCH,  
                 'config'     => \$::CONFIG,
                 'ip'         => \$::IP,
                 'name'       => \$::NAME,
@@ -67,8 +63,15 @@ if ($::SWITCH)
         my $nodenotdefined = join(',', nodesmissed);
         xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT DB: $nodenotdefined");
     }
-    foreach (@filternodes)  {
-        push @nodes, $_;
+    # check switch type
+    my $switchestab =  xCAT::Table->new('switches');
+    my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
+    foreach my $fsw (@filternodes)  {
+        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /Mellanox/) {
+            push @nodes, $fsw;
+        } else {
+            xCAT::MsgUtils->message("E","The $fsw is not BNT switch, will not config");
+        }
     }
     unless (@nodes) {
         xCAT::MsgUtils->message("E","No Valid Switch to process");
@@ -83,34 +86,29 @@ if ($::SWITCH)
 my $switches = join(",",@nodes);
 my $user;
 my $cmd;
-my $switch;
 my $rc;
 my $master;
 
-if ($::ALL) {
-    config_ip();
-    config_hostname();
-    run_rspconfig();
-}
-if ($::IP) {
+if (($::IP) || ($::ALL)) {
     config_ip();
 }
 
-if ($::NAME) {
+if (($::NAME) || ($::ALL)) {
     config_hostname();
 }
 
 
-if ($::CONFIG)
-{
+if (($::CONFIG) || ($::ALL)) {
     run_rspconfig();
 }
 
 
 sub config_ip {
+    my @config_switches;
+    my @discover_switches;
     # get host table for otherinterfaces
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['otherinterfaces']);
+    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
     # get netmask from network table
     my $nettab = xCAT::Table->new("networks");
     my @nets;
@@ -120,40 +118,28 @@ sub config_ip {
     foreach my $switch (@nodes) {
         print "change $switch to static ip address\n";
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
+        my $static_ip= $nodehash->{$switch}->[0]->{ip};
 
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
+        print "dip=$dip, static=$static_ip, dsw=$dswitch\n";
 
         #if not defined, need to create one for xdsh to use
         if (!$dswitch) {
             my $ip_str = $dip;
             $ip_str =~ s/\./\-/g;
             $dswitch = "switch-$ip_str";
-            #is there other way we can check if this node is defined in the xCATdb
-            $cmd = "lsdef $dswitch";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0) {
-                $cmd = "mkdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin nodetype=switch";
-                $rc= xCAT::Utils->runcmd($cmd, 0);
-            }
         }
-        #check if it is in the /etc/hosts
-        my $output = `grep $dswitch /etc/hosts`;
-        if ( !$output ) {
-            $cmd = "makehosts $dswitch";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
-        }
+        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin nodetype=switch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "makehosts $dswitch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
         # verify if xdsh works
         $cmd = "xdsh $dswitch -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Couldn't communicate with $dswitch, $dip");
-            next;
-        }
-        #change to static ip address
-        my $static_ip = xCAT::NetworkUtils->getipaddr($switch);
-        if (!$static_ip){
-            xCAT::MsgUtils->message("E","static ip is not defined for $switch");
             next;
         }
         #get netmask
@@ -166,20 +152,29 @@ sub config_ip {
 
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        push (@discover_switches, $dswitch);
+        push (@config_switches, $switch);
+    }
 
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=ip_configed otherinterface=";
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=ip_configed otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-  
+    }
+ 
+     if (@discover_switches) {
+        my $dsw = join(",",@discover_switches);
         #remove discover switch from xCATdb and /etc/hosts
-        $cmd = "makehosts -d $dswitch";
+        $cmd = "makehosts -d $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "rmdef $dswitch";
+        $cmd = "rmdef $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
 
 sub config_hostname {
+    my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
     foreach my $switch (@nodes) {
@@ -196,13 +191,18 @@ sub config_hostname {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
             next;
         }
+         push (@config_switches, $switch);
+    }
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=hostname_configed" ;
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=hostname_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
 
 sub run_rspconfig {
+    my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
     $master = `hostname -i`;
@@ -224,9 +224,12 @@ sub run_rspconfig {
 
         #config ntp
         $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp" `;
-
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
         #update switch status
-        $cmd = "chdef $switch status=switch_configed" ;
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=switch_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 

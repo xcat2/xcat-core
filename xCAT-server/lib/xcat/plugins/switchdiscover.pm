@@ -1133,14 +1133,14 @@ sub get_hostname {
 #--------------------------------------------------------------------------------
 sub get_switchtype {
     my $vendor = shift;
-    my $key;
+    my $key = "Not support";
     
     my $search_string = join '|', keys(%global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
         return $global_switch_type{$key};
     } else {
-        return $vendor;
+        return $key;
     }
 }
 
@@ -1370,9 +1370,7 @@ sub switchsetup {
     my $dshcmd;
     my $static_ip;
     my $discover_switch;
-    my @rmnodes;
-    my @BNTswitches;
-    my @MLNXswitches;
+    my $nodes_to_config;
 
     #print Dumper($outhash);
     my $macmap = xCAT::MacMap->new();
@@ -1402,39 +1400,25 @@ sub switchsetup {
         if (exists($globalopt{verbose}))    {
             send_msg($request, 0, "Found Discovery switch $dswitch, $ip, $mac with predefine switch $node, $static_ip $stype switch\n" );
         }
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
 
-        #run xdsh command to set discover ip address to static ip address
-        #each switch type has different CLI for setup ip address
+        push (@{$nodes_to_config->{$stype}}, $node);
+    }
 
-        # BNT switches
-        if ( $stype =~ /BNT/ ) {
-            push (@BNTswitches, $node);
-            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=$ip",'status=Matched',"mac=$mac",'switchtype=BNT','username=root','password=admin'] }, $sub_req, 0, 1);
-        } 
-        # Mellanox switches
-        elsif ( $stype =~ /Mellanox/ ) {
-            push (@MLNXswitches, $node);
-            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","otherinterfaces=$ip",'status=Matched',"mac=$mac",'switchtype=Mellanox','username=admin'] }, $sub_req, 0, 1);
-
-        } 
-        else {
-            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"ip=$static_ip","switchtype=$stype","otherinterfaces=$ip",'status=not supported',"mac=$mac"] }, $sub_req, 0, 1);
+    foreach my $mytype (keys %$nodes_to_config) {
+        my $config_script = "$::XCATROOT/shart/xcat/tools/config".$mytype;
+        if (-r -x $config_script) {
+            my $switches = join(",",@{${nodes_to_config}->{$mytype}});
+            send_msg($request, 0, "call to config $mytype switches $switches\n");
+            my $out = `$config_script --switches $switches --all`;
+            send_msg($request, 0, "output = $out\n");
+        } else {
+            send_msg($request, 0, "the switch type $mytype is not support yet\n");
         }
     }
-    
-    if (@BNTswitches) {
-        my $bntsw = join(",",@BNTswitches);
-        send_msg($request, 0, "call to config BNT switches $bntsw\n");
-        my $out = `/opt/xcat/share/xcat/tools/configBNT --range $bntsw --all`;
-        send_msg($request, 0, "output = $out\n");
-    }
-    if (@MLNXswitches) {
-        my $mlnxsw = join(",",@MLNXswitches);
-        send_msg($request, 0, "call to config Mellanox switches $mlnxsw\n");
-        my $out = `/opt/xcat/share/xcat/tools/configMellanox --range $mlnxsw --all`;
-        send_msg($request, 0, "output = $out\n");
-    }
+
     return;
+
 }
 
 
