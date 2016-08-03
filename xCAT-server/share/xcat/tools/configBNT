@@ -327,9 +327,7 @@ sub config_snmp {
     if (@config_switches) {
         #update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=switch_configed" ;
-        $rc= xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "chtab switch=$csw switches.snmpversion=3 switches.auth=sha switches.username=$snmp_user switches.password=$snmp_passwd" ;
+        $cmd = "chdef $csw status=switch_configed snmpversion=3 snmpauth=sha snmpusername=$snmp_user snmppassword=$snmp_passwd";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
