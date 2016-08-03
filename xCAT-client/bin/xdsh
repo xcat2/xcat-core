@@ -38,7 +38,7 @@ This program is the client interface for xdsh/xdcp.
    Bypass mode is useful, when executing the command on the Management Server
    and in particular if you want to run as a non-root id.
    Call parse_args to verify mode (client/server or  bypass)
-	   and whether to use Env Variables
+           and whether to use Env Variables
    Build hash and submit request
    See man page for options
 
@@ -232,6 +232,8 @@ sub parse_args_xdsh
             'q|show-config'            => \$options{'show-config'},
             'r|node-rsh=s'             => \$options{'node-rsh'},
             'i|rootimg=s'              => \$options{'rootimg'},
+            'ip=s'                     => \$options{'ip'},
+            'show=s'                   => \$options{'show'},
             's|stream'                 => \$options{'streaming'},
             't|timeout=i'              => \$options{'timeout'},
             'v|verify'                 => \$options{'verify'},
@@ -407,12 +409,12 @@ sub parse_args_xdsh
     if ($options{'ssh-setup'})    # if going to setup ssh keys
     {
         my $msg;
-        if (!($ENV{'DSH_REMOTE_PASSWORD'}))
-        {                         # if not already set
-             # prompt for the password for the userid on the node that will be setup
+        if (!($ENV{'DSH_REMOTE_PASSWORD'}) && !$options{'show'} )
+        {                         # if not already set and not requested to just show the information,
+            # prompt for the password for the userid on the node that will be setup
             my $userpw;
             $msg =
-"The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
+              "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
             xCAT::MsgUtils->message("I", $msg);
             system("stty -echo");    # turn off keyboard
             chop($userpw = <STDIN>);
@@ -573,9 +575,11 @@ sub parse_args_xdcp
             'F|File=s'              => \$options{'File'},
             'h|help'                => \$options{'help'},
             'i|rootimg=s'           => \$options{'rootimg'},
+            'ip=s'                  => \$options{'ip'},
             'l|user=s'              => \$options{'user'},
             'm|monitor'             => \$options{'monitor'},
             'o|node-options=s'      => \$options{'node-options'},
+            'show=s'                => \$options{'show'},
             'q|show-config'         => \$options{'show-config'},
             'p|preserve'            => \$options{'preserve'},
             'r|c|node-rcp=s'        => \$options{'node-rcp'},
