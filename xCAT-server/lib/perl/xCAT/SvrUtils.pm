@@ -460,20 +460,20 @@ sub get_file_name {
     if (-r "$searchpath/$profile.$os.$arch.$extension") {
         return "$searchpath/$profile.$os.$arch.$extension";
     }
-    elsif (-r "$searchpath/$profile.$osbase.$arch.$extension") {
-        return "$searchpath/$profile.$osbase.$arch.$extension";
-    }
-    elsif (-r "$searchpath/$profile.$genos.$arch.$extension") {
-        return "$searchpath/$profile.$genos.$arch.$extension";
-    }
     elsif (-r "$searchpath/$profile.$os.$extension") {
         return "$searchpath/$profile.$os.$extension";
     }
+    elsif (($genos) && (-r "$searchpath/$profile.$genos.$arch.$extension")) {
+        return "$searchpath/$profile.$genos.$arch.$extension";
+    }
+    elsif (($genos) && (-r "$searchpath/$profile.$genos.$extension")) {
+        return "$searchpath/$profile.$genos.$extension";
+    }
+    elsif (-r "$searchpath/$profile.$osbase.$arch.$extension") {
+        return "$searchpath/$profile.$osbase.$arch.$extension";
+    }
     elsif (-r "$searchpath/$profile.$osbase.$extension") {
         return "$searchpath/$profile.$osbase.$extension";
-    }
-    elsif (-r "$searchpath/$profile.$genos.$extension") {
-        return "$searchpath/$profile.$genos.$extension";
     }
     elsif (-r "$searchpath/$profile.$arch.$extension") {
         return "$searchpath/$profile.$arch.$extension";
