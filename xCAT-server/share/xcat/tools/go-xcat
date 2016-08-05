@@ -1500,19 +1500,29 @@ case "${GO_XCAT_ACTION}" in
 		exit "${RET}"
 	fi
 
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	if [ ${GO_XCAT_ACTION} == 'install' ]; then
+		# only print out this message on install
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
-	xCAT has been installed!  
-	========================
+		xCAT has been installed!  
+		========================
 
-	If this is the very first time xCAT has been installed, run the following
-	commands to set environment variables into your PATH:
+		If this is the very first time xCAT has been installed, run the following
+		commands to set environment variables into your PATH:
 
-	    for sh,
-	        \`source /etc/profile.d/xcat.sh\`
-	    or csh,
-	        \`source /etc/profile.d/xcat.csh\`
-	EOF
+		    for sh,
+		        \`source /etc/profile.d/xcat.sh\`
+		    or csh,
+		        \`source /etc/profile.d/xcat.csh\`
+		EOF
+	else
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
+
+		xCAT has been updated!
+		======================
+
+		EOF
+	fi
 	;;
 *)
 	list_xcat_packages
