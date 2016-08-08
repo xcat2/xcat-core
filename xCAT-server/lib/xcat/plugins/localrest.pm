@@ -163,6 +163,36 @@ sub list_adapter {
 
 #-------------------------------------------------------
 
+=head3  handler to list network adapter first ip
+
+  Subroutine to handle rest request
+  GET /localres/netip/<iface>
+
+  Usage example:
+        This function is called from handle_rest_request,
+        do not call it directly.
+=cut
+
+#-------------------------------------------------------
+sub list_netip {
+    my @params = @_;
+    my ($rsp, $result, $iface, $cmd);
+    if (!@params) {
+        $rsp->{data}->[0] = "Argmument error.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    $iface = shift @params;
+    $cmd = "ip addr show dev $iface |grep inet|head -1|awk '{print \$2}'|awk -F/ '{print \$1}'";
+
+    $result->[ 0 ] = xCAT::Utils->runcmd("$cmd", -1);
+
+    return $result;
+}
+
+
+#-------------------------------------------------------
+
 =head3  handler to download credential files
 
   Subroutine to handle rest request
