@@ -2239,17 +2239,27 @@ sub copycd
         }
     }
 
-
     unless ($distname)
     {
+        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno, attempt to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
             my @pkvm_version = split / /, $desc;
             $distname = "pkvm" . $pkvm_version[1];
         }
+        elsif ($desc =~ /Red Hat Enterprise Linux/)
+        {
+            #
+            # Attempt to auto-detect for RHEL OS.
+            # RHEL 7.3 description is: Red Hat Enterprise Linux 7.3
+            #
+            my @rhel_version = split / /, $desc;
+            $distname = "rhels" . $rhel_version[4];
+        }
         else
         {
+            print "INFO - Could not auto-detect operating system.\n";
             return;    #Do nothing, not ours..
         }
     }
