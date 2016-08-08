@@ -22,7 +22,6 @@ my $rst     = 0;
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -T
     $program_name {-c|-d} [-n noderange] [-V]
 
 Description:
@@ -31,7 +30,6 @@ Description:
 
 Options:
     -h : Get usage information of $program_name
-    -T : To verify if $program_name can work, reserve option for probe framework
     -n : Range of nodes to check
     -d : To verify diskless, pingable compute nodes have the same images installed as defines in xCAT DB. 
     -c : To verify all diskless, pingable compute nodes have the identical images installed.
