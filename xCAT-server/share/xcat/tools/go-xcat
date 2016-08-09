@@ -49,26 +49,8 @@ function usage()
 	  ${script} --yes install
 	  ${script} -x 2.12 -y install
 	  ${script} --xcat-version=devel install
-	  ${script} --xcat-core=/path/to/xcat-core.repo install
-	  ${script} --xcat-core=/path/to/xcat-core install
-	  ${script} --xcat-core=/path/to/xcat-core.tar install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
-	  ${script} --xcat-core=/path/to/xcat-core.repo \\
-	          --xcat-dep=/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=/path/to/xcat-core \\
-	          --xcat-dep=/path/to/xcat-dep install
 	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\
-	          --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\
-	          --xcat-dep=http://xcat.org/path/to/xcat-dep install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
 
@@ -1500,26 +1482,29 @@ case "${GO_XCAT_ACTION}" in
 		exit "${RET}"
 	fi
 
-	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	if [ ${GO_XCAT_ACTION} == 'install' ]; then
+		# only print out this message on install
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
+		xCAT has been installed!  
+		========================
 
-	Congratulations
-	===============
+		If this is the very first time xCAT has been installed, run the following
+		commands to set environment variables into your PATH:
 
-	The fact that you got this far is a strong indication that xCAT bas been
-	installed correctly.
+		    for sh,
+		        \`source /etc/profile.d/xcat.sh\`
+		    or csh,
+		        \`source /etc/profile.d/xcat.csh\`
+		EOF
+	else
+		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
-	Please notice if this is the first time you install xCAT. You need to do one
-	of the following.
+		xCAT has been updated!
+		======================
 
-	1. Log out and then log in again, or
-	2. run the following command to set the environment variables.
-
-	    for sh,
-	        \`source /etc/profile.d/xcat.sh\`
-	    or csh,
-	        \`source /etc/profile.d/xcat.csh\`
-	EOF
+		EOF
+	fi
 	;;
 *)
 	list_xcat_packages

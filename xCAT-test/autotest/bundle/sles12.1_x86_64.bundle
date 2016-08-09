@@ -220,4 +220,3 @@ assign_certain_command_permission_systemd
 sles_migration1
 sles_migration2
 reg_linux_diskless_installation_flat
-reg_linux_statelite_installation_flat
