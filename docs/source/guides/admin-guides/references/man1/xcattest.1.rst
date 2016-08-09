@@ -58,7 +58,7 @@ OPTIONS
 
 \ **-b**\  \ *case bundle list*\ 
  
- Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name.
+ Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name.The bundle files should be listed in: /opt/xcat/share/xcat/tools/autotest/bundle.
  
 
 
@@ -136,7 +136,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-    xcattest -c /tmp/config -c rpower
+    xcattest -f /tmp/config -c rpower
  
  
 
@@ -148,7 +148,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-    xcattest -l  > /tmp/custom.bundle
+    xcattest -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
     Modify custom.bundle
     xcattest -b custom.bundle
  
