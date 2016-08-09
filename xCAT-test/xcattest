@@ -14,7 +14,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 my $rootdir     = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp    = 0;
-my $configfile  = "$rootdir/default.conf";
+my $config_info  = "$rootdir/default.conf";
 my $bundle_list = undef;
 my $case_list   = undef;
 my $cmd_list    = undef;
@@ -24,7 +24,7 @@ my $ret         = 0;
 my $string1     = undef;
 if (
     !GetOptions("h|?" => \$needhelp,
-        "f=s"     => \$configfile,
+        "f=s"     => \$config_info,
         "b=s"     => \$bundle_list,
         "t=s"     => \$case_list,
         "c=s"     => \$cmd_list,
@@ -36,10 +36,46 @@ if (
     exit 1;
 }
 
+unless(defined($bundle_list) || defined($case_list) || defined($cmd_list) || defined($needshow)){
+    &usage;
+    exit 1;
+}
 if ($needhelp)
 {
     &usage;
     exit 0;
+}
+
+#check config file and system label
+my $configfile  = undef;
+my $inital_info = undef;
+if ($config_info){   
+    if ($config_info =~ /:/){
+        my @config_info = split /:/, $config_info;
+        $configfile = $config_info[0];
+        $inital_info = $config_info[1];
+        if ($inital_info ne "system"){
+            print "Failed: $inital_info in $config_info is not supported!\n";
+            exit 1;
+        }
+    }else{
+        $configfile = $config_info;
+    }
+}
+if (!open(FILE, "$configfile")) {
+    print "can't open config file: $configfile\n";
+    exit 1;
+}
+
+#check bundle files
+if ($bundle_list){
+     my @bundles = split /,/, $bundle_list;
+     foreach my $bundle (@bundles){
+        if (!open(FILE, "<$rootdir/bundle/$bundle")) {
+            print "can't open bundle file: $rootdir/bundle/$bundle\n";
+            exit 1;
+        }
+    }
 }
 
 #load case to $cases
@@ -51,7 +87,6 @@ if ($needhelp)
 #    hcp:hmc/mm/bmc/fsp         string
 #    cmd:                       array
 #    check:                     array
-
 my @cases = ();
 if ($needshow) {
     &loadcase;
@@ -150,10 +185,6 @@ sub getConfig
     log_this("******************************");
     log_this("Reading Configure");
     log_this("******************************");
-    if (!(-e $configfile)) {
-        log_this("Warning: The xCAT test Configure file doesn't exist!");
-        return 0;
-    }
 
     my $type     = undef;    #Script_Prev,Script_Post,Table,Object,System,Custom
     my $sub_type = undef;    # The string after $type_
@@ -175,7 +206,6 @@ sub getConfig
 
     my $mgt_name = undef;
 
-    open(FILE, "$configfile") or die "can't to open $configfile";
     while (my $line = <FILE>) {
         $line = &trim($line);
         next if (length($line) == 0);
@@ -444,7 +474,7 @@ sub Get_Files_Recursive
             }
             else
             { my $dirpath = $dir . '/' . $direntry . "\n";
-                print $dirpath;
+    #            print $dirpath;
 
                 #print $dir."\n";
                 push(@filespath, glob("$dirpath"));
@@ -501,10 +531,6 @@ sub loadcase
     if ($bundle_list) {
         my @bundles = split /,/, $bundle_list;
         foreach my $bundle (@bundles) {
-            if (!open(FILE, "<$rootdir/bundle/$bundle")) {
-                log_this("can't open $rootdir/bundle/$bundle");
-                return 1;
-            }
             while ($line = <FILE>) {
                 $line = trim($line);
                 next if (length($line) == 0);
