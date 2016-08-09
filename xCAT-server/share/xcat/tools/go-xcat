@@ -49,26 +49,8 @@ function usage()
 	  ${script} --yes install
 	  ${script} -x 2.12 -y install
 	  ${script} --xcat-version=devel install
-	  ${script} --xcat-core=/path/to/xcat-core.repo install
-	  ${script} --xcat-core=/path/to/xcat-core install
-	  ${script} --xcat-core=/path/to/xcat-core.tar install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
-	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
-	  ${script} --xcat-core=/path/to/xcat-core.repo \\
-	          --xcat-dep=/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=/path/to/xcat-core \\
-	          --xcat-dep=/path/to/xcat-dep install
 	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\
-	          --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install
-	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\
-	          --xcat-dep=http://xcat.org/path/to/xcat-dep install
 	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\
 	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
 
