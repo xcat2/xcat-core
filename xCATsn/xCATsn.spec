@@ -17,7 +17,7 @@ Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 
 
 Conflicts: xCAT
 
@@ -55,13 +55,12 @@ Requires: conserver-xcat
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
+Requires: syslinux elilo-xcat
 Requires: ipmitool-xcat >= 1.8.15-2
 Requires: xnba-undi
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
-Requires: xCAT-genesis-scripts-ppc64
 Requires: ipmitool-xcat >= 1.8.15-2
 %endif
 %endif
