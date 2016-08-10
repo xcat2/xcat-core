@@ -715,6 +715,8 @@ function extract_archive()
 #       $2      repo id
 function add_repo_by_url_yum_or_zypper()
 {
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
 	local tmp=""
@@ -786,6 +788,8 @@ function add_repo_by_url_yum_or_zypper()
 function add_repo_by_url_apt()
 {
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
 	local tmp=""
@@ -882,6 +886,8 @@ function remove_repo()
 function add_xcat_core_repo_yum_or_zypper()
 {
 	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local ver="$2"
 	local tmp=""
@@ -906,6 +912,8 @@ function add_xcat_core_repo_yum_or_zypper()
 function add_xcat_core_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local ver="$2"
 	local tmp=""
@@ -939,6 +947,8 @@ function add_xcat_core_repo()
 function add_xcat_dep_repo_yum_or_zypper()
 {
 	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
@@ -1003,6 +1013,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 function add_xcat_dep_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	[[ -z "${url}" ]] &&
 		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/xcat-dep"
@@ -1046,33 +1058,33 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	dnf --nogpgcheck "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	dnf --nogpgcheck "${yes[@]}" install "$@"
 }
 
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	yum --nogpgcheck "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	yum --nogpgcheck "${yes[@]}" install "$@"
 }
 
 function install_packages_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-n") && shift
-	zypper --no-gpg-checks "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-n") && shift
+	zypper --no-gpg-checks "${yes[@]}" install "$@"
 }
 
 function install_packages_apt()
 {
 	type apt-get >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	apt-get --allow-unauthenticated install "${args[@]}" "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated install "${yes[@]}" "$@"
 }
 
 function install_packages()
@@ -1386,9 +1398,9 @@ echo
 echo -n "Reading repositories "
 show_progress_meters
 ERR_MSG="$({
-	if add_xcat_core_repo "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+	if add_xcat_core_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
-		if add_xcat_dep_repo "${GO_XCAT_DEP_URL}"
+		if add_xcat_dep_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_DEP_URL}"
 		then
 			update_repo && exit 0
 			remove_repo "xcat-dep"
@@ -1424,7 +1436,7 @@ case "${GO_XCAT_ACTION}" in
 		esac
 	fi
 	(
-		"${GO_XCAT_INSTALLER}" -y 2>&1 1>&42 |
+		"${GO_XCAT_INSTALLER}" "${GO_XCAT_YES[@]}" 2>&1 1>&42 |
 			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
 		exit "${PIPESTATUS[0]}"
 	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
