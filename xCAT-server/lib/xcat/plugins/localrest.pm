@@ -190,6 +190,35 @@ sub list_netip {
     return $result;
 }
 
+#-------------------------------------------------------
+
+=head3  handler to list network adapter first ip mask
+
+  Subroutine to handle rest request
+  GET /localres/netmask/<iface>
+
+  Usage example:
+        This function is called from handle_rest_request,
+        do not call it directly.
+=cut
+
+#-------------------------------------------------------
+sub list_netmask {
+    my @params = @_;
+    my ($rsp, $iface, $netmask, $cmd, $prefix, $result);
+    if (!@params) {
+        $rsp->{data}->[0] = "Argmument error.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 1;
+    }
+    $iface = shift @params;
+    $prefix = `ip addr show dev $iface |grep inet|head -1|awk '{print \$2}'`;
+    $cmd = "ipcalc -m $prefix";
+    $netmask->[0] = xCAT::Utils->runcmd("$cmd", -1);
+    return $netmask;
+}
+
+
 
 #-------------------------------------------------------
 
