@@ -1519,7 +1519,8 @@ case "${GO_XCAT_ACTION}" in
 	fi
 	;;
 *)
-	list_xcat_packages
+	usage
+	exit 1
 	;;
 esac # case "${GO_XCAT_ACTION}" in
 
