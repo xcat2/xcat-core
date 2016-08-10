@@ -60,6 +60,57 @@ function usage()
 }
 
 #
+# verbose_usage		This function be will be called when user run
+#			`go-xcat --long-help'.
+#			Including a bunch of secert usage.
+# 
+function verbose_usage()
+{
+	local script="${0##*/}"
+	local -i i
+
+	exec 42< <(usage)
+
+	for i in {1..7} ; do read -r -u 42 ; echo "${REPLY}" ; done
+	# Drop a line
+	read -r -u 42
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  -h, --help                    display a simply version of help and exit
+	  --long-help                   display this help and exit
+	EOF
+
+	for i in {1..13} ; do read -r -u 42 ; echo "${REPLY}" ; done
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  smoke-test                    preform basic tests of the xCAT installation
+	EOF
+
+	for i in {1..9} ; do read -r -u 42 ; echo "${REPLY}" ; done
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  ${script} --xcat-core=/path/to/xcat-core.repo install
+	  ${script} --xcat-core=/path/to/xcat-core install
+	  ${script} --xcat-core=/path/to/xcat-core.tar install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.repo \\
+	          --xcat-dep=/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=/path/to/xcat-core \\
+	          --xcat-dep=/path/to/xcat-dep install
+	EOF
+
+	while read -r -u 42 ; do echo "${REPLY}" ; done
+
+	exec 42<&-
+}
+
+#
 # version		Print out the version number.
 #
 function version()
@@ -1321,6 +1372,10 @@ do
 		usage
 		exit 0
 		;;
+	"--long-help")
+		verbose_usage
+		exit 0
+		;;
 	"--xcat-core="*)
 		GO_XCAT_CORE_URL="${1##--xcat-core=}"
 		;;
@@ -1494,8 +1549,9 @@ case "${GO_XCAT_ACTION}" in
 		exit "${RET}"
 	fi
 
-	if [ ${GO_XCAT_ACTION} == 'install' ]; then
-		# only print out this message on install
+	case "${GO_XCAT_ACTION}" in
+	"install")
+		# Only print out this message on install
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
 		xCAT has been installed!  
@@ -1509,14 +1565,19 @@ case "${GO_XCAT_ACTION}" in
 		    or csh,
 		        \`source /etc/profile.d/xcat.csh\`
 		EOF
-	else
+		;;
+	"update")
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
 		xCAT has been updated!
 		======================
 
 		EOF
-	fi
+		;;
+	esac
+	;;
+"check")
+	list_xcat_packages
 	;;
 *)
 	usage
