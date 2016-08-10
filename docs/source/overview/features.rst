@@ -51,6 +51,7 @@ Features
    * Parallel ping
 
 #. Integrate xCAT in Cloud
+
    * Openstack
    * SoftLayer
 
