@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.1
+# Version 1.0.2
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -65,29 +65,38 @@ function usage()
 #			Including a bunch of secert usage.
 # 
 function verbose_usage()
-{
+(
 	local script="${0##*/}"
-	local -i i
 
 	exec 42< <(usage)
 
-	for i in {1..7} ; do read -r -u 42 ; echo "${REPLY}" ; done
-	# Drop a line
-	read -r -u 42
+	function println()
+	{
+		local -i i
+		for (( i = 0 ; i < "$1" ; ++i ))
+		do
+			read -r -u 42
+			[[ "$?" -ne "0" ]] && break
+			echo "${REPLY}"
+		done
+	}
 
+	println 7
+	println 1 >/dev/null	# Drop a line
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  -h, --help                    display a simply version of help and exit
 	  --long-help                   display this help and exit
 	EOF
-
-	for i in {1..13} ; do read -r -u 42 ; echo "${REPLY}" ; done
-
+	println 9
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  check                         check the version of the installed packages
+	                                of xCAT and packages in the repository
+	EOF
+	println 2
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  smoke-test                    preform basic tests of the xCAT installation
 	EOF
-
-	for i in {1..9} ; do read -r -u 42 ; echo "${REPLY}" ; done
-
+	println 11
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	  ${script} --xcat-core=/path/to/xcat-core.repo install
 	  ${script} --xcat-core=/path/to/xcat-core install
@@ -104,11 +113,10 @@ function verbose_usage()
 	  ${script} --xcat-core=/path/to/xcat-core \\
 	          --xcat-dep=/path/to/xcat-dep install
 	EOF
-
-	while read -r -u 42 ; do echo "${REPLY}" ; done
+	println 999999	# Print out all the rest of lines
 
 	exec 42<&-
-}
+)
 
 #
 # version		Print out the version number.
