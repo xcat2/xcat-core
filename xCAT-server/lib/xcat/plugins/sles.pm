@@ -327,9 +327,11 @@ sub mknetboot
             $platform = "sles";
         }
 
-        my $suffix = 'gz';
+        my $suffix = 'cpio.gz';
         $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'tgz' if (-r "$rootimgdir/rootimg.tgz");
+        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
+        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
+        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
 
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -381,7 +383,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.tgz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]

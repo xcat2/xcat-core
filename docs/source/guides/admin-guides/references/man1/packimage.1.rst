@@ -64,6 +64,8 @@ OPTIONS
 
 \ **-m**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
+\ **-c**\           Compress Method (pigz,gzip,xz, default is pigz)
+
 
 ************
 RETURN VALUE

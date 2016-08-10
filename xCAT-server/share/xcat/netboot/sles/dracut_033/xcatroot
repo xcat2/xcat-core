@@ -67,8 +67,8 @@ if [ -r /rootimg.sfs ]; then
   mkdir -p $NEWROOT/rw
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
-elif [ -r /rootimg.gz ]; then
-  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg.gz downloaded,setting up RAM-root tmpfs...."
+elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -79,16 +79,24 @@ elif [ -r /rootimg.gz ]; then
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
   echo -n "Extracting root filesystem:"
-  if [ -x /bin/cpio ]; then
-    gzip -cd /rootimg.gz |/bin/cpio -idum
-  else
-    gzip -cd /rootimg.gz |cpio -idum
+  if [ -r /rootimg.cpio.gz ]; then
+    if [ -x /bin/cpio ]; then
+      gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
+    else
+      gzip -cd /rootimg.cpio.gz |cpio -idum
+    fi
+  elif [ -r /rootimg.cpio.xz ]; then
+    if [ -x /bin/cpio ]; then
+      xz -cd /rootimg.cpio.xz |/bin/cpio -idum
+    else
+      xz -cd /rootimg.cpio.xz |cpio -idum
+    fi
   fi
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
-elif [ -r /rootimg.tgz ]; then
-  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg.tgz downloaded,setting up RAM-root tmpfs...."
+elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -99,7 +107,11 @@ elif [ -r /rootimg.tgz ]; then
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
   echo -n "Extracting root filesystem:"
-  tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz
+  if [ -r /rootimg.tar.gz ]; then
+    tar --selinux --xattrs-include='*' -zxvf /rootimg.tar.gz
+  elif [ -r /rootimg.tar.xz ]; then
+    tar --selinux --xattrs-include='*' -Jxvf /rootimg.tar.xz
+  fi
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
