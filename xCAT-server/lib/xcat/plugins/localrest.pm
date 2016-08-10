@@ -134,7 +134,7 @@ sub handle_rest_request {
 =head3  handler to list network adapters
 
   Subroutine to handle rest request
-  GET /localres/adapter/
+  GET /localres/adapters/
 
   Usage example:
         This function is called from handle_rest_request,
@@ -142,8 +142,8 @@ sub handle_rest_request {
 =cut
 
 #-------------------------------------------------------
-sub list_adapter {
-    my ($rsp, $result, $i);
+sub list_adapters {
+    my ($rsp, $result, $cmd, $i, $tmpres);
     if (!opendir DIR, "/sys/class/net") {
         $rsp->{data}->[0] = "Unable open /sys/class/net dir.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -156,17 +156,19 @@ sub list_adapter {
         if ($item eq '.' || $item eq '..') {
             next;
         }
-        $result->[ $i++ ] = $item;
+        $cmd = "ifconfig| grep $item";
+        $tmpres = xCAT::Utils->runcmd("$cmd", -1);
+        $result->[ $i++ ] = $tmpres;
     }
-    return $result;
+    return $result
 }
 
 #-------------------------------------------------------
 
-=head3  handler to list network adapter first ip
+=head3  handler to show network device resource
 
   Subroutine to handle rest request
-  GET /localres/netip/<iface>
+  GET /localres/netres/<iface>/detail
 
   Usage example:
         This function is called from handle_rest_request,
@@ -174,7 +176,7 @@ sub list_adapter {
 =cut
 
 #-------------------------------------------------------
-sub list_netip {
+sub show_netres {
     my @params = @_;
     my ($rsp, $result, $iface, $cmd);
     if (!@params) {
@@ -183,13 +185,11 @@ sub list_netip {
         return 1;
     }
     $iface = shift @params;
-    $cmd = "ip addr show dev $iface |grep inet|head -1|awk '{print \$2}'|awk -F/ '{print \$1}'";
-
+    $cmd = "ip addr show dev $iface";
     $result->[ 0 ] = xCAT::Utils->runcmd("$cmd", -1);
-
     return $result;
-}
 
+}
 
 #-------------------------------------------------------
 
