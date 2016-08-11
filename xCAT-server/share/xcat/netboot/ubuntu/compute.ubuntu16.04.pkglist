@@ -14,3 +14,4 @@ busybox-static
 gawk
 tar
 gzip
+xz-utils

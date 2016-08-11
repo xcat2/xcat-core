@@ -38,6 +38,8 @@ B<-a>          Architecture (ppc64,x86_64,etc)
 
 B<-m>          Archive Method (cpio,tar,squashfs, default is cpio)
 
+B<-c>          Compress Method (pigz,gzip,xz, default is pigz)
+
 
 =head1 RETURN VALUE
 

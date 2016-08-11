@@ -39,23 +39,35 @@ if [ -r /rootimg.sfs ]; then
   mkdir -p $NEWROOT/rw
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
-elif [ -r /rootimg.gz ]; then
+elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
   echo Setting up RAM-root tmpfs.
   mount -t tmpfs -o mode=755 rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
-  if [ -x /bin/cpio ]; then
-    gzip -cd /rootimg.gz |/bin/cpio -idum
-  else
-    gzip -cd /rootimg.gz |cpio -idum
+  if [ -r /rootimg.cpio.gz ]; then
+    if [ -x /bin/cpio ]; then
+      gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
+    else
+      gzip -cd /rootimg.cpio.gz |cpio -idum
+    fi
+  elif [ -r /rootimg.cpio.xz ]; then
+    if [ -x /bin/cpio ]; then
+      xz -cd /rootimg.cpio.xz |/bin/cpio -idum
+    else
+      xz -cd /rootimg.cpio.xz |cpio -idum
+    fi
   fi
   echo Done
-elif [ -r /rootimg.tgz ]; then
+elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
   echo Setting up RAM-root tmpfs.
   mount -t tmpfs -o mode=755 rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
-  tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz
+  if [ -r /rootimg.tar.gz ]; then
+    tar --selinux --xattrs-include='*' -zxvf /rootimg.tar.gz
+  elif [ -r /rootimg.tar.xz ]; then
+    tar --selinux --xattrs-include='*' -Jxvf /rootimg.tar.xz
+  fi
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
