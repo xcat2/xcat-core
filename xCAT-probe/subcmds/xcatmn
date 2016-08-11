@@ -668,9 +668,10 @@ sub do_main_job {
 #-------------------------------------
 # When this command return from all SNs and MN, you need to generate a summary
 # All history outpout from SNs and MN are saved in globle hash %summaryoutput.
-# $ummaryoutput{mn} = @mnhistory
-# $ummaryoutput{snname1} = @snname1history;
+# $summaryoutput{mn} = @mnhistory
+# $summaryoutput{snname1} = @snname1history;
 # The entry in each histroy array isn't categorized, the message coming early is arranged before the one coming later.
+# A simple example of how to dump %summaryoutput has been written in function
 #-------------------------------------
 sub summary_all_jobs_output {
 
@@ -775,8 +776,7 @@ sub send_sn_msg {
         next if ($node eq "mn");
         foreach my $line (@{ $summaryoutput{$node} }) {
             if ($line =~ /^(\[\w+\]\s*):\s*(.*)/) {
-                $line = "$1:$node: $2";
-                print "$line\n";
+                print "$1:$node: $2\n";
             } else {
                 print "[failed] :$node: $line\n";
             }    
