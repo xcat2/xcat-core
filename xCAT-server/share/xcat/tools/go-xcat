@@ -1400,8 +1400,15 @@ do
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
 		;;
+	"-"*)
+		warn_if_bad 1 "invalid option -- '$1'"
+		exit_if_bad 1 "Try \`$0 --help' for more information"
+		;;
 	*)
 		[ "$1" == "--" ] && shift
+		[ -z "${GO_XCAT_ACTION}" ]
+		warn_if_bad "$?" "redundancy action -- '$1'"
+		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
 		;;
 	esac
@@ -1415,9 +1422,13 @@ case "${GO_XCAT_ACTION}" in
 	perform_smoke_test
 	exit "$?"
 	;;
-*)
+"")
 	usage
 	exit 1
+	;;
+*)
+	warn_if_bad 1 "invalid action -- '${GO_XCAT_ACTION}'"
+	exit_if_bad 1 "Try \`$0 --help' for more information"
 	;;
 esac
 
