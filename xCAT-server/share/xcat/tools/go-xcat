@@ -1409,9 +1409,15 @@ do
 done
 
 case "${GO_XCAT_ACTION}" in
+"check"|"install"|"update")
+	;;
 "smoke-test")
 	perform_smoke_test
 	exit "$?"
+	;;
+*)
+	usage
+	exit 1
 	;;
 esac
 
@@ -1483,6 +1489,9 @@ fi
 echo "done"
 
 case "${GO_XCAT_ACTION}" in
+"check")
+	list_xcat_packages
+	;;
 "install"|"update")
 	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
 	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
@@ -1584,11 +1593,7 @@ case "${GO_XCAT_ACTION}" in
 		;;
 	esac
 	;;
-"check")
-	list_xcat_packages
-	;;
 *)
-	usage
 	exit 1
 	;;
 esac # case "${GO_XCAT_ACTION}" in
