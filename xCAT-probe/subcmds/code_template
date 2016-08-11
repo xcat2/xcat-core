@@ -121,7 +121,7 @@ sub summary_all_jobs_output {
 
 #-------------------------------------
 # Each probe sub command is supposed to support hierarchical.
-# This funtion is used to caclulate which SN should be dispatched which command
+# This funtion is used to calclulate which SN should be dispatched which command
 #-------------------------------------
 sub calculate_dispatch_cmd {
     my @snlist = xCAT::ServiceNodeUtils->getAllSN();
@@ -149,7 +149,11 @@ sub calculate_dispatch_cmd {
                 if (grep(/^$sn$/, @snlist)) {   # the node just belong to one SN
                     push(@{ $newsnnodemap{$sn} }, @{ $snnodemap->{$sn} });
                 } elsif ($sn =~ /(\w+),.+/) { # the node belong to more than one SN, count it into first SN
-                    push(@{ $newsnnodemap{$1} }, @{ $snnodemap->{$sn} });
+                    if(grep(/^$1$/, @snlist)){
+                        push(@{ $newsnnodemap{$1} }, @{ $snnodemap->{$sn} });
+                    }else{
+                        probe_utils->send_msg("$output", "f", "The value $1  of 'servicenode' isn't a service node"); 
+                    }
                 } else { # the nodes don't belong to any SN will be handled by MN
                     push(@{ $newsnnodemap{mn} }, @{ $snnodemap->{$sn} });
                 }
@@ -255,7 +259,7 @@ pipe $pipe_parent_read, $pipe_child_write;
     #handle job in MN
     $mnjobpid = fork();
     if (!defined($mnjobpid)) {
-        probe_utils->send_msg("$output", "f", "fock process to handle MN job failed: $!");
+        probe_utils->send_msg("$output", "f", "fork process to handle MN job failed: $!");
         $rst = 1;
         last;
     } elsif ($mnjobpid == 0) {
@@ -278,7 +282,7 @@ pipe $pipe_parent_read, $pipe_child_write;
         my $snjobfd;
         my $snjobpid;
         if (!($snjobpid = open($snjobfd, "$snjobcmd |"))) {
-            probe_utils->send_msg("$output", "f", "fock process to dispatch cmd $snjobcmd to $sn failed: $!");
+            probe_utils->send_msg("$output", "f", "fork process to dispatch cmd $snjobcmd to $sn failed: $!");
             next;
         }
         push(@snsjobpids, $snjobpid);
@@ -313,10 +317,15 @@ pipe $pipe_parent_read, $pipe_child_write;
                                 $pipeisnonull{$fd} = 0;
                             } else {
                                 chomp($line = <$fd>);
-                                if ($line =~ /^(\w+)\s*:\s(.*)/) {
+                                if ($line =~ /(Error:)\s+(\w+)\s+(.+)/i) {
+                                    push @{ $summaryoutput{$2} }, $line;
+                                    #if need to print to STDIN in real time, can make below line available
+                                    #print "[failed] :$2: $line\n";
+                                } elsif ($line =~ /^(\w+)\s*:\s(.*)/) {
                                     push @{ $summaryoutput{$1} }, $2;
-                                    $line = "$2 :$1: $3" if ($line =~ /^(\w+)\s*:\s*(\[\w+\])\s*:\s*(.*)/);
-                                    print "$line\n";
+                                    #if need to print to STDIN in real time, can make below lines available
+                                    #$line = "$2:$1: $3" if ($line =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/);
+                                    #print "$line\n";
                                 }
                             }
                         }
