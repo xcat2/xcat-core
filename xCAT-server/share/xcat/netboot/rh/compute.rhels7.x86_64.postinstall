@@ -35,8 +35,10 @@ END
 #-- Disable SELinux in the rootimg
 #-- Redhat 7.3 will install selinux-policy and selinux is enabled by default
 #-- Need to disable selinux, otherwise, the booting  will hang on "Loading selinux policy"
+if [ -f "$installroot/etc/selinux/config" ]
+then
 sed -i 's/SELINUX=enforcing\|permissive/SELINUX=disabled/' $installroot/etc/selinux/config
-
+fi
 
 #-- Example of booted image versioning
 #-- We want to know, with what configuration (version of the image) each node was booted.
