@@ -725,6 +725,9 @@ sub do_main_job {
 #-------------------------------------
 sub summary_all_jobs_output {
 
+    if ($terminal) {
+        return 0;
+    }
     print "\n======================do summary=====================\n";
 
     my @summary;
@@ -785,6 +788,24 @@ sub summary_all_jobs_output {
         }
     }
 
+}
+
+#-------------------------------------
+# Clean up test environment
+# -------------------------------------
+sub cleanup {
+    my $tmptest = `lsdef xcatmntest 2>&1`;
+    if ($tmptest =~ /Error: Could not find an object named 'xcatmntest' of type 'node'./) {
+        if (-e "/etc/hosts.bak.probe") {
+            `rm /etc/hosts > /dev/null 2>&1`;
+            `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
+            `makedns -n 2>&1`;
+        }
+    } else {
+        `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+        `rm /etc/hosts`;
+        `mv /etc/hosts.bak.probe /etc/hosts`;
+    }
 }
 
 #-------------------------------------
@@ -894,6 +915,7 @@ if ($test) {
 
 $SIG{TERM} = $SIG{INT} = sub {
     $terminal = 1;
+    cleanup();
 };
 
 #--------------------------------------------
