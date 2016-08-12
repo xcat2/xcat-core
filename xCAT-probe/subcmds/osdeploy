@@ -616,8 +616,8 @@ sub dump_history {
             last if (!$newloop);
         }
 
-                print "------------result---------------\n";
-                print Dumper %match_result;
+       #print "------------result---------------\n";
+       #print Dumper %match_result;
 
         my $max_match = 0;
         foreach my $key (keys %match_result) {
