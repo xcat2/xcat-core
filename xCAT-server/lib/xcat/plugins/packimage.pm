@@ -220,7 +220,7 @@ sub process_request {
         }
     }
 
-    #before generating rootimg.gz, copy $installroot/postscripts into the image at /xcatpost
+    #before generating rootimg.$suffix, copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
         system("rm -rf $rootimg_dir/xcatpost");
     }
@@ -240,7 +240,7 @@ sub process_request {
     `echo TIMESTAMP="'$timestamp'" >> $rootimg_dir/opt/xcat/xcatinfo`;
 
 
-    # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
+    # before generating rootimg.$suffix or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
     $rootimg_status = 1 if (-f "$rootimg_dir/.statelite/litefile.save");
 
@@ -418,8 +418,6 @@ sub process_request {
         return 1;
     }
     $callback->({ data => ["Packing contents of $rootimg_dir"] });
-    unlink("$destdir/rootimg.gz");
-    unlink("$destdir/rootimg.sfs");
 
     my $suffix;
     if ($compress) {
@@ -470,6 +468,8 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
+    unlink("$destdir/rootimg.$suffix");
+    unlink("$destdir/rootimg.sfs");
     if ($method =~ /cpio/) {
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
