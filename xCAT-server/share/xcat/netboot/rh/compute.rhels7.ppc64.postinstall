@@ -37,7 +37,7 @@ echo "co:2345:respawn:/sbin/agetty -L 38400 console" >> $installroot/etc/inittab
 #-- Need to disable selinux, otherwise, the booting  will hang on "Loading selinux policy"
 if [ -f "$installroot/etc/selinux/config" ]
 then
-sed -i 's/SELINUX=enforcing\|permissive/SELINUX=disabled/' $installroot/etc/selinux/config
+    sed -i 's/SELINUX=enforcing\|permissive/SELINUX=disabled/' $installroot/etc/selinux/config
 fi
 
 #-- Example of booted image versioning
