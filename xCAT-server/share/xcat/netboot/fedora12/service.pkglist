@@ -19,3 +19,6 @@ wget
 vsftpd
 ntp
 rsync
+tar
+gzip
+xz
