@@ -20,3 +20,6 @@ vsftpd
 rsync
 timezone
 ntp
+tar
+gzip
+xz

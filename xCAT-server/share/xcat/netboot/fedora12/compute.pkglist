@@ -9,3 +9,6 @@ wget
 ntp
 vim-minimal
 rsync
+tar
+gzip
+xz

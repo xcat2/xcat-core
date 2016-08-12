@@ -23,3 +23,6 @@ python-urlgrabber.noarch
 python-virtinst
 screen
 xnba-kvm
+tar
+gzip
+xz
