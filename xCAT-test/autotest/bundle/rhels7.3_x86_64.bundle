@@ -1,5 +1,4 @@
-Diskless_installation_flat_p8_le
-Full_installation_flat_p8_le
+reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
 go_xcat_with_x
@@ -38,6 +37,9 @@ lsdef_t
 lsdef_t_i_o
 lsdef_t_w
 lsdef_t_err
+lslite_i
+lslite_noderange
+lslite_h
 makeconservercf_null
 makeconservercf_noderange
 makeconservercf_d
@@ -94,6 +96,7 @@ nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
 nodels_h
 nodels_v
+xcatstanzafile_normal
 xcatstanzafile_colon
 xcatstanzafile_attribute
 xcatstanzafile_objtype
@@ -107,6 +110,7 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
+nodestat_noderange
 nodestat_err_node
 rinv_noderange_err
 rmdef_null
@@ -196,7 +200,15 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_check_warninginfo
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+reg_linux_diskless_installation_flat
+reg_linux_statelite_installation_flat
+SN_setup_case
+reg_linux_diskfull_installation_hierarchy
+reg_linux_diskless_installation_hierarchy
+reg_linux_statelite_installation_hierarchy_by_ramdisk
+reg_linux_statelite_installation_hierarchy_by_nfs
 clean_up_env
