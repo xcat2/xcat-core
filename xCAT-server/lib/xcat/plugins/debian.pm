@@ -891,7 +891,7 @@ sub mkinstall {
                     $kcmdline .= "n8r";
                 }
             } else {
-                $callback->({ warning => ["rcons my not work since no serialport specified"], });
+                $callback->({ warning => ["rcons may not work since no serialport is specified for $node"], });
             }
 
             # need to add these in, otherwise aptitude will ask questions
@@ -1548,7 +1548,7 @@ sub mknetboot
         } else {
             $callback->(
                 {
-                    warning => ["rcons my not work since no serialport specified"],
+                    warning => ["rcons may not work since no serialport is specified for $node"],
                 }
             );
         }
