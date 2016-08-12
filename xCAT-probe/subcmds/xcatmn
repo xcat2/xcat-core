@@ -523,32 +523,20 @@ sub do_main_job {
                     }
                 } else {
 
-                    # if there is no sn, simulate a host to check DNS service
-                    `cp /etc/hosts /etc/hosts.bak.probe > /dev/null 2>&1`;
+                    # if there is no sn, nslookup mnip
+                    my $nslkp = `nslookup $serverip $serverip 2>&1`;
 
-                    {    #very important brace to create a block
-                        open HOSTFILE, ">> /etc/hosts";
-                        print HOSTFILE "$serverip xcatmntest xcatmntest.$domain";
-                        close HOSTFILE;
-
-                        probe_utils->send_msg($outputtarget, "d", "To do 'makedns -n xcatmntest'") if ($verbose);
-                        $tmp = `makedns -V -n 2>&1`;
-                        if ($?) {
-                            returncmdoutput($tmp, $outputtarget) if ($verbose);
-                            probe_utils->send_msg($outputtarget, "d", "makedns -n  xcatmntest failed") if ($verbose);
+                    if ($?) {
+                        probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
+                        $rc = 1;
+                    } else {
+                        chomp($nslkp);
+                        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split (/\n/, $output);
+                        if (!$tmp) {
+                            probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
                             $rc = 1;
-                            last;
-                        }
-
-                        if (!probe_utils->is_dns_ready("$serverip", "$serverip", "xcatmntest", "$domain")) {
-                            probe_utils->send_msg($outputtarget, "d", "nslookup xcatmntest $serverip failed");
-                            $rc = 1;
-                            last;
                         }
                     }
-                    `rm /etc/hosts > /dev/null 2>&1`;
-                    `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
-                    `makedns -n 2>&1`;
                 }
                 if ($rc) {
                     probe_utils->send_msg($outputtarget, "f", "$msg");
@@ -754,7 +742,7 @@ sub summary_all_jobs_output {
             } elsif ($log =~ /(\[warning\]\s*):\s*(.*)/) {
                 push @{ $summary_sn{$node}{"details"} }, "$1:\t$2";
             } elsif ($log !~ /^(\[\w+\]\s*):\s*(.*)/) {
-                push @{ $summary_sn{$node}{"details"} }, "[failed] :\t$log";
+                push @{ $summary_sn{$node}{"details"} }, "[failed]:\t$log";
                 ${ $summary_sn{$node}{"rst"} } = 0;
                 $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Check on SN $node FAILED.";
             }
@@ -794,17 +782,13 @@ sub summary_all_jobs_output {
 # Clean up test environment
 # -------------------------------------
 sub cleanup {
-    my $tmptest = `lsdef xcatmntest 2>&1`;
-    if ($tmptest =~ /Error: Could not find an object named 'xcatmntest' of type 'node'./) {
-        if (-e "/etc/hosts.bak.probe") {
-            `rm /etc/hosts > /dev/null 2>&1`;
-            `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
-            `makedns -n 2>&1`;
-        }
-    } else {
-        `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
-        `rm /etc/hosts`;
-        `mv /etc/hosts.bak.probe /etc/hosts`;
+    my $tmptest = `nodels xcatmntest 2>&1`;
+    if ($tmptest !~ /Error: Invalid nodes and\/or groups in noderange: xcatmntest/) {
+        `makedhcp -d xcatmntest &&  rmdef xcatmntest > /dev/null 2>&1`;
+    }
+    if (-e "/etc/hosts.bak.probe") {
+        `rm /etc/hosts > /dev/null 2>&1`;
+        `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
     }
 }
 
