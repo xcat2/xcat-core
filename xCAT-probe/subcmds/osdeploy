@@ -57,7 +57,7 @@ my %monitor_nodes;
 # provision state machine
 my %state_set = (
     "unknown"                  => 0,
-    "sever_reboot"             => 1,
+    "server_reboot"             => 1,
     "loaded_kernel_and_initrd" => 2,
     "kernel_and_initrd_got_ip" => 3,
     "install_os_packages"      => 4,
@@ -68,7 +68,7 @@ my %state_set = (
 
 my %state_set_reverse = (
     "0" => "unknown",
-    "1" => "sever_reboot",
+    "1" => "server_reboot",
     "2" => "loaded_kernel_and_initrd",
     "3" => "kernel_and_initrd_got_ip",
     "4" => "install_os_packages",
@@ -81,16 +81,16 @@ my %valid_process;
 $valid_process{1}{process} = [ $state_set{unknown}, $state_set{done} ];
 $valid_process{1}{type} = "reboot";
 
-$valid_process{2}{process} = [ $state_set{unknown}, $state_set{sever_reboot}, $state_set{done} ];
+$valid_process{2}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{done} ];
 $valid_process{2}{type} = "reboot";
 
-$valid_process{3}{process} = [ $state_set{unknown}, $state_set{sever_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{3}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
 $valid_process{3}{type} = "reboot";
 
-$valid_process{4}{process} = [ $state_set{unknown}, $state_set{sever_reboot}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{sever_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{4}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
 $valid_process{4}{type} = "deploy";
 
-$valid_process{5}{process} = [ $state_set{unknown}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{sever_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{5}{process} = [ $state_set{unknown}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
 $valid_process{5}{type} = "deploy";
 
 sub reset_state {
@@ -99,16 +99,16 @@ sub reset_state {
     my $reset_flag = 1;
 
     if ($$state_ref == $state_set{unknown} && $condition eq "dhcp") {
-        $$state_ref = $state_set{sever_reboot};
+        $$state_ref = $state_set{server_reboot};
     } elsif ($$state_ref == $state_set{unknown} && $condition eq "booted") {
         $$state_ref = $state_set{done};
     } elsif (($$state_ref == $state_set{unknown} && $condition eq "tftp") || ($$state_ref == $state_set{unknown} && $condition eq "http")) {
         $$state_ref = $state_set{loaded_kernel_and_initrd};
-    } elsif ($$state_ref == $state_set{sever_reboot} && $condition eq "booted") {
+    } elsif ($$state_ref == $state_set{server_reboot} && $condition eq "booted") {
         $$state_ref = $state_set{done};
-    } elsif ($$state_ref == $state_set{sever_reboot} && $condition eq "postscript") {
+    } elsif ($$state_ref == $state_set{server_reboot} && $condition eq "postscript") {
         $$state_ref = $state_set{run_postbootscript};
-    } elsif (($$state_ref == $state_set{sever_reboot} && $condition eq "tftp") || ($$state_ref == $state_set{sever_reboot} && $condition eq "http")) {
+    } elsif (($$state_ref == $state_set{server_reboot} && $condition eq "tftp") || ($$state_ref == $state_set{server_reboot} && $condition eq "http")) {
         $$state_ref = $state_set{loaded_kernel_and_initrd};
     } elsif ($$state_ref == $state_set{loaded_kernel_and_initrd} && $condition eq "dhcp") {
         $$state_ref = $state_set{kernel_and_initrd_got_ip};
@@ -117,13 +117,13 @@ sub reset_state {
     } elsif ($$state_ref == $state_set{install_os_packages} && $condition eq "postscript") {
         $$state_ref = $state_set{run_postscript};
     } elsif ($$state_ref == $state_set{run_postscript} && $condition eq "dhcp") {
-        $$state_ref = $state_set{sever_reboot};
+        $$state_ref = $state_set{server_reboot};
     } elsif ($$state_ref == $state_set{run_postbootscript} && $condition eq "booted") {
         $$state_ref = $state_set{done};
     } elsif ($$state_ref == $state_set{done} && $condition eq "dhcp") {
-        $$state_ref = $state_set{sever_reboot};
+        $$state_ref = $state_set{server_reboot};
     } elsif ($$state_ref == $state_set{done} && $condition eq "poweron") {
-        $$state_ref = $state_set{sever_reboot};
+        $$state_ref = $state_set{server_reboot};
     } else {
         $reset_flag = 0;
     }
@@ -867,7 +867,6 @@ sub get_valid_logs {
             last unless ($line = <$fd>);
             chomp($line);
             my $needrotate = 0;
-            my $istorynum  = 0;
             my $logindex   = 0;
             my @splitline  = split(/\s+/, $line);
             my $timestamp;
