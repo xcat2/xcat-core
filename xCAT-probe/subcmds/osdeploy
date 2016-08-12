@@ -210,18 +210,34 @@ sub check_noderange {
             $rst = 1;
             next;
         }
-        $monitor_nodes{$node}{"rst"} = 0;
+        my $noerror=1;
         my @macs = split(/\|/, $nodecheckrst{$node}{"mac"});
         foreach my $mac (@macs) {
+
+            #[NOTE] don't support 2 adapters in the same network now. TODO
+
             if ($mac =~ /\!\*NOIP\*/) {
                 $mac =~ s/\!\*NOIP\*//g;
                 $macmap{$mac}{"ip"}   = "NOIP";
                 $macmap{$mac}{"node"} = $node;
             } else {
-                $macmap{$mac}{"ip"}   = $nodecheckrst{$node}{"ip"};
                 $macmap{$mac}{"node"} = $node;
+                if($nodecheckrst{$node}{"ip"}){
+                    $macmap{$mac}{"ip"} = $nodecheckrst{$node}{"ip"};
+                }else{
+                    my $nodeip = xCAT::NetworkUtils->getipaddr($node);
+                    if($nodeip){
+                        $macmap{$mac}{"ip"} = $nodeip;
+                    }else{
+                        $noerror = 0;
+                        $rst = 1;
+                        probe_utils->send_msg("$output", "f", "$node : can't be resolved to a IP address"); 
+                    }
+                }
             }
         }
+
+        $monitor_nodes{$node}{"rst"} = 0 if($noerror);
     }
 
     unless (%monitor_nodes) {
@@ -600,8 +616,8 @@ sub dump_history {
             last if (!$newloop);
         }
 
-        #        print "------------result---------------\n";
-        #        print Dumper %match_result;
+                print "------------result---------------\n";
+                print Dumper %match_result;
 
         my $max_match = 0;
         foreach my $key (keys %match_result) {
@@ -820,6 +836,8 @@ sub get_valid_logs {
         $filename =~ s/(.+)\.(.+)/$1/g;
         my $path_only = dirname("$f");
         my @rotatefiles;
+        
+        #TODO  using opendir to refine below code
         my @alltargetfiles = `ls -lt $path_only |awk -F" " '/ $filename/ {print \$9}'`;
         foreach my $samenamefile (@alltargetfiles) {
             chomp($samenamefile);
