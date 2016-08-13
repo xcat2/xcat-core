@@ -79,7 +79,7 @@ sub process_request {
         @ARGV = @{$args};
     }
     if (scalar(@ARGV) == 0) {
-        $callback->({ info => ["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -114,7 +114,7 @@ sub process_request {
         return 0;
     }
     if ($help) {
-        $callback->({ info => ["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -468,8 +468,12 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink("$destdir/rootimg.$suffix");
     unlink("$destdir/rootimg.sfs");
+    unlink("$destdir/rootimg.cpio.xz");
+    unlink("$destdir/rootimg.cpio.gz");
+    unlink("$destdir/rootimg.tar.xz");
+    unlink("$destdir/rootimg.tar.gz");
+    
     if ($method =~ /cpio/) {
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
@@ -507,6 +511,7 @@ sub process_request {
         $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
         return 1;
     }
+
     chdir("$rootimg_dir");
     my $outputmsg = `$excludestr 2>&1`;
     unless($?){
@@ -517,6 +522,7 @@ sub process_request {
         system("rm -rf $xcat_packimg_tmpfile");
         return 1;
     }
+
     if ($method =~ /cpio/) {
         chmod 0644, "$destdir/rootimg.$suffix";
         if ($dotorrent) {
