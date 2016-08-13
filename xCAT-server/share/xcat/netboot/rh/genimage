@@ -1640,9 +1640,9 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
-    print $inifile "        tar --selinux --xattrs-include='*' -zxvf /rootimg.tar.gz\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
     print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
-    print $inifile "        tar --selinux --xattrs-include='*' -Jxvf /rootimg.tar.xz\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
     print $inifile "    fi\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
