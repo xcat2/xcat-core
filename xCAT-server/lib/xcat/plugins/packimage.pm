@@ -488,14 +488,24 @@ sub process_request {
         $oldmask = umask 0077;
     } elsif ($method =~ /tar/) {
         if (!$exlistloc) {
-            $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
+            my $checkoption = `tar --xattrs-include 2>&1`;
+            if ($checkoption =~ /unrecognized/) {
+                $excludestr = "find . -xdev -print0 | tar --selinux --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
+            } else {
+                $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
+            }
         } else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile");
             if ($includestr) {
                 system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' --no-recursion --use-compress-program=$compress -T - -cf  ../rootimg.$suffix";
+            my $checkoption = `tar --xattrs-include 2>&1`;
+            if ($checkoption =~ /unrecognized/) {
+                $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --no-recursion --use-compress-program=$compress -T - -cf  ../rootimg.$suffix";
+            } else {
+                $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' --no-recursion --use-compress-program=$compress -T - -cf  ../rootimg.$suffix";
+            }
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
