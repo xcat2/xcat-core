@@ -1,6 +1,6 @@
 #INCLUDE:compute.rhels7.pkglist#
 
-#For Cuda 7.5
+#For Cuda 
 kernel-devel
 gcc
 pciutils
