@@ -163,12 +163,14 @@ cmd:xdsh $$CN "cd /; rm -rf /go-xcat"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
+cmd:cp /xcat-dep-*.tar.bz2 /install/
+check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
-cmd:if grep Ubuntu /etc/*release;then  xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2 --xcat-dep=http://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-2.12-ubuntu.tar.bz2 -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 --xcat-dep=http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-2.12-linux.tar.bz2 -y install"; fi
+cmd:dep=`ls /install/xcat-dep-*.tar.bz2`;if grep Ubuntu /etc/*release;then  xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2 --xcat-dep=http://$$MN/$dep -y install"; else xdsh $$CN "cd /; ./go-xcat --xcat-core=http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2 --xcat-dep=http://$$MN/$dep -y install"; fi
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v"
 check:rc==0
