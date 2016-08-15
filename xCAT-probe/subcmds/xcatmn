@@ -363,68 +363,23 @@ sub do_main_job {
         }
     }
 
-    my $expected = 10;
-    $msg = "The free space of / directory is more than $expected G";
-    my $diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/\$"`;
-    if ($?) {
-        probe_utils->send_msg($outputtarget, "d", "There isn't any filesystem mount on / directory");
-        probe_utils->send_msg($outputtarget, "f", "$msg");
-        $rst = 1;
-    } else {
-        chomp($diskspace);
-        my ($size, $dir) = split(" ", $diskspace);
-        $size =~ s/G//g;
-        probe_utils->send_msg($outputtarget, "d", "The free space of / is $size G") if ($verbose);
-        if ($size < $expected) {
-            probe_utils->send_msg($outputtarget, "w", "The free space of / is less than $expected G");
-        } else {
-            probe_utils->send_msg($outputtarget, "o", "$msg");
+    #check the free space of specific directory
+    #if "/var" is mounted on standalone disk, more than 1G free space is expected
+    #if "/tmp" is mounted on standalone disk, more than 1G free space is expected
+    #if installdir is mounted on standalone disk, more than 10G free space is expected. 
+    #if any one of above three directories hasn't standalone disk, "/" directory should cover its space requirement.
+    my @dir_expectedspace_list = (["/var", "1"], ["/tmp", "1"], ["$installdir", "10"], ["/" , "0"]);
+    foreach my $dir (@dir_expectedspace_list){
+        next if($dir->[0]  eq "/" && $dir->[1] == 0);
+        my $checkrst = probe_utils->is_dir_has_enough_space($dir->[0], $dir->[1]);
+        if($checkrst == 2){
+            $dir_expectedspace_list[$#dir_expectedspace_list][1] += $dir->[1];
+        }elsif($checkrst == 1){
+            probe_utils->send_msg($outputtarget, "o", "The free space of '$dir->[0]' directory is more than $dir->[1] G");
+        }elsif($checkrst == 0){
+            probe_utils->send_msg($outputtarget, "w", "The free space of '$dir->[0]' is less than $dir->[1] G");
         }
-    }
 
-    $expected  = 1;
-    $msg       = "The free space of /var directory is more than $expected G";
-    $diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/var\$"`;
-    if (!$?) {
-        chomp($diskspace);
-        my ($size, $dir) = split(" ", $diskspace);
-        $size =~ s/G//g;
-        probe_utils->send_msg($outputtarget, "d", "The free space of /var is $size G") if ($verbose);
-        if ($size < $expected) {
-            probe_utils->send_msg($outputtarget, "w", "The free space of /var is less than $expected G");
-        } else {
-            probe_utils->send_msg($outputtarget, "o", "$msg");
-        }
-    }
-
-    $expected  = 1;
-    $msg       = "The free space of /tmp directory is more than $expected G";
-    $diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "/tmp\$"`;
-    if (!$?) {
-        chomp($diskspace);
-        my ($size, $dir) = split(" ", $diskspace);
-        $size =~ s/G//g;
-        probe_utils->send_msg($outputtarget, "d", "The free space of /tmp is $size G") if ($verbose);
-        if ($size < $expected) {
-            probe_utils->send_msg($outputtarget, "w", "The free space of /tmp is less than $expected G");
-        } else {
-            probe_utils->send_msg($outputtarget, "o", "$msg");
-        }
-    }
-
-    $expected = 10;
-    $msg = "The free space of $installdir directory is more than $expected G";
-    $diskspace = `df -h|awk '{print \$4,\$6}'|grep -E "$installdir\$"`;
-    if (!$?) {
-        chomp($diskspace);
-        my ($size, $dir) = split(" ", $diskspace);
-        $size =~ s/G//g;
-        probe_utils->send_msg($outputtarget, "d", "The free space of /install is $size G") if ($verbose);
-        if ($size < $expected) {
-            probe_utils->send_msg($outputtarget, "w", "The free space of /install is less than $expected G");
-        } else {
-            probe_utils->send_msg($outputtarget, "o", "$msg");
-        }
     }
 
     $msg = "SELinux is disabled on current server";
@@ -444,8 +399,7 @@ sub do_main_job {
 
     `which wget > /dev/null 2>&1`;
     if ($?) {
-        probe_utils->send_msg($outputtarget, "w", "wget tool isn't installed on current server, skip checking HTTP service.");
-        probe_utils->send_msg($outputtarget, "d", "Please do probe again after installing wget");
+        probe_utils->send_msg($outputtarget, "w", "'wget' tool isn't installed, skip checking HTTP service. please install wget then try again");
     } else {
         $msg = "HTTP service is ready on $serverip";
         if (probe_utils->is_http_ready("$serverip")) {
@@ -472,8 +426,7 @@ sub do_main_job {
     if ($checktftp) {
         `which tftp > /dev/null 2>&1`;
         if ($?) {
-            probe_utils->send_msg($outputtarget, "w", "tftp tool isn't installed on current server, skip checking tftp service.");
-            probe_utils->send_msg($outputtarget, "d", "Please do probe again after installing tftp");
+            probe_utils->send_msg($outputtarget, "w", "'tftp' tool isn't installed, skip checking tftp service. Please install tftp then try again");
         } else {
             $msg = "TFTP service is ready on $serverip";
             if (probe_utils->is_tftp_ready("$serverip")) {
@@ -499,14 +452,12 @@ sub do_main_job {
     if ($checkdns) {
         `which nslookup > /dev/null 2>&1`;
         if ($?) {
-            probe_utils->send_msg($outputtarget, "w", "nslookup tool isn't installed in current server, skip checking DNS service.");
-            probe_utils->send_msg($outputtarget, "d", "Please do probe again after installing nslookup");
+            probe_utils->send_msg($outputtarget, "w", "'nslookup' tool isn't installed, skip checking DNS service. please install nslookup then try again");
         } else {
             $msg = "DNS server is ready on $serverip";
             probe_utils->send_msg($outputtarget, "d", "Domain used to check DNS is $domain") if ($verbose);
 
             my $rc = 0;
-
             if (!$is_sn) {
 
                 # if this is a hierarchical cluster, nslookup one of sn to check DNS service
@@ -517,7 +468,7 @@ sub do_main_job {
                     if ($sninfo =~ /(\d+).(\d+).(\d+).(\d+)/) {
                         my $snip = "$1.$2.$3.$4";
                         if (!probe_utils->is_dns_ready("$snip", "$serverip", "$sntmp", "$domain")) {
-                            probe_utils->send_msg("$outputtarget", "d", "nslookup $sntmp $snip failed");
+                            probe_utils->send_msg("$outputtarget", "d", "nslookup $sntmp $snip failed") if($verbose);
                             $rc = 1;
                         }
                     }
@@ -525,17 +476,11 @@ sub do_main_job {
 
                     # if there is no sn, nslookup mnip
                     my $nslkp = `nslookup $serverip $serverip 2>&1`;
-
-                    if ($?) {
-                        probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
+                    chomp($nslkp);
+                    my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split (/\n/, $nslkp);
+                    if (!$tmp) {
+                        probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed") if($verbose);
                         $rc = 1;
-                    } else {
-                        chomp($nslkp);
-                        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split (/\n/, $output);
-                        if (!$tmp) {
-                            probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
-                            $rc = 1;
-                        }
                     }
                 }
                 if ($rc) {
@@ -861,7 +806,7 @@ sub send_sn_msg {
             if ($line =~ /^(\[\w+\]\s*):\s*(.*)/) {
                 print "$1:[SN:$node]: $2\n";
             } else {
-                print "[failed] :$node: $line\n";
+                print "[failed] :[SN:$node]: $line\n";
             }
         }
     }
