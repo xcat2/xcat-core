@@ -4,9 +4,8 @@ kernel-devel
 gcc
 pciutils
 dkms
-#To install cuda-runtime, need to specify the version
-#if want to install cuda-runtime-7-5, uncomment it,
-#then comment out cuda-runtime-8-0
+#To install cuda-runtime-7-5
 #cuda-runtime-7-5
+#To install cuda-runtime-8-0
 cuda-runtime-8-0
 
