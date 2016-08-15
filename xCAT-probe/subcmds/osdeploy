@@ -9,35 +9,158 @@ use probe_utils;
 use xCAT::NetworkUtils;
 use File::Basename;
 use IO::Select;
+use Time::Local;
+use Data::Dumper;
 use Getopt::Long qw(:config no_ignore_case);
 
 my $program_name = basename("$0");
 my $help;
 my $test;
-my $output  = "stdout";
-my $verbose = 0;
-my $rst     = 0;
+my $maxwaittime = 60;         #unit is minute
+my $output      = "stdout";
+my $verbose     = 0;
+my $rst         = 0;
 my $noderange;
-my %rawdata;
-my %ipnodemap;
-my %macmap;
 my $terminal = 0;
+my $installnic;
+my $monitor = 0;
+my $replaylog;                ##used by feature replay deploymen log
+
+my %rawdata;
+
+#-%rawdata structure-------
+# $rawdata{nodename}{"history"}       #array, the log history of current node
+# $rawdata{nodename}{"state"}         #the latest status of current node, used for State Machine
+# $rawdata{nodename}{"statehistory"}  #array, the history status of current node, used for State Machine
+#--------------------------
+
+my %macmap;
+
+#-%macmap structure-------
+# $macmap{mac_addr}{"ip"}="x.x.x.x"
+# $macmap{mac_addr}{"node"}="nodename"
+#-------------------------
+
+my %ipnodemap;
+
+#-%ipnodemap structure-------
+# $ipnodemap{ip_addr}="nodename"
+#---------------------------
+
 my %monitor_nodes;
+
+#- %monitor_nodes structure-------
+# $monitor_nodes{nodename}{"status"}  #useless now
+# $monitor_nodes{nodename}{"rst"}
+#---------------------------------
+
+# provision state machine
+my %state_set = (
+    "unknown"                  => 0,
+    "server_reboot"             => 1,
+    "loaded_kernel_and_initrd" => 2,
+    "kernel_and_initrd_got_ip" => 3,
+    "install_os_packages"      => 4,
+    "run_postscript"           => 5,
+    "run_postbootscript"       => 6,
+    "done"                     => 7,
+);
+
+my %state_set_reverse = (
+    "0" => "unknown",
+    "1" => "server_reboot",
+    "2" => "loaded_kernel_and_initrd",
+    "3" => "kernel_and_initrd_got_ip",
+    "4" => "install_os_packages",
+    "5" => "run_postscript",
+    "6" => "run_postbootscript",
+    "7" => "done",
+);
+
+my %valid_process;
+$valid_process{1}{process} = [ $state_set{unknown}, $state_set{done} ];
+$valid_process{1}{type} = "reboot";
+
+$valid_process{2}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{done} ];
+$valid_process{2}{type} = "reboot";
+
+$valid_process{3}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{3}{type} = "reboot";
+
+$valid_process{4}{process} = [ $state_set{unknown}, $state_set{server_reboot}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{4}{type} = "deploy";
+
+$valid_process{5}{process} = [ $state_set{unknown}, $state_set{loaded_kernel_and_initrd}, $state_set{kernel_and_initrd_got_ip}, $state_set{install_os_packages}, $state_set{run_postscript}, $state_set{server_reboot}, $state_set{run_postbootscript}, $state_set{done} ];
+$valid_process{5}{type} = "deploy";
+
+sub reset_state {
+    my $state_ref  = shift;
+    my $condition  = shift;
+    my $reset_flag = 1;
+
+    if ($$state_ref == $state_set{unknown} && $condition eq "dhcp") {
+        $$state_ref = $state_set{server_reboot};
+    } elsif ($$state_ref == $state_set{unknown} && $condition eq "booted") {
+        $$state_ref = $state_set{done};
+    } elsif (($$state_ref == $state_set{unknown} && $condition eq "tftp") || ($$state_ref == $state_set{unknown} && $condition eq "http")) {
+        $$state_ref = $state_set{loaded_kernel_and_initrd};
+    } elsif ($$state_ref == $state_set{server_reboot} && $condition eq "booted") {
+        $$state_ref = $state_set{done};
+    } elsif ($$state_ref == $state_set{server_reboot} && $condition eq "postscript") {
+        $$state_ref = $state_set{run_postbootscript};
+    } elsif (($$state_ref == $state_set{server_reboot} && $condition eq "tftp") || ($$state_ref == $state_set{server_reboot} && $condition eq "http")) {
+        $$state_ref = $state_set{loaded_kernel_and_initrd};
+    } elsif ($$state_ref == $state_set{loaded_kernel_and_initrd} && $condition eq "dhcp") {
+        $$state_ref = $state_set{kernel_and_initrd_got_ip};
+    } elsif ($$state_ref == $state_set{kernel_and_initrd_got_ip} && $condition eq "http") {
+        $$state_ref = $state_set{install_os_packages};
+    } elsif ($$state_ref == $state_set{install_os_packages} && $condition eq "postscript") {
+        $$state_ref = $state_set{run_postscript};
+    } elsif ($$state_ref == $state_set{run_postscript} && $condition eq "dhcp") {
+        $$state_ref = $state_set{server_reboot};
+    } elsif ($$state_ref == $state_set{run_postbootscript} && $condition eq "booted") {
+        $$state_ref = $state_set{done};
+    } elsif ($$state_ref == $state_set{done} && $condition eq "dhcp") {
+        $$state_ref = $state_set{server_reboot};
+    } elsif ($$state_ref == $state_set{done} && $condition eq "poweron") {
+        $$state_ref = $state_set{server_reboot};
+    } else {
+        $reset_flag = 0;
+    }
+
+    return $reset_flag;
+}
+
+
+my @candidate_svr_hostname_inlog;
+my $svr_hostname_short = `hostname -s`;
+chomp($svr_hostname_short);
+my $svr_hostname_domain = `hostname -d`;
+chomp($svr_hostname_domain);
+push(@candidate_svr_hostname_inlog, $svr_hostname_short);
+push(@candidate_svr_hostname_inlog, "$svr_hostname_short.$svr_hostname_domain");
+
 
 $::USAGE = "Usage:
     $program_name -h
     $program_name -T
     $program_name -n <node_range> [-V]
+    $program_name -n <node_range> -r <xxhxxm> [-V]
 
 Description:
-    Do probe for os provision process, realtime monitor of os provision process.
-    Please run this before rpower node.
+    Do probe for os provision process. Realtime monitor or replay history of os provision process.
+    If do realtime monitor, please run this before rpower node.
+    Unsupport hierarchial structure now.
 
 Options:
     -h : Get usage information of $program_name
     -T : To verify if $program_name can work, reserve option for probe framework
     -V : Output more information for debug
-    -n : The range of monitored node.
+    -n : The range of node to be monitor or replay log.
+    -t : The maximum time to wait when doing monitor, the unit is minute, default is 60 minutes.
+    -r : Replay history log to probe provision. need input a start time when probe should begin from. 
+         Support time format are xxhxxm, xxh, or xxm.  h means hour, m means minute. 
+         If there isn't unit input, using hour by default. 
 ";
 
 #------------------------------------------
@@ -54,58 +177,74 @@ Options:
 
 #------------------------------------------
 sub check_noderange {
-    my $node_range  = shift;
-    my @cmdoutput   = `lsdef $node_range -i ip,mac 2>&1`;
-    my $rst         = 0;
-    my $currentnode = "";
-    my $ip          = "NOIP";
+    my $node_range = shift;
+    my @cmdoutput  = `lsdef $node_range -i ip,mac -c 2>&1`;
+    my $rst        = 0;
     my %nodecheckrst;
-    my $mac_line;
-    my @macs;
 
     foreach (@cmdoutput) {
         chomp($_);
         $_ =~ s/^\s+|\s+$//g;
         if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
-            $currentnode = $1;
-            $nodecheckrst{$currentnode}{"error"} = "Could not find node definition";
-            $rst = 1;
-        } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
-
-            # 'rst' is used to check whether the node process finished, 1 is finished.
-            $monitor_nodes{$1}{"rst"} = 0;
-            $currentnode              = $1;
-            $ip                       = "NOIP";
-        } elsif ($_ =~ /^ip=(.+)/i) {
-            if ($1) {
-                $ip = $1;
+            $nodecheckrst{$1}{"error"} = "Could not find node definition";
+        } elsif ($_ =~ /(\S+):\s+mac=(.*)/i) {
+            my $node = $1;
+            my $mac  = $2;
+            if ($mac) {
+                $nodecheckrst{$node}{"mac"} = $mac;
+            } else {
+                $nodecheckrst{$node}{"error"} = "Node $1 doesn't have MAC address";
             }
-        } elsif ($_ =~ /^mac=(.+)/i) {
-            next unless ($1);
-            $mac_line = $1;
-            @macs = split(/\|/, $mac_line);
-            foreach my $mac (@macs) {
-                if ($mac =~ /\!\*NOIP\*/) {
-                    $mac =~ s/\!\*NOIP\*//g;
-                    $macmap{$mac}{"ip"}   = "NOIP";
-                    $macmap{$mac}{"node"} = $currentnode;
-                }
-                else {
-                    $macmap{$mac}{"ip"}   = $ip;
-                    $macmap{$mac}{"node"} = $currentnode;
-                }
+        } elsif ($_ =~ /(\S+):\s+ip=(.*)/i) {
+            my $node = $1;
+            my $ip   = $2;
+            if ($ip) {
+                $nodecheckrst{$node}{"ip"} = $ip;
             }
         }
     }
 
     foreach my $node (keys %nodecheckrst) {
-        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
+        if (exists($nodecheckrst{$node}{error})) {
+            probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}");
+            $rst = 1;
+            next;
+        }
+        my $noerror=1;
+        my @macs = split(/\|/, $nodecheckrst{$node}{"mac"});
+        foreach my $mac (@macs) {
+
+            #[NOTE] don't support 2 adapters in the same network now. TODO
+
+            if ($mac =~ /\!\*NOIP\*/) {
+                $mac =~ s/\!\*NOIP\*//g;
+                $macmap{$mac}{"ip"}   = "NOIP";
+                $macmap{$mac}{"node"} = $node;
+            } else {
+                $macmap{$mac}{"node"} = $node;
+                if($nodecheckrst{$node}{"ip"}){
+                    $macmap{$mac}{"ip"} = $nodecheckrst{$node}{"ip"};
+                }else{
+                    my $nodeip = xCAT::NetworkUtils->getipaddr($node);
+                    if($nodeip){
+                        $macmap{$mac}{"ip"} = $nodeip;
+                    }else{
+                        $noerror = 0;
+                        $rst = 1;
+                        probe_utils->send_msg("$output", "f", "$node : can't be resolved to a IP address"); 
+                    }
+                }
+            }
+        }
+
+        $monitor_nodes{$node}{"rst"} = 0 if($noerror);
     }
 
     unless (%monitor_nodes) {
-        probe_utils->send_msg("$output", "d", "There is no node to be monitored");
+        probe_utils->send_msg("$output", "d", "There is no valid node to handle");
         $rst = 1;
     }
+
     return $rst;
 }
 
@@ -116,7 +255,7 @@ sub check_noderange {
        Handle one line log come from dhcp log file
     Arguments:
        msg: one line http log
-       nics: target network interfaces
+       installnic: target network interfaces
     Returns:
         0 : pass
         1 : failed
@@ -132,8 +271,8 @@ sub handle_dhcp_msg {
 
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
-            my $record = "Receive DHCPDISCOVER from [$node] $mac via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $record = "Receive DHCPDISCOVER via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
         }
     } elsif ($msg =~ /.+DHCPOFFER\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/i) {
@@ -143,8 +282,8 @@ sub handle_dhcp_msg {
 
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
-            my $record = "Send DHCPOFFER on $ip back to [$node] $mac via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $record = "Send DHCPOFFER on $ip back to $mac via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
         }
 
@@ -155,16 +294,10 @@ sub handle_dhcp_msg {
         my $nic    = $4;
 
         if (exists $macmap{$mac}) {
-            my $node = $macmap{$mac}{"node"};
-            my $record = "Receive DHCPREQUEST from [$node] $mac for $ip via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $node   = $macmap{$mac}{"node"};
+            my $record = "Receive DHCPREQUEST from $mac for $ip via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
-
-            if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
-                my $warn_msg = "The ip of [$node] $mac from DHCP $ip is different with definition $macmap{$mac}{'ip'}.";
-                probe_utils->send_msg("$output", "w", "$warn_msg");
-                push(@{ $rawdata{$node}{"history"} }, $warn_msg);
-            }
         }
     } elsif ($msg =~ /.+DHCPACK\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/) {
         my $ip  = $1;
@@ -173,19 +306,25 @@ sub handle_dhcp_msg {
 
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
-            my $record = "Send DHCPACK on $ip back to [$node] $mac via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $record = "Send DHCPACK on $ip back to $mac via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
             $ipnodemap{$ip} = $node;
+            push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "dhcp"));
+
+            if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
+                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different with the ip($macmap{$mac}{'ip'}) in node definition.";
+                probe_utils->send_msg("$output", "w", "$warn_msg") if ($monitor);
+                push(@{ $rawdata{$node}{"history"} }, $warn_msg);
+            }
         }
     } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
         my $mac = $1;
         my $nic = $2;
-
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
-            my $record = "Receive BOOTREQUEST from [$node] $mac via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $record = "Receive BOOTREQUEST from $mac via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
         }
     } elsif ($msg =~ /.+BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
@@ -195,14 +334,15 @@ sub handle_dhcp_msg {
 
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
-            my $record = "Send BOOTREPLY on $ip back to [$node] $mac via $nic";
-            probe_utils->send_msg("$output", "d", "$record");
+            my $record = "Send BOOTREPLY on $ip back to $mac via $nic";
+            probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
             push(@{ $rawdata{$node}{"history"} }, $record);
             $ipnodemap{$ip} = $node;
+            push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "dhcp"));
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
-                my $warn_msg = "The ip of [$node] $mac from DHCP $ip is different with definition $macmap{$mac}{'ip'}.";
-                probe_utils->send_msg("$output", "w", "$warn_msg");
+                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different with the ip($macmap{$mac}{'ip'}) in node definition.";
+                probe_utils->send_msg("$output", "w", "$warn_msg") if ($monitor);
                 push(@{ $rawdata{$node}{"history"} }, $warn_msg);
             }
         }
@@ -230,11 +370,11 @@ sub handle_tftp_msg {
     if ($msg =~ /RRQ\s+from\s+(.+)\s+filename\s+(.+)/i) {
         my $ip     = $1;
         my $file   = $2;
-        my $record = "[$ipnodemap{$ip}] Via TFTP $ip download $file";
-
+        my $record = "Via TFTP download $file";
         if (exists($rawdata{"$ipnodemap{$ip}"})) {
-            probe_utils->send_msg("$output", "d", "$record");
+            probe_utils->send_msg("$output", "d", "[$ipnodemap{$ip}] $record") if ($monitor);
             push(@{ $rawdata{ $ipnodemap{$ip} }{"history"} }, $record);
+            push(@{ $rawdata{ $ipnodemap{$ip} }{statehistory} }, $rawdata{ $ipnodemap{$ip} }{state}) if (reset_state(\$rawdata{ $ipnodemap{$ip} }{state}, "tftp"));
         }
     }
 }
@@ -257,11 +397,12 @@ sub handle_http_msg {
     if ($msg =~ /(\d+\.\d+.\d+.\d+)\s.+GET\s+(.+)\s+HTTP.+/) {
         my $ip     = $1;
         my $file   = $2;
-        my $record = "[$ipnodemap{$ip}] Via HTTP $ip GET $file";
+        my $record = "Via HTTP get $file";
 
         if (exists($rawdata{"$ipnodemap{$ip}"})) {
-            probe_utils->send_msg("$output", "d", "$record");
+            probe_utils->send_msg("$output", "d", "[$ipnodemap{$ip}] $record") if ($monitor);
             push(@{ $rawdata{ $ipnodemap{$ip} }{"history"} }, $record);
+            push(@{ $rawdata{ $ipnodemap{$ip} }{statehistory} }, $rawdata{ $ipnodemap{$ip} }{state}) if (reset_state(\$rawdata{ $ipnodemap{$ip} }{state}, "http"));
         }
     }
     return 0;
@@ -286,37 +427,29 @@ sub handle_cluster_msg {
     my $msg;
     my $status;
 
-    if ($line =~ /.+\s+xcat:\s+(.+)\s+status:\s+(.+)\s+statustime:\s(.+)/) {
-        $node   = $1;
-        $status = $2;
+    my @splitline = split(/\s+/, $line);
+    if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
 
-        if (exists($rawdata{$node})) {
-            my $record = "Receive from $node : status is $status";
-            probe_utils->send_msg("$output", "d", "$record");
-            push(@{ $rawdata{$node}{"history"} }, $record);
-        }
+        #log like: Aug  7 22:30:31 c910f02c01p09 xcat: c910f02c04p04 status: booted statustime: 08-07-2016 22:30:31
+        if (($splitline[6] =~ /^status:$/i) && ($splitline[8] =~ /^statustime:$/)) {
+            $node   = $splitline[5];
+            $status = $splitline[7];
+            if (exists($rawdata{$node})) {
+                my $record = "Node status is changed to $status";
+                probe_utils->send_msg("$output", "d", "[$node] $record") if ($monitor);
+                push(@{ $rawdata{$node}{"history"} }, $record);
 
-        # When receive 'status is booted', check whether the $monitor_nodes{$node}{"status"} is installing.
-        # If so, the node has finished its os provision.
-        if (exists($rawdata{$node}) and ($status eq "booted")) {
-            if ($monitor_nodes{$node}{"status"} eq "installing") {
-                $record = "Node $node has finished it's os provision process";
-                probe_utils->send_msg("$output", "o", "$record");
-                push(@{ $rawdata{$node}{"history"} }, $record);
-            } else {
-                $record = "NO installing process detected for node $node";
-                probe_utils->send_msg("$output", "f", "$record");
-                push(@{ $rawdata{$node}{"history"} }, $record);
+                #one node finish deployment
+                if ($status eq "booted") {
+                    $monitor_nodes{$node}{"rst"} = 1 if (defined($monitor_nodes{$node}));
+                    push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "booted"));
+                }
+
+                if ($status eq "powering-on") {
+                    push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "poweron"));
+                }
             }
-            $monitor_nodes{$node}{"rst"} = 1 if (defined($monitor_nodes{$node}));
-        } elsif (exists($rawdata{$node}) and ($status eq "failed")) {
-            $monitor_nodes{$node}{"rst"} = 1 if (defined($monitor_nodes{$node}));
-            probe_utils->send_msg("$output", "f", "Node $node has finished it's os provision process");
-            push(@{ $rawdata{$node}{"history"} }, "Node $node os provision failed");
-        } elsif (exists($rawdata{$node}) and ($status eq "installing")) {
 
-            # record 'installing' status, to check when receive 'booted' status
-            $monitor_nodes{$node}{"status"} = "installing";
         }
     }
     return 0;
@@ -350,10 +483,15 @@ sub handle_compute_msg {
         } else {
             $node = $ipnodemap{$sender};
         }
+
         if ($node ne "" && exists($rawdata{$node})) {
-            my $record = "Receive from $node : $msg";
-            probe_utils->send_msg("$output", "d", "$record");
-            push(@{ $rawdata{$node}{"history"} }, $record);
+            probe_utils->send_msg("$output", "d", "[$node] $msg") if ($monitor);
+            push(@{ $rawdata{$node}{"history"} }, $msg);
+
+            #node start to run postscript or postbootscript
+            if ($msg =~ /Running postscript/) {
+                push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "postscript"));
+            }
         }
     }
 
@@ -407,30 +545,113 @@ sub dump_history {
     print "$title\n";
 
     foreach $node (keys %rawdata) {
-        my $line_num = 0;
-        my $http_num = 0;
-        my $length_http;
-        for (my $i = @{ $rawdata{$node}{"history"} } ; $i >= 0 ; $i--) {
-            if (${ $rawdata{$node}{"history"} }[$i] =~ /Via HTTP/) {
-                $length_http = $i;
-                last;
+
+        if ($verbose) {
+            print "[$node]\n";
+
+            my $httphit = 0;
+            my @httptmp;
+            foreach my $line (@{ $rawdata{$node}{"history"} }) {
+                if ($line =~ /Via HTTP/) {
+                    if ($httphit) {
+                        shift @httptmp if ($#httptmp > 0);
+                        push @httptmp, $line;
+                    } else {
+                        print "\t$line\n";
+                        $httphit = 1;
+                    }
+                } else {
+                    if ($#httptmp > -1) {
+                        print "\tVia HTTP ..........\n";
+                        print "\t$_\n" foreach (@httptmp);
+                    }
+                    @httptmp = ();
+                    $httphit = 0;
+                    print "\t$line\n";
+                }
             }
         }
-        foreach my $line (@{ $rawdata{$node}{"history"} }) {
 
-            # Print http message less than 10 lines
-            if ($line =~ /Via HTTP/)
-            {
-                if (($http_num <= 4) or ($length_http - $line_num <= 4)) {
-                    probe_utils->send_msg("$output", "d", "\t$line");
+        my @tmpnodestatehistory = @{ $rawdata{$node}{statehistory} };
+
+        #print "state history = @tmpnodestatehistory\n";
+
+        my %match_result;
+        my $procidx      = 0;
+        my $newloop      = 0;
+        my $notfirstloop = 0;
+        while (@tmpnodestatehistory) {
+            undef %match_result if ($notfirstloop);
+            $newloop = 0;
+            foreach my $type (keys %valid_process) {
+                if ($notfirstloop) {
+                    $procidx = 1;
                 } else {
-                    probe_utils->send_msg("$output", "d", "\t......") if ($http_num == 5);
+                    $procidx = 0;
                 }
-                $http_num++;
-            } else {
-                probe_utils->send_msg("$output", "d", "\t$line");
+                my $proclen = scalar(@{ $valid_process{$type}{process} });
+                my $i;
+                for ($i = 0 ; $i < scalar(@tmpnodestatehistory) ; $i++) {
+                    if ($procidx < $proclen) {
+                        if ($tmpnodestatehistory[$i] == $valid_process{$type}{process}[$procidx]) {
+                            ++$procidx;
+                        } else {
+                            --$procidx if (notfirstloop);
+                            push @{ $match_result{$procidx} }, $type;
+                            last;
+                        }
+                    } else {
+                        splice(@tmpnodestatehistory, 0, $i);
+                        $newloop      = 1;
+                        $notfirstloop = 1;
+                        last;
+                    }
+                }
+                if ($i == scalar(@tmpnodestatehistory)) {
+                    push @{ $match_result{$procidx} }, $type;
+                    next;
+                }
+                last if ($newloop);
             }
-            $line_num++;
+            last if (!$newloop);
+        }
+
+       #print "------------result---------------\n";
+       #print Dumper %match_result;
+
+        my $max_match = 0;
+        foreach my $key (keys %match_result) {
+            $max_match = $key if ($key > $max_match);
+        }
+
+        my $formatprefix;
+        if ($max_match == 0) {
+            my $statelist = "";
+            for (my $i = 0 ; $i < scalar(@{ $rawdata{$node}{statehistory} }) ; $i++) {
+                $statelist .= "$state_set_reverse{$rawdata{$node}{statehistory}[$i]} ";
+            }
+            probe_utils->send_msg("$output", "f", "[$node] deployment failed");
+            probe_utils->send_msg("$output", "d", "\t$node did unknown process, state change history is $statelist");
+        } elsif (scalar(@{ $match_result{$max_match} }) > 1) {
+            probe_utils->send_msg("$output", "f", "[$node] deployment failed");
+            probe_utils->send_msg("$output", "d", "\tThere are more than one possible process satisfy $node situation");
+            foreach my $proc (@{ $match_result{$max_match} }) {
+                if ($valid_process{$proc}{type} eq "deploy") {
+                    probe_utils->send_msg("$output", "d", "\tpossible process \"deploy\", pass $state_set_reverse{$valid_process{$proc}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$proc}{process}[$max_match]} stage");
+                } elsif ($valid_process{$proc}{type} eq "reboot") {
+                    probe_utils->send_msg("$output", "d", "\tpossible process \"reboot\", pass $state_set_reverse{$valid_process{$proc}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$proc}{process}[$max_match]} stage");
+                }
+            }
+        } else {
+            if (($valid_process{ $match_result{$max_match}[0] }{type} eq "deploy") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] == $state_set{done})) {
+                probe_utils->send_msg("$output", "o", "[$node] deployment completed");
+            } elsif (($valid_process{ $match_result{$max_match}[0] }{type} eq "deploy") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] != $state_set{done})) {
+                probe_utils->send_msg("$output", "f", "[$node] deployment failed, pass $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match]} stage")
+            } elsif (($valid_process{ $match_result{$max_match}[0] }{type} eq "reboot") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] == $state_set{done})) {
+                probe_utils->send_msg("$output", "f", "[$node] reboot completed, without deployment process");
+            } elsif (($valid_process{ $match_result{$max_match}[0] }{type} eq "reboot") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] != $state_set{done})) {
+                probe_utils->send_msg("$output", "f", "[$node] reboot failed,without deployment process, stop at $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match]} stage");
+            }
         }
     }
 }
@@ -450,29 +671,6 @@ sub do_monitor {
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;
     };
-
-    my $msg = "All pre_defined nodes are valid";
-    my $rc  = check_noderange($noderange);
-    if ($rc) {
-        probe_utils->send_msg("$output", "f", $msg);
-        $rst = 1;
-        unless (%monitor_nodes) {
-            return $rst;
-        }
-    } else {
-        probe_utils->send_msg("$output", "o", $msg);
-    }
-
-    if (!$nics) {
-        my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
-        chomp($masteripinsite);
-        $nics = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
-        chomp($nics);
-        if (!$nics) {
-            probe_utils->send_msg("$output", "f", "The value of master in site table is $masteripinsite, can't get corresponding network interface");
-            return 1;
-        }
-    }
 
     my $rst = 0;
     my $startline =
@@ -514,6 +712,7 @@ Start to capture every message during os provision process......
 
         if (!-e "$clusterlog") {
             probe_utils->send_msg("$output", "w", "$clusterlog doesn't exist");
+            probe_utils->send_msg("$output", "i", "If sles11 or xCAT2.11.x is using, please ignore above warning");
         } else {
             if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f -n 0 $clusterlog 2>&1 |"))) {
                 probe_utils->send_msg("$output", "f", "Can't open $clusterlog to get logs");
@@ -532,6 +731,7 @@ Start to capture every message during os provision process......
         }
         if (!-e "$computelog") {
             probe_utils->send_msg("$output", "w", "$computelog doesn't exist");
+            probe_utils->send_msg("$output", "i", "If sles11 or xCAT2.11.x is using, please ignore above warning");
         } else {
             if (!($computerpid = open(COMPUTERFILE, "tail -f -n 0 $computelog 2>&1 |"))) {
                 probe_utils->send_msg("$output", "f", "Can't open $computelog to get logs");
@@ -551,21 +751,15 @@ Start to capture every message during os provision process......
         my @hdls;
         my $hdl;
 
-        my @candidate_svr_hostname_inlog;
-        my $svr_hostname_short = `hostname -s`;
-        chomp($svr_hostname_short);
-        my $svr_hostname_domain = `hostname -d`;
-        chomp($svr_hostname_domain);
-        push(@candidate_svr_hostname_inlog, $svr_hostname_short);
-        push(@candidate_svr_hostname_inlog, "$svr_hostname_short.$svr_hostname_domain");
-
+        my $starttime = time();
+        $monitor = 1;
         for (; ;) {
             if (@hdls = $select->can_read(0)) {
                 foreach $hdl (@hdls) {
                     if ($hdl == \*VARLOGMSGFILE) {
                         chomp($line = <VARLOGMSGFILE>);
                         my @tmp = split(/\s+/, $line);
-                        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
+                        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$installnic/) {
                             handle_dhcp_msg("$line");
                         } elsif ($tmp[4] =~ /in.tftpd/i) {
                             handle_tftp_msg("$line");
@@ -596,7 +790,13 @@ Start to capture every message during os provision process......
                     probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished os provision process");
                 }
                 last;
-            } sleep 0.01;
+            }
+
+            if (time() - $starttime > ($maxwaittime * 60)) {
+                probe_utils->send_msg("$output", "i", "$maxwaittime minutes are expired, stop monitor");
+                last;
+            }
+            sleep 0.01;
         }
         &dump_history;
     }
@@ -612,6 +812,177 @@ Start to capture every message during os provision process......
     return $rst;
 }
 
+sub get_valid_logs {
+    my $ref_timestamp        = shift;
+    my $year                 = shift;
+    my $epoch_seconds_of_now = shift;
+    my $bthistory_ref        = shift;
+    my $nics                 = "eth0";
+    my @orglogfilelist       = ("/var/log/xcat/cluster.log",
+        "/var/log/messages",
+        "/var/log/xcat/computes.log");
+    my $httplog;
+    if (-e "/var/log/httpd/access_log") {
+        $httplog = "/var/log/httpd/access_log";
+    } elsif (-e "/var/log/apache2/access_log") {
+        $httplog = "/var/log/apache2/access_log";
+    } elsif (-e "/var/log/apache2/access.log") {
+        $httplog = "/var/log/apache2/access.log";
+    }
+    push @orglogfilelist, $httplog;
+
+    foreach my $f (@orglogfilelist) {
+        my $filename = basename("$f");
+        $filename =~ s/(.+)\.(.+)/$1/g;
+        my $path_only = dirname("$f");
+        my @rotatefiles;
+        
+        #TODO  using opendir to refine below code
+        my @alltargetfiles = `ls -lt $path_only |awk -F" " '/ $filename/ {print \$9}'`;
+        foreach my $samenamefile (@alltargetfiles) {
+            chomp($samenamefile);
+            push @rotatefiles, "$path_only/$samenamefile";
+        }
+
+        my $ishttplog = 0;
+        $ishttplog = 1 if ($filename =~ /access[\._]log/);
+
+        foreach my $file (@rotatefiles) {
+            my $fd;
+            my $filetype = `file $file 2>&1`;
+            chomp($filetype);
+            if ($filetype =~ /ASCII text/) {
+                if (!open($fd, "$file")) {
+                    print "open $files failed\n";
+                    next;
+                }
+            } else {
+
+                #TODO  handle compression files
+            }
+
+            #print "--->load $file\n";
+            my $line;
+            my $historynum = 0;
+            last unless ($line = <$fd>);
+            chomp($line);
+            my $needrotate = 0;
+            my $logindex   = 0;
+            my @splitline  = split(/\s+/, $line);
+            my $timestamp;
+            my $timestampepoch;
+
+            if ($ishttplog) {
+                $splitline[3] =~ s/^\[(.+)/$1/g;
+                $timestampepoch = probe_utils->convert_to_epoch_seconds($splitline[3]);
+            } else {
+                $timestamp = join(" ", @splitline[ 0 .. 2 ]);
+                $timestampepoch = probe_utils->convert_to_epoch_seconds($timestamp, $year, $epoch_seconds_of_now);
+            }
+            if ($ref_timestamp <= $timestampepoch) {
+                $needrotate = 1;
+            } else {
+                seek($fd, 0, 2);
+                my $tail     = tell;
+                my $head     = 0;
+                my $lasttail = $tail;
+                my $i        = 0;
+                while ($head <= $tail) {
+                    my $middle = int(($tail - $head) / 2) + $head;
+                    seek($fd, $middle, 0);
+                    $line = <$fd>;
+                    $middle += length($line);
+                    last unless ($line = <$fd>);
+                    @splitline = split(/\s+/, $line);
+                    if ($ishttplog) {
+                        $splitline[3] =~ s/^\[(.+)/$1/g;
+                        $timestampepoch = probe_utils->convert_to_epoch_seconds($splitline[3]);
+                    } else {
+                        $timestamp = join(" ", @splitline[ 0 .. 2 ]);
+                        $timestampepoch = probe_utils->convert_to_epoch_seconds($timestamp, $year, $epoch_seconds_of_now);
+                    } if ($ref_timestamp == $timestampepoch) {
+                        $historynum = $middle;
+                        last;
+                    } elsif ($ref_timestamp < $timestampepoch) {
+                        $tail = $middle;
+                        last if ($tail == $lasttail);
+                        $lasttail = $tail;
+                    } else {
+                        $head = $middle;
+                    }
+                }
+                $historynum = $head unless ($historynum);
+            }
+
+            seek($fd, $historynum, 0);
+            while (<$fd>) {
+                chomp;
+                @splitline = split(/\s+/, $_);
+                if ($ishttplog) {
+                    $splitline[3] =~ s/^\[(.+)/$1/g;
+                    $timestampepoch = probe_utils->convert_to_epoch_seconds($splitline[3]);
+                } else {
+                    $timestamp = join(" ", @splitline[ 0 .. 2 ]);
+                    $timestampepoch = probe_utils->convert_to_epoch_seconds($timestamp, $year, $epoch_seconds_of_now);
+                }
+
+                if (($splitline[4] =~ /dhcpd:/i && $_ =~ /$nics/)
+                    || ($splitline[4] =~ /in.tftpd/i)
+                    || (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i))
+                    || ($splitline[5] =~ /GET/ && $splitline[7] =~ /HTTP/)) {
+                    my $log = "$timestampepoch $filename$logindex $_";
+                    $logindex++;
+                    push @$bthistory_ref, $log;
+                }
+            }
+            close($fd);
+            last unless ($needrotate);
+        }
+    }
+
+    #sort logs depending on time
+    my @sort_ht = sort(@$bthistory_ref);
+    for ($i = 0 ; $i <= $#sort_ht ; $i++) {
+        $sort_ht[$i] =~ s/^(\d+) (\S+) (.+)/$1 $3/g;
+    }
+
+    #delete duplicate logs
+    my %count;
+    @$bthistory_ref = grep { ++$count{$_} < 2; } @sort_ht;
+}
+
+sub do_replay {
+    my $ref_timestamp = shift;
+
+    my $timestr = scalar(localtime($ref_timestamp));
+    print "Start to search logs after '$timestr', please waiting for a while.............\n";
+
+    my ($sec, $min, $hour, $day, $mon, $year, $wday, $yday, $isdst) = localtime(time());
+    my $epoch_seconds_of_now = time();
+    my @bthistory;
+    get_valid_logs($ref_timestamp, $year, $epoch_seconds_of_now, \@bthistory);
+
+    foreach my $line (@bthistory) {
+        $line =~ s/(\d+) (.+)/$2/g;
+        my @tmp = split(/\s+/, $line);
+        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
+            handle_dhcp_msg("$line");
+        } elsif ($tmp[4] =~ /in.tftpd/i) {
+            handle_tftp_msg("$line");
+        } elsif (($tmp[4] =~ /^xcat/i) || ($tmp[5] =~ /^xcat/i)) {
+            if (grep(/^$tmp[3]$/, @candidate_svr_hostname_inlog)) {
+                handle_cluster_msg("$line");
+            } else {
+                handle_compute_msg("$line");
+            }
+        } elsif ($tmp[5] =~ /GET/ && $tmp[7] =~ /HTTP/) {
+            handle_http_msg("$line");
+        }
+    }
+    &dump_history;
+    return 0;
+}
+
 #-------------------------------------
 # main process
 #-------------------------------------
@@ -619,6 +990,8 @@ if (
     !GetOptions("--help|h|?" => \$help,
         "T"   => \$test,
         "V"   => \$verbose,
+        "t"   => \$maxwaittime,
+        "r=s" => \$replaylog,
         "n=s" => \$noderange))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
@@ -641,9 +1014,58 @@ if ($test) {
 }
 
 unless ($noderange) {
-    probe_utils->send_msg("$output", "f", "Option -n is required");
+    probe_utils->send_msg("$output", "f", "A noderange is needed");
     probe_utils->send_msg("$output", "d", "$::USAGE");
     exit 1;
+}
+
+my $epoch_starttime = time();
+if ($replaylog) {
+    if ($replaylog =~ /(\d+)h(\d+)m/i) {
+        $epoch_starttime -= ($1 * 3600 + $2 * 60)
+    } elsif ($replaylog =~ /^(\d+)h*$/i) {
+        $epoch_starttime -= $1 * 3600;
+    } elsif ($replaylog =~ /^(\d+)m$/) {
+        $epoch_starttime -= $1 * 60;
+    } else {
+        probe_utils->send_msg("$output", "f", "Unsupport time format for replay history log");
+        print "$::USAGE";
+        exit 1;
+    }
+}
+
+my $msg = "All pre_defined nodes are valid";
+my $rc  = check_noderange($noderange);
+if ($rc) {
+    probe_utils->send_msg("$output", "f", $msg);
+    $rst = 1;
+} else {
+    probe_utils->send_msg("$output", "o", $msg);
+}
+
+unless ($installnic) {
+    my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+    chomp($masteripinsite);
+    $installnic = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
+    chomp($installnic);
+    if (!$installnic) {
+        probe_utils->send_msg("$output", "f", "The value of master in site table is $masteripinsite, can't get corresponding network interface");
+        $rst = 1;
+    } else {
+        probe_utils->send_msg("$output", "i", "The installation network interface is $installnic");
+    }
+}
+
+exit $rst if ($rst);
+
+foreach my $node (keys %monitor_nodes) {
+    $rawdata{$node}{state} = $state_set{unknown};
+    push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state});
+}
+
+if ($replaylog) {
+    $rst = do_replay($epoch_starttime);
+    exit $rst;
 }
 
 $rst = do_monitor();

@@ -891,7 +891,7 @@ sub mkinstall {
                     $kcmdline .= "n8r";
                 }
             } else {
-                $callback->({ warning => ["rcons my not work since no serialport specified"], });
+                $callback->({ warning => ["rcons may not work since no serialport is specified for $node"], });
             }
 
             # need to add these in, otherwise aptitude will ask questions
@@ -1170,9 +1170,10 @@ sub mknetboot
         }
 
         $platform = xCAT_plugin::debian::getplatform($osver);
-        my $suffix = 'gz';
-        $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'tgz' if (-r "$rootimgdir/rootimg.tgz");
+        my $suffix = 'cpio.gz';
+        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
+        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
+        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
 
         # statelite images are not packed.
         if ($statelite) {
@@ -1222,7 +1223,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.tgz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });
@@ -1547,7 +1548,7 @@ sub mknetboot
         } else {
             $callback->(
                 {
-                    warning => ["rcons my not work since no serialport specified"],
+                    warning => ["rcons may not work since no serialport is specified for $node"],
                 }
             );
         }

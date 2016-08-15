@@ -49,7 +49,7 @@ Description:
 Options:
     -h : Get usage information of $program_name
     -V : Output more information for debug
-    -i : Required. Specify the network interface name of provision network
+    -i : Required. Specify the network interface name of provision network on Management Node
 ";
 
 
@@ -308,11 +308,21 @@ sub do_main_job {
     }
 
     if ($is_sn) {
-        my $mountoutput = `mount | grep '$masteripinsite' | grep '$installdir'`;
+        my $mountoutput = `mount | grep '$installdir'`;
         chomp($mountoutput);
 
+        my $mountip;
+        if ($mountoutput =~ /(.+):$installdir on $installdir /) {
+            my $mountsource = $1;
+            if (xCAT::NetworkUtils->isIpaddr($mountsource)) {
+                $mountip = $mountsource;
+            } else {
+                $mountip = xCAT::NetworkUtils->getipaddr($mountsource);
+            }
+        }
+
         $msg = "installdir $installdir is mounted on from the Management Node";
-        if ($mountoutput =~ /$masteripinsite:$installdir on $installdir/) {
+        if ($mountip eq $masteripinsite) {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         }
         else {
@@ -330,11 +340,21 @@ sub do_main_job {
     }
 
     if ($is_sn) {
-        my $mountoutput = `mount | grep '$masteripinsite' | grep '$tftpdir'`;
+        my $mountoutput = `mount | grep '$tftpdir'`;
         chomp($mountoutput);
 
+        my $mountip;
+        if ($mountoutput =~ /(.+):$tftpdir on $tftpdir /) {
+            my $mountsource = $1;
+            if (xCAT::NetworkUtils->isIpaddr($mountsource)) {
+                $mountip = $mountsource;
+            } else {
+                $mountip = xCAT::NetworkUtils->getipaddr($mountsource);
+            }
+        }
+
         $msg = "tftpdir $tftpdir is mounted on from the Management Node";
-        if ($mountoutput =~ /$masteripinsite:$tftpdir on $tftpdir/) {
+        if ($mountip eq $masteripinsite) {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         }
         else {
@@ -503,32 +523,20 @@ sub do_main_job {
                     }
                 } else {
 
-                    # if there is no sn, simulate a host to check DNS service
-                    `cp /etc/hosts /etc/hosts.bak.probe > /dev/null 2>&1`;
+                    # if there is no sn, nslookup mnip
+                    my $nslkp = `nslookup $serverip $serverip 2>&1`;
 
-                    {    #very important brace to create a block
-                        open HOSTFILE, ">> /etc/hosts";
-                        print HOSTFILE "$serverip xcatmntest xcatmntest.$domain";
-                        close HOSTFILE;
-
-                        probe_utils->send_msg($outputtarget, "d", "To do 'makedns -n xcatmntest'") if ($verbose);
-                        $tmp = `makedns -V -n 2>&1`;
-                        if ($?) {
-                            returncmdoutput($tmp, $outputtarget) if ($verbose);
-                            probe_utils->send_msg($outputtarget, "d", "makedns -n  xcatmntest failed") if ($verbose);
+                    if ($?) {
+                        probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
+                        $rc = 1;
+                    } else {
+                        chomp($nslkp);
+                        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split (/\n/, $output);
+                        if (!$tmp) {
+                            probe_utils->send_msg($outputtarget, "d", "nslookup $serverip $serverip failed");
                             $rc = 1;
-                            last;
-                        }
-
-                        if (!probe_utils->is_dns_ready("$serverip", "$serverip", "xcatmntest", "$domain")) {
-                            probe_utils->send_msg($outputtarget, "d", "nslookup xcatmntest $serverip failed");
-                            $rc = 1;
-                            last;
                         }
                     }
-                    `rm /etc/hosts > /dev/null 2>&1`;
-                    `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
-                    `makedns -n 2>&1`;
                 }
                 if ($rc) {
                     probe_utils->send_msg($outputtarget, "f", "$msg");
@@ -599,59 +607,89 @@ sub do_main_job {
 
         my $rc  = 0;
         my $msg = "DHCP service is ready on $serverip";
+
         {    #very important brace to create a block
-            my $tmp = `chdef xcatmntest groups=all ip=$serverip  mac=aa:aa:aa:aa:aa:aa`;
-            if ($?) {
-                returncmdoutput($tmp, $outputtarget) if ($verbose);
-                probe_utils->send_msg($outputtarget, "d", "Simulate a node by chdef failed") if ($verbose);
-                $rc = 1;
-                last;
+            my @snlist = xCAT::ServiceNodeUtils->getAllSN();
+            my $sntmp  = shift(@snlist);
+            if ($sntmp) {
+                my $tmp = `makedhcp -q $sntmp`;
+                if ($?) {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "makedhcp -q $sntmp failed") if ($verbose);
+                    $rc = 1;
+                    last;
+                }
+                chomp($tmp);
+                my $snip  = xCAT::NetworkUtils->getipaddr($sntmp);
+                my $snmac = `lsdef $sntmp -i mac -c | awk -F'=' '{print \$2}'`;
+                chomp ($snmac);
+                my $tmpmac;
+                if ($tmp =~ /$sntmp: ip-address = $snip, hardware-address = (.+)/) {
+                    $tmpmac = $1;
+                    if ($tmpmac !~ $snmac) {
+                        returncmdoutput($tmp, $outputtarget) if ($verbose);
+                        probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                        $rc = 1;
+                    }
+                } else {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                    $rc = 1;
+                }
             } else {
-                probe_utils->send_msg($outputtarget, "d", "Simulate a node xcatmntest<ip=$serverip mac=aa:aa:aa:aa:aa:aa> to do dhcp test") if ($verbose);
-            }
 
-            `cp /etc/hosts /etc/hosts.bak.probe > /dev/null 2>&1`;
+                my $tmp = `chdef xcatmntest groups=all ip=$serverip  mac=aa:aa:aa:aa:aa:aa`;
+                if ($?) {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "Simulate a node by chdef failed") if ($verbose);
+                    $rc = 1;
+                    last;
+                } else {
+                    probe_utils->send_msg($outputtarget, "d", "Simulate a node xcatmntest<ip=$serverip mac=aa:aa:aa:aa:aa:aa> to do dhcp test") if ($verbose);
+                }
 
-            open HOSTFILE, ">> /etc/hosts";
-            print HOSTFILE "$serverip xcatmntest xcatmntest.$domain";
-            close HOSTFILE;
+                `cp /etc/hosts /etc/hosts.bak.probe > /dev/null 2>&1`;
 
-            probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp xcatmntest'") if ($verbose);
-            $tmp = `makedhcp xcatmntest 2>&1`;
-            if ($?) {
+                open HOSTFILE, ">> /etc/hosts";
+                print HOSTFILE "$serverip xcatmntest xcatmntest.$domain";
+                close HOSTFILE;
+
+                probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp xcatmntest'") if ($verbose);
+                $tmp = `makedhcp xcatmntest 2>&1`;
+                if ($?) {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "makedhcp  xcatmntest failed") if ($verbose);
+                    $rc = 1;
+                    `rmdef xcatmntest`;
+                    last;
+                }
+
+                probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp -q  xcatmntest'") if ($verbose);
+                $tmp = `makedhcp -q  xcatmntest`;
+                if ($?) {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "makedhcp -q xcatmntest failed") if ($verbose);
+                    $rc = 1;
+                    `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+                    last;
+                }
+                chomp($tmp);
+                if ($tmp !~ /xcatmntest: ip-address = $serverip, hardware-address = aa:aa:aa:aa:aa:aa/) {
+                    returncmdoutput($tmp, $outputtarget) if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                    $rc = 1;
+                    `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+                    last;
+                }
+
+                probe_utils->send_msg($outputtarget, "d", "Start to clear simulate information for dhcp test") if ($verbose);
+                $tmp = `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
                 returncmdoutput($tmp, $outputtarget) if ($verbose);
-                probe_utils->send_msg($outputtarget, "d", "makedhcp  xcatmntest failed") if ($verbose);
-                $rc = 1;
-                `rmdef xcatmntest`;
-                last;
-            }
 
-            probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp -q  xcatmntest'") if ($verbose);
-            $tmp = `makedhcp -q  xcatmntest`;
-            if ($?) {
-                returncmdoutput($tmp, $outputtarget) if ($verbose);
-                probe_utils->send_msg($outputtarget, "d", "makedhcp -q xcatmntest failed") if ($verbose);
-                $rc = 1;
-                `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
-                last;
+            `rm /etc/hosts`;
+            `mv /etc/hosts.bak.probe /etc/hosts`;
             }
-            chomp($tmp);
-            if ($tmp !~ /xcatmntest: ip-address = $serverip, hardware-address = aa:aa:aa:aa:aa:aa/) {
-                returncmdoutput($tmp, $outputtarget) if ($verbose);
-                probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
-                $rc = 1;
-                `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
-                last;
-            }
-
-            probe_utils->send_msg($outputtarget, "d", "Start to clear simulate information for dhcp test") if ($verbose);
-            $tmp = `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
-            returncmdoutput($tmp, $outputtarget) if ($verbose);
         }
-
-        `rm /etc/hosts`;
-        `mv /etc/hosts.bak.probe /etc/hosts`;
-
         if ($rc) {
             probe_utils->send_msg($outputtarget, "f", "$msg");
             probe_utils->send_msg($outputtarget, "d", "please run 'makedhcp -n' if never run it before.");
@@ -668,43 +706,89 @@ sub do_main_job {
 #-------------------------------------
 # When this command return from all SNs and MN, you need to generate a summary
 # All history outpout from SNs and MN are saved in globle hash %summaryoutput.
-# $ummaryoutput{mn} = @mnhistory
-# $ummaryoutput{snname1} = @snname1history;
+# $summaryoutput{mn} = @mnhistory
+# $summaryoutput{snname1} = @snname1history;
 # The entry in each histroy array isn't categorized, the message coming early is arranged before the one coming later.
+# A simple example of how to dump %summaryoutput has been written in function
 #-------------------------------------
 sub summary_all_jobs_output {
 
-    print "\n======================do ERROR summary=====================\n";
-    my $isprint = 1;
+    if ($terminal) {
+        return 0;
+    }
+    print "\n======================do summary=====================\n";
 
+    my @summary;
+    push @summary, "[ok]:[MN]: Check on MN PASS.";
     foreach my $line (@{ $summaryoutput{mn} }) {
-        if ($line =~ /\[failed\]/) {
-            if ($isprint) {
-                print "[mn]:\n";
-                $isprint = 0;
-            }
-            print "\t$line\n";
+        if ($line =~ /(\[failed\]\s*):\s*(.*)/) {
+            push @summary, "$1:\t$2";
+            $summary[0] = "[failed]:[MN]: Check on MN FAILED.";
+        } elsif ($line =~ /(\[warning\]\s*):\s*(.*)/) {
+            push @summary, "$1:\t$2";
         }
     }
 
-    $isprint = 1;
+    my %summary_sn = ();
     foreach my $node (keys %summaryoutput) {
         next if ($node eq "mn");
+        ${ $summary_sn{$node}{"rst"} } = 1;
+        push @{ $summary_sn{$node}{"details"} }, "[ok]:[SN:$node]:  Check on SN $node PASS.";
         foreach my $log (@{ $summaryoutput{$node} }) {
-            if ($log =~ /\[failed\]/) {
-                if ($isprint) {
-                    print "[$node]:\n";
-                    $isprint = 0;
-                }
-                print "\t$log\n";
+            if ($log =~ /(\[failed\]\s*):\s*(.*)/) {
+                push @{ $summary_sn{$node}{"details"} }, "$1:\t$2";
+                ${ $summary_sn{$node}{"rst"} } = 0;
+                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Check on SN $node FAILED.";
+            } elsif ($log =~ /(\[warning\]\s*):\s*(.*)/) {
+                push @{ $summary_sn{$node}{"details"} }, "$1:\t$2";
             } elsif ($log !~ /^(\[\w+\]\s*):\s*(.*)/) {
-                if ($isprint) {
-                    print "[$node]:\n";
-                    $isprint = 0;
-                }
-                print "\t$log\n";
+                push @{ $summary_sn{$node}{"details"} }, "[failed]:\t$log";
+                ${ $summary_sn{$node}{"rst"} } = 0;
+                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Check on SN $node FAILED.";
             }
         }
+    }
+    if ($summary[0] =~ /^\[ok\]:/) {
+        foreach (@summary) {
+            print "$_\n";
+        }
+    }
+
+    foreach my $node (keys %summary_sn) {
+        if (${ $summary_sn{$node}{"rst"} }) {
+            foreach (@{ $summary_sn{$node}{"details"} }) {
+                print "$_\n";
+            }
+        }
+    }
+
+    if ($summary[0] =~ /^\[failed\]:/) {
+        foreach (@summary) {
+            print "$_\n";
+        }
+    }
+
+    foreach my $node (keys %summary_sn) {
+        if (!${ $summary_sn{$node}{"rst"} }) {
+            foreach (@{ $summary_sn{$node}{"details"} }) {
+                print "$_\n";
+            }
+        }
+    }
+
+}
+
+#-------------------------------------
+# Clean up test environment
+# -------------------------------------
+sub cleanup {
+    my $tmptest = `nodels xcatmntest 2>&1`;
+    if ($tmptest !~ /Error: Invalid nodes and\/or groups in noderange: xcatmntest/) {
+        `makedhcp -d xcatmntest &&  rmdef xcatmntest > /dev/null 2>&1`;
+    }
+    if (-e "/etc/hosts.bak.probe") {
+        `rm /etc/hosts > /dev/null 2>&1`;
+        `mv /etc/hosts.bak.probe /etc/hosts > /dev/null 2>&1`;
     }
 }
 
@@ -775,11 +859,10 @@ sub send_sn_msg {
         next if ($node eq "mn");
         foreach my $line (@{ $summaryoutput{$node} }) {
             if ($line =~ /^(\[\w+\]\s*):\s*(.*)/) {
-                $line = "$1:$node: $2";
-                print "$line\n";
+                print "$1:[SN:$node]: $2\n";
             } else {
                 print "[failed] :$node: $line\n";
-            }    
+            }
         }
     }
 }
@@ -816,6 +899,7 @@ if ($test) {
 
 $SIG{TERM} = $SIG{INT} = sub {
     $terminal = 1;
+    cleanup();
 };
 
 #--------------------------------------------
@@ -874,8 +958,6 @@ pipe $pipe_parent_read, $pipe_child_write;
     #handle job dispatch to SN
     foreach my $sn (keys %dispatchcmd) {
         my $snjobcmd = "xdsh $sn -s \"$dispatchcmd{$sn}\" 2>&1";
-        probe_utils->send_msg("$output", "i", "Dispatch cmd $program_name to $sn $1");
-
         my $snjobfd;
         my $snjobpid;
         if (!($snjobpid = open($snjobfd, "$snjobcmd |"))) {
@@ -904,7 +986,9 @@ pipe $pipe_parent_read, $pipe_child_write;
                         $pipeisnonull{mn} = 0;
                     } else {
                         chomp($line = <$pipe_parent_read>);
-                        print "$line\n";
+                        if ($line =~ /(\[\w+\]\s*):\s*(.*)/) {
+                            print "$1:[MN]: $2\n";
+                        }
                         push @{ $summaryoutput{mn} }, $line;
                     }
                 } else {

@@ -524,6 +524,10 @@ sub on_bmc_connect {
     } elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
     } elsif ($command eq "rbeacon") {
+        unless (defined $sessdata->{device_id}) { #need get device id data initted for SD350 workaround
+            $sessdata->{ipmisession}->subcmd(netfn => 6, command => 1, data => [], callback => \&gotdevid, callback_args => $sessdata);
+            return;
+        }
         return beacon($sessdata);
     } elsif ($command eq "rsetboot") {
         return setboot($sessdata);
@@ -2354,7 +2358,9 @@ sub beacon {
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
     if ($subcommand eq "on") {
-        if ($ipmiv2) {
+        if ($sessdata->{mfg_id} == 19046 and $sessdata->{prod_id} == 13616) { # Lenovo SD350
+            $sessdata->{ipmisession}->subcmd(netfn => 0x3a, command => 6, data => [ 1, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
+	} elsif ($ipmiv2) {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [ 0, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
         } else {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [0xff], callback => \&beacon_answer, callback_args => $sessdata);

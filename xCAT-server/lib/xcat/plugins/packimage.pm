@@ -87,6 +87,7 @@ sub process_request {
     my $arch;
     my $profile;
     my $method = 'cpio';
+    my $compress;
     my $exlistloc;
     my $syncfile;
     my $rootimg_dir;
@@ -102,6 +103,7 @@ sub process_request {
         "arch|a=s"    => \$arch,
         "osver|o=s"   => \$osver,
         "method|m=s"  => \$method,
+        "compress|c=s"  => \$compress,
         "tracker=s"   => \$dotorrent,
         "help|h"      => \$help,
         "version|v"   => \$version
@@ -218,7 +220,7 @@ sub process_request {
         }
     }
 
-    #before generating rootimg.gz, copy $installroot/postscripts into the image at /xcatpost
+    #before generating rootimg.$suffix, copy $installroot/postscripts into the image at /xcatpost
     if (-e "$rootimg_dir/xcatpost") {
         system("rm -rf $rootimg_dir/xcatpost");
     }
@@ -238,7 +240,7 @@ sub process_request {
     `echo TIMESTAMP="'$timestamp'" >> $rootimg_dir/opt/xcat/xcatinfo`;
 
 
-    # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
+    # before generating rootimg.$suffix or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
     $rootimg_status = 1 if (-f "$rootimg_dir/.statelite/litefile.save");
 
@@ -416,54 +418,80 @@ sub process_request {
         return 1;
     }
     $callback->({ data => ["Packing contents of $rootimg_dir"] });
-    unlink("$destdir/rootimg.gz");
-    unlink("$destdir/rootimg.sfs");
 
-    $callback->({ info => ["archive method:$method"] });
-    if ($method =~ /cpio/) {
-        my $compress = "gzip";
-
-        #use "pigz" as the compress tool instead of gzip if "pigz" exist
-        my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
-        if ($ispigz == 0) {
-            $compress = "pigz";
-        }
-        $callback->({ info => ["compress method:$compress"] });
-        if (!$exlistloc) {
-            $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.gz";
-        } else {
-            chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile");
-            if ($includestr) {
-                system("$includestr >> $xcat_packimg_tmpfile");
+    my $suffix;
+    if ($compress) {
+        if ($compress eq 'gzip') {
+            my $isgzip = system("bash -c 'type -p gzip' >/dev/null 2>&1");
+            unless ($isgzip == 0) {
+                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."] });
+                return 1;
             }
-            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.gz";
+            $suffix = "gz";
+        } elsif ($compress eq 'pigz') {
+            my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
+            unless ($ispigz == 0) {
+                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."] });
+                return 1;
+            }
+            $suffix = "gz";
+        } elsif ($compress eq 'xz') {
+            my $isxz = system("bash -c 'type -p xz' >/dev/null 2>&1");
+            unless ($isxz == 0) {
+                $callback->({ error => ["Command xz does not exist, please make sure it is installed."] });
+                return 1;
+            }
+            $suffix = "xz";
+        } else {
+            $callback->({ error => ["Invalid compress method '$compress' requested"], errorcode => [1] });
+            return 1;
         }
-        $oldmask = umask 0077;
-    } elsif ($method =~ /tar/) {
-        my $compress = "gzip";
-
-        #use "pigz" as the compress tool instead of gzip if "pigz" exist
+    } else {
         my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
         if ($ispigz == 0) {
             $compress = "pigz";
         } else {
             my $isgzip = system("bash -c 'type -p gzip' >/dev/null 2>&1");
-            unless ($isgzip == 0) {
-                $callback->({ error => ["Command gzip does not exist, please make sure it works."] });
+            if ($isgzip == 0) {
+                $compress = "gzip";
+            } else {
+                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."] });
                 return 1;
             }
         }
+        $suffix = "gz";
+    }
+
+    $callback->({ info => ["archive method:$method"] });
+    unless ($method =~ /squashfs/) {
         $callback->({ info => ["compress method:$compress"] });
+    }
+
+    $suffix = $method.".".$suffix;
+    unlink("$destdir/rootimg.$suffix");
+    unlink("$destdir/rootimg.sfs");
+    if ($method =~ /cpio/) {
         if (!$exlistloc) {
-            $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --null -T - -c | $compress -c - > ../rootimg.tgz";
+            $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
         } else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile");
             if ($includestr) {
                 system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' -T - -c | $compress -c - > ../rootimg.tgz";
+            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.$suffix";
+        }
+        $oldmask = umask 0077;
+    } elsif ($method =~ /tar/) {
+        if (!$exlistloc) {
+            $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --null -T - -c | $compress -c - > ../rootimg.$suffix";
+        } else {
+            chdir("$rootimg_dir");
+            system("$excludestr >> $xcat_packimg_tmpfile");
+            if ($includestr) {
+                system("$includestr >> $xcat_packimg_tmpfile");
+            }
+            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' -T - -c | $compress -c - > ../rootimg.$suffix";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
@@ -476,24 +504,25 @@ sub process_request {
         }
         $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath";
     } else {
-        $callback->({ error => ["Invalid method '$method' requested"], errorcode => [1] });
+        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
+        return 1;
     }
     chdir("$rootimg_dir");
     my $outputmsg = `$excludestr`;
     $callback->({ info => ["$outputmsg"] });
     if ($method =~ /cpio/) {
-        chmod 0644, "$destdir/rootimg.gz";
+        chmod 0644, "$destdir/rootimg.$suffix";
         if ($dotorrent) {
             my $currdir = getcwd;
             chdir($destdir);
-            unlink("rootimg.gz.metainfo");
-            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg.gz.metainfo rootimg.gz");
-            chmod 0644, "rootimg.gz.metainfo";
+            unlink("rootimg.$suffix.metainfo");
+            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg.$suffix.metainfo rootimg.$suffix");
+            chmod 0644, "rootimg.$suffix.metainfo";
             chdir($currdir);
         }
         umask $oldmask;
     } elsif ($method =~ /tar/) {
-        chmod 0644, "$destdir/rootimg.tgz";
+        chmod 0644, "$destdir/rootimg.$suffix";
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
         my $flags;

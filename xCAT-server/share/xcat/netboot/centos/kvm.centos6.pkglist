@@ -17,3 +17,6 @@ qemu-kvm
 e2fsprogs
 parted
 bc
+tar
+gzip
+xz

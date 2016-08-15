@@ -16,3 +16,6 @@ parted
 bc
 ntp
 rsyslog
+tar
+gzip
+xz
