@@ -916,12 +916,13 @@ sub initmysqldb
     }
     else
     {
-        if (!(-e ("/usr/bin/mysql_install_db"))) {
-            xCAT::MsgUtils->message("E", "/usr/bin/mysql_install_db is not available, please install required packages");
+        my $sqlcmd = "/usr/bin/mysql_install_db";
+        if (!(-e ($sqlcmd))) {
+            xCAT::MsgUtils->message("E", "$sqlcmd is not available, please install required mysql/mariadb packages");
             exit(1);
         }
 
-        $cmd = "/usr/bin/mysql_install_db --user=mysql";
+        $cmd = "$sqlcmd --user=mysql";
     }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
