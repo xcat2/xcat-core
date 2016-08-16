@@ -1,4 +1,9 @@
 reg_linux_diskfull_installation_flat
+go_xcat_local_repo_case7
+go_xcat_noinput
+go_xcat_with_x
+go_xcat_with_xcat-version-1
+go_xcat_online_repo_case6
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -121,7 +126,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal

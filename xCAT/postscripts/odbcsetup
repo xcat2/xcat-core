@@ -24,7 +24,7 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -34,7 +34,7 @@ use xCAT::MsgUtils;
 
 # MAIN
 
-my $rc  = 0;
+my $rc = 0;
 my $cmd;
 
 # setup some important variable
@@ -44,8 +44,10 @@ chomp $::sdate;
 
 
 my $msg;
+
 # get location of database
 $::databaseloc = $ENV{'DATABASELOC'};
+
 # check the /etc/xcat/cfgloc file to see if MySQL or DB2
 # if it is not here,  error out
 my $dbname = xCAT::Utils->get_DBName;
@@ -65,17 +67,17 @@ else
         &setupmysqlodbc;
     }
     else {
-      if ($dbname eq "PG")
-      {
-        $msg = "odbcsetup:Setting up ODBC for PostgreSQL";
-        `logger -t xcat -p local4.info $msg`;
-        &setupPGodbc;
-      } else {
-        $msg =
-          "odbcsetup:cfgloc file does not contain MySQL, DB2 or PG,  will not setup ODBC.";
-        `logger -t xcat -p local4.err  $msg`;
-        exit 1;
-      }
+        if ($dbname eq "PG")
+        {
+            $msg = "odbcsetup:Setting up ODBC for PostgreSQL";
+            `logger -t xcat -p local4.info $msg`;
+            &setupPGodbc;
+        } else {
+            $msg =
+"odbcsetup:cfgloc file does not contain MySQL, DB2 or PG,  will not setup ODBC.";
+            `logger -t xcat -p local4.err  $msg`;
+            exit 1;
+        }
     }
 }
 
@@ -107,9 +109,9 @@ sub setupdb2odbc
     chomp $xcatcfg;
     my ($database, $instance, $password) = split('\|', $xcatcfg);
     if ($::databaseloc) {
-      $cmd = "DATABASELOC=$::databaseloc $::XCATROOT/bin/db2sqlsetup -o -C";
+        $cmd = "DATABASELOC=$::databaseloc $::XCATROOT/bin/db2sqlsetup -o -C";
     } else {
-      $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
+        $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
     }
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
     `logger -t xcat -p local4.info $msg`;

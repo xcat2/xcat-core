@@ -4,7 +4,7 @@
 # Used as a standard client cmd that can be used for xcat cmds that do not have
 # noderange as an argument.  See xcatclient for additional documentation.
 
-# To put the cloud command only in xCAT-OpenStack, just copy the ../bin/xcatclientnnr 
+# To put the cloud command only in xCAT-OpenStack, just copy the ../bin/xcatclientnnr
 # as makeclouddata command here. we couldn't sym link the command makecloudata
 # to this script ../bin/xcatclientnnr in xCAT-OpenStack.spec.
 
@@ -17,40 +17,41 @@ use strict;
 
 my $bname = basename($0);
 my $cmdref;
-if ($bname =~ /xcatclientnnr/) { $cmdref->{command}->[0]=shift @ARGV; }  # xcatclientnnr was invoked directly and the 1st arg is cmd name that is used to locate the plugin
-else { $cmdref->{command}->[0] = $bname; }        # the cmd was sym linked to xcatclientnnr
+if ($bname =~ /xcatclientnnr/) { $cmdref->{command}->[0] = shift @ARGV; } # xcatclientnnr was invoked directly and the 1st arg is cmd name that is used to locate the plugin
+else { $cmdref->{command}->[0] = $bname; } # the cmd was sym linked to xcatclientnnr
 $cmdref->{cwd}->[0] = cwd();
 my $data;
+
 # allows our plugins to get the stdin of the cmd that invoked the plugin
-if ( (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))  || !defined($ENV{'TERM'}) )
+if ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}))
 {
     my $rout;
-    my $rin="";
-    vec($rin,fileno(STDIN),1)=1;
-    my $nfound=select($rout=$rin,"","",1);
+    my $rin = "";
+    vec($rin, fileno(STDIN), 1) = 1;
+    my $nfound = select($rout = $rin, "", "", 1);
     if ($nfound)
     {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
 else
 {
     if (-p STDIN) {
-        while ( <STDIN> ) { $data.=$_; }
-        $cmdref->{stdin}->[0]=$data;
+        while (<STDIN>) { $data .= $_; }
+        $cmdref->{stdin}->[0] = $data;
     }
 }
 
 
-push (@{$cmdref->{arg}}, @ARGV);
+push(@{ $cmdref->{arg} }, @ARGV);
 foreach (keys %ENV) {
     if (/^XCAT_/) {
         $cmdref->{environment}->{$_} = $ENV{$_};
     }
 }
 
-xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 
 

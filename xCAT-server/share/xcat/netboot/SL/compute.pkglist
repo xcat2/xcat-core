@@ -12,3 +12,6 @@ ntp
 sysklogd
 rpm
 rsync
+tar
+gzip
+xz

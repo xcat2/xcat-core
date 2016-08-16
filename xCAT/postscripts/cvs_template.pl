@@ -4,8 +4,9 @@
 #-- jurij.sikorsky@t-systems.cz
 #--------------------------------------------------------------------------------
 #-- DO NOT remove following lines
-open (IMG,">>/etc/IMGVERSION");
-print IMG '$Id: cvs_template.pl,v 1.1 2008/09/05 08:40:16 sikorsky Exp $',"\n";
+open(IMG, ">>/etc/IMGVERSION");
+print IMG '$Id: cvs_template.pl,v 1.1 2008/09/05 08:40:16 sikorsky Exp $', "\n";
+
 #--------------------------------------------------------------------------------
 #--
 

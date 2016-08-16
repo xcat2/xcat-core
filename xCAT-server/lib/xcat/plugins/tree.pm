@@ -14,6 +14,7 @@ use xCAT::GlobalDef;
 use xCAT::Table;
 use Getopt::Long;
 use xCAT::SvrUtils;
+
 #use strict;
 
 sub handled_commands
@@ -26,10 +27,10 @@ sub handled_commands
 
 sub usage
 {
-    my $command = shift;
+    my $command  = shift;
     my $callback = shift;
 
-    if($command eq "lstree")
+    if ($command eq "lstree")
     {
         &usage_lstree($callback);
         return 0;
@@ -52,13 +53,13 @@ sub usage_lstree
     my $callback = shift;
 
     my $rsp;
-    push @{$rsp->{data}},
-      "\n  lstree - Display the tree of service node hierarchy, hardware hierarchy, or VM hierarchy.";
-    push @{$rsp->{data}}, "  Usage: ";
-    push @{$rsp->{data}}, "\tlstree [-h | --help]";
-    push @{$rsp->{data}}, "or";
-    push @{$rsp->{data}}, "\tlstree [-s | --servicenode] [-H | --hardwaremgmt] [-v | --virtualmachine] [noderange]";
-    
+    push @{ $rsp->{data} },
+"\n  lstree - Display the tree of service node hierarchy, hardware hierarchy, or VM hierarchy.";
+    push @{ $rsp->{data} }, "  Usage: ";
+    push @{ $rsp->{data} }, "\tlstree [-h | --help]";
+    push @{ $rsp->{data} }, "or";
+    push @{ $rsp->{data} }, "\tlstree [-s | --servicenode] [-H | --hardwaremgmt] [-v | --virtualmachine] [noderange]";
+
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -72,13 +73,13 @@ sub usage_lstree
 #-----------------------------------------------------------------------------
 sub process_request
 {
-    my $request = shift;
+    my $request  = shift;
     my $callback = shift;
-    my @nodes=();
+    my @nodes    = ();
 
-    if($request->{node})
+    if ($request->{node})
     {
-        @nodes = @{$request->{node}};
+        @nodes = @{ $request->{node} };
     }
     else
     {
@@ -91,7 +92,7 @@ sub process_request
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         }
 
-        my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+        my @entries = ($nodelist->getAllNodeAttribs([qw(node)]));
         foreach (@entries)
         {
             push @nodes, $_->{node};
@@ -99,14 +100,14 @@ sub process_request
     }
 
     my $command = $request->{command}->[0];
-    if($command eq "lstree")
+    if ($command eq "lstree")
     {
         &lstree($request, $callback, \@nodes);
         return 0;
     }
     else
     {
-        $callback->({error=>["error in code..."], errorcode=>[127]});
+        $callback->({ error => ["error in code..."], errorcode => [127] });
         $request = {};
         return 0;
     }
@@ -121,11 +122,11 @@ sub process_request
 #-----------------------------------------------------------------------------
 sub lstree
 {
-    my $request = shift;
+    my $request  = shift;
     my $callback = shift;
     my $nodelist = shift;
 
-    unless($request->{arg} || defined $nodelist)
+    unless ($request->{arg} || defined $nodelist)
     {
         &usage_lstree($callback);
         return 1;
@@ -134,17 +135,17 @@ sub lstree
     # parse the options
     Getopt::Long::Configure("no_pass_through");
     Getopt::Long::Configure("bundling");
-    
+
     if ($request->{arg})
     {
-        @ARGV = @{$request->{arg}};
-        
+        @ARGV = @{ $request->{arg} };
+
         if (
             !GetOptions(
-                        'h|help'           => \$::HELP,
-                        's|servicenode'    => \$::SVCNODE,
-                        'H|hardwaremgmt'   => \$::HDWR,
-                        'v|virtualmachine' => \$::VMACHINE,
+                'h|help'           => \$::HELP,
+                's|servicenode'    => \$::SVCNODE,
+                'H|hardwaremgmt'   => \$::HDWR,
+                'v|virtualmachine' => \$::VMACHINE,
             )
           )
         {
@@ -168,7 +169,7 @@ sub lstree
     my %hwtrees;
     my %vmtrees;
     my %sntrees;
-    
+
     # servicenode hierarchy
     if ($::SVCNODE)
     {
@@ -179,7 +180,7 @@ sub lstree
         if ($restab)
         {
             $snhash = $restab->getNodesAttribs($nodelist, ['servicenode']);
-            @entries = $restab->getAllNodeAttribs(['node','servicenode']);
+            @entries = $restab->getAllNodeAttribs([ 'node', 'servicenode' ]);
         }
         else
         {
@@ -193,31 +194,32 @@ sub lstree
             # servicenode defined for this node
             if ($snhash->{$node}->[0]->{'servicenode'})
             {
-                unless (grep(/$node/, @{$sntrees{$snhash->{$node}->[0]->{'servicenode'}}}))
+                unless (grep(/$node/, @{ $sntrees{ $snhash->{$node}->[0]->{'servicenode'} } }))
                 {
-                    push @{$sntrees{$snhash->{$node}->[0]->{'servicenode'}}}, $node;
+                    push @{ $sntrees{ $snhash->{$node}->[0]->{'servicenode'} } }, $node;
                 }
             }
-            else # need to know if itself is service node
+            else    # need to know if itself is service node
             {
                 foreach my $ent (@entries)
                 {
                     if ($ent->{servicenode} eq $node)
                     {
-                        unless (grep(/$ent->{node}/, @{$sntrees{$node}}))
+                        unless (grep(/$ent->{node}/, @{ $sntrees{$node} }))
                         {
-                            push @{$sntrees{$node}}, $ent->{node};
+                            push @{ $sntrees{$node} }, $ent->{node};
                         }
                     }
                 }
             }
-        
+
         }
+
         #print Dumper(\%sntreehash);
 
         # show service node tree
         &showtree(\%sntrees, 0, 0, $callback);
-    }    
+    }
 
     # get hwtree hash from each plugin
     if ($::HDWR || $::SHOWALL)
@@ -251,7 +253,7 @@ sub lstree
 
             if (grep(/$hmhash->{$node}->[0]->{'mgt'}/, @supportedhw))
             {
-                push @{$hwnodes{$hmhash->{$node}->[0]->{'mgt'}}}, $node;
+                push @{ $hwnodes{ $hmhash->{$node}->[0]->{'mgt'} } }, $node;
             }
         }
 
@@ -260,7 +262,7 @@ sub lstree
             foreach my $type (keys %hwnodes)
             {
                 eval "require xCAT_plugin::$type";
-                $hwtrees{$type} = ${"xCAT_plugin::".$type."::"}{genhwtree}->(\@{$hwnodes{$type}}, $callback);
+                $hwtrees{$type} = ${ "xCAT_plugin::" . $type . "::" }{genhwtree}->(\@{ $hwnodes{$type} }, $callback);
             }
         }
 
@@ -310,15 +312,15 @@ sub lstree
 
         if (scalar @znodes)
         {
-         eval "require xCAT_plugin::zvm";
-         my $ret = xCAT_plugin::zvm::listTree($callback, \@znodes);
+            eval "require xCAT_plugin::zvm";
+            my $ret = xCAT_plugin::zvm::listTree($callback, \@znodes);
         }
-        
+
         ########### end ################
-        
+
         # read vm.host
         my $vmhash;
-        
+
         my $vmtab = xCAT::Table->new('vm');
         if ($vmtab)
         {
@@ -331,26 +333,27 @@ sub lstree
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         }
 
-        my @entries = $vmtab->getAllNodeAttribs(['node','host']);
-        
+        my @entries = $vmtab->getAllNodeAttribs([ 'node', 'host' ]);
+
         foreach my $node (@$nodelist)
         {
             foreach my $ent (@entries)
             {
-                if ($ent->{host} =~ /$node/) # host
+                if ($ent->{host} =~ /$node/)    # host
                 {
-                    push @{$vmtrees{$node}}, $ent->{node};
+                    push @{ $vmtrees{$node} }, $ent->{node};
                 }
             }
-            
-            if ($vmhash && $vmhash->{$node}->[0]->{'host'}) # vm
+
+            if ($vmhash && $vmhash->{$node}->[0]->{'host'})    # vm
             {
-                unless (grep(/$node/, @{$vmtrees{$vmhash->{$node}->[0]->{'host'}}}))
+                unless (grep(/$node/, @{ $vmtrees{ $vmhash->{$node}->[0]->{'host'} } }))
                 {
-                    push @{$vmtrees{$vmhash->{$node}->[0]->{'host'}}}, $node;
+                    push @{ $vmtrees{ $vmhash->{$node}->[0]->{'host'} } }, $node;
                 }
             }
-        }        
+        }
+
         #print Dumper(\%vmtrees);
     }
 
@@ -366,7 +369,7 @@ sub lstree
     }
     return;
 
-} # lstree end
+}    # lstree end
 
 #----------------------------------------------------------------------------
 
@@ -377,9 +380,9 @@ sub lstree
 #-----------------------------------------------------------------------------
 sub showtree
 {
-    my $snthash = shift;
-    my $hwthash = shift;
-    my $vmthash = shift;
+    my $snthash  = shift;
+    my $hwthash  = shift;
+    my $vmthash  = shift;
     my $callback = shift;
 
     my %sntrees = %$snthash;
@@ -401,7 +404,7 @@ sub showtree
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         }
 
-        @entries = $ppctab->getAllNodeAttribs(['node','id','parent']);    
+        @entries = $ppctab->getAllNodeAttribs([ 'node', 'id', 'parent' ]);
     }
 
     if (%sntrees)
@@ -410,47 +413,47 @@ sub showtree
 
         foreach my $sn (sort(keys %sntrees))
         {
-            push @{$rsp->{data}}, "Service Node: $sn";
-            foreach my $cn (sort(@{$sntrees{$sn}}))
+            push @{ $rsp->{data} }, "Service Node: $sn";
+            foreach my $cn (sort(@{ $sntrees{$sn} }))
             {
-                push @{$rsp->{data}}, "|__$cn";
+                push @{ $rsp->{data} }, "|__$cn";
             }
-            push @{$rsp->{data}}, "\n";
+            push @{ $rsp->{data} }, "\n";
         }
-        xCAT::MsgUtils->message("I", $rsp, $callback);  
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
     # show hardware hierarchy
-    if (%hwtrees)    
+    if (%hwtrees)
     {
         my $rsp;
 
         # hmc tree output
-        foreach my $hmc (sort(keys %{$hwtrees{hmc}}))
+        foreach my $hmc (sort(keys %{ $hwtrees{hmc} }))
         {
-            push @{$rsp->{data}}, "HMC: $hmc";
-            foreach my $frame (sort(keys %{$hwtrees{hmc}{$hmc}}))
+            push @{ $rsp->{data} }, "HMC: $hmc";
+            foreach my $frame (sort(keys %{ $hwtrees{hmc}{$hmc} }))
             {
                 if ($frame eq '0')
                 {
                     # no frame
-                    push @{$rsp->{data}}, "|__Frame: n/a";
+                    push @{ $rsp->{data} }, "|__Frame: n/a";
                 }
                 else
                 {
                     # get bpas for frame.
                     my $bpas = xCAT::DBobjUtils->getchildren($frame);
-                    my $bpalist = join ',', @$bpas; 
-                    push @{$rsp->{data}}, "|__Frame: $frame $bpalist";
+                    my $bpalist = join ',', @$bpas;
+                    push @{ $rsp->{data} }, "|__Frame: $frame $bpalist";
                 }
-                
-                foreach my $cec (sort @{$hwtrees{hmc}{$hmc}{$frame}})
+
+                foreach my $cec (sort @{ $hwtrees{hmc}{$hmc}{$frame} })
                 {
 
                     # get fsps for cec.
                     my $fsps = xCAT::DBobjUtils->getchildren($cec);
-                    my $fsplist = join ',', @$fsps; 
-                    push @{$rsp->{data}}, "   |__CEC: $cec $fsplist";
+                    my $fsplist = join ',', @$fsps;
+                    push @{ $rsp->{data} }, "   |__CEC: $cec $fsplist";
 
                     if ($lparinvm)
                     {
@@ -461,74 +464,75 @@ sub showtree
                             {
                                 if ($host =~ /$cec/)
                                 {
-                                    foreach my $vm (sort(@{$vmtrees{$host}}))
+                                    foreach my $vm (sort(@{ $vmtrees{$host} }))
                                     {
-                                        push @{$rsp->{data}}, "      |__ $vm";
+                                        push @{ $rsp->{data} }, "      |__ $vm";
                                     }
 
                                     # remove it as shown
                                     undef $vmtrees{$host};
                                 }
                             }
-                        }                    
+                        }
                     }
                     elsif ($::VMACHINE || $::SHOWALL) # temp workaround before we integrate LPARs into vm table
                     {
                         my %vm;
+
                         # get all lpars in this cec.
                         foreach my $ent (@entries)
                         {
                             if ($ent->{parent} =~ /$cec/)
                             {
-                                $vm{$ent->{id}} = $ent->{node};
+                                $vm{ $ent->{id} } = $ent->{node};
                             }
                         }
 
                         foreach my $id (sort(keys %vm))
                         {
-                            push @{$rsp->{data}}, "      |__LPAR $id: $vm{$id}";
+                            push @{ $rsp->{data} }, "      |__LPAR $id: $vm{$id}";
                         }
                     }
                 }
             }
-            push @{$rsp->{data}}, "\n";
+            push @{ $rsp->{data} }, "\n";
         }
 
         # DFM tree output
-        foreach my $sfp (sort(keys %{$hwtrees{fsp}}))
+        foreach my $sfp (sort(keys %{ $hwtrees{fsp} }))
         {
             if ($sfp eq '0')
             {
                 # no frame
-                push @{$rsp->{data}}, "Service Focal Point: n/a";
+                push @{ $rsp->{data} }, "Service Focal Point: n/a";
             }
             else
             {
-                push @{$rsp->{data}}, "Service Focal Point: $sfp";
+                push @{ $rsp->{data} }, "Service Focal Point: $sfp";
             }
 
-            foreach my $frame (sort(keys %{$hwtrees{fsp}{$sfp}}))
+            foreach my $frame (sort(keys %{ $hwtrees{fsp}{$sfp} }))
             {
                 if ($frame eq '0')
                 {
                     # no frame
-                    push @{$rsp->{data}}, "|__Frame: n/a";
+                    push @{ $rsp->{data} }, "|__Frame: n/a";
                 }
                 else
                 {
                     # get bpas for frame.
                     my $bpas = xCAT::DBobjUtils->getchildren($frame);
-                    my $bpalist = join ',', @$bpas; 
-                    push @{$rsp->{data}}, "|__Frame: $frame $bpalist";
+                    my $bpalist = join ',', @$bpas;
+                    push @{ $rsp->{data} }, "|__Frame: $frame $bpalist";
                 }
-                
-                foreach my $cec (sort @{$hwtrees{fsp}{$sfp}{$frame}})
+
+                foreach my $cec (sort @{ $hwtrees{fsp}{$sfp}{$frame} })
                 {
 
                     # get fsps for cec.
                     my $fsps = xCAT::DBobjUtils->getchildren($cec);
-                    my $fsplist = join ',', @$fsps; 
-                    push @{$rsp->{data}}, "   |__CEC: $cec $fsplist";
+                    my $fsplist = join ',', @$fsps;
+                    push @{ $rsp->{data} }, "   |__CEC: $cec $fsplist";
 
                     if ($lparinvm)
                     {
@@ -539,47 +543,49 @@ sub showtree
                             {
                                 if ($host =~ /$cec/)
                                 {
-                                    foreach my $vm (sort(@{$vmtrees{$host}}))
+                                    foreach my $vm (sort(@{ $vmtrees{$host} }))
                                     {
-                                        push @{$rsp->{data}}, "      |__ $vm";
+                                        push @{ $rsp->{data} }, "      |__ $vm";
                                     }
+
                                     # remove it as shown
-                                    undef $vmtrees{$host};                                
+                                    undef $vmtrees{$host};
                                 }
                             }
-                        }                    
+                        }
                     }
                     elsif ($::VMACHINE || $::SHOWALL) # temp workaround before we integrate LPARs into vm table
                     {
                         my %vm;
+
                         # get all lpars in this cec.
                         foreach my $ent (@entries)
                         {
                             if ($ent->{parent} =~ /$cec/)
                             {
-                                $vm{$ent->{id}} = $ent->{node};
+                                $vm{ $ent->{id} } = $ent->{node};
                             }
                         }
 
                         foreach my $id (sort(keys %vm))
                         {
-                            push @{$rsp->{data}}, "      |__LPAR $id: $vm{$id}";
+                            push @{ $rsp->{data} }, "      |__LPAR $id: $vm{$id}";
                         }
                     }
                 }
             }
-            push @{$rsp->{data}}, "\n";
+            push @{ $rsp->{data} }, "\n";
         }
 
         # blade tree output
-        foreach my $mm (sort(keys %{$hwtrees{blade}}))
+        foreach my $mm (sort(keys %{ $hwtrees{blade} }))
         {
-            push @{$rsp->{data}}, "Management Module: $mm";
+            push @{ $rsp->{data} }, "Management Module: $mm";
 
-            foreach my $slot (sort(keys %{$hwtrees{blade}{$mm}}))
+            foreach my $slot (sort(keys %{ $hwtrees{blade}{$mm} }))
             {
                 my $blade = $hwtrees{blade}{$mm}{$slot};
-                push @{$rsp->{data}}, "|__Blade $slot: $blade"; 
+                push @{ $rsp->{data} }, "|__Blade $slot: $blade";
 
                 # if show both, tailing with vmtree.
                 if (%vmtrees)
@@ -588,26 +594,27 @@ sub showtree
                     {
                         if ($host =~ /$blade/)
                         {
-                            foreach my $vm (sort(@{$vmtrees{$host}}))
+                            foreach my $vm (sort(@{ $vmtrees{$host} }))
                             {
-                                push @{$rsp->{data}}, "   |__ $vm";
+                                push @{ $rsp->{data} }, "   |__ $vm";
                             }
+
                             # remove it as shown
-                            undef $vmtrees{$host};                            
+                            undef $vmtrees{$host};
                         }
                     }
                 }
             }
-            push @{$rsp->{data}}, "\n";
+            push @{ $rsp->{data} }, "\n";
         }
 
         # ipmi tree output
-        foreach my $bmc (sort(keys %{$hwtrees{ipmi}}))
+        foreach my $bmc (sort(keys %{ $hwtrees{ipmi} }))
         {
-            push @{$rsp->{data}}, "BMC: $bmc";
-            foreach my $svr (sort(@{$hwtrees{ipmi}{$bmc}}))
+            push @{ $rsp->{data} }, "BMC: $bmc";
+            foreach my $svr (sort(@{ $hwtrees{ipmi}{$bmc} }))
             {
-                push @{$rsp->{data}}, "|__Server: $svr";
+                push @{ $rsp->{data} }, "|__Server: $svr";
 
                 # if show both, tailing with vmtree.
                 if (%vmtrees)
@@ -616,21 +623,22 @@ sub showtree
                     {
                         if ($host =~ /$svr/)
                         {
-                            foreach my $vm (sort(@{$vmtrees{$host}}))
+                            foreach my $vm (sort(@{ $vmtrees{$host} }))
                             {
-                                push @{$rsp->{data}}, "   |__ $vm";
+                                push @{ $rsp->{data} }, "   |__ $vm";
                             }
+
                             # remove it as shown
-                            undef $vmtrees{$host};                            
+                            undef $vmtrees{$host};
                         }
                     }
-                }                
+                }
             }
-            push @{$rsp->{data}}, "\n";
-        }        
-        
-        xCAT::MsgUtils->message("I", $rsp, $callback);                    
-    }    
+            push @{ $rsp->{data} }, "\n";
+        }
+
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
 
     # show VM hierarchy
     if (%vmtrees)
@@ -640,18 +648,18 @@ sub showtree
         {
             if (defined $vmtrees{$host})
             {
-                push @{$rsp->{data}}, "Server: $host";
-                foreach my $vm (sort(@{$vmtrees{$host}}))
+                push @{ $rsp->{data} }, "Server: $host";
+                foreach my $vm (sort(@{ $vmtrees{$host} }))
                 {
-                    push @{$rsp->{data}}, "|__ $vm";
+                    push @{ $rsp->{data} }, "|__ $vm";
                 }
             }
-            push @{$rsp->{data}}, "\n";
+            push @{ $rsp->{data} }, "\n";
         }
         xCAT::MsgUtils->message("I", $rsp, $callback);
-        
+
     }
-    
+
     return;
 }
 

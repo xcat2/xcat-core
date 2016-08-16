@@ -19,14 +19,14 @@ use warnings;
 
 # Show help
 if (@ARGV > 0) {
-	print <<END;
+    print <<END;
 Create an autoyast template to be used by xCAT for Linux on System z.
 Created by Thang Pham (thang.pham\@us.ibm.com)
 Version 0.2
 
 IBM (c)2012 EPL license http://www.eclipse.org/legal/epl-v10.html
 END
-	exit();
+    exit();
 }
 
 # Show help
@@ -35,131 +35,131 @@ print "Creating autoyast template for Linux on System z...\n";
 # Get distro version
 my $version = '';
 while (!($version eq '10' || $version eq '11')) {
-	$version = ask("Select SUSE Linux Enterprise Server version? (10 or 11) ");
-	
-	if (!($version eq '10' || $version eq '11')) {
-		print "  Unknown value!\n";
-	}
+    $version = ask("Select SUSE Linux Enterprise Server version? (10 or 11) ");
+
+    if (!($version eq '10' || $version eq '11')) {
+        print "  Unknown value!\n";
+    }
 }
 
 # Get template path
 my $template_path = '';
 while (!$template_path) {
-	$template_path = ask("Where do you want to place the template? (e.g. /tmp/custom.sles11.s390x.tmpl) ");
-	
-	if (!$template_path) {
-		print "  A path for the template is needed!\n";
-	}
+    $template_path = ask("Where do you want to place the template? (e.g. /tmp/custom.sles11.s390x.tmpl) ");
+
+    if (!$template_path) {
+        print "  A path for the template is needed!\n";
+    }
 }
 
 # Default dasd and partition configuration
 # Used for testing
 my %dasd_default = (
-	'0.0.0100' => {
-		'device_name' => '/dev/dasda',
-		'type' => 'dasd_eckd_mod'
-	},
-	'0.0.0101' => {
-		'device_name' => '/dev/dasdb',
-		'type' => 'dasd_eckd_mod'
-	}
+    '0.0.0100' => {
+        'device_name' => '/dev/dasda',
+        'type'        => 'dasd_eckd_mod'
+    },
+    '0.0.0101' => {
+        'device_name' => '/dev/dasdb',
+        'type'        => 'dasd_eckd_mod'
+      }
 );
 my %partitions_default = (
-	'/dev/dasda' => {
-		'device_fs' => 'ext4',
-		'device_size' => 'max',
-		'device_mount' => '',
-		'device_lvm' => 'VG'
-	},
-	'/dev/dasdb' => {
-		'device_fs' => 'ext4',
-		'device_size' => 'max',
-		'device_mount' => '',
-		'device_lvm' => 'VG'
-	},
-	'/dev/VG' => {
-		'lvm' => {
-			'lv_root' => {
-				'name' => 'lv_root',
-				'fs' => 'ext4',
-				'mount' => '/',
-				'size' => '4g'
-			},
-			'lv_opt' => {
-				'name' => 'lv_opt',
-				'fs' => 'ext4',
-				'mount' => '/opt',
-				'size' => 'max'
-			}
-		}
-	}
+    '/dev/dasda' => {
+        'device_fs'    => 'ext4',
+        'device_size'  => 'max',
+        'device_mount' => '',
+        'device_lvm'   => 'VG'
+    },
+    '/dev/dasdb' => {
+        'device_fs'    => 'ext4',
+        'device_size'  => 'max',
+        'device_mount' => '',
+        'device_lvm'   => 'VG'
+    },
+    '/dev/VG' => {
+        'lvm' => {
+            'lv_root' => {
+                'name'  => 'lv_root',
+                'fs'    => 'ext4',
+                'mount' => '/',
+                'size'  => '4g'
+            },
+            'lv_opt' => {
+                'name'  => 'lv_opt',
+                'fs'    => 'ext4',
+                'mount' => '/opt',
+                'size'  => 'max'
+              }
+          }
+      }
 );
 
 # Set default parameters for networking and root password
 # DHCP is set by default, but can changed based on user input
 my %parms = (
-	'hosts' => {
-		'localhost' => {
-			'host_address' => '127.0.0.1',
-			'name' => 'localhost'
-		},
-		'xcat' => {
-			'host_address' => 'replace_host_address',
-			'name' => 'replace_long_name replace_short_name'
-		}	
-	},
-	'dns' => {
-		'xcat' => {
-			'hostname' => 'replace_hostname',
-			'dhcp_hostname' => 'true',
-			'dhcp_resolv' => 'true',
-			'domain' => 'replace_domain',
-			'nameserver' => 'replace_nameserver'
-		}
-	},
-	'interfaces' => {
-		'xcat' => {
-			'bootproto' => 'dhcp',
-			'device' => 'replace_device',
-			'lladdr' => 'replace_lladdr',
-			'chanids' => 'replace_ccw_chan_ids'
-		}
-	},
-	'root_password' => 'replace_root_password',
-	'software' => 'Minimal'
+    'hosts' => {
+        'localhost' => {
+            'host_address' => '127.0.0.1',
+            'name'         => 'localhost'
+        },
+        'xcat' => {
+            'host_address' => 'replace_host_address',
+            'name'         => 'replace_long_name replace_short_name'
+          }
+    },
+    'dns' => {
+        'xcat' => {
+            'hostname'      => 'replace_hostname',
+            'dhcp_hostname' => 'true',
+            'dhcp_resolv'   => 'true',
+            'domain'        => 'replace_domain',
+            'nameserver'    => 'replace_nameserver'
+          }
+    },
+    'interfaces' => {
+        'xcat' => {
+            'bootproto' => 'dhcp',
+            'device'    => 'replace_device',
+            'lladdr'    => 'replace_lladdr',
+            'chanids'   => 'replace_ccw_chan_ids'
+          }
+    },
+    'root_password' => 'replace_root_password',
+    'software'      => 'Minimal'
 );
 
 # Configure interfaces (static or dhcp)
 my $dhcp = '';
 while (!($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes' || $dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no')) {
-	$dhcp = ask("  Do you want to use DHCP? (yes or no) ");
-	
-	if ($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes') {
-		$parms{'interfaces'} = {
-			'xcat' => {
-				'bootproto' => 'dhcp',
-				'device' => 'replace_device',
-				'lladdr' => 'replace_lladdr',
-				'chanids' => 'replace_ccw_chan_ids'
-			}
-		};
-	} elsif ($dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no') {
-		$parms{'interfaces'} = {
-			'xcat' => {
-				'bootproto' => 'static',
-				'device' => 'replace_device',
-				'lladdr' => 'replace_lladdr',
-				'ipaddr' => 'replace_ipaddr',
-				'netmask' => 'replace_netmask',
-				'gateway' => 'replace_gateway',
-				'broadcast' => 'replace_broadcast',
-				'network' => 'replace_network',
-				'chanids' => 'replace_ccw_chan_ids'
-			}
-		};
-	} else {
-		print "  Unknown value!\n";
-	}
+    $dhcp = ask("  Do you want to use DHCP? (yes or no) ");
+
+    if ($dhcp eq 'Y' || $dhcp eq 'y' || $dhcp eq 'Yes' || $dhcp eq 'yes') {
+        $parms{'interfaces'} = {
+            'xcat' => {
+                'bootproto' => 'dhcp',
+                'device'    => 'replace_device',
+                'lladdr'    => 'replace_lladdr',
+                'chanids'   => 'replace_ccw_chan_ids'
+              }
+        };
+    } elsif ($dhcp eq 'N' || $dhcp eq 'n' || $dhcp eq 'No' || $dhcp eq 'no') {
+        $parms{'interfaces'} = {
+            'xcat' => {
+                'bootproto' => 'static',
+                'device'    => 'replace_device',
+                'lladdr'    => 'replace_lladdr',
+                'ipaddr'    => 'replace_ipaddr',
+                'netmask'   => 'replace_netmask',
+                'gateway'   => 'replace_gateway',
+                'broadcast' => 'replace_broadcast',
+                'network'   => 'replace_network',
+                'chanids'   => 'replace_ccw_chan_ids'
+              }
+        };
+    } else {
+        print "  Unknown value!\n";
+    }
 }
 
 # Hash array containing autoyast configuration
@@ -184,105 +184,109 @@ print <<END;
 CONFIGURING DASD...
 END
 while ($dasd_option != 4) {
-	print <<END;
+    print <<END;
 Select from the following options:
   (1) Add DASD
   (2) Remove DASD
   (3) Show DASD configuration
   (4) Go to next step
 END
-	$dasd_option = <>;
-	$dasd_option = trim($dasd_option);
-	while (!($dasd_option eq '1' || $dasd_option eq '2' || $dasd_option eq '3' || $dasd_option eq '4')) {
-		print "  Unknown value!\n";
-		$dasd_option = <>;
-		$dasd_option = trim($dasd_option);
-	}
-	
-	# Add dasd to template
-	if ($dasd_option eq '1') {
-		# Get virtual address
-		$addr = ask("  What is the virtual address? ");
-		while (length($addr) < 4) { # Address length must be 4
-			$addr = '0' . $addr;
-		}
-		$addr = '0.0.' . $addr;
-		
-		# Get dasd type
-		$ask = 1;
-		while ($ask) {
-			$dasd_type = ask("  What is the type? (eckd or fba) ");
-			if ($dasd_type eq 'eckd') {
-				$dasd_type = 'dasd_eckd_mod';
-				$ask = 0;
-			} elsif ($dasd_type eq 'fba') {
-				$dasd_type = 'dasd_fba_mod';
-				$ask = 0;
-			} else {
-				print "    Unknown value!\n";
-			}
-		}
-		
-		# Save dasd in hash
-		$dasd{$addr}{'type'} = $dasd_type;
-	} 
-	
-	# Remove dasd from template
-	elsif ($dasd_option eq '2') {
-		$addr = ask("  What is the virtual address to remove? ");
-		while (length($addr) < 4) { # Address length must be 4
-			$addr = '0' . $addr;
-		}
-		$addr = '0.0.' . $addr;
-		
-		# Remove from hash
-		delete $dasd{$addr};
-	} 
+    $dasd_option = <>;
+    $dasd_option = trim($dasd_option);
+    while (!($dasd_option eq '1' || $dasd_option eq '2' || $dasd_option eq '3' || $dasd_option eq '4')) {
+        print "  Unknown value!\n";
+        $dasd_option = <>;
+        $dasd_option = trim($dasd_option);
+    }
 
-	elsif ($dasd_option eq '3') {
-		# Show configuration
-		print <<END;
+    # Add dasd to template
+    if ($dasd_option eq '1') {
+
+        # Get virtual address
+        $addr = ask("  What is the virtual address? ");
+        while (length($addr) < 4) {    # Address length must be 4
+            $addr = '0' . $addr;
+        }
+        $addr = '0.0.' . $addr;
+
+        # Get dasd type
+        $ask = 1;
+        while ($ask) {
+            $dasd_type = ask("  What is the type? (eckd or fba) ");
+            if ($dasd_type eq 'eckd') {
+                $dasd_type = 'dasd_eckd_mod';
+                $ask       = 0;
+            } elsif ($dasd_type eq 'fba') {
+                $dasd_type = 'dasd_fba_mod';
+                $ask       = 0;
+            } else {
+                print "    Unknown value!\n";
+            }
+        }
+
+        # Save dasd in hash
+        $dasd{$addr}{'type'} = $dasd_type;
+    }
+
+    # Remove dasd from template
+    elsif ($dasd_option eq '2') {
+        $addr = ask("  What is the virtual address to remove? ");
+        while (length($addr) < 4) {    # Address length must be 4
+            $addr = '0' . $addr;
+        }
+        $addr = '0.0.' . $addr;
+
+        # Remove from hash
+        delete $dasd{$addr};
+    }
+
+    elsif ($dasd_option eq '3') {
+
+        # Show configuration
+        print <<END;
 #  |   Address   |   Type   
 ----------------------------
 END
-		foreach my $addr(sort keys %dasd){
-			$device_type = $dasd{$addr}{'type'};
-			print (pad($i, 3) . " " . pad($addr, 13) . " " . pad($device_type, 10) . "\n");
-			$i++;
-		}
-	}
-	
-	elsif ($dasd_option eq '4') {
-		# Do nothing, go to next step	
-	} else {
-		print "  Unknown value!\n"
-	}
+        foreach my $addr (sort keys %dasd) {
+            $device_type = $dasd{$addr}{'type'};
+            print(pad($i, 3) . " " . pad($addr, 13) . " " . pad($device_type, 10) . "\n");
+            $i++;
+        }
+    }
+
+    elsif ($dasd_option eq '4') {
+
+        # Do nothing, go to next step
+    } else {
+        print "  Unknown value!\n"
+    }
 }
 
 # Assign device names
 my @dasd_device_list = ('/dev/dasda', '/dev/dasdb', '/dev/dasdc', '/dev/dasdd', '/dev/dasde', '/dev/dasdf', '/dev/dasdg',
 '/dev/dasdh', '/dev/dasdi', '/dev/dasdj', '/dev/dasdk', '/dev/dasdl', '/dev/dasdm', '/dev/dasdn', '/dev/dasdo', '/dev/dasdp',
 '/dev/dasdq', '/dev/dasdr', '/dev/dasds', '/dev/dasdt', '/dev/dasdu', '/dev/dasdv', '/dev/dasdw', '/dev/dasdx', '/dev/dasdy',
-'/dev/dasdz');
+    '/dev/dasdz');
 my $dasd_partition_info;
 my @device_list;
 $i = 0;
 for $addr (sort keys %dasd) {
-	# Assign a device name from list
-	my $device_name = $dasd_device_list[$i];
 
-	# Save dasd in hash
-	$dasd{$addr}{'device_name'} = $device_name;
+    # Assign a device name from list
+    my $device_name = $dasd_device_list[$i];
 
-	# Save partition in hash
-	$partitions{$device_name}{'device_fs'} = '';
-	$partitions{$device_name}{'device_size'} = '';
-	$partitions{$device_name}{'device_mount'} = '';
-	$partitions{$device_name}{'device_lvm'} = '';
-	
-	# Create device list
-	$device_list[$i] = pad($device_name, 12) . " " . pad($addr, 13) . " " . pad($dasd{$addr}{'type'}, 7);
-	$i++;
+    # Save dasd in hash
+    $dasd{$addr}{'device_name'} = $device_name;
+
+    # Save partition in hash
+    $partitions{$device_name}{'device_fs'}    = '';
+    $partitions{$device_name}{'device_size'}  = '';
+    $partitions{$device_name}{'device_mount'} = '';
+    $partitions{$device_name}{'device_lvm'}   = '';
+
+    # Create device list
+    $device_list[$i] = pad($device_name, 12) . " " . pad($addr, 13) . " " . pad($dasd{$addr}{'type'}, 7);
+    $i++;
 }
 
 print <<END;
@@ -304,8 +308,8 @@ my $device_mount;
 my $device_size;
 
 # Show device list
-for ($i = 0; $i < @device_list; $i++) {
-	print(pad($i, 3) . " " . $device_list[$i]. "\n");
+for ($i = 0 ; $i < @device_list ; $i++) {
+    print(pad($i, 3) . " " . $device_list[$i] . "\n");
 }
 
 # Configure device
@@ -314,115 +318,117 @@ my @args;
 
 $ask = 1;
 while ($ask) {
-	$selected = ask("Which device do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
-	if ($selected && int($selected) > @device_list) {
-		print "  Unknown value!\n";
-		redo;
-	}
-	
-	# Only configure if a device is selected
-	if (length($selected)) {
-		$selected = int($selected);
-		
-		@args = split('   ', $device_list[$selected]);
-		$device_name = $args[0];
+    $selected = ask("Which device do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
+    if ($selected && int($selected) > @device_list) {
+        print "  Unknown value!\n";
+        redo;
+    }
 
-		# Get device filesystem
-		$device_fs = '';
-		while (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
-			$device_fs = ask("  What is the filesystem for $device_name? (ext2, ext3, ext4, or swap) ");
-			
-			if (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
-				print "    Unknown value!\n";
-			}
-		}
-		
-		# Get partition size
-		$device_size = '';
-		while (!$device_size) {
-			$device_size = ask("  What is the partition size? (e.g. 1g, 2g, or max) ");
-			if (!$device_size) {
-				print "  Please give a partition size!";
-			}
-		}
-		
-		# Is partition an LVM
-		$lvm = '';
-		while (!($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes' || $lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no')) {
-			$lvm = ask("  Do you want to assign it to an LVM group? (yes or no) ");
-			$lvm_group = "";
-			$device_mount = "";
-		
-			if ($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes') {
-				# Get partition LVM group
-				$lvm_group = ask("  What is the LVM group? ");
-				$ask_lvm = 1;
-				
-				# Create new entry for volume group
-				$tmp = '/dev/' . $lvm_group;
-				$partitions{$tmp}{'device_lvm'} = $lvm_group;
-			} elsif ($lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no') {
-				# Get partition mount point
-				$device_mount = ask("  What is the mount point? ");
-			} else {
-				print "    Unknown value!\n";
-			}
-		}
-		
-		# Save dasd in hash
-		$partitions{$device_name}{'device_fs'} = $device_fs;
-		$partitions{$device_name}{'device_size'} = $device_size;
-		$partitions{$device_name}{'device_mount'} = $device_mount;
-		$partitions{$device_name}{'device_lvm'} = $lvm_group;
-	} else {
-		$ask = 0;
-	}
+    # Only configure if a device is selected
+    if (length($selected)) {
+        $selected = int($selected);
+
+        @args = split('   ', $device_list[$selected]);
+        $device_name = $args[0];
+
+        # Get device filesystem
+        $device_fs = '';
+        while (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
+            $device_fs = ask("  What is the filesystem for $device_name? (ext2, ext3, ext4, or swap) ");
+
+            if (!($device_fs eq 'ext2' || $device_fs eq 'ext3' || $device_fs eq 'ext4' || $device_fs eq 'swap')) {
+                print "    Unknown value!\n";
+            }
+        }
+
+        # Get partition size
+        $device_size = '';
+        while (!$device_size) {
+            $device_size = ask("  What is the partition size? (e.g. 1g, 2g, or max) ");
+            if (!$device_size) {
+                print "  Please give a partition size!";
+            }
+        }
+
+        # Is partition an LVM
+        $lvm = '';
+        while (!($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes' || $lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no')) {
+            $lvm = ask("  Do you want to assign it to an LVM group? (yes or no) ");
+            $lvm_group    = "";
+            $device_mount = "";
+
+            if ($lvm eq 'Y' || $lvm eq 'y' || $lvm eq 'Yes' || $lvm eq 'yes') {
+
+                # Get partition LVM group
+                $lvm_group = ask("  What is the LVM group? ");
+                $ask_lvm   = 1;
+
+                # Create new entry for volume group
+                $tmp = '/dev/' . $lvm_group;
+                $partitions{$tmp}{'device_lvm'} = $lvm_group;
+            } elsif ($lvm eq 'N' || $lvm eq 'n' || $lvm eq 'No' || $lvm eq 'no') {
+
+                # Get partition mount point
+                $device_mount = ask("  What is the mount point? ");
+            } else {
+                print "    Unknown value!\n";
+            }
+        }
+
+        # Save dasd in hash
+        $partitions{$device_name}{'device_fs'}    = $device_fs;
+        $partitions{$device_name}{'device_size'}  = $device_size;
+        $partitions{$device_name}{'device_mount'} = $device_mount;
+        $partitions{$device_name}{'device_lvm'}   = $lvm_group;
+    } else {
+        $ask = 0;
+    }
 }
 
 # Configure LVM partitions
 my @lvm_list;
 if ($ask_lvm) {
-	print <<END;
+    print <<END;
 	
 CONFIGURING LVM PARTITIONS...
 Select an LVM group from the list below to create an LVM volume.
 END
-print <<END;
+    print <<END;
 #  |   LVM group   |   Devices   
 ---------------------------------
 END
 
-	# Find LVM groups
-	for $device_name (sort keys %partitions) {
-		if (length($partitions{$device_name}{'device_lvm'}) && $device_name ne "/dev/$partitions{$device_name}{'device_lvm'}") {
-			$lvm{$partitions{$device_name}{'device_lvm'}}{'devices'} .= "$device_name ";
-		}
-	}
-	
-	# Print volume groups
-	$i = 0;
-	for $device_name (sort keys %lvm) {
-		print(pad($i, 3) . " " . pad($device_name, 15) . " " . pad($lvm{$device_name}{'devices'}, 10) . "\n");
-		$lvm_list[$i] = $device_name;
-		$i++;
-	}
-	
-	# Select LVM group
-	$ask = 1;
-	my $lvm_group;
-	my $lvm_vol_name;
-	my $lvm_vol_fs;
-	my $lvm_vol_mount;
-	my $lvm_vol_size;
-	while ($ask) {
-		$lvm_group = ask("Which LVM group do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
-		if (length($lvm_group)) {
-			$lvm_group = $lvm_list[int($lvm_group)];
-			$device_name = "/dev/$lvm_group";
-			
-			my $lvm_option = 0;
-			while ($lvm_option != 4) {
-				print <<END;
+    # Find LVM groups
+    for $device_name (sort keys %partitions) {
+        if (length($partitions{$device_name}{'device_lvm'}) && $device_name ne "/dev/$partitions{$device_name}{'device_lvm'}") {
+            $lvm{ $partitions{$device_name}{'device_lvm'} }{'devices'} .= "$device_name ";
+        }
+    }
+
+    # Print volume groups
+    $i = 0;
+    for $device_name (sort keys %lvm) {
+        print(pad($i, 3) . " " . pad($device_name, 15) . " " . pad($lvm{$device_name}{'devices'}, 10) . "\n");
+        $lvm_list[$i] = $device_name;
+        $i++;
+    }
+
+    # Select LVM group
+    $ask = 1;
+    my $lvm_group;
+    my $lvm_vol_name;
+    my $lvm_vol_fs;
+    my $lvm_vol_mount;
+    my $lvm_vol_size;
+    while ($ask) {
+        $lvm_group = ask("Which LVM group do you want to configure? (See list above)\nLeave blank and hit Enter to go to next step.\n");
+        if (length($lvm_group)) {
+            $lvm_group   = $lvm_list[ int($lvm_group) ];
+            $device_name = "/dev/$lvm_group";
+
+            my $lvm_option = 0;
+            while ($lvm_option != 4) {
+                print <<END;
 		
 Select from the following options:
   (1) Create LVM volume
@@ -430,70 +436,73 @@ Select from the following options:
   (3) Show LVM configuration
   (4) Back to menu
 END
-				$lvm_option = <>;
-				
-				# Add an LVM volume to template
-				if ($lvm_option eq '1') {
-					# Get dasd virtual address
-					$lvm_vol_name = ask("  What is the LVM volume name? ");
-					
-					# Get device filesystem
-					$lvm_vol_fs = '';
-					while (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
-						$lvm_vol_fs = ask("  What is the LVM volume filesystem? (ext2, ext3, ext4, or swap) ");
-						
-						if (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
-							print "    Unknown value!\n";
-						}
-					}
-			
-					# Get partition mount point
-					$lvm_vol_mount = ask("  what is the Mount point? ");
-					
-					# Get partition size
-					$lvm_vol_size = ask("  What is the LVM volume size? (e.g. 1g, 2g, or max) ");
-		
-					# Save dasd in hash
-					$partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
-						'fs' => $lvm_vol_fs,
-						'name' => $lvm_vol_name,
-						'mount' => $lvm_vol_mount,
-						'size' => $lvm_vol_size
-					};
-				} 
-				
-				# Remove an LVM volume from template
-				elsif ($lvm_option eq '2') {
-					my $name = ask("  What is the LVM volume to remove? ");
-										
-					# Remove from hash
-					delete $partitions{$device_name}{'lvm'}{$name};
-				}
+                $lvm_option = <>;
 
-				elsif ($lvm_option eq '3') {
-					# Show configuration
-					print <<END;
+                # Add an LVM volume to template
+                if ($lvm_option eq '1') {
+
+                    # Get dasd virtual address
+                    $lvm_vol_name = ask("  What is the LVM volume name? ");
+
+                    # Get device filesystem
+                    $lvm_vol_fs = '';
+                    while (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
+                        $lvm_vol_fs = ask("  What is the LVM volume filesystem? (ext2, ext3, ext4, or swap) ");
+
+                        if (!($lvm_vol_fs eq 'ext2' || $lvm_vol_fs eq 'ext3' || $lvm_vol_fs eq 'ext4' || $lvm_vol_fs eq 'swap')) {
+                            print "    Unknown value!\n";
+                        }
+                    }
+
+                    # Get partition mount point
+                    $lvm_vol_mount = ask("  what is the Mount point? ");
+
+                    # Get partition size
+                    $lvm_vol_size = ask("  What is the LVM volume size? (e.g. 1g, 2g, or max) ");
+
+                    # Save dasd in hash
+                    $partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
+                        'fs'    => $lvm_vol_fs,
+                        'name'  => $lvm_vol_name,
+                        'mount' => $lvm_vol_mount,
+                        'size'  => $lvm_vol_size
+                    };
+                }
+
+                # Remove an LVM volume from template
+                elsif ($lvm_option eq '2') {
+                    my $name = ask("  What is the LVM volume to remove? ");
+
+                    # Remove from hash
+                    delete $partitions{$device_name}{'lvm'}{$name};
+                }
+
+                elsif ($lvm_option eq '3') {
+
+                    # Show configuration
+                    print <<END;
 Group      |   Volume   |    Mount   |   Size   
 ---------------------------------------------
 END
 
-					for $device_name (sort keys %partitions) {						
-						for $lvm_vol_name (sort keys %{$partitions{$device_name}{'lvm'}}) {
-							print(pad($device_name, 11) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'name'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'mount'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'size'}, 10) . "\n");
-						}
-					}
-				}
-				
-				elsif ($lvm_option eq '4') {
-					# Do nothing, go to next step	
-				} else {
-					print "  Unknown value!\n"
-				}
-			}
-		} else {
-			$ask = 0;		
-		}
-	} # End of while ($ask)
+                    for $device_name (sort keys %partitions) {
+                        for $lvm_vol_name (sort keys %{ $partitions{$device_name}{'lvm'} }) {
+                            print(pad($device_name, 11) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'name'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'mount'}, 12) . " " . pad($partitions{$device_name}{'lvm'}{$lvm_vol_name}{'size'}, 10) . "\n");
+                        }
+                    }
+                }
+
+                elsif ($lvm_option eq '4') {
+
+                    # Do nothing, go to next step
+                } else {
+                    print "  Unknown value!\n"
+                }
+            }
+        } else {
+            $ask = 0;
+        }
+    }    # End of while ($ask)
 }
 
 # Create <dasd> section
@@ -504,7 +513,7 @@ my $partitionsSection = createPartitions(\%dasd, \%partitions);
 
 # Create <modules> section
 my $dasdModulesSection = createDasdModules(\%dasd);
-my $nicModulesSection = createNicModules($parms{'interfaces'});
+my $nicModulesSection  = createNicModules($parms{'interfaces'});
 
 # Create <hosts> section
 my $hostsSection = createHosts($parms{'hosts'});
@@ -529,7 +538,7 @@ my $scriptsSection = createScripts($parms{'interfaces'});
 # Begin to build template
 
 # Edit template by replacing place holders:
-# 	insert_devices     
+# 	insert_devices
 # 	insert_hosts
 # 	insert_dns
 # 	insert_interfaces
@@ -542,56 +551,60 @@ my $scriptsSection = createScripts($parms{'interfaces'});
 # Generate autoyast template
 my $tmpl = '';
 if ($version eq '10') {
-	$tmpl = genSles10Tmpl();
+    $tmpl = genSles10Tmpl();
 } elsif ($version eq '11') {
-	$tmpl = genSles11Tmpl();
+    $tmpl = genSles11Tmpl();
 }
 
 # Print out template
-open (TMPL, ">$template_path");
+open(TMPL, ">$template_path");
 print TMPL "$tmpl";
-close (TMPL);
+close(TMPL);
 
 open(FILE, $template_path);
+
 # Go through each line
 my $mod_tmpl = '';
-while(my $ln = <FILE>) {
-	# If the line matches the pattern to replace, print replacement
-	if($ln =~ 'insert_devices') {
-		$mod_tmpl .= $dasdSection;
-	} elsif($ln =~ 'insert_hosts') {
-		$mod_tmpl .= $hostsSection;
-	} elsif($ln =~ 'insert_dns') {
-		$mod_tmpl .= $dnsSection;
-	} elsif($ln =~ 'insert_interfaces') {
-		$mod_tmpl .= $interfacesSection;
-	} elsif($ln =~ 'insert_modules') {
-		$mod_tmpl .= $dasdModulesSection;
-		$mod_tmpl .= $nicModulesSection;
-	} elsif($ln =~ 'insert_partitioning_drives') {
-		$mod_tmpl .= $partitionsSection;
-	} elsif($ln =~ 'insert_root_password') {
-		$mod_tmpl .= $passwordSection;
-	} elsif($ln =~ 'insert_routes') {
-		$mod_tmpl .= $routesSection;
-	} elsif($ln =~ '<scripts>') {
-		# Print line
-		$ln =~ s/\r//g;	# Remove return carriage
-		$mod_tmpl .= $ln;
-		
-		$mod_tmpl .= $scriptsSection;
-	} else {
-		# Print line
-		$ln =~ s/\r//g;	# Remove return carriage
-		$mod_tmpl .= $ln;
-	}
+while (my $ln = <FILE>) {
+
+    # If the line matches the pattern to replace, print replacement
+    if ($ln =~ 'insert_devices') {
+        $mod_tmpl .= $dasdSection;
+    } elsif ($ln =~ 'insert_hosts') {
+        $mod_tmpl .= $hostsSection;
+    } elsif ($ln =~ 'insert_dns') {
+        $mod_tmpl .= $dnsSection;
+    } elsif ($ln =~ 'insert_interfaces') {
+        $mod_tmpl .= $interfacesSection;
+    } elsif ($ln =~ 'insert_modules') {
+        $mod_tmpl .= $dasdModulesSection;
+        $mod_tmpl .= $nicModulesSection;
+    } elsif ($ln =~ 'insert_partitioning_drives') {
+        $mod_tmpl .= $partitionsSection;
+    } elsif ($ln =~ 'insert_root_password') {
+        $mod_tmpl .= $passwordSection;
+    } elsif ($ln =~ 'insert_routes') {
+        $mod_tmpl .= $routesSection;
+    } elsif ($ln =~ '<scripts>') {
+
+        # Print line
+        $ln =~ s/\r//g;    # Remove return carriage
+        $mod_tmpl .= $ln;
+
+        $mod_tmpl .= $scriptsSection;
+    } else {
+
+        # Print line
+        $ln =~ s/\r//g;    # Remove return carriage
+        $mod_tmpl .= $ln;
+    }
 }
 close(FILE);
 
 # Print out modified template
-open (TMPL, ">$template_path");
+open(TMPL, ">$template_path");
 print TMPL "$mod_tmpl";
-close (TMPL);
+close(TMPL);
 
 # Done
 print "Done! See autoyast template under $template_path\n";
@@ -614,15 +627,16 @@ exit();
 #-------------------------------------------------------
 sub trim {
 
-	# Get string
-	my ($str) = @_;
+    # Get string
+    my ($str) = @_;
 
-	# Trim right
-	$str =~ s/\s*$//;
-	# Trim left
-	$str =~ s/^\s*//;
+    # Trim right
+    $str =~ s/\s*$//;
 
-	return ($str);
+    # Trim left
+    $str =~ s/^\s*//;
+
+    return ($str);
 }
 
 #-------------------------------------------------------
@@ -638,78 +652,79 @@ sub trim {
 
 #-------------------------------------------------------
 sub createDasd {
-	# Get inputs
-	my ($dasd_ref, $partition_ref) = @_;
-	
-	my %dasd = %$dasd_ref;
-	my %partition = %$partition_ref;
 
-	# dasd hash should include:
-	# 	$dasd{$addr}{'device_name'} = $device_name;
-	#	$dasd{$addr}{'type'} = $dasd_type;
-	# partition hash should include:
-	# 	$partitions{$device_name}{'device_fs'} = '';
-	# 	$partitions{$device_name}{'device_size'} = '';
-	# 	$partitions{$device_name}{'device_mount'} = '';
-	# 	$partitions{$device_name}{'device_lvm'} = '';
-	# 	$partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
-	#		'name' => $lvm_vol_name,
-	#		'mount' => $lvm_vol_mount,
-	#		'size' => $lvm_vol_size
-	#	};
-			
-	# Create <dasd> section
-	#   <!-- Dasd attached at 0100 --> 
-	#   <listentry>
-	#     <bus>None</bus>
-	#     <bus_hwcfg>none</bus_hwcfg>
-	#     <channel>0.0.0100</channel>
-	#     <format config:type="boolean">true</format>
-	#     <dev_name>/dev/dasda</dev_name>
-	#     <dev_names config:type="list">
-	#       <listentry>/dev/dasda</listentry>
-	#       <listentry>/dev/disk/by-path/ccw-0.0.0100</listentry>
-	#     </dev_names>
-	#     <device>DASD</device>
-	#     <driver>io_subchannel</driver>
-	#     <drivers config:type="list">
-	#       <listentry>
-	#         <active config:type="boolean">true</active>
-	#         <modprobe config:type="boolean">true</modprobe>
-	#           <modules config:type="list">
-	#             <module_entry config:type="list">
-	#             <listentry>dasd_eckd_mod</listentry>
-	#             <listentry></listentry>
-	#           </module_entry>
-	#         </modules>
-	#       </listentry>
-	#     </drivers>
-	#     <formatted config:type="boolean">false</formatted>
-	#     <partition_info>/dev/dasda1 (Linux native)</partition_info>
-	#     <resource>
-	#       <io config:type="list">
-	#         <listentry>
-	#           <active config:type="boolean">true</active>
-	#           <length config:type="integer">1</length>
-	#           <mode>rw</mode>
-	#         </listentry>
-	#       </io>
-	#     </resource>
-	#     <sysfs_bus_id>0.0.0100</sysfs_bus_id>
-	#   </listentry>
-	my $xml = '';
-	
-	my $device_name;
-	my $device_type;
-	my $partition_info;
-	foreach my $addr(sort keys %dasd){	
-		$device_name = $dasd{$addr}{'device_name'};
-		$device_type = $dasd{$addr}{'type'};
-		
-		# If this dasd is to be used for Linux
-		if ($partitions{$device_name}{'device_mount'} || $partitions{$device_name}{'device_lvm'}) {
-			$partition_info = $device_name . "1 (Linux native)";
-			$xml .= <<END;
+    # Get inputs
+    my ($dasd_ref, $partition_ref) = @_;
+
+    my %dasd      = %$dasd_ref;
+    my %partition = %$partition_ref;
+
+    # dasd hash should include:
+    # 	$dasd{$addr}{'device_name'} = $device_name;
+    #	$dasd{$addr}{'type'} = $dasd_type;
+    # partition hash should include:
+    # 	$partitions{$device_name}{'device_fs'} = '';
+    # 	$partitions{$device_name}{'device_size'} = '';
+    # 	$partitions{$device_name}{'device_mount'} = '';
+    # 	$partitions{$device_name}{'device_lvm'} = '';
+    # 	$partitions{$device_name}{'lvm'}{$lvm_vol_name} = {
+    #		'name' => $lvm_vol_name,
+    #		'mount' => $lvm_vol_mount,
+    #		'size' => $lvm_vol_size
+    #	};
+
+    # Create <dasd> section
+    #   <!-- Dasd attached at 0100 -->
+    #   <listentry>
+    #     <bus>None</bus>
+    #     <bus_hwcfg>none</bus_hwcfg>
+    #     <channel>0.0.0100</channel>
+    #     <format config:type="boolean">true</format>
+    #     <dev_name>/dev/dasda</dev_name>
+    #     <dev_names config:type="list">
+    #       <listentry>/dev/dasda</listentry>
+    #       <listentry>/dev/disk/by-path/ccw-0.0.0100</listentry>
+    #     </dev_names>
+    #     <device>DASD</device>
+    #     <driver>io_subchannel</driver>
+    #     <drivers config:type="list">
+    #       <listentry>
+    #         <active config:type="boolean">true</active>
+    #         <modprobe config:type="boolean">true</modprobe>
+    #           <modules config:type="list">
+    #             <module_entry config:type="list">
+    #             <listentry>dasd_eckd_mod</listentry>
+    #             <listentry></listentry>
+    #           </module_entry>
+    #         </modules>
+    #       </listentry>
+    #     </drivers>
+    #     <formatted config:type="boolean">false</formatted>
+    #     <partition_info>/dev/dasda1 (Linux native)</partition_info>
+    #     <resource>
+    #       <io config:type="list">
+    #         <listentry>
+    #           <active config:type="boolean">true</active>
+    #           <length config:type="integer">1</length>
+    #           <mode>rw</mode>
+    #         </listentry>
+    #       </io>
+    #     </resource>
+    #     <sysfs_bus_id>0.0.0100</sysfs_bus_id>
+    #   </listentry>
+    my $xml = '';
+
+    my $device_name;
+    my $device_type;
+    my $partition_info;
+    foreach my $addr (sort keys %dasd) {
+        $device_name = $dasd{$addr}{'device_name'};
+        $device_type = $dasd{$addr}{'type'};
+
+        # If this dasd is to be used for Linux
+        if ($partitions{$device_name}{'device_mount'} || $partitions{$device_name}{'device_lvm'}) {
+            $partition_info = $device_name . "1 (Linux native)";
+            $xml .= <<END;
 <listentry>
   <bus>None</bus>
   <bus_hwcfg>none</bus_hwcfg>
@@ -748,9 +763,9 @@ sub createDasd {
   <sysfs_bus_id>$addr</sysfs_bus_id>
 </listentry>
 END
-		} else {
-			$partition_info = $device_name;
-			$xml .= <<END;
+        } else {
+            $partition_info = $device_name;
+            $xml .= <<END;
 <listentry>
   <bus>None</bus>
   <bus_hwcfg>none</bus_hwcfg>
@@ -787,10 +802,10 @@ END
   <sysfs_bus_id>$addr</sysfs_bus_id>
 </listentry>
 END
-		}		
-	}
+        }
+    }
 
-	return $xml;
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -806,35 +821,37 @@ END
 
 #-------------------------------------------------------
 sub createInterfaces {
-	# Get string
-	my ($interfaces_ref) = @_;
-	my %interfaces = %$interfaces_ref;
-		
-	# Create <interfaces> section
-	# <interface>
-	#   <bootproto>static</bootproto>
-	#   <broadcast>10.1.100.255</broadcast>
-	#   <device>eth0</device>
-	#   <ipaddr>10.1.100.100</ipaddr>
-	#   <name>OSA Express Network card (0.0.0800)</name>
-	#   <netmask>255.255.255.0</netmask>
-	#   <prefixlen>25</prefixlen>
-	#   <startmode>auto</startmode>
-	# </interface>
-	#
-	# The layout is different for DHCP:
-	# <interface>
-	#   <bootproto>dhcp</bootproto>
-	#   <device>eth0</device>
-	#   <lladdr>02:00:00:FF:FF:FF</lladdr>
-	#   <startmode>auto</startmode>
-	#   <usercontrol>no</usercontrol>
-	# </interface>
-	my $xml = '';
-	foreach my $i(keys %interfaces){
-		# Create static interface
-		if($interfaces{$i}{'bootproto'} eq 'static') {
-			$xml .= <<END;	
+
+    # Get string
+    my ($interfaces_ref) = @_;
+    my %interfaces = %$interfaces_ref;
+
+    # Create <interfaces> section
+    # <interface>
+    #   <bootproto>static</bootproto>
+    #   <broadcast>10.1.100.255</broadcast>
+    #   <device>eth0</device>
+    #   <ipaddr>10.1.100.100</ipaddr>
+    #   <name>OSA Express Network card (0.0.0800)</name>
+    #   <netmask>255.255.255.0</netmask>
+    #   <prefixlen>25</prefixlen>
+    #   <startmode>auto</startmode>
+    # </interface>
+    #
+    # The layout is different for DHCP:
+    # <interface>
+    #   <bootproto>dhcp</bootproto>
+    #   <device>eth0</device>
+    #   <lladdr>02:00:00:FF:FF:FF</lladdr>
+    #   <startmode>auto</startmode>
+    #   <usercontrol>no</usercontrol>
+    # </interface>
+    my $xml = '';
+    foreach my $i (keys %interfaces) {
+
+        # Create static interface
+        if ($interfaces{$i}{'bootproto'} eq 'static') {
+            $xml .= <<END;
 <interface>
   <bootproto>$interfaces{$i}{'bootproto'}</bootproto>
   <broadcast>$interfaces{$i}{'broadcast'}</broadcast>
@@ -846,11 +863,11 @@ sub createInterfaces {
   <startmode>auto</startmode>
 </interface>
 END
-		}
-		
-		# Create DHCP interface
-		else {
-			$xml .= <<END;
+        }
+
+        # Create DHCP interface
+        else {
+            $xml .= <<END;
 <interface>
   <bootproto>$interfaces{$i}{'bootproto'}</bootproto>
   <device>$interfaces{$i}{'device'}</device>
@@ -859,10 +876,10 @@ END
   <usercontrol>no</usercontrol>
 </interface>
 END
-		}
-	}
-	
-	return ($xml);
+        }
+    }
+
+    return ($xml);
 }
 
 #-------------------------------------------------------
@@ -878,14 +895,15 @@ END
 
 #-------------------------------------------------------
 sub createPartitions {
-	# Get inputs
-	my ($dasd_ref, $partition_ref) = @_;
-	
-	my %dasd = %$dasd_ref;
-	my %partitions = %$partition_ref;
-			
-	# Create <partitions> section
-	# <drive>
+
+    # Get inputs
+    my ($dasd_ref, $partition_ref) = @_;
+
+    my %dasd       = %$dasd_ref;
+    my %partitions = %$partition_ref;
+
+    # Create <partitions> section
+    # <drive>
     #   <device>/dev/dasda</device>
     #   <partitions config:type="list">
     #     <partition>
@@ -904,40 +922,42 @@ sub createPartitions {
     # </drive>
     #
     # The layout is different for LVM:
-	# <drive>
-	#   <device>/dev/dasdb</device>
-	#   <initialize config:type="boolean">true</initialize>
-	#   <partitions config:type="list">
-	#     <partition>
-	#       <create config:type="boolean">true</create>
-	#       <crypt_fs config:type="boolean">false</crypt_fs>
-	#       <filesystem config:type="symbol">ext3</filesystem>
-	#       <format config:type="boolean">false</format>
-	#       <loop_fs config:type="boolean">false</loop_fs>
-	#       <lvm_group>VG</lvm_group>
-	#       <mountby config:type="symbol">path</mountby>
-	#       <resize config:type="boolean">false</resize>
-	#       <size>max</size>
-	#     </partition>
-	#   </partitions>
-	#   <use>all</use>
-	# </drive>
-	my $xml = '';
-		
-	# Go through each partition	
-	foreach my $device_name(sort keys %partitions) {		
-		# Create <drive> head
-		$xml .= <<END;
+    # <drive>
+    #   <device>/dev/dasdb</device>
+    #   <initialize config:type="boolean">true</initialize>
+    #   <partitions config:type="list">
+    #     <partition>
+    #       <create config:type="boolean">true</create>
+    #       <crypt_fs config:type="boolean">false</crypt_fs>
+    #       <filesystem config:type="symbol">ext3</filesystem>
+    #       <format config:type="boolean">false</format>
+    #       <loop_fs config:type="boolean">false</loop_fs>
+    #       <lvm_group>VG</lvm_group>
+    #       <mountby config:type="symbol">path</mountby>
+    #       <resize config:type="boolean">false</resize>
+    #       <size>max</size>
+    #     </partition>
+    #   </partitions>
+    #   <use>all</use>
+    # </drive>
+    my $xml = '';
+
+    # Go through each partition
+    foreach my $device_name (sort keys %partitions) {
+
+        # Create <drive> head
+        $xml .= <<END;
 <drive>
   <device>$device_name</device>
   <partitions config:type="list">
 END
 
-		if (exists $partitions{$device_name}{'lvm'} && $partitions{$device_name}{'lvm'}) {
-			my %lvm_vols = %{ $partitions{$device_name}{'lvm'} };
-			foreach my $vol(sort keys %lvm_vols) {
-				# Create <partition> section for LVM volume
-				$xml .= <<END;
+        if (exists $partitions{$device_name}{'lvm'} && $partitions{$device_name}{'lvm'}) {
+            my %lvm_vols = %{ $partitions{$device_name}{'lvm'} };
+            foreach my $vol (sort keys %lvm_vols) {
+
+                # Create <partition> section for LVM volume
+                $xml .= <<END;
     <partition>
       <create config:type="boolean">true</create>
       <crypt_fs config:type="boolean">false</crypt_fs>
@@ -953,10 +973,11 @@ END
       <size>$lvm_vols{$vol}{'size'}</size>
     </partition>
 END
-			}
-		} elsif (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
-			# Create <partition> section for LVM group
-			$xml .= <<END;
+            }
+        } elsif (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
+
+            # Create <partition> section for LVM group
+            $xml .= <<END;
     <partition>
       <create config:type="boolean">true</create>
       <crypt_fs config:type="boolean">false</crypt_fs>
@@ -971,9 +992,10 @@ END
       <size>$partitions{$device_name}{'device_size'}</size>
     </partition>
 END
-		} else {
-			# Not an LVM group or volume
-			$xml .= <<END;
+        } else {
+
+            # Not an LVM group or volume
+            $xml .= <<END;
     <partition>
       <create config:type="boolean">true</create>
       <filesystem config:type="symbol">$partitions{$device_name}{'device_fs'}</filesystem>
@@ -986,27 +1008,27 @@ END
       <size>$partitions{$device_name}{'device_size'}</size>
     </partition>	
 END
-		}
-		
-		# Create <drive> tail
-		if (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
-			$xml .= <<END;
+        }
+
+        # Create <drive> tail
+        if (exists $partitions{$device_name}{'device_lvm'} && $partitions{$device_name}{'device_lvm'}) {
+            $xml .= <<END;
   </partitions>
   <pesize>4M</pesize>
   <type config:type="symbol">CT_LVM</type>
   <use>all</use>
 </drive>
 END
-		} else {
-			$xml .= <<END;
+        } else {
+            $xml .= <<END;
   </partitions>
   <use>all</use>
 </drive>
 END
-		}
-	}
+        }
+    }
 
-	return $xml;
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1022,22 +1044,22 @@ END
 
 #-------------------------------------------------------
 sub createHosts {
-	my ($hosts_ref) = @_;
-	my %hosts = %$hosts_ref;
-	
-	# Create <hosts> section
-	# e.g.
+    my ($hosts_ref) = @_;
+    my %hosts = %$hosts_ref;
+
+    # Create <hosts> section
+    # e.g.
     # <hosts_entry>
     #   <host_address>10.1.100.100</host_address>
     #   <names config:type="list">
     #     <name>gpok100.endicott.ibm.com gpok100</name>
     #   </names>
     # </hosts_entry>
-	my $xml = '';
-	
-	# Create host entries
-	foreach my $i(keys %hosts){
-		$xml .= <<END;
+    my $xml = '';
+
+    # Create host entries
+    foreach my $i (keys %hosts) {
+        $xml .= <<END;
   <hosts_entry>
     <host_address>$hosts{$i}{'host_address'}</host_address>
     <names config:type="list">
@@ -1045,9 +1067,9 @@ sub createHosts {
     </names>
   </hosts_entry>
 END
-	}
-		
-	return $xml;
+    }
+
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1063,12 +1085,13 @@ END
 
 #-------------------------------------------------------
 sub createDns {
-	# Get string
-	my ($dns_ref) = @_;
-	my %dns = %$dns_ref;
-	
-	# Create <dns> section
-	#   <dhcp_hostname config:type="boolean">false</dhcp_hostname>
+
+    # Get string
+    my ($dns_ref) = @_;
+    my %dns = %$dns_ref;
+
+    # Create <dns> section
+    #   <dhcp_hostname config:type="boolean">false</dhcp_hostname>
     #   <dhcp_resolv config:type="boolean">false</dhcp_resolv>
     #   <domain>endicott.ibm.com</domain>
     #   <hostname>gpok100</hostname>
@@ -1076,8 +1099,8 @@ sub createDns {
     #     <nameserver>10.1.100.100</nameserver>
     #   </nameservers>
     my $xml = '';
-	foreach my $i(keys %dns){
-		$xml .= <<END;
+    foreach my $i (keys %dns) {
+        $xml .= <<END;
 <dhcp_hostname config:type="boolean">$dns{$i}{'dhcp_hostname'}</dhcp_hostname>
 <dhcp_resolv config:type="boolean">$dns{$i}{'dhcp_resolv'}</dhcp_resolv>
 <domain>$dns{$i}{'domain'}</domain>
@@ -1086,9 +1109,9 @@ sub createDns {
   <nameserver>$dns{$i}{'nameserver'}</nameserver>
 </nameservers>
 END
-	}
+    }
 
-	return $xml;
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1104,29 +1127,30 @@ END
 
 #-------------------------------------------------------
 sub createDasdModules {
-	# Get string
-	my ($dasd_ref) = @_;
-	my %dasd = %$dasd_ref;
-		
-	# Create <modules> section
-	# <module_entry>
-	#   <device>dasd-bus-ccw-0.0.0100</device>
-	#   <module>dasd_eckd_mod</module>
-	#   <options></options>
-	# </module_entry>
 
-	my $xml = '';
-	foreach my $addr(keys %dasd){
-		$xml .= <<END;
+    # Get string
+    my ($dasd_ref) = @_;
+    my %dasd = %$dasd_ref;
+
+    # Create <modules> section
+    # <module_entry>
+    #   <device>dasd-bus-ccw-0.0.0100</device>
+    #   <module>dasd_eckd_mod</module>
+    #   <options></options>
+    # </module_entry>
+
+    my $xml = '';
+    foreach my $addr (keys %dasd) {
+        $xml .= <<END;
 <module_entry>
   <device>dasd-bus-ccw-$addr</device>
   <module>$dasd{$addr}{'type'}</module>
   <options></options>
 </module_entry>
 END
-	}
+    }
 
-	return $xml;
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1142,22 +1166,23 @@ END
 
 #-------------------------------------------------------
 sub createNicModules {
-	# Get hash table
-	my ($interfaces_ref) = @_;
-	my %interfaces = %$interfaces_ref;
-	
-	# Create <modules> section
-	# <module_entry>
-	#   <ccw_chan_ids>0.0.0800 0.0.0801 0.0.0802</ccw_chan_ids>
-	#   <ccw_chan_mode>FOOBAR</ccw_chan_mode>
-	#   <ccw_chan_num>3</ccw_chan_num>
-	#   <device>eth0</device>
-	#   <module>qeth</module>
-	#   <options/>
-	# </module_entry>
-	my $xml = '';
-	foreach my $i(sort (keys %interfaces)){
-		$xml .= <<END;
+
+    # Get hash table
+    my ($interfaces_ref) = @_;
+    my %interfaces = %$interfaces_ref;
+
+    # Create <modules> section
+    # <module_entry>
+    #   <ccw_chan_ids>0.0.0800 0.0.0801 0.0.0802</ccw_chan_ids>
+    #   <ccw_chan_mode>FOOBAR</ccw_chan_mode>
+    #   <ccw_chan_num>3</ccw_chan_num>
+    #   <device>eth0</device>
+    #   <module>qeth</module>
+    #   <options/>
+    # </module_entry>
+    my $xml = '';
+    foreach my $i (sort (keys %interfaces)) {
+        $xml .= <<END;
 <module_entry>
   <ccw_chan_ids>$interfaces{$i}{'chanids'}</ccw_chan_ids>
   <ccw_chan_mode>FOOBAR</ccw_chan_mode>
@@ -1167,9 +1192,9 @@ sub createNicModules {
   <options></options>
 </module_entry>
 END
-	}
-	
-	return $xml;
+    }
+
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1185,30 +1210,31 @@ END
 
 #-------------------------------------------------------
 sub createSoftware {
-	# Get string
-	my ($str) = @_;
 
-	# Split the software
-	# e.g. base,gnome
-	my @software = split(/,/,$str);
-		
-	# Create <software> section
-	# 	<pattern>Basis-Devel</pattern>
-	# 	<pattern>Minimal</pattern>
-	# 	<pattern>base</pattern>
-	# 	<pattern>documentation</pattern>
-	# 	<pattern>file_server</pattern>
-	# 	<pattern>gnome</pattern>
-	# 	<pattern>print_server</pattern>
-	# 	<pattern>x11</pattern>
+    # Get string
+    my ($str) = @_;
+
+    # Split the software
+    # e.g. base,gnome
+    my @software = split(/,/, $str);
+
+    # Create <software> section
+    # 	<pattern>Basis-Devel</pattern>
+    # 	<pattern>Minimal</pattern>
+    # 	<pattern>base</pattern>
+    # 	<pattern>documentation</pattern>
+    # 	<pattern>file_server</pattern>
+    # 	<pattern>gnome</pattern>
+    # 	<pattern>print_server</pattern>
+    # 	<pattern>x11</pattern>
     my $xml = '';
-	foreach (@software){
-		 $xml .= <<END;
+    foreach (@software) {
+        $xml .= <<END;
   <pattern>$_</pattern>
 END
-	}
+    }
 
-	return $xml;
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1224,36 +1250,39 @@ END
 
 #-------------------------------------------------------
 sub createRoutes {
-	# Get hash table
-	my ($interfaces_ref) = @_;
-	my %interfaces = %$interfaces_ref;
-	
-	# Create <routes> section
-	# <ip_forward config:type="boolean">false</ip_forward>
-	#   <routes config:type="list">
-	#   <route>
-	#     <destination>default</destination>
-	#     <device>-</device>
-	#     <gateway>10.1.100.1</gateway>
-	#     <netmask>-</netmask>
-	#   </route>
-	# </routes>
 
-	my $xml = '';
-	my $dest = '';
-	foreach my $i(sort (keys %interfaces)){
-		if(!$dest) {
-			# The first interface is the default route
-			$dest = 'default';
-		} else {
-			# Get network
-			$dest = substr($interfaces{$i}{'ipaddr'}, 0, rindex($interfaces{$i}{'ipaddr'}, '.'));
-			$dest .= ".0";
-		}
-		
-		# Do not set gateway for DHCP interface
-		if(!($interfaces{$i}{'bootproto'} eq 'dhcp')) {
-			$xml .= <<END;	
+    # Get hash table
+    my ($interfaces_ref) = @_;
+    my %interfaces = %$interfaces_ref;
+
+    # Create <routes> section
+    # <ip_forward config:type="boolean">false</ip_forward>
+    #   <routes config:type="list">
+    #   <route>
+    #     <destination>default</destination>
+    #     <device>-</device>
+    #     <gateway>10.1.100.1</gateway>
+    #     <netmask>-</netmask>
+    #   </route>
+    # </routes>
+
+    my $xml  = '';
+    my $dest = '';
+    foreach my $i (sort (keys %interfaces)) {
+        if (!$dest) {
+
+            # The first interface is the default route
+            $dest = 'default';
+        } else {
+
+            # Get network
+            $dest = substr($interfaces{$i}{'ipaddr'}, 0, rindex($interfaces{$i}{'ipaddr'}, '.'));
+            $dest .= ".0";
+        }
+
+        # Do not set gateway for DHCP interface
+        if (!($interfaces{$i}{'bootproto'} eq 'dhcp')) {
+            $xml .= <<END;
   <route>
     <destination>$dest</destination>
     <device>-</device>
@@ -1261,10 +1290,10 @@ sub createRoutes {
     <netmask>-</netmask>
   </route>
 END
-		}
-	}
-	
-	return $xml;
+        }
+    }
+
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1280,28 +1309,30 @@ END
 
 #-------------------------------------------------------
 sub createScripts {
-	# Get hash table
-	my ($interfaces_ref) = @_;
-	my %interfaces = %$interfaces_ref;
 
-	# Default route is being added by autoyast (bug)
-	# Setting default route in post-script
-    my $xml = '';
+    # Get hash table
+    my ($interfaces_ref) = @_;
+    my %interfaces = %$interfaces_ref;
+
+    # Default route is being added by autoyast (bug)
+    # Setting default route in post-script
+    my $xml    = '';
     my $script = '';
-	foreach my $i(sort (keys %interfaces)){
-		# Set the default route for the firs interface
-		# Do not set default route for DHCP interface
-		if(!$script && !($interfaces{$i}{'bootproto'} eq 'dhcp')) {
-			$script .= <<END;
+    foreach my $i (sort (keys %interfaces)) {
+
+        # Set the default route for the firs interface
+        # Do not set default route for DHCP interface
+        if (!$script && !($interfaces{$i}{'bootproto'} eq 'dhcp')) {
+            $script .= <<END;
 echo "default $interfaces{$i}{'gateway'} - -" > /etc/sysconfig/network/routes
 END
-			last;
-		}
-	}
-	
-	# Create <scripts> section
-	if($script) {
-		$xml .= <<END;
+            last;
+        }
+    }
+
+    # Create <scripts> section
+    if ($script) {
+        $xml .= <<END;
 <post-scripts config:type="list">
   <script>
     <filename>post.sh</filename>
@@ -1316,9 +1347,9 @@ $script
   </script>
 </post-scripts>
 END
-	}
-	
-	return $xml;
+    }
+
+    return $xml;
 }
 
 #-------------------------------------------------------
@@ -1334,11 +1365,11 @@ END
 
 #-------------------------------------------------------
 sub ask {
-	my ($question) = @_;
-	
-	print "$question";
-	my $answer = <>;	
-	return trim($answer);
+    my ($question) = @_;
+
+    print "$question";
+    my $answer = <>;
+    return trim($answer);
 }
 
 #-------------------------------------------------------
@@ -1354,13 +1385,13 @@ sub ask {
 
 #-------------------------------------------------------
 sub pad {
-	my ($str, $size) = @_;
-	
-	while (length($str) < $size) {
-		$str = "$str ";
-	}
+    my ($str, $size) = @_;
 
-	return $str;
+    while (length($str) < $size) {
+        $str = "$str ";
+    }
+
+    return $str;
 }
 
 #-------------------------------------------------------
@@ -1376,7 +1407,7 @@ sub pad {
 
 #-------------------------------------------------------
 sub genSles11Tmpl {
-	my $tmpl = <<AUTOYASTEND;
+    my $tmpl = <<AUTOYASTEND;
 <?xml version="1.0"?>
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
@@ -1725,8 +1756,8 @@ sub genSles11Tmpl {
   </user_defaults>
 AUTOYASTEND
 
-	# Handle second half
-	$tmpl .= <<AUTOYASTEND;
+    # Handle second half
+    $tmpl .= <<AUTOYASTEND;
 	
 
   <!-- Users on Linux -->
@@ -2048,7 +2079,7 @@ AUTOYASTEND
   </configure>
 </profile>	
 AUTOYASTEND
-	return $tmpl;
+    return $tmpl;
 }
 
 #-------------------------------------------------------
@@ -2064,7 +2095,7 @@ AUTOYASTEND
 
 #-------------------------------------------------------
 sub genSles10Tmpl {
-	my $tmpl = <<AUTOYASTEND;
+    my $tmpl = <<AUTOYASTEND;
 <?xml version="1.0"?>
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
@@ -2412,8 +2443,8 @@ sub genSles10Tmpl {
     <skel>/etc/skel</skel>
   </user_defaults>
 AUTOYASTEND
-  
-	$tmpl .= <<AUTOYASTEND;
+
+    $tmpl .= <<AUTOYASTEND;
 
 
   <!-- Users on Linux -->
@@ -2735,5 +2766,5 @@ AUTOYASTEND
   </configure>
 </profile>
 AUTOYASTEND
-	return $tmpl;
+    return $tmpl;
 }

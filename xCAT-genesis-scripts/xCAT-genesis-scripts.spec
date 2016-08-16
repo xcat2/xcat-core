@@ -98,20 +98,10 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/pseries_platform
 %{rpminstallroot}/bin/update_flash
 %{rpminstallroot}/bin/update_flash_nv
-%{rpminstallroot}/debian/changelog
-%{rpminstallroot}/debian/compat
-%{rpminstallroot}/debian/control
-%{rpminstallroot}/debian/copyright
-#%{rpminstallroot}/debian/dirs
-%{rpminstallroot}/debian/docs
-#%{rpminstallroot}/debian/install
-%{rpminstallroot}/debian/postinst
-%{rpminstallroot}/debian/postrm
-%{rpminstallroot}/debian/preinst
-%{rpminstallroot}/debian/prerm
-%{rpminstallroot}/debian/rules
+%{rpminstallroot}/bin/restart
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/sbin/setupimmnic
 %{rpminstallroot}/sbin/loadmlxeth 
+%exclude %{rpminstallroot}/debian/*

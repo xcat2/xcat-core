@@ -5,7 +5,7 @@ package xCAT::DiscoveryUtils;
 
 use strict;
 use XML::Simple;
-$XML::Simple::PREFERRED_PARSER='XML::Parser';
+$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 use xCAT::MsgUtils;
 
@@ -16,9 +16,9 @@ use xCAT::MsgUtils;
 =cut
 
 sub update_discovery_data {
-    my $class = shift;
+    my $class   = shift;
     my $request = shift;
-    
+
     my %disdata;
     my %otherdata;
 
@@ -33,9 +33,9 @@ sub update_discovery_data {
     }
 
     #discoverytime
-    my ($sec,  $min,  $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
     my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-    	      $mon + 1, $mday, $year + 1900, $hour, $min, $sec);
+        $mon + 1, $mday, $year + 1900, $hour, $min, $sec);
     $disdata{'discoverytime'} = $currtime;
 
     foreach my $attr (keys %$request) {
@@ -44,9 +44,10 @@ sub update_discovery_data {
         } elsif ($attr =~ /^(node|uuid|arch|cpucount|cputype|memory|mtm|serial)$/) {
             $disdata{$attr} = $request->{$attr}->[0];
         } elsif ($attr eq 'nic') {
+
             # Set the nics attributes
-            foreach my $nic (@{$request->{nic}}) {
-                my  $nicname = $nic->{'devname'}->[0];
+            foreach my $nic (@{ $request->{nic} }) {
+                my $nicname = $nic->{'devname'}->[0];
                 foreach my $nicattr (keys %$nic) {
                     my $tbattr;
                     if ($nicattr eq 'driver') {
@@ -69,27 +70,28 @@ sub update_discovery_data {
 
                     if ($tbattr) {
                         if ($disdata{$tbattr}) {
-                            $disdata{$tbattr} .= ','.$nicname.'!'.$nic->{$nicattr}->[0];
+                            $disdata{$tbattr} .= ',' . $nicname . '!' . $nic->{$nicattr}->[0];
                         } else {
-                            $disdata{$tbattr} = $nicname.'!'.$nic->{$nicattr}->[0];
+                            $disdata{$tbattr} = $nicname . '!' . $nic->{$nicattr}->[0];
                         }
                     }
                 }
             }
         } else {
+
             # store to otherdata for the not parsed attributes
             $otherdata{$attr} = $request->{$attr};
         }
     }
 
     if (keys %otherdata) {
-        $disdata{'otherdata'} = XMLout(\%otherdata,RootName=>'discoveryotherdata' ,NoAttr=>1);
+        $disdata{'otherdata'} = XMLout(\%otherdata, RootName => 'discoveryotherdata', NoAttr => 1);
     }
 
     my $distab = xCAT::Table->new('discoverydata');
     if ($distab) {
-      $distab->setAttribs({uuid=>$request->{'uuid'}->[0]},\%disdata);
-      $distab->close();
+        $distab->setAttribs({ uuid => $request->{'uuid'}->[0] }, \%disdata);
+        $distab->close();
     }
 }
 

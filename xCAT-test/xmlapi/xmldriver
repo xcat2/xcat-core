@@ -3,9 +3,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -28,12 +28,12 @@ my $bname = basename($0);
 #-----------------------------------------------------------------------------
 # Main
 
- $ENV{'XCATXMLTRACE'}=1;
-my $XML=`cat /root/lissa/xmlapi/getTablesAllRowAttribsreq`;
+$ENV{'XCATXMLTRACE'} = 1;
+my $XML = `cat /root/lissa/xmlapi/getTablesAllRowAttribsreq`;
 
-my $data=$XML;
+my $data = $XML;
 
-$ENV{'XCATSHOWXML'}=1;
+$ENV{'XCATSHOWXML'} = 1;
 
 xCAT::Client::submit_request($data, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;

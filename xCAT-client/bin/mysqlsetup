@@ -29,7 +29,7 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -52,21 +52,21 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 $::installdir             = "/usr/local/mysql";  # current release of xcat-mysql
-$::debianflag = 0;
+$::debianflag             = 0;
 
 #$::installdir="/opt/xcat/mysql";  # next release of xcat-mysql
 
 # parse the options
 if (
     !GetOptions(
-                'i|init'       => \$::INIT,
-                'u|update'     => \$::UPDATE,
-                'f|hostfile=s' => \$::HOSTFILE,
-                'o|odbc'       => \$::SETUPODBC,
-                'L|LL'         => \$::SETUPLL,
-                'h|help'       => \$::HELP,
-                'v|version'    => \$::VERSION,
-                'V|verbose'    => \$::VERBOSE,
+        'i|init'       => \$::INIT,
+        'u|update'     => \$::UPDATE,
+        'f|hostfile=s' => \$::HOSTFILE,
+        'o|odbc'       => \$::SETUPODBC,
+        'L|LL'         => \$::SETUPLL,
+        'h|help'       => \$::HELP,
+        'v|version'    => \$::VERSION,
+        'V|verbose'    => \$::VERBOSE,
     )
   )
 {
@@ -88,7 +88,7 @@ if ($::VERSION)
     xCAT::MsgUtils->message("I", $version);
     exit 0;
 }
-if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC))&& (!($::SETUPLL)))
+if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC)) && (!($::SETUPLL)))
 {
     xCAT::MsgUtils->message("I", "Either -i or -u or -o flag must be chosen");
     &usage;
@@ -97,7 +97,7 @@ if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC))&& (!($::SETUPLL)))
 
 # check to see if only odbc update,  no passwords needed
 my $odbconly = 0;
-if ((!($::INIT)) && (!($::UPDATE))  && (!($::SETUPLL)) && ($::SETUPODBC))
+if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPLL)) && ($::SETUPODBC))
 {
     $odbconly = 1;
 
@@ -110,14 +110,14 @@ if ((!($::HOSTFILE)) && ($::UPDATE) && ($::SETUPODBC))
 if (($::INIT) && ($::UPDATE))
 {
     my $warning =
-      " The -i and -u flags may not be input to the command. Use one or the other. \n ";
+" The -i and -u flags may not be input to the command. Use one or the other. \n ";
     xCAT::MsgUtils->message("E", $warning);
     exit 1;
 }
 if (($::UPDATE) && ((!($::HOSTFILE)) && (!($::SETUPODBC))))
 {
     my $warning =
-      " The -u flag requires the -o flag or the  -f flag pointing to a file that contains the list of hosts that you would like to add to database access.";
+" The -u flag requires the -o flag or the  -f flag pointing to a file that contains the list of hosts that you would like to add to database access.";
     xCAT::MsgUtils->message("E", $warning);
     exit 1;
 }
@@ -141,54 +141,61 @@ else
     $::osname = 'Linux';
 }
 
-if ( -e "/etc/debian_version" ){
+if (-e "/etc/debian_version") {
     $::debianflag = 1;
 }
+
 # determine whether redhat or sles
 $::linuxos = xCAT::Utils->osver();
 
 # SLES SP 1
 my $sp1flag;
+
 # if linuxos==sles12
-if ( $::linuxos == "sles12" ){
+if ($::linuxos == "sles12") {
+
     # open /etc/os-release
     my @lines;
     my $relfile;
     $sp1flag = 0;
-    open($relfile,"<","/etc/os-release");
+    open($relfile, "<", "/etc/os-release");
+
     # parse lines
     @lines = <$relfile>;
     close($relfile);
     chomp(@lines);
+
     # if == 12.1
-    if (grep /VERSION_ID="12.1"/, @lines){
+    if (grep /VERSION_ID="12.1"/, @lines) {
+
         #$::linuxos == "sles12.1";
         $sp1flag = 1;
     }
 }
+
 # set flag
 # SLES SP 1
 
 # is this MariaDB or MySQL
-$::MariaDB=0;
+$::MariaDB = 0;
 my $cmd;
-if ( $::debianflag ){
+if ($::debianflag) {
     $cmd = "dpkg -l | grep mariadb";
 } else {
-    $cmd = "rpm -qa | grep -i mariadb";  # check this is MariaDB not MySQL
+    $cmd = "rpm -qa | grep -i mariadb";    # check this is MariaDB not MySQL
 }
 xCAT::Utils->runcmd($cmd, -1);
 if ($::RUNCMD_RC == 0) {
-   $::MariaDB=1;
+    $::MariaDB = 1;
 }
 
 #
 # check to see if mysql is installed
- #
+#
 $cmd = "rpm -qa | grep -i perl-DBD-mysql";
 my $msg = "\nMySQL perl DBD ";
-if ( $::debianflag ){
-    if ( $::MariaDB ){
+if ($::debianflag) {
+    if ($::MariaDB) {
         $cmd = "dpkg -l | grep -i mariadb-server";
         $msg = "\nmariadb-server ";
     } else {
@@ -200,16 +207,17 @@ xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
     my $message =
-      "\n$msg is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
+"\n$msg is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
 }
+
 # check to see if  MySQL  is running
 $::mysqlrunning     = 0;
 $::xcatrunningmysql = 0;
 my $cmd        = "ps -ef | grep mysqld";
 my @output     = xCAT::Utils->runcmd($cmd, 0);
-my $mysqlcheck = "mysql.sock";                    # see if really running
+my $mysqlcheck = "mysql.sock";                   # see if really running
 if (grep(/$mysqlcheck/, @output))
 {
 
@@ -224,14 +232,14 @@ if (grep(/$mysqlcheck/, @output))
 
 #for ubuntu 14,  after install mysql/maria server, the mysql will running
 #need to stop mysql in order to setup init xcat mysql
-if ( $::debianflag or $sp1flag ){
+if ($::debianflag or $sp1flag) {
     $cmd = "pidof mysqld";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC == 0)
     {
         if ($::INIT)
         {
-            my $ret=xCAT::Utils->stopservice("mysql");
+            my $ret = xCAT::Utils->stopservice("mysql");
             if ($ret != 0)
             {
                 xCAT::MsgUtils->message("E", " failed to stop mysql/mariadb.");
@@ -253,7 +261,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using mysql
         if ($::INIT)
         {
             my $message =
-              "The /etc/xcat/cfgloc file is already configured for MySQL and xCAT is using mysql as it's database. No xCAT setup is required.";
+"The /etc/xcat/cfgloc file is already configured for MySQL and xCAT is using mysql as it's database. No xCAT setup is required.";
             xCAT::MsgUtils->message("I", "$message");
         }
         $::xcatrunningmysql = 1;
@@ -271,22 +279,22 @@ if ($::osname eq 'AIX')
 #  if not just odbc update  and not already running mysql or mysqlsetup -u  or -L
 #  Get root and admin passwords
 #
-if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL )
+if ((($odbconly == 0) && ($::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL)
 {    # not just updating the odbc
     if ($ENV{'XCATMYSQLADMIN_PW'})    # input env sets the password
     {
-        my $pw= $ENV{'XCATMYSQLADMIN_PW'};
-        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
-           my $warning = 
-           " The password in the env variable XCATMYSQLADMIN_PW is not alpha-numeric.";
-           xCAT::MsgUtils->message("E", $warning);
-           exit 1;
+        my $pw = $ENV{'XCATMYSQLADMIN_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/) {    # if not alpha-numerid
+            my $warning =
+" The password in the env variable XCATMYSQLADMIN_PW is not alpha-numeric.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
         }
 
         $::adminpassword = $ENV{'XCATMYSQLADMIN_PW'};
 
     }
-    else                              # prompt for password
+    else                                 # prompt for password
     {
         my $msg = "Input the alpha-numberic  password for xcatadmin in the MySQL database: ";
         xCAT::MsgUtils->message('I', "$msg");
@@ -294,19 +302,19 @@ if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL
         chop($::adminpassword = <STDIN>);
         `stty echo`;
 
-        if ($::adminpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
-            my $warning = 
-            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+        if ($::adminpassword =~ m/[^a-zA-Z0-9]/) {    # if not alpha-numerid
+            my $warning =
+"The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
             xCAT::MsgUtils->message("E", $warning);
             exit 1;
-         }
+        }
     }
-    if ($ENV{'XCATMYSQLROOT_PW'})     # input env sets the password
+    if ($ENV{'XCATMYSQLROOT_PW'})    # input env sets the password
     {
-        my $pw= $ENV{'XCATMYSQLROOT_PW'};
-        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
-            my $warning = 
-            " The password in the env variable XCATMYSQLROOT_PW is not alpha-numeric.";
+        my $pw = $ENV{'XCATMYSQLROOT_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/) {    # if not alpha-numerid
+            my $warning =
+" The password in the env variable XCATMYSQLROOT_PW is not alpha-numeric.";
             xCAT::MsgUtils->message("E", $warning);
             exit 1;
         }
@@ -314,7 +322,7 @@ if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL
         $::rootpassword = $ENV{'XCATMYSQLROOT_PW'};
 
     }
-    else                              # prompt for password
+    else                                 # prompt for password
     {
 
         my $msg = "Input the password for root in the MySQL database: ";
@@ -322,13 +330,13 @@ if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL
         `stty -echo`;
         chop($::rootpassword = <STDIN>);
         `stty echo`;
-        
-        if ($::rootpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
-            my $warning = 
-            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+
+        if ($::rootpassword =~ m/[^a-zA-Z0-9]/) {    # if not alpha-numerid
+            my $warning =
+"The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
             xCAT::MsgUtils->message("E", $warning);
             exit 1;
-         }
+        }
 
     }
 }
@@ -384,6 +392,7 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
     }
 
     &backupxcatdb;
+
     # shutdown the xcatd daemon while migrating
     &shutdownxcatd;
 
@@ -396,18 +405,20 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
     my $cmd      = "grep master $sitefile";
     my @output   = xCAT::Utils->runcmd($cmd, -1);
     my $hname;
-    if ($::RUNCMD_RC != 0)    # no entry in site table
-    {
-        $hname = `hostname`;
-        chomp $hname;
-    }
-    else                      # from site.master
+    # from site.master
+    if ($::RUNCMD_RC == 0 )
     {
         (my $attr, my $master) = split(",", $output[0]);
         (my $q, $hname) = split("\"", $master);
         chomp $hname;
 
     }
+
+    if( "$hname" eq ""){
+        $hname = `hostname`;
+        chomp $hname;
+    }
+    
     #my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
     my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
     if ($ipaddr)
@@ -443,10 +454,10 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
 
         if ($::osname eq 'AIX')
         {
-          xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.\nYou should log out and back in, so that the new ulimit settings will take affect.");
+            xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.\nYou should log out and back in, so that the new ulimit settings will take affect.");
         } else {
-          xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.");
-        } 
+            xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.");
+        }
     }
 
 }    # end initialization
@@ -499,10 +510,10 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\nmysqlsetup - Performs the setup of MySQL or MariaDB for xCAT to use as its database. See man mysqlsetup for more information."
-        );
+"Usage:\nmysqlsetup - Performs the setup of MySQL or MariaDB for xCAT to use as its database. See man mysqlsetup for more information."
+    );
     my $msg =
-      "mysqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-f|hostfile] [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-u|--update> <-f|hostfile> [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]\n           <-L|--LL> [-V|--verbose]";
+"mysqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-f|hostfile] [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-u|--update> <-f|hostfile> [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]\n           <-L|--LL> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -612,8 +623,8 @@ sub backupxcatdb
     {
         xCAT::MsgUtils->message(
             "I",
-            "Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
-            );
+"Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
+        );
         if (!(-e $::backupdir))
         {    # does not exist, make it
             my $cmd = "mkdir -p $::backupdir";
@@ -647,6 +658,7 @@ sub backupxcatdb
     }
 
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    shutdownxcatd 
@@ -672,8 +684,8 @@ sub shutdownxcatd
     else
     {
         #$xcmd = "service xcatd stop";
-        my $ret=xCAT::Utils->stopservice("xcatd");
-        return $ret; 
+        my $ret = xCAT::Utils->stopservice("xcatd");
+        return $ret;
     }
 
 }
@@ -734,8 +746,8 @@ sub fixinstalldir
         #
         xCAT::MsgUtils->message(
             'I',
-            "Fixing install directory permissions.\nThis may take a few minutes."
-            );
+"Fixing install directory permissions.\nThis may take a few minutes."
+        );
         my $mysqldir = $::installdir;
         $mysqldir .= "\/*";
         $cmd = "chown -R mysql $mysqldir";
@@ -797,7 +809,7 @@ sub initmysqldb
         {
 
             $cmd =
-              "awk '{gsub(\"\\\\[mysqld]\",\"\\[mysqld]\\ndatadir=/var/lib/mysql \"); print}'   /etc/my.cnf > /etc/my.cnf.xcat";
+"awk '{gsub(\"\\\\[mysqld]\",\"\\[mysqld]\\ndatadir=/var/lib/mysql \"); print}'   /etc/my.cnf > /etc/my.cnf.xcat";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -875,7 +887,7 @@ sub initmysqldb
 
     #on debian/ubuntu should comment the bind-adress line in my.cnf
     #on Ubuntu16.04, the bind-address line is in the mariadb.conf.d/50-server.cnf
-    if ( $::debianflag ){
+    if ($::debianflag) {
         my $bind_file;
         if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
         {
@@ -895,12 +907,12 @@ sub initmysqldb
     # Create the MySQL data directory and initialize the grant tables
     # if not already setup
     my $cmd2 =
-      "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+"ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
     if ($::osname eq 'AIX')
     {
         $cmd = $cmd2;
         $cmd .=
-          "$::installdir/scripts/mysql_install_db --user=mysql --basedir=$::installdir";
+"$::installdir/scripts/mysql_install_db --user=mysql --basedir=$::installdir";
     }
     else
     {
@@ -931,7 +943,7 @@ sub initmysqldb
 sub mysqlstart
 {
     my $cmd;
-    my $ret=0;
+    my $ret = 0;
     if ($::osname eq 'AIX')
     {
         my $hostname = `hostname`;
@@ -939,34 +951,34 @@ sub mysqlstart
 
         #$cmd = "$::installdir/bin/mysqld_safe --user=mysql &"; #doesnot return
         my $cmd2 =
-          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+"ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
         $cmd = $cmd2;
         $cmd .=
-          "$::installdir/bin/mysqld --user=mysql --basedir=$::installdir --datadir=/var/lib/mysql --user=mysql --log-error=/var/lib/mysql/$hostname.err --pid-file=/var/lib/mysql/$hostname.pid --socket=/tmp/mysql.sock --port=3306 &";
-        $ret=xCAT::Utils->runcmd($cmd, 0);
-        
-        
+"$::installdir/bin/mysqld --user=mysql --basedir=$::installdir --datadir=/var/lib/mysql --user=mysql --log-error=/var/lib/mysql/$hostname.err --pid-file=/var/lib/mysql/$hostname.pid --socket=/tmp/mysql.sock --port=3306 &";
+        $ret = xCAT::Utils->runcmd($cmd, 0);
+
+
     }
     else
     {
-        if ($::MariaDB==1) {    # running MariaDB
-          if ($::linuxos =~ /rh.*/) {
-             $ret=xCAT::Utils->startservice("mariadb");
-          } else {  # sles
-             $ret=xCAT::Utils->startservice("mysql");
-          }
-           
-        } else {   # it is mysql
+        if ($::MariaDB == 1) {    # running MariaDB
+            if ($::linuxos =~ /rh.*/) {
+                $ret = xCAT::Utils->startservice("mariadb");
+            } else {              # sles
+                $ret = xCAT::Utils->startservice("mysql");
+            }
 
-          if ($::linuxos =~ /rh.*/)
-          {
-            $ret=xCAT::Utils->startservice("mysqld");
-          }
-          else
-          {    # sles
-            $ret=xCAT::Utils->startservice("mysql");
-          }
-       }
+        } else {    # it is mysql
+
+            if ($::linuxos =~ /rh.*/)
+            {
+                $ret = xCAT::Utils->startservice("mysqld");
+            }
+            else
+            {       # sles
+                $ret = xCAT::Utils->startservice("mysql");
+            }
+        }
     }
     if ($ret != 0)
     {
@@ -981,21 +993,21 @@ sub mysqlstart
     {
         my @output = xCAT::Utils->runcmd($cmd, 0);
         my $mysqlcheck = "--datadir";    # see if really running
-        if ( $::debianflag or $sp1flag ){
+        if ($::debianflag or $sp1flag) {
             $mysqlcheck = "mysqld";
         }
         if (grep(/$mysqlcheck/, @output))
         {
-            sleep 10;  # give a few extra seconds to be sure
+            sleep 10;    # give a few extra seconds to be sure
             return;
         }
         else
         {
-            sleep 10;   # wait for daemon
+            sleep 10;    # wait for daemon
         }
     }
     xCAT::MsgUtils->message("E",
-            " Could not start the mysql daemon, in time allocated ( 2minutes)");
+        " Could not start the mysql daemon, in time allocated ( 2minutes)");
     exit(1);
 
 }
@@ -1032,13 +1044,13 @@ sub mysqlreboot
                 {
 
                     xCAT::MsgUtils->message("E",
-                                     " $cmd failed. Could not backup inittab.");
+                        " $cmd failed. Could not backup inittab.");
                     exit(1);
                 }
             }
 
             $cmd =
-              "awk '{gsub(\"xcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>&1\",\"mysql:2:once:/usr/local/mysql/bin/mysqld_safe --user=mysql \\& \\nxcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>\\&1\"); print}' /etc/inittab > /etc/inittab.xcat";
+"awk '{gsub(\"xcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>&1\",\"mysql:2:once:/usr/local/mysql/bin/mysqld_safe --user=mysql \\& \\nxcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>\\&1\"); print}' /etc/inittab > /etc/inittab.xcat";
 
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -1055,41 +1067,41 @@ sub mysqlreboot
             {
 
                 xCAT::MsgUtils->message("E",
-                             " $cmd failed. MySQL will not restart on reboot.");
+                    " $cmd failed. MySQL will not restart on reboot.");
             }
         }
     }
     else    # linux
     {
-        if ($::MariaDB==1 ) {  # MariaDB not MySQL
-         
-           if ($::linuxos =~ /rh.*/) {
-            $cmd = "chkconfig mariadb on";
-           } else { #sles
-            $cmd = "chkconfig mysql on";
-            if ( $::debianflag ){
-                  $cmd = "update-rc.d mysql defaults";
-            }
+        if ($::MariaDB == 1) {    # MariaDB not MySQL
 
-           }
-        } else { # mysql
-           if ($::linuxos =~ /rh.*/)
-           {
-              $cmd = "chkconfig mysqld on";
-           }
-           else
-           {    # sles
-              $cmd = "chkconfig mysql on";
-              if ( $::debianflag ){
-                  $cmd = "update-rc.d mysql defaults";
-              }
-           }
+            if ($::linuxos =~ /rh.*/) {
+                $cmd = "chkconfig mariadb on";
+            } else {              #sles
+                $cmd = "chkconfig mysql on";
+                if ($::debianflag) {
+                    $cmd = "update-rc.d mysql defaults";
+                }
+
+            }
+        } else {    # mysql
+            if ($::linuxos =~ /rh.*/)
+            {
+                $cmd = "chkconfig mysqld on";
+            }
+            else
+            {       # sles
+                $cmd = "chkconfig mysql on";
+                if ($::debianflag) {
+                    $cmd = "update-rc.d mysql defaults";
+                }
+            }
         }
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message("E",
-                             " $cmd failed. MySQL will not restart on reboot.");
+                " $cmd failed. MySQL will not restart on reboot.");
         }
     }
 
@@ -1101,7 +1113,7 @@ sub verifymysqlroot
     if ($::osname eq 'AIX')
     {
         my $cmd2 =
-          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+"ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
         $cmd = $cmd2;
         $cmd .= "$::installdir/bin/mysqladmin -u root -p$::rootpassword version";
     }
@@ -1116,15 +1128,15 @@ sub verifymysqlroot
     $::VERBOSE = $tmpv;
     if ($::RUNCMD_RC == 0)
     {
-	# User has input an correct root passwd. That is fine. Do nothing and go head.
-	return
+        # User has input an correct root passwd. That is fine. Do nothing and go head.
+        return
     }
 
     # The password is wrong, warn the user and die.
     xCAT::MsgUtils->message(
-            "E",
-            "Wrong MySQL root password."
-            );
+        "E",
+        "Wrong MySQL root password."
+    );
     exit 1;
 }
 
@@ -1148,7 +1160,7 @@ sub setupmysqlroot
     if ($::osname eq 'AIX')
     {
         my $cmd2 =
-          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+"ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
         $cmd = $cmd2;
         $cmd .= "$::installdir/bin/mysqladmin -u root password $::rootpassword";
     }
@@ -1166,8 +1178,8 @@ sub setupmysqlroot
     {
         xCAT::MsgUtils->message(
             "I",
-            "Warning, mysqladmin -u root password command failed, trying to set root password in MySQL. If root id has been defined in MySQL, and has a password then this message can be ignored."
-            );
+"Warning, mysqladmin -u root password command failed, trying to set root password in MySQL. If root id has been defined in MySQL, and has a password then this message can be ignored."
+        );
 
     }
 
@@ -1191,15 +1203,16 @@ sub setupxcatdb
     my $mysql;
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
-    my $pwd_prompt   = 'Enter password: ';
+    my $pwd_prompt = 'Enter password: ';
     my $mysql_prompt;
-    if ($::MariaDB == 1) {  # setup MariaDB
-     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    if ($::MariaDB == 1) {    # setup MariaDB
+        $mysql_prompt = 'MariaDB \[\(none\)\]> ';
     } else {
-     $mysql_prompt = 'mysql> ';
+        $mysql_prompt = 'mysql> ';
     }
-    my $expect_log   = undef;
-    my $debug        = 0;
+    my $expect_log = undef;
+    my $debug      = 0;
+
     #if ($::VERBOSE)
     #{
     #    $debug = 1;
@@ -1215,7 +1228,7 @@ sub setupxcatdb
     $grantall .= " IDENTIFIED BY \'$::adminpassword\';\r";
 
     #GRAND user xcatadmin to localhost account
-    my $grantall_localhost= "";
+    my $grantall_localhost = "";
     $grantall_localhost = "GRANT ALL on xcatdb.* TO xcatadmin@";
     $grantall_localhost .= "\'";
     $grantall_localhost .= "localhost";
@@ -1259,7 +1272,7 @@ sub setupxcatdb
     unless ($mysql->spawn($spawncmd))
     {
         xCAT::MsgUtils->message("E",
-                      "Unable to run $spawncmd to create database and add MN.");
+            "Unable to run $spawncmd to create database and add MN.");
         return;
 
     }
@@ -1271,30 +1284,30 @@ sub setupxcatdb
     my @result = $mysql->expect(
         $timeout,
         [
-         $pwd_prompt,
-         sub {
-             $mysql->send("$::rootpassword\r");
-             $mysql->clear_accum();
-             $mysql->exp_continue();
-           }
+            $pwd_prompt,
+            sub {
+                $mysql->send("$::rootpassword\r");
+                $mysql->clear_accum();
+                $mysql->exp_continue();
+            }
         ],
         [
-         $mysql_prompt,
-         sub {
+            $mysql_prompt,
+            sub {
 
-             $mysql->send("CREATE DATABASE xcatdb;ALTER DATABASE xcatdb DEFAULT CHARACTER SET latin1;\r");
-             $mysql->clear_accum();
-             $mysql->send("$createuser");
-             $mysql->clear_accum();
-             $mysql->send("$grantall");
-             $mysql->clear_accum();
-             $mysql->send("$grantall_localhost");
-             $mysql->clear_accum();
-             $mysql->send("exit;\r");
+                $mysql->send("CREATE DATABASE xcatdb;ALTER DATABASE xcatdb DEFAULT CHARACTER SET latin1;\r");
+                $mysql->clear_accum();
+                $mysql->send("$createuser");
+                $mysql->clear_accum();
+                $mysql->send("$grantall");
+                $mysql->clear_accum();
+                $mysql->send("$grantall_localhost");
+                $mysql->clear_accum();
+                $mysql->send("exit;\r");
 
-           }
+            }
         ]
-        );
+    );
     ##########################################
     # Expect error - report and quit
     ##########################################
@@ -1303,13 +1316,14 @@ sub setupxcatdb
         my $errmsg = $result[1];
         $mysql->soft_close();
         xCAT::MsgUtils->message("E",
-                               "Failed creating database. $errmsg");
+            "Failed creating database. $errmsg");
         exit(1);
 
     }
     $mysql->soft_close();
 
 }
+
 #-----------------------------------------------------------------------------
 
 =head3    setupLL 
@@ -1326,15 +1340,16 @@ sub setupLL
     my $mysql;
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
-    my $pwd_prompt   = 'Enter password: ';
+    my $pwd_prompt = 'Enter password: ';
     my $mysql_prompt;
-    if ($::MariaDB == 1) {  # setup MariaDB
-     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    if ($::MariaDB == 1) {    # setup MariaDB
+        $mysql_prompt = 'MariaDB \[\(none\)\]> ';
     } else {
-     $mysql_prompt = 'mysql> ';
+        $mysql_prompt = 'mysql> ';
     }
-    my $expect_log   = undef;
-    my $debug        = 0;
+    my $expect_log = undef;
+    my $debug      = 0;
+
     #if ($::VERBOSE)
     #{
     #    $debug = 1;
@@ -1380,7 +1395,7 @@ sub setupLL
     unless ($mysql->spawn($spawncmd))
     {
         xCAT::MsgUtils->message("E",
-                      "Unable to run $spawncmd to add LL setup.");
+            "Unable to run $spawncmd to add LL setup.");
         return;
 
     }
@@ -1392,24 +1407,24 @@ sub setupLL
     my @result = $mysql->expect(
         $timeout,
         [
-         $pwd_prompt,
-         sub {
-             $mysql->send("$::rootpassword\r");
-             $mysql->clear_accum();
-             $mysql->exp_continue();
-           }
+            $pwd_prompt,
+            sub {
+                $mysql->send("$::rootpassword\r");
+                $mysql->clear_accum();
+                $mysql->exp_continue();
+            }
         ],
         [
-         $mysql_prompt,
-         sub {
+            $mysql_prompt,
+            sub {
 
-             $mysql->send("$setLLfunction");
-             $mysql->clear_accum();
-             $mysql->send("exit;\r");
+                $mysql->send("$setLLfunction");
+                $mysql->clear_accum();
+                $mysql->send("exit;\r");
 
-           }
+            }
         ]
-        );
+    );
     ##########################################
     # Expect error - report and quit
     ##########################################
@@ -1418,7 +1433,7 @@ sub setupLL
         my $errmsg = $result[1];
         $mysql->soft_close();
         xCAT::MsgUtils->message("E",
-                               "Failed LoadLeveler setup. $errmsg");
+            "Failed LoadLeveler setup. $errmsg");
         exit(1);
 
     }
@@ -1444,6 +1459,7 @@ sub addhosts
 {
     my @hosts;
     my $debug = 0;
+
     #if ($::VERBOSE)
     #{
     #    $debug = 1;
@@ -1461,14 +1477,14 @@ sub addhosts
     my $mysql;
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
-    my $pwd_prompt   = 'Enter password: ';
+    my $pwd_prompt = 'Enter password: ';
     my $mysql_prompt;
-    if ($::MariaDB == 1) {  # setup MariaDB
-     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    if ($::MariaDB == 1) {    # setup MariaDB
+        $mysql_prompt = 'MariaDB \[\(none\)\]> ';
     } else {
-     $mysql_prompt = 'mysql> ';
+        $mysql_prompt = 'mysql> ';
     }
-    my $expect_log   = undef;
+    my $expect_log = undef;
 
     foreach my $host (@hosts)
     {
@@ -1518,7 +1534,7 @@ sub addhosts
             xCAT::MsgUtils->message(
                 "E",
                 "Unable to run $spawncmd to grant host access to the  database."
-                );
+            );
             return;
 
         }
@@ -1530,24 +1546,24 @@ sub addhosts
         my @result = $mysql->expect(
             $timeout,
             [
-             $pwd_prompt,
-             sub {
-                 $mysql->send("$::rootpassword\r");
-                 $mysql->clear_accum();
-                 $mysql->exp_continue();
-               }
+                $pwd_prompt,
+                sub {
+                    $mysql->send("$::rootpassword\r");
+                    $mysql->clear_accum();
+                    $mysql->exp_continue();
+                }
             ],
             [
-             $mysql_prompt,
-             sub {
+                $mysql_prompt,
+                sub {
 
-                 $mysql->send("$grantall");
-                 $mysql->clear_accum();
-                 $mysql->send("exit;\r");
+                    $mysql->send("$grantall");
+                    $mysql->clear_accum();
+                    $mysql->send("exit;\r");
 
-               }
+                }
             ]
-            );
+        );
         ##########################################
         # Expect error - report and quit
         ##########################################
@@ -1556,7 +1572,7 @@ sub addhosts
             my $errmsg = $result[1];
             $mysql->soft_close();
             xCAT::MsgUtils->message("E",
-                                   "Failed adding  hosts. $errmsg");
+                "Failed adding  hosts. $errmsg");
             exit(1);
 
         }
@@ -1584,14 +1600,14 @@ sub setupODBC
     #
     # for all OS need unixODBC rpm
     my $cmd = "rpm -qa | grep unixODBC";
-    if ( $::debianflag ){
+    if ($::debianflag) {
         $cmd = "dpkg -l | grep unixodbc";
     }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "unixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs.";
+"unixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs.";
         xCAT::MsgUtils->message("E", " $message");
         exit(1);
     }
@@ -1604,12 +1620,12 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "xcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
+"xcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
     }
-    elsif ( $::debianflag ){
+    elsif ($::debianflag) {
         $cmd = "dpkg -l | grep libmyodbc";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -1626,7 +1642,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "mysql-client is not installed.  It should be first installed from the SLES CDs.";
+"mysql-client is not installed.  It should be first installed from the SLES CDs.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1635,7 +1651,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "libmysqlclient is not installed.  It should be first installed from the SLES CDs.";
+"libmysqlclient is not installed.  It should be first installed from the SLES CDs.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1644,7 +1660,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "MyODBC-unixODBC is not installed.  It should be first installed from the SLES CDs.";
+"MyODBC-unixODBC is not installed.  It should be first installed from the SLES CDs.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1660,7 +1676,7 @@ sub setupODBC
     if (!(-e ($xcatconfig)) && (!(-e ($xcatconfigbackup))))
     {
         $message =
-          "The $xcatconfig and $xcatconfigbackup files are missing. You need to configure xCAT for MySQL before setting up the ODBC.";
+"The $xcatconfig and $xcatconfigbackup files are missing. You need to configure xCAT for MySQL before setting up the ODBC.";
         xCAT::MsgUtils->message("E", "$message");
         exit(1);
 
@@ -1675,7 +1691,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)    # then try backup
         {
             $message =
-              "Cannot find host info in the cfgloc or cfgloc.mysql file. Configuration of ODBC cannot continue.";
+"Cannot find host info in the cfgloc or cfgloc.mysql file. Configuration of ODBC cannot continue.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1692,7 +1708,7 @@ sub setupODBC
         $cmd          = "rpm -ql mysql-connector-odbc | grep libmyodbc..so";
         @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
     }
-    elsif ( $::debianflag ){
+    elsif ($::debianflag) {
         $odbcinstfile = "/etc/odbcinst.ini";
         $odbcfile     = "/etc/odbc.ini";
         $cmd          = "dpkg -L libmyodbc | grep libmyodbc.so";
@@ -1741,7 +1757,7 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
         my $entry =
-          "[xCATDB]\nDriver   = MySQL\nSERVER   = $server\nPORT     = 3306\nDATABASE = xcatdb";
+"[xCATDB]\nDriver   = MySQL\nSERVER   = $server\nPORT     = 3306\nDATABASE = xcatdb";
         $cmd = "echo \"$entry\" >> $odbcfile";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -1778,11 +1794,12 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
         my $entry =
-          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = $adminid\nPASSWORD = $passwd";
+"[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = $adminid\nPASSWORD = $passwd";
         $cmd = "echo \"$entry\" >> $rootodbcfile";
+
         # secure passwd in verbose mode
         my $tmpv = $::VERBOSE;
-        $::VERBOSE = 0;        
+        $::VERBOSE = 0;
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -1840,7 +1857,7 @@ sub createcfgloc
 
     # secure passwd in verbose mode
     my $tmpv = $::VERBOSE;
-    $::VERBOSE = 0;    
+    $::VERBOSE = 0;
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1877,12 +1894,12 @@ sub restorexcatdb
     # if they had an old cfgloc on another database, save it
     if ((-e ("/etc/xcat/cfgloc")) && (!(-e ("/etc/xcat/cfgloc.olddb"))))
     {
-            $cmd = "cp /etc/xcat/cfgloc /etc/xcat/cfgloc.olddb";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
-            }
+        $cmd = "cp /etc/xcat/cfgloc /etc/xcat/cfgloc.olddb";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+        }
     }
 
     # put in place cfgloc for mysql
@@ -1890,17 +1907,17 @@ sub restorexcatdb
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
+        xCAT::MsgUtils->message("E", " $cmd failed.");
+        exit(1);
     }
 
     # allow readonly by root
     chmod 0600, "/etc/xcat/cfgloc";
 
-    # set the env variable for Table.pm for the new database 
+    # set the env variable for Table.pm for the new database
     my $xcatcfg;
     my $cfgl;
-    open($cfgl,"<","/etc/xcat/cfgloc");
+    open($cfgl, "<", "/etc/xcat/cfgloc");
     $xcatcfg = <$cfgl>;
     close($cfgl);
     chomp($xcatcfg);
@@ -1908,17 +1925,18 @@ sub restorexcatdb
     # restore the database
     xCAT::MsgUtils->message(
         "I",
-        "Restoring the xCAT Database with $::backupdir to MySQL database.\nThis could take several minutes."
-        );
+"Restoring the xCAT Database with $::backupdir to MySQL database.\nThis could take several minutes."
+    );
     if (!(-d $::backupdir))
     {    # does not exist, error
         xCAT::MsgUtils->message("E",
-                       " $::backupdir is missing. Cannot retore the database.");
+            " $::backupdir is missing. Cannot retore the database.");
         exit(1);
     }
 
     # restore it
     my $cmd = "XCATBYPASS=y XCATCFG=\"$xcatcfg\"  restorexCATdb -p $::backupdir";
+
     # not display passwords in verbose mode
     my $tmpv = $::VERBOSE;
     $::VERBOSE = 0;
@@ -1942,7 +1960,7 @@ sub restorexcatdb
     else
     {
         #$xcmd = "service xcatd restart";
-        my $ret=xCAT::Utils->restartservice("xcatd");
+        my $ret = xCAT::Utils->restartservice("xcatd");
         return $ret;
     }
 

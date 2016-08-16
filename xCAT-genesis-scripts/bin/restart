@@ -42,6 +42,18 @@ while [ $WAITING -gt 0 ]; do
        sleep 1
        echo -en "Waiting $i seconds for DHCP changes to take effect    \r"
     done
+    
+    # restart rsyslog after dhclient
+    kill -9 `cat /var/run/syslogd.pid`
+    sleep 3
+    RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+    if [ $RSYSLOGD_VERSION -ge 8 ]; then
+        # Newer versions of rsyslogd do not support -c flag anymore
+        /sbin/rsyslogd
+    else
+        /sbin/rsyslogd -c4
+    fi
+
     WAITING=0
     if [ ! -z "$FORCENICS" ]; then
         #for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep "$FORCENICS"`; do

@@ -1,0 +1,48 @@
+start:nodeset_shell
+description: verify could log in genesis shell
+cmd:nodeset $$CN shell
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -t -n $$CN
+cmd:xdsh $$CN cat /proc/cmdline
+check:rc==0
+check:output=~destiny=shell
+cmd:nodeset $$CN boot
+cmd:rpower $$CN boot
+check:rc==0
+end
+
+start:nodeset_cmdline
+description:verify could run cmdline successfully
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -d -r __GETNODEATTR($$CN,arch)__
+cmd:nodeset $$CN runcmd="cmdtest,shell"
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd: perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -t -n $$CN
+cmd:xdsh $$CN "cat /tmp/testresult"
+check:rc==0
+check:output=~testcmd
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -c -n $$CN -r __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+end
+
+start:nodeset_runimg
+description:verify runimg could work
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -g -n $$CN -i $$imgip
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -t -n $$CN
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/testresult"
+check:output=~testimg
+check:rc==0
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -c -n $$CN -r __GETNODEATTR($$CN,arch)__
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+end

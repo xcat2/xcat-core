@@ -35,7 +35,7 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -69,27 +69,27 @@ chomp $::sdate;
 $::hname = `hostname`;
 chomp $::hname;
 
-$::MN = $ENV{'MASTER'};    # as known by the node
-$::databaseloc = $ENV{'DATABASELOC'};    # directory for db instance 
-my $installdir = $ENV{'INSTALLDIR'};  # installdir 
+$::MN          = $ENV{'MASTER'};         # as known by the node
+$::databaseloc = $ENV{'DATABASELOC'};    # directory for db instance
+my $installdir = $ENV{'INSTALLDIR'};     # installdir
 
 # check to see if the databaseloc attribute is in the installdir attribute
 # directory path.  If it is error out and send something to syslog
-my @installlocdir = split '/', $installdir;  # get base of installdir 
-my @dblocdir = split '/',$::databaseloc;  # get base of database
-if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
-  my $msg="db2install:The site databaseloc attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.";
-  `logger -t xcat -p local4.err $msg`;
-       exit(1);
+my @installlocdir = split '/', $installdir;       # get base of installdir
+my @dblocdir      = split '/', $::databaseloc;    # get base of database
+if ($installlocdir[1] eq $dblocdir[1]) {          # if they match,error
+    my $msg = "db2install:The site databaseloc attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.";
+    `logger -t xcat -p local4.err $msg`;
+    exit(1);
 }
 
 if ($::osname eq 'AIX')
 {
-    $::installdb2dir = "/opt/IBM/db2/V9.7";    # default
+    $::installdb2dir = "/opt/IBM/db2/V9.7";       # default
 }
 else
-{                                              # linux
-    $::installdb2dir = "/opt/ibm/db2/V9.7";    # default
+{                                                 # linux
+    $::installdb2dir = "/opt/ibm/db2/V9.7";       # default
 }
 my $msg;
 
@@ -98,7 +98,7 @@ my $msg;
 my $db2install = $::installdb2dir;
 $db2install .= "\/instance";
 if (!(-e ($db2install)))
-{                                              # not already installed
+{    # not already installed
     $::db2installloc = $ENV{'DB2INSTALLLOC'};
     if (!$::db2installloc)
     {
@@ -106,7 +106,7 @@ if (!(-e ($db2install)))
     }
     chomp $::db2installloc;
     $::db2installloc =~
-      s/^(\'|\")(.*)(\"|\')$/$2/;              # remove any surrounding quotes
+      s/^(\'|\")(.*)(\"|\')$/$2/;    # remove any surrounding quotes
 
     # startNFS
     $rc = &startNFS;
@@ -133,7 +133,7 @@ if (!(-e ($db2install)))
     else
     {
         $msg =
-          "db2install:Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
+"db2install:Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
         `logger -t xcat -p local4.err $msg`;
         exit(1);
     }
@@ -150,7 +150,7 @@ $rc = &getcfgloc;
 if ($rc != 0)
 {    # could not get the cfgloc file, cannot continue
     $msg =
-      "db2install:Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
+"db2install:Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
     `logger -t xcat -p local4.err $msg`;
     exit 1;
 }
@@ -367,7 +367,7 @@ sub mountdb2code
 sub installdb2code
 {
     my $msg;
-    my $rc          = 0;
+    my $rc = 0;
     my $installcode;
     my $installcode1 = "$::installloc/ese/db2_install";
     my $installcode2 = "$::installloc/server/db2_install";
@@ -380,24 +380,25 @@ sub installdb2code
         `logger -t xcat -p local4.err $msg`;
         exit 1;
     }
+
     # pick the correct install directory
-    if (-e $installcode1 ) {
-      $installcode=$installcode1;
+    if (-e $installcode1) {
+        $installcode = $installcode1;
     } else {
-      if (-e $installcode2 ) {
-        $installcode=$installcode2;
-      } else {
-        if (-e $installcode3 ) {
-          $installcode=$installcode3;
+        if (-e $installcode2) {
+            $installcode = $installcode2;
         } else {
-          $installcode=$installcode4;
-        } 
-      } 
-    } 
+            if (-e $installcode3) {
+                $installcode = $installcode3;
+            } else {
+                $installcode = $installcode4;
+            }
+        }
+    }
 
     my $expect_log = "/tmp/xcatexpect.log";
     $msg =
-      "db2install:Starting DB2 install. Monitor progress in $expect_log on the node. \n";
+"db2install:Starting DB2 install. Monitor progress in $expect_log on the node. \n";
     `logger -t xcat -p local4.info $msg`;
     my $db2sql;
     my $timeout = 1000;    #sets Expect default timeout, 0 accepts immediately
@@ -467,23 +468,23 @@ sub installdb2code
     my @result = $db2sql->expect(
         $timeout,
         [
-         $dir_prompt,
-         sub {
-             $db2sql->send("no\r");
-             $db2sql->clear_accum();
-             $db2sql->exp_continue();
-           }
+            $dir_prompt,
+            sub {
+                $db2sql->send("no\r");
+                $db2sql->clear_accum();
+                $db2sql->exp_continue();
+            }
         ],
         [
-         $product_prompt,
-         sub {
+            $product_prompt,
+            sub {
 
-             $db2sql->send("CLIENT\r");
-             $db2sql->exp_continue();
+                $db2sql->send("CLIENT\r");
+                $db2sql->exp_continue();
 
-           }
+            }
         ]
-        );
+    );
     ##########################################
     # Expect error - report and quit
     ##########################################
@@ -551,14 +552,15 @@ sub rundb2sqlsetup
     chomp $xcatcfg;
     my ($database, $instance, $password) = split('\|', $xcatcfg);
     if ($::databaseloc) {
-      if (!(-e $::databaseloc)) { # if it does not exist, create it
-        &runcmd("mkdir -p $::databaseloc");
-      } 
-      $cmd =
-      "DATABASELOC=$::databaseloc XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
+
+        if (!(-e $::databaseloc)) {    # if it does not exist, create it
+            &runcmd("mkdir -p $::databaseloc");
+        }
+        $cmd =
+"DATABASELOC=$::databaseloc XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
     } else {
-      $cmd =
-      "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
+        $cmd =
+"XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
     }
     $msg = "db2install:Running Client setup. \"$::XCATROOT/bin/db2sqlsetup -i -C\"\n";
     `logger -t xcat -p local4.info $msg`;
@@ -593,10 +595,10 @@ sub getresponse
     # open a socket to request data
     my $sock =
       IO::Socket::SSL->new(
-                           PeerAddr => $::MN,
-                           PeerPort => $port,
-                           Proto    => 'tcp',
-                           );
+        PeerAddr => $::MN,
+        PeerPort => $port,
+        Proto    => 'tcp',
+      );
 
     # try a few more times
     my $times = 1;
@@ -606,10 +608,10 @@ sub getresponse
         $times++;
         $sock =
           IO::Socket::SSL->new(
-                               PeerAddr => $::MN,
-                               PeerPort => $port,
-                               Proto    => 'tcp',
-                               );
+            PeerAddr => $::MN,
+            PeerPort => $port,
+            Proto    => 'tcp',
+          );
         if ($times == 5)
         {
             last;
@@ -693,11 +695,11 @@ sub openlistener
 
     my $listener =
       IO::Socket::INET->new(
-                            LocalPort => '300',
-                            Proto     => 'tcp',
-                            Listen    => '64',
-                            Reuse     => 1
-                            );
+        LocalPort => '300',
+        Proto     => 'tcp',
+        Listen    => '64',
+        Reuse     => 1
+      );
 
     unless ($listener)
     {

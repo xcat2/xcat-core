@@ -7,19 +7,19 @@ my $genesisrpm = shift @ARGV;
 my %rpms;
 my @files = `rpm -qlp $genesisrpm`;
 my $total = scalar(@files);
-my $i = 0;
+my $i     = 0;
 foreach my $f (@files) {
-	$i++;
-	print "$i/$total\r";
-	chomp($f);
-	if ($f !~ m|/opt/xcat/share/xcat/netboot/genesis/x86_64/fs|) { next; }
-	$f =~ s|^/opt/xcat/share/xcat/netboot/genesis/x86_64/fs||;
-	if (!$f || !(-e $f)) { next; }       # there are files dracut creates that are not part of an rpm
-	my $rpm = `rpm -q --whatprovides $f`;
-	if ($?) { next; }	# there are files dracut creates that are not part of an rpm
-	#print '.';	# show progress
-	chomp($rpm);
-	$rpms{$rpm} = 1;
+    $i++;
+    print "$i/$total\r";
+    chomp($f);
+    if ($f !~ m|/opt/xcat/share/xcat/netboot/genesis/x86_64/fs|) { next; }
+    $f =~ s|^/opt/xcat/share/xcat/netboot/genesis/x86_64/fs||;
+    if (!$f || !(-e $f)) { next; } # there are files dracut creates that are not part of an rpm
+    my $rpm = `rpm -q --whatprovides $f`;
+    if ($?) { next; } # there are files dracut creates that are not part of an rpm
+                      #print '.';	# show progress
+    chomp($rpm);
+    $rpms{$rpm} = 1;
 }
 print "\n";
 foreach my $r (sort keys %rpms) { print "$r\n"; }

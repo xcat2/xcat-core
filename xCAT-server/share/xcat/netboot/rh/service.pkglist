@@ -13,6 +13,9 @@ ksh
 nfs-utils
 dhcp
 bzip2
+tar
+gzip
+xz
 rootfiles
 vixie-cron
 wget

@@ -21,11 +21,11 @@ use imgutils;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
-my $dracutmode; #Indicate whether this is a dracut style initrd
-my $dracutdir = "dracut";  # The default directory name of dracut
+my $dracutmode;    #Indicate whether this is a dracut style initrd
+my $dracutdir = "dracut";    # The default directory name of dracut
 my $dracutver;
-my $prinic; #TODO be flexible on node primary nic
-my $othernics; #TODO be flexible on node primary nic
+my $prinic;                  #TODO be flexible on node primary nic
+my $othernics;               #TODO be flexible on node primary nic
 my $netdriver;
 my @yumdirs;
 my $arch;
@@ -33,21 +33,22 @@ my %libhash;
 my @filestoadd;
 my $profile;
 my $osver;
-my $pathtofiles=dirname($0);
-my $fullpath=realpath($pathtofiles);
-my $name = basename($0);
-my $onlyinitrd=0;
+my $pathtofiles = dirname($0);
+my $fullpath    = realpath($pathtofiles);
+my $name        = basename($0);
+my $onlyinitrd  = 0;
+
 #that this method of calling genimage is no longer used
 if ($name =~ /geninitrd/) {
-   $onlyinitrd=1;
+    $onlyinitrd = 1;
 }
 my $rootlimit;
 my $tmplimit;
 my $installroot = "/install";
 my $kerneldir;
-my $kernelver = ""; 
-my $basekernelver; 
-my $customdir=$fullpath;
+my $kernelver = "";
+my $basekernelver;
+my $customdir = $fullpath;
 $customdir =~ s/.*share\/xcat/$installroot\/custom/;
 my $imagename;
 my $pkglist;
@@ -58,17 +59,17 @@ my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
 my $mode;
-my $permission; #the permission works only for statelite mode currently
+my $permission;    #the permission works only for statelite mode currently
 my $krpmver;
 my $tempfile;
 my $prompt;
-my $timezone; #the TIMEZONE of the stateless and statelite node
+my $timezone;      #the TIMEZONE of the stateless and statelite node
 my $ignorekernelchk;
 my $noupdate;
 
 sub xdie {
-   system("rm -rf /tmp/xcatinitrd.$$");
-   die @_;
+    system("rm -rf /tmp/xcatinitrd.$$");
+    die @_;
 }
 
 #-- fetch current version form CVS (overwrite locally changed versions)
@@ -88,40 +89,40 @@ sub xdie {
 
 $SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
 GetOptions(
-   'a=s' => \$arch,
-   'p=s' => \$profile,
-   'o=s' => \$osver,
-   'n=s' => \$netdriver,
-   'i=s' => \$prinic,
-   'r=s' => \$othernics,
-   'l=s' => \$rootlimit,
-   't=s' => \$tmplimit,
-   'k=s' => \$kernelver,
-   'g=s' => \$krpmver,
-   'permission=s' => \$permission,
-   'kerneldir=s' => \$kerneldir,   
-   'timezone=s'  => \$timezone,   
-   'tempfile=s' =>\$tempfile, #internal flag
-   'pkglist=s' => \$pkglist,   #internal flag
-   'srcdir=s' => \$srcdir,   #internal flag
-   'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
-   'otherpkglist=s' => \$otherpkglist,      #internal flag
-   'postinstall=s' => \$postinstall_filename,  #internal flag
-   'rootimgdir=s' => \$destdir,   #internal flag
-   'driverupdatesrc=s' => \$driverupdatesrc, #internal flag
-   'interactive' =>\$prompt, 
-   'onlyinitrd' =>\$onlyinitrd,
-   'ignorekernelchk' => \$ignorekernelchk,
-   'noupdate' => \$noupdate,
- );
+    'a=s'               => \$arch,
+    'p=s'               => \$profile,
+    'o=s'               => \$osver,
+    'n=s'               => \$netdriver,
+    'i=s'               => \$prinic,
+    'r=s'               => \$othernics,
+    'l=s'               => \$rootlimit,
+    't=s'               => \$tmplimit,
+    'k=s'               => \$kernelver,
+    'g=s'               => \$krpmver,
+    'permission=s'      => \$permission,
+    'kerneldir=s'       => \$kerneldir,
+    'timezone=s'        => \$timezone,
+    'tempfile=s'        => \$tempfile,                #internal flag
+    'pkglist=s'         => \$pkglist,                 #internal flag
+    'srcdir=s'          => \$srcdir,                  #internal flag
+    'otherpkgdir=s'     => \$srcdir_otherpkgs,        #internal flag
+    'otherpkglist=s'    => \$otherpkglist,            #internal flag
+    'postinstall=s'     => \$postinstall_filename,    #internal flag
+    'rootimgdir=s'      => \$destdir,                 #internal flag
+    'driverupdatesrc=s' => \$driverupdatesrc,         #internal flag
+    'interactive'       => \$prompt,
+    'onlyinitrd'        => \$onlyinitrd,
+    'ignorekernelchk'   => \$ignorekernelchk,
+    'noupdate'          => \$noupdate,
+);
 
 if (@ARGV > 0) {
-    $imagename=$ARGV[0];
+    $imagename = $ARGV[0];
 }
 
 
 my %updates_os = ();    # the hash for updating osimage table
-my %updates = ();       # the hash for updating linuximage table
+my %updates    = ();    # the hash for updating linuximage table
 
 
 $permission = "755" unless ($permission);
@@ -133,23 +134,25 @@ unless ($arch) {
     $arch = "x86" if ($arch =~ /i.86$/);
 }
 
-$srcdir="$installroot/$osver/$arch" unless ($srcdir);
+$srcdir = "$installroot/$osver/$arch" unless ($srcdir);
 $updates{'pkgdir'} = $srcdir if ($tempfile);
+
 #$srcdir = $srcdir . "/1";
 
-$srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs); 
+$srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
 $updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
-$destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
+$destdir = "$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($tempfile);
 
-$rootimg_dir="$destdir/rootimg";
+$rootimg_dir = "$destdir/rootimg";
 
 if ($kernelver && (!$krpmver)) {
     print "The -g flag for the rpm version of kernel packages needs to be specified when kernel version has been specified.\n";
     exit 1;
 }
-$kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
+$kerneldir = "$installroot/kernels" unless ($kerneldir); # the default directory for 3rd-party kernel is "$installroot/kernels";
+
 #$updates{'kerneldir'} = $kerneldir if ($tempfile);
 
 unless ($osver and $profile) {
@@ -159,23 +162,23 @@ unless ($osver and $profile) {
 my @ndrivers;
 
 if ($netdriver) {
-    foreach (split /,/,$netdriver) { 
+    foreach (split /,/, $netdriver) {
         if (/^allupdate$/) {
             next;
         }
         unless (/\.ko$/) {
-    	      s/$/.ko/;
+            s/$/.ko/;
         }
         next if (/^$/);
-        
+
         # Do not include qeth module here
         # This module is included later on
-        unless ( $_ =~ m/qeth/i ) {
-    	      push @ndrivers, $_;
+        unless ($_ =~ m/qeth/i) {
+            push @ndrivers, $_;
         }
     }
 
-    if ( ($updates{'netdrivers'} ne $netdriver) and $tempfile ) {
+    if (($updates{'netdrivers'} ne $netdriver) and $tempfile) {
         $updates{'netdrivers'} = $netdriver;
     }
 }
@@ -190,440 +193,447 @@ if ($arch eq 'x86' or $arch eq 'x86_64') {
 }
 
 foreach (@ndrivers) {
-   unless (/\.ko$/) {
-      s/$/.ko/;
-   }
+    unless (/\.ko$/) {
+        s/$/.ko/;
+    }
 }
 
-unless (grep /af_packet/,@ndrivers) {
-    unshift(@ndrivers,"af_packet.ko");
+unless (grep /af_packet/, @ndrivers) {
+    unshift(@ndrivers, "af_packet.ko");
 }
 
 my $osver_host;
-if(`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
-    $osver_host=$1;
+if (`grep VERSION /etc/SuSE-release` =~ /VERSION = (\d+)/) {
+    $osver_host = $1;
 } else {
-    $osver_host=11;
+    $osver_host = 11;
 }
 
 unless ($onlyinitrd) {
 
     # now, let's handle the extra packages
     unless ($imagename) {
-        $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
-        unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
+        $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
+        unless ($otherpkglist) { $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
         $updates{'otherpkglist'} = $otherpkglist if ($tempfile and $otherpkglist);
     }
-    my %extra_hash=();
-    %extra_hash=imgutils::get_package_names($otherpkglist) if ($otherpkglist);
+    my %extra_hash = ();
+    %extra_hash = imgutils::get_package_names($otherpkglist) if ($otherpkglist);
 
 
     # prepare the chroot environment for the root image
 
     mkpath "$rootimg_dir/etc";
     mkpath "$rootimg_dir/dev";
+
     #system "mount -o bind /dev $rootimg_dir/dev";
-    unless ( -e "$rootimg_dir/dev/zero") {
+    unless (-e "$rootimg_dir/dev/zero") {
         system "mknod $rootimg_dir/dev/zero c 1 5";
     }
-    unless ( -e "$rootimg_dir/dev/null") {
+    unless (-e "$rootimg_dir/dev/null") {
         system "mknod $rootimg_dir/dev/null c 1 3"; #that's neccessary for SLES11
     }
 
-    unless ( -e "$rootimg_dir/dev/random") {
+    unless (-e "$rootimg_dir/dev/random") {
         system "mknod $rootimg_dir/dev/random c 1 8"; #that's neccessary for SLES11
     }
-    unless ( -e "$rootimg_dir/dev/urandom") {
+    unless (-e "$rootimg_dir/dev/urandom") {
         system "mknod $rootimg_dir/dev/urandom c 1 9"; #that's neccessary for SLES11
     }
 
-    for (my $i = 0; $i <= 12; $i++)
+    for (my $i = 0 ; $i <= 12 ; $i++)
     {
-        unless ( -e "$rootimg_dir/dev/tty$i") {
+        unless (-e "$rootimg_dir/dev/tty$i") {
             system "mknod $rootimg_dir/dev/tty$i c 4 $i"; #that's neccessary for SLES11
         }
     }
 
-   open($fd,">>","$rootimg_dir/etc/fstab"); # TODO: is it necessary?
-   print $fd "#Dummy fstab for rpm postscripts to see\n";
-   close($fd);
-   
-   my $non_interactive;
-   if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks --gpg-auto-import-keys"; }
+    open($fd, ">>", "$rootimg_dir/etc/fstab");    # TODO: is it necessary?
+    print $fd "#Dummy fstab for rpm postscripts to see\n";
+    close($fd);
 
-   if($osver_host >= 11) {#zypper in SLES11 is different
+    my $non_interactive;
+    if (!$prompt) { $non_interactive = "--non-interactive --no-gpg-checks --gpg-auto-import-keys"; }
 
-       system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver-*.repo");
-       my @pkgdirs = split(",", $srcdir); 
-       my $dir;
-       my $i = 0; 
-       # To support multiple paths for osimage.pkgdir
-       foreach $dir (@pkgdirs) {
-           if( -d "$dir/1") {
-               $dir .= "/1"; 
-           }
-           system("zypper -R $rootimg_dir $non_interactive ar file:$dir $osver-$i");
-           $i++;
-       }
+    if ($osver_host >= 11) {                      #zypper in SLES11 is different
 
-       #if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
-       #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
-       #}
-       #system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir $osver");
-       #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
-       #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
-       #}
-       if (opendir(SRCDIR, "$installroot/$osver/$arch/")) {
-           while (my $tmpfile = readdir(SRCDIR)) {
-               if ($tmpfile =~ m/^sdk/) {
-                   my $srcdir_sdk = "$installroot/$osver/$arch/${tmpfile}";
-                   if ( -d "$srcdir_sdk") {
-                       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}${tmpfile}");
-                   }
-               }
-           }  
-       }
-   }else {
-           $srcdir = $srcdir . "/1";
-	   system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir");
-   }
+        system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver-*.repo");
+        my @pkgdirs = split(",", $srcdir);
+        my $dir;
+        my $i = 0;
 
-   # Add the rep for kernel packages
-   if ($kernelver) {
-      if (! -d $kerneldir) {
-          print "Cannot find the directory for the kernel at $kerneldir.\n";
-          exit 1;
-      }
-      if ($osver_host >= 11) {
-         if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
-            system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
-         }
-         system("zypper -R $rootimg_dir $non_interactive ar file:$kerneldir $kernelver");
-      } else {
-         system("zypper -R $rootimg_dir $non_interactive sa file:$kerneldir");
-      }
-   }
+        # To support multiple paths for osimage.pkgdir
+        foreach $dir (@pkgdirs) {
+            if (-d "$dir/1") {
+                $dir .= "/1";
+            }
+            system("zypper -R $rootimg_dir $non_interactive ar file:$dir $osver-$i");
+            $i++;
+        }
 
-   #remove the old repository for extra packages
-   if ($osver_host >= 11) {
-       my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-       if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir $non_interactive rr $result");
-       }
-   } else {
-       my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-       if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir $non_interactive sd $result");
-       }
-   }
+        #if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
+        #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+        #}
+        #system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir $osver");
+        #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
+        #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
+        #}
+        if (opendir(SRCDIR, "$installroot/$osver/$arch/")) {
+            while (my $tmpfile = readdir(SRCDIR)) {
+                if ($tmpfile =~ m/^sdk/) {
+                    my $srcdir_sdk = "$installroot/$osver/$arch/${tmpfile}";
+                    if (-d "$srcdir_sdk") {
+                        system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}${tmpfile}");
+                    }
+                }
+            }
+        }
+    } else {
+        $srcdir = $srcdir . "/1";
+        system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir");
+    }
 
-   #add the new repository for extra packages
-   my %extrapkgnames; 
-   if($osver_host >= 11) {	#SLES11
-       if(-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
-	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
-       }
-   }
-   my $index=1;
-   my $pass;
-   foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
-     foreach (keys(%{$extra_hash{$pass}})) {
+    # Add the rep for kernel packages
+    if ($kernelver) {
+        if (!-d $kerneldir) {
+            print "Cannot find the directory for the kernel at $kerneldir.\n";
+            exit 1;
+        }
+        if ($osver_host >= 11) {
+            if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
+                system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
+            }
+            system("zypper -R $rootimg_dir $non_interactive ar file:$kerneldir $kernelver");
+        } else {
+            system("zypper -R $rootimg_dir $non_interactive sa file:$kerneldir");
+        }
+    }
 
-       if($_ eq "INCLUDEBAD")  {
-          print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
-          exit 1;
-       }
+    #remove the old repository for extra packages
+    if ($osver_host >= 11) {
+        my $result = `zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+        if ($result =~ /\S/) {
+            system("zypper -R $rootimg_dir $non_interactive rr $result");
+        }
+    } else {
+        my $result = `zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+        if ($result =~ /\S/) {
+            system("zypper -R $rootimg_dir $non_interactive sd $result");
+        }
+    }
 
-       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-       my $whole_path="$srcdir_otherpkgs/$_";
-       if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
-	   if($osver_host >= 11) { 
-	       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
-	   }else {
-	       system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
-	   }
-       } else {
-	   if($osver_host >= 11) { 
-	       system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
-	   }else {
-	       system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
-	   }
-       }
-       $index++;
+    #add the new repository for extra packages
+    my %extrapkgnames;
+    if ($osver_host >= 11) {    #SLES11
+        if (-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
+            system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
+        }
+    }
+    my $index = 1;
+    my $pass;
+    foreach $pass (sort { $a <=> $b } (keys(%extra_hash))) {
+        foreach (keys(%{ $extra_hash{$pass} })) {
 
-       my $pa=$extra_hash{$pass}{$_};
-       $extrapkgnames{$pass} .= " " . join(' ', @$pa);
-     }
-   }
+            if ($_ eq "INCLUDEBAD") {
+                print "Unable to open the following pkglist files:\n" . join("\n", @{ $extra_hash{$pass}{INCLUDEBAD} });
+                exit 1;
+            }
 
-   #-- add custom repositories to the image  
-   #TODO: should we add the support to otherpkgs for this? we have too many list files and it seems only SLES supports this
-   # not sure, but it is convenient 
-   my $repolist;
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
+            my $whole_path = "$srcdir_otherpkgs/$_";
+            if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
+                if ($osver_host >= 11) {
+                    system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+                } else {
+                    system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
+                }
+            } else {
+                if ($osver_host >= 11) {
+                    system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+                } else {
+                    system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
+                }
+            }
+            $index++;
+
+            my $pa = $extra_hash{$pass}{$_};
+            $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+        }
+    }
+
+    #-- add custom repositories to the image
+    #TODO: should we add the support to otherpkgs for this? we have too many list files and it seems only SLES supports this
+    # not sure, but it is convenient
+    my $repolist;
     $repolist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "repolist");
     unless ($repolist) {
         $repolist = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "repolist");
     }
 
-   if ( -r "$repolist") {
-     print "Reading custom repositories\n";
-     open($repoconfig,"<","$repolist");
-     while (<$repoconfig>) {
-       chomp;
-       next if /^\s*#/;
-       my ($repotype,$repourl,$repoalias) = split m/\|/;
-       if($osver_host >= 11) {
-         system("zypper -R $rootimg_dir $non_interactive ar $repourl $repoalias");
-       }else {
-         system("zypper -R $rootimg_dir $non_interactive sa $repourl $repoalias");
-       }
-     }
-   }
+    if (-r "$repolist") {
+        print "Reading custom repositories\n";
+        open($repoconfig, "<", "$repolist");
+        while (<$repoconfig>) {
+            chomp;
+            next if /^\s*#/;
+            my ($repotype, $repourl, $repoalias) = split m/\|/;
+            if ($osver_host >= 11) {
+                system("zypper -R $rootimg_dir $non_interactive ar $repourl $repoalias");
+            } else {
+                system("zypper -R $rootimg_dir $non_interactive sa $repourl $repoalias");
+            }
+        }
+    }
 
-   # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir $non_interactive  refresh");
+    # Refresh the zypper cache in case there is still old data out there
+    system("zypper -R $rootimg_dir $non_interactive  refresh");
 
-   #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
-   #$yumcmd .= "install ";
-   #mkpath("$rootimg_dir/var/lib/yum");
-   my $yumcmd;
-   if( $osver_host < 11) {
-       $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
-   }else {
-       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l --no-recommends "; #add -l for SLES11
-   }
+    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
+    #$yumcmd .= "install ";
+    #mkpath("$rootimg_dir/var/lib/yum");
+    my $yumcmd;
+    if ($osver_host < 11) {
+        $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
+    } else {
+        $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l --no-recommends "; #add -l for SLES11
+    }
 
-   #install packages from pkglist file
-   my $pkgnames;
-   unless ($imagename) {
-       $pkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
-       unless ($pkglist) { $pkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist"); }
-   }
+    #install packages from pkglist file
+    my $pkgnames;
+    unless ($imagename) {
+        $pkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
+        unless ($pkglist) { $pkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist"); }
+    }
 
-   if ($pkglist) {
+    if ($pkglist) {
         $updates{'pkglist'} = $pkglist if ($tempfile);
     } else {
-      print "Unable to find package list for $profile!";
-      exit 1;
-   }
+        print "Unable to find package list for $profile!";
+        exit 1;
+    }
 
-   my %pkg_hash=imgutils::get_package_names($pkglist);
-   my $index=1;
-   foreach $pass (sort {$a <=> $b} (keys(%pkg_hash))) {
-       $pkgnames = "";
-       $group_pkgnames = "";
-       foreach (keys(%{$pkg_hash{$pass}})) {
+    my %pkg_hash = imgutils::get_package_names($pkglist);
+    my $index    = 1;
+    foreach $pass (sort { $a <=> $b } (keys(%pkg_hash))) {
+        $pkgnames       = "";
+        $group_pkgnames = "";
+        foreach (keys(%{ $pkg_hash{$pass} })) {
 
-           if($_ eq "INCLUDEBAD")  {
-              print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
-              exit 1;
-           }
+            if ($_ eq "INCLUDEBAD") {
+                print "Unable to open the following pkglist files:\n" . join("\n", @{ $pkg_hash{$pass}{INCLUDEBAD} });
+                exit 1;
+            }
 
-           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-           my $pa=$pkg_hash{$pass}{$_};
-           # replace the kernel package with the name has the specific version
-           my @npa = ();
-	   my @npa_group = ();
-           foreach my $p (@$pa) {
-             if ($p =~ /^kernel/ && $kernelver) {
-               # get all files in $srcdir and $kerneldir
-               my @alldirs = ("$srcdir", "$kerneldir");
-               my @allrpms = ();
-               foreach my $dir (@alldirs) {
-                 my @files = `find $dir -name *.rpm`;
-                 push @allrpms, @files;
-               }
-               my @kernelpkgs = ();
-               if ($p =~ /^kernel$/) {
-                 @kernelpkgs = ("kernel-default","kernel-default-base");
-               } elsif ($p =~ /^kernel-ppc64$/) {
-                 @kernelpkgs = ($p, $p."-base");
-               } else {
-                 @kernelpkgs = ($p);
-               }
-               foreach my $kern (@kernelpkgs) {
-                 my @rpm = grep /$kern-$krpmver/, @allrpms;
-                 if (!@rpm) {
-                   print "Cannot find the kernel package with the versioin $krpmver.\n";
-                   exit 1;
-                 }
-                 my $kernelname = "$kern-".$krpmver;
-                 push @npa, $kernelname;
-               }
-             } else {
-		 if($p =~ s/^@//)
-		 {
-		     push @npa_group, $p;
-		 }
-		 else
-		 {
-		     push @npa, $p;
-		 }
-             }
-           }
-           if (@npa) {
-               $pkgnames .= " " . join(' ', @npa);
-           }
-           if (@npa_group) {
-	       $group_pkgnames .= " " . join(' ', @npa_group);
-           }
-       }
-        my $envlist;
-        if(exists $pkg_hash{$pass}{ENVLIST}){
-            $envlist = join(' ', @{$pkg_hash{$pass}{ENVLIST}});
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
+            my $pa = $pkg_hash{$pass}{$_};
+
+            # replace the kernel package with the name has the specific version
+            my @npa       = ();
+            my @npa_group = ();
+            foreach my $p (@$pa) {
+                if ($p =~ /^kernel/ && $kernelver) {
+
+                    # get all files in $srcdir and $kerneldir
+                    my @alldirs = ("$srcdir", "$kerneldir");
+                    my @allrpms = ();
+                    foreach my $dir (@alldirs) {
+                        my @files = `find $dir -name *.rpm`;
+                        push @allrpms, @files;
+                    }
+                    my @kernelpkgs = ();
+                    if ($p =~ /^kernel$/) {
+                        @kernelpkgs = ("kernel-default", "kernel-default-base");
+                    } elsif ($p =~ /^kernel-ppc64$/) {
+                        @kernelpkgs = ($p, $p . "-base");
+                    } else {
+                        @kernelpkgs = ($p);
+                    }
+                    foreach my $kern (@kernelpkgs) {
+                        my @rpm = grep /$kern-$krpmver/, @allrpms;
+                        if (!@rpm) {
+                            print "Cannot find the kernel package with the versioin $krpmver.\n";
+                            exit 1;
+                        }
+                        my $kernelname = "$kern-" . $krpmver;
+                        push @npa, $kernelname;
+                    }
+                } else {
+                    if ($p =~ s/^@//)
+                    {
+                        push @npa_group, $p;
+                    }
+                    else
+                    {
+                        push @npa, $p;
+                    }
+                }
+            }
+            if (@npa) {
+                $pkgnames .= " " . join(' ', @npa);
+            }
+            if (@npa_group) {
+                $group_pkgnames .= " " . join(' ', @npa_group);
+            }
         }
-       if($pkgnames)
-       {
-           print "$envlist $yumcmd $pkgnames\n";
-           $rc = system("$envlist $yumcmd $pkgnames");
-	   $rc = $rc >> 8;
-	   if (($rc) && ($rc != '104')) { 
-	       print "zypper invocation failed with rc: $rc\n";
-	       exit 1;
-	   }
-       }
-       if($group_pkgnames)
-       {
-           print "$envlist $yumcmd -t pattern $group_pkgnames\n";
-           $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
-           $rc = $rc >> 8;
-           if (($rc) && ($rc != '104')) { 
-              print "zypper invocation failed with rc: $rc\n";
-              exit 1;
-           }
-       }
-   }
+        my $envlist;
+        if (exists $pkg_hash{$pass}{ENVLIST}) {
+            $envlist = join(' ', @{ $pkg_hash{$pass}{ENVLIST} });
+        }
+        if ($pkgnames)
+        {
+            print "$envlist $yumcmd $pkgnames\n";
+            $rc = system("$envlist $yumcmd $pkgnames");
+            $rc = $rc >> 8;
+            if (($rc) && ($rc != '104')) {
+                print "zypper invocation failed with rc: $rc\n";
+                exit 1;
+            }
+        }
+        if ($group_pkgnames)
+        {
+            print "$envlist $yumcmd -t pattern $group_pkgnames\n";
+            $rc = system("$envlist $yumcmd -t pattern $group_pkgnames");
+            $rc = $rc >> 8;
+            if (($rc) && ($rc != '104')) {
+                print "zypper invocation failed with rc: $rc\n";
+                exit 1;
+            }
+        }
+    }
 
-   foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
+    foreach $pass (sort { $a <=> $b } (keys(%extra_hash))) {
 
-       my $index=1;
-       #remove the old repository for extra packages
-       if ($osver_host >= 11) {
-           my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-           if ($result =~ /\S/) {
-               system("zypper -R $rootimg_dir $non_interactive rr $result");
-           }
-       } else {
-           my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-           if ($result =~ /\S/) {
-               system("zypper -R $rootimg_dir $non_interactive sd $result");
-           }
-       }
+        my $index = 1;
 
-       foreach (keys(%{$extra_hash{$pass}})) {
-           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;}
-           if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
-              if($osver_host >= 11) {
-                  system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
-               } else {
+        #remove the old repository for extra packages
+        if ($osver_host >= 11) {
+            my $result = `zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+            if ($result =~ /\S/) {
+                system("zypper -R $rootimg_dir $non_interactive rr $result");
+            }
+        } else {
+            my $result = `zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+            if ($result =~ /\S/) {
+                system("zypper -R $rootimg_dir $non_interactive sd $result");
+            }
+        }
+
+        foreach (keys(%{ $extra_hash{$pass} })) {
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next; }
+            if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
+                if ($osver_host >= 11) {
+                    system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+                } else {
                     system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
-               }
-           } else {
-               if($osver_host >= 11) {
-                   system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
-               }else {
-                   system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
-               }
-           }
+                }
+            } else {
+                if ($osver_host >= 11) {
+                    system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+                } else {
+                    system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
+                }
+            }
             $index++;
-       }
+        }
 
-       # Refresh the zypper cache in case there is still old data out there
-       system("zypper -R $rootimg_dir $non_interactive  refresh");
+        # Refresh the zypper cache in case there is still old data out there
+        system("zypper -R $rootimg_dir $non_interactive  refresh");
 
-       #remove the packages that are specified in the otherpkgs.list files with leading '-'
-       my $envlist;
-       if(exists $extra_hash{$pass}{ENVLIST}){
-           $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
-       }
+        #remove the packages that are specified in the otherpkgs.list files with leading '-'
+        my $envlist;
+        if (exists $extra_hash{$pass}{ENVLIST}) {
+            $envlist = join(' ', @{ $extra_hash{$pass}{ENVLIST} });
+        }
 
-       my $yumcmd_remove= "zypper -R $rootimg_dir $non_interactive remove ";
-       if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
-           my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
-           my $rm_packges= join(' ', @$pa);
-           if ($rm_packges) {
-               print "$envlist $yumcmd_remove $rm_packges";
-               $rc = system("$envlist $yumcmd_remove $rm_packges");
-           }
-       }
-   
+        my $yumcmd_remove = "zypper -R $rootimg_dir $non_interactive remove ";
+        if (exists($extra_hash{$pass}{'PRE_REMOVE'})) {
+            my $pa = $extra_hash{$pass}{'PRE_REMOVE'};
+            my $rm_packges = join(' ', @$pa);
+            if ($rm_packges) {
+                print "$envlist $yumcmd_remove $rm_packges";
+                $rc = system("$envlist $yumcmd_remove $rm_packges");
+            }
+        }
 
-       #add extra packages in the list
-       if ($extrapkgnames{$pass}) {
-           print "$envlist $yumcmd $extrapkgnames{$pass}\n";
-           $rc = system("$envlist $yumcmd $extrapkgnames{$pass}");
-           $rc = $rc >> 8;
-           if (($rc) && ($rc != '104')) { 
-               print "zypper invocation failed with rc: $rc\n";
-               exit 1;
-           }
-       }
 
-       #remove the packages that are specified in the otherpkgs.list files with leading '--'
-       if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
-           my $pa=$extra_hash{$pass}{'POST_REMOVE'};
-           my $rm_packges= join(' ', @$pa);
-           if ($rm_packges) {
-               print "$envlist $yumcmd_remove $rm_packges";
-               $rc = system("$envlist $yumcmd_remove $rm_packges");
-           }
-       }
+        #add extra packages in the list
+        if ($extrapkgnames{$pass}) {
+            print "$envlist $yumcmd $extrapkgnames{$pass}\n";
+            $rc = system("$envlist $yumcmd $extrapkgnames{$pass}");
+            $rc = $rc >> 8;
+            if (($rc) && ($rc != '104')) {
+                print "zypper invocation failed with rc: $rc\n";
+                exit 1;
+            }
+        }
 
-       if (!$noupdate) {
-         # run zypper update to update any installed rpms
-         # needed when running genimage again after updating software in repositories
-         my $yumcmd_update;
-         if ($osver_host >= 11) {
-           $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
-         } else {
-           $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
-         }
-         $rc = system("$yumcmd_update");
-       }
-   }
+        #remove the packages that are specified in the otherpkgs.list files with leading '--'
+        if (exists($extra_hash{$pass}{'POST_REMOVE'})) {
+            my $pa = $extra_hash{$pass}{'POST_REMOVE'};
+            my $rm_packges = join(' ', @$pa);
+            if ($rm_packges) {
+                print "$envlist $yumcmd_remove $rm_packges";
+                $rc = system("$envlist $yumcmd_remove $rm_packges");
+            }
+        }
 
-   #remove the old repository for extra packages
-   if ($osver_host >= 11) {
-       my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-       if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir $non_interactive rr $result");
-       }
-   } else {
-       my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
-       if ($result =~ /\S/) {
-           system("zypper -R $rootimg_dir $non_interactive sd $result");
-       }
-   }
+        if (!$noupdate) {
 
-   # ignore any return code
+            # run zypper update to update any installed rpms
+            # needed when running genimage again after updating software in repositories
+            my $yumcmd_update;
+            if ($osver_host >= 11) {
+                $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
+            } else {
+                $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
+            }
+            $rc = system("$yumcmd_update");
+        }
+    }
 
-   postscripts(); #run 'postscripts'
+    #remove the old repository for extra packages
+    if ($osver_host >= 11) {
+        my $result = `zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+        if ($result =~ /\S/) {
+            system("zypper -R $rootimg_dir $non_interactive rr $result");
+        }
+    } else {
+        my $result = `zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+        if ($result =~ /\S/) {
+            system("zypper -R $rootimg_dir $non_interactive sd $result");
+        }
+    }
+
+    # ignore any return code
+
+    postscripts();    #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";
 
 # added dracut mode
-if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") ) {
+if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) {
     $dracutmode = 1;
-   # get dracut version
+
+    # get dracut version
     $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'     `;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
         if ($dracutver >= "033") {
             $dracutdir = "dracut_033";
         } else {
-            $dracutdir = "dracut";  # The default directory
+            $dracutdir = "dracut";    # The default directory
         }
     }
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
 
 # default to the first kernel found in the install image if nothing specified explicitly.
-# A more accurate guess than whatever the image build server happens to be running 
+# A more accurate guess than whatever the image build server happens to be running
 # If specified, that takes precedence.
 # If image has one, that is used
 # If all else fails, resort to uname -r like this script did before
-        
-if ( -e "$rootimg_dir/boot/vmlinux" ) {
+
+if (-e "$rootimg_dir/boot/vmlinux") {
     $basekernelver = basename(readlink "$rootimg_dir/boot/vmlinux");
     if ($basekernelver eq "vmlinux") {
         $basekernelver = "";
@@ -635,7 +645,7 @@ if ( -e "$rootimg_dir/boot/vmlinux" ) {
 
 unless ($basekernelver) {
     my @KVERS = <$rootimg_dir/boot/vmlinu[xz]-*>;
-      
+
     # The kernel name is different on s390x, e.g. image-2.6.32.9-0.5-default
     @KVERS = <$rootimg_dir/boot/image-*> if $arch eq "s390x";
     foreach (@KVERS) {
@@ -654,21 +664,22 @@ unless ($basekernelver) {
         }
     }
 
-    @KVERS=<$rootimg_dir/lib/modules/*> unless (scalar @KVERS);
+    @KVERS = <$rootimg_dir/lib/modules/*> unless (scalar @KVERS);
     $basekernelver = basename(pop @KVERS) if (scalar @KVERS);
     $basekernelver = `uname -r` unless ($basekernelver);
 }
 
 $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
+
 #$updates{kernelver} = $kernelver if ($tempfile);
 
 # copy the kernel to $destdir
-if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
+if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
     copy("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
-} elsif ( -e "$rootimg_dir/boot/vmlinuz-$kernelver") {
+} elsif (-e "$rootimg_dir/boot/vmlinuz-$kernelver") {
     copy("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
-} elsif ( -e "$rootimg_dir/boot/image-$kernelver") {
+} elsif (-e "$rootimg_dir/boot/image-$kernelver") {
     copy("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
 } else {
     xdie "couldn't find the kernel file matched $kernelver in $rootimg_dir/boot !";
@@ -676,24 +687,25 @@ if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
 
 #-- run postinstall script
 unless ($imagename) {
-    $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
+    $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
     unless ($postinstall_filename) {
-        $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
+        $postinstall_filename = imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
     }
-} 
+}
 
-if ( $postinstall_filename ) {
+if ($postinstall_filename) {
+
     #print "postinstall_filename=$postinstall_filename\n";
 
-    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level, 
+    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level,
     #because the "uname -r" only returns the version of the kernel in use
-    #create a temporary uname script. for every flag except for -r, it should just call the real 
+    #create a temporary uname script. for every flag except for -r, it should just call the real
     #uname with the same flags and return that info.
-    if(!( -e "$rootimg_dir/bin/orig_uname")) {
+    if (!(-e "$rootimg_dir/bin/orig_uname")) {
         system("mv $rootimg_dir/bin/uname $rootimg_dir/bin/orig_uname");
     }
     my $tmpuname;
-    open($tmpuname,">","$rootimg_dir/bin/uname");
+    open($tmpuname, ">", "$rootimg_dir/bin/uname");
     print $tmpuname <<EOS_UNAME;
 #!/bin/sh
 
@@ -712,13 +724,13 @@ EOS_UNAME
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
-    foreach my $postinstall ( split /,/, $postinstall_filename ) {
-        if ( !-x $postinstall ) {
+    foreach my $postinstall (split /,/, $postinstall_filename) {
+        if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
             exit 1;
         }
-        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
-        if($rc) {
+        my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
+        if ($rc) {
             print "postinstall script $postinstall failed\n";
             exit 1;
         }
@@ -740,68 +752,70 @@ system("rm -rf $rootimg_dir/etc/zypp/repos.d/*");
 if ($tempfile) {
     open(FILE, ">>$tempfile");
     if ($imagename) {
-	if (keys(%updates) > 0) {
-	    print FILE "The output for table updates starts here\n";
-	    print FILE "table::linuximage\n";
-	    print FILE "imagename::$imagename\n";
-	    my @a=%updates;
-	    print FILE join('::',@a) . "\n";
-	    print FILE "The output for table updates ends here\n";
-	}
+        if (keys(%updates) > 0) {
+            print FILE "The output for table updates starts here\n";
+            print FILE "table::linuximage\n";
+            print FILE "imagename::$imagename\n";
+            my @a = %updates;
+            print FILE join('::', @a) . "\n";
+            print FILE "The output for table updates ends here\n";
+        }
     } else {
-	$updates_os{'profile'} = $profile;
-	$updates_os{'imagetype'} = 'linux';
-	$updates_os{'provmethod'} = 'netboot';
-	$updates_os{'osname'} = 'Linux';
-	$updates_os{'osvers'} = $osver;
-	$updates_os{'osdistroname'} = 'sles'; # not used currently
-	$updates_os{'osarch'} = $arch;
-	# update the imagename for stateless 
-	print FILE "The output for table updates starts here\n";
-	print FILE "table::osimage\n";
-	print FILE "imagename::$osver-$arch-netboot-$profile\n";
-	my @a=%updates_os;
-	print FILE join('::',@a) . "\n";
-	print FILE "The output for table updates ends here\n";
-	
-	print FILE "The output for table updates starts here\n";
-	print FILE "table::linuximage\n";
-	print FILE "imagename::$osver-$arch-netboot-$profile\n";
-	my @a=%updates;
-	print FILE join('::',@a) . "\n";
-	print FILE "The output for table updates ends here\n";
-	
-	# update the imagename for statelite   
-	$updates_os{'provmethod'} = 'statelite';
-	print FILE "The output for table updates starts here\n";
-	print FILE "table::osimage\n";
-	print FILE "imagename::$osver-$arch-statelite-$profile\n";
-	my @a=%updates_os;
-	print FILE join('::',@a) . "\n";
-	print FILE "The output for table updates ends here\n";
-	
-	print FILE "The output for table updates starts here\n";
-	print FILE "table::linuximage\n";
-	print FILE "imagename::$osver-$arch-statelite-$profile\n";
-	my @a=%updates;
-	print FILE join('::',@a) . "\n";
-	print FILE "The output for table updates ends here\n";
+        $updates_os{'profile'}      = $profile;
+        $updates_os{'imagetype'}    = 'linux';
+        $updates_os{'provmethod'}   = 'netboot';
+        $updates_os{'osname'}       = 'Linux';
+        $updates_os{'osvers'}       = $osver;
+        $updates_os{'osdistroname'} = 'sles';      # not used currently
+        $updates_os{'osarch'}       = $arch;
+
+        # update the imagename for stateless
+        print FILE "The output for table updates starts here\n";
+        print FILE "table::osimage\n";
+        print FILE "imagename::$osver-$arch-netboot-$profile\n";
+        my @a = %updates_os;
+        print FILE join('::', @a) . "\n";
+        print FILE "The output for table updates ends here\n";
+
+        print FILE "The output for table updates starts here\n";
+        print FILE "table::linuximage\n";
+        print FILE "imagename::$osver-$arch-netboot-$profile\n";
+        my @a = %updates;
+        print FILE join('::', @a) . "\n";
+        print FILE "The output for table updates ends here\n";
+
+        # update the imagename for statelite
+        $updates_os{'provmethod'} = 'statelite';
+        print FILE "The output for table updates starts here\n";
+        print FILE "table::osimage\n";
+        print FILE "imagename::$osver-$arch-statelite-$profile\n";
+        my @a = %updates_os;
+        print FILE join('::', @a) . "\n";
+        print FILE "The output for table updates ends here\n";
+
+        print FILE "The output for table updates starts here\n";
+        print FILE "table::linuximage\n";
+        print FILE "imagename::$osver-$arch-statelite-$profile\n";
+        my @a = %updates;
+        print FILE join('::', @a) . "\n";
+        print FILE "The output for table updates ends here\n";
     }
     close FILE;
 }
+
 #END
 
 
 
-mkpath "$rootimg_dir/.statelite"; # create place for NFS mounts;
-mkpath "$rootimg_dir/.sllocal/localmnt";  # create place for localdisk mount
-mkpath "$rootimg_dir/.sllocal/log";  # create place for localdisk log
+mkpath "$rootimg_dir/.statelite";           # create place for NFS mounts;
+mkpath "$rootimg_dir/.sllocal/localmnt";    # create place for localdisk mount
+mkpath "$rootimg_dir/.sllocal/log";         # create place for localdisk log
 
 mkpath "$rootimg_dir/root/.ssh"; # create place for NFS mounts for ssh; #TODO is necessary?
 
 # this script will get the directories;
 # TODO: it seems it is re-copied in liteimg.pm
-unless( -r "$pathtofiles/../add-on/statelite/rc.statelite") {
+unless (-r "$pathtofiles/../add-on/statelite/rc.statelite") {
     print "Can't find $pathtofiles/../add-on/statelite/rc.statelite!\n";
     exit;
 }
@@ -809,21 +823,21 @@ system("cp $pathtofiles/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d
 system("cp $pathtofiles/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 
 # added dracutmode
-unless ($dracutmode) { #in dracut mode, we delegate all this activity
-    unless (-l "$rootimg_dir/var/lib/dhclient" ) {
+unless ($dracutmode) {    #in dracut mode, we delegate all this activity
+    unless (-l "$rootimg_dir/var/lib/dhclient") {
         mkpath "$rootimg_dir/var/lib/dhclient/";
         system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
     }
 
-    unless (-l "$rootimg_dir/var/lib/dhcp" ) {
+    unless (-l "$rootimg_dir/var/lib/dhcp") {
         mkpath "$rootimg_dir/var/lib/dhcp/";
         system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
     }
- }
+}
 
 
 # the dhcp client information stores in the directory "/var/lib/dhcpcd/"
-unless(-l "$rootimg_dir/var/lib/dhcpcd") {
+unless (-l "$rootimg_dir/var/lib/dhcpcd") {
     mkpath "$rootimg_dir/var/lib/dhcpcd/";
     system("touch $rootimg_dir/var/lib/dhcpcd/dhcpcd-$prinic.info");
 }
@@ -833,8 +847,8 @@ system("cd $rootimg_dir/usr/bin/; ln -s ../../bin/keyctl $rootimg_dir/usr/bin/ke
 
 # which is different from the Redhat family
 
-# some rpms mounts the imageroot/proc on the /proc, need to release it, 
-# otherwise got kernal panic when installing 
+# some rpms mounts the imageroot/proc on the /proc, need to release it,
+# otherwise got kernal panic when installing
 # sometimes, the proc fs is not mounted, so one warning/error message will display,
 # and I add one check point here.
 my $MFD;
@@ -843,7 +857,7 @@ my @lines = <MFD>;
 close MFD;
 
 my $ret = grep m{$rootimg_dir/proc}, @lines;
-if($ret > 0) {
+if ($ret > 0) {
     system("umount -l $rootimg_dir/proc");
 }
 
@@ -853,7 +867,7 @@ my @dd_drivers = &load_dd();
 # Push the drivers into the @ndrivers base on the order
 my @new_order = ();
 foreach my $dd (@dd_drivers) {
-    unless (grep { $_ eq $dd} @ndrivers) {
+    unless (grep { $_ eq $dd } @ndrivers) {
         push @new_order, $dd;
     }
     print "Added driver $dd from driver update disk or driver rpm\n";
@@ -867,39 +881,39 @@ if (@new_order) {
 push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "libata.ko", "scsi_mod.ko", "scsi_dh.ko", "ahci.ko", "megaraid_sas.ko", "sd_mod.ko");
 
 if ($osver_host >= 12) {
-   push @ndrivers, ("ibmvscsi.ko");
-} else { # for sles11 or lower
-   push @ndrivers, ("ibmvscsic.ko", "ata_piix.ko", "pcieport.ko");
+    push @ndrivers, ("ibmvscsi.ko");
+} else {    # for sles11 or lower
+    push @ndrivers, ("ibmvscsic.ko", "ata_piix.ko", "pcieport.ko");
 }
 
 if (-f "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko") {
-     for (@ndrivers) {
-         s/mlx_en/mlx4_en/;
-     }
+    for (@ndrivers) {
+        s/mlx_en/mlx4_en/;
+    }
 }
 
-open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
-my @moddeps = <$moddeps>;
+open($moddeps, "<", "$rootimg_dir/lib/modules/$kernelver/modules.dep");
+my @moddeps   = <$moddeps>;
 my @checkdeps = @ndrivers;
 while (scalar @checkdeps) {
     my $driver = pop @checkdeps;
-    my @lines = grep /\/$driver:/,@moddeps;
+    my @lines = grep /\/$driver:/, @moddeps;
     foreach (@lines) {
         chomp;
         s/.*://;
         s/^\s*//;
-        my @deps = split /\s+/,$_;
+        my @deps = split /\s+/, $_;
         if ($driver =~ /libcrc32c.ko/) {
             push @deps, 'crc32c.ko';
         }
         my $dep;
         foreach $dep (@deps) {
             $dep =~ s/.*\///;
-            unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+            unless (grep { $_ eq $dep } @ndrivers) {    #only add if not added
                 print "Added $dep as an autodetected depedency\n";
             }
-            unshift (@checkdeps,$dep); #recursively check dependencies
-            unshift (@ndrivers,$dep);
+            unshift(@checkdeps, $dep);    #recursively check dependencies
+            unshift(@ndrivers,  $dep);
         }
     }
 }
@@ -908,7 +922,7 @@ close($moddeps);
 #remove the duplicated drivers
 my @fulldrivers;
 foreach my $dn (@ndrivers) {
-    unless (grep {$_ eq $dn} @fulldrivers) {
+    unless (grep { $_ eq $dn } @fulldrivers) {
         push @fulldrivers, $dn;
     }
 }
@@ -921,80 +935,82 @@ if ($dracutmode) {
     mkinitrd_dracut("stateless");
     mkinitrd_dracut("statelite");
 } else {
-    my @drivers; # backup  of @ndrivers
+    my @drivers;    # backup  of @ndrivers
     push @drivers, @ndrivers;
     mkinitrd("statelite");
-    @ndrivers=();
+    @ndrivers = ();
     push @ndrivers, @drivers;
     mkinitrd("stateless");
 }
 
 sub getlibs {
-    my $file = shift;
+    my $file    = shift;
     my $liblist = `chroot $rootimg_dir ldd $file`;
     if ($liblist =~ /not a dynamic executable/) {
         return;
     }
-    my @libs = split/\n/,$liblist;
+    my @libs = split /\n/, $liblist;
     my @return;
     foreach (@libs) {
         unless (/=>/) {
-            (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+            (my $wjnk, my $lib, my $jnk) = split /\s+/, $_, 3;
             $lib =~ s/^\///;
-            $libhash{$lib}=1;
+            $libhash{$lib} = 1;
             next;
         }
-        (my $temp1,my $temp2) = split />/,$_,2;
-        (my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+        (my $temp1, my $temp2) = split />/, $_, 2;
+        (my $whitespace, $temp1, $temp2) = split /\s+/, $temp2, 4;
         unless ($temp1 =~ /\//) {
             next;
         }
         $temp1 =~ s/^\///;
-        $libhash{$temp1}=1;
+        $libhash{$temp1} = 1;
     }
 }
 
 #added dracut
 sub mkinitrd_dracut {
-    my ($mode) = @_; # the mode is for statelite or stateless
+    my ($mode) = @_;    # the mode is for statelite or stateless
 
-    my $dracutmoduledir="$rootimg_dir/usr/share/dracut/modules.d/";
-    if ( (! -d $dracutmoduledir) and (-d "$rootimg_dir/usr/lib/dracut/modules.d/"))
+    my $dracutmoduledir = "$rootimg_dir/usr/share/dracut/modules.d/";
+    if ((!-d $dracutmoduledir) and (-d "$rootimg_dir/usr/lib/dracut/modules.d/"))
     {
-       $dracutmoduledir="$rootimg_dir/usr/lib/dracut/modules.d/";
+        $dracutmoduledir = "$rootimg_dir/usr/lib/dracut/modules.d/";
     }
 
     if ($dracutver >= "033") {
 
-       my $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/syslog/module-setup.sh", $dracutmoduledir."98syslog/");
-       chmod($perm&07777, $dracutmoduledir."98syslog/"."module-setup.sh");
+        my $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
+        cp("$fullpath/$dracutdir/patch/syslog/module-setup.sh", $dracutmoduledir . "98syslog/");
+        chmod($perm & 07777, $dracutmoduledir . "98syslog/" . "module-setup.sh");
 
-       $perm = (stat("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh", $dracutmoduledir."98syslog/");
-       chmod($perm&07777, $dracutmoduledir."98syslog/"."rsyslogd-start.sh");
+        $perm = (stat("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh"))[2];
+        cp("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh", $dracutmoduledir . "98syslog/");
+        chmod($perm & 07777, $dracutmoduledir . "98syslog/" . "rsyslogd-start.sh");
 
-       $perm = (stat("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh", $dracutmoduledir."98syslog/");
-       chmod($perm&07777, $dracutmoduledir."98syslog/"."syslog-genrules.sh");
+        $perm = (stat("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh"))[2];
+        cp("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh", $dracutmoduledir . "98syslog/");
+        chmod($perm & 07777, $dracutmoduledir . "98syslog/" . "syslog-genrules.sh");
 
     }
 
-    my $dracutmpath = $dracutmoduledir."97xcat/";
+    my $dracutmpath = $dracutmoduledir . "97xcat/";
     mkpath($dracutmpath);
 
     my $perm = (stat("$fullpath/$dracutdir/check"))[2];
     cp("$fullpath/$dracutdir/check", $dracutmpath);
-    chmod($perm&07777, "$dracutmpath/check");
+    chmod($perm & 07777, "$dracutmpath/check");
 
     foreach (@ndrivers) { s/\.ko$//; }
+
     # Add drivers to support local disk
     push @ndrivers, "ext3";
     push @ndrivers, "ext4";
+
     #remove the duplicated drivers
     my @fulldrivers;
     foreach my $dn (@ndrivers) {
-        unless (grep {$_ eq $dn} @fulldrivers) {
+        unless (grep { $_ eq $dn } @fulldrivers) {
             push @fulldrivers, $dn;
         }
     }
@@ -1004,68 +1020,69 @@ sub mkinitrd_dracut {
     print "Try to load drivers: $add_drivers to initrd.\n";
     my $DRACUTCONF;
 
-     if ($mode eq "statelite") {
+    if ($mode eq "statelite") {
+
         # for statelite
-        cp("$fullpath/$dracutdir/install.statelite","$dracutmpath/install");
+        cp("$fullpath/$dracutdir/install.statelite", "$dracutmpath/install");
         $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
-        chmod($perm&07777, "$dracutmpath/install");
+        chmod($perm & 07777, "$dracutmpath/install");
 
-        cp("$installroot/postscripts/updateflag.awk","$dracutmpath/xcat-updateflag");
+        cp("$installroot/postscripts/updateflag.awk", "$dracutmpath/xcat-updateflag");
         $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
-        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+        chmod($perm & 07777, "$dracutmpath/xcat-updateflag");
 
-        cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
+        cp("$fullpath/$dracutdir/xcat-prepivot.sh", $dracutmpath);
         $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
-        chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
+        chmod($perm & 07777, "$dracutmpath/xcat-prepivot.sh");
 
-        cp("$fullpath/$dracutdir/xcat-premount.sh",$dracutmpath);
+        cp("$fullpath/$dracutdir/xcat-premount.sh", $dracutmpath);
         $perm = (stat("$fullpath/$dracutdir/xcat-premount.sh"))[2];
-        chmod($perm&07777, "$dracutmpath/xcat-premount.sh");
+        chmod($perm & 07777, "$dracutmpath/xcat-premount.sh");
 
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm fadump"\n};
         }
-        else{
+        else {
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm"\n};
         }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         print $DRACUTCONF qq{filesystems+="nfs"\n};
         close $DRACUTCONF;
     } elsif ($mode eq "stateless") {
-        cp("$fullpath/$dracutdir/install.netboot","$dracutmpath/install");
+        cp("$fullpath/$dracutdir/install.netboot", "$dracutmpath/install");
         $perm = (stat("$fullpath/$dracutdir/install.netboot"))[2];
-        chmod($perm&07777, "$dracutmpath/install");
+        chmod($perm & 07777, "$dracutmpath/install");
 
-        cp("$fullpath/$dracutdir/xcat-cmdline.sh","$dracutmpath/");
+        cp("$fullpath/$dracutdir/xcat-cmdline.sh", "$dracutmpath/");
         $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
-        chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
+        chmod($perm & 07777, "$dracutmpath/xcat-cmdline.sh");
 
-        cp("$installroot/postscripts/updateflag.awk","$dracutmpath/xcat-updateflag");
+        cp("$installroot/postscripts/updateflag.awk", "$dracutmpath/xcat-updateflag");
         $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
-        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+        chmod($perm & 07777, "$dracutmpath/xcat-updateflag");
         if ($prinic) {
             my $optspec;
-            open($optspec,'>>',"$dracutmpath/xcat-cmdline.sh");
+            open($optspec, '>>', "$dracutmpath/xcat-cmdline.sh");
             print $optspec "PRINIC=$prinic\n";
             close $optspec;
         }
 
-        cp("$fullpath/$dracutdir/xcatroot","$dracutmpath/");
+        cp("$fullpath/$dracutdir/xcatroot", "$dracutmpath/");
         $perm = (stat("$fullpath/$dracutdir/xcatroot"))[2];
-        chmod($perm&07777, "$dracutmpath/xcatroot");
+        chmod($perm & 07777, "$dracutmpath/xcatroot");
 
         cp("$fullpath/$dracutdir/installkernel", "$dracutmpath/");
         $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
-        chmod($perm&07777, "$dracutmpath/installkernel");
+        chmod($perm & 07777, "$dracutmpath/installkernel");
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+        if (-d glob($dracutmoduledir . "[0-9]*fadump")) {
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm fadump syslog"\n};
         }
-        else{
+        else {
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm syslog"\n};
         }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
@@ -1074,51 +1091,52 @@ sub mkinitrd_dracut {
         xdie "the mode: $mode is not supported by genimage";
     }
 
-    my $additional_options=undef;
-    if($rootlimit)
+    my $additional_options = undef;
+    if ($rootlimit)
     {
-        open(my $ETC_CMDLINE,">","$rootimg_dir/tmp/cmdline");
+        open(my $ETC_CMDLINE, ">", "$rootimg_dir/tmp/cmdline");
         print $ETC_CMDLINE qq{rootlimit=$rootlimit\n};
         close $ETC_CMDLINE;
-        $additional_options= qq{--include /tmp/cmdline /etc/cmdline};
+        $additional_options = qq{--include /tmp/cmdline /etc/cmdline};
     }
-    
+
     # force the dracut run in non-hostonly mode for dracut higher than version 033
     if ($dracutver > "033") {
         $additional_options .= " -N";
     }
 
     #if "pigz" is available in the rootimg, use "pigz" instead of "gzip"
-    my $compress=qx(chroot $rootimg_dir bash -c "type -p pigz"|tr -d "\n");
-    if ($compress){
+    my $compress = qx(chroot $rootimg_dir bash -c "type -p pigz"|tr -d "\n");
+    if ($compress) {
+
         #take the online cpu numerber as the pigz processes number
-        my $processnum=qx(lscpu -p=cpu --online|grep -v '#'|wc -l|tr -d "\n");
+        my $processnum = qx(lscpu -p=cpu --online|grep -v '#'|wc -l|tr -d "\n");
         $additional_options .= " --compress \"$compress -p $processnum \"";
     }
 
     print "\nchroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver\n";
     !system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver")
-        or die("Error: failed to generate the initial ramdisk for $mode.\n");
+      or die("Error: failed to generate the initial ramdisk for $mode.\n");
     print "the initial ramdisk for $mode is generated successfully.\n";
     move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
 }
 
 
 sub mkinitrd {
-    my ($mode) = @_; # statelite or stateless
+    my ($mode) = @_;    # statelite or stateless
 
     if ($mode eq "statelite") {
 
         # additional modules needed on s390x
         push @ndrivers, qw{qdio.ko ccwgroup.ko qeth.ko qeth_l2.ko qeth_l3.ko} if ($arch eq "s390x");
-        
+
         # for nfs
         my @modlist = qw{sunrpc.ko lockd.ko nfs_acl.ko fscache.ko auth_rpcgss.ko exportfs.ko nfsd.ko nfs.ko};
         unshift(@ndrivers, @modlist);
-     }
+    }
 
     mkpath("/tmp/xcatinitrd.$$/bin");
-    symlink("bin","/tmp/xcatinitrd.$$/sbin");
+    symlink("bin", "/tmp/xcatinitrd.$$/sbin");
     mkpath("/tmp/xcatinitrd.$$/usr/bin");
     mkpath("/tmp/xcatinitrd.$$/usr/sbin");
     mkpath("/tmp/xcatinitrd.$$/usr/lib");
@@ -1127,8 +1145,8 @@ sub mkinitrd {
     mkpath("/tmp/xcatinitrd.$$/tmp");
     mkpath("/tmp/xcatinitrd.$$/var/run");
     mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
-    mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
-    mkpath("/tmp/xcatinitrd.$$/lib/power7");#SLES10
+    mkpath("/tmp/xcatinitrd.$$/lib/power6");    #SLES10
+    mkpath("/tmp/xcatinitrd.$$/lib/power7");    #SLES10
     mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
     mkpath("/tmp/xcatinitrd.$$/proc");
     mkpath("/tmp/xcatinitrd.$$/sys");
@@ -1137,11 +1155,11 @@ sub mkinitrd {
     mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
     mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
     my $inifile;
-    open($inifile,">","/tmp/xcatinitrd.$$/init");
+    open($inifile, ">", "/tmp/xcatinitrd.$$/init");
     print $inifile "#!/bin/bash\n";
 
-# copied from genimage for rh
-# add some functions
+    # copied from genimage for rh
+    # add some functions
     print $inifile <<EOS1;
 NEWROOT="/sysroot"
 SHELL="/bin/sh"
@@ -1212,49 +1230,49 @@ echo '
 
 EOS1
 
-   print $inifile "mount -t proc /proc /proc\n";
-   print $inifile "mount -t sysfs /sys /sys\n";
-   print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
-   print $inifile "mkdir /dev/pts\n";
-   print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
-   print $inifile "mkdir /dev/shm\n";
-   print $inifile "mkdir /dev/mapper\n";
+    print $inifile "mount -t proc /proc /proc\n";
+    print $inifile "mount -t sysfs /sys /sys\n";
+    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
+    print $inifile "mkdir /dev/pts\n";
+    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
+    print $inifile "mkdir /dev/shm\n";
+    print $inifile "mkdir /dev/mapper\n";
 
-   print $inifile "mknod /dev/random c 1 8\n";
-   print $inifile "mknod /dev/urandom c 1 9\n";
-   print $inifile "mknod /dev/null c 1 3\n";
-   print $inifile "mknod /dev/zero c 1 5\n";
-   print $inifile "mknod /dev/systty c 4 0\n";
-   print $inifile "mknod /dev/tty c 5 0\n";
-   print $inifile "mknod /dev/console c 5 1\n";
-   print $inifile "mknod /dev/ptmx c 5 2\n";
-   print $inifile "mknod /dev/rtc c 10 135\n";
-   print $inifile "mknod /dev/tty0 c 4 0\n";
-   print $inifile "mknod /dev/tty1 c 4 1\n";
-   print $inifile "mknod /dev/tty2 c 4 2\n";
-   print $inifile "mknod /dev/tty3 c 4 3\n";
-   print $inifile "mknod /dev/tty4 c 4 4\n";
-   print $inifile "mknod /dev/tty5 c 4 5\n";
-   print $inifile "mknod /dev/tty6 c 4 6\n";
-   print $inifile "mknod /dev/tty7 c 4 7\n";
-   print $inifile "mknod /dev/tty8 c 4 8\n";
-   print $inifile "mknod /dev/tty9 c 4 9\n";
-   print $inifile "mknod /dev/tty10 c 4 10\n";
-   print $inifile "mknod /dev/tty11 c 4 11\n";
-   print $inifile "mknod /dev/tty12 c 4 12\n";
-   print $inifile "mknod /dev/ttyS0 c 4 64\n";
-   print $inifile "mknod /dev/ttyS1 c 4 65\n";
-   print $inifile "mknod /dev/ttyS2 c 4 66\n";
-   print $inifile "mknod /dev/ttyS3 c 4 67\n";
+    print $inifile "mknod /dev/random c 1 8\n";
+    print $inifile "mknod /dev/urandom c 1 9\n";
+    print $inifile "mknod /dev/null c 1 3\n";
+    print $inifile "mknod /dev/zero c 1 5\n";
+    print $inifile "mknod /dev/systty c 4 0\n";
+    print $inifile "mknod /dev/tty c 5 0\n";
+    print $inifile "mknod /dev/console c 5 1\n";
+    print $inifile "mknod /dev/ptmx c 5 2\n";
+    print $inifile "mknod /dev/rtc c 10 135\n";
+    print $inifile "mknod /dev/tty0 c 4 0\n";
+    print $inifile "mknod /dev/tty1 c 4 1\n";
+    print $inifile "mknod /dev/tty2 c 4 2\n";
+    print $inifile "mknod /dev/tty3 c 4 3\n";
+    print $inifile "mknod /dev/tty4 c 4 4\n";
+    print $inifile "mknod /dev/tty5 c 4 5\n";
+    print $inifile "mknod /dev/tty6 c 4 6\n";
+    print $inifile "mknod /dev/tty7 c 4 7\n";
+    print $inifile "mknod /dev/tty8 c 4 8\n";
+    print $inifile "mknod /dev/tty9 c 4 9\n";
+    print $inifile "mknod /dev/tty10 c 4 10\n";
+    print $inifile "mknod /dev/tty11 c 4 11\n";
+    print $inifile "mknod /dev/tty12 c 4 12\n";
+    print $inifile "mknod /dev/ttyS0 c 4 64\n";
+    print $inifile "mknod /dev/ttyS1 c 4 65\n";
+    print $inifile "mknod /dev/ttyS2 c 4 66\n";
+    print $inifile "mknod /dev/ttyS3 c 4 67\n";
 
-    # Install modules before starting udev 
+    # Install modules before starting udev
     # because networking modules (qeth/qeth_l2/qeth_l3) are needed
     foreach (@ndrivers) {
         print $inifile "insmod /lib/$_\n";
     }
 
     # Start udev
-	print $inifile <<EOMS;
+    print $inifile <<EOMS;
 
 PATH="\$PATH:/usr/sbin:/sbin"
 export PATH
@@ -1269,14 +1287,14 @@ then
     /sbin/udevadm settle --timeout=10
 fi
 EOMS
-    
-    if($mode eq "statelite") {
+
+    if ($mode eq "statelite") {
         print $inifile "echo debug: before netstart\n";
         print $inifile "# check and see if debug is specified on command line\n";
         print $inifile "grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1\n";
     }
 
-   print $inifile <<EOMS;
+    print $inifile <<EOMS;
 # check the kernel parameters firstly
 # if one parameter for the booting device is here, it will be used
 PRINIC=$prinic
@@ -1564,12 +1582,12 @@ EOMS
 
     # udevd needed by s390x for networking
     # but for other type of machine, udevd will affect the start of devices which detected
-    #  after the chroot, so kill it before the switching root 
+    #  after the chroot, so kill it before the switching root
     if ($arch ne "s390x") {
-       print $inifile "\n    killall -9 udevd\n";
+        print $inifile "\n    killall -9 udevd\n";
     }
 
-    print $inifile <<EOMS;    
+    print $inifile <<EOMS;
     # give the debug shell just before we go if specified!
     grep '\(shell\)' /proc/cmdline > /dev/null && shell
     
@@ -1606,29 +1624,53 @@ if [ -r /rootimg.sfs ]; then
   mount --move /ro /sysroot/ro
   mount --move /rw /sysroot/rw
 EOMS
-   print $inifile "elif [ -r /rootimg.gz ]; then\n";
-   print $inifile "echo Setting up RAM-root tmpfs.\n";
-   if ($rootlimit) {
-      print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
-   } else {
-      print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
-   }
-   print $inifile "  cd /sysroot\n";
-   print $inifile "  echo -n \"Extracting root filesystem:\"\n";
-   print $inifile "  if [ -x /bin/cpio ]; then\n";
-   print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
-   print $inifile "  else\n";
-   print $inifile "  zcat /rootimg.gz |cpio -idum\n";
-   print $inifile "  fi\n";
-   print $inifile "  echo Done\n";
-   print $inifile "else\n";
-   print $inifile "  echo -n Failed to download image, panicing in 5...\n";
-   print $inifile "  for i in 4 3 2 1 0; do\n";
-   print $inifile "    /bin/sleep 1\n";
-   print $inifile "    echo -n \$i...\n";
-   print $inifile "  done\n";
-   print $inifile "  echo\n";
-   print $inifile <<EOMS;
+    print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "echo Setting up RAM-root tmpfs.\n";
+    if ($rootlimit) {
+        print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
+    } else {
+        print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+    }
+    print $inifile "  cd /sysroot\n";
+    print $inifile "  echo -n \"Extracting root filesystem:\"\n";
+    print $inifile "  if [ -r /rootimg.cpio.gz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      zcat /rootimg.cpio.gz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      zcat /rootimg.cpio.gz |cpio -idum\n";
+    print $inifile "    fi\n";
+    print $inifile "  elif [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |cpio -idum\n";
+    print $inifile "    fi\n";
+    print $inifile "  fi\n";
+    print $inifile "  echo Done\n";
+    print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "    echo Setting up RAM-root tmpfs.\n";
+
+    if ($rootlimit) {
+        print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
+    } else {
+        print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+    }
+    print $inifile "    cd \$NEWROOT\n";
+    print $inifile "    echo -n \"Extracting root filesystem:\"\n";
+    print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "    fi\n";
+    print $inifile "    echo Done\n";
+    print $inifile "else\n";
+    print $inifile "  echo -n Failed to download image, panicing in 5...\n";
+    print $inifile "  for i in 4 3 2 1 0; do\n";
+    print $inifile "    /bin/sleep 1\n";
+    print $inifile "    echo -n \$i...\n";
+    print $inifile "  done\n";
+    print $inifile "  echo\n";
+    print $inifile <<EOMS;
 echo "You're dead.  rpower nodename reset to play again.
 
 * Did you packimage with -m cpio or -m squashfs?
@@ -1637,57 +1679,57 @@ echo "You're dead.  rpower nodename reset to play again.
 "
 sleep 5
 EOMS
-   print $inifile "  exit\n";
-   print $inifile "fi\n";
+    print $inifile "  exit\n";
+    print $inifile "fi\n";
 
-   print $inifile "\$NEWROOT/etc/init.d/localdisk\n"; # to run the localdisk
-   # udevd needed by s390x for networking
-   # but for other type of machine, udevd will affect the start of devices which detected
-   #  after the chroot, so kill it before the switching root
-   if ($arch ne "s390x") {
-      print $inifile "killall -9 udevd\n";
-   }
+    print $inifile "\$NEWROOT/etc/init.d/localdisk\n";    # to run the localdisk
+        # udevd needed by s390x for networking
+     # but for other type of machine, udevd will affect the start of devices which detected
+     #  after the chroot, so kill it before the switching root
+    if ($arch ne "s390x") {
+        print $inifile "killall -9 udevd\n";
+    }
 
-   print $inifile "cd /\n";
-   print $inifile "mkdir \$NEWROOT/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
-   print $inifile "cp /var/lib/dhcpcd/* \$NEWROOT/var/lib/dhcpcd/\n";
-   print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/\n";
-   print $inifile "cp /etc/HOSTNAME \$NEWROOT/etc/\n";
-   print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
-   
-   #details, see defect https://sourceforge.net/p/xcat/bugs/4741/
-   if($osver =~ /sles11.4/i){
-      print $inifile "export ROOTFS_BLKDEV=\"\/\"\n";     
-   }
-   
-   print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console \$NEWROOT /sbin/init\n";
-   close($inifile);
-   open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
-   print $inifile "#!/bin/bash \n";
-   if ($osver_host == 10) {
-      print $inifile "dhcpcd \${1}\n";
-   } else { # for sles11 or higher
-      # -p is used to keep the network connection during the shutdown. Used for nfs-based statelite shutdown
-      print $inifile "dhcpcd \${1} -p\n";
-   }
+    print $inifile "cd /\n";
+    print $inifile "mkdir \$NEWROOT/var/lib/dhcpcd/\n"; #neccessary for SLES11, not sure for SLES10
+    print $inifile "cp /var/lib/dhcpcd/* \$NEWROOT/var/lib/dhcpcd/\n";
+    print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/\n";
+    print $inifile "cp /etc/HOSTNAME \$NEWROOT/etc/\n";
+    print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
 
-   #-- Bring other NICs up in /bin/netstart in initrd for NIC failover
-   foreach (split /,/,$othernics) {
-      if (/^$/) { next; }
-      print $inifile "dhcpcd $_\n";
-   }
+    #details, see defect https://sourceforge.net/p/xcat/bugs/4741/
+    if ($osver =~ /sles11.4/i) {
+        print $inifile "export ROOTFS_BLKDEV=\"\/\"\n";
+    }
 
-   print $inifile <<END;
+    print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console \$NEWROOT /sbin/init\n";
+    close($inifile);
+    open($inifile, ">" . "/tmp/xcatinitrd.$$/bin/netstart");
+    print $inifile "#!/bin/bash \n";
+    if ($osver_host == 10) {
+        print $inifile "dhcpcd \${1}\n";
+    } else {    # for sles11 or higher
+         # -p is used to keep the network connection during the shutdown. Used for nfs-based statelite shutdown
+        print $inifile "dhcpcd \${1} -p\n";
+    }
+
+    #-- Bring other NICs up in /bin/netstart in initrd for NIC failover
+    foreach (split /,/, $othernics) {
+        if (/^$/) { next; }
+        print $inifile "dhcpcd $_\n";
+    }
+
+    print $inifile <<END;
 cat /var/lib/dhcpcd/*info | grep HOSTNAME | uniq | awk -F= '{print \$2}'| sed \"s/'//g\" >> /etc/HOSTNAME
 END
 
-   close($inifile);
+    close($inifile);
 
-   #if "nonodestatus" specified,do not update the nodestatus 
-   system("mkdir -p /tmp/xcatinitrd.$$/tmp/");
-   open($inifile, ">","/tmp/xcatinitrd.$$/tmp/updateflag");
+    #if "nonodestatus" specified,do not update the nodestatus
+    system("mkdir -p /tmp/xcatinitrd.$$/tmp/");
+    open($inifile, ">", "/tmp/xcatinitrd.$$/tmp/updateflag");
 
-   print $inifile <<EOMS;
+    print $inifile <<EOMS;
 #!/usr/bin/awk -f
 BEGIN {
 
@@ -1713,119 +1755,121 @@ BEGIN {
 }
 
 EOMS
-      
-   close($inifile);
-   chmod(0755,"/tmp/xcatinitrd.$$/init");
-   chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
-   chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
 
-   @filestoadd=();
-   foreach (@ndrivers) {
-     if (-f "$customdir/$_") {
-         push @filestoadd,[$_,"lib/$_"];
-     } elsif (-f "$pathtofiles/$_") {
-         push @filestoadd,[$_,"lib/$_"];
-     }
-   }
-    if($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear","usr/bin/touch","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed","sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
-            getlibs($_); 
-            push @filestoadd,$_;
-        } 
-        if($osver_host >= 11) {
+    close($inifile);
+    chmod(0755, "/tmp/xcatinitrd.$$/init");
+    chmod(0755, "/tmp/xcatinitrd.$$/bin/netstart");
+    chmod(0755, "/tmp/xcatinitrd.$$/tmp/updateflag");
+
+    @filestoadd = ();
+    foreach (@ndrivers) {
+        if (-f "$customdir/$_") {
+            push @filestoadd, [ $_, "lib/$_" ];
+        } elsif (-f "$pathtofiles/$_") {
+            push @filestoadd, [ $_, "lib/$_" ];
+        }
+    }
+    if ($mode eq "statelite") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "usr/bin/tar") {
+            getlibs($_);
+            push @filestoadd, $_;
+        }
+        if ($osver_host >= 11) {
             foreach ("sbin/mount.nfs", "sbin/umount.nfs", "sbin/udevadm") {
                 getlibs($_);
-                push @filestoadd,$_;
+                push @filestoadd, $_;
             }
         }
-        
-    }else {
-        foreach ("sbin/ifconfig","usr/bin/clear","usr/bin/touch","usr/bin/grep","usr/bin/egrep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc") {
-            getlibs($_); 
-            push @filestoadd,$_;
+
+    } else {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "usr/bin/grep", "usr/bin/egrep", "bin/cpio", "bin/sleep", "bin/mount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "usr/bin/tar") {
+            getlibs($_);
+            push @filestoadd, $_;
         }
-        if($osver_host >= 11) {
+        if ($osver_host >= 11) {
             getlibs("sbin/udevadm");
-            push @filestoadd,"sbin/udevadm";
+            push @filestoadd, "sbin/udevadm";
         }
     }
 
-   if ($arch =~ /64/) {
-      push @filestoadd,"lib64/libnss_dns.so.2";
-      push @filestoadd,"lib64/libnss_files.so.2";
-   }
-   else {
-      push @filestoadd,"lib/libnss_dns.so.2";
-      push @filestoadd,"lib/libnss_files.so.2";
-   }
+    if ($arch =~ /64/) {
+        push @filestoadd, "lib64/libnss_dns.so.2";
+        push @filestoadd, "lib64/libnss_files.so.2";
+    }
+    else {
+        push @filestoadd, "lib/libnss_dns.so.2";
+        push @filestoadd, "lib/libnss_files.so.2";
+    }
 
     # cross-platfrom support on power6&7 etc
     # ldd can't handle such one scenario: mn is power6, the target platform is power7
-   if ($arch =~ /ppc64/) {
-      system("cp -a -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64/");
-   }
+    if ($arch =~ /ppc64/) {
+        system("cp -a -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64/");
+    }
 
 
-   push @filestoadd,keys %libhash;
+    push @filestoadd, keys %libhash;
 
-   find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
-   my $pathonrootimage = "$rootimg_dir/tmpfiles";
-   my $pathinrootimage = "/tmpfiles";
-   mkpath($pathonrootimage);
-   foreach (@filestoadd) {
-      if (ref($_)) {
-         #print "$_->[0], $_->[1]\n";
-         my $srcfile = $_->[0];
-         system("chroot $rootimg_dir cp $srcfile $pathinrootimage");
-         my $srcpath = "$pathonrootimage/".basename($_->[0]);
-         if (-f "$customdir/".$_->[0]) {
-            $srcpath="$customdir/".$_->[0];
-         } elsif (-f "$pathtofiles/".$_->[0]) {
-            $srcpath="$pathtofiles/".$_->[0];
-         }
-         mkpath(dirname("/tmp/xcatinitrd.$$/".$_->[1]));
-         copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
-         chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
-      } else {
-         #print "$_\n";
-         system("chroot $rootimg_dir cp $_ $pathinrootimage");
-         my $srcpath = "$pathonrootimage/".basename($_);
-         if (-f "$customdir/$_") {
-            $srcpath = "$customdir/$_";
-         } elsif (-f "$pathtofiles/$_") {
-            $srcpath = "$pathtofiles/$_";
-         }
-         mkpath(dirname("/tmp/xcatinitrd.$$/$_"));
-         copy("$srcpath","/tmp/xcatinitrd.$$/$_");
-         chmod 0755,"/tmp/xcatinitrd.$$/".$_;
-      }
-   }
-   rmtree($pathonrootimage);
+    find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
+    my $pathonrootimage = "$rootimg_dir/tmpfiles";
+    my $pathinrootimage = "/tmpfiles";
+    mkpath($pathonrootimage);
+    foreach (@filestoadd) {
+        if (ref($_)) {
 
-   #copy conf files needed by nfs mount in sles11.2
-   if($osver_host >= 11)
-   {
-      system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
-      system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
-   }
-   
-   
-   # Copy udev libraries
-   system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
-   system("mkdir -p /tmp/xcatinitrd.$$/lib/firmware");
-   system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
-   system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
-   if ( -d "$rootimg_dir/lib/firmware/" ) {
-       system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
-   }
-   system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
-	
-	# Copy rules for network adapter
-	#my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
-	#my $nic = '';
-	#if ($name =~ m/(\d+\.\d+\.\d+)/g) {
-	#	$nic = $&;
-	#}
+            #print "$_->[0], $_->[1]\n";
+            my $srcfile = $_->[0];
+            system("chroot $rootimg_dir cp $srcfile $pathinrootimage");
+            my $srcpath = "$pathonrootimage/" . basename($_->[0]);
+            if (-f "$customdir/" . $_->[0]) {
+                $srcpath = "$customdir/" . $_->[0];
+            } elsif (-f "$pathtofiles/" . $_->[0]) {
+                $srcpath = "$pathtofiles/" . $_->[0];
+            }
+            mkpath(dirname("/tmp/xcatinitrd.$$/" . $_->[1]));
+            copy($srcpath, "/tmp/xcatinitrd.$$/" . $_->[1]);
+            chmod 0755, "/tmp/xcatinitrd.$$/" . $_->[1];
+        } else {
+
+            #print "$_\n";
+            system("chroot $rootimg_dir cp $_ $pathinrootimage");
+            my $srcpath = "$pathonrootimage/" . basename($_);
+            if (-f "$customdir/$_") {
+                $srcpath = "$customdir/$_";
+            } elsif (-f "$pathtofiles/$_") {
+                $srcpath = "$pathtofiles/$_";
+            }
+            mkpath(dirname("/tmp/xcatinitrd.$$/$_"));
+            copy("$srcpath", "/tmp/xcatinitrd.$$/$_");
+            chmod 0755, "/tmp/xcatinitrd.$$/" . $_;
+        }
+    }
+    rmtree($pathonrootimage);
+
+    #copy conf files needed by nfs mount in sles11.2
+    if ($osver_host >= 11)
+    {
+        system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
+        system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
+    }
+
+
+    # Copy udev libraries
+    system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+    system("mkdir -p /tmp/xcatinitrd.$$/lib/firmware");
+    system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+    system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
+    if (-d "$rootimg_dir/lib/firmware/") {
+        system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+    }
+    system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
+
+    # Copy rules for network adapter
+    #my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
+    #my $nic = '';
+    #if ($name =~ m/(\d+\.\d+\.\d+)/g) {
+    #	$nic = $&;
+    #}
 
     # Somehow checking for *$nic.rules does not work
     #if ( -f "/etc/udev/rules.d/*$nic.rules" ) {
@@ -1834,12 +1878,12 @@ EOMS
     #if ( -f "/etc/udev/rules.d/*persistent-net.rules" ) {
     #	    system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
     #}
-	
-   system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
-   system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
 
-   #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-   system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh");	#neccessary for SLES11
+    system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+    system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+
+    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
+    system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh"); #neccessary for SLES11
     if ($mode eq "statelite") {
         system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-statelite.gz");
         print "The initial ramdisk for statelite has been generated successfully!\n";
@@ -1847,41 +1891,41 @@ EOMS
         system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-stateless.gz");
         print "The initial ramdisk for stateless has been generated successfully!\n";
     }
-   system("rm -rf /tmp/xcatinitrd.$$");
+    system("rm -rf /tmp/xcatinitrd.$$");
 
 }
 
 sub isyumdir {
-   if ($File::Find::name =~ /\/repodata$/) {
-      my $location = $File::Find::name;
-      $location =~ s/\/repodata$//;
-      push @yumdirs,$location;
-   }
+    if ($File::Find::name =~ /\/repodata$/) {
+        my $location = $File::Find::name;
+        $location =~ s/\/repodata$//;
+        push @yumdirs, $location;
+    }
 }
 
 sub isnetdriver {
-   foreach (@ndrivers) {
-      if ($File::Find::name =~ /\/$_/) {
-         my $filetoadd = $File::Find::name;
-         $filetoadd =~ s!$rootimg_dir!!;
-         push @filestoadd,[$filetoadd,"lib/$_"];
-         print "Added driver $_ to initrd\n";
-      }
-   }
+    foreach (@ndrivers) {
+        if ($File::Find::name =~ /\/$_/) {
+            my $filetoadd = $File::Find::name;
+            $filetoadd =~ s!$rootimg_dir!!;
+            push @filestoadd, [ $filetoadd, "lib/$_" ];
+            print "Added driver $_ to initrd\n";
+        }
+    }
 }
-      	
 
 
 
 
 
 
-sub postscripts { # TODO: customized postscripts
+
+sub postscripts {    # TODO: customized postscripts
     generic_post();
-    unless( -d "$rootimg_dir/opt/xcat/") {
+    unless (-d "$rootimg_dir/opt/xcat/") {
         mkdir "$rootimg_dir/opt/xcat/";
     }
-    copy ("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/"); #TODO: it is not used in stateless
+    copy("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/"); #TODO: it is not used in stateless
     chmod '0755', "$rootimg_dir/opt/xcat/xcatdsklspost";
 }
 
@@ -1891,7 +1935,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
     #modify /etc/sysconfig/clock in the image:HWCLOCK="--local", TIMEZONE=site:timezone
     if ($timezone) {
         if (-e "$rootimg_dir/etc/sysconfig/clock") {
-           system("sed  -i '".'s!\(TIMEZONE=\).*!\1'."\"$timezone\"!"."' $rootimg_dir/etc/sysconfig/clock");
+            system("sed  -i '" . 's!\(TIMEZONE=\).*!\1' . "\"$timezone\"!" . "' $rootimg_dir/etc/sysconfig/clock");
         }
         system("chroot $rootimg_dir zic -l $timezone");
     }
@@ -1902,7 +1946,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
-    open($cfgfile,">","$rootimg_dir/etc/fstab");
+    open($cfgfile, ">", "$rootimg_dir/etc/fstab");
     print $cfgfile "devpts  /dev/pts devpts   gid=5,mode=620 0 0\n";
     print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
     print $cfgfile "proc    /proc    proc     defaults       0 0\n";
@@ -1915,47 +1959,48 @@ sub generic_post { # This function is meant to leave the image in a state approx
         print $cfgfile "tmpfs   /var/tmp    tmpfs   defaults,size=10m   0 2\n";
     }
 
-    my $rootfs_name = $profile."_".$arch;
+    my $rootfs_name = $profile . "_" . $arch;
     print $cfgfile "$rootfs_name    /   tmpfs   rw  0 1\n";
 
     close($cfgfile);
 
-    open($cfgfile,">","$rootimg_dir/etc/sysconfig/network");
+    open($cfgfile, ">", "$rootimg_dir/etc/sysconfig/network");
     print $cfgfile "NETWORKING=yes\n";
     close($cfgfile);
 
-    open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
+    open($cfgfile, ">", "$rootimg_dir/etc/resolv.conf");
     print $cfgfile "#Dummy resolv.conf to make boot cleaner";
     close($cfgfile);
+
     # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
     # to skip the break of nfs-based boot
     if ($prinic) {
-      open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$prinic");
-      print $cfgfile "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\nSTARTMODE=auto\n";
-      close($cfgfile);
+        open($cfgfile, ">", "$rootimg_dir/etc/sysconfig/network/ifcfg-$prinic");
+        print $cfgfile "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\nSTARTMODE=auto\n";
+        close($cfgfile);
     }
 
-    foreach (split /,/,$othernics) {
+    foreach (split /,/, $othernics) {
         next if (/^$/);
-        open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$_");
+        open($cfgfile, ">", "$rootimg_dir/etc/sysconfig/network/ifcfg-$_");
         print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\nSTARTMODE=auto\n";
         close($cfgfile);
     }
-   
+
     # securetty not needed on s390x
     if ($arch ne "s390x") {
-        open( $cfgfile, ">>", "$rootimg_dir/etc/securetty" );
+        open($cfgfile, ">>", "$rootimg_dir/etc/securetty");
         print $cfgfile "ttyS0\n";
         print $cfgfile "ttyS1\n";
         print $cfgfile "console\n";
         close($cfgfile);
     }
-   
+
     my @passwd;
-    open($cfgfile,"<","$rootimg_dir/etc/passwd");
+    open($cfgfile, "<", "$rootimg_dir/etc/passwd");
     @passwd = <$cfgfile>;
     close($cfgfile);
-    open($cfgfile,">","$rootimg_dir/etc/passwd");
+    open($cfgfile, ">", "$rootimg_dir/etc/passwd");
     foreach (@passwd) {
         if (/^root:/) {
             s/^root:\*/root:x/;
@@ -1965,48 +2010,48 @@ sub generic_post { # This function is meant to leave the image in a state approx
     close($cfgfile);
     foreach (<$rootimg_dir/etc/skel/.*>) {
         next if (basename($_) eq '.' or basename($_) eq '..');
-        copy $_,"$rootimg_dir/root/";
+        copy $_, "$rootimg_dir/root/";
     }
-   
-	# gettyset is not found on s390x
-	if ($arch ne "s390x") {
-		open( $cfgfile, ">", "$rootimg_dir/etc/init.d/gettyset" );
-		print $cfgfile "#!/bin/bash\n";
-		print $cfgfile "### BEGIN INIT INFO\n";
-		print $cfgfile "# Provides: gettyset\n";
-		print $cfgfile "# Required-Start: sshd\n";
-		print $cfgfile "# Required-Stop:\n";
-		print $cfgfile "# Default-Start: 3\n";
-		print $cfgfile "# Default-Stop: 0 1 2 6\n";
-		print $cfgfile "# Short-Description: gettyset\n";
-		print $cfgfile "# Description:\n";
-		print $cfgfile "### END INIT INFO\n";
-		print $cfgfile "VERS=`grep VERSION /etc/SuSE-release`\n";
-		print $cfgfile "if [ -n \"\$VERS\" ]; then\n";
-		print $cfgfile "  VERNUM=`echo \$VERS|awk -F= \'{print \$2}\'|sed -e \'s/ //g\'`\n";
-		print $cfgfile "fi\n";
-		print $cfgfile "if [ \"\$VERNUM\" -gt 10 ]; then\n";
-		print $cfgfile "  exit\n";
-		print $cfgfile "fi\n";
-		print $cfgfile "\n";
-		print $cfgfile "for i in `cat /proc/cmdline`; do\n";
-		print $cfgfile '  KEY=`echo $i|cut -d= -f 1`' . "\n";
-		print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
-		print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n";
-		print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
-		print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
-		print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
-		print $cfgfile "        FLOWFLAG=\"-h\"\n";
-		print $cfgfile "     fi\n";
-		print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-		print $cfgfile "     init q\n";
-		print $cfgfile "  fi\n";
-		print $cfgfile "done\n";
-		print $cfgfile "/etc/init.d/boot.localnet start\n";
-	
-		close($cfgfile);
-		chmod( 0755, "$rootimg_dir/etc/init.d/gettyset" );
-	}
+
+    # gettyset is not found on s390x
+    if ($arch ne "s390x") {
+        open($cfgfile, ">", "$rootimg_dir/etc/init.d/gettyset");
+        print $cfgfile "#!/bin/bash\n";
+        print $cfgfile "### BEGIN INIT INFO\n";
+        print $cfgfile "# Provides: gettyset\n";
+        print $cfgfile "# Required-Start: sshd\n";
+        print $cfgfile "# Required-Stop:\n";
+        print $cfgfile "# Default-Start: 3\n";
+        print $cfgfile "# Default-Stop: 0 1 2 6\n";
+        print $cfgfile "# Short-Description: gettyset\n";
+        print $cfgfile "# Description:\n";
+        print $cfgfile "### END INIT INFO\n";
+        print $cfgfile "VERS=`grep VERSION /etc/SuSE-release`\n";
+        print $cfgfile "if [ -n \"\$VERS\" ]; then\n";
+        print $cfgfile "  VERNUM=`echo \$VERS|awk -F= \'{print \$2}\'|sed -e \'s/ //g\'`\n";
+        print $cfgfile "fi\n";
+        print $cfgfile "if [ \"\$VERNUM\" -gt 10 ]; then\n";
+        print $cfgfile "  exit\n";
+        print $cfgfile "fi\n";
+        print $cfgfile "\n";
+        print $cfgfile "for i in `cat /proc/cmdline`; do\n";
+        print $cfgfile '  KEY=`echo $i|cut -d= -f 1`' . "\n";
+        print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
+        print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n";
+        print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+        print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+        print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+        print $cfgfile "        FLOWFLAG=\"-h\"\n";
+        print $cfgfile "     fi\n";
+        print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+        print $cfgfile "     init q\n";
+        print $cfgfile "  fi\n";
+        print $cfgfile "done\n";
+        print $cfgfile "/etc/init.d/boot.localnet start\n";
+
+        close($cfgfile);
+        chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
+    }
 
     copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
     chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
@@ -2023,7 +2068,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     foreach my $service (@services) {
         my $cmd = "chroot $rootimg_dir ";
-        if (-r "$rootimg_dir/etc/init.d/$service" ) {
+        if (-r "$rootimg_dir/etc/init.d/$service") {
             $cmd = $cmd . "insserv -f $service";
             system("$cmd");
         }
@@ -2039,12 +2084,12 @@ sub generic_post { # This function is meant to leave the image in a state approx
     if (-r '$rootimg_dir/etc/init.d/.depend.start') {
         my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
         if ($rc) {
-            system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $rootimg_dir/etc/init.d/.depend.start");
+            system("sed -i '" . 's/^\(TARGETS = .*\)$/\1 sshd/' . "' $rootimg_dir/etc/init.d/.depend.start");
             system("ln -s ../sshd $rootimg_dir/etc/init.d/rc3.d/S20sshd");
         }
         my $rc = system("grep gettyset $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
         if ($rc) {
-            system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $rootimg_dir/etc/init.d/.depend.start");
+            system("sed -i '" . 's/^\(TARGETS = .*\)$/\1 gettyset/' . "' $rootimg_dir/etc/init.d/.depend.start");
             system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
         }
     }
@@ -2053,6 +2098,7 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
 my $driver_name;
 my $real_path;
+
 sub get_path ()
 {
     if ($File::Find::name =~ /\/$driver_name/) {
@@ -2061,6 +2107,7 @@ sub get_path ()
 }
 
 my @all_real_path;
+
 sub get_all_path ()
 {
     if ($File::Find::name =~ /\/$driver_name/) {
@@ -2073,10 +2120,10 @@ sub get_all_path ()
 # The valid value: dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm, if missing the tag: 'dud'/'rpm'
 # the 'rpm' is default.
 #
-# If cannot find the driver disk from osimage.driverupdatesrc, will try to search driver disk 
+# If cannot find the driver disk from osimage.driverupdatesrc, will try to search driver disk
 # from /install/driverdisk/<os>/<arch>
 #
-# For driver rpm, the driver list will be gotten from osimage.netdrivers. If not set, copy all the drivers from driver 
+# For driver rpm, the driver list will be gotten from osimage.netdrivers. If not set, copy all the drivers from driver
 # rpm to the initrd.
 #
 # Return the driver names by loading order
@@ -2103,7 +2150,8 @@ sub load_dd()
             }
         }
     }
-    if (! @dd_list) {
+    if (!@dd_list) {
+
         # get Driver update disk from the default path if not specified in osimage
         # check the Driver Update Disk images, it can be .img or .iso
         if (-d "$installroot/driverdisk/$osver/$arch") {
@@ -2111,13 +2159,13 @@ sub load_dd()
         }
     }
 
-    foreach (split /,/,$netdriver) { 
+    foreach (split /,/, $netdriver) {
         if (/^allupdate$/) {
             $Injectalldriver = 1;
             next;
         }
         unless (/\.ko$/) {
-	    s/$/.ko/;
+            s/$/.ko/;
         }
         push @driver_list, $_;
     }
@@ -2135,19 +2183,19 @@ sub load_dd()
     mkpath "$dd_dir/mods";
 
     my @dd_drivers = ();    #driver names
-    
+
     # Load drivers from each Driver Disk
     # For multiple dd, if want to make it has order, rename the dd with a number
     # ahead of the name like 0_xx, 1_xx
     foreach my $dd (sort(@dd_list)) {
-        my $rc = system ("mount -o loop $dd $dd_dir/mnt");
+        my $rc = system("mount -o loop $dd $dd_dir/mnt");
         if ($rc) {
             print "mount the Driver Disk $dd failed.\n";
             next;
         }
-    
+
         mkpath "$dd_dir/full";
-        
+
         # Copy out the drivers
         opendir(DIR, "$dd_dir/mnt") || die "Cannot open dir $dd_dir/mnt";
         while (my $dir = readdir(DIR)) {
@@ -2155,21 +2203,21 @@ sub load_dd()
 
             # Every driver update disk can have multiple directories, each directory
             # has the directory format like /linux/[distribution]/[architechture]-[version]/
-            # If the directory name is numeric, then it will be used as order to load the  
+            # If the directory name is numeric, then it will be used as order to load the
             # the dirviers inside.
-            # For the directory name which is not numeric, copy them to directory 0. It will be 
+            # For the directory name which is not numeric, copy them to directory 0. It will be
             # loaled first.
-            if ($dir !~ /^\d*$/) {  
+            if ($dir !~ /^\d*$/) {
                 mkpath "$dd_dir/full/0";
-                system ("cp -rf $dd_dir/mnt/$dir $dd_dir/full/0");
+                system("cp -rf $dd_dir/mnt/$dir $dd_dir/full/0");
             } else {
-                system ("cp -rf $dd_dir/mnt/$dir $dd_dir/full/");
+                system("cp -rf $dd_dir/mnt/$dir $dd_dir/full/");
             }
         }
         closedir(DIR);
-    
+
         # Get all the kernel modules base on the order of directory name.
-        
+
         # The structure of dd: <order>/linux/[distribution]/[architechture]-[version]/
 
         # The supported arch: i386, ia64, ppc, ppc64, s390, s390x sparc or x86_64.
@@ -2177,26 +2225,26 @@ sub load_dd()
         if ($darch =~ /^x86$/) {
             $darch = "i386";
         }
-        
+
         # If the version is os version. If the os is "sles11.1", the possible os version
         # could be "sles11.1", "11.1", "11", "sles11"
-        my @distro = ($osver);
+        my @distro  = ($osver);
         my $distro1 = $osver;
         $distro1 =~ s/[^\d]*//;
-        push @distro,$distro1;
+        push @distro, $distro1;
         my $distro2 = $distro1;
         $distro2 =~ s/\..*//;
-        push @distro,$distro2;
+        push @distro, $distro2;
         my $distro3 = $osver;
         $distro3 =~ s/\..*//;
-        push @distro,$distro3;
+        push @distro, $distro3;
 
-        opendir (FDIR, "$dd_dir/full") || die "Cannot open dir $dd_dir/full";
+        opendir(FDIR, "$dd_dir/full") || die "Cannot open dir $dd_dir/full";
         my @fulldir = readdir(FDIR);
-        closedir (FDIR);
+        closedir(FDIR);
 
         # Create the directory for drivers from driver disk
-        if (! -d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk") {
+        if (!-d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk") {
             mkpath "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk";
         }
 
@@ -2209,48 +2257,48 @@ sub load_dd()
                     $vdir = "$dd_dir/full/$dir/linux/suse/$darch-$_";
                 }
             }
-            if (! $vdir) { next; }
+            if (!$vdir) { next; }
 
             # Use the module_order if it has
             if (-f "$vdir/modules/module.order") {
                 open(ORDER, "<", "$vdir/modules/module.order");
                 while (my $file = <ORDER>) {
-                    chomp ($file);
+                    chomp($file);
                     if (-f "$vdir/modules/$file") {
                         $driver_name = $file;
-                        $real_path = "";
+                        $real_path   = "";
                         find(\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
                         if ($real_path eq "") {
-                            system ("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+                            system("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
                         } else {
-                            system ("cp $vdir/modules/$file $real_path");
+                            system("cp $vdir/modules/$file $real_path");
                         }
-                        
+
                         push @dd_drivers, $file;
                     }
                 }
             } else {
-                opendir (MDIR, "$vdir/modules") || die "Cannot open dir $vdir/modules";
+                opendir(MDIR, "$vdir/modules") || die "Cannot open dir $vdir/modules";
                 while (my $file = readdir(MDIR)) {
                     if (-f "$vdir/modules/$file" && $file =~ /\.ko/) {
                         $driver_name = $file;
-                        $real_path = "";
+                        $real_path   = "";
                         find(\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
                         if ($real_path eq "") {
-                            system ("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+                            system("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
                         } else {
-                            system ("cp $vdir/modules/$file $real_path");
+                            system("cp $vdir/modules/$file $real_path");
                         }
-                        
+
                         push @dd_drivers, $file;
                     }
                 }
             }
         }
-    
+
         rmtree "$dd_dir/full";
-    
-        my $rc = system ("umount -f $dd_dir/mnt");
+
+        my $rc = system("umount -f $dd_dir/mnt");
         if ($rc) {
             print "umount the directory $dd_dir/mnt failed\n";
             exit 1;
@@ -2259,11 +2307,12 @@ sub load_dd()
 
     # Loading the drivers from rpm packages
     if (@rpm_list && ($Injectalldriver || @driver_list)) {
+
         # Extract the files from rpm to the tmp dir
         mkpath "$dd_dir/rpm";
         foreach my $rpm (@rpm_list) {
             if (-r $rpm) {
-                if (system ("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
+                if (system("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
                     print "Error: Cannot extract the files from the rpm $rpm.\n";
                 }
             } else {
@@ -2273,13 +2322,13 @@ sub load_dd()
 
         # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
         # Change it back to xxx.ko here
-        $driver_name = "\*ko.new";
+        $driver_name   = "\*ko.new";
         @all_real_path = ();
         find(\&get_all_path, <$dd_dir/rpm/*>);
         foreach my $file (@all_real_path) {
             my $newname = $file;
             $newname =~ s/\.new$//;
-            if (system ("mv -f $file $newname")) {
+            if (system("mv -f $file $newname")) {
                 print "Error: Could not rename $file\n";
 
             }
@@ -2287,7 +2336,7 @@ sub load_dd()
 
         # Copy the firmware to the rootimage
         if (-d "$dd_dir/rpm/lib/firmware") {
-            system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
+            system("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
         }
 
         # if $ignorekernelchk is specified, copy all driver files to target kernel dir
@@ -2297,73 +2346,77 @@ sub load_dd()
                 if ($path eq "$dd_dir/rpm/lib/modules/$kernelver") {
                     next;
                 }
-                
+
                 unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                     mkpath "$dd_dir/rpm/lib/modules/$kernelver";
                 }
-                system ("/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver");
+                system("/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver");
             }
         }
-        
+
         # Copy the drivers to the rootimage
         if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
-          #mkpath "$rootimg_dir/lib/modules/$kernelver/updates/";
-          if (@driver_list) {
-            foreach my $driver (@driver_list) {
-              $driver_name = $driver;
-              $real_path = "";
-              find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-              if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
-                  # remove the old one if existing
-                  @all_real_path = ();
-                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
-                  foreach (@all_real_path) {
-                      if (-r $_) {
-                          unlink ($_);
-                      }
-                  }
-                  
-                  if (! -d "$rootimg_dir$1") {
-                      mkpath "$rootimg_dir$1";
-                  }
-                  system ("cp -rf $real_path $rootimg_dir$1");
-                  push @rpm_drivers, $driver;
-              } else {
-                  print "Warning: cannot find the driver $driver from the driver rpms\n";
-              }
+
+            #mkpath "$rootimg_dir/lib/modules/$kernelver/updates/";
+            if (@driver_list) {
+                foreach my $driver (@driver_list) {
+                    $driver_name = $driver;
+                    $real_path   = "";
+                    find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                    if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+
+                        # remove the old one if existing
+                        @all_real_path = ();
+                        find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                        foreach (@all_real_path) {
+                            if (-r $_) {
+                                unlink($_);
+                            }
+                        }
+
+                        if (!-d "$rootimg_dir$1") {
+                            mkpath "$rootimg_dir$1";
+                        }
+                        system("cp -rf $real_path $rootimg_dir$1");
+                        push @rpm_drivers, $driver;
+                    } else {
+                        print "Warning: cannot find the driver $driver from the driver rpms\n";
+                    }
+                }
+            } elsif ($Injectalldriver) {
+
+                # copy all the drviers to the rootimage
+                $driver_name   = "\*\.ko";
+                @all_real_path = ();
+                find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                my @all_drivers = @all_real_path;
+                foreach my $new_driver (@all_drivers) {
+                    if (basename($new_driver) =~ /\.ko$/) {
+
+                        # remove the old one if existing
+                        $driver_name   = basename($new_driver);
+                        @all_real_path = ();
+                        find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                        foreach my $old_driver (@all_real_path) {
+                            if (-r $old_driver) {
+                                unlink($old_driver);
+                            }
+                        }
+                        push @rpm_drivers, basename($new_driver);
+                    }
+                }
+
+                system("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
             }
-          } elsif ($Injectalldriver) {
-            # copy all the drviers to the rootimage
-            $driver_name = "\*\.ko";
-            @all_real_path = ();
-            find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-            my @all_drivers = @all_real_path;
-            foreach my $new_driver (@all_drivers) {
-              if (basename($new_driver) =~ /\.ko$/) {
-                  # remove the old one if existing
-                  $driver_name = basename($new_driver);
-                  @all_real_path = ();
-                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
-                  foreach my $old_driver (@all_real_path) {
-                      if (-r $old_driver) {
-                          unlink ($old_driver);
-                      }
-                  }
-                  push @rpm_drivers, basename($new_driver);
-              }
-            }
-            
-            system ("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
-          }
         } else {
-          print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
+            print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
         }
 
         push @dd_drivers, @rpm_drivers;
     }
-    
+
     # Generate the dependency relationship
-    system ("chroot '$rootimg_dir' depmod $kernelver");
+    system("chroot '$rootimg_dir' depmod $kernelver");
 
     # Clean the env
     rmtree "$dd_dir";
@@ -2372,7 +2425,7 @@ sub load_dd()
 }
 
 sub usage {
-    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [--permission <permission>] [--interactive]'."\n";
+    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [--permission <permission>] [--interactive]' . "\n";
     print "       --permission is used for statelite only\n";
     print "Examples:\n";
     print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
@@ -2381,3 +2434,4 @@ sub usage {
     print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
     return 0;
 }
+

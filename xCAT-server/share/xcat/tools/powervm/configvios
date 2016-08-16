@@ -1,13 +1,14 @@
 #!/usr/bin/perl -lw
 package VIOSObj;
+
 sub new
 {
     my $type = shift;
     my %parm = @_;
     my $this = {};
-    $this->{'key'} = $parm{'key'};    
-    $this->{'conf'} = {};
-    $this->{'conf_file'} = $parm{'conf_file'}; 
+    $this->{'key'}       = $parm{'key'};
+    $this->{'conf'}      = {};
+    $this->{'conf_file'} = $parm{'conf_file'};
     return bless $this, $type;
 }
 
@@ -15,43 +16,44 @@ sub parse_conf
 {
     my $this = shift;
     my $file = $this->{'conf_file'};
-    if(!open (FILE, $file))
+    if (!open(FILE, $file))
     {
-       # die("Open file $file failed!\n");
-       chomp(my $date = `/bin/date`);
-       my $msg = "$date configvios: Open file $file failed!\n";
-       `logger -t xcat -p local4.err $msg`;
-       return;
+        # die("Open file $file failed!\n");
+        chomp(my $date = `/bin/date`);
+        my $msg = "$date configvios: Open file $file failed!\n";
+        `logger -t xcat -p local4.err $msg`;
+        return;
     }
-    my $key = $this->{'key'};
-    my $conf = undef;
+    my $key      = $this->{'key'};
+    my $conf     = undef;
     my $category = undef;
     while (<FILE>)
     {
         my $line = $_;
         chomp($line);
         $line =~ s/[ \n\t\r\f]//g;
-        next if($line =~ /^\s*#/ || /^\s*$/);
-        if($line =~ /^\[(.+)\]$/)
+        next if ($line =~ /^\s*#/ || /^\s*$/);
+        if ($line =~ /^\[(.+)\]$/)
         {
-            last if($category);
-            if($1 eq $key)
+            last if ($category);
+            if ($1 eq $key)
             {
-                $conf = \%{$this->{'conf'}};
+                $conf     = \%{ $this->{'conf'} };
                 $category = $1;
             }
             next;
         }
-        next if(!$category);
-  
+        next if (!$category);
+
         my @item = split('=', $line);
-        if($#item == 1)
+        if ($#item == 1)
         {
-            %{$conf} = (%{$conf}, $item[0]=>$item[1]);
+            %{$conf} = (%{$conf}, $item[0] => $item[1]);
         }
         else
         {
-            close (FILE);
+            close(FILE);
+
             #die("Invalid line $line!\n");
             chomp(my $date = `/bin/date`);
             my $msg = "$date configvios: Invaild line $line!\n";
@@ -59,13 +61,14 @@ sub parse_conf
             return;
         }
     }
-    if(!$conf)
+    if (!$conf)
     {
-        close (FILE);
+        close(FILE);
+
         #die("Can not found related configuration for $key in file $file\n");
         chomp(my $date = `/bin/date`);
         my $msg = "$date configvios: Can't found related configuration for $key in file $file\n";
-       `logger -t xcat -p local4.err $msg`;
+        `logger -t xcat -p local4.err $msg`;
         return;
     }
 }
@@ -73,7 +76,7 @@ sub parse_conf
 sub run_cmd
 {
     my $this = shift;
-    my $cmd = shift;
+    my $cmd  = shift;
     print "command is: $cmd\n";
     `su - padmin " -c ioscli license -accept; $cmd"`;
     my $result = $?;
@@ -84,191 +87,195 @@ sub config
 {
     my $this = shift;
     $this->parse_conf();
-    my $cmd = $this->get_cmd();
+    my $cmd    = $this->get_cmd();
     my $result = $this->run_cmd($cmd);
 }
 
 package VIOSEth;
 our @ISA = (VIOSObj);
+
 sub get_cmd
 {
-    my $this = shift;
-    my $cmd = undef;
-    my %config = %{$this->{'conf'}};
-    my $cnt = 0;
-    my @conf = ();
+    my $this   = shift;
+    my $cmd    = undef;
+    my %config = %{ $this->{'conf'} };
+    my $cnt    = 0;
+    my @conf   = ();
     print "Create and configure SEAs...";
-    while( my ($key,$value) = each %config )
+    while (my ($key, $value) = each %config)
     {
-        @conf = ($key,split(',',$value));
-        if($#conf != 9)
+        @conf = ($key, split(',', $value));
+        if ($#conf != 9)
         {
-           # print "Invalid configuration item $key,$value!\n";
-           chomp(my $date = `/bin/date`);
-           my $msg = "$date configvios: Invalid configuration item $key=$value!\n";
-           `logger -t xcat -p local4.warning $msg`;
-           next;
+            # print "Invalid configuration item $key,$value!\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key=$value!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
         }
-        $cmd = $cnt > 0 ? $cmd.' && ioscli mkvdev' : 'ioscli mkvdev';
+        $cmd = $cnt > 0 ? $cmd . ' && ioscli mkvdev' : 'ioscli mkvdev';
         $cnt++;
-        $cmd = $cmd.' -sea '.$conf[0].' -vadapter '.$conf[1].' -default '.$conf[2].' -defaultid '.$conf[3].' && mktcpip -hostname '.$conf[4].
-' -inetaddr '.$conf[5].' -netmask '.$conf[6].' -interface '.$conf[0].' -gateway '.$conf[7].' -nsrvdomain '.$conf[8].' -nsrvaddr '.$conf[9].' 
+        $cmd = $cmd . ' -sea ' . $conf[0] . ' -vadapter ' . $conf[1] . ' -default ' . $conf[2] . ' -defaultid ' . $conf[3] . ' && mktcpip -hostname ' . $conf[4] .
+' -inetaddr ' . $conf[5] . ' -netmask ' . $conf[6] . ' -interface ' . $conf[0] . ' -gateway ' . $conf[7] . ' -nsrvdomain ' . $conf[8] . ' -nsrvaddr ' . $conf[9] . ' 
 -start';
     }
     return $cmd;
 }
 
 package VIOSVg;
-our @ISA = ( VIOSObj );
+our @ISA = (VIOSObj);
+
 sub get_cmd
 {
-    my $this = shift;
-    my $cmd = undef;
-    my $cnt = 0;
-    my %config = %{$this->{'conf'}};
+    my $this   = shift;
+    my $cmd    = undef;
+    my $cnt    = 0;
+    my %config = %{ $this->{'conf'} };
     print "Create volume groups...";
-    while( my ($key,$value) = each %config )
+    while (my ($key, $value) = each %config)
     {
-      my @hdisk = split(',', $value);
-      my $err = 0;
+        my @hdisk = split(',', $value);
+        my $err = 0;
 
-      foreach (@hdisk)
-      {
-         `lspv|grep $_ >/dev/nul 2>&1`;
-          $err++  if($? != 0)
-      }
+        foreach (@hdisk)
+        {
+            `lspv|grep $_ >/dev/nul 2>&1`;
+            $err++ if ($? != 0)
+        }
 
-      if($err != 0)
-      {
-          #print "Invalid configuration item $key: hard disk info error\n";
-          chomp(my $date = `/bin/date`);
-          my $msg = "$date configvios: Invalid configuration item $key:hard disk info error!\n";
-          `logger -t xcat -p local4.warning $msg`;
-          next;
-      }
+        if ($err != 0)
+        {
+            #print "Invalid configuration item $key: hard disk info error\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:hard disk info error!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
+        }
 
-      `lsvg $key > /dev/nul 2>&1`;
-      if($? == 0)
-      {
-         #print "Invalid configuration item $key: vg $key already existed\n";
-         chomp(my $date = `/bin/date`);
-         my $msg = "$date configvios: Invalid configuration item $key:vg $key already existed!\n";
-         `logger -t xcat -p local4.warning $msg`;
-          next;
-      }
+        `lsvg $key > /dev/nul 2>&1`;
+        if ($? == 0)
+        {
+            #print "Invalid configuration item $key: vg $key already existed\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:vg $key already existed!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
+        }
 
-      $cmd = $cnt>0? $cmd.' && ioscli mkvg':'ioscli mkvg';
-      $cnt++;
-      $cmd = $cmd.' -f -vg '.$key.' '."@hdisk"; 
+        $cmd = $cnt > 0 ? $cmd . ' && ioscli mkvg' : 'ioscli mkvg';
+        $cnt++;
+        $cmd = $cmd . ' -f -vg ' . $key . ' ' . "@hdisk";
     }
     return $cmd;
 }
 
 package VIOSLv;
-our @ISA = ( VIOSObj );
+our @ISA = (VIOSObj);
+
 sub get_cmd
 {
-    my $this = shift;
-    my $cmd = undef;
-    my %config = %{$this->{'conf'}};
-    my $cnt = 0;
-    my @conf = ();
+    my $this   = shift;
+    my $cmd    = undef;
+    my %config = %{ $this->{'conf'} };
+    my $cnt    = 0;
+    my @conf   = ();
     print "Create logcial volumes...";
-        
-    while( my ($key,$value) = each %config )
-     {
-         @conf = ($key, split(',', $value));
-         if($#conf != 2)
-         {
-           #print "Invalid configuration item $key,$value!\n";
-           chomp(my $date = `/bin/date`);
-           my $msg = "$date configvios: Invalid configuration item $key=$value!\n";
-           `logger -t xcat -p local4.warning $msg`;
-           next;
-         } 
 
-         `su - padmin " -c ioscli lslv $conf[0]" > /dev/nul 2>&1`;
-         if($? == 0)
-         {
-           #print "Invalid configuration item $key:the lv name $conf[0] already existed\n";
-           chomp(my $date = `/bin/date`);
-           my $msg = "$date configvios: Invalid configuration item $key:the lv name $conf[0] already existed!\n";
-           `logger -t xcat -p local4.warning $msg`;
-           next;
-         }
-        
-         `su - padmin " -c ioscli lsvg $conf[1]" > /dev/nul 2>&1`; 
-         if($? != 0)
-         {
-            #print "Invalid configuration item $key:the vg $conf[1] doesn't exist\n";
-             chomp(my $date = `/bin/date`);
-             my $msg = "$date configvios: Invalid configuration item $key:the vg $conf[1] doesn't exist!\n";
-             `logger -t xcat -p local4.warning $msg`;
-             next;
-         }
-
-         my $ppsnum =  `lsvg rootvg |grep "FREE PPs"|awk '{print \$6}'`;
-         if($conf[2] > $ppsnum)
-         {
-            #print "Invalid configuration item $key:there isn't enough space left in $conf[1]\n";
-             chomp(my $date = `/bin/date`);
-             my $msg = "$date configvios: Invalid configuration item $key:there isn't enough space left in $conf[1]!\n";
+    while (my ($key, $value) = each %config)
+    {
+        @conf = ($key, split(',', $value));
+        if ($#conf != 2)
+        {
+            #print "Invalid configuration item $key,$value!\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key=$value!\n";
             `logger -t xcat -p local4.warning $msg`;
-             next;
-         }
+            next;
+        }
 
-         $cmd = $cnt>0 ? $cmd.' && ioscli mklv': 'ioscli mklv';
-         $cnt++;
-         $cmd = $cmd.' -lv '.$conf[0].' '.$conf[1].' '.$conf[2];
+        `su - padmin " -c ioscli lslv $conf[0]" > /dev/nul 2>&1`;
+        if ($? == 0)
+        {
+            #print "Invalid configuration item $key:the lv name $conf[0] already existed\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:the lv name $conf[0] already existed!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
+        }
+
+        `su - padmin " -c ioscli lsvg $conf[1]" > /dev/nul 2>&1`;
+        if ($? != 0)
+        {
+            #print "Invalid configuration item $key:the vg $conf[1] doesn't exist\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:the vg $conf[1] doesn't exist!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
+        }
+
+        my $ppsnum = `lsvg rootvg |grep "FREE PPs"|awk '{print \$6}'`;
+        if ($conf[2] > $ppsnum)
+        {
+            #print "Invalid configuration item $key:there isn't enough space left in $conf[1]\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:there isn't enough space left in $conf[1]!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
+        }
+
+        $cmd = $cnt > 0 ? $cmd . ' && ioscli mklv' : 'ioscli mklv';
+        $cnt++;
+        $cmd = $cmd . ' -lv ' . $conf[0] . ' ' . $conf[1] . ' ' . $conf[2];
     }
     return $cmd;
 }
 
 package VIOSLvMap;
-our @ISA = ( VIOSObj );
+our @ISA = (VIOSObj);
+
 sub get_cmd
 {
-    my $this = shift;
-    my $cmd = undef;
-    my %config = %{$this->{'conf'}};
-    my $cnt = 0;
+    my $this   = shift;
+    my $cmd    = undef;
+    my %config = %{ $this->{'conf'} };
+    my $cnt    = 0;
     print "Mapping logical volumes to virtual adapters...";
-    while( my ($key,$value) = each %config )
+    while (my ($key, $value) = each %config)
     {
         `su - padmin " -c ioscli lslv $value" > /dev/nul 2>&1`;
-        if($? != 0)
+        if ($? != 0)
         {
-          #print "Invalid configuration item $key: lv $value doesn't exist\n";
-           chomp(my $date = `/bin/date`);
-           my $msg = "$date configvios: Invalid configuration item $key:lv $value doesn't exist!\n";
-           `logger -t xcat -p local4.warning $msg`;
-           next;
+            #print "Invalid configuration item $key: lv $value doesn't exist\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key:lv $value doesn't exist!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
         }
 
-        `su - padmin " -c ioscli lsdev -virtual |grep $key " >/dev/nul 2>&1`; 
-        if($? != 0)
+        `su - padmin " -c ioscli lsdev -virtual |grep $key " >/dev/nul 2>&1`;
+        if ($? != 0)
         {
-          #print "Invaild configuration item $key: virtual adapter $key doesn't exist\n";
-           chomp(my $date = `/bin/date`);
-           my $msg = "$date configvios: Invalid configuration item $key: virtual adapter $key doesn't exist!\n";
-           `logger -t xcat -p local4.warning $msg`;
-           next;
+            #print "Invaild configuration item $key: virtual adapter $key doesn't exist\n";
+            chomp(my $date = `/bin/date`);
+            my $msg = "$date configvios: Invalid configuration item $key: virtual adapter $key doesn't exist!\n";
+            `logger -t xcat -p local4.warning $msg`;
+            next;
         }
-        $cmd = $cnt > 0 ? $cmd.' && ioscli mkvdev' : 'ioscli mkvdev';
+        $cmd = $cnt > 0 ? $cmd . ' && ioscli mkvdev' : 'ioscli mkvdev';
         $cnt++;
-        $cmd = $cmd.' -vdev '.$value.' -vadapter '.$key;
+        $cmd = $cmd . ' -vdev ' . $value . ' -vadapter ' . $key;
     }
     return $cmd;
 }
 
 package main;
 my $conf_file = $ENV{'VIOS_CONF'} ? $ENV{'VIOS_CONF'} : './vios.conf';
-my $vioseth = VIOSEth->new("conf_file"=>$conf_file, "key"=>'SEA_Config');
+my $vioseth = VIOSEth->new("conf_file" => $conf_file, "key" => 'SEA_Config');
 $vioseth->config();
-my $viosvg = VIOSVg->new("conf_file"=>$conf_file, "key"=>'Volume_Group');
+my $viosvg = VIOSVg->new("conf_file" => $conf_file, "key" => 'Volume_Group');
 $viosvg->config();
-my $vioslv = VIOSLv->new("conf_file"=>$conf_file, "key"=>'Logical_Volume');
+my $vioslv = VIOSLv->new("conf_file" => $conf_file, "key" => 'Logical_Volume');
 $vioslv->config();
-my $vioslvmap = VIOSLvMap->new("conf_file"=>$conf_file, "key"=>'Mapping_SCSI');
+my $vioslvmap = VIOSLvMap->new("conf_file" => $conf_file, "key" => 'Mapping_SCSI');
 $vioslvmap->config();
 exit;

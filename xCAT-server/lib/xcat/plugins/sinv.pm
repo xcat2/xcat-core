@@ -34,7 +34,7 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return {sinv => "sinv",};
+    return { sinv => "sinv", };
 }
 
 #-------------------------------------------------------
@@ -125,9 +125,9 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
-    my $sub_req = shift;
+    my $sub_req  = shift;
 
-    sinv($request, $callback,$sub_req);
+    sinv($request, $callback, $sub_req);
 }
 
 #-------------------------------------------------------
@@ -148,9 +148,9 @@ sub sinv
     # parse  input  and run dsh
     my @local_results =
       xCAT::SINV->parse_and_run_sinv($request, $callback,
-                                      $sub_req);
+        $sub_req);
     my $rsp = {};
-    push @{$rsp->{data}}, @local_results;
+    push @{ $rsp->{data} }, @local_results;
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
 

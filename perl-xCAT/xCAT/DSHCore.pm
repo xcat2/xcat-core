@@ -65,7 +65,7 @@ sub fork_no_output
         select(STDERR);
         $| = 1;
 
-        if (!(exec {$command[0]} @command))
+        if (!(exec { $command[0] } @command))
         {
             return (-4, undef);
         }
@@ -113,7 +113,7 @@ sub fork_no_output
 sub fork_output
 {
     my ($class, $fork_id, @command) = @_;
-no strict;
+    no strict;
     my $pid;
     my %pipes = ();
 
@@ -144,7 +144,7 @@ no strict;
         select(STDERR);
         $| = 1;
 
-        if (!(exec {$command[0]} @command))
+        if (!(exec { $command[0] } @command))
         {
             return (-4, undef);
         }
@@ -156,7 +156,7 @@ no strict;
     }
 
     return ($pid, *$rout_fh, *$rerr_fh, *$wout_fh, *$werr_fh);
-use strict;
+    use strict;
 }
 
 
@@ -197,7 +197,7 @@ use strict;
 sub fork_output_for_commands
 {
     my ($class, $fork_id, @commands) = @_;
-no strict;
+    no strict;
     my $pid;
     my %pipes = ();
 
@@ -227,15 +227,15 @@ no strict;
         $| = 1;
         select(STDERR);
         $| = 1;
-        if ( @commands > 1 )  {
-            my $command0 = shift(@commands);       
-            my @exe_command0_process = xCAT::DSHCore->fork_no_output($fork_id, @$command0); 
+        if (@commands > 1) {
+            my $command0 = shift(@commands);
+            my @exe_command0_process = xCAT::DSHCore->fork_no_output($fork_id, @$command0);
             waitpid($exe_command0_process[0], undef);
         }
-       
+
         my $t_command = shift(@commands);
-        my @command = @$t_command; 
-        if (!(exec {$command[0]} @command))
+        my @command   = @$t_command;
+        if (!(exec { $command[0] } @command))
         {
             return (-4, undef);
         }
@@ -247,7 +247,7 @@ no strict;
     }
 
     return ($pid, *$rout_fh, *$rerr_fh, *$wout_fh, *$werr_fh);
-use strict;
+    use strict;
 }
 
 
@@ -289,7 +289,8 @@ use strict;
 
 #---------------------------------------------------------------------------
 # NOTE: global environment $::__DSH_LAST_LINE} only can be used in DSHCore::pipe_handler and DSHCore::pipe_handler_buffer
-$::__DSH_LAST_LINE  = undef;
+$::__DSH_LAST_LINE = undef;
+
 sub pipe_handler
 {
     my ($class, $options, $target_properties, $read_fh, $buffer_size, $label,
@@ -298,8 +299,8 @@ sub pipe_handler
 
     my $line;
     my $target_hostname;
-    my $eof_reached = undef;
-    my $cust_rc_deal =0;
+    my $eof_reached  = undef;
+    my $cust_rc_deal = 0;
 
     if ($::USER_POST_CMD)
     {
@@ -316,7 +317,7 @@ sub pipe_handler
     }
 
     while (sysread($read_fh, $line, $buffer_size) != 0
-           || ($eof_reached = 1))
+        || ($eof_reached = 1))
     {
         last if ($eof_reached && (!defined($::__DSH_LAST_LINE->{$label})));
 
@@ -349,13 +350,15 @@ sub pipe_handler
                 # Dump the last line at the beginning of current buffer
                 if ($::__DSH_LAST_LINE->{$label})
                 {
-                    unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
+                    unshift @lines, "$::__DSH_LAST_LINE->{$label}";
                 }
+
                 # Pop current buffer to $::__DSH_LAST_LINE->{$label}
-                if($line) 
+                if ($line)
                 {
-                    $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
+                    $::__DSH_LAST_LINE->{$label} = $lines[ scalar @lines - 1 ];
                     pop @lines;
+
                     # Skip this loop if array @lines is empty.
                     if (scalar @lines == 0)
                     {
@@ -377,20 +380,24 @@ sub pipe_handler
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
             }
-            if ( $::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
+            if ($::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
                 my $target_rc = undef;
+
                 # Get the number in the last line
-                $line =~ /[\D]*([0-9]+)\s*$/ ;
+                $line =~ /[\D]*([0-9]+)\s*$/;
                 $target_rc = $1;
                 $$target_properties{'target-rc'} = $target_rc;
+
                 # Remove the last line
                 $line =~ s/$target_rc\s*\n$//g;
+
                 #$line = $line . "## ret=$target_rc";
                 # Clean up $::__DSH_LAST_LINE->{$label}
-                undef $::__DSH_LAST_LINE->{$label} ;
+                undef $::__DSH_LAST_LINE->{$label};
+
                 # when '-z' is specified, display return code
                 $::DSH_EXIT_STATUS &&
-                    ($line .="Remote_command_rc = $target_rc");
+                  ($line .= "Remote_command_rc = $target_rc");
             }
 
             if ($line ne '')
@@ -417,9 +424,10 @@ sub pipe_handler
                     $line =~ s/$label//g;
                 }
 
-                my $rsp={};
+                my $rsp = {};
                 $rsp->{data}->[0] = $line;
                 xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
                 #print $write_fh $line;
             }
 
@@ -430,10 +438,10 @@ sub pipe_handler
                     pop @write_fhs;
                     close $output_file
                       || print STDOUT
-                      "dsh>  Error_file_closed $$target_properties{hostname} $output_file\n";
-                    my $rsp={};
+"dsh>  Error_file_closed $$target_properties{hostname} $output_file\n";
+                    my $rsp = {};
                     $rsp->{error}->[0] =
-                      "Error_file_closed $$target_properties{hostname $output_file}.\n";
+"Error_file_closed $$target_properties{hostname $output_file}.\n";
                     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     ($output_file == $$target_properties{'output-fh'})
                       && delete $$target_properties{'output-fh'};
@@ -496,7 +504,7 @@ sub pipe_handler_buffer
     my $line;
     my $eof_reached = undef;
 
-    my $cust_rc_deal =0;
+    my $cust_rc_deal = 0;
     if ($::USER_POST_CMD)
     {
         # If user provide post-command to display return code,
@@ -511,8 +519,8 @@ sub pipe_handler_buffer
         $cust_rc_deal = 1;
     }
 
-    while (   (sysread($read_fh, $line, $buffer_size) != 0)
-           || ($eof_reached = 1))
+    while ((sysread($read_fh, $line, $buffer_size) != 0)
+        || ($eof_reached = 1))
     {
         last if ($eof_reached && (!defined($::__DSH_LAST_LINE->{$label})));
         if ($line =~ /^\n$/ && scalar(@$write_buffer) == 0)
@@ -544,13 +552,15 @@ sub pipe_handler_buffer
                 # Dump the last line at the beginning of current buffer
                 if ($::__DSH_LAST_LINE->{$label})
                 {
-                    unshift @lines, "$::__DSH_LAST_LINE->{$label}" ;
+                    unshift @lines, "$::__DSH_LAST_LINE->{$label}";
                     undef $::__DSH_LAST_LINE->{$label}
                 }
                 if ($line) {
+
                     # Pop current buffer to $::__DSH_LAST_LINE->{$label}
-                    $::__DSH_LAST_LINE->{$label} = $lines[scalar @lines - 1];
+                    $::__DSH_LAST_LINE->{$label} = $lines[ scalar @lines - 1 ];
                     pop @lines;
+
                     # Skip this loop if array @lines is empty.
                     if (scalar @lines == 0)
                     {
@@ -572,20 +582,24 @@ sub pipe_handler_buffer
                 $line =~ s/:DSH_TARGET_RC=$target_rc:\n//g;
                 $$target_properties{'target-rc'} = $target_rc;
             }
-            if ( $::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
+            if ($::__DSH_LAST_LINE->{$label} =~ /DSH_RC/ && $cust_rc_deal) {
                 my $target_rc = undef;
+
                 # Get the number in the last line
-                $line =~ /[\D]*([0-9]+)\s*$/ ;
+                $line =~ /[\D]*([0-9]+)\s*$/;
                 $target_rc = $1;
                 $$target_properties{'target-rc'} = $target_rc;
+
                 # Remove the last line
                 $line =~ s/$target_rc\s*\n$//g;
+
                 #$line = $line . "## ret=$target_rc";
                 # Clean up $::__DSH_LAST_LINE->{$label}
-                undef $::__DSH_LAST_LINE->{$label} ;
+                undef $::__DSH_LAST_LINE->{$label};
+
                 # when '-z' is specified, display return code
                 $::DSH_EXIT_STATUS &&
-                    ($line .="Remote_command_rc = $target_rc");
+                  ($line .= "Remote_command_rc = $target_rc");
             }
 
             if ($line ne '')
@@ -696,35 +710,37 @@ sub pping_hostnames
     my ($class, @hostnames) = @_;
 
     my $hostname_list = join ",", @hostnames;
+
     # read site table, usefping attribute
     # if set then run pping -f to use fping
     # this fixes a broken nmap in Redhat 6.2 with ip alias (3512)
-    my $cmd="$::XCATROOT/bin/pping $hostname_list";  # default
-    my @usefping=xCAT::TableUtils->get_site_attribute("usefping");
+    my $cmd      = "$::XCATROOT/bin/pping $hostname_list";             # default
+    my @usefping = xCAT::TableUtils->get_site_attribute("usefping");
     if ((defined($usefping[0])) && ($usefping[0] eq "1")) {
-       $cmd = "$::XCATROOT/bin/pping -f  $hostname_list";
+        $cmd = "$::XCATROOT/bin/pping -f  $hostname_list";
     }
+
     #my $rsp={};
     #$rsp->{data}->[0] = "running command $cmd";
     #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
     my @output =
       xCAT::Utils->runcmd($cmd, -1);
-      if ($::RUNCMD_RC !=0) {
-        my $rsp={};
+    if ($::RUNCMD_RC != 0) {
+        my $rsp = {};
         $rsp->{error}->[0] = "Error from pping";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-      }
-     $::RUNCMD_RC =0; # reset
+    }
+    $::RUNCMD_RC = 0;    # reset
     my @no_response = ();
     foreach my $line (@output)
     {
         my ($hostname, $result) = split ':', $line;
         my ($token,    $status) = split ' ', $result;
         chomp($token);
-       if ($token ne 'ping') {
-          push @no_response, $hostname;
-       }
+        if ($token ne 'ping') {
+            push @no_response, $hostname;
+        }
     }
 
     return @no_response;

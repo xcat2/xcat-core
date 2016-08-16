@@ -6,12 +6,13 @@ package xCAT::MsgUtils;
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use strict;
 use Sys::Syslog;
 use xCAT::Utils;
+
 #use locale;
 use Socket;
 use File::Path;
@@ -294,12 +295,12 @@ sub message
     #
     my $newrsp;
     if (($sev eq 'SA') || ($sev eq 'A'))
-    {    # if SA ( syslog and auditlog) or A ( only auditlog)then need to pull first entry from $rsp
-         # for syslog, to preserve old interface
+    { # if SA ( syslog and auditlog) or A ( only auditlog)then need to pull first entry from $rsp
+            # for syslog, to preserve old interface
         $newrsp = $rsp;
-       if ($sev eq 'SA'){  # syslog and auditlog
-        $rsp    = $newrsp->{syslogdata}->[0];
-       }
+        if ($sev eq 'SA') {    # syslog and auditlog
+            $rsp = $newrsp->{syslogdata}->[0];
+        }
     }
     my $stdouterrf = \*STDOUT;
     my $stdouterrd = '';
@@ -323,17 +324,17 @@ sub message
                 # build callback structure
                 my $newrsp;
                 my $sevkey = 'error';
-                my $err    =
-                  "Logging requested without setting up log by calling xCAT:MsgUtils->start_logging.\n";
-                push @{$newrsp->{$sevkey}}, $err;
-                push @{$newrsp->{errorcode}}, "1";
+                my $err =
+"Logging requested without setting up log by calling xCAT:MsgUtils->start_logging.\n";
+                push @{ $newrsp->{$sevkey} }, $err;
+                push @{ $newrsp->{errorcode} }, "1";
                 $call_back->($newrsp);    # send message to daemon/Client.pm
                 return 1;
             }
             else
             {
                 print
-                  "Logging requested without setting up log by calling xCAT:MsgUtils->start_logging.\n";
+"Logging requested without setting up log by calling xCAT:MsgUtils->start_logging.\n";
                 return 1;
             }
         }
@@ -369,11 +370,11 @@ sub message
     if ($call_back)
     {    # callback routine provided
         my $sevkey;
-        if    ($sev =~ /D/) { $sevkey = 'data'; }
-        elsif ($sev =~ /N/) { $sevkey = 'node'; }
+        if    ($sev =~ /D/)  { $sevkey = 'data'; }
+        elsif ($sev =~ /N/)  { $sevkey = 'node'; }
         elsif ($sev =~ /IS/) { $sevkey = 'sinfo'; }
-        elsif ($sev =~ /I/) { $sevkey = 'info'; }
-        elsif ($sev =~ /W/) { $sevkey = 'warning'; }
+        elsif ($sev =~ /I/)  { $sevkey = 'info'; }
+        elsif ($sev =~ /W/)  { $sevkey = 'warning'; }
         elsif ($sev =~ /E/)
         {
             $sevkey = 'error';
@@ -388,10 +389,10 @@ sub message
             # build callback structure
             my $newrsp;
             my $sevkey = 'error';
-            my $err    =
+            my $err =
               "Invalid or no severity code passed to MsgUtils::message().\n";
-            push @{$newrsp->{$sevkey}}, $err;
-            push @{$newrsp->{errorcode}}, "1";
+            push @{ $newrsp->{$sevkey} }, $err;
+            push @{ $newrsp->{errorcode} }, "1";
             $call_back->($newrsp);    # send message to daemon/Client.pm
             return 1;
         }
@@ -403,35 +404,35 @@ sub message
         {
             if ($sevkey ne 'data')
             {
-                if (!defined($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}}))
+                if (!defined($rsp->{$sevkey}) || !scalar(@{ $rsp->{$sevkey} }))
                 {    # did not pass the text in in the severity-specific field
                         # so fix it
-                    if (defined($rsp->{data}) && scalar(@{$rsp->{data}}))
+                    if (defined($rsp->{data}) && scalar(@{ $rsp->{data} }))
                     {
-                        push @{$rsp->{$sevkey}}, @{$rsp->{data}};
+                        push @{ $rsp->{$sevkey} }, @{ $rsp->{data} };
 
                         # assume they passed
                         # in the text in the data field instead
-                        @{$rsp->{data}} = ();    # clear out the data field
+                        @{ $rsp->{data} } = ();    # clear out the data field
                     }
                 }
             }
 
             # if still nothing in the array, there is nothing to print out
-            if (!defined($rsp->{$sevkey}) || !scalar(@{$rsp->{$sevkey}}))
+            if (!defined($rsp->{$sevkey}) || !scalar(@{ $rsp->{$sevkey} }))
             {
                 return;
             }
 
             if (defined($exitcode))
             {
-                push @{$rsp->{errorcode}}, $exitcode;
+                push @{ $rsp->{errorcode} }, $exitcode;
             }
             $call_back->($rsp);    # send message to daemon/Client.pm
-            @{$rsp->{$sevkey}} =
+            @{ $rsp->{$sevkey} } =
               ();    # clear out the rsp structure in case they use it again
-            @{$rsp->{data}}      = ();
-            @{$rsp->{errorcode}} = ();
+            @{ $rsp->{data} }      = ();
+            @{ $rsp->{errorcode} } = ();
         }
         else         # logging
         {
@@ -441,10 +442,10 @@ sub message
 
             # build callback structure
             my $newrsp;
-            push @{$newrsp->{$sevkey}}, $rsp;
+            push @{ $newrsp->{$sevkey} }, $rsp;
             if ($exitcode)
             {
-                push @{$newrsp->{errorcode}}, $exitcode;
+                push @{ $newrsp->{errorcode} }, $exitcode;
             }
             $call_back->($newrsp);    # send message to daemon/Client.pm
 
@@ -464,7 +465,7 @@ sub message
         }
     }
 
-    # is syslog option requested 
+    # is syslog option requested
 
     if ($sev =~ /S/)
     {
@@ -472,9 +473,9 @@ sub message
         eval {
             openlog("xcat", "nofatal,pid", "local4");
             if ($sev eq 'SE') {
-              syslog("err", $rsp);
+                syslog("err", $rsp);
             } else {
-              syslog("info", $rsp);
+                syslog("info", $rsp);
             }
             closelog();
         };
@@ -487,59 +488,59 @@ sub message
     }
 
     # if write to auditlog table requested, if not on service node
-    if (xCAT::Utils->isMN()){
-     if (($sev eq 'SA') || ($sev eq 'A'))
-     {
-        require xCAT::Table;
-        my $auditlogentry;
-        my $tab = xCAT::Table->new("auditlog");
-        if ($tab)
+    if (xCAT::Utils->isMN()) {
+        if (($sev eq 'SA') || ($sev eq 'A'))
         {
-            my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
-              localtime(time);
-            
-            my $currtime = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
-                                        $year + 1900, $mon + 1, $mday,
-                                        $hour, $min, $sec);
-
-            $auditlogentry->{audittime}  = $currtime;
-            $auditlogentry->{userid}     = $newrsp->{userid}->[0];
-            $auditlogentry->{clientname} = $newrsp->{clientname}->[0];
-            $auditlogentry->{clienttype} = $newrsp->{clienttype}->[0];
-            $auditlogentry->{command}    = $newrsp->{command}->[0];
-            $auditlogentry->{noderange}  = $newrsp->{noderange}->[0];
-            $auditlogentry->{args}       = $newrsp->{args}->[0];
-            $auditlogentry->{status}     = $newrsp->{status}->[0];
-
-            my @ret = $tab->setAttribs(undef, $auditlogentry);
-            if (@ret > 1)
+            require xCAT::Table;
+            my $auditlogentry;
+            my $tab = xCAT::Table->new("auditlog");
+            if ($tab)
             {
+                my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
+                  localtime(time);
+
+                my $currtime = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                    $year + 1900, $mon + 1, $mday,
+                    $hour, $min, $sec);
+
+                $auditlogentry->{audittime}  = $currtime;
+                $auditlogentry->{userid}     = $newrsp->{userid}->[0];
+                $auditlogentry->{clientname} = $newrsp->{clientname}->[0];
+                $auditlogentry->{clienttype} = $newrsp->{clienttype}->[0];
+                $auditlogentry->{command}    = $newrsp->{command}->[0];
+                $auditlogentry->{noderange}  = $newrsp->{noderange}->[0];
+                $auditlogentry->{args}       = $newrsp->{args}->[0];
+                $auditlogentry->{status}     = $newrsp->{status}->[0];
+
+                my @ret = $tab->setAttribs(undef, $auditlogentry);
+                if (@ret > 1)
+                {
+                    print $stdouterrf "Unable to open auditlog\n";
+                    eval {
+                        openlog("xcat", "nofatal,pid", "local4");
+                        syslog("err", "Unable to write to auditlog");
+                        closelog();
+                    };
+                }
+                else
+                {
+                    my $DBname = xCAT::Utils->get_DBName;
+                    if (!($DBname =~ /^SQLITE/)) {
+                        $tab->commit;
+                    }
+                }
+            }
+            else
+            {    # error
                 print $stdouterrf "Unable to open auditlog\n";
                 eval {
                     openlog("xcat", "nofatal,pid", "local4");
-                    syslog("err", "Unable to write to auditlog");
+                    syslog("err", "Unable to open auditlog");
                     closelog();
                 };
-            }
-            else
-            {
-                my $DBname = xCAT::Utils->get_DBName;
-                if (!($DBname =~ /^SQLITE/)) {
-                  $tab->commit;
-                }
-            }
-        }
-        else
-        {    # error
-            print $stdouterrf "Unable to open auditlog\n";
-            eval {
-                openlog("xcat", "nofatal,pid", "local4");
-                syslog("err", "Unable to open auditlog");
-                closelog();
-            };
 
+            }
         }
-     }
     }
     return;
 }
@@ -628,7 +629,8 @@ sub start_logging
     $::LOG_FILE_NAME   = $logfile;
 
     # Make the file to be unbuffered
-    binmode( $::LOG_FILE_HANDLE, ":unix" );
+    binmode($::LOG_FILE_HANDLE, ":unix");
+
     # Print the program name and date to the top of the logfile
     my $sdate = `/bin/date`;
     chomp $sdate;
@@ -724,14 +726,14 @@ sub backup_logfile
 sub verbose_message
 {
     shift;
-    my $req = shift;
+    my $req  = shift;
     my $data = shift;
-    if (!defined($req->{verbose}))  {
+    if (!defined($req->{verbose})) {
         return;
     }
-    my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-    my $time = sprintf "%04d%02d%02d.%02d:%02d:%02d", $yr+1900,$mon+1,$mday,$hour,$min,$sec;
-    $data = "$time ($$) ".$data; 
+    my ($sec, $min, $hour, $mday, $mon, $yr, $wday, $yday, $dst) = localtime(time);
+    my $time = sprintf "%04d%02d%02d.%02d:%02d:%02d", $yr + 1900, $mon + 1, $mday, $hour, $min, $sec;
+    $data = "$time ($$) " . $data;
     if (defined($req->{callback})) {
         my %rsp;
         $rsp{data} = [$data];
@@ -779,39 +781,39 @@ sub verbose_message
 =cut
 
 #--------------------------------------------------------------------------------
-sub trace(){
+sub trace() {
     shift;
-    my $verbose = shift;
-    my $level = shift;
+    my $verbose    = shift;
+    my $level      = shift;
     my $logcontent = shift;
-    
+
     my $prefix = "";
-    if(($level eq "E")||($level eq "e")){$prefix="ERR";}
-    if(($level eq "W")||($level eq "w")){$prefix="WARNING";}
-    if(($level eq "I")||($level eq "i")){$prefix="INFO";}
-    if(($level eq "D")||($level eq "d")){$prefix="DEBUG";}
+    if (($level eq "E") || ($level eq "e")) { $prefix = "ERR"; }
+    if (($level eq "W") || ($level eq "w")) { $prefix = "WARNING"; }
+    if (($level eq "I") || ($level eq "i")) { $prefix = "INFO"; }
+    if (($level eq "D") || ($level eq "d")) { $prefix = "DEBUG"; }
 
-    my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
-    my $xcatdebugmode=$tmp[0];
+    my @tmp           = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+    my $xcatdebugmode = $tmp[0];
 
-    if (($level eq "E") 
-    ||($level eq "e")
-    ||($level eq "I")
-    ||($level eq "i") 
-    ||($level eq "W")
-    ||($level eq "w")){
-        my $msg = $prefix." ".$logcontent;
+    if (($level eq "E")
+        || ($level eq "e")
+        || ($level eq "I")
+        || ($level eq "i")
+        || ($level eq "W")
+        || ($level eq "w")) {
+        my $msg = $prefix . " " . $logcontent;
         eval {
             openlog("xcat", "nofatal,pid", "local4");
             syslog("$prefix", $msg);
             closelog();
         };
     }
-    
-    if (($level eq "D") 
-    ||($level eq "d")){
-        if(($verbose == 1 )||($xcatdebugmode  eq "1")||($xcatdebugmode  eq "2")){
-            my $msg = $prefix." ".$logcontent;
+
+    if (($level eq "D")
+        || ($level eq "d")) {
+        if (($verbose == 1) || ($xcatdebugmode eq "1") || ($xcatdebugmode eq "2")) {
+            my $msg = $prefix . " " . $logcontent;
             eval {
                 openlog("xcat", "nofatal,pid", "local4");
                 syslog("$prefix", $msg);

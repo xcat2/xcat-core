@@ -101,7 +101,7 @@ stop)
     echo
     exit 0
   fi
-  kill -TERM -`cat /var/run/xcatd.pid`
+  kill -TERM `cat /var/run/xcatd.pid`
   i=0;
   while $STATUS > /dev/null 2>&1 && [ $i -lt 30 ]; do
     sleep .1

@@ -225,6 +225,9 @@ fi
 rm /tmp/ssh_rsa_hostkey
 
 # if node supports ecdsa host key then download the replacement from the MN/SN
+# remove the /tmp/ecdsa_key first, otherwise the "ssh-keygen" below might hang
+# at waiting for user confirmation to overwritten the existing file
+rm -rf /tmp/ecdsa_key >/dev/null 2>&1
 if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
   # download the host ecdsa key
   if [ $useflowcontrol = "1" ]; then

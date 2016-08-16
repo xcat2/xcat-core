@@ -10,3 +10,6 @@ vim
 ntp
 rsyslog
 rsync
+tar
+gzip
+xz-utils

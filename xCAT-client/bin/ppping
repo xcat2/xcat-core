@@ -2,7 +2,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #Note, this ppping still frontends fping.  I think it would be possible to write a perl equivalent, but
 #I've not had the time.  Net::Ping shows perl code I could see being adapted for a somewhat
-#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async 
+#asynchronous ICMP ping (the tcp syn is interesting, but far too limited, and that is currently the only async
 #method Net::Ping provides.
 
 # This script starts with a noderange from the user, expands it using the
@@ -11,8 +11,8 @@
 #  obtained from the user.  It then prints out the result and exits.
 BEGIN
 {
-	# XCATROOT must be set for this script to work
-  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';  
+    # XCATROOT must be set for this script to work
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use strict;
 use lib "$::XCATROOT/lib/perl";
@@ -22,60 +22,61 @@ use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
 use XML::Simple;
 if ($^O =~ /^linux/i) {
-  $XML::Simple::PREFERRED_PARSER='XML::Parser';
+    $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 }
+
 #use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
 my $interface;
 
-my $USAGE="Usage: ppping [-i|--interface interfaces] [-d|--debug] [-V|--verbose] [-q|--quiet] [-s|--serial] noderange
+my $USAGE = "Usage: ppping [-i|--interface interfaces] [-d|--debug] [-V|--verbose] [-q|--quiet] [-s|--serial] noderange
        ppping -h|--help
-       ppping  -v|--version\n"; 
+       ppping  -v|--version\n";
 
 # Parse the options
 require Getopt::Long;
-Getopt::Long::Configure ("bundling");
-if(!GetOptions(
-      'h|help'     => \$::HELP,
-      'v|version'  => \$::VERSION,
-      's|serial'  => \$::SERIAL,
-      'd|debug'  => \$::DEBUG,
-      'V|verbose'  => \$::VERBOSE,
-      'H|hierarchical' => \$::HIERARCHY,
-      'q|quiet' => \$::QUIET,
-      'i|interface=s' => \$interface))
+Getopt::Long::Configure("bundling");
+if (!GetOptions(
+        'h|help'         => \$::HELP,
+        'v|version'      => \$::VERSION,
+        's|serial'       => \$::SERIAL,
+        'd|debug'        => \$::DEBUG,
+        'V|verbose'      => \$::VERBOSE,
+        'H|hierarchical' => \$::HIERARCHY,
+        'q|quiet'        => \$::QUIET,
+        'i|interface=s'  => \$interface))
 {
-  print "$USAGE";
-  exit 1;
+    print "$USAGE";
+    exit 1;
 }
 
-if ($::HELP) {  print "$USAGE"; exit 0}
-if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+if ($::HELP) { print "$USAGE"; exit 0 }
+if ($::VERSION) { print xCAT::Utils->Version() . "\n"; exit 0 }
 
 # A method to prefix and print debug information only if it is wanted.
 sub debug {
-  my $debug_text = shift;
-  if($::DEBUG){
-    print("---$debug_text");
-  }
+    my $debug_text = shift;
+    if ($::DEBUG) {
+        print("---$debug_text");
+    }
 }
 
-my $xcathost='localhost:3001';
+my $xcathost = 'localhost:3001';
 if ($ENV{XCATHOST}) {
-  $xcathost=$ENV{XCATHOST};
+    $xcathost = $ENV{XCATHOST};
 }
 
 unless (@ARGV) {
-   print "$USAGE";
-   exit 1;
+    print "$USAGE";
+    exit 1;
 }
 
 ## Connect to xcatd to expand a noderange
 my $noderange = $ARGV[0];
-my  @user = getpwuid($>);
-my $homedir=$user[7];
+my @user      = getpwuid($>);
+my $homedir   = $user[7];
 
 my %sslargs;
 if (defined($ENV{'XCATSSLVER'})) {
@@ -83,86 +84,89 @@ if (defined($ENV{'XCATSSLVER'})) {
 }
 
 my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_ca_file => $homedir."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-		%sslargs,
-                SSL_verify_mode => SSL_VERIFY_PEER,
-                SSL_verifycn_scheme => "none",
-             );
+    PeerAddr      => $xcathost,
+    SSL_key_file  => $homedir . "/.xcat/client-cred.pem",
+    SSL_cert_file => $homedir . "/.xcat/client-cred.pem",
+    SSL_ca_file   => $homedir . "/.xcat/ca.pem",
+    SSL_use_cert  => 1,
+    %sslargs,
+    SSL_verify_mode     => SSL_VERIFY_PEER,
+    SSL_verifycn_scheme => "none",
+);
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
+
 # Request nodes from xcatd
 debug("[start] - request nodes from xcatd\n");
 $SIG{ALRM} = sub { die "No response getting noderange" };
 alarm(15);
-print $client XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
+print $client XMLout(\%cmdref, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
 alarm(15);
 debug("[stop] - request nodes from xcatd\n");
 
 ## Recieve nodes from xcatd and place them in @nodes
-my $response="";
-my @nodes=();
+my $response = "";
+my @nodes    = ();
 debug("[start] - recieve nodes from xcatd\n");
 while (<$client>) {
-  alarm(0);
-  $response .= $_;
-  if ($response =~ m/<\/xcatresponse>/) {
-    my $rsp=XMLin($response, ForceArray => ['node']);
-    $response='';
-    if ($rsp->{warning}) {
-      printf "Warning: ".$rsp->{warning}."\n";
+    alarm(0);
+    $response .= $_;
+    if ($response =~ m/<\/xcatresponse>/) {
+        my $rsp = XMLin($response, ForceArray => ['node']);
+        $response = '';
+        if ($rsp->{warning}) {
+            printf "Warning: " . $rsp->{warning} . "\n";
+        }
+        if ($rsp->{error}) {
+            die("ERROR: " . $rsp->{error} . "\n");
+        } elsif ($rsp->{node}) {
+            @nodes = @{ $rsp->{node} };
+        }
+        if ($rsp->{serverdone}) {
+            last;
+        }
     }
-    if ($rsp->{error}) {
-      die ("ERROR: ".$rsp->{error}."\n");
-    } elsif ($rsp->{node}) {
-      @nodes=@{$rsp->{node}};
-    }
-    if ($rsp->{serverdone}) {
-      last;
-    }
-  }
 }
 close($client);
 debug("[stop] - recieve nodes from xcatd\n");
 debug("\@nodes LENGTH:" . scalar @nodes . "\n");
 
 unless (scalar(@nodes)) {
-  exit 1;
+    exit 1;
 }
 
 my $children = 0;
-my $inputs = new IO::Select;
-$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
+my $inputs   = new IO::Select;
+$SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
 
 ## Use pping to determine which nodes are reachable
-my @reachable_nodes=();
-my @unreachable_nodes=();
+my @reachable_nodes   = ();
+my @unreachable_nodes = ();
 debug("[start] - find unreachable nodes\n");
-my $cmd = "$::XCATROOT/bin/pping ".join(',',@nodes). " --noexpand 2>&1";
+my $cmd = "$::XCATROOT/bin/pping " . join(',', @nodes) . " --noexpand 2>&1";
 debug("Running '$cmd'\n");
-open (PPING, "$cmd |") or die("Cannot open ppinginternal pipe: $!");
+open(PPING, "$cmd |") or die("Cannot open ppinginternal pipe: $!");
 while (<PPING>) {
-  if ($_ =~ / ping/) {
-      my @a_tmp=split(':', $_);
-      push(@reachable_nodes, $a_tmp[0]);
-  } 
-  elsif ($_ =~ /noping/) {
-    my @a_tmp=split(':', $_);
-    push(@unreachable_nodes, $a_tmp[0]);
-  }
-  else { print $_; }	# probably an error msg, so just echo it
+
+    if ($_ =~ / ping/) {
+        my @a_tmp = split(':', $_);
+        push(@reachable_nodes, $a_tmp[0]);
+    }
+    elsif ($_ =~ /noping/) {
+        my @a_tmp = split(':', $_);
+        push(@unreachable_nodes, $a_tmp[0]);
+    }
+    else { print $_; }    # probably an error msg, so just echo it
 }
 close(PPING);
+
 # this next line seems to always have a non-zero $?, even if pping succeeded...
 #if ($?) { die "Error in the pping command used to first test the nodes (exit code=" . ($?>>8) . ").\n"; }
 debug("[stop] - find unreachable nodes\n");
 
 ## Dispose of the unreachable nodes now
-foreach(@unreachable_nodes) {
-  print "$_: noping\n";
+foreach (@unreachable_nodes) {
+    print "$_: noping\n";
 }
 
 ## If there are nodes in @reachable nodes, use xdsh to make each reachable
@@ -172,57 +176,60 @@ debug("REACHABLE_NODES:@reachable_nodes\n");
 
 if (@reachable_nodes == 0) { exit 1; }
 
-my $allnodes=join(',', @nodes);
+my $allnodes = join(',', @nodes);
 
 # Note: even if verbose is not set, we still do not want to set the quiet flag because we want
 #			to count the pings that come back, unless they request fully quiet mode.
 my $quiet = "";
-if($::QUIET) { $quiet = "-q "; }
+if ($::QUIET) { $quiet = "-q "; }
+
 # bypass mode for xdsh is not used any more, because it doesn't give any advantage
 my $bypass = "";
 
 my @interfaces;
 if ($interface) { @interfaces = split(/,/, $interface); }
-else { $interfaces[0] = ''; }
+else            { $interfaces[0] = ''; }
 
 # Possible todo: this loop runs xdsh pping2 for each interface.  An optimization could be to send all
 #		the interfaces to pping2 at once.  But this would mix up all the ping responses and making it
 #		harder to tell what is going on.
 foreach my $interf (@interfaces) {
-  my $i_string = $interf ? "-i $interf " : '';
+    my $i_string = $interf ? "-i $interf " : '';
 
-  ## If the serial option was set, pping2 one reachable node at a time.
-  if ($::SERIAL) {
-  	debug("SERIAL:$::SERIAL\n");
-  	debug("[start] - xdsh to each reachable node\n");
-    foreach(@reachable_nodes) {
-      	my $command = "$::XCATROOT/bin/xdsh $_ $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string$quiet$allnodes\" 2>&1";
-      	debug("Running '$command'\n");
-    	open (PPING2, "$command |") or die("Cannot open xdsh internal pipe: $!");
-		# Print out the result
-		my %numpings;
-    	while (<PPING2>) {
-    		output($_, \%numpings, $interf);
-    	}
-    	close(PPING2);
+    ## If the serial option was set, pping2 one reachable node at a time.
+    if ($::SERIAL) {
+        debug("SERIAL:$::SERIAL\n");
+        debug("[start] - xdsh to each reachable node\n");
+        foreach (@reachable_nodes) {
+            my $command = "$::XCATROOT/bin/xdsh $_ $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string$quiet$allnodes\" 2>&1";
+            debug("Running '$command'\n");
+            open(PPING2, "$command |") or die("Cannot open xdsh internal pipe: $!");
+
+            # Print out the result
+            my %numpings;
+            while (<PPING2>) {
+                output($_, \%numpings, $interf);
+            }
+            close(PPING2);
+        }
+        debug("[stop] - xdsh to each reachable node\n");
     }
-	debug("[stop] - xdsh to each reachable node\n");
-  }
-	
-  ## If the serial option was not set, pping2 all the reachable nodes simultaneously.
-  else {
-	debug("SERIAL not set.\n");
-    my $node_string=join(',', @reachable_nodes);
-    my $command = "$::XCATROOT/bin/xdsh $node_string $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string$quiet$allnodes\" 2>&1";
-    debug("Running '$command'\n");
-    open (PPING2, "$command |") or die("Cannot open xdsh internal pipe: $!");
-	# Print out the result
-	my %numpings;
-    while (<PPING2>) {
-    	output($_, \%numpings, $interf);
+
+    ## If the serial option was not set, pping2 all the reachable nodes simultaneously.
+    else {
+        debug("SERIAL not set.\n");
+        my $node_string = join(',', @reachable_nodes);
+        my $command = "$::XCATROOT/bin/xdsh $node_string $bypass -s -e $::XCATROOT/sbin/pping2 \"$i_string$quiet$allnodes\" 2>&1";
+        debug("Running '$command'\n");
+        open(PPING2, "$command |") or die("Cannot open xdsh internal pipe: $!");
+
+        # Print out the result
+        my %numpings;
+        while (<PPING2>) {
+            output($_, \%numpings, $interf);
+        }
+        close(PPING2);
     }
-    close(PPING2);
-  }
 }
 debug("[stop] - deal with reachable nodes\n");
 
@@ -230,30 +237,31 @@ exit 0;
 
 # Process the output if the xdsh pping2 commands
 sub output {
-	my $line = shift;
-	my $numpings = shift;
-	my $interface = shift;
-      if ($line =~ /^\s*$/) { return; }		# xdsh had a habit of adding an extra blank line in streaming mode
-      # In verbose mode we just echo everything.  In quiet mode, the only thing that will come back
-      # from pping2 are the nopings, so we echo everything in that case too.
-      if ($::VERBOSE || $::QUIET) { print "$line";  return; }
-      
-      # This is the default case in which pping2 will return both pings and nopings.
-      # We want to count the pings and display the nopings.
-      my $node;
-      if ( ($node) = $line =~ /^(\S+):.+:\s+ping$/) {
-      	if (!($numpings->{$node}==-1)) {
-      		$numpings->{$node}++;
-    		# If we got pings for all the nodes then print success
-      		if ($numpings->{$node} >= scalar(@nodes)) {
-      			my $istr = $interface ? " on interface $interface" : '';
-      			print "$node: pinged all nodes successfully$istr\n";
-      			$numpings->{$node} = -1;
-      		}
-      	}
-      }
-      else {
-      	print "$line";
-      	if ( ($node) = $line =~ /^(\S+?):/) { $numpings->{$node} = -1; }		# something beside ping, stop counting
-      }
+    my $line      = shift;
+    my $numpings  = shift;
+    my $interface = shift;
+    if ($line =~ /^\s*$/) { return; } # xdsh had a habit of adding an extra blank line in streaming mode
+       # In verbose mode we just echo everything.  In quiet mode, the only thing that will come back
+       # from pping2 are the nopings, so we echo everything in that case too.
+    if ($::VERBOSE || $::QUIET) { print "$line"; return; }
+
+    # This is the default case in which pping2 will return both pings and nopings.
+    # We want to count the pings and display the nopings.
+    my $node;
+    if (($node) = $line =~ /^(\S+):.+:\s+ping$/) {
+        if (!($numpings->{$node} == -1)) {
+            $numpings->{$node}++;
+
+            # If we got pings for all the nodes then print success
+            if ($numpings->{$node} >= scalar(@nodes)) {
+                my $istr = $interface ? " on interface $interface" : '';
+                print "$node: pinged all nodes successfully$istr\n";
+                $numpings->{$node} = -1;
+            }
+        }
+    }
+    else {
+        print "$line";
+        if (($node) = $line =~ /^(\S+?):/) { $numpings->{$node} = -1; } # something beside ping, stop counting
+    }
 }

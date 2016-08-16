@@ -5,7 +5,9 @@ package probe_utils;
 use strict;
 use File::Path;
 use File::Copy;
+use Time::Local;
 use Socket;
+
 #-----------------------------------------
 
 =head3
@@ -49,6 +51,8 @@ sub send_msg {
 
     if ($output eq "stdout") {
         print "$flag$msg\n";
+    } elsif($output) {
+        syswrite $output, "$flag$msg\n";
     } else {
         if (!open(LOGFILE, ">> $output")) {
             return 1;
@@ -226,19 +230,20 @@ sub is_firewall_open {
     my $output;
     my $rst = 0;
 
-    my $output =`iptables -nvL -t filter 2>&1`;
+    my $output = `iptables -nvL -t filter 2>&1`;
 
     `echo "$output" |grep "Chain INPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     `echo "$output" |grep "Chain FORWARD (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     `echo "$output" |grep "Chain OUTPUT (policy ACCEPT" > /dev/null  2>&1`;
-    $rst=1 if($?);
+    $rst = 1 if ($?);
 
     return $rst;
 }
+
 #------------------------------------------
 
 =head3
@@ -322,20 +327,21 @@ sub is_tftp_ready {
 sub is_dns_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $serverip = shift;
     my $hostname = shift;
     my $domain   = shift;
 
-    my $output = `nslookup $mnip $mnip 2>&1`;
+    my $output = `nslookup $mnip $serverip 2>&1`;
 
     if ($?) {
         return 0;
     } else {
         chomp($output);
-        my $tmp = `echo "$output" |grep "Server:[\t\s]*$mnip" >/dev/null 2>&1`;
-        print "$tmp";
-        return 0 if ($?);
-        $tmp = `echo "$output"|grep "name ="|grep "$hostname\.$domain" >/dev/null 2>&1`;
-        return 0 if ($?);
+        my $tmp = grep {$_ =~ "Server:[\t\s]*$serverip"} split(/\n/, $output);
+        return 0 if ($tmp == 0);
+
+        $tmp = grep {$_ =~ "name = $hostname\.$domain"} split(/\n/, $output);
+        return 0 if ($tmp == 0);
         return 1;
     }
 }
@@ -352,16 +358,16 @@ sub is_dns_ready {
 =cut
 
 #------------------------------------------
-sub get_ip_from_hostname{
+sub get_ip_from_hostname {
     my $hostname = shift;
-    $hostname=shift if(($hostname) && ($hostname =~ /probe_utils/));
+    $hostname = shift if (($hostname) && ($hostname =~ /probe_utils/));
     my $ip = "";
 
     my @output = `ping -c 1 $hostname 2>&1`;
-    if(!$?){
-       if($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/){
-           $ip=$1;
-       }
+    if (!$?) {
+        if ($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/) {
+            $ip = $1;
+        }
     }
     return $ip;
 }
@@ -379,17 +385,17 @@ sub get_ip_from_hostname{
 =cut
 
 #------------------------------------------
-sub get_network{
+sub get_network {
     my $ip = shift;
-    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+    $ip = shift if (($ip) && ($ip =~ /probe_utils/));
     my $mask = shift;
-    my $net="";
+    my $net  = "";
 
     return $net if (!is_ip_addr($ip));
     return $net if ($mask !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
 
     my $bin_mask = unpack("N", inet_aton($mask));
-    my $bin_ip = unpack("N", inet_aton($ip));;
+    my $bin_ip   = unpack("N", inet_aton($ip));
     my $net_int32 = $bin_mask & $bin_ip;
     $net = ($net_int32 >> 24) . "." . (($net_int32 >> 16) & 0xff) . "." . (($net_int32 >> 8) & 0xff) . "." . ($net_int32 & 0xff);
     return "$net/$mask";
@@ -407,31 +413,107 @@ sub get_network{
 =cut
 
 #------------------------------------------
-sub get_hostname_from_ip{
-    my  $ip = shift;
-    $ip=shift if(($ip) && ($ip =~ /probe_utils/));
+sub get_hostname_from_ip {
+    my $ip = shift;
+    $ip = shift if (($ip) && ($ip =~ /probe_utils/));
     my $dns_server = shift;
-    my $hostname="";
-    my $output="";
+    my $hostname   = "";
+    my $output     = "";
 
     `which nslookup > /dev/null 2>&1`;
-    if(!$?){ 
+    if (!$?) {
         $output = `nslookup $ip  $dns_server 2>&1`;
         if (!$?) {
             chomp($output);
             my $rc = $hostname = `echo "$output"|awk -F" " '/name =/ {print \$4}'|awk -F"." '{print \$1}'`;
             chomp($hostname);
             return $hostname if (!$rc);
-        }    
-    }
-    if(($hostname eq "") && (-e "/etc/hosts")){
-        $output = `cat /etc/hosts 2>&1 |grep $ip`;
-        if(!$?){
-            my @splitoutput = split(" ", $output);
-            $hostname = $splitoutput[1]; 
         }
     }
-    return $hostname; 
+    if (($hostname eq "") && (-e "/etc/hosts")) {
+        $output = `cat /etc/hosts 2>&1 |grep $ip`;
+        if (!$?) {
+            my @splitoutput = split(" ", $output);
+            $hostname = $splitoutput[1];
+        }
+    }
+    return $hostname;
 }
 
+#------------------------------------------
+
+=head3
+    Description:
+        Check if the free space of specific directory is more than expected value 
+    Arguments:
+        targetdir: The directory needed to be checked 
+        expect_free_space: the expected free space for above directory
+    Returns:
+        0: the free space of specific directory is less than expected value
+        1: the free space of specific directory is more than expected value
+        2: the specific directory isn't mounted on standalone disk. it is a part of "/" 
+=cut
+
+#------------------------------------------
+sub is_dir_has_enough_space{
+    my $targetdir=shift;
+    $targetdir = shift if (($targetdir) && ($targetdir =~ /probe_utils/));
+    my $expect_free_space = shift;
+    my @output = `df -k`;
+
+    foreach my $line (@output){
+        chomp($line);
+        my @line_array = split(/\s+/, $line);
+        if($line_array[5] =~ /^$targetdir$/){
+            my $left_space = $line_array[3]/1048576;
+            if($left_space >= $expect_free_space){
+                return 1;
+            }else{
+                return 0;
+            }
+        }
+    }
+    return 2;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert input time format to the number of non-leap seconds since whatever time the system considers to be the epoch
+        the format of input time  are two kinds
+        one like "Aug 15 02:43:31", another likes "15/Aug/2016:01:10:24" 
+    Arguments:
+        timestr: the time format need to be converted
+        yday: the year of current time.
+    Returns:
+        the number of non-leap seconds since whatever time the system considers to be the epoch
+=cut
+
+#------------------------------------------
+sub convert_to_epoch_seconds {
+    my $timestr=shift;
+    $timestr = shift if (($timestr) && ($timestr =~ /probe_utils/));
+    my $yday=shift;
+    my $ref_seconds=shift;
+    my $mday;
+    my $dday;
+    my $h;
+    my $m;
+    my $s;
+    my $epoch_seconds=-1;
+    my %monthsmap = ("Jan"=>0,"Feb"=>1,"Mar"=>2,"Apr"=>3,"May"=>4,"Jun"=>5,"Jul"=>6,"Aug"=>7,"Sep"=>8,"Oct"=>9,"Nov"=>10,"Dec"=>11);
+
+    if($timestr =~/(\w+)\s+(\d+)\s+(\d+):(\d+):(\d+)/){
+        ($mday,$dday,$h,$m,$s)=($1,$2,$3,$4,$5);
+        $epoch_seconds = timelocal($s,$m,$h,$dday,$monthsmap{$mday},$yday);
+        if($epoch_seconds>$ref_seconds){
+            $yday-=1;
+            $epoch_seconds = timelocal($s,$m,$h,$dday,$monthsmap{$mday},$yday);
+        }
+    }elsif($timestr =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/){
+        $epoch_seconds = timelocal($6,$5,$4,$1,$monthsmap{$2},($3-1900));
+    }
+    return $epoch_seconds;
+}
 1;

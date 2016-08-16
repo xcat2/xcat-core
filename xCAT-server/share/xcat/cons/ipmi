@@ -1,21 +1,23 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 use Fcntl qw(:DEFAULT :flock);
+
 sub get_lock {
-    unless (flock(LOCKHANDLE,LOCK_EX|LOCK_NB)) {
+    unless (flock(LOCKHANDLE, LOCK_EX | LOCK_NB)) {
         $| = 1;
         print "Acquiring startup lock...";
-        flock(LOCKHANDLE,LOCK_EX) or die "Fatal Error securing startup lock";
+        flock(LOCKHANDLE, LOCK_EX) or die "Fatal Error securing startup lock";
         print "done\n";
     }
-    truncate(LOCKHANDLE,0);
-    print LOCKHANDLE $$."\n";
+    truncate(LOCKHANDLE, 0);
+    print LOCKHANDLE $$ . "\n";
 }
 
 sub release_lock {
-    truncate(LOCKHANDLE,0);
-    flock(LOCKHANDLE,LOCK_UN);
+    truncate(LOCKHANDLE, 0);
+    flock(LOCKHANDLE, LOCK_UN);
 }
+
 BEGIN
 {
     use Time::HiRes qw(sleep);
@@ -24,53 +26,55 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
     umask 0077;
     mkpath("/tmp/xcat/");
-    unless (sysopen(LOCKHANDLE,"/tmp/xcat/consolelock",O_WRONLY | O_CREAT)) {
+    unless (sysopen(LOCKHANDLE, "/tmp/xcat/consolelock", O_WRONLY | O_CREAT)) {
         print "Unable to open lock file";
         exec("sleep 15");
         exit 0;
     }
     get_lock();
+
     #my $sleepint=int(rand(10));
     #print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
     #sleep $sleepint;
 }
-my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
+my $sleepint = int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
 my $username = 'USERID';
 my $password = 'PASSW0RD';
-my $node = $ARGV[0];
+my $node     = $ARGV[0];
 my $bmc;
+
 sub getans {
-    my $rsp = shift; 
+    my $rsp = shift;
     if ($rsp->{node}) {
-        $bmc = $rsp->{node}->[0]->{bmcaddr}->[0];
+        $bmc      = $rsp->{node}->[0]->{bmcaddr}->[0];
         $username = $rsp->{node}->[0]->{bmcuser}->[0];
         $password = $rsp->{node}->[0]->{bmcpass}->[0];
         if (exists $rsp->{node}->[0]->{error}) {
-           my $error = $rsp->{node}->[0]->{error}->[0];
-           print $error."\n";
+            my $error = $rsp->{node}->[0]->{error}->[0];
+            print "$error\n";
         }
     }
 }
-my $cmdref={
-    command=>["getipmicons"],
-    arg=>["text"],
-    noderange=>[$ARGV[0]]
+my $cmdref = {
+    command   => ["getipmicons"],
+    arg       => ["text"],
+    noderange => [ $ARGV[0] ]
 };
-xCAT::Client::submit_request($cmdref,\&getans);
+xCAT::Client::submit_request($cmdref, \&getans);
 until (($username or $password) and $bmc) {
-    release_lock(); #Let other clients have a go
-    $sleepint=10+int(rand(20));
+    release_lock();    #Let other clients have a go
+    $sleepint = 10 + int(rand(20));
     print "Console not ready, retrying in $sleepint seconds (Ctrl-e,c,o to skip delay) \n";
     exec("sleep $sleepint");
     get_lock();
-    xCAT::Client::submit_request($cmdref,\&getans);
+    xCAT::Client::submit_request($cmdref, \&getans);
 }
 release_lock();
 
-my ($user,$pass);
+my ($user, $pass);
 if ($username) {
     $user = "-U '$username'";
 } else {
@@ -81,6 +85,7 @@ if ($password) {
 } else {
     $pass = '';
 }
+
 #require xCAT::Table;
 #require xCAT::Utils;
 #my $dba;
@@ -103,48 +108,49 @@ if ($password) {
 #}
 #xCAT::Utils::close_all_dbhs;
 #my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
-my $isintel=0;
+my $isintel = 0;
 my $sleepint;
 my $rc;
 my $ipmitool = "ipmitool";
 if (-x "$XCATROOT/bin/ipmitool-xcat") {
     $ipmitool = "$XCATROOT/bin/ipmitool-xcat";
 }
-my @mcinfo=`$ipmitool -I lanplus $user $pass -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+my @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`; #| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
 $rc = $?;
 if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 1.5 formats for BMC capability determination, attempt IPMI 2.0 even without the ability to confirm IPMI 2.0 support.  Though SOL was not baked in prior IPMI 2.0, this script supports pre-2.0 'ISOL' on older devices, hence why we are checking for 1.5/2.0 before proceeding normally
-    @mcinfo=`$ipmitool -I lan $user $pass -H $bmc mc info`;
-    $rc = $?;
+    @mcinfo = `$ipmitool -I lan $user $pass -H $bmc mc info`;
+    $rc     = $?;
 }
 while ($rc != 0) {
-   $sleepint = 10+int(rand(20));
-   print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
-   exec("sleep $sleepint");
-   #sleep $sleepint;
-   @mcinfo=`$ipmitool -I lanplus $user $pass -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
-   $rc = $?;
-    if ($rc) { #repeat workaround for shoddy vendors
-        @mcinfo=`$ipmitool -I lan $user $pass -H $bmc mc info`;
-        $rc = $?;
+    $sleepint = 10 + int(rand(20));
+    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
+    exec("sleep $sleepint");
+
+    #sleep $sleepint;
+    @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`; #| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+    $rc     = $?;
+    if ($rc) {    #repeat workaround for shoddy vendors
+        @mcinfo = `$ipmitool -I lan $user $pass -H $bmc mc info`;
+        $rc     = $?;
     }
 }
 
-my $solcom="sol";
-my $iface="lanplus";
-if (grep /IPMI Version              : 1.5/,@mcinfo) {
-    $solcom="isol";
-    $iface="lan";
-} elsif (grep /Manufacturer ID           : 343/,@mcinfo) {
-    $isintel=1;
+my $solcom = "sol";
+my $iface  = "lanplus";
+if (grep /IPMI Version              : 1.5/, @mcinfo) {
+    $solcom = "isol";
+    $iface  = "lan";
+} elsif (grep /Manufacturer ID           : 343/, @mcinfo) {
+    $isintel = 1;
 }
-my $inteloption="";
+my $inteloption = "";
 if ($isintel) {
-   $inteloption=" -o intelplus";
+    $inteloption = " -o intelplus";
 }
 if ($iface eq "lanplus") {
     system "$ipmitool -I lanplus $inteloption $user $pass -H $bmc $solcom deactivate"; #Stop any active session
 }
 
 exec "$ipmitool -I $iface $inteloption $user $pass -H $bmc $solcom activate";
-  
+
 

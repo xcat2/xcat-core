@@ -7,7 +7,7 @@ use IO::Socket::INET;
 use IO::Select;
 use Getopt::Long;
 
-my $quit = 0;
+my $quit     = 0;
 my $doreload = 0;
 my %nodecfg;
 my $bootpmagic = pack("C*", 0x63, 0x82, 0x53, 0x63);
@@ -33,14 +33,14 @@ if ($tobedaemon) {
     daemonize();
 }
 
-# open syslog 
+# open syslog
 openlog("xcat", "nofatal", "local4");
 
 my $socket;
 my $retry = 5;
-while ($retry > 0) { 
+while ($retry > 0) {
     $socket = IO::Socket::INET->new(LocalPort => 4011,
-        Proto     => 'udp',
+        Proto  => 'udp',
         Domain => AF_INET);
     if ($socket) {
         last;
@@ -50,18 +50,18 @@ while ($retry > 0) {
     $retry--;
 }
 unless ($socket) {
-    syslog ("info", "Unable to open socket on port 4011.");
-    closelog(); 
+    syslog("info", "Unable to open socket on port 4011.");
+    closelog();
     exit;
 }
 
 # regist my pid to /var/run/xcat/proxydhcp.pid
-if (open (PIDF, ">/var/run/xcat/proxydhcp-xcat.pid")) {
+if (open(PIDF, ">/var/run/xcat/proxydhcp-xcat.pid")) {
     print PIDF $$;
     close(PIDF);
 } else {
-    syslog ("info", "Cannot open /var/run/xcat/proxydhcp.pid.");
-    closelog(); 
+    syslog("info", "Cannot open /var/run/xcat/proxydhcp.pid.");
+    closelog();
     exit;
 }
 
@@ -69,32 +69,32 @@ if (open (PIDF, ">/var/run/xcat/proxydhcp-xcat.pid")) {
 my $select = new IO::Select;
 $select->add($socket);
 load_cfg();
-until ($quit) {	
-    until ($select->can_read(5)) {  #Wait for data
+until ($quit) {
+    until ($select->can_read(5)) {    #Wait for data
         if ($doreload) {
             load_cfg();
-            syslog ("info", "Reload configuration file in select.");
+            syslog("info", "Reload configuration file in select.");
         }
-        if ($quit) { last; }; 
-        yield; 
+        if ($quit) { last; }
+        yield;
     }
 
     if ($doreload) {
         load_cfg();
-        syslog ("info", "Reload configuration file before recv.");
+        syslog("info", "Reload configuration file before recv.");
     }
 
     my $data;
-    my $caddr = $socket->recv($data,1500);
+    my $caddr = $socket->recv($data, 1500);
 
     my ($cport, $cnip) = sockaddr_in($caddr);
     my $snip = my_ip_facing($cnip);
     unless ($snip) {
-        syslog ("info", "Cannot find the server ip of proxydhcp daemon");
+        syslog("info", "Cannot find the server ip of proxydhcp daemon");
         next;
     }
 
-    if (length ($data) < 320) {
+    if (length($data) < 320) {
         next;
     }
 
@@ -103,51 +103,52 @@ until ($quit) {
 
     if (pack("C*", $package[0xec], $package[0xed], $package[0xee], $package[0xef]) != $bootpmagic) {
         next;
-    } 
+    }
 
     # get the node name of client
     my $nodename = gethostbyaddr($cnip, AF_INET);
-    
+
     # get the winpepath
     my $winpepath = "";
     if ($nodename) {
         if (defined $nodecfg{$nodename}) {
             $winpepath = $nodecfg{$nodename};
-            if ($verbose) {syslog ("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file")};
+            if ($verbose) { syslog("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file") }
         } else {
             $nodename =~ s/\..*//;
             if (defined $nodecfg{$nodename}) {
                 $winpepath = $nodecfg{$nodename};
-                if ($verbose) {syslog ("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file")};
+                if ($verbose) { syslog("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file") }
             }
         }
     }
 
     # get the Vendor class identifier
-    my $strp = 0xf0;
+    my $strp  = 0xf0;
     my $archp = 0;
     while ($strp < $#package) {
-        if ($package[$strp] eq 60) {
+        if ($package[$strp] == 60) {
             $archp = $strp + 0x11;
             last;
         } else {
-            $strp += $package[$strp+1] + 2;
+            $strp += $package[ $strp + 1 ] + 2;
         }
     }
 
-    # get the winpe boot loader path 
-    my $winboot = $winpepath."Boot/pxeboot.0";
+    # get the winpe boot loader path
+    my $winboot = $winpepath . "Boot/pxeboot.0";
     if ($archp) {
         my $clienttype = substr($data, $archp, 5);
         if ($clienttype eq "00000") {
-        #if ("$package[$archp]$package[$archp+1]$package[$archp+2]$package[$archp+3]$package[$archp+4]" == "00000") {
-            $winboot = $winpepath."Boot/pxeboot.0";
+
+            #if ("$package[$archp]$package[$archp+1]$package[$archp+2]$package[$archp+3]$package[$archp+4]" == "00000") {
+            $winboot = $winpepath . "Boot/pxeboot.0";
         } elsif ($clienttype eq "00007") {
-            $winboot = $winpepath."Boot/bootmgfw.efi";
+            $winboot = $winpepath . "Boot/bootmgfw.efi";
         }
     }
 
-    syslog ("info", "The boot loader path for node $nodename is $winboot");
+    syslog("info", "The boot loader path for node $nodename is $winboot");
 
     # set message type
     $replypkg[0] = 2;
@@ -162,7 +163,7 @@ until ($quit) {
     $replypkg[3] = $package[3];
 
     # set the transaction ID
-    @replypkg = (@replypkg, @package[4 .. 7]);
+    @replypkg = (@replypkg, @package[ 4 .. 7 ]);
 
     # set elapsed time
     $replypkg[8] = 0;
@@ -173,7 +174,7 @@ until ($quit) {
     $replypkg[0xb] = 0;
 
     # set client ip
-    @replypkg = (@replypkg, @package[0xc .. 0xf]);
+    @replypkg = (@replypkg, @package[ 0xc .. 0xf ]);
 
     # set Your (client IP)
     @replypkg = (@replypkg, 0, 0, 0, 0);
@@ -185,7 +186,7 @@ until ($quit) {
     @replypkg = (@replypkg, 0, 0, 0, 0);
 
     # set client hardware address
-    @replypkg = (@replypkg, @package[0x1c .. 0x2b]);
+    @replypkg = (@replypkg, @package[ 0x1c .. 0x2b ]);
 
     # set server host name
     foreach (0x2c .. 0x6b) {
@@ -194,7 +195,7 @@ until ($quit) {
 
     # set the boot file name
     @replypkg = (@replypkg, unpack("C*", $winboot));
-    my $lenth = length ($winboot);
+    my $lenth = length($winboot);
     foreach (0x6c + $lenth .. 0xeb) {
         $replypkg[$_] = 0;
     }
@@ -205,50 +206,50 @@ until ($quit) {
     @replypkg = (@replypkg, unpack("C*", $bootpmagic));
 
     # set dhcp msg type
-    $replypkg[0xf0] = 0x35; # option number
-    $replypkg[0xf1] = 0x1; # msg length
-    $replypkg[0xf2] = 0x5; # dhcp ack
+    $replypkg[0xf0] = 0x35;    # option number
+    $replypkg[0xf1] = 0x1;     # msg length
+    $replypkg[0xf2] = 0x5;     # dhcp ack
 
     # set dhcp server identifer
-    $replypkg[0xf3] = 0x36; # option number
-    $replypkg[0xf4] = 0x4; # msg length
+    $replypkg[0xf3] = 0x36;    # option number
+    $replypkg[0xf4] = 0x4;     # msg length
     @replypkg = (@replypkg, unpack("C*", $snip));
 
     # set the bcd path
-    my $winbcd = $winpepath."Boot/BCD";
-    $replypkg[0xf9] = 0xfc; # option number
-    $replypkg[0xfa] = length($winbcd) + 1; # msg length
+    my $winbcd = $winpepath . "Boot/BCD";
+    $replypkg[0xf9] = 0xfc;                   # option number
+    $replypkg[0xfa] = length($winbcd) + 1;    # msg length
     @replypkg = (@replypkg, unpack("C*", $winbcd));
-    $replypkg[0xfa + length($winbcd) + 1] = 0;
-    $replypkg[0xfa + length($winbcd) + 2] = 0xff;
-    
+    $replypkg[ 0xfa + length($winbcd) + 1 ] = 0;
+    $replypkg[ 0xfa + length($winbcd) + 2 ] = 0xff;
+
     $socket->send(pack("C*", @replypkg), 0, $caddr);
 
-    syslog ("info", "The BCD path for node $nodename is $winbcd");
+    syslog("info", "The BCD path for node $nodename is $winbcd");
 
     # debug package detail
     if (0) {
-    my $msg; 
-    my $firstline = 1;
-    my $num = 0;
-    foreach (@replypkg) {
-        my $v = sprintf("%2x ", $_);
-        $msg .= $v;
-        if (($num - 5)%8 eq 0) {
-            $msg .= "   ";
+        my $msg;
+        my $firstline = 1;
+        my $num       = 0;
+        foreach (@replypkg) {
+            my $v = sprintf("%2x ", $_);
+            $msg .= $v;
+            if (($num - 5) % 8 eq 0) {
+                $msg .= "   ";
+            }
+            if (($num - 5) % 16 eq 0) {
+                syslog("info", $msg);
+                print "$msg \n";
+                $msg = "";
+            }
+            $num++;
         }
-        if (($num - 5)%16 eq 0) {
-            syslog ("info", $msg);
-            print $msg."\n";
-            $msg = "";
-        }
-        $num++;
+        print "$msg \n";
     }
-    print $msg."\n";
-    }  
 }
 
-closelog(); 
+closelog();
 
 # daemonize the service
 sub daemonize
@@ -262,7 +263,7 @@ sub daemonize
     }
     open STDOUT, '>/dev/null';
     open STDERR, '>/dev/null';
-    $0='proxydhcp-xcat';
+    $0        = 'proxydhcp-xcat';
     $progname = \$0;
 }
 
@@ -270,12 +271,12 @@ sub daemonize
 sub load_cfg
 {
     $doreload = 0;
-    if (! -r "/var/lib/xcat/proxydhcp.cfg") {
+    if (!-r "/var/lib/xcat/proxydhcp.cfg") {
         return;
     }
 
-    if (! open (CFG, "</var/lib/xcat/proxydhcp.cfg")) {
-        syslog ("info", "Cannot open /var/lib/xcat/proxydhcp.cfg");
+    if (!open(CFG, "</var/lib/xcat/proxydhcp.cfg")) {
+        syslog("info", "Cannot open /var/lib/xcat/proxydhcp.cfg");
         return;
     }
 
@@ -286,10 +287,10 @@ sub load_cfg
 
     my $p = 0;
     while (1) {
-    
-        my $name = substr($mycfg, $p, 50); 
+
+        my $name = substr($mycfg, $p, 50);
         $p += 50;
-        my $value = substr($mycfg, $p, 150); 
+        my $value = substr($mycfg, $p, 150);
         $p += 150;
 
         $name =~ s/\0//g;

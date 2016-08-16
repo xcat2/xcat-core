@@ -18,7 +18,7 @@
 
 #print "$::sdata xcataixpost: install the openssh and openssl\n";
 `cd /xcatpost/packages; /usr/sbin/installp -aXYd . openssh.base  openssl.base  openssl.license openssh.msg.EN_US`;
-if($? != 0)
+if ($? != 0)
 {
     chomp($date = `/bin/date`);
     $msg = "$date installsshforvios: installing openssh failed!\n";
@@ -33,6 +33,7 @@ else
 
 #print "$::sdate xcataixpost: copy the public key from MN to vios\n";
 `mkdir -p /home/padmin/.ssh/; cat /xcatpost/_ssh/authorized_keys >> /home/padmin/.ssh/authorized_keys2 2>&1`;
+
 #print "$::sdate xcataixpost: xdsh -l padmin could logon automatically.\n";
 
 `/xcatpost/remoteshell`;

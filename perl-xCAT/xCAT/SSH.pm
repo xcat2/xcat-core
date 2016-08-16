@@ -2,20 +2,21 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::SSH;
+
 # cannot use strict
 use base xCAT::DSHRemoteShell;
 
 # Determine if OS is AIX or Linux
 # Configure standard locations of commands based on OS
 
-if ( $^O eq 'aix' ) {
-	our $SCP_CMD = '/usr/bin/scp';
-	our $SSH_CMD = '/usr/bin/ssh';
+if ($^O eq 'aix') {
+    our $SCP_CMD = '/usr/bin/scp';
+    our $SSH_CMD = '/usr/bin/ssh';
 }
 
-if ( $^O eq 'linux' ) {
-	our $SCP_CMD = '/usr/bin/scp';
-	our $SSH_CMD = '/usr/bin/ssh';
+if ($^O eq 'linux') {
+    our $SCP_CMD = '/usr/bin/scp';
+    our $SSH_CMD = '/usr/bin/ssh';
 }
 
 # Store the version string of SSH
@@ -57,32 +58,32 @@ our $ssh_version = xCAT::SSH->validate_ssh_version;
 =cut
 
 sub remote_shell_command {
-	my ( $class, $config, $exec_path ) = @_;
+    my ($class, $config, $exec_path) = @_;
 
-	$exec_path || ( $exec_path = $SSH_CMD );
-	$exec_path = '/usr/hmcrbin/ssh' if $$config{'ishmc'};
+    $exec_path || ($exec_path = $SSH_CMD);
+    $exec_path = '/usr/hmcrbin/ssh' if $$config{'ishmc'};
 
-	my @command = ();
+    my @command = ();
 
-	push @command, $exec_path;
+    push @command, $exec_path;
 
-	if ( $$config{'options'} ) {
-		my @options = split ' ', $$config{'options'};
-		push @command, @options;
-	}
+    if ($$config{'options'}) {
+        my @options = split ' ', $$config{'options'};
+        push @command, @options;
+    }
 
-	if ( $ssh_version eq 'OpenSSH' ) {
-		push @command, '-o';
-		push @command, 'BatchMode=yes';
+    if ($ssh_version eq 'OpenSSH') {
+        push @command, '-o';
+        push @command, 'BatchMode=yes';
 
-		( $$config{'options'} !~ /-X/ ) && push @command, '-x';
-	}
+        ($$config{'options'} !~ /-X/) && push @command, '-x';
+    }
 
-	$$config{'user'} && ( $$config{'user'} .= '@' );
-	push @command, "$$config{'user'}$$config{'hostname'}";
-	push @command, $$config{'command'};
+    $$config{'user'} && ($$config{'user'} .= '@');
+    push @command, "$$config{'user'}$$config{'hostname'}";
+    push @command, $$config{'command'};
 
-	return @command;
+    return @command;
 }
 
 =head3
@@ -126,43 +127,43 @@ sub remote_shell_command {
 =cut
 
 sub remote_copy_command {
-	my ( $class, $config, $exec_path ) = @_;
+    my ($class, $config, $exec_path) = @_;
 
-	$exec_path || ( $exec_path = $SCP_CMD );
-	$exec_path = '/usr/hmcrbin/scp' if $$config{'ishmc'};
+    $exec_path || ($exec_path = $SCP_CMD);
+    $exec_path = '/usr/hmcrbin/scp' if $$config{'ishmc'};
 
-	my @command   = ();
-	my @src_files = ();
-	my @dest_file = ();
+    my @command   = ();
+    my @src_files = ();
+    my @dest_file = ();
 
-	my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
-	
-	foreach $src_file (@src_file_list) {
-		my @src_path = ();
-		$$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
-		$$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
-		$$config{'src-file'} && push @src_path, $src_file;
-		push @src_files, ( join '', @src_path );
-	}
+    my @src_file_list = split $::__DCP_DELIM, $$config{'src-file'};
 
-	$$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
-	$$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
-	$$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
+    foreach $src_file (@src_file_list) {
+        my @src_path = ();
+        $$config{'src-user'} && push @src_path, "$$config{'src-user'}@";
+        $$config{'src-host'} && push @src_path, "$$config{'src-host'}:";
+        $$config{'src-file'} && push @src_path, $src_file;
+        push @src_files, (join '', @src_path);
+    }
 
-	push @command, $exec_path;
-	$$config{'preserve'}  && push @command, '-p';
-	$$config{'recursive'} && push @command, '-r';
+    $$config{'dest-user'} && push @dest_file, "$$config{'dest-user'}@";
+    $$config{'dest-host'} && push @dest_file, "$$config{'dest-host'}:";
+    $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
 
-	if ( $$config{'options'} ) {
-		my @options = split ' ', $$config{'options'};
-		push @command, @options;
-	}
+    push @command, $exec_path;
+    $$config{'preserve'}  && push @command, '-p';
+    $$config{'recursive'} && push @command, '-r';
 
-	( $ssh_version eq 'OpenSSH' ) && push @command, '-B';
-	push @command, @src_files;
-	push @command, ( join '', @dest_file );
+    if ($$config{'options'}) {
+        my @options = split ' ', $$config{'options'};
+        push @command, @options;
+    }
 
-	return @command;
+    ($ssh_version eq 'OpenSSH') && push @command, '-B';
+    push @command, @src_files;
+    push @command, (join '', @dest_file);
+
+    return @command;
 }
 
 =head3
@@ -192,11 +193,11 @@ sub remote_copy_command {
 =cut
 
 sub validate_ssh_version {
-	my $command = "$SSH_CMD -V 2>&1";
-	my @output  = `$command`;
+    my $command = "$SSH_CMD -V 2>&1";
+    my @output  = `$command`;
 
-	( $output[0] =~ /OpenSSH/ ) && return 'OpenSSH';
-	return undef;
+    ($output[0] =~ /OpenSSH/) && return 'OpenSSH';
+    return undef;
 }
 
 1;

@@ -10,7 +10,7 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+    unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -20,7 +20,7 @@ use Socket;
 use strict;
 use Symbol;
 my $sha1support;
-if ( -f "/etc/debian_version" ) {
+if (-f "/etc/debian_version") {
     $sha1support = eval {
         require Digest::SHA;
         1;
@@ -37,7 +37,7 @@ use IPC::Open3;
 use IO::Select;
 use warnings "all";
 
-our @ISA       = qw(Exporter);
+our @ISA = qw(Exporter);
 
 #-------------------------------------------------------------------------------
 
@@ -52,6 +52,7 @@ This program module file, is a set of utilities used by xCAT buildkit command
 #-------------------------------------------------------------
 
 #--------------------------------------------------------------------------
+
 =head3    get_latest_version
 
           Find the latest version in a list of rpms with the same basename
@@ -67,6 +68,7 @@ This program module file, is a set of utilities used by xCAT buildkit command
         Comments:
 
 =cut
+
 #--------------------------------------------------------------------------
 sub get_latest_version
 {
@@ -93,8 +95,8 @@ sub get_latest_version
         chomp $VERSION;
         chomp $RELEASE;
 
-        $localversions_hash{$i}{'VERSION'}  = $VERSION;
-        $localversions_hash{$i}{'RELEASE'}  = $RELEASE;
+        $localversions_hash{$i}{'VERSION'} = $VERSION;
+        $localversions_hash{$i}{'RELEASE'} = $RELEASE;
 
         $file_name_hash{$VERSION}{$RELEASE} = $rpm;
         $i++;
@@ -102,8 +104,8 @@ sub get_latest_version
 
     if ($i == 0)
     {
-	print "error\n";
-	return undef;
+        print "error\n";
+        return undef;
     }
 
     my $versionout = "";
@@ -118,7 +120,7 @@ sub get_latest_version
         }
 
         # if this is a newer version/release then set them
-        if ( xCAT::BuildKitUtils->testVersion($localversions_hash{$k}{'VERSION'}, ">", $versionout, $localversions_hash{$k}{'RELEASE'}, $releaseout) ) {
+        if (xCAT::BuildKitUtils->testVersion($localversions_hash{$k}{'VERSION'}, ">", $versionout, $localversions_hash{$k}{'RELEASE'}, $releaseout)) {
             $versionout = $localversions_hash{$k}{'VERSION'};
             $releaseout = $localversions_hash{$k}{'RELEASE'};
         }
@@ -135,6 +137,7 @@ sub get_latest_version
 }
 
 #--------------------------------------------------------------------------
+
 =head3    get_latest_version_deb
 
           Find the latest version in a list of debs with the same basename
@@ -150,6 +153,7 @@ sub get_latest_version
         Comments:
 
 =cut
+
 #--------------------------------------------------------------------------
 sub get_latest_version_deb
 {
@@ -158,7 +162,7 @@ sub get_latest_version_deb
     my @deblist = @$debs;
 
     my %localversions_hash = ();
-    my $file_name; 
+    my $file_name;
     my %founddeb;
     my $latest;
     my $i = 0;
@@ -168,6 +172,7 @@ sub get_latest_version_deb
         # include path
         my $fulldebpath = "$repodir/$deb*";
         chomp $deb;
+
         # get the basename, version, and release for this deb
         print "dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'";
         my $basenamedeb = `dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'`;
@@ -176,7 +181,7 @@ sub get_latest_version_deb
         my $versiondeb = `dpkg -I $repodir/$deb |grep Version|awk '{print \$2}'`;
         chomp $versiondeb;
 
-        $founddeb{$basenamedeb}{$deb}{version}=$versiondeb;
+        $founddeb{$basenamedeb}{$deb}{version} = $versiondeb;
 
         $i++;
     }
@@ -187,15 +192,18 @@ sub get_latest_version_deb
     }
 
 
-     foreach my $r (keys %founddeb ) {
+    foreach my $r (keys %founddeb) {
+
         # if more than one with same basename then find the latest
-        my $latestmatch="";
-        foreach my $fdeb (keys %{$founddeb{$r}} ) {
+        my $latestmatch = "";
+        foreach my $fdeb (keys %{ $founddeb{$r} }) {
+
             # if we already found a match in some other dir
             if ($latestmatch) {
+
                 # then we need to figure out which is the newest
                 # if the $fdeb is newer than use iti
-                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
+                if (!xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version})) {
                     $latestmatch = $fdeb;
                 }
 
@@ -203,8 +211,8 @@ sub get_latest_version_deb
                 $latestmatch = $fdeb;
             }
         }
-        $latest=$latestmatch;
-        
+        $latest = $latestmatch;
+
     }
     if ($i == 0)
     {
@@ -216,6 +224,7 @@ sub get_latest_version_deb
 }
 
 #--------------------------------------------------------------------------
+
 =head3    find_latest_pkg
 
           Find the latest rpm package give the rpm name and a list of 
@@ -232,6 +241,7 @@ sub get_latest_version_deb
         Comments:
 
 =cut
+
 #--------------------------------------------------------------------------
 sub find_latest_pkg
 {
@@ -246,18 +256,21 @@ sub find_latest_pkg
     #  - if more than one match need to pick latest
     # find all the matches in all the directories
     foreach my $rpmdir (@pkgdirlist) {
-        my $ffile = $rpmdir."/".$rpmname;
+        my $ffile = $rpmdir . "/" . $rpmname;
 
-        if ( system("/bin/ls $ffile > /dev/null 2>&1") ){
+        if (system("/bin/ls $ffile > /dev/null 2>&1")) {
+
             # if not then skip to next dir
             next;
         } else {
+
             # if so then get the details and add it to the %foundrpm hash
-            my $cmd = "/bin/ls $ffile 2>/dev/null";
-            my $output = `$cmd`;
+            my $cmd     = "/bin/ls $ffile 2>/dev/null";
+            my $output  = `$cmd`;
             my @rpmlist = split(/\n/, $output);
 
-            if ( scalar(@rpmlist) == 0) {
+            if (scalar(@rpmlist) == 0) {
+
                 # no rpms to check
                 next;
             }
@@ -269,25 +282,28 @@ sub find_latest_pkg
                 chomp $fromV;
                 chomp $fromR;
 
-                # ex. {ppe_rte_man}{/tmp/rpm1/ppe_rte_man-1.3.0.5-s005a.x86_64.rpm}{version}=$fromV; 
-                $foundrpm{$name}{$r}{version}=$fromV;
-                $foundrpm{$name}{$r}{release}=$fromR;
+                # ex. {ppe_rte_man}{/tmp/rpm1/ppe_rte_man-1.3.0.5-s005a.x86_64.rpm}{version}=$fromV;
+                $foundrpm{$name}{$r}{version} = $fromV;
+                $foundrpm{$name}{$r}{release} = $fromR;
 
-#print "name=$name, full=$r, verson= $fromV, release=$fromR\n";
+                #print "name=$name, full=$r, verson= $fromV, release=$fromR\n";
             }
         }
     }
 
     # for each unique rpm basename
-    foreach my $r (keys %foundrpm ) {
+    foreach my $r (keys %foundrpm) {
+
         # if more than one with same basename then find the latest
-        my $latestmatch="";
-        foreach my $frpm (keys %{$foundrpm{$r}} ) {
+        my $latestmatch = "";
+        foreach my $frpm (keys %{ $foundrpm{$r} }) {
+
             # if we already found a match in some other dir
             if ($latestmatch) {
+
                 # then we need to figure out which is the newest
                 # if the $frpm is newer than use it
-                if ( xCAT::BuildKitUtils->testVersion($foundrpm{$r}{$frpm}{version}, ">", $foundrpm{$r}{$latestmatch}{version}, $foundrpm{$r}{$frpm}{release}, $foundrpm{$r}{$latestmatch}{release}) ) {
+                if (xCAT::BuildKitUtils->testVersion($foundrpm{$r}{$frpm}{version}, ">", $foundrpm{$r}{$latestmatch}{version}, $foundrpm{$r}{$frpm}{release}, $foundrpm{$r}{$latestmatch}{release})) {
                     $latestmatch = $frpm;
                 }
 
@@ -295,7 +311,7 @@ sub find_latest_pkg
                 $latestmatch = $frpm;
             }
         }
-	push(@rpms, $latestmatch);
+        push(@rpms, $latestmatch);
     }
 
     if (scalar(@rpms)) {
@@ -306,6 +322,7 @@ sub find_latest_pkg
 }
 
 #--------------------------------------------------------------------------
+
 =head3    find_latest_pkg_deb
 
           Find the latest deb package give the deb name and a list of 
@@ -323,6 +340,7 @@ sub find_latest_pkg
         Comments:
 
 =cut
+
 #--------------------------------------------------------------------------
 sub find_latest_pkg_deb
 {
@@ -337,43 +355,48 @@ sub find_latest_pkg_deb
     #  - if more than one match need to pick latest
     # find all the matches in all the directories
     foreach my $debdir (@pkgdirlist) {
-        my $ffile = $debdir."/".$debname;
+        my $ffile = $debdir . "/" . $debname;
 
-        if ( system("/bin/ls $ffile > /dev/null 2>&1") ){
+        if (system("/bin/ls $ffile > /dev/null 2>&1")) {
+
             # if not then skip to next dir
             next;
         } else {
+
             # if so then get the details and add it to the %founddeb hash
-            my $cmd = "/bin/ls $ffile 2>/dev/null";
-            my $output = `$cmd`;
+            my $cmd     = "/bin/ls $ffile 2>/dev/null";
+            my $output  = `$cmd`;
             my @deblist = split(/\n/, $output);
 
-            if ( scalar(@deblist) == 0) {
+            if (scalar(@deblist) == 0) {
                 next;
             }
 
             foreach my $r (@deblist) {
-            my $basename = `dpkg -I $r* |grep Package|awk '{print \$2}'|head -1`;
-            chomp $basename;
+                my $basename = `dpkg -I $r* |grep Package|awk '{print \$2}'|head -1`;
+                chomp $basename;
 
-            my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'|head -1`;
-            chomp $version;
+                my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'|head -1`;
+                chomp $version;
 
-            $founddeb{$basename}{$r}{version}=$version;
+                $founddeb{$basename}{$r}{version} = $version;
             }
         }
     }
 
     # for each unique deb basename
-    foreach my $r (keys %founddeb ) {
+    foreach my $r (keys %founddeb) {
+
         # if more than one with same basename then find the latest
-        my $latestmatch="";
-        foreach my $fdeb (keys %{$founddeb{$r}} ) {
+        my $latestmatch = "";
+        foreach my $fdeb (keys %{ $founddeb{$r} }) {
+
             # if we already found a match in some other dir
             if ($latestmatch) {
+
                 # then we need to figure out which is the newest
                 # if the $fdeb is newer than use it
-                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
+                if (!xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version})) {
                     $latestmatch = $fdeb;
                 }
 
@@ -382,7 +405,7 @@ sub find_latest_pkg_deb
             }
         }
         push(@debs, $latestmatch);
-   }
+    }
 
     if (scalar(@debs)) {
         return \@debs;
@@ -416,21 +439,21 @@ sub find_latest_pkg_deb
 #-----------------------------------------------------------------------------
 sub testVersion_deb
 {
-      my ($class, $version1, $operator, $version2) = @_;
-      if ($::VERBOSE) {
-           print "dpkg --compare-versions $version1 $operator $version2 \n";
-        }
-      my $cmd ="dpkg --compare-versions $version1 $operator $version2";
-      my $outref = [];
-      my $result = 0;
-      @$outref = `$cmd 2>&1`;
-      $result = $? ;
-      if ($result)
-      {    
-         $result = $result >> 8;
-      }
-      
-      return $result;
+    my ($class, $version1, $operator, $version2) = @_;
+    if ($::VERBOSE) {
+        print "dpkg --compare-versions $version1 $operator $version2 \n";
+    }
+    my $cmd    = "dpkg --compare-versions $version1 $operator $version2";
+    my $outref = [];
+    my $result = 0;
+    @$outref = `$cmd 2>&1`;
+    $result  = $?;
+    if ($result)
+    {
+        $result = $result >> 8;
+    }
+
+    return $result;
 
 }
 
@@ -478,28 +501,28 @@ sub testVersion
     for (my $i = 0 ; $i < $len ; $i++)
     {
         # remove any non-numbers on the end
-      if(defined($a1[$i])&&defined($a2[$i]))
-      { 
-        my ($d1) = $a1[$i] =~ /^(\d*)/;  
-        my ($d2) = $a2[$i] =~ /^(\d*)/;
+        if (defined($a1[$i]) && defined($a2[$i]))
+        {
+            my ($d1) = $a1[$i] =~ /^(\d*)/;
+            my ($d2) = $a2[$i] =~ /^(\d*)/;
 
-        my $diff = length($d1) - length($d2);
-        if ($diff > 0)       # pad d2
-        {
-            $num1 .= $d1;
-            $num2 .= ('0' x $diff) . $d2;
+            my $diff = length($d1) - length($d2);
+            if ($diff > 0)    # pad d2
+            {
+                $num1 .= $d1;
+                $num2 .= ('0' x $diff) . $d2;
+            }
+            elsif ($diff < 0)    # pad d1
+            {
+                $num1 .= ('0' x abs($diff)) . $d1;
+                $num2 .= $d2;
+            }
+            else                 # they are the same length
+            {
+                $num1 .= $d1;
+                $num2 .= $d2;
+            }
         }
-            elsif ($diff < 0)       # pad d1
-        {
-            $num1 .= ('0' x abs($diff)) . $d1;
-            $num2 .= $d2;
-        }
-        else   # they are the same length
-        {
-            $num1 .= $d1;
-            $num2 .= $d2;
-        }
-      }
     }
 
     # Remove the leading 0s or perl will interpret the numbers as octal
@@ -538,8 +561,8 @@ sub testVersion
 #-------------------------------------------------------------------------------
 sub isAIX
 {
-    if ($^O =~ /^aix/i) { return 1; }
-    else { return 0; }
+    if   ($^O =~ /^aix/i) { return 1; }
+    else                  { return 0; }
 }
 
 #-------------------------------------------------------------------------------
@@ -560,20 +583,20 @@ sub isAIX
 #-------------------------------------------------------------------------------
 sub get_OS_VRMF
 {
-	my $version;
-	if (xCAT::BuildKitUtils->isAIX()) {
-		my $cmd = "/usr/bin/lslpp -cLq bos.rte";
-		my $output = `$cmd`;
-		chomp($output);
+    my $version;
+    if (xCAT::BuildKitUtils->isAIX()) {
+        my $cmd    = "/usr/bin/lslpp -cLq bos.rte";
+        my $output = `$cmd`;
+        chomp($output);
 
-		# The third field in the lslpp output is the VRMF
-		$version = (split(/:/, $output))[2];
+        # The third field in the lslpp output is the VRMF
+        $version = (split(/:/, $output))[2];
 
-		# not sure if the field would ever contain more than 4 parts?
-		my ($v1, $v2, $v3, $v4, $rest) = split(/\./, $version);
-		$version = join(".", $v1, $v2, $v3, $v4); 
-	}
-	return (length($version) ? $version : undef);
+        # not sure if the field would ever contain more than 4 parts?
+        my ($v1, $v2, $v3, $v4, $rest) = split(/\./, $version);
+        $version = join(".", $v1, $v2, $v3, $v4);
+    }
+    return (length($version) ? $version : undef);
 }
 
 #-------------------------------------------------------------------------------
@@ -598,8 +621,8 @@ sub get_OS_VRMF
 #-------------------------------------------------------------------------------
 sub isLinux
 {
-    if ($^O =~ /^linux/i) { return 1; }
-    else { return 0; }
+    if   ($^O =~ /^linux/i) { return 1; }
+    else                    { return 0; }
 }
 
 #--------------------------------------------------------------------------------
@@ -693,7 +716,7 @@ sub CheckVersion
     my $len_a = @a;
     my $len_b = @b;
 
-    my $index     = 0;
+    my $index = 0;
     my $max_index = ($len_a > $len_b) ? $len_a : $len_b;
 
     for ($index = 0 ; $index <= $max_index ; $index++)
@@ -737,24 +760,25 @@ sub osver
     my $relfile;
     if (-f "/etc/redhat-release")
     {
-        open($relfile,"<","/etc/redhat-release");
+        open($relfile, "<", "/etc/redhat-release");
         $line = <$relfile>;
         close($relfile);
         chomp($line);
-        $os = "rh";
-        $ver=$line;
-  #      $ver=~ s/\.//;
+        $os  = "rh";
+        $ver = $line;
+
+        #      $ver=~ s/\.//;
         $ver =~ s/[^0-9]*([0-9.]+).*/$1/;
-        if    ($line =~ /AS/)     { $os = 'rhas' }
-        elsif ($line =~ /ES/)     { $os = 'rhes' }
-        elsif ($line =~ /WS/)     { $os = 'rhws' }
-        elsif ($line =~ /Server/) { $os = 'rhels' }
-        elsif ($line =~ /Client/) { $os = 'rhel' }
+        if    ($line =~ /AS/)            { $os = 'rhas' }
+        elsif ($line =~ /ES/)            { $os = 'rhes' }
+        elsif ($line =~ /WS/)            { $os = 'rhws' }
+        elsif ($line =~ /Server/)        { $os = 'rhels' }
+        elsif ($line =~ /Client/)        { $os = 'rhel' }
         elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
     }
     elsif (-f "/etc/SuSE-release")
     {
-        open($relfile,"<","/etc/SuSE-release");
+        open($relfile, "<", "/etc/SuSE-release");
         @lines = <$relfile>;
         close($relfile);
         chomp(@lines);
@@ -764,57 +788,58 @@ sub osver
         $ver =~ s/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
         my $minorver;
+
         if (grep /PATCHLEVEL/, $lines[2]) {
             $minorver = $lines[2];
             $minorver =~ s/PATCHLEVEL[^0-9]*([0-9]+).*/$1/;
         }
-        $ver = $ver . ".$minorver" if ( $minorver );
+        $ver = $ver . ".$minorver" if ($minorver);
     }
     elsif (-f "/etc/UnitedLinux-release")
     {
         $os = "ul";
-        open($relfile,"<","/etc/UnitedLinux-release");
+        open($relfile, "<", "/etc/UnitedLinux-release");
         $ver = <$relfile>;
         close($relfile);
         $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
     }
-    elsif (-f "/etc/lsb-release")   # Possibly Ubuntu
+    elsif (-f "/etc/lsb-release")    # Possibly Ubuntu
     {
 
-        if (open($relfile,"<","/etc/lsb-release")) {
+        if (open($relfile, "<", "/etc/lsb-release")) {
             my @text = <$relfile>;
             close($relfile);
             chomp(@text);
-            my $distrib_id = '';
+            my $distrib_id  = '';
             my $distrib_rel = '';
 
             foreach (@text) {
-                if ( $_ =~ /^\s*DISTRIB_ID=(.*)$/ ) {
-                    $distrib_id = $1;                   # last DISTRIB_ID value in file used
-                } elsif ( $_ =~ /^\s*DISTRIB_RELEASE=(.*)$/ ) {
-                    $distrib_rel = $1;                  # last DISTRIB_RELEASE value in file used
+                if ($_ =~ /^\s*DISTRIB_ID=(.*)$/) {
+                    $distrib_id = $1;    # last DISTRIB_ID value in file used
+                } elsif ($_ =~ /^\s*DISTRIB_RELEASE=(.*)$/) {
+                    $distrib_rel = $1; # last DISTRIB_RELEASE value in file used
                 }
             }
 
-            if ( $distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/ ) {
+            if ($distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/) {
                 $os = "ubuntu";
 
-                if ( $distrib_rel =~ /^(.*?)\s*$/ ) {       # eliminate trailing blanks, if any
+                if ($distrib_rel =~ /^(.*?)\s*$/) { # eliminate trailing blanks, if any
                     $distrib_rel = $1;
                 }
-                if ( $distrib_rel =~ /^"(.*?)"$/ ) {        # eliminate enclosing quotes, if any
+                if ($distrib_rel =~ /^"(.*?)"$/) { # eliminate enclosing quotes, if any
                     $distrib_rel = $1;
                 }
                 $ver = $distrib_rel;
             }
         }
     }
-    elsif (-f "/etc/debian_version") #possible debian
+    elsif (-f "/etc/debian_version")               #possible debian
     {
-        if (open($relfile, "<", "/etc/issue")){
+        if (open($relfile, "<", "/etc/issue")) {
             $line = <$relfile>;
-            if ( $line =~ /debian.*/i){
+            if ($line =~ /debian.*/i) {
                 $os = "debian";
                 my $relfile1;
                 open($relfile1, "<", "/etc/debian_version");
@@ -829,6 +854,7 @@ sub osver
 }
 
 #-----------------------------------------------------------------------------
+
 =head3 acquire_lock
     Get a lock on an arbirtrary named resource.  For now, this is only across the scope of one service node/master node, an argument may be added later if/when 'global' locks are supported. This call will block until the lock is free.
     Arguments:
@@ -837,6 +863,7 @@ sub osver
         false on failure
         A reference for the lock being held.
 =cut
+
 #-----------------------------------------------------------------------------
 sub acquire_lock {
     my $lock_name = shift;
@@ -844,14 +871,15 @@ sub acquire_lock {
     mkpath("/var/lock/xcat/");
     use Fcntl ":flock";
     my $tlock;
-    $tlock->{path}="/var/lock/xcat/".$lock_name;
-    open($tlock->{fd},">",$tlock->{path}) or return undef;
+    $tlock->{path} = "/var/lock/xcat/" . $lock_name;
+    open($tlock->{fd}, ">", $tlock->{path}) or return undef;
     unless ($tlock->{fd}) { return undef; }
-    flock($tlock->{fd},LOCK_EX) or return undef;
+    flock($tlock->{fd}, LOCK_EX) or return undef;
     return $tlock;
 }
-        
+
 #---------------------
+
 =head3 release_lock
     Release an acquired lock
     Arguments:
@@ -859,11 +887,12 @@ sub acquire_lock {
     Returns:
         false on failure, true on success
 =cut
+
 #-----------------------------------------------------------------------------
 sub release_lock {
     my $tlock = shift;
     unlink($tlock->{path});
-    flock($tlock->{fd},LOCK_UN);
+    flock($tlock->{fd}, LOCK_UN);
     close($tlock->{fd});
 }
 
@@ -891,7 +920,7 @@ sub release_lock {
 sub get_unique_members
 {
     my @orig_array = @_;
-    my %tmp_hash = ();
+    my %tmp_hash   = ();
     for my $ent (@orig_array)
     {
         $tmp_hash{$ent} = 1;
@@ -928,7 +957,7 @@ sub full_path
 
     my $fullpath;
 
-    if (!$cwdir) { #cwdir is not specified
+    if (!$cwdir) {    #cwdir is not specified
         $fullpath = Cwd::abs_path($relpath);
     } else {
         $fullpath = $cwdir . "/$relpath";

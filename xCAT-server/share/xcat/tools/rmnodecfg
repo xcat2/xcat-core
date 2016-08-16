@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# removes the configuration of a node so that the next time you reboot 
+# removes the configuration of a node so that the next time you reboot
 # a node it forces it to go through the discovery process.
 # usage: rmnodecfg <noderange>
 # this does not remove it completely from xCAT.  You may want to do this
@@ -35,47 +35,48 @@ require xCAT::Utils;
 require xCAT::TableUtils;
 
 my $blades = shift;
-if(! $blades) {
-  print "Please specify a noderange of blades to remove\n";
-  exit; 
+if (!$blades) {
+    print "Please specify a noderange of blades to remove\n";
+    exit;
 }
 
 my $tftpdir = xCAT::TableUtils->getTftpDir();
 
-foreach my $blade (`/opt/xcat/bin/nodels $blades`){
-  chomp($blade);
-  my $hex = ip2hex($blade); 
-  my $cmd = "nodech $blade chain.currstate= chain.currchain= chain.chain=";
-  $cmd = "chtab -d node=$blade chain";
-  print "$cmd\n";
-  `$cmd`;
-  $cmd = "chtab -d node=$blade mac";
-  print "$cmd\n";
-  `$cmd`;
-  $cmd = "makedhcp -d $blade";
-  print "$cmd\n";
-  `$cmd`;
-  $cmd = "rm $tftpdir/pxelinux.cfg/$blade";
-  print "$cmd\n";
-  `$cmd`;
-  if($hex){
-    $cmd = "rm $tftpdir/pxelinux.cfg/$hex";
+foreach my $blade (`/opt/xcat/bin/nodels $blades`) {
+    chomp($blade);
+    my $hex = ip2hex($blade);
+    my $cmd = "nodech $blade chain.currstate= chain.currchain= chain.chain=";
+    $cmd = "chtab -d node=$blade chain";
     print "$cmd\n";
-    `$cmd`;     
-  }     
+    `$cmd`;
+    $cmd = "chtab -d node=$blade mac";
+    print "$cmd\n";
+    `$cmd`;
+    $cmd = "makedhcp -d $blade";
+    print "$cmd\n";
+    `$cmd`;
+    $cmd = "rm $tftpdir/pxelinux.cfg/$blade";
+    print "$cmd\n";
+    `$cmd`;
+
+    if ($hex) {
+        $cmd = "rm $tftpdir/pxelinux.cfg/$hex";
+        print "$cmd\n";
+        `$cmd`;
+    }
 }
 
 sub ip2hex {
-  my $node = shift;
-  my $ip = '';
-  my @quad;
-  my $hex = '';
-  my $packed_ip = gethostbyname($node);
-  if(defined $packed_ip){
-    $ip = inet_ntoa($packed_ip);
-    @quad = split('\.', $ip);
-    $hex = sprintf("%02X%02X%02X%02X", @quad);
-  }
-  return $hex;
+    my $node = shift;
+    my $ip   = '';
+    my @quad;
+    my $hex       = '';
+    my $packed_ip = gethostbyname($node);
+    if (defined $packed_ip) {
+        $ip   = inet_ntoa($packed_ip);
+        @quad = split('\.', $ip);
+        $hex  = sprintf("%02X%02X%02X%02X", @quad);
+    }
+    return $hex;
 }
 

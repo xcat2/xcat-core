@@ -13,3 +13,6 @@ rpm
 rsync
 rsyslog
 e2fsprogs
+gzip
+tar
+xz

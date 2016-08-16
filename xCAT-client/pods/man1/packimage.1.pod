@@ -8,7 +8,7 @@ B<packimage [-h| --help]>
 
 B<packimage  [-v| --version]>
 
-B<packimage> I<imagename>
+B<packimage> [B<-m>|B<--method> I<cpio|tar>] [B<-c>|B<--compress> I<gzip|pigz|xz>]  I<imagename>
 
 =head1 DESCRIPTION
 
@@ -36,7 +36,9 @@ B<-p>          Profile (compute,service)
 
 B<-a>          Architecture (ppc64,x86_64,etc)
 
-B<-m>          Method (default cpio)
+B<-m| --method>          Archive Method (cpio,tar,squashfs, default is cpio)
+
+B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
 
 =head1 RETURN VALUE
@@ -51,6 +53,9 @@ B<-m>          Method (default cpio)
 
  packimage rhels7.1-x86_64-netboot-compute
 
+2. To pack the osimage rhels7.1-x86_64-netboot-compute with "tar" to archive and "pigz" to compress:
+
+ packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
 
 =head1 FILES
 

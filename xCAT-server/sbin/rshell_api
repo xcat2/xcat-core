@@ -20,24 +20,24 @@ my $help;
 my $verbose;
 
 if (!GetOptions(
-  'l|loginname=s' => \$username,
-  'p|password=s' => \$passwd,
-  't|telnet' => \$telnet,  #use telnet, otherwise ssh
-  'h|help' => \$help,
-  'v|verbose'=> \$verbose,
-  ) || $help || scalar(@ARGV)<2 ) {
-  print "Usage: rshell_api [-v] [-t] [-l <user>] [-p <passwrd>] <node> <command>\n";
-  exit;
+        'l|loginname=s' => \$username,
+        'p|password=s'  => \$passwd,
+        't|telnet'      => \$telnet,     #use telnet, otherwise ssh
+        'h|help'        => \$help,
+        'v|verbose'     => \$verbose,
+    ) || $help || scalar(@ARGV) < 2) {
+    print "Usage: rshell_api [-v] [-t] [-l <user>] [-p <passwrd>] <node> <command>\n";
+    exit;
 }
 
 my $node = $ARGV[0];
 
-my $output =xCAT::RShellAPI::run_remote_shell_api($node, $username, $passwd, $telnet, $verbose, @ARGV[1 .. $#ARGV]); 
-my $rc=0;
+my $output = xCAT::RShellAPI::run_remote_shell_api($node, $username, $passwd, $telnet, $verbose, @ARGV[ 1 .. $#ARGV ]);
+my $rc = 0;
 my $data;
 if ($output && (@$output > 1)) {
-    $rc=$output->[0];
-    $data=$output->[1];
+    $rc   = $output->[0];
+    $data = $output->[1];
 }
 
 print "$data";

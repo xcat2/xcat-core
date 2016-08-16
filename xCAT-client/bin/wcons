@@ -7,63 +7,67 @@ use IO::Socket::UNIX;
 use Time::HiRes qw/sleep/;
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Client;
+
 #use Data::Dumper;
 use strict;
 unless ($ENV{DISPLAY}) {
-	print '$DISPLAY  not set';
-	exit 1;
+    print '$DISPLAY  not set';
+    exit 1;
 }
 my $mydir = dirname($0);
 my $sb;
 my $tilefact;
-my $xrm="-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737";
+my $xrm = "-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737";
 my $font = "5x7";
 my $sizegeometry;
 GetOptions(
-   #'sb' => \$sb,
-   'tile|t:i' => \$tilefact,
-   'geometry|g:s' => \$sizegeometry,
-   #'font|f=s' => \$font
+
+    #'sb' => \$sb,
+    'tile|t:i'     => \$tilefact,
+    'geometry|g:s' => \$sizegeometry,
+
+    #'font|f=s' => \$font
 );
 my $noderange = $ARGV[$#ARGV];
 my %conserverref = (command => 'nodels', noderange => $noderange, arg => ['nodehm.conserver']);
 my @nodes;
 my %conservers;
+
 sub getconserver {
-	my $rsp = shift;
-	foreach (@{$rsp->{node}}) {
-		my $node = $_->{name};
-		if (ref $node) { $node = $node->[0]; }
-		push @nodes,$node;
-		if ($_->{data}->[0]->{contents}) {
-   			$conservers{$node}=$_->{data}->[0]->{contents};
-			if (ref $conservers{$node}) { $conservers{$node} = $conservers{$node}->[0] };
-		}
-	}
+    my $rsp = shift;
+    foreach (@{ $rsp->{node} }) {
+        my $node = $_->{name};
+        if (ref $node) { $node = $node->[0]; }
+        push @nodes, $node;
+        if ($_->{data}->[0]->{contents}) {
+            $conservers{$node} = $_->{data}->[0]->{contents};
+            if (ref $conservers{$node}) { $conservers{$node} = $conservers{$node}->[0] }
+        }
+    }
 }
-xCAT::Client::submit_request(\%conserverref,\&getconserver);
+xCAT::Client::submit_request(\%conserverref, \&getconserver);
 
 
 unless ($ARGV[$#ARGV]) {
-   print "Usage: wcons <options> <noderange>\n";
-   exit 1;
+    print "Usage: wcons <options> <noderange>\n";
+    exit 1;
 }
 pop @ARGV;
 foreach (@nodes) {
-   if ($conservers{$_}) {
-      next;
-   }
-   if ($ENV{XCATHOST}) {
-      $conservers{$_} = $ENV{XCATHOST};
-      $conservers{$_} =~ s/:.*//;
-      next;
-   }
+    if ($conservers{$_}) {
+        next;
+    }
+    if ($ENV{XCATHOST}) {
+        $conservers{$_} = $ENV{XCATHOST};
+        $conservers{$_} =~ s/:.*//;
+        next;
+    }
 }
-   
+
 
 my $firstnode = shift @nodes;
 unless ($firstnode) {
-   exit 1;
+    exit 1;
 }
 my $currx;
 my $curry;
@@ -74,118 +78,120 @@ my $screenwidth;
 my $screenheight;
 my $window_width;
 my $window_height;
-my $panel_pad=0;
+my $panel_pad = 0;
 my $top_pad;
+
 if (defined($tilefact)) {
-   my $rootinf = `xwininfo -root`;
-   foreach (split /\n/,$rootinf) {
-      if (/.*Width:\s+([0-9]*).*/) {
-         $screenwidth=$1;
-      } elsif (/.*Height:\s+([0-9]*).*/) {
-         $screenheight=$1;
-      }
-   }
-   $rootinf = `xwininfo -name "Top Panel" 2> /dev/null`;
-   foreach (split /\n/,$rootinf) {
-      if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
-         if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) { 
-            $panel_pad=$2;
-         }
-      }
-   }
-   if ($panel_pad == 0) {
-           $rootinf = `xwininfo -name "Top Expanded Edge Panel" 2> /dev/null`;
-           foreach (split /\n/,$rootinf) {
-              if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
-                 if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) {
-                    $panel_pad=$2;
-                 }
-              }
-           }
-   }
+    my $rootinf = `xwininfo -root`;
+    foreach (split /\n/, $rootinf) {
+        if (/.*Width:\s+([0-9]*).*/) {
+            $screenwidth = $1;
+        } elsif (/.*Height:\s+([0-9]*).*/) {
+            $screenheight = $1;
+        }
+    }
+    $rootinf = `xwininfo -name "Top Panel" 2> /dev/null`;
+    foreach (split /\n/, $rootinf) {
+        if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
+            if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) {
+                $panel_pad = $2;
+            }
+        }
+    }
+    if ($panel_pad == 0) {
+        $rootinf = `xwininfo -name "Top Expanded Edge Panel" 2> /dev/null`;
+        foreach (split /\n/, $rootinf) {
+            if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
+                if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) {
+                    $panel_pad = $2;
+                }
+            }
+        }
+    }
 
 
-   $ENV{CONSCONTROLPATH} = "/tmp/wconscontrol.$firstnode.$$";
-   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry $sizegeometry+0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"/bin/true ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
-   $ENV{CONSCONTROLPATH} = "";
-   my $remainwait = 2;
-   if (-x "/opt/confluent/bin/confetty" or -x "/usr/bin/confetty" or -x "/usr/local/bin/confetty" ) {
-      $remainwait = 10;
-   }
-   while (not -S  "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
-         sleep(0.1);
-         $remainwait -= 0.1;
-   }
-   my $xinfo;
-   if (-S "/tmp/wconscontrol.$firstnode.$$") { # confluent mode
-	my $controlchannel = IO::Socket::UNIX->new(Type=>SOCK_STREAM(), Peer =>  "/tmp/wconscontrol.$firstnode.$$");
+    $ENV{CONSCONTROLPATH} = "/tmp/wconscontrol.$firstnode.$$";
+    system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry $sizegeometry+0+0 " . join(" ", @ARGV) . " -e /bin/bash -c \"/bin/true " . $ENV{DISPLAY} . " $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode " . $conservers{$firstnode} . "; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+    $ENV{CONSCONTROLPATH} = "";
+    my $remainwait = 2;
+    if (-x "/opt/confluent/bin/confetty" or -x "/usr/bin/confetty" or -x "/usr/local/bin/confetty") {
+        $remainwait = 10;
+    }
+    while (not -S "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
+        sleep(0.1);
+        $remainwait -= 0.1;
+    }
+    my $xinfo;
+    if (-S "/tmp/wconscontrol.$firstnode.$$") {    # confluent mode
+        my $controlchannel = IO::Socket::UNIX->new(Type => SOCK_STREAM(), Peer => "/tmp/wconscontrol.$firstnode.$$");
         print $controlchannel "GETWINID\n";
         my $winid = <$controlchannel>;
         $winid = <$controlchannel>;
- 	$xinfo = `xwininfo -id $winid`;
-   } else {
-      $xinfo = `xwininfo -name $firstnode`;
-   }
+        $xinfo = `xwininfo -id $winid`;
+    } else {
+        $xinfo = `xwininfo -name $firstnode`;
+    }
 
-   my @xinfl = split(/\n/,$xinfo);
-   my $side_pad;
-   my $wmxo;
-   my $wmyo;
-   foreach (@xinfl) {
-      if (/.*Absolute upper-left X:\s*([0-9]*).*/) {
-         $side_pad = $1;
-      } elsif (/.*Absolute upper-left Y:\s*([0-9]*).*/) {
-         $top_pad = $1-$panel_pad;
-      } elsif (/.*Width:\s*([0-9]*).*/) {
-         $window_width = $1;
-      } elsif (/.*Height:\s*([0-9]*).*/) {
-         $window_height = $1;
-      } elsif (/.*-gemotery \d+x\d+\+(\d+)(\d+)/) {
-         $wmxo=$1;
-         $wmyo=$2;
-      }
-   }
-   $window_width += $side_pad*2; #add the side border, assuming symmetric left and right borders
-   $window_height += $side_pad+$top_pad; #Add the titlebar and bottom border, which is guessed to probably be equal to the sides, doesn't hold true in all cases, i.e. window maker, but it's the currently best approximation
-   $screenwidth-=$wmxo; #Subtract a factor that 1.3 did, not sure why precisely
-   $screenheight-=$wmyo;
-   $currx=$window_width;
-   $curry=$panel_pad; #+$top_pad;
-   my $maxcol = int($screenwidth/$window_width);
-   unless ($tilefact or $tilefact > $maxcol) {
-      $tilefact=$maxcol;
-   }
-   if ($tilefact==1) {
-      $curry+=$window_height;
-      $currx=0;
-   }
+    my @xinfl = split(/\n/, $xinfo);
+    my $side_pad;
+    my $wmxo;
+    my $wmyo;
+    foreach (@xinfl) {
+        if (/.*Absolute upper-left X:\s*([0-9]*).*/) {
+            $side_pad = $1;
+        } elsif (/.*Absolute upper-left Y:\s*([0-9]*).*/) {
+            $top_pad = $1 - $panel_pad;
+        } elsif (/.*Width:\s*([0-9]*).*/) {
+            $window_width = $1;
+        } elsif (/.*Height:\s*([0-9]*).*/) {
+            $window_height = $1;
+        } elsif (/.*-gemotery \d+x\d+\+(\d+)(\d+)/) {
+            $wmxo = $1;
+            $wmyo = $2;
+        }
+    }
+    $window_width += $side_pad * 2; #add the side border, assuming symmetric left and right borders
+    $window_height += $side_pad + $top_pad; #Add the titlebar and bottom border, which is guessed to probably be equal to the sides, doesn't hold true in all cases, i.e. window maker, but it's the currently best approximation
+    $screenwidth -= $wmxo; #Subtract a factor that 1.3 did, not sure why precisely
+    $screenheight -= $wmyo;
+    $currx = $window_width;
+    $curry = $panel_pad;      #+$top_pad;
+    my $maxcol = int($screenwidth / $window_width);
+
+    unless ($tilefact or $tilefact > $maxcol) {
+        $tilefact = $maxcol;
+    }
+    if ($tilefact == 1) {
+        $curry += $window_height;
+        $currx = 0;
+    }
 } else {
-   my $geo;
-   if ($sizegeometry) {
-       $geo = "-g $sizegeometry ";
-   }
-   system("xterm $xrm $geo-bg black -fg white -title $firstnode -n $firstnode ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+    my $geo;
+    if ($sizegeometry) {
+        $geo = "-g $sizegeometry ";
+    }
+    system("xterm $xrm $geo-bg black -fg white -title $firstnode -n $firstnode " . join(" ", @ARGV) . " -e /bin/bash -c \"$mydir/xtcd.pl " . $ENV{DISPLAY} . " $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode " . $conservers{$firstnode} . "; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 
 }
-my $geometry="";
+my $geometry = "";
 foreach (@nodes) {
-   if ($tilefact) {
-      my $corrected_x=$currx+$wmxo;
-      my $corrected_y=$curry+$wmyo;
-      $geometry="-geometry $sizegeometry+$corrected_x+$corrected_y";
-      $currx+=$window_width;
-      if ($currx >= ($tilefact * $window_width)) {
-         $currx=0;
-         $curry+=$window_height;
-         if (($curry+$window_height) > $screenheight) {
-            $curry = $panel_pad; #+$top_pad;
-         }
-      }
-   } elsif ($sizegeometry) {
-       $geometry = "-geometry $sizegeometry";
-   }
+    if ($tilefact) {
+        my $corrected_x = $currx + $wmxo;
+        my $corrected_y = $curry + $wmyo;
+        $geometry = "-geometry $sizegeometry+$corrected_x+$corrected_y";
+        $currx += $window_width;
+        if ($currx >= ($tilefact * $window_width)) {
+            $currx = 0;
+            $curry += $window_height;
+            if (($curry + $window_height) > $screenheight) {
+                $curry = $panel_pad;    #+$top_pad;
+            }
+        }
+    } elsif ($sizegeometry) {
+        $geometry = "-geometry $sizegeometry";
+    }
 
-   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $_ -n $_ $geometry -e /bin/bash -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+    system("xterm $xrm -bg black -fg white " . join(" ", @ARGV) . " -title $_ -n $_ $geometry -e /bin/bash -c \"$mydir/xtcd.pl ." . $ENV{DISPLAY} . " $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ " . $conservers{$_} . "; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 }
 
 

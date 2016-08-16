@@ -22,14 +22,14 @@ Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 if (
     !GetOptions(
-              'f=s'      => \$::FILENAME,       # software list file name (full)
-              's=s'      => \$::SERVER,
-              'i=s'      => \$::INSTP_FLAGS,    # installp flags
-              'r=s'      => \$::RPM_FLAGS,      # RPM flags
-              'e=s'      => \$::EMGR_FLAGS,     # emgr flags
-              'n|nfsv4'  => \$::NFSV4,
-              'd|altsrc' => \$::ALTSRC,
-              'a|all'    => \$::ALLSW
+        'f=s'      => \$::FILENAME,       # software list file name (full)
+        's=s'      => \$::SERVER,
+        'i=s'      => \$::INSTP_FLAGS,    # installp flags
+        'r=s'      => \$::RPM_FLAGS,      # RPM flags
+        'e=s'      => \$::EMGR_FLAGS,     # emgr flags
+        'n|nfsv4'  => \$::NFSV4,
+        'd|altsrc' => \$::ALTSRC,
+        'a|all'    => \$::ALLSW
     )
   )
 {                                         # Gather options
@@ -82,12 +82,12 @@ my $mtcmd;
 if ($::NFSV4)
 {
     $mtcmd =
-      qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount -o vers=4 $servnode:$mntdir $localsrc~;
+qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount -o vers=4 $servnode:$mntdir $localsrc~;
 }
 else
 {
     $mtcmd =
-      qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount $servnode:$mntdir $localsrc~;
+qq~/bin/mkdir -m 644 -p $localsrc; /usr/sbin/mount $servnode:$mntdir $localsrc~;
 }
 
 $rc = &runcmd($mtcmd);
@@ -157,16 +157,16 @@ if (-f $listfile)
 
         # clean up tmp files
         my $rmcmd = qq~/bin/rm -R $emgrfile $instpfile~;
-		print "Running: \'$rmcmd\'\n";
-		$rc = &runcmd($rmcmd);
+        print "Running: \'$rmcmd\'\n";
+        $rc = &runcmd($rmcmd);
         if ($rc != 0)
         {
-			# "Could not remove  $emgrfile and $instpfile.\n";
-		}
+            # "Could not remove  $emgrfile and $instpfile.\n";
+        }
 
         # unmount source dir
         my $umtcmd = qq~/usr/sbin/umount /xcatswmnt~;
-		print "Running: \'$umtcmd\'\n";
+        print "Running: \'$umtcmd\'\n";
         $rc = &runcmd($umtcmd);
         if ($rc != 0)
         {
@@ -243,10 +243,10 @@ sub do_rpms
     # - need to test rpms to make sure all will install
     #   - add test to rpm cmd if not included in rpm_flags
     #
-    my @doinstall   = split /\s+/, $pkg_string;
+    my @doinstall = split /\s+/, $pkg_string;
     my @dontinstall = ();
 
-    if (   ($rflags =~ /\-i/)
+    if (($rflags =~ /\-i/)
         || ($rflags =~ /install /)
         || ($rflags =~ /U/)
         || ($rflags =~ /update /))
@@ -327,7 +327,7 @@ sub do_rpms
             $rpmcmd = qq~/usr/bin/rpm $rflags ~;
         }
 
-		print "Running: \'$rpmcmd\'\n";
+        print "Running: \'$rpmcmd\'\n";
 
         my $rc = &runcmd($rpmcmd);
         print "$::outref\n";
@@ -342,7 +342,7 @@ sub do_rpms
     if (scalar(@dontinstall))
     {
         print
-          "The following RPM packages were already installed and were not reinstalled:\n";
+"The following RPM packages were already installed and were not reinstalled:\n";
         my @rpms;
         foreach my $rpm (@dontinstall)
         {
@@ -406,7 +406,7 @@ sub do_emgr
         $emgrcmd .= qq~ -f $emgrfile ~;
     }
 
-	print "Running: \'$emgrcmd\'\n";
+    print "Running: \'$emgrcmd\'\n";
 
     my $rc = &runcmd($emgrcmd);
     print "$::outref\n";
@@ -492,7 +492,7 @@ sub do_installp
         }
     }
 
-	print "Running: \'$inpcmd\'\n";
+    print "Running: \'$inpcmd\'\n";
 
     my $rc = &runcmd($inpcmd);
     print "$::outref\n";

@@ -20,4 +20,6 @@ rsync
 rsyslog
 e2fsprogs
 parted
+gzip
+tar
 xz

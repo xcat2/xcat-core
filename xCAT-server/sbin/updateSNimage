@@ -7,9 +7,9 @@
 BEGIN
 {
     $::XCATROOT =
-        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
-      : -d '/opt/xcat'   ? '/opt/xcat'
-      : '/usr';
+      $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat' ? '/opt/xcat'
+      :                  '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use File::Basename;
@@ -77,7 +77,7 @@ else
 # if not make them
 
 if ($thostname eq "local")
-{                       # local host
+{    # local host
     $cmd = "ls $path/etc/xcat/ca";
 }
 else
@@ -88,7 +88,7 @@ my @output = xCAT::Utils->runcmd($cmd, -1);
 if ($::RUNCMD_RC != 0)
 {
     if ($thostname eq "local")
-    {                   # local host
+    {    # local host
         $cmd = "mkdir $path/etc/xcat/ca";
     }
     else
@@ -343,7 +343,7 @@ sub create_fstab
 {
     my ($path) = @_;
     my $cmd;
-    my $file = "$path/etc/fstab";
+    my $file  = "$path/etc/fstab";
     my $file2 = "$path/etc/fstab.ORIG";
     if (!(-e $file2))
     {    # if not already done
