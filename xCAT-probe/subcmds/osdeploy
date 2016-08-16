@@ -570,6 +570,11 @@ sub dump_history {
                     print "\t$line\n";
                 }
             }
+            my $statelist = "";
+            for (my $i = 0 ; $i < scalar(@{ $rawdata{$node}{statehistory} }) ; $i++) {
+                $statelist .= "$state_set_reverse{$rawdata{$node}{statehistory}[$i]} ";
+            }
+            probe_utils->send_msg("$output", "d", "[$node] state history: $statelist");
         }
 
         my @tmpnodestatehistory = @{ $rawdata{$node}{statehistory} };
@@ -817,7 +822,6 @@ sub get_valid_logs {
     my $year                 = shift;
     my $epoch_seconds_of_now = shift;
     my $bthistory_ref        = shift;
-    my $nics                 = "eth0";
     my @orglogfilelist       = ("/var/log/xcat/cluster.log",
         "/var/log/messages",
         "/var/log/xcat/computes.log");
@@ -851,7 +855,7 @@ sub get_valid_logs {
             my $fd;
             my $filetype = `file $file 2>&1`;
             chomp($filetype);
-            if ($filetype =~ /ASCII text/) {
+            if ($filetype =~ /ASCII/) {
                 if (!open($fd, "$file")) {
                     print "open $files failed\n";
                     next;
@@ -926,7 +930,7 @@ sub get_valid_logs {
                     $timestampepoch = probe_utils->convert_to_epoch_seconds($timestamp, $year, $epoch_seconds_of_now);
                 }
 
-                if (($splitline[4] =~ /dhcpd:/i && $_ =~ /$nics/)
+                if (($splitline[4] =~ /dhcpd:/i && $_ =~ /$installnic/)
                     || ($splitline[4] =~ /in.tftpd/i)
                     || (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i))
                     || ($splitline[5] =~ /GET/ && $splitline[7] =~ /HTTP/)) {
@@ -965,7 +969,7 @@ sub do_replay {
     foreach my $line (@bthistory) {
         $line =~ s/(\d+) (.+)/$2/g;
         my @tmp = split(/\s+/, $line);
-        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
+        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$installnic/) {
             handle_dhcp_msg("$line");
         } elsif ($tmp[4] =~ /in.tftpd/i) {
             handle_tftp_msg("$line");
