@@ -23,8 +23,8 @@ Description:
     Currently, this command does not support hierarchy.
 
 Options:
-    -c: To check whether the switch is OK to retrieve MAC address mapping.
-    -V: Output verbose information when accessing switch
+    -c: Check if the switch is OK to retrieve MAC address mapping.
+    -V: Output verbose information when accessing the switch
 ";
 
 my $help;
@@ -36,13 +36,13 @@ if (!GetOptions("help|h" => \$help,
         "T" => \$test,
         "c" => \$check,
         "V" => \$verbose)) {
-    probe_utils->send_msg("$output", "f", "Option not support");
+    probe_utils->send_msg("$output", "f", "Option not supported");
     probe_utils->send_msg("$output", "d", $::USAGE);
     exit 1;
 }
 foreach (@ARGV) {
     if (/^-\w*/) {
-        probe_utils->send_msg("$output", "f", "Option $_ not support");
+        probe_utils->send_msg("$output", "f", "Option $_ not supported");
         exit 1;
     } else {
         push @nodes, $_;
@@ -63,10 +63,10 @@ if (!-e "$currdir/bin/switchprobe") {
 if ($test) {
     `$currdir/bin/switchprobe -h`;
     if ($?) {
-        probe_utils->send_msg("$output", "f", "No switchprobe tool is available at $currdir/bin/");
+        probe_utils->send_msg("$output", "f", "No 'switchprobe' tool is available at $currdir/bin/");
         exit 1;
     } else {
-        probe_utils->send_msg("$output", "o", "To retrieve MAC address mapping for the specified switch, or all the switches defined in switches table in xCAT db. Currently, this command does not support hierarchy.");
+        probe_utils->send_msg("$output", "o", "To retrieve MAC address mapping for the specified switch, or all the switches defined in 'switches' table in xCAT db. Currently, this command does not support hierarchy.");
         exit 0;
     }
 }
