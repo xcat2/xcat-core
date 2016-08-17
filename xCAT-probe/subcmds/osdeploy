@@ -148,19 +148,18 @@ $::USAGE = "Usage:
     $program_name -n <node_range> -r <xxhxxm> [-V]
 
 Description:
-    Do probe for os provision process. Realtime monitor or replay history of os provision process.
-    If do realtime monitor, please run this before rpower node.
-    Unsupport hierarchial structure now.
+    Probe for OS provision process. Realtime monitor or replay history of OS provision process.
+    If realtime monitor, run this before 'rpower' node.
+    Currently, hierarchial structure is not supported.
 
 Options:
     -h : Get usage information of $program_name
-    -T : To verify if $program_name can work, reserve option for probe framework
+    -T : Verify if $program_name can work, reserved option for probe framework
     -V : Output more information for debug
-    -n : The range of node to be monitor or replay log.
-    -t : The maximum time to wait when doing monitor, the unit is minute, default is 60 minutes.
-    -r : Replay history log to probe provision. need input a start time when probe should begin from. 
-         Support time format are xxhxxm, xxh, or xxm.  h means hour, m means minute. 
-         If there isn't unit input, using hour by default. 
+    -n : The range of nodes for monitor or replay log.
+    -t : The maximum time in minutes to wait when doing monitor, default is 60.
+    -r : Replay history log for probe provisioniong. Input a start time when probe should begin. 
+         Supported time formats are xxhxxm, xxh, or xxm. If units not specified, hour will be used by default.
 ";
 
 #------------------------------------------
@@ -231,7 +230,7 @@ sub check_noderange {
                     }else{
                         $noerror = 0;
                         $rst = 1;
-                        probe_utils->send_msg("$output", "f", "$node : can't be resolved to a IP address"); 
+                        probe_utils->send_msg("$output", "f", "$node : can't be resolved to an IP address"); 
                     }
                 }
             }
@@ -313,7 +312,7 @@ sub handle_dhcp_msg {
             push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "dhcp"));
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
-                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different with the ip($macmap{$mac}{'ip'}) in node definition.";
+                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different from the ip($macmap{$mac}{'ip'}) in node definition.";
                 probe_utils->send_msg("$output", "w", "$warn_msg") if ($monitor);
                 push(@{ $rawdata{$node}{"history"} }, $warn_msg);
             }
@@ -341,7 +340,7 @@ sub handle_dhcp_msg {
             push(@{ $rawdata{$node}{statehistory} }, $rawdata{$node}{state}) if (reset_state(\$rawdata{$node}{state}, "dhcp"));
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
-                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different with the ip($macmap{$mac}{'ip'}) in node definition.";
+                my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different from the ip($macmap{$mac}{'ip'}) in node definition.";
                 probe_utils->send_msg("$output", "w", "$warn_msg") if ($monitor);
                 push(@{ $rawdata{$node}{"history"} }, $warn_msg);
             }
@@ -655,7 +654,7 @@ sub dump_history {
             } elsif (($valid_process{ $match_result{$max_match}[0] }{type} eq "reboot") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] == $state_set{done})) {
                 probe_utils->send_msg("$output", "f", "[$node] reboot completed, without deployment process");
             } elsif (($valid_process{ $match_result{$max_match}[0] }{type} eq "reboot") && ($valid_process{ $match_result{$max_match}[0] }{process}[ $max_match - 1 ] != $state_set{done})) {
-                probe_utils->send_msg("$output", "f", "[$node] reboot failed,without deployment process, stop at $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match]} stage");
+                probe_utils->send_msg("$output", "f", "[$node] reboot failed, without deployment process, stop at $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match-1]} stage, something wrong during $state_set_reverse{$valid_process{$match_result{$max_match}[0]}{process}[$max_match]} stage");
             }
         }
     }
@@ -680,7 +679,7 @@ sub do_monitor {
     my $rst = 0;
     my $startline =
       "-------------------------------------------------------------
-Start to capture every message during os provision process......
+Start capturing every message during OS provision process......
 -------------------------------------------------------------
 ";
 
@@ -717,7 +716,7 @@ Start to capture every message during os provision process......
 
         if (!-e "$clusterlog") {
             probe_utils->send_msg("$output", "w", "$clusterlog doesn't exist");
-            probe_utils->send_msg("$output", "i", "If sles11 or xCAT2.11.x is using, please ignore above warning");
+            probe_utils->send_msg("$output", "i", "If using SLES11 or xCAT2.11.x, ignore above warning");
         } else {
             if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f -n 0 $clusterlog 2>&1 |"))) {
                 probe_utils->send_msg("$output", "f", "Can't open $clusterlog to get logs");
@@ -736,7 +735,7 @@ Start to capture every message during os provision process......
         }
         if (!-e "$computelog") {
             probe_utils->send_msg("$output", "w", "$computelog doesn't exist");
-            probe_utils->send_msg("$output", "i", "If sles11 or xCAT2.11.x is using, please ignore above warning");
+            probe_utils->send_msg("$output", "i", "If sles11 or xCAT2.11.x, ignore above warning");
         } else {
             if (!($computerpid = open(COMPUTERFILE, "tail -f -n 0 $computelog 2>&1 |"))) {
                 probe_utils->send_msg("$output", "f", "Can't open $computelog to get logs");
@@ -792,13 +791,13 @@ Start to capture every message during os provision process......
                 if ($terminal) {
                     probe_utils->send_msg("$output", "d", "Get INT or TERM signal from STDIN");
                 } else {
-                    probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished os provision process");
+                    probe_utils->send_msg("$output", "o", "All nodes specified to monitor, have finished OS provision process");
                 }
                 last;
             }
 
             if (time() - $starttime > ($maxwaittime * 60)) {
-                probe_utils->send_msg("$output", "i", "$maxwaittime minutes are expired, stop monitor");
+                probe_utils->send_msg("$output", "i", "$maxwaittime minutes have expired, stop monitoring");
                 last;
             }
             sleep 0.01;
@@ -959,7 +958,7 @@ sub do_replay {
     my $ref_timestamp = shift;
 
     my $timestr = scalar(localtime($ref_timestamp));
-    print "Start to search logs after '$timestr', please waiting for a while.............\n";
+    print "Start logs search after '$timestr', waiting for a while.............\n";
 
     my ($sec, $min, $hour, $day, $mon, $year, $wday, $yday, $isdst) = localtime(time());
     my $epoch_seconds_of_now = time();
@@ -1013,12 +1012,12 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "Do probe for os provision process, realtime monitor of os provision process.");
+    probe_utils->send_msg("$output", "o", "Probe for OS provision process, realtime monitor of OS provision process.");
     exit 0;
 }
 
 unless ($noderange) {
-    probe_utils->send_msg("$output", "f", "A noderange is needed");
+    probe_utils->send_msg("$output", "f", "A noderange is required");
     probe_utils->send_msg("$output", "d", "$::USAGE");
     exit 1;
 }
@@ -1032,7 +1031,7 @@ if ($replaylog) {
     } elsif ($replaylog =~ /^(\d+)m$/) {
         $epoch_starttime -= $1 * 60;
     } else {
-        probe_utils->send_msg("$output", "f", "Unsupport time format for replay history log");
+        probe_utils->send_msg("$output", "f", "Unsupported time format for history log replay");
         print "$::USAGE";
         exit 1;
     }
@@ -1053,7 +1052,7 @@ unless ($installnic) {
     $installnic = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
     chomp($installnic);
     if (!$installnic) {
-        probe_utils->send_msg("$output", "f", "The value of master in site table is $masteripinsite, can't get corresponding network interface");
+        probe_utils->send_msg("$output", "f", "The value of 'master' in 'site' table is $masteripinsite, can't get corresponding network interface");
         $rst = 1;
     } else {
         probe_utils->send_msg("$output", "i", "The installation network interface is $installnic");
