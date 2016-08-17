@@ -108,15 +108,17 @@ sub do_main_job {
 # A simple example of how to dump %summaryoutput has been written in function
 #-------------------------------------
 sub summary_all_jobs_output {
+    my $rst = 0;
 
     #DO SUMMARY DEPENDING ON YOUR SUB_COMMAND NEED
-    print "\n======================do summary=====================\n";
+    probe_utils->send_msg("$output", "d", "======================do summary=====================");
     foreach my $sn (keys %summaryoutput) {
-        print "[$sn]\n";
+        probe_utils->send_msg("$output", "d", "[$sn]");
         foreach my $log (@{ $summaryoutput{$sn} }) {
-            print "\t$log\n";
+            probe_utils->send_msg("$output", "d", "$log");
         }
     }
+    return $rst;
 }
 
 #-------------------------------------
