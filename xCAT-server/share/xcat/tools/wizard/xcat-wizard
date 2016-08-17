@@ -8,7 +8,7 @@ function step_0100_welcome()
 		--title 'Welcome' \
 		--cr-wrap \
 		--yesno \
-		"Welcome to use xCAT Wizard.\n\nDuring this wizard session, a bunch of questions are going to be asked. Based on the answers of these questions, xCAT will be configured afterward." \
+		"Welcome to use xCAT Wizard.\n\nBy answering a series of questions, this wizard will help assist in the configuration of xCAT." \
 		18 72
 	ret="$?"
 	case "${ret}" in
@@ -19,14 +19,14 @@ function step_0100_welcome()
 	esac
 }
 
-function step_0200_how_many_nodes()
+function step_0200_cluster_size()
 {
 	local -i ret=0
 	exec 3>&1
 	XCAT_WIZARD_0200_NODES="$(dialog --backtitle 'xCAT Wizard' \
 		--ok-label 'Next' --cancel-label 'Prev' \
 		--extra-button --extra-label 'Skip' \
-		--title 'How many nodes' \
+		--title 'Cluster size' \
 		--inputbox \
 		"In the cluster of which this xCAT management node will manage, how many nodes are plan to have? Based on the number of this answer, xCAT Wizard will do some optimization and performance tunning.\n\nA precise number is not needed, but please enter a rough number below." \
 		18 72 "${XCAT_WIZARD_0200_NODES:-100}" \
@@ -122,7 +122,7 @@ function step_0300_network_adapter()
 	esac
 }
 
-function step_0400_act_as_dns_server()
+function step_0400_configure_name_server()
 {
 	local -i ret=0
 	local use_external_dns=""
@@ -131,7 +131,7 @@ function step_0400_act_as_dns_server()
 		--ok-label 'Next' --cancel-label 'Prev' \
 		--extra-button --extra-label 'Skip' \
 		--default-item "${XCAT_WIZARD_0400_DNS_SERVER}" \
-		--title 'Be primary master name server?' \
+		--title 'Configure name server' \
 		--menu \
 		"Will this cluster have a separate DNS subdomain?\n\nIf you only have a small amount of nodes in this cluster, use external DNS server to do all the name resolution may be preferred. In this case, either all nodes in this cluster can be resolved with external DNS server, or a simple /etc/hosts file will be used to do all the name resolving in this cluster.\n\nOn the other hand, If you have a really large cluster with a great number of nodes, use a separate DNS subdomain for the whole cluster may be a good idea. In this case, this management node will act as the primary master name server of this subdomain." \
 		20 74 14 \
@@ -216,7 +216,7 @@ function step_0600_dns_domain_name()
 	esac
 }
 
-function step_0700_name_servers()
+function step_0700_dns_servers()
 {
 	local -i ret=0
 	local -a nameservers=()
@@ -329,15 +329,15 @@ function step_0800_ntp_servers()
 	esac
 }
 
-function step_9900_accomplished()
+function step_9900_summary()
 {
 	local -i ret=0
 	dialog --backtitle 'xCAT Wizard' \
 		--yes-label 'Okay' --no-label 'Prev' \
-		--title 'Accomplished' \
+		--title 'Summary' \
 		--cr-wrap \
 		--yesno \
-		"The basic configuration of xCAT is accomplished. You may continue setup the cluster by refer the document below.\n\nhttps://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/" \
+		"The basic configuration of xCAT is complete. Refer to the xCAT documentation for more information at:\n\nhttps://xcat-docs.readthedocs.io/" \
 		18 72
 	ret="$?"
 	case "${ret}" in
