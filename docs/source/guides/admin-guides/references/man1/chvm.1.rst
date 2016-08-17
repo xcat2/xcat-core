@@ -62,7 +62,7 @@ VMware/KVM specific:
 ====================
 
 
-\ **chvm**\  \ *noderange*\  [\ **-a**\  \ *size*\ ] [\ **-d**\  \ *disk*\ ] [\ **-p**\  \ *disk*\ ] [\ **-**\ **-resize**\  \ **disk**\ =\ *size*\ ] [\ **-**\ **-cpus**\  \ *count*\ ] [\ **-**\ **-mem**\  \ *memory*\ ]
+\ **chvm**\  \ *noderange*\  [\ **-a**\  \ *size*\ ] [\ **-d**\  \ *disk*\ ] [\ **-p**\  \ *disk*\ ] [\ **-**\ **-resize**\  \ *disk*\ =\ *size*\ ] [\ **-**\ **-cpus**\  \ *count*\ ] [\ **-**\ **-mem**\  \ *memory*\ ]
 
 
 zVM specific:
@@ -318,7 +318,7 @@ VMware/KVM specific:
 
 \ **-d**\  \ *disk*\ 
  
- Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+ Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
  
 
 
@@ -330,13 +330,13 @@ VMware/KVM specific:
 
 \ **-p**\  \ *disk*\ 
  
- Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+ Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.
  
 
 
-\ **-**\ **-resize**\  \ **disk**\ =\ *size*\ 
+\ **-**\ **-resize**\  \ *disk*\ =\ *size*\ 
  
- Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to \ *size*\  by using comma separated values on the left side of \ **=**\ .  The disks are specified by SCSI id.  Size defaults to GB.
+ Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than it's current size. The disk in \ *raw*\  format can be resized smaller, please use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
  
 
 
@@ -974,6 +974,14 @@ Output is similar to:
 .. code-block:: perl
 
    gpok3: Replacing user entry of LNX3... Done
+
+
+8. To resize virtual machine's disk sdb to 10G and sdc to 15G:
+
+
+.. code-block:: perl
+
+   chvm gpok3 --resize sdb=10G,sdc=15G
 
 
 
