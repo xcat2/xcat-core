@@ -917,7 +917,7 @@ sub initmysqldb
     else
     {
         my $sqlcmd = "/usr/bin/mysql_install_db";
-        if (!(-e ($sqlcmd))) {
+        if (!(-x ($sqlcmd))) {
             xCAT::MsgUtils->message("E", "$sqlcmd is not available, please install required mysql/mariadb packages");
             exit(1);
         }
