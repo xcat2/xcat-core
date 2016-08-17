@@ -61,7 +61,7 @@ For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network 
 * Copy the netboot initrd.gz to osimage ::
 
     mkdir -p /install/<ubuntu-version>/ppc64el/install/netboot
-    cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/installe/netboot
+    cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/install/netboot
 
 **[Below tips maybe helpful for you]** 
 
