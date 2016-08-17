@@ -1746,6 +1746,27 @@ sub do_firmware_update {
         $buffer_size = "15000";
     }
 
+    # check for 8335-GTB Firmware above 1610A release.  If below, exit
+    if ($output =~ /8335-GTB/) {
+        $cmd = $pre_cmd . " fru print 47";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+        }
+        my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
+        if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
+            my $prim_grs_version = $1;
+            my $sec_grs_version = $2;
+            if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
+                xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+            }
+        }
+    }
+
     # step 1 power off
     $cmd = $pre_cmd . " chassis power off";
     $output = xCAT::Utils->runcmd($cmd, -1);
