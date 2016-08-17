@@ -35,8 +35,8 @@ my @tmpargv;
 # below are some options rules used by default
 #     -h : Get usage information of current sub command
 #     -V : Output more information for debug
-#     -T : To verify if $program_name can work, reserve option for probe framework, dosen't use by customer
-#     -n : In xCAT probe, -n is uesd to specify node range uniformly
+#     -T : To verify if $program_name can work, reserved option for probe framework, not for use by customer
+#     -n : In xCAT probe, -n is used to specify node range uniformly
 #--------------------------------
 $::USAGE = "Usage:
     $program_name -h
@@ -44,12 +44,12 @@ $::USAGE = "Usage:
 
 Description:
     After xcat installation, use this command to check if xcat has been installed correctly and is ready for use.
-    For hierarchical cluster, just support that the provision network is in the same network with management node. If in the different nework, please ignore the results.
+    For hierarchical cluster, only the provision network on the same network as the management node is supported. If in the different network, ignore the results.
 
 Options:
     -h : Get usage information of $program_name
     -V : Output more information for debug
-    -i : Required. Specify the network interface name of provision network on Management Node
+    -i : Required. Specify the network interface name of provision network on management node
 ";
 
 
@@ -171,9 +171,9 @@ sub do_main_job {
     my $masteripinsite = `lsdef -t site -i master -c | awk -F'=' '{print \$2}'`;
     chomp($masteripinsite);
     probe_utils->send_msg($outputtarget, "d", "The value of 'master' in 'site' table is $masteripinsite") if ($verbose);
-    probe_utils->send_msg($outputtarget, "f", "There isn't 'master' definition in 'site' talbe") if ($masteripinsite eq "");
+    probe_utils->send_msg($outputtarget, "f", "There isn't 'master' definition in 'site' table") if ($masteripinsite eq "");
 
-    $msg = "The value of 'master' in 'site' table is a IP address";
+    $msg = "The value of 'master' in 'site' table is an IP address";
     if (probe_utils->is_ip_addr("$masteripinsite")) {
         probe_utils->send_msg($outputtarget, "o", "$msg");
     } else {
@@ -188,18 +188,18 @@ sub do_main_job {
         my $nics = `ip addr show $installnic >/dev/null 2>&1`;
         if ($?) {
             probe_utils->send_msg($outputtarget, "f", "$msg");
-            probe_utils->send_msg($outputtarget, "d", "Please use 'ip addr show' to check if there is NIC named $installnic on current server");
+            probe_utils->send_msg($outputtarget, "d", "Use 'ip addr show' to check if there is NIC named $installnic on current server");
             return 1;
         } else {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         }
 
-        $msg = "Get ip address of NIC $installnic";
+        $msg = "Get IP address of NIC $installnic";
         $serverip = `ip addr show $installnic | awk -F" " '/inet / {print \$2}'|awk -F"/" '{print \$1}'`;
         chomp($serverip);
         if (!defined($serverip) || ($serverip eq "")) {
             probe_utils->send_msg($outputtarget, "f", "$msg");
-            probe_utils->send_msg($outputtarget, "d", "Please use 'ip addr show' to check if there is ip assigned to $installnic");
+            probe_utils->send_msg($outputtarget, "d", "Use 'ip addr show' to check if there is IP assigned to $installnic");
             return 1;
         } else {
             probe_utils->send_msg($outputtarget, "d", "The IP of NIC $installnic is $serverip") if ($verbose);
@@ -220,7 +220,7 @@ sub do_main_job {
         if (probe_utils->is_static_ip("$serverip", "$installnic")) {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         } else {
-            probe_utils->send_msg($outputtarget, "w", "IP $serverip of $installnic is not a static ip on current server");
+            probe_utils->send_msg($outputtarget, "w", "IP $serverip of $installnic is not a static IP on current server");
         }
     } else {
 
@@ -236,7 +236,7 @@ sub do_main_job {
             }
         }
 
-        $msg = "Get ip address that in the same network with master $masteripinsite";
+        $msg = "Get IP address that on the same network as master $masteripinsite";
         if (!defined($serverip) || ($serverip eq "")) {
             probe_utils->send_msg($outputtarget, "f", "$msg");
             return 1;
@@ -280,13 +280,13 @@ sub do_main_job {
         $rst = 1;
     }
 
-    $msg = "There is configuration in 'passwd' table for 'system' for node provision";
+    $msg = "There is a configuration in 'passwd' table for 'system' for node provisioning";
     my $passwd = `tabdump passwd |awk -F',' '/system/ { gsub(/"/, "", \$2); gsub(/"/, "", \$3); print \$2,\$3 }'`;
     chomp($passwd);
     my ($username, $pw) = split(" ", $passwd);
     if ($username eq "" || $pw eq "") {
         probe_utils->send_msg($outputtarget, "f", "$msg");
-        probe_utils->send_msg($outputtarget, "d", "Please define username and password for 'system' in 'passwd' table");
+        probe_utils->send_msg($outputtarget, "d", "Define username and password for 'system' in 'passwd' table");
         $rst = 1;
     } else {
         probe_utils->send_msg($outputtarget, "o", "$msg");
@@ -297,7 +297,7 @@ sub do_main_job {
     probe_utils->send_msg($outputtarget, "d", "The 'install' directory is set to $installdir in 'site' table on current server") if ($verbose);
     my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F'=' '{print \$2}'`;
     chomp($tftpdir);
-    probe_utils->send_msg($outputtarget, "d", "The 'tftp' directory is set to $tftpdir in 'site' talbe on current server") if ($verbose);
+    probe_utils->send_msg($outputtarget, "d", "The 'tftp' directory is set to $tftpdir in 'site' table on current server") if ($verbose);
 
     $msg = "There is $installdir directory on current server";
     if (-e "$installdir/postscripts/") {
@@ -321,7 +321,7 @@ sub do_main_job {
             }
         }
 
-        $msg = "installdir $installdir is mounted on from the Management Node";
+        $msg = "installdir $installdir is mounted from the management node";
         if ($mountip eq $masteripinsite) {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         }
@@ -353,7 +353,7 @@ sub do_main_job {
             }
         }
 
-        $msg = "tftpdir $tftpdir is mounted on from the Management Node";
+        $msg = "tftpdir $tftpdir is mounted from the management node";
         if ($mountip eq $masteripinsite) {
             probe_utils->send_msg($outputtarget, "o", "$msg");
         }
@@ -399,7 +399,7 @@ sub do_main_job {
 
     `which wget > /dev/null 2>&1`;
     if ($?) {
-        probe_utils->send_msg($outputtarget, "w", "'wget' tool isn't installed, skip checking HTTP service. please install wget then try again");
+        probe_utils->send_msg($outputtarget, "w", "'wget' tool isn't installed, skip checking HTTP service. Install 'wget' then try again");
     } else {
         $msg = "HTTP service is ready on $serverip";
         if (probe_utils->is_http_ready("$serverip")) {
@@ -426,7 +426,7 @@ sub do_main_job {
     if ($checktftp) {
         `which tftp > /dev/null 2>&1`;
         if ($?) {
-            probe_utils->send_msg($outputtarget, "w", "'tftp' tool isn't installed, skip checking tftp service. Please install tftp then try again");
+            probe_utils->send_msg($outputtarget, "w", "'tftp' tool isn't installed, skip checking tftp service. Install 'tftp' then try again");
         } else {
             $msg = "TFTP service is ready on $serverip";
             if (probe_utils->is_tftp_ready("$serverip")) {
@@ -452,7 +452,7 @@ sub do_main_job {
     if ($checkdns) {
         `which nslookup > /dev/null 2>&1`;
         if ($?) {
-            probe_utils->send_msg($outputtarget, "w", "'nslookup' tool isn't installed, skip checking DNS service. please install nslookup then try again");
+            probe_utils->send_msg($outputtarget, "w", "'nslookup' tool isn't installed, skip checking DNS service. Install 'nslookup' then try again");
         } else {
             $msg = "DNS server is ready on $serverip";
             probe_utils->send_msg($outputtarget, "d", "Domain used to check DNS is $domain") if ($verbose);
@@ -573,12 +573,12 @@ sub do_main_job {
                     $tmpmac = $1;
                     if ($tmpmac !~ $snmac) {
                         returncmdoutput($tmp, $outputtarget) if ($verbose);
-                        probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                        probe_utils->send_msg($outputtarget, "d", "DHCP server reply is wrong") if ($verbose);
                         $rc = 1;
                     }
                 } else {
                     returncmdoutput($tmp, $outputtarget) if ($verbose);
-                    probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "DHCP server reply is wrong") if ($verbose);
                     $rc = 1;
                 }
             } else {
@@ -586,7 +586,7 @@ sub do_main_job {
                 my $tmp = `chdef xcatmntest groups=all ip=$serverip  mac=aa:aa:aa:aa:aa:aa`;
                 if ($?) {
                     returncmdoutput($tmp, $outputtarget) if ($verbose);
-                    probe_utils->send_msg($outputtarget, "d", "Simulate a node by chdef failed") if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "Node simulation by 'chdef' has failed") if ($verbose);
                     $rc = 1;
                     last;
                 } else {
@@ -603,31 +603,31 @@ sub do_main_job {
                 $tmp = `makedhcp xcatmntest 2>&1`;
                 if ($?) {
                     returncmdoutput($tmp, $outputtarget) if ($verbose);
-                    probe_utils->send_msg($outputtarget, "d", "makedhcp  xcatmntest failed") if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "makedhcp xcatmntest failed") if ($verbose);
                     $rc = 1;
                     `rmdef xcatmntest`;
                     last;
                 }
 
-                probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp -q  xcatmntest'") if ($verbose);
+                probe_utils->send_msg($outputtarget, "d", "To do 'makedhcp -q xcatmntest'") if ($verbose);
                 $tmp = `makedhcp -q  xcatmntest`;
                 if ($?) {
                     returncmdoutput($tmp, $outputtarget) if ($verbose);
                     probe_utils->send_msg($outputtarget, "d", "makedhcp -q xcatmntest failed") if ($verbose);
                     $rc = 1;
-                    `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+                    `makedhcp -d xcatmntest && rmdef xcatmntest`;
                     last;
                 }
                 chomp($tmp);
                 if ($tmp !~ /xcatmntest: ip-address = $serverip, hardware-address = aa:aa:aa:aa:aa:aa/) {
                     returncmdoutput($tmp, $outputtarget) if ($verbose);
-                    probe_utils->send_msg($outputtarget, "d", "DHCP server's reply is wrong") if ($verbose);
+                    probe_utils->send_msg($outputtarget, "d", "DHCP server reply is wrong") if ($verbose);
                     $rc = 1;
                     `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
                     last;
                 }
 
-                probe_utils->send_msg($outputtarget, "d", "Start to clear simulate information for dhcp test") if ($verbose);
+                probe_utils->send_msg($outputtarget, "d", "Start clearing simulation information for dhcp test") if ($verbose);
                 $tmp = `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
                 returncmdoutput($tmp, $outputtarget) if ($verbose);
 
@@ -637,7 +637,7 @@ sub do_main_job {
         }
         if ($rc) {
             probe_utils->send_msg($outputtarget, "f", "$msg");
-            probe_utils->send_msg($outputtarget, "d", "please run 'makedhcp -n' if never run it before.");
+            probe_utils->send_msg($outputtarget, "d", "Run 'makedhcp -n' if it has not been ran before.");
             $rst = 1;
         } else {
             probe_utils->send_msg($outputtarget, "o", "$msg");
@@ -750,7 +750,7 @@ sub caclulate_dispatch_cmd {
             if ($error =~ /Error: Invalid nodes and\/or groups in noderange: (.+)/) {
                 probe_utils->send_msg("$output", "f", "There are invaild nodes ($1) in command line attribute node range");
             } else {
-                probe_utils->send_msg("$output", "f", "There is error in command line attribute node range, please using nodels to check");
+                probe_utils->send_msg("$output", "f", "There is an error in command line attribute node range, use 'nodels' to check");
             }
             return 1;
         } else {
@@ -838,7 +838,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. Before using this command, please install tftp, nslookup and wget commands ahead. The platform supported are redhat, sles and ubuntu.");
+    probe_utils->send_msg("$output", "o", "After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. Before using this command, install 'tftp', 'nslookup' and 'wget' commands. Supported platforms are RedHat, SLES and Ubuntu.");
     exit 0;
 }
 
