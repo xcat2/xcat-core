@@ -142,7 +142,7 @@ GO_XCAT_CORE_PACKAGE_LIST=(perl-xCAT xCAT xCAT-SoftLayer xCAT-buildkit
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_CORE_PACKAGE_LIST=(perl-xcat xcat xcat-buildkit xcat-client
-	xcat-confluent xcat-genesis-scripts-amd64 xcat-genesis-script-ppc64
+	xcat-confluent xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64
 	xcat-server xcat-test xcat-vlan xcatsn)
 GO_XCAT_DEP_PACKAGE_LIST=()
 
@@ -154,7 +154,7 @@ GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
-	xcat-genesis-scripts-amd64 xcat-genesis-script-ppc64 xcat-server
+	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
 
