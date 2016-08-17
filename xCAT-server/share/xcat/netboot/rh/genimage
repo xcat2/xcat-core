@@ -70,7 +70,7 @@ my $noupdate;
 
 sub xdie {
     system("rm -rf /tmp/xcatinitrd.$$");
-    umount_chroot($rootimage_dir);
+    umount_chroot($rootimg_dir);
     die @_;
 }
 
@@ -112,6 +112,10 @@ sub mount_chroot {
 
 sub umount_chroot {
     my $rootimage_dir = shift;
+    if ($rootimage_dir eq "") {
+        print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
+        return 1;
+    }
 
     if (majversion($osver) > 6) {
         system("umount -l $rootimage_dir/proc");
