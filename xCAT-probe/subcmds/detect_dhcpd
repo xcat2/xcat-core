@@ -59,7 +59,7 @@ if ($::HELP) {
 }
 
 if ($::TEST) {
-    probe_utils->send_msg("$output", "o", "$program_name can be used to detect the dhcp server in a network for a specific mac address. Before using this command, install 'tcpdump' command. The operating system supported are RedHat, SLES, Ubuntu and Debian.");
+    probe_utils->send_msg("$output", "o", "$program_name can be used to detect the dhcp server in a network for a specific mac address. Before using this command, install 'tcpdump' command. The operating system supported are RedHat, SLES and Ubuntu.");
     exit 0;
 }
 
@@ -104,11 +104,11 @@ if (-f "/etc/redhat-release") {
     $os = "sles";
 } elsif (-f "/etc/lsb-release") {
     $os = "ubuntu";
-} elsif (-f "/etc/debian_version") {
-    $os = "debian";
+#} elsif (-f "/etc/debian_version") {
+#    $os = "debian";
 } else {
     probe_utils->send_msg("$output", "f", $msg);
-    probe_utils->send_msg("$output", "d", "Only support the RedHat, SLES, Ubuntu and Debian OS");
+    probe_utils->send_msg("$output", "d", "Only support the RedHat, SLES and Ubuntu.");
     exit 1;
 }
 probe_utils->send_msg("$output", "d", "Current operating system is $os") if ($::VERBOSE);
