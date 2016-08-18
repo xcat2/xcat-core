@@ -763,7 +763,7 @@ Start capturing every message during OS provision process......
                     if ($hdl == \*VARLOGMSGFILE) {
                         chomp($line = <VARLOGMSGFILE>);
                         my @tmp = split(/\s+/, $line);
-                        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$installnic/) {
+                        if ($tmp[4] =~ /dhcpd/i && $line =~ /$installnic/) {
                             handle_dhcp_msg("$line");
                         } elsif ($tmp[4] =~ /in.tftpd/i) {
                             handle_tftp_msg("$line");
@@ -848,7 +848,7 @@ sub get_valid_logs {
         }
 
         my $ishttplog = 0;
-        $ishttplog = 1 if ($filename =~ /access[\._]log/);
+        $ishttplog = 1 if ($filename =~ /access/);
 
         foreach my $file (@rotatefiles) {
             my $fd;
@@ -929,7 +929,7 @@ sub get_valid_logs {
                     $timestampepoch = probe_utils->convert_to_epoch_seconds($timestamp, $year, $epoch_seconds_of_now);
                 }
 
-                if (($splitline[4] =~ /dhcpd:/i && $_ =~ /$installnic/)
+                if (($splitline[4] =~ /dhcpd/i && $_ =~ /$installnic/)
                     || ($splitline[4] =~ /in.tftpd/i)
                     || (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i))
                     || ($splitline[5] =~ /GET/ && $splitline[7] =~ /HTTP/)) {
@@ -968,7 +968,7 @@ sub do_replay {
     foreach my $line (@bthistory) {
         $line =~ s/(\d+) (.+)/$2/g;
         my @tmp = split(/\s+/, $line);
-        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$installnic/) {
+        if ($tmp[4] =~ /dhcpd/i && $line =~ /$installnic/) {
             handle_dhcp_msg("$line");
         } elsif ($tmp[4] =~ /in.tftpd/i) {
             handle_tftp_msg("$line");
