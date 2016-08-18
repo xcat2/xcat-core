@@ -25,6 +25,14 @@ packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
+packimage_m_cpio_c_gzip
+packimage_m_cpio_c_pigz
+packimage_m_cpio_c_xz
+packimage_m_tar_c_pigz
+packimage_m_tar_c_gzip
+packimage_m_tar_c_xz
+packimage_m_invalid_archive_method
+packimage_m_invalid_compress_method
 pping_h
 pping_v
 pping_node
