@@ -204,7 +204,7 @@ sub check_genesis_file {
                         my @file_path  = split(' ', $genesis_line);
                         my $elilo_efi  = $file_path[1];
                         my $elilo_path = $file_path[3];
-                        $elilo_efi =~ s/\${next-server}/$host_ip/i;
+                        $elilo_efi =~ s/\$\{next-server\}/$host_ip/i;
 
                         $wget_rst = system("wget -q --spider $elilo_efi -T 0.5 -t 3");
                         if ($wget_rst) {
