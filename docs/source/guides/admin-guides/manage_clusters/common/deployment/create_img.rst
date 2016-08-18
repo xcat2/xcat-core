@@ -53,6 +53,8 @@ For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network 
   
   [ubuntu 16.04]: http://xcat.org/files/netboot/ubuntu16.04/ppc64el/mini.iso
 
+  [ubuntu 16.04.1]: http://xcat.org/files/netboot/ubuntu16.04.1/ppc64el/mini.iso
+
 * Mount mini.iso ::
 
     mkdir /tmp/iso
