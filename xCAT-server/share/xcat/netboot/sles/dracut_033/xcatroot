@@ -109,8 +109,14 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
   echo -n "Extracting root filesystem:"
   if [ -r /rootimg.tar.gz ]; then
     tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz
+    if [ $? -ne 0 ]; then
+        tar -zxf /rootimg.tar.gz
+    fi
   elif [ -r /rootimg.tar.xz ]; then
     tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz
+    if [ $? -ne 0 ]; then
+        tar -Jxf /rootimg.tar.xz
+    fi
   fi
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
