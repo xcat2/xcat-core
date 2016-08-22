@@ -417,7 +417,6 @@ sub process_request {
         $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"] });
         return 1;
     }
-    $callback->({ data => ["Packing contents of $rootimg_dir"] });
 
     my $suffix;
     if ($compress) {
@@ -462,6 +461,11 @@ sub process_request {
         $suffix = "gz";
     }
 
+    unless (($method eq 'cpio') or ($method eq 'tar') or ($method eq 'squashfs')) {
+        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
+        return 1;
+    }
+    $callback->({ data => ["Packing contents of $rootimg_dir"] });
     $callback->({ info => ["archive method:$method"] });
     unless ($method =~ /squashfs/) {
         $callback->({ info => ["compress method:$compress"] });
@@ -517,9 +521,6 @@ sub process_request {
             system("$includestr >> $xcat_packimg_tmpfile");
         }
         $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath";
-    } else {
-        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
-        return 1;
     }
 
     chdir("$rootimg_dir");
