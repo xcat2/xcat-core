@@ -466,7 +466,7 @@ NOW(), ' ', REPLACE(CONCAT('+', TIME_FORMAT(TIMEDIFF(NOW(), UTC_TIMESTAMP), '%H%
 '</html>'
 ) AS HTML
 FROM (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -499,22 +499,22 @@ SELECT CONCAT(
 '<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Total</th>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">-</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SEC_TO_TIME(SUM(TIME_TO_SEC(Duration))), '</td>', "\n"
+IFNULL(SEC_TO_TIME(SUM(TIME_TO_SEC(Duration))), 'N/A'), '</td>', "\n"
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Passed), '</td>', "\n",
+IFNULL(SUM(Passed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Failed), '</td>', "\n",
+IFNULL(SUM(Failed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`No run`), '</td>', "\n",
+IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Subtotal), '</td>', "\n",
+IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM LatestDailyReport
 ) AS LatestDailyReportSummary, (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -534,7 +534,7 @@ FROM LatestDailyReport,
 ( SELECT @color := '' ) AS tmp00
 ) AS tmp10
 ) AS FailedTestCasesReport, (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -567,22 +567,22 @@ SELECT CONCAT(
 '<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Total</th>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">-</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`Test runs`), '</td>', "\n",
+IFNULL(SUM(`Test runs`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Passed), '</td>', "\n",
+IFNULL(SUM(Passed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Failed), '</td>', "\n",
+IFNULL(SUM(Failed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`No run`), '</td>', "\n",
+IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Subtotal), '</td>', "\n",
+IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM SevenDayLookBack
 ) AS SevenDayLookBackSummary, (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -615,22 +615,22 @@ SELECT CONCAT(
 '<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Total</th>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">-</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`Test runs`), '</td>', "\n",
+IFNULL(SUM(`Test runs`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Passed), '</td>', "\n",
+IFNULL(SUM(Passed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Failed), '</td>', "\n",
+IFNULL(SUM(Failed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`No run`), '</td>', "\n",
+IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Subtotal), '</td>', "\n",
+IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM ThirtyDayLookBack
 ) AS ThirtyDayLookBackSummary, (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -663,22 +663,22 @@ SELECT CONCAT(
 '<th style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">Total</th>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px;">-</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`Test runs`), '</td>', "\n",
+IFNULL(SUM(`Test runs`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Passed), '</td>', "\n",
+IFNULL(SUM(Passed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Failed), '</td>', "\n",
+IFNULL(SUM(Failed), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(`No run`), '</td>', "\n",
+IFNULL(SUM(`No run`), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
-SUM(Subtotal), '</td>', "\n",
+IFNULL(SUM(Subtotal), 'N/A'), '</td>', "\n",
 '<td style="border-color: #666666; border-style: solid; border-width: 1px; padding: 2px 3px; text-align: right;">',
 IFNULL(CONCAT(ROUND(SUM(Passed) / (SUM(Passed) + SUM(Failed)) * 100, 2), '%'), 'N/A'), '</td>', "\n",
 '</tr>', "\n"
 ) AS HTML
 FROM NinetyDayLookBack
 ) AS NinetyDayLookBackSummary, (
-SELECT GROUP_CONCAT(HTML SEPARATOR '') AS HTML
+SELECT IFNULL(GROUP_CONCAT(HTML SEPARATOR ''), '') AS HTML
 FROM (
 SELECT CONCAT(
 '<tr style="background-color: ',
@@ -751,7 +751,7 @@ DELIMITER ;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `LatestDailyMailReportSubject` AS select concat('[xCAT Jenkins] ','Passed: ',sum(`LatestDailyReport`.`Passed`),' Failed: ',sum(`LatestDailyReport`.`Failed`),' No run: ',sum(`LatestDailyReport`.`No run`)) AS `Subject` from `LatestDailyReport` */;
+/*!50001 VIEW `LatestDailyMailReportSubject` AS select concat('[xCAT Jenkins] ','Passed: ',ifnull(sum(`LatestDailyReport`.`Passed`),'N/A'),' Failed: ',ifnull(sum(`LatestDailyReport`.`Failed`),'N/A'),' No run: ',ifnull(sum(`LatestDailyReport`.`No run`),'N/A')) AS `Subject` from `LatestDailyReport` */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -955,4 +955,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-07-07 11:48:15
+-- Dump completed on 2016-08-22  4:06:36
