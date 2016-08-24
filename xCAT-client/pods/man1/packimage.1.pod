@@ -30,12 +30,6 @@ B<-h>          Display usage message.
 
 B<-v>          Command Version.
 
-B<-o>          Operating system (fedora8, rhel5, sles10,etc)
-
-B<-p>          Profile (compute,service)
-
-B<-a>          Architecture (ppc64,x86_64,etc)
-
 B<-m| --method>          Archive Method (cpio,tar,squashfs, default is cpio)
 
 B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
