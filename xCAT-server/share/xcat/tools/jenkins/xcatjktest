@@ -1278,7 +1278,7 @@ while(! $sub_process_rt) {
     }
 
     if(time() - $regstarttime > 36000) {
-        send_msg(1, "[timing] 8 hours is expired");
+        send_msg(1, "[timing] 10 hours is expired");
         last;
     }
     sleep 1;
