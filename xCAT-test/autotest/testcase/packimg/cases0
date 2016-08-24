@@ -89,8 +89,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -135,8 +134,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -177,8 +175,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -223,8 +220,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -265,8 +261,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -307,8 +302,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
