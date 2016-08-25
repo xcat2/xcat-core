@@ -418,7 +418,7 @@ sub process_request {
     my $temppath;
     my $oldmask;
     unless (-d $rootimg_dir) {
-        $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"] });
+        $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"], errorcode => [1] });
         return 1;
     }
 
@@ -427,21 +427,21 @@ sub process_request {
         if ($compress eq 'gzip') {
             my $isgzip = system("bash -c 'type -p gzip' >/dev/null 2>&1");
             unless ($isgzip == 0) {
-                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "gz";
         } elsif ($compress eq 'pigz') {
             my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
             unless ($ispigz == 0) {
-                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "gz";
         } elsif ($compress eq 'xz') {
             my $isxz = system("bash -c 'type -p xz' >/dev/null 2>&1");
             unless ($isxz == 0) {
-                $callback->({ error => ["Command xz does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command xz does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "xz";
@@ -458,7 +458,7 @@ sub process_request {
             if ($isgzip == 0) {
                 $compress = "gzip";
             } else {
-                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."] });
+                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."], errorcode => [1] });
                 return 1;
             }
         }
