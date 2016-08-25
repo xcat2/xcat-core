@@ -423,6 +423,8 @@ sub process_request {
         my $names;
         my @hosts;
         my %nodehash;
+        my @eachhost;
+        my $invalid;
 
         foreach (@contents) {
             chomp;            #no newline
@@ -437,6 +439,18 @@ sub process_request {
             }
             unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
+                next;
+            }
+
+            @eachhost = split(/ /,$names);
+            foreach my $hname (@eachhost) {
+                unless ($hname !~ /^\.[a-z0-9]+/i) {
+                    xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names start with . ", $callback);
+                    $invalid = $names;
+                    last;
+                }
+            }
+            if ($invalid) {
                 next;
             }
 
