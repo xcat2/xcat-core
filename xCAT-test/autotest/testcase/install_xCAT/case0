@@ -1,0 +1,21 @@
+start:install_xCAT_new
+description:install xCAT with go-xcat tool
+os:Linux
+cmd:if grep "Red Hat" /etc/*release >/dev/null; then yum install -y yum-utils bzip2; fi
+check:rc==0
+cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
+check:rc==0
+cmd:cp /xcat-dep*.tar.bz2 /xcat-dep.tar.bz2
+check:rc==0
+cmd:cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
+check:rc==0
+cmd:source "/etc/profile.d/xcat.sh"
+check:rc==0
+cmd:lsxcatd -v
+check:rc==0
+check:output=~Version
+cmd:service xcatd status
+check:rc==0
+check:output=~running
+cmd:rm -rf /xcat-core.tar.bz2 /xcat-dep.tar.bz2
+end

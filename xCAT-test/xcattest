@@ -14,7 +14,8 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 my $rootdir     = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp    = 0;
-my $config_info  = "$rootdir/default.conf";
+my $config_info = "$rootdir/default.conf";
+my $bundle_dir  ="$rootdir/bundle";
 my $bundle_list = undef;
 my $case_list   = undef;
 my $cmd_list    = undef;
@@ -36,10 +37,12 @@ if (
     exit 1;
 }
 
-unless(defined($bundle_list) || defined($case_list) || defined($cmd_list) || defined($needshow)){
+#bundle, cases lists and command lists, one of them must be defined
+if (!defined($bundle_list) && !defined($case_list) && !defined($cmd_list)){
     &usage;
     exit 1;
 }
+
 if ($needhelp)
 {
     &usage;
@@ -47,6 +50,7 @@ if ($needhelp)
 }
 
 #check config file and system label
+#this system label means only the System variable will be loaded
 my $configfile  = undef;
 my $inital_info = undef;
 if ($config_info){   
@@ -55,7 +59,7 @@ if ($config_info){
         $configfile = $config_info[0];
         $inital_info = $config_info[1];
         if ($inital_info ne "system"){
-            print "Failed: $inital_info in $config_info is not supported!\n";
+            print " $inital_info in $config_info is not supported!\n";
             exit 1;
         }
     }else{
@@ -63,7 +67,7 @@ if ($config_info){
     }
 }
 if (!open(FILE, "$configfile")) {
-    print "can't open config file: $configfile\n";
+    print "Can't open config file: $configfile\n";
     exit 1;
 }
 
@@ -71,8 +75,9 @@ if (!open(FILE, "$configfile")) {
 if ($bundle_list){
      my @bundles = split /,/, $bundle_list;
      foreach my $bundle (@bundles){
-        if (!open(FILE, "<$rootdir/bundle/$bundle")) {
-            print "can't open bundle file: $rootdir/bundle/$bundle\n";
+        if (!open(FILE, "< $bundle_dir/$bundle")) {
+            print "Can't open bundle file: $bundle_dir/$bundle\n";
+            &show_bundle_files;
             exit 1;
         }
     }
@@ -119,9 +124,11 @@ if ($ret != 0) {
     goto EXIT;
 }
 
-$ret = &init;
-if ($ret != 0) {
-    goto EXIT;
+if ($inital_info ne "system"){
+    $ret = &init;
+    if ($ret != 0) {
+        goto EXIT;
+    }
 }
 my @filespath = ();
 
@@ -203,10 +210,28 @@ sub getConfig
     my $value = undef;
     my $c     = 0;
     my $cmd   = undef;
-
     my $mgt_name = undef;
+    
+    open(FILE, "$configfile") or die "Can't open $configfile";    
+    #Only load system information 
+    if (defined($inital_info) && ($inital_info eq "system")) {
+        while (my $line = <FILE>) {
+	    $line = &trim($line);
+            next if (length($line) == 0);
 
-    while (my $line = <FILE>) {
+            #Only read System variable
+            if ($line =~ /\[System\]/) {
+               $type = "Varible";
+            } 
+            if (defined($type) && ($type eq "Varible")) {
+                if ($line =~ /(\w+)\s*=\s*([\w\.\-\+\/:]+)/) {
+                    $config{var}{$1} = $2;
+                }
+            }  
+        }            
+    }else{
+    #Load all config files information    
+        while (my $line = <FILE>) {
         $line = &trim($line);
         next if (length($line) == 0);
 
@@ -262,6 +287,7 @@ sub getConfig
             }
         }
     }
+}
 
     if (exists $config{object}) {
         foreach my $type (keys %{ $config{object} }) {
@@ -385,7 +411,7 @@ sub init
     if (!exists $config{var}{ARCH}) {
         if (!exists $config{var}{CN}) {
             $config{var}{ARCH} = "Unknown";
-            log_this("No compute node defined,can't get ARCH of compute node");
+            log_this("No compute node defined, can't get ARCH of compute node");
         } else {
             $config{var}{ARCH} = getnodeattr($config{var}{CN}, "arch");
             if ($config{var}{ARCH} =~ /ppc/) {
@@ -399,7 +425,7 @@ sub init
     if (!exists $config{var}{HCP}) {
         if (!exists $config{var}{CN}) {
             $config{var}{HCP} = "Unknown";
-            log_this("No compute node defined,can't get HCP TYPE of compute node");
+            log_this("No compute node defined, can't get HCP TYPE of compute node");
         } else {
             $config{var}{HCP} = getnodeattr($config{var}{CN}, "mgt");
             log_this("Detecting: HCP = $config{var}{HCP}");
@@ -531,6 +557,7 @@ sub loadcase
     if ($bundle_list) {
         my @bundles = split /,/, $bundle_list;
         foreach my $bundle (@bundles) {
+            open(FILE, "<$bundle_dir/$bundle") or die "Can't open bundle file: $bundle";
             while ($line = <FILE>) {
                 $line = trim($line);
                 next if (length($line) == 0);
@@ -544,7 +571,7 @@ sub loadcase
     }
     foreach $file (@files) {
         if (!open(FILE, "<$file")) {
-            log_this("can't open $file");
+            log_this("Can't open $file");
             return 1;
         }
         while ($line = <FILE>) {
@@ -728,7 +755,7 @@ sub getvar
         if (exists($config{var}{$varname})) {
             $str =~ s/\$\$$varname/$config{var}{$varname}/g;
         } else {
-            log_this("Error:can't get varible $varname");
+            log_this("Error: can't get varible $varname");
             return '';
         }
     }
@@ -945,10 +972,19 @@ sub usage
 {
     print "Usage:xcattest - Run xcat test cases.\n";
     print "  xcattest [-?|-h]\n";
-    print "  xcattest [-f configure file] [-b case bundle list] [--restore]\n";
-    print "  xcattest [-f configure file] [-t case list] [--restore]\n";
-    print "  xcattest [-f configure file] [-c cmd list] [-l] [--restore]\n";
+    print "  xcattest [-f configure file] [-b case bundle list]\n";
+    print "  xcattest [-f configure file] [-t case list]\n";
+    print "  xcattest [-f configure file] [-c cmd list]\n";
+    print "  xcattest [-f configure file] [-b case bundle list] [-l]\n";
+    print "  xcattest [-f configure file] [-t case list] [-l]\n";
+    print "  xcattest [-f configure file] [-c cmd list] [-l]\n";    
     print "\n";
+}
+
+sub show_bundle_files
+{
+    print "Valid bundle files:\n\n";
+    system("ls $bundle_dir");    
     return;
 }
 
@@ -979,10 +1015,7 @@ sub reordercases {
     if ($bundle_list) {
         my @bundles = split /,/, $bundle_list;
         foreach my $bundle (@bundles) {
-            if (!open(FILE, "<$rootdir/bundle/$bundle")) {
-                log_this("can't open $rootdir/bundle/$bundle");
-                return 1;
-            }
+            open(FILE, "<$bundle_dir/$bundle") or die "Can't open bundle file: $bundle";
             while ($line = <FILE>) {
                 $line = trim($line);
                 next if (length($line) == 0);
