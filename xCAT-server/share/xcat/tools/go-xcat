@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.2
+# Version 1.0.3
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -483,7 +483,8 @@ function check_repo_version_dnf()
 function check_repo_version_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	check_exec_or_exit repoquery
+	check_executes repoquery
+	exit_if_bad "$?" "Install the 'yum-utils' package and rerun."
 	local -a name=()
 	local -a ver=()
 	while read -r name ver
@@ -588,12 +589,12 @@ function get_package_list_dnf()
 function get_package_list_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	check_exec_or_exit repoquery
+	check_executes repoquery
+	exit_if_bad "$?" "Install the 'yum-utils' package and rerun."
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
-
 #       $1      repo id
 function get_package_list_zypper()
 {
@@ -611,8 +612,13 @@ function get_package_list_apt()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	awk '/^Package: / { print $2 }' \
-		<"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
+		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
 		2>/dev/null
+	# This is a dirty hack, and use recursion.
+	# For the `devel' branch of the online repo for apt, it has the
+	# subdirectory name of `core-snap' instead of `xcat-core'.
+	[[ "$?" -ne "0" && "${repo_id}" = "xcat-core" ]] &&
+		"${FUNCNAME}" "core-snap"
 }
 
 #       $1      repo id
@@ -1519,7 +1525,10 @@ case "${GO_XCAT_ACTION}" in
 		esac
 	fi
 	(
-		"${GO_XCAT_INSTALLER}" "${GO_XCAT_YES[@]}" 2>&1 1>&42 |
+		# Use `-y' here. Since the STDOUT is redirect to tee.
+		# `yum' does not display the prompt message properly when
+		# working with tee.
+		"${GO_XCAT_INSTALLER}" -y 2>&1 1>&42 |
 			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
 		exit "${PIPESTATUS[0]}"
 	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
@@ -1556,8 +1565,6 @@ case "${GO_XCAT_ACTION}" in
 			echo "-- 8< -- -- -- -- ^^ -- -- -- ^^ -- -- -- -- 8< --"
 		fi
 	fi >"${TMP_DIR}/go-xcat.log.008"
-
-	list_xcat_packages | tee "${TMP_DIR}/go-xcat.log.099"
 
 	if [[ "${RET}" -ne "0" ]]
 	then
@@ -1600,6 +1607,7 @@ case "${GO_XCAT_ACTION}" in
 		xCAT has been updated!
 		======================
 
+		Congratulations!
 		EOF
 		;;
 	esac
