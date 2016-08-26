@@ -1,7 +1,10 @@
-start:install_xCAT_new
-description:install xCAT with go-xcat tool
+start:install_xCAT
+description:install xCAT with go-xcat tool in a fresh environment
 os:Linux
 cmd:if grep "Red Hat" /etc/*release >/dev/null; then yum install -y yum-utils bzip2; fi
+check:rc==0
+cmd:if grep Ubuntu /etc/*release; then arc_all=`uname -a`; code=`lsb_release -sc`;if [[ $arc_all =~ "ppc64le" ]]; then arch="ppc64el";else arch="x86_64";fi; cp "/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-$arch.sources.list" "/etc/apt/sources.list"; fi
+cmd:if grep Ubuntu /etc/*release;then apt-get clean && apt-get update; fi
 check:rc==0
 cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
 check:rc==0

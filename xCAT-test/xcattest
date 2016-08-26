@@ -979,6 +979,7 @@ sub usage
     print "  xcattest [-f configure file] [-t case list] [-l]\n";
     print "  xcattest [-f configure file] [-c cmd list] [-l]\n";    
     print "\n";
+    return;
 }
 
 sub show_bundle_files
