@@ -1901,8 +1901,8 @@ sub chvm {
     # in xml definition of the VM.
     # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not 
     # selected for the new disk about to be added (chvm -a)
-    my $cdrom_name = get_cdrom_device_name($vmxml);
-    if ($cdrom_name) {
+    my @cdrom_names = get_cdrom_device_names($vmxml);
+    foreach my $cdrom_name (@cdrom_names) {
         $useddisks{$cdrom_name} = 1;
     }
 
@@ -4106,10 +4106,11 @@ sub dohyp {
     #print $out $msgtoparent; #$node.": $_\n";
 }
 
-# Return device name used by cdrom as defined in the kvm_nodedata table
-sub get_cdrom_device_name() {
+# Return array of device names used by cdrom as defined in the kvm_nodedata table
+sub get_cdrom_device_names() {
     my $xml = shift;
     my $device_name;
+    my @cdrom_device_names;
 
     my $myxml    = $parser->parse_string($xml);
     my @alldisks = $myxml->findnodes("/domain/devices/disk");
@@ -4120,10 +4121,10 @@ sub get_cdrom_device_name() {
          if ($devicetype eq "cdrom") {
              # Get name of the cdrom
              $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
-             last; # only one cdrom device is expected
+             push @cdrom_device_names, $device_name;
          }
     }
-    return $device_name;
+    return @cdrom_device_names;
 }
 
 1;
