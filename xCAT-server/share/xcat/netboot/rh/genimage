@@ -70,7 +70,7 @@ my $noupdate;
 
 sub xdie {
     system("rm -rf /tmp/xcatinitrd.$$");
-    umount_chroot($rootimage_dir);
+    umount_chroot($rootimg_dir);
     die @_;
 }
 
