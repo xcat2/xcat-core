@@ -23,6 +23,7 @@ my $needshow    = 0;
 my $restore     = 0;
 my $ret         = 0;
 my $string1     = undef;
+
 if (
     !GetOptions("h|?" => \$needhelp,
         "f=s"     => \$config_info,
@@ -49,8 +50,8 @@ if ($needhelp)
     exit 0;
 }
 
-#check config file and system label
-#this system label means only the System variable will be loaded
+#check config file and System label
+#this System label means only the [System] variable will be loaded
 my $configfile  = undef;
 my $inital_info = undef;
 if ($config_info){   
@@ -58,7 +59,7 @@ if ($config_info){
         my @config_info = split /:/, $config_info;
         $configfile = $config_info[0];
         $inital_info = $config_info[1];
-        if ($inital_info ne "system"){
+        if ($inital_info ne "System"){
             print " $inital_info in $config_info is not supported!\n";
             exit 1;
         }
@@ -124,7 +125,7 @@ if ($ret != 0) {
     goto EXIT;
 }
 
-if ($inital_info ne "system"){
+if ($inital_info ne "System"){
     $ret = &init;
     if ($ret != 0) {
         goto EXIT;
@@ -213,8 +214,8 @@ sub getConfig
     my $mgt_name = undef;
     
     open(FILE, "$configfile") or die "Can't open $configfile";    
-    #Only load system information 
-    if (defined($inital_info) && ($inital_info eq "system")) {
+    #Only load System information 
+    if (defined($inital_info) && ($inital_info eq "System")) {
         while (my $line = <FILE>) {
 	    $line = &trim($line);
             next if (length($line) == 0);
