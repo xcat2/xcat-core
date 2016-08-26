@@ -314,7 +314,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m invalid 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m invalid 
 check:rc!=0
 check:output=~Error: Invalid archive method 'invalid' requested
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -330,7 +330,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -c invalid
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -c invalid
 check:rc!=0
 check:output=~Error: Invalid compress method 'invalid' requested
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
