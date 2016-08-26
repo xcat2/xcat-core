@@ -1894,6 +1894,18 @@ sub chvm {
             }
         }
     }
+
+    # The function get_multiple_paths_by_url() is used to polulate useddisks hash, 
+    # but it only returns disk volumes from kvm host.
+    # cdrom is not returned by get_multiple_paths_by_url() but is defined as a disk device
+    # in xml definition of the VM.
+    # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not 
+    # selected for the new disk about to be added (chvm -a)
+    my @cdrom_names = get_cdrom_device_names($vmxml);
+    foreach my $cdrom_name (@cdrom_names) {
+        $useddisks{$cdrom_name} = 1;
+    }
+
     if (@addsizes) {    #need to add disks, first identify used devnames
         my @diskstoadd;
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
@@ -1937,6 +1949,7 @@ sub chvm {
             do {
                 $dev = $prefix . shift(@suffixes);
             } while ($useddisks{$dev});
+
 
             #ok, now I need a volume created to attach
             push @diskstoadd, get_filepath_by_url(url => $location, dev => $dev, create => $_, format => $format);
@@ -4091,6 +4104,27 @@ sub dohyp {
 
     #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
     #print $out $msgtoparent; #$node.": $_\n";
+}
+
+# Return array of device names used by cdrom as defined in the kvm_nodedata table
+sub get_cdrom_device_names() {
+    my $xml = shift;
+    my $device_name;
+    my @cdrom_device_names;
+
+    my $myxml    = $parser->parse_string($xml);
+    my @alldisks = $myxml->findnodes("/domain/devices/disk");
+    # Look through all the disk entries defined in the xml
+    foreach my $disknode (@alldisks) {
+         my $devicetype = $disknode->getAttribute("device");
+         # Check if it is cdrom
+         if ($devicetype eq "cdrom") {
+             # Get name of the cdrom
+             $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+             push @cdrom_device_names, $device_name;
+         }
+    }
+    return @cdrom_device_names;
 }
 
 1;
