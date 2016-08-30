@@ -1574,10 +1574,13 @@ sub isfpc {
     return 1
 }
 
-sub isfirestone {
+sub isopenpower {
     my $sessdata = shift;
-    if ($sessdata->{prod_id} == 43707) {
+    if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         return 1;
+    }
+    else {
+        return 0;
     }
 }
 
@@ -1821,7 +1824,7 @@ sub do_firmware_update {
 
 sub rflash {
     my $sessdata = shift;
-    if (isfirestone($sessdata)) {
+    if (isopenpower($sessdata)) {
 
         # Do firmware update for firestone here.
         @{ $sessdata->{component_ids} } = qw/1 2 4/;
@@ -2584,9 +2587,17 @@ sub add_textual_frus {
     my $type         = shift;
     my $sessdata     = shift;
     unless ($type) { $type = 'hw'; }
-    add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
+    if ($desc =~ /System Firmware/i and $category =~ /product/i) {
+        $type = 'firmware,bmc';
+    }
+    if ($desc =~ /NODE \d+/ and $category =~ /chassis/) {
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
+    } else {
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
+    }
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Manufacturer", $category, "manufacturer", $type, $sessdata);
-    add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "FRU Number", $category, "frunum", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Version", $category, "version", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "MAC Address", $category, "macaddrs", "mac", $sessdata, addnumber => 1);
@@ -2937,6 +2948,7 @@ sub initfru_with_mprom {
         fru_initted($sessdata);
         return;
     }
+
     $sessdata->{currfruid} = 0;
     $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [0], callback => \&process_currfruid, callback_args => $sessdata);
 }
@@ -3202,10 +3214,29 @@ sub initfru_zero {
         }
         $sessdata->{fru_hash}->{ $frudex++ } = $fru;
     }
-
     #Ok, done with fru 0, on to the other fru devices from SDR
     $sessdata->{frudex} = $frudex;
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
+
+        if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
+            # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
+            @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
+            foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
+                my $sdr = $sessdata->{sdr_hash}->{$key};
+                unless ($sdr->rec_type == 0x11) {
+                    next;
+                }
+                my $fru_id = $sdr->sensor_number;
+                if (defined($fruids_hash{$fru_id})) {
+                    $sessdata->{sdr_info_for_openpower}->{$fru_id} = $sdr; 
+                }
+            }
+            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
+            return;
+        }
         fru_initted($sessdata);
         return;
     }
@@ -3521,6 +3552,18 @@ sub add_fruhash {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Chassis ", "chassis", undef, $sessdata);
         }
     }
+
+    if ($sessdata->{skipotherfru}) {
+        if (scalar @{$sessdata->{frus_for_openpower}}) {
+            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
+            return;
+        }
+        fru_initted($sessdata);
+        return; 
+    }
+
     if (scalar @{ $sessdata->{dimmfru} }) {
         $sessdata->{currfrusdr} = shift @{ $sessdata->{dimmfru} };
         while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{ $sessdata->{dimmfru} }) {
@@ -5876,7 +5919,7 @@ sub do_dcmi_operating {
 sub renergy {
     my $sessdata    = shift;
     my @subcommands = @{ $sessdata->{extraargs} };
-    if (isfirestone($sessdata)) {
+    if (isopenpower($sessdata)) {
         unless (@subcommands) {
             @subcommands = qw/powerusage temperature/;
         }

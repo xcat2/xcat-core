@@ -10,6 +10,10 @@ B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<bios>|B<mparom>|B<mac>|B<all>}
 
+=head2 OpenPOWER server specific:
+  
+B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>} 
+
 =head2 PPC (with HMC) specific:
 
 B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
