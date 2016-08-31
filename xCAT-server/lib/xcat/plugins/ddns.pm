@@ -441,11 +441,11 @@ sub process_request {
                 xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
                 next;
             }
-
+            $invalid = "";
             @eachhost = split(/ /,$names);
             foreach my $hname (@eachhost) {
-                unless ($hname !~ /^\.[a-z0-9]+/i) {
-                    xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names start with . ", $callback);
+                if ($hname =~ /^\./) {
+                    xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, name $hname start with . ", $callback);
                     $invalid = $names;
                     last;
                 }
