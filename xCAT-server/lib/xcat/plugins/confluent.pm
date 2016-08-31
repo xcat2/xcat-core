@@ -345,8 +345,8 @@ sub donodeent {
         if ($cfgenthash->{$confnode}) {
             $confluent->delete('/nodes/' . $confnode);
         }
-      return;
       }
+      return;
   }
   my @toconfignodes = keys %{$cfgenthash};
   my $ipmitab = xCAT::Table->new('ipmi', -create=>0);
