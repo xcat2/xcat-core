@@ -2341,6 +2341,11 @@ my @nodeattrs = (
         tabentry        => 'ipmi.password',
         access_tabentry => 'ipmi.node=attr:node',
     },
+    { attr_name => 'vlantag',
+        only_if         => 'mgt=ipmi',
+        tabentry        => 'ipmi.taggedvlan',
+        access_tabentry => 'ipmi.node=attr:node',
+    },
 ################
     #  mp table    #
 ################
