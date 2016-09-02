@@ -84,8 +84,8 @@ my %URIdef = (
             },
             POST => {
                 desc => "Create the node {noderange}.",
-                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/nodes/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
+                usage => "|$usagemsg{objchparam} DataBody: {options:{opt1:v1,opt2:v2},attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/nodes/node1 {\"options\":{\"--template\":\"x86_64kvmguest-template\"}, \"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd      => "mkdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
@@ -602,7 +602,6 @@ my %URIdef = (
                 outhdler => \&noout,
             },
         },
-
 
         # TODO: rflash
     },
@@ -1263,8 +1262,38 @@ my %URIdef = (
                 fhandler => \&localreshdl,
                 outhdler => \&localresout,
             },
-          }
-      }
+        }
+    },
+
+    templates => {
+        node => {
+            desc    =>
+            "[URI:/templates/node] - The template information of nodes.",
+            matcher => '^/templates/node$',
+            GET     => {
+                desc     => "Show attributes of a node template.",
+                usage    => "||$usagemsg{objreturn}|",
+                example  => "|GET all the attibutes of node template \'x86_64kvmguest-template\'.|GET|/templates/node {\"options\":{\"--template\":\"x86_64kvmguest-template\"}} |{\n   \"arch\":{\n      \"x86_64\":\"compute\",\n      \"bmc\":\"MANDATORY:The hostname or ip address of the BMC adapater\",\n      \bmcpassword\":\"MANDATORY:the password of the BMC\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}",
+                cmd      => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+        },
+        # Generally, the 'oprions' json filed could be used to support different argument of the command.
+        # As limited by the different outhdler, a new resource name 'all' has to be added here.
+        all => {
+            desc    => "[URI:/templates/node/all] - The template information of node.",
+            matcher => '^/templates/node/all$',
+            GET     => {
+                desc     => "List template items of node.",
+                usage    => "||$usagemsg{objreturn}|",
+                example  => "|List all the templates. |GET /templates/node/all {\"options\":{\"--template\":\"\"}}| [cec-template,hmc-template,ppc64le-template,x86_64-template,x86_64kvmguest-template]",
+                cmd      => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout_remove_appended_type,
+            },
+        },
+    },
 );
 
 # supported formats
@@ -1906,10 +1935,10 @@ sub defhdl {
     # push the -t args for *def command
     my $resrctype = $params->{'resourcegroup'};
     $resrctype =~ s/s$//;    # remove the last 's' as the type of object
-    push @args, ('-t', $resrctype);
+    push @args, ('-t', $resrctype) if $resrctype ne 'template';
 
     # push the object name - node/noderange
-    if (defined($urilayers[1])) {
+    if (defined($urilayers[1]) && $resrctype ne 'template') {
         if ($urilayers[1] eq "ALLRESOURCES") {
             unless (isGET()) {
                 error("Keyword ALLRESOURCES is only supported for GET Action.", $STATUS_NOT_FOUND);
@@ -1920,9 +1949,30 @@ sub defhdl {
         }
     }
 
+    # For template only.
+    if ($resrctype eq 'template') {
+        if ($params->{'resourcename'} eq "all") {
+            $paramhash->{'options'}->{'-a'} = "";
+        }
+    }
     # For the put/post which specifies attributes like mgt=ipmi groups=all
     foreach my $k (keys(%$paramhash)) {
-        push @args, "$k=$paramhash->{$k}" if ($k);
+        next if (!$k);
+        # NOTE: The json field 'options' may be confilict with the attibute
+        # name called 'options', but it does not happen currently. A better
+        # solution is to add a new json field called attributes like this
+        # {options:{}, attributes:{}} to avoid of the ambiguity.
+        if ($k eq 'options') {
+            my $options = $paramhash->{$k};
+            my ($opt_key, $opt_val);
+            while(($opt_key, $opt_val) = each(%{$options})) {
+                next if (!$opt_key  || grep (/^$opt_key$/, ('-o','-l','-t')));
+                push @args, $opt_key;
+                push @args, $opt_val if $opt_val;
+            }
+            next;
+        }
+        push @args, "$k=$paramhash->{$k}" if $paramhash->{$k};
     }
 
     if ($params->{'resourcename'} eq "allnode") {
@@ -3270,7 +3320,7 @@ sub fetchParameters {
         }
     } elsif (isPost()) {
         $pdata = $q->param('POSTDATA');
-    } elsif (isDelete()) {
+    } elsif (isDelete() || isGET()) {
         if ($ENV{'CONTENT_TYPE'} =~ /json/) {
             $q->read_from_client(\$pdata, $ENV{'CONTENT_LENGTH'});
         }
