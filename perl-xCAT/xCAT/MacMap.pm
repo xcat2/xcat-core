@@ -288,6 +288,10 @@ sub dump_mac_info {
         $self->{callback}          = $callback;
     }
     my $community         = "public";
+    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+    my $tmp    = $snmpcs[0];
+    if (defined($tmp)) { $community = $tmp }
+
     my $dump_all_switches = 0;
     my %switches_to_dump  = ();
     if (!defined($noderange)) {
@@ -366,6 +370,7 @@ sub find_mac {
     my $self       = shift;
     my $mac        = shift;
     my $cachedonly = shift;
+    my $discover_switch=shift;
 
     # For now HARDCODE (TODO, configurable?) a cache as stale after five minutes
     # Also, if things are changed in the config, our cache could be wrong,
@@ -390,7 +395,7 @@ sub find_mac {
     #If requesting a cache only check or the cache is a mere 20 seconds old
     #don't bother querying switches
     if ($cachedonly or ($self->{timestamp} > (time() - 20))) { return undef; }
-    $self->refresh_table;    #not cached or stale cache, refresh
+    $self->refresh_table($discover_switch);    #not cached or stale cache, refresh
     if ($self->{mactable}->{ lc($mac) }) {
         return $self->{mactable}->{ lc($mac) };
     }
@@ -426,6 +431,7 @@ sub fill_switchparms {
 
 sub refresh_table {
     my $self = shift;
+    my $discover_switch = shift;
     my $curswitch;
     $self->{mactable}    = {};
     $self->{switchtab}   = xCAT::Table->new('switch', -create => 1);
@@ -469,7 +475,22 @@ sub refresh_table {
 
     #Build hash of switch port names per switch
     $self->{switches} = {};
+    
+    #get nodetype from nodetype
+    my $ntable = xCAT::Table->new('nodetype');
+    my @typeentries = $ntable->getAllNodeAttribs(['node', 'nodetype']);
+    foreach my $ntnode (@typeentries) {
+        if ($ntnode->{nodetype} eq "switch") {
+            $self->{switches}->{$ntnode->{node} }->{nodetype}  = $ntnode->{nodetype};
+            xCAT::MsgUtils->message("S", "refresh_table: $ntnode->{node} is $self->{switches}->{$ntnode->{node} }->{nodetype}");
+        }
+    }
     foreach my $entry (@entries) {
+        if ( (($discover_switch) and ($self->{switches}->{$entry->{node}}->{nodetype} ne "switch"))
+            or ( !($discover_switch) and ($self->{switches}->{$entry->{node}}->{nodetype} eq "switch")) ){
+            xCAT::MsgUtils->message("S", "refresh_table: skip $entry->{node} and $entry->{switch}");
+            next;
+        }
         if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
 
             if (!$self->{switches}->{ $entry->{switch} }->{ $entry->{port} })
