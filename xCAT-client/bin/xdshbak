@@ -110,8 +110,7 @@ while (<STDIN>)
     #
     $num_lines++;
     if (!($quiet)) {
-        if   ($::opt_x) { $num_lines % 100 == 0  && print STDOUT "."; }
-        else            { $num_lines % 1000 == 0 && print STDOUT "."; }
+        $num_lines % 1000 == 0 && print STDOUT ".";
     }
     if (/: /)
     {
@@ -170,7 +169,7 @@ while (<STDIN>)
 # The hostnames are sorted alphabetically
 #
 
-$num_lines > 999 && print STDOUT "\n";
+!($quiet) && $num_lines > 999 && print STDOUT "\n";
 if ($compress)
 {
     if ($long_ln eq $prev_ln)
@@ -204,7 +203,7 @@ sub d_syntax
       "-c : compresses the output by listing unique output only once.\n";
     my $usage3 = "-h : help  \n";
     my $usage4 =
-"-x : omit extra header output for each node.  Can not be used with -c. \n";
+      "-x : omit extra header output for each node.  Can not be used with -c. \n";
     my $usage5 = "-q : quiet mode.\n";
     my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4 .= $usage5;
     xCAT::MsgUtils->message("I", $usage);
@@ -302,10 +301,10 @@ sub print_tree
         xCAT::MsgUtils->message("I", "HOSTS:");
 
         print
-"-------------------------------------------------------------------------\n";
+          "-------------------------------------------------------------------------\n";
         &display_wc;
         print
-"-------------------------------------------------------------------------------\n";
+          "-------------------------------------------------------------------------------\n";
         print $str{$index};
     }
 }
