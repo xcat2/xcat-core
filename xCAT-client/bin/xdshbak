@@ -236,7 +236,9 @@ sub print_list
         if (!$::opt_x) { ($num_hosts >= 1) && print "\n"; }
         $num_hosts++;
 
-        if ($::opt_x) { print "$hostname: $ls{$hostname}"; }
+        if ($::opt_x) {
+            map { print "$hostname: $_\n" } split(/\n/, $ls{$hostname});
+        }
         else
         {
 
