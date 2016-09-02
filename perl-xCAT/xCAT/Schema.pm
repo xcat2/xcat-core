@@ -435,7 +435,7 @@ passed as argument rather than by table value',
            2 2   Third interface on ML2 or mezzanine adapter
 
            2 3   Fourth interface on ML2 or mezzanine adapter',
-            taggedvlan => 'Have bmcsetup place the BMC on the specified vlan tag on a shared netwirk interface.  Some network devices may be incompatible with this option',
+            taggedvlan => 'Bmcsetup will configure the network interface of the BMC to be tagged to the VLAN specified.',
             bmcid => 'Unique identified data used by discovery processes to distinguish known BMCs from unrecognized BMCs',
             username => 'The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.',
             password => 'The BMC password.  If not specified, the key=ipmi row in the passwd table is used as the default.',

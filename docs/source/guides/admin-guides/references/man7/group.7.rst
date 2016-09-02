@@ -1148,7 +1148,7 @@ group Attributes:
 
 \ **vlantag**\  (ipmi.taggedvlan)
  
- Have bmcsetup place the BMC on the specified vlan tag on a shared netwirk interface.  Some network devices may be incompatible with this option
+ Bmcsetup will configure the network interface of the BMC to be tagged to the VLAN specified.
  
 
 
