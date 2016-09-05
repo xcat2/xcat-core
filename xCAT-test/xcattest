@@ -20,7 +20,7 @@ my $initallabel     = 0;
 my $bundledir       = "$rootdir/bundle";
 my $bundlelist      = undef;
 my $caselist        = undef;
-my $cmdlist        = undef;
+my $cmdlist         = undef;
 my $needshow        = 0;
 my $showbundlefiles = 0;
 my $restore         = 0;
@@ -191,7 +191,8 @@ sub getConfig
     my $mgt_name = undef;
     
     if (!open(FILE, "$configfile")) {
-       log_this("Error: can't open $configfile");
+       log_this("Error: can't open xCAT config file: $configfile");
+       close(FILE);
        return 1;
     }  
     
@@ -541,6 +542,7 @@ sub loadcase
         foreach my $bundle (@bundles) {
             if (!open(FILE, "<$bundledir/$bundle")){
                 log_this("Error: Can't open bundle file: $bundle");
+                close(FILE);
                 return 1;
             }
             while ($line = <FILE>) {
