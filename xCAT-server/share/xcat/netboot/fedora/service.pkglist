@@ -23,3 +23,6 @@ unixODBC
 perl-DBD-MySQL
 mysql-connector-odbc
 perl-DBD-Pg
+tar
+gzip
+xz

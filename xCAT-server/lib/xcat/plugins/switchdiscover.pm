@@ -1402,7 +1402,7 @@ sub switchsetup {
     }
 
     foreach my $mytype (keys %$nodes_to_config) {
-        my $config_script = "$::XCATROOT/shart/xcat/tools/config".$mytype;
+        my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
             send_msg($request, 0, "call to config $mytype switches $switches\n");

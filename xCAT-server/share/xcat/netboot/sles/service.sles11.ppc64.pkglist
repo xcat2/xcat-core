@@ -20,6 +20,9 @@ cron
 wget
 vsftpd
 util-linux
+tar
+gzip
+xz
 module-init-tools
 mkinitrd
 apache2

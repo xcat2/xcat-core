@@ -1441,8 +1441,8 @@ if [ -r /rootimg.sfs ]; then
     mount --move /ro \$NEWROOT/ro
     mount --move /rw \$NEWROOT/rw
 EOMS
-    print $inifile "elif [ -r /rootimg.gz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.gz downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
@@ -1452,15 +1452,23 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    if [ -x /bin/cpio ]; then\n";
-    print $inifile "        zcat /rootimg.gz |/bin/cpio -idum\n";
-    print $inifile "    else\n";
-    print $inifile "        zcat /rootimg.gz |cpio -idum\n";
+    print $inifile "    if [ -r /rootimg.cpio.gz ]; then\n";
+    print $inifile "        if [ -x /bin/cpio ]; then\n";
+    print $inifile "            zcat /rootimg.cpio.gz |/bin/cpio -idum\n";
+    print $inifile "        else\n";
+    print $inifile "            zcat /rootimg.cpio.gz |cpio -idum\n";
+    print $inifile "        fi\n";
+    print $inifile "    elif [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "        if [ -x /bin/cpio ]; then\n";
+    print $inifile "            xz -cd /rootimg.cpio.xz |/bin/cpio -idum\n";
+    print $inifile "        else\n";
+    print $inifile "            xz -cd /rootimg.cpio.xz |cpio -idum\n";
+    print $inifile "        fi\n";
     print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
-    print $inifile "elif [ -r /rootimg.tgz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.tgz downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1471,7 +1479,11 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz\n";
+    print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
+    print $inifile "        /bin/tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "        /bin/tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
@@ -1612,7 +1624,7 @@ EOMS
     }
 
     # add rsync for statelite
-    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/gzip", "usr/bin/tar") {
+    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz", "bin/gzip", "bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
     }

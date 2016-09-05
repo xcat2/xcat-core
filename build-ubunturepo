@@ -203,7 +203,7 @@ then
         pkg_type="snap"
         build_string="Snap_Build"
         cur_date=`date +%Y%m%d%H%M`
-        pkg_version="${short_ver}-${pkg_type}${cur_date}"
+        pkg_version="${ver}-${pkg_type}${cur_date}"
     
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
@@ -233,9 +233,10 @@ then
                         #3 symbolic link can't work during package
                         if [ $file_low = "xcat-probe" ]; then
                             CURDIR=$(pwd)
-                            mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
-                            cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
-                            cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                            mkdir -p ${CURDIR}/lib/perl/xCAT/
+                            cp -f ${CURDIR}/../perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/lib/perl/xCAT/
+                            cp -f ${CURDIR}/../perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/lib/perl/xCAT/
+                            cp -f ${CURDIR}/../perl-xCAT/xCAT/ServiceNodeUtils.pm ${CURDIR}/lib/perl/xCAT/
                         fi
                         dpkg-buildpackage -uc -us
                     else

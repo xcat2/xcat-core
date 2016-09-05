@@ -1624,7 +1624,7 @@ if [ -r /rootimg.sfs ]; then
   mount --move /ro /sysroot/ro
   mount --move /rw /sysroot/rw
 EOMS
-    print $inifile "elif [ -r /rootimg.gz ]; then\n";
+    print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
     print $inifile "echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
@@ -1633,13 +1633,21 @@ EOMS
     }
     print $inifile "  cd /sysroot\n";
     print $inifile "  echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "  if [ -x /bin/cpio ]; then\n";
-    print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
-    print $inifile "  else\n";
-    print $inifile "  zcat /rootimg.gz |cpio -idum\n";
+    print $inifile "  if [ -r /rootimg.cpio.gz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      zcat /rootimg.cpio.gz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      zcat /rootimg.cpio.gz |cpio -idum\n";
+    print $inifile "    fi\n";
+    print $inifile "  elif [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |cpio -idum\n";
+    print $inifile "    fi\n";
     print $inifile "  fi\n";
     print $inifile "  echo Done\n";
-    print $inifile "elif [ -r /rootimg.tgz ]; then\n";
+    print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1649,7 +1657,17 @@ EOMS
     }
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz\n";
+    print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "        if [ \$? -ne 0 ]; then\n";
+    print $inifile "            tar -zxf /rootimg.tar.gz\n";
+    print $inifile "        fi\n";
+    print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "        if [ \$? -ne 0 ]; then\n";
+    print $inifile "            tar -Jxf /rootimg.tar.xz\n";
+    print $inifile "        fi\n";
+    print $inifile "    fi\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
     print $inifile "  echo -n Failed to download image, panicing in 5...\n";
@@ -1758,7 +1776,7 @@ EOMS
         }
     }
     if ($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/gzip", "usr/bin/tar") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
             getlibs($_);
             push @filestoadd, $_;
         }
@@ -1770,7 +1788,7 @@ EOMS
         }
 
     } else {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "usr/bin/grep", "usr/bin/egrep", "bin/cpio", "bin/sleep", "bin/mount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/gzip", "usr/bin/tar") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "usr/bin/grep", "usr/bin/egrep", "bin/cpio", "bin/sleep", "bin/mount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/bin/expr", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
             getlibs($_);
             push @filestoadd, $_;
         }

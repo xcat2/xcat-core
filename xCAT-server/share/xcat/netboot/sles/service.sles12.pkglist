@@ -23,6 +23,7 @@ e2fsprogs
 fcoe-utils
 gpg2
 gzip
+xz
 kernel-default
 keyutils
 lvm2

@@ -28,7 +28,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 1200
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "Running post-installation scripts"
 cmd:rc==0
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "program: ++"

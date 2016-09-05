@@ -26,3 +26,7 @@ parted
 net-tools
 gzip
 tar
+xz
+grub2
+grub2-tools
+bzip2

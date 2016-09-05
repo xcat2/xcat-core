@@ -9,3 +9,6 @@ openssh-server
 openssh-clients
 wget
 rsync
+tar
+gzip
+xz

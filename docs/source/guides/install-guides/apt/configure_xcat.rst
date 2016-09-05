@@ -12,14 +12,20 @@ From the xCAT download page, find the build you want to install and add to ``/et
 
 To configure the xCAT development build, add the following line to ``/etc/apt/sources.list``: ::
 
-    deb http://xcat.org/files/xcat/repos/apt/devel/core-snap trusty main
+  [For x86_64 servers]
+  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/devel/core-snap trusty main
+  [For ppc64el servers]
+  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/devel/core-snap trusty main
 
 
 **[xcat-dep]**
 
 To configure the xCAT deps online repository, add the following line to ``/etc/apt/sources.list``: ::
 
-  deb http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main
+  [For x86_64 servers]
+  deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main
+  [For ppc64el servers]
+  deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main
 
 
 If using internet repositories, continue to the next step to install xCAT.

@@ -50,6 +50,7 @@ function makenoarch {
                     mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                     cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                     cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/ServiceNodeUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                 fi
 
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME

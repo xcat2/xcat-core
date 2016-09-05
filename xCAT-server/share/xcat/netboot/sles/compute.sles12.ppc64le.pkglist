@@ -41,3 +41,4 @@ udev
 kernel-default
 kernel-firmware
 adaptec-firmware
+xz

@@ -15,3 +15,6 @@ rpm
 rsync
 ppc64-utils
 iputils
+tar
+gzip
+xz

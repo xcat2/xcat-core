@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.1
+# Version 1.0.2
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -60,6 +60,65 @@ function usage()
 }
 
 #
+# verbose_usage		This function be will be called when user run
+#			`go-xcat --long-help'.
+#			Including a bunch of secert usage.
+# 
+function verbose_usage()
+(
+	local script="${0##*/}"
+
+	exec 42< <(usage)
+
+	function println()
+	{
+		local -i i
+		for (( i = 0 ; i < "$1" ; ++i ))
+		do
+			read -r -u 42
+			[[ "$?" -ne "0" ]] && break
+			echo "${REPLY}"
+		done
+	}
+
+	println 7
+	println 1 >/dev/null	# Drop a line
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  -h, --help                    display a simply version of help and exit
+	  --long-help                   display this help and exit
+	EOF
+	println 9
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  check                         check the version of the installed packages
+	                                of xCAT and packages in the repository
+	EOF
+	println 2
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  smoke-test                    preform basic tests of the xCAT installation
+	EOF
+	println 11
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	  ${script} --xcat-core=/path/to/xcat-core.repo install
+	  ${script} --xcat-core=/path/to/xcat-core install
+	  ${script} --xcat-core=/path/to/xcat-core.tar install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.repo \\
+	          --xcat-dep=/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=/path/to/xcat-core \\
+	          --xcat-dep=/path/to/xcat-dep install
+	EOF
+	println 999999	# Print out all the rest of lines
+
+	exec 42<&-
+)
+
+#
 # version		Print out the version number.
 #
 function version()
@@ -83,8 +142,8 @@ GO_XCAT_CORE_PACKAGE_LIST=(perl-xCAT xCAT xCAT-SoftLayer xCAT-buildkit
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_CORE_PACKAGE_LIST=(perl-xcat xcat xcat-buildkit xcat-client
-	xcat-confluent xcat-genesis-scripts xcat-server xcat-test xcat-vlan
-	xcatsn)
+	xcat-confluent xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64
+	xcat-server xcat-test xcat-vlan xcatsn)
 GO_XCAT_DEP_PACKAGE_LIST=()
 
 # The package list of all the packages should be installed
@@ -95,7 +154,7 @@ GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
-	xcat-genesis-scripts xcat-server
+	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
 
@@ -715,6 +774,8 @@ function extract_archive()
 #       $2      repo id
 function add_repo_by_url_yum_or_zypper()
 {
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
 	local tmp=""
@@ -786,6 +847,8 @@ function add_repo_by_url_yum_or_zypper()
 function add_repo_by_url_apt()
 {
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local repo_id="$2"
 	local tmp=""
@@ -882,6 +945,8 @@ function remove_repo()
 function add_xcat_core_repo_yum_or_zypper()
 {
 	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local ver="$2"
 	local tmp=""
@@ -906,6 +971,8 @@ function add_xcat_core_repo_yum_or_zypper()
 function add_xcat_core_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local ver="$2"
 	local tmp=""
@@ -939,6 +1006,8 @@ function add_xcat_core_repo()
 function add_xcat_dep_repo_yum_or_zypper()
 {
 	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
@@ -1003,6 +1072,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 function add_xcat_dep_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
 	[[ -z "${url}" ]] &&
 		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/xcat-dep"
@@ -1046,33 +1117,33 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	dnf --nogpgcheck "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	dnf --nogpgcheck "${yes[@]}" install "$@"
 }
 
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	yum --nogpgcheck "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	yum --nogpgcheck "${yes[@]}" install "$@"
 }
 
 function install_packages_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-n") && shift
-	zypper --no-gpg-checks "${args[@]}" install "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-n") && shift
+	zypper --no-gpg-checks "${yes[@]}" install "$@"
 }
 
 function install_packages_apt()
 {
 	type apt-get >/dev/null 2>&1 || return 255
-	local -a args=()
-	[[ "$1" = "-y" ]] && args=("-y") && shift
-	apt-get --allow-unauthenticated install "${args[@]}" "$@"
+	local -a yes=()
+	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	apt-get --allow-unauthenticated install "${yes[@]}" "$@"
 }
 
 function install_packages()
@@ -1309,6 +1380,10 @@ do
 		usage
 		exit 0
 		;;
+	"--long-help")
+		verbose_usage
+		exit 0
+		;;
 	"--xcat-core="*)
 		GO_XCAT_CORE_URL="${1##--xcat-core=}"
 		;;
@@ -1325,8 +1400,15 @@ do
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
 		;;
+	"-"*)
+		warn_if_bad 1 "invalid option -- '$1'"
+		exit_if_bad 1 "Try \`$0 --help' for more information"
+		;;
 	*)
 		[ "$1" == "--" ] && shift
+		[ -z "${GO_XCAT_ACTION}" ]
+		warn_if_bad "$?" "redundancy action -- '$1'"
+		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
 		;;
 	esac
@@ -1334,9 +1416,19 @@ do
 done
 
 case "${GO_XCAT_ACTION}" in
+"check"|"install"|"update")
+	;;
 "smoke-test")
 	perform_smoke_test
 	exit "$?"
+	;;
+"")
+	usage
+	exit 1
+	;;
+*)
+	warn_if_bad 1 "invalid action -- '${GO_XCAT_ACTION}'"
+	exit_if_bad 1 "Try \`$0 --help' for more information"
 	;;
 esac
 
@@ -1386,9 +1478,9 @@ echo
 echo -n "Reading repositories "
 show_progress_meters
 ERR_MSG="$({
-	if add_xcat_core_repo "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+	if add_xcat_core_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
-		if add_xcat_dep_repo "${GO_XCAT_DEP_URL}"
+		if add_xcat_dep_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_DEP_URL}"
 		then
 			update_repo && exit 0
 			remove_repo "xcat-dep"
@@ -1408,6 +1500,9 @@ fi
 echo "done"
 
 case "${GO_XCAT_ACTION}" in
+"check")
+	list_xcat_packages
+	;;
 "install"|"update")
 	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
 	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
@@ -1424,7 +1519,7 @@ case "${GO_XCAT_ACTION}" in
 		esac
 	fi
 	(
-		"${GO_XCAT_INSTALLER}" -y 2>&1 1>&42 |
+		"${GO_XCAT_INSTALLER}" "${GO_XCAT_YES[@]}" 2>&1 1>&42 |
 			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
 		exit "${PIPESTATUS[0]}"
 	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
@@ -1482,8 +1577,9 @@ case "${GO_XCAT_ACTION}" in
 		exit "${RET}"
 	fi
 
-	if [ ${GO_XCAT_ACTION} == 'install' ]; then
-		# only print out this message on install
+	case "${GO_XCAT_ACTION}" in
+	"install")
+		# Only print out this message on install
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
 		xCAT has been installed!  
@@ -1497,17 +1593,19 @@ case "${GO_XCAT_ACTION}" in
 		    or csh,
 		        \`source /etc/profile.d/xcat.csh\`
 		EOF
-	else
+		;;
+	"update")
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
 		xCAT has been updated!
 		======================
 
 		EOF
-	fi
+		;;
+	esac
 	;;
 *)
-	list_xcat_packages
+	exit 1
 	;;
 esac # case "${GO_XCAT_ACTION}" in
 

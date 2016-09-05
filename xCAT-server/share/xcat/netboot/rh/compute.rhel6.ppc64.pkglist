@@ -22,3 +22,6 @@ bc
 lsvpd
 irqbalance
 procps
+tar
+gzip
+xz

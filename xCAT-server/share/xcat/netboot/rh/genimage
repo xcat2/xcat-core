@@ -70,7 +70,7 @@ my $noupdate;
 
 sub xdie {
     system("rm -rf /tmp/xcatinitrd.$$");
-    umount_chroot($rootimage_dir);
+    umount_chroot($rootimg_dir);
     die @_;
 }
 
@@ -1606,7 +1606,7 @@ if [ -r /rootimg.sfs ]; then
   mount --move /ro \$NEWROOT/ro
   mount --move /rw \$NEWROOT/rw
 EOMS
-    print $inifile "elif [ -r /rootimg.gz ]; then\n";
+    print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
     print $inifile "echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
@@ -1615,13 +1615,21 @@ EOMS
     }
     print $inifile "  cd \$NEWROOT\n";
     print $inifile "  echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "  if [ -x /bin/cpio ]; then\n";
-    print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
-    print $inifile "  else\n";
-    print $inifile "  zcat /rootimg.gz |cpio -idum\n";
+    print $inifile "  if [ -r /rootimg.cpio.gz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      zcat /rootimg.cpio.gz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      zcat /rootimg.cpio.gz |cpio -idum\n";
+    print $inifile "    fi\n";
+    print $inifile "  elif [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "    if [ -x /bin/cpio ]; then\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |/bin/cpio -idum\n";
+    print $inifile "    else\n";
+    print $inifile "      xz -cd /rootimg.cpio.xz |cpio -idum\n";
+    print $inifile "    fi\n";
     print $inifile "  fi\n";
     print $inifile "  echo Done\n";
-    print $inifile "elif [ -r /rootimg.tgz ]; then\n";
+    print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1631,7 +1639,17 @@ EOMS
     }
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar --selinux --xattrs-include='*' -zxvf /rootimg.tgz\n";
+    print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "        if [ \$? -ne 0 ]; then\n";
+    print $inifile "            tar --selinux -zxf /rootimg.tar.gz\n";
+    print $inifile "        fi\n";
+    print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "        tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "        if [ \$? -ne 0 ]; then\n";
+    print $inifile "            tar --selinux -Jxf /rootimg.tar.xz\n";
+    print $inifile "        fi\n";
+    print $inifile "    fi\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
     print $inifile "  echo -n Failed to download image, panicing in 5...\n";
@@ -1708,7 +1726,7 @@ EOMS
     }
 
     # add rsync for statelite
-    foreach ("bin/cpio", "sbin/nash", "sbin/busybox.anaconda", "sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc", "usr/bin/gzip", "usr/bin/tar") {
+    foreach ("bin/cpio", "sbin/nash", "sbin/busybox.anaconda", "sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc", "usr/bin/xz", "usr/bin/gzip", "usr/bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
     }

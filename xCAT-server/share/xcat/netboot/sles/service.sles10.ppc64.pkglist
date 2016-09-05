@@ -50,3 +50,6 @@ powerpc-utils
 bc
 iputils
 ntp
+tar
+gzip
+xz

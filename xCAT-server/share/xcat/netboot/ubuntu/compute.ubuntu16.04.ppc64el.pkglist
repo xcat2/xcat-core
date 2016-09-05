@@ -16,3 +16,4 @@ gawk
 dnsutils
 tar
 gzip
+xz-utils

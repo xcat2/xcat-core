@@ -14,6 +14,14 @@ xCAT 2.12.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.12.2                    |- UBT 16.04.1  |             |- nodeset <noderange> offline     |
+|| 2016/08/19                     |               |             |- Enhance: node status update     |
+||                                |               |             |- Support Bond for install nics   |
+| `2.12.2 Release Notes <https:// |               |             |- xcatprobe osdeploy -r (BETA)    |
+| github.com/xcat2/xcat-core/wiki |               |             |- New opt: packimage -m -c        |
+| /XCAT_2.12.2_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.12.1                    |               |             |- New xCAT install tool: go-xcat  |
 || 2016/07/08                     |               |             |- New opt: mkdef/lsdef --template |
 ||                                |               |             |- Support rinstall for all OS/ARCH|
