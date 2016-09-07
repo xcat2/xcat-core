@@ -439,9 +439,6 @@ sub refresh_table {
     my @switchentries = $self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
     my $community = "public";
 
-    #$self->{sitetab} = xCAT::Table->new('site');
-    #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
-    #if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
     my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
     my $tmp    = $snmpcs[0];
     if (defined($tmp)) { $community = $tmp }
@@ -476,18 +473,23 @@ sub refresh_table {
     #Build hash of switch port names per switch
     $self->{switches} = {};
     
-    #get nodetype from nodetype
+    #get nodetype from nodetype table, build a temp nodetype hash
+    my %typehash;
+    my @typeentries;
     my $ntable = xCAT::Table->new('nodetype');
-    my @typeentries = $ntable->getAllNodeAttribs(['node', 'nodetype']);
-    foreach my $ntnode (@typeentries) {
-        if ($ntnode->{nodetype} eq "switch") {
-            $self->{switches}->{$ntnode->{node} }->{nodetype}  = $ntnode->{nodetype};
-            xCAT::MsgUtils->message("S", "refresh_table: $ntnode->{node} is $self->{switches}->{$ntnode->{node} }->{nodetype}");
-        }
+    if ($ntable) {
+        @typeentries = $ntable->getAllNodeAttribs(['node', 'nodetype']);
     }
+    for my $typeentry (@typeentries) {
+        $typehash{ $typeentry->{node} } = $typeentry->{nodetype};
+    }
+
     foreach my $entry (@entries) {
-        if ( (($discover_switch) and ($self->{switches}->{$entry->{node}}->{nodetype} ne "switch"))
-            or ( !($discover_switch) and ($self->{switches}->{$entry->{node}}->{nodetype} eq "switch")) ){
+        # if we are doing switch discovery and the node is not a switch, skip
+        # if we are NOT doing switch discovery, and the node is a switch, skip
+        my $ntype = $typehash{$entry->{node}};
+        if ( (($discover_switch) and ( $ntype ne "switch"))
+            or ( !($discover_switch) and ( $ntype eq "switch")) ){
             xCAT::MsgUtils->message("S", "refresh_table: skip $entry->{node} and $entry->{switch}");
             next;
         }
