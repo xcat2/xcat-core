@@ -20,7 +20,6 @@ chtab_err_table
 chtab_h
 chtab_v
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -217,3 +216,11 @@ assign_certain_command_permission_systemd
 sles_migration1
 sles_migration2
 reg_linux_diskless_installation_flat
+packimage_m_cpio_c_gzip
+packimage_m_cpio_c_pigz
+packimage_m_cpio_c_xz
+packimage_m_tar_c_pigz
+packimage_m_tar_c_gzip
+packimage_m_tar_c_xz
+packimage_m_invalid_archive_method
+packimage_m_invalid_compress_method

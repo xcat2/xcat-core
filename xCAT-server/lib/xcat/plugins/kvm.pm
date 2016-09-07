@@ -1807,7 +1807,7 @@ sub rmvm {
 sub chvm {
     shift;
     my @addsizes;
-    my %resize;
+    my $resize;
     my $cpucount;
     my @purge;
     my @derefdisks;
@@ -1831,7 +1831,7 @@ sub chvm {
             "eject"               => \$eject,
             "cpus|cpu=s"          => \$cpucount,
             "p=s"                 => \@purge,
-            "resize=s%"           => \%resize,
+            "resize=s"            => \$resize,
             "cpupin=s"            => \$pcpuset,
             "membind=s"           => \$numanodeset,
             "devpassthru=s"       => \$passthrudevices,
@@ -1894,6 +1894,18 @@ sub chvm {
             }
         }
     }
+
+    # The function get_multiple_paths_by_url() is used to polulate useddisks hash, 
+    # but it only returns disk volumes from kvm host.
+    # cdrom is not returned by get_multiple_paths_by_url() but is defined as a disk device
+    # in xml definition of the VM.
+    # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not 
+    # selected for the new disk about to be added (chvm -a)
+    my @cdrom_names = get_cdrom_device_names($vmxml);
+    foreach my $cdrom_name (@cdrom_names) {
+        $useddisks{$cdrom_name} = 1;
+    }
+
     if (@addsizes) {    #need to add disks, first identify used devnames
         my @diskstoadd;
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
@@ -1937,6 +1949,7 @@ sub chvm {
             do {
                 $dev = $prefix . shift(@suffixes);
             } while ($useddisks{$dev});
+
 
             #ok, now I need a volume created to attach
             push @diskstoadd, get_filepath_by_url(url => $location, dev => $dev, create => $_, format => $format);
@@ -2094,6 +2107,62 @@ sub chvm {
         }
         if ($vmxml) {
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $vmxml;
+        }
+    }
+    if ($resize) {
+        my $shrinking_not_supported = "qcow2 doesn't support shrinking images yet";
+        # Get a list of disk=size pairs
+        my @resize_disks = split(/,/, $resize);
+        for my $single_disk (@resize_disks) {
+            # For each comma separated disk, get disk name and the size to change it to
+            my ($disk_to_resize, $value) = split(/=/, $single_disk);
+            if ($disk_to_resize) {
+                unless (exists $useddisks{$disk_to_resize}) {
+                    # Disk name given does not match any disks for this vm
+                    xCAT::SvrUtils::sendmsg([ 1, "Disk $disk_to_resize does not exist" ], $callback, $node);
+                    next;
+                }
+                # Get desired (new) disk size
+                $value = getUnits($value, "G", 1);
+                # Now search kvm_nodedata table to find the volume for this disk
+                my $myxml    = $parser->parse_string($vmxml);
+                my @alldisks = $myxml->findnodes("/domain/devices/disk");
+                # Look through all the disk entries
+                foreach my $disknode (@alldisks) {
+                    my $devicetype = $disknode->getAttribute("device");
+                    # Skip cdrom devices
+                    if ($devicetype eq "cdrom") { next; }
+                    # Get name of the disk
+                    my $diskname = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+                    # Is this a disk we were looking for to resize ?
+                    if ($diskname eq $disk_to_resize) {
+                        my $file = $disknode->findnodes('./source')->[0]->getAttribute('file');
+                        my $vol = $hypconn->get_storage_volume_by_path($file);
+                        if ($vol) {
+                            # Always pass RESIZE_SHRINK flag to resize(). It is required when shrinking
+                            # the volume size and is ignored when growing volume size
+                            eval {
+                                $vol->resize($value, &Sys::Virt::StorageVol::RESIZE_SHRINK);
+                            };
+                            if ($@) {
+                                if ($@ =~ /$shrinking_not_supported/) {
+                                    # qcow2 does not support shrinking volumes, display more readable error
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $shrinking_not_supported" ], $callback, $node);
+                                }
+                                else {
+                                    # some other resize error from libvirt, just display it
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $@" ], $callback, $node);
+                                }
+                            }
+                            else {
+                                # success
+                                xCAT::SvrUtils::sendmsg([ 0, "Resized disk $disk_to_resize" ], $callback, $node);
+                            }
+                        }
+                        last; # Found the disk we were looking for. Go to the next disk.
+                    }
+                }
+            }
         }
     }
     if ($cpucount or $memory) {
@@ -4035,6 +4104,27 @@ sub dohyp {
 
     #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
     #print $out $msgtoparent; #$node.": $_\n";
+}
+
+# Return array of device names used by cdrom as defined in the kvm_nodedata table
+sub get_cdrom_device_names() {
+    my $xml = shift;
+    my $device_name;
+    my @cdrom_device_names;
+
+    my $myxml    = $parser->parse_string($xml);
+    my @alldisks = $myxml->findnodes("/domain/devices/disk");
+    # Look through all the disk entries defined in the xml
+    foreach my $disknode (@alldisks) {
+         my $devicetype = $disknode->getAttribute("device");
+         # Check if it is cdrom
+         if ($devicetype eq "cdrom") {
+             # Get name of the cdrom
+             $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+             push @cdrom_device_names, $device_name;
+         }
+    }
+    return @cdrom_device_names;
 }
 
 1;

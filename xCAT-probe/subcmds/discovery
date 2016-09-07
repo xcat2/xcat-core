@@ -35,16 +35,16 @@ $::USAGE = "Usage:
     $program_name [-V] [-m <discovery_type> -n <node_range>] [--noprecheck] 
 
 Description:
-    Do probe for discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
-    If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name exit for error.  
-    In order to do realtime monitor, $program_name probe program must be run along with the node discovery procedure. Plese trigger this command before trigger node discovery procedure.
+    Probe the discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
+    If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name will exit.  
+    In order to do realtime monitor, $program_name probe must be run along with the node discovery procedure. Trigger this command before triggering node discovery procedure.
     Currently, this command does not support hierarchy.
 
 Options:
     -h : Get usage information of $program_name.
     -V : Output more information for debug.
     -m : The method of discovery, the valid values are $valid_discovery_type_str.
-    -n : The range of predefined node, must used with option -m.
+    -n : The range of predefined nodes, must be used with option -m.
     --noprecheck : skip pre-checking discovery to validate correct configuration. 
 ";
 
@@ -64,12 +64,12 @@ Options:
 sub check_genesis_file {
     my $arch = shift;
     if (($arch ne "ppc64") and ($arch ne "x86_64")) {
-        probe_utils->send_msg("$output", "d", "Please input correct arch type") if ($verbose);
+        probe_utils->send_msg("$output", "d", "Specify correct arch type") if ($verbose);
         return 1;
     }
 
     my $rst_f = 0;
-    probe_utils->send_msg("$output", "d", "Start to check genesis files for $arch...") if ($verbose);
+    probe_utils->send_msg("$output", "d", "Starting to check genesis files for $arch...") if ($verbose);
 
     my $os = probe_utils->get_os();
     my $genesis_base;
@@ -92,11 +92,11 @@ sub check_genesis_file {
         $genesis_scripts = `rpm -qa | grep -i "xcat-genesis-scripts" | grep -i "$arch"`;
     }
     unless ($genesis_base and $genesis_scripts) {
-        probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch did not be installed.") if ($verbose);
+        probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch is not installed.") if ($verbose);
         return 1;
     }
 
-    probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch installed, start to check files...") if ($verbose);
+    probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch is installed, starting to check files...") if ($verbose);
 
     my $tftpdir = `tabdump site | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
     chomp($tftpdir);
@@ -109,7 +109,7 @@ sub check_genesis_file {
     if ($arch eq "ppc64") {
         $genesis_folder = "$tftpdir/pxelinux.cfg/p";
         unless (-d "$genesis_folder") {
-            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Please run 'mknb ppc64' if you use ppc64/ppc64le machine.") if ($verbose);
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Run 'mknb ppc64' if using ppc64/ppc64le machine.") if ($verbose);
             return 1;
         }
 
@@ -131,7 +131,7 @@ sub check_genesis_file {
                     $initrd_path = $initrd_info[1];
                     $wget_rst = system("wget -q --spider $initrd_path -T 0.5 -t 3");
                     if ($wget_rst) {
-                        probe_utils->send_msg("$output", "d", "initrd cannot be downloaded from $initrd_path.") if ($verbose);
+                        probe_utils->send_msg("$output", "d", "'initrd' cannot be downloaded from $initrd_path.") if ($verbose);
                         $rst_f = 1;
                     } else {
                         probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_path PASS.") if ($verbose);
@@ -154,7 +154,7 @@ sub check_genesis_file {
     } else {
         $genesis_folder = "$tftpdir/xcat/xnba/nets";
         unless (-d "$genesis_folder") {
-            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Please run 'mknb x86_64' if you use x86_64 machine.") if ($verbose);
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Run 'mknb x86_64' if using x86_64 machine.") if ($verbose);
             return 1;
         }
 
@@ -185,13 +185,13 @@ sub check_genesis_file {
                 }
 
                 unless ($host_ip) {
-                    probe_utils->send_msg("$output", "d", "There is no ip for range $ip_range") if ($verbose);
+                    probe_utils->send_msg("$output", "d", "There is no IP for range $ip_range") if ($verbose);
                     $rst_f = 1;
                     next;
                 }
 
                 unless (open(FILE, $_)) {
-                    probe_utils->send_msg("$output", "d", "Can not open file $_.");
+                    probe_utils->send_msg("$output", "d", "Cannot open file $_.");
                     $rst_f = 1;
                     next;
                 }
@@ -204,7 +204,7 @@ sub check_genesis_file {
                         my @file_path  = split(' ', $genesis_line);
                         my $elilo_efi  = $file_path[1];
                         my $elilo_path = $file_path[3];
-                        $elilo_efi =~ s/\${next-server}/$host_ip/i;
+                        $elilo_efi =~ s/\$\{next-server\}/$host_ip/i;
 
                         $wget_rst = system("wget -q --spider $elilo_efi -T 0.5 -t 3");
                         if ($wget_rst) {
@@ -222,7 +222,7 @@ sub check_genesis_file {
                         } else {
                             probe_utils->send_msg("$output", "d", "Check elilo file: $elilo_http PASS.") if ($verbose);
                             unless (open(FILE_ELILO, $elilo_path)) {
-                                probe_utils->send_msg("$output", "d", "Can not open file $_.") if ($verbose);
+                                probe_utils->send_msg("$output", "d", "Cannot open file $_.") if ($verbose);
                                 $rst_f = 1;
                                 next;
                             }
@@ -250,7 +250,7 @@ sub check_genesis_file {
 
                                     $wget_rst = system("wget -q --spider $initrd_http -T 0.5 -t 3");
                                     if ($wget_rst) {
-                                        probe_utils->send_msg("$output", "d", "initrd cannot be downloaded from $initrd_http.") if ($verbose);
+                                        probe_utils->send_msg("$output", "d", "'initrd' cannot be downloaded from $initrd_http.") if ($verbose);
                                         $rst_f = 1;
                                     } else {
                                         probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_http PASS.") if ($verbose);
@@ -286,7 +286,7 @@ sub get_node_ip {
     foreach my $node (keys %nodeip) {
         $ip_net = xCAT::NetworkUtils->getipaddr($node);
         if ($nodeip{$node} and ($nodeip{$node} ne $ip_net)) {
-            probe_utils->send_msg("$output", "d", "IP $nodeip{$node} of definition for $node is not correct") if ($verbose);
+            probe_utils->send_msg("$output", "d", "IP $nodeip{$node} definition for $node is not correct") if ($verbose);
         }
         $nodeip{$node} = $ip_net;
     }
@@ -424,7 +424,7 @@ sub dhcp_dynamic_range_check {
                 }
             }
         } else {
-            probe_utils->send_msg("$output", "d", "Dynamic range for net $net did not be configured.") if ($verbose);
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is not configured.") if ($verbose);
             $rst = 1;
             next;
         }
@@ -631,7 +631,7 @@ sub handle_compute_msg {
             my $node = `lsdef -i mac -c 2>&1 | awk -F: '/$ipmacmap{$ip}/ {print \$1}'`;
             chomp($node);
             $monitor_nodes{$node} = 1 if (defined($monitor_nodes{$node}));
-            probe_utils->send_msg("$output", "o", "Node $node has finished it's discovery process");
+            probe_utils->send_msg("$output", "o", "Node $node has finished its discovery process");
             my $output = `lsdef $node 2>&1`;
             print "-------------------\n$output-------------------\n";
         }
@@ -757,7 +757,7 @@ sub check_pre_defined_node {
         if (!exists($nodecheckrst{$node}{error})) {
             if ($discovery_type eq "mtms") {
                 if (!(exists($nodecheckrst{$node}{"mtm"}) && exists($nodecheckrst{$node}{"serial"}))) {
-                    $nodecheckrst{$node}{"error"} = "node definition is wrong for '$discovery_type' type discovery";
+                    $nodecheckrst{$node}{"error"} = "Node definition is wrong for '$discovery_type' type discovery";
                     $rst = 1;
                 }
             } elsif ($discovery_type eq "switch") {
@@ -770,23 +770,23 @@ sub check_pre_defined_node {
 
                     my $tmpoutput = `lsdef $nodecheckrst{$node}{"switch"} 2>&1`;
                     if ($?) {
-                        $nodecheckrst{$node}{"error"} = "Miss definition for related switch $nodeswitch";
+                        $nodecheckrst{$node}{"error"} = "Missing definition for related switch $nodeswitch";
                         $rst = 1;
                         last;
                     }
 
                     if ($tmpoutput !~ /snmpversion=/) {
-                        $nodecheckrst{$node}{"error"} = "Miss attribute 'snmpversion' definition for related switch $nodeswitch";
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'snmpversion' definition for related switch $nodeswitch";
                         $rst = 1;
                         last;
                     }
                     if ($tmpoutput !~ /username=/) {
-                        $nodecheckrst{$node}{"error"} = "Miss attribute 'username' definition for related switch $nodeswitch";
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'username' definition for related switch $nodeswitch";
                         $rst = 1;
                         last;
                     }
                     if ($tmpoutput !~ /password=/) {
-                        $nodecheckrst{$node}{"error"} = "Miss attribute 'password' definition for related switch $nodeswitch";
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'password' definition for related switch $nodeswitch";
                         $rst = 1;
                         last;
                     }
@@ -852,7 +852,7 @@ sub do_pre_check {
             exit 1;
         }
 
-        $msg = "The input network interfaces $nics exist and are configured well on current server";
+        $msg = "The input network interfaces $nics exist and are configured correctly on current server";
         my $miss = 0;
         my @nic_array = split(",", $nics);
         foreach my $nic (@nic_array) {
@@ -884,13 +884,13 @@ sub do_pre_check {
         my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
         if ($masteripinsite eq "") {
-            probe_utils->send_msg("$output", "d", "There isn't 'master' definition in 'site' talbe") if ($verbose);
+            probe_utils->send_msg("$output", "d", "There isn't 'master' definition in 'site' table") if ($verbose);
             probe_utils->send_msg("$output", "f", $msg);
             exit 1;
         }
 
         if (!xCAT::NetworkUtils->isIpaddr("$masteripinsite")) {
-            probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table isn't a IP address") if ($verbose);
+            probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table isn't an IP address") if ($verbose);
             probe_utils->send_msg("$output", "f", $msg);
             exit 1;
         }
@@ -921,7 +921,7 @@ sub do_pre_check {
             probe_utils->send_msg("$output", "o", $msg);
             if (check_genesis_file("x86_64")) {
                 probe_utils->send_msg("$output", "w", "Genesis files for x86 are not available");
-                probe_utils->send_msg("$output", "i", "If don't plan to manage a x86 server, please ignore above warning");
+                probe_utils->send_msg("$output", "i", "Ignore above warning if not planning on managing x86 server");
             } else {
                 probe_utils->send_msg("$output", "o", "Genesis files for x86 are available");
             }
@@ -934,7 +934,7 @@ sub do_pre_check {
             probe_utils->send_msg("$output", "o", $msg);
             if (check_genesis_file("ppc64")) {
                 probe_utils->send_msg("$output", "w", "Genesis files for ppc64/ppc64le are not available");
-                probe_utils->send_msg("$output", "i", "If don't plan to manage a ppc64/ppc64le server, please ignore above warning");
+                probe_utils->send_msg("$output", "i", "ignore above warning if not planning on managing ppc64/ppc64le server");
             } else {
                 probe_utils->send_msg("$output", "o", "Genesis files for ppc64/ppc64le are available");
             }
@@ -978,7 +978,7 @@ sub do_monitor {
         $nics = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
         chomp($nics);
         if (!$nics) {
-            probe_utils->send_msg("$output", "f", "The value of master in site table is $masteripinsite, can't get corresponding network interface");
+            probe_utils->send_msg("$output", "f", "The value of 'master' in 'site' table is $masteripinsite, can't get corresponding network interface");
             return 1;
         }
     }
@@ -993,7 +993,7 @@ sub do_monitor {
  /_/\\_\\\\____/_/   \\_\\_|  .+|______|__.-||__)`-'(((/  (((/
 -------------------------------------------------------------
 ";
-    print "$startline\nStart to capture every message during discovery process......\n";
+    print "$startline\nStart capturing every message during discovery process......\n";
 
     my $varlogmsg  = "/var/log/messages";
     my $clusterlog = "/var/log/xcat/cluster.log";
@@ -1088,7 +1088,7 @@ sub do_monitor {
                 if ($terminal) {
                     probe_utils->send_msg("$output", "d", "Got <Ctrl+c> from STDIN");
                 } else {
-                    probe_utils->send_msg("$output", "o", "All nodes need to monitor have finished discovery process");
+                    probe_utils->send_msg("$output", "o", "All nodes specified to monitor have finished discovery process");
                 }
                 last;
             }
@@ -1136,7 +1136,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "Do probe for discovery process, including pre-check for required configuration and realtime monitor of discovery process.Before using this command, please install nslookup command ahead. Currently, this command does not support hierarchy.");
+    probe_utils->send_msg("$output", "o", "Probe the discovery process, including pre-check for required configuration and realtime monitor of discovery process. Before using this command, please install 'nslookup' command. Currently, this command does not support hierarchy.");
     exit 0;
 }
 

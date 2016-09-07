@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **packimage  [-v| -**\ **-version]**\ 
 
-\ **packimage**\  \ *imagename*\ 
+\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ]  \ *imagename*\ 
 
 
 ***********
@@ -56,15 +56,9 @@ OPTIONS
 
 \ **-v**\           Command Version.
 
-\ **-o**\           Operating system (fedora8, rhel5, sles10,etc)
+\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
-\ **-p**\           Profile (compute,service)
-
-\ **-a**\           Architecture (ppc64,x86_64,etc)
-
-\ **-m**\           Archive Method (cpio,tar,squashfs, default is cpio)
-
-\ **-c**\           Compress Method (pigz,gzip,xz, default is pigz)
+\ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
 
 ************
@@ -88,6 +82,14 @@ EXAMPLES
 .. code-block:: perl
 
   packimage rhels7.1-x86_64-netboot-compute
+
+
+2. To pack the osimage rhels7.1-x86_64-netboot-compute with "tar" to archive and "pigz" to compress:
+
+
+.. code-block:: perl
+
+  packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
 
 
 

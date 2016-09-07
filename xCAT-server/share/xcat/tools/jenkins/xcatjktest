@@ -843,6 +843,13 @@ sub install_xcattest {
         return 1;
     } 
 
+    #export some environment variables
+    XCATROOT=/opt/xcat
+    PATH=$XCATROOT/bin:$XCATROOT/sbin:$XCATROOT/share/xcat/tools:$PATH
+    MANPATH=$XCATROOT/share/man:$MANPATH
+    export XCATROOT PATH MANPATH
+    export PERL_BADLANG=0
+
     send_msg(2, "[install_xcattest] install xcat-test in $mn successfully");
     return 0;
 
@@ -909,7 +916,7 @@ sub do_test {
             @output1=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -c install_xcat\" >/dev/null 2>&1");
             $rst1=$?;
         }else{
-            @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -c install_xcat\"' >/dev/null 2>&1");
+            @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xCAT\"' >/dev/null 2>&1");
             $rst1=$?;
         }
         my $tmpoutput1=join(' ', @output1);
@@ -1300,8 +1307,8 @@ while(! $sub_process_rt) {
         }
     }
 
-    if(time() - $regstarttime > 28800) {
-        send_msg(1, "[timing] 8 hours is expired");
+    if(time() - $regstarttime > 36000) {
+        send_msg(1, "[timing] 10 hours is expired");
         last;
     }
     sleep 1;

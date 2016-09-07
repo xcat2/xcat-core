@@ -53,6 +53,8 @@ For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network 
   
   [ubuntu 16.04]: http://xcat.org/files/netboot/ubuntu16.04/ppc64el/mini.iso
 
+  [ubuntu 16.04.1]: http://xcat.org/files/netboot/ubuntu16.04.1/ppc64el/mini.iso
+
 * Mount mini.iso ::
 
     mkdir /tmp/iso
@@ -61,7 +63,7 @@ For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network 
 * Copy the netboot initrd.gz to osimage ::
 
     mkdir -p /install/<ubuntu-version>/ppc64el/install/netboot
-    cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/installe/netboot
+    cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/install/netboot
 
 **[Below tips maybe helpful for you]** 
 

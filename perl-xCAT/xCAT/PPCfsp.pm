@@ -38,9 +38,7 @@ my %cmds = (
         autopower => [ "Auto Power Restart",             \&autopower ],
         sysdump   => [ "System Dump",                    \&sysdump ],
         spdump    => [ "Service Processor Dump",         \&spdump ],
-        network   => [ "Network Configuration",          \&netcfg ],
-        dev       => [ "Service Processor Command Line", \&devenable ],
-        celogin1  => [ "Service Processor Command Line", \&ce1enable ] },
+        network   => [ "Network Configuration",          \&netcfg ]},
 );
 
 
@@ -216,55 +214,6 @@ sub connect {
 
 }
 
-sub ce1enable {
-    return &loginenable($_[0], $_[1], $_[2], "celogin1");
-}
-
-sub devenable {
-    return &loginenable($_[0], $_[1], $_[2], "dev");
-}
-my %cmdline_for_log = (
-    dev => {
-        enable     => "registry -Hw nets/DevEnabled 1",
-        disable    => "registry -Hw nets/DevEnabled 0",
-        check_pwd  => "registry -l DevPwdFile",
-        create_pwd => "netsDynPwdTool --create dev FipSdev",
-        password   => "FipSdev"
-    },
-    celogin1 => {
-        enable     => "registry -Hw nets/CE1Enabled 1",
-        disable    => "registry -Hw nets/CE1Enabled 0",
-        check_pwd  => "registry -l Ce1PwdFile",
-        create_pwd => "netsDynPwdTool --create celogin1 FipSce1",
-        password   => "FipSce1"
-    },
-);
-
-sub send_command {
-    my $ua       = shift;
-    my $server   = shift;
-    my $id       = shift;
-    my $log_name = shift;
-    my $cmd      = shift;
-    my $cmd_line = $cmdline_for_log{$log_name}{$cmd};
-    if (!defined($cmd_line)) {
-        return undef;
-    }
-    my $res = $ua->post("https://$server/cgi-bin/cgi",
-        [ form => $id,
-            cmd    => $cmd_line,
-            submit => "Execute" ]
-    );
-
-    if (!$res->is_success()) {
-        return undef;
-    }
-    if ($res->content =~ /(not allowed.*\.|Invalid entry)/) {
-        return undef;
-    }
-    return $res->content;
-}
-
 sub loginstate {
     my $ua       = shift;
     my $server   = shift;
@@ -280,55 +229,6 @@ sub loginstate {
     } else {
         return ([ RC_ERROR, "not found status for $log_name" ]);
     }
-}
-
-sub loginenable {
-    my $exp      = shift;
-    my $request  = shift;
-    my $id       = shift;
-    my $log_name = shift;
-    my $ua       = @$exp[0];
-    my $server   = @$exp[1];
-
-    my $value = $request->{method}{$log_name};
-    if (!defined($value)) {
-        return &loginstate($ua, $server, $log_name);
-    }
-    my $url = "https://$server/cgi-bin/cgi?form=$id";
-    my $res = $ua->get($url);
-    if (!$res->is_success()) {
-        return ([ RC_ERROR, $res->status_line ]);
-    }
-
-    $res = &send_command($ua, $server, $id, $log_name, $value);
-    if (!defined($res)) {
-        return ([ RC_ERROR, "Send command Failed" ]);
-    }
-    if ($value =~ m/^disable$/) {
-        my $out = sprintf("%9s: Disabled", $log_name);
-        return ([ SUCCESS, $out ]);
-    }
-
-    #check password#
-    $res = &send_command($ua, $server, $id, $log_name, "check_pwd");
-    if (!defined($res)) {
-        return ([ RC_ERROR, "Send command Failed" ]);
-    }
-    my $password = undef;
-    if ($res =~ m/\[\d+([a-zA-Z]+)\d+\]/) {
-        $password = $1;
-    } else {
-
-        # create password #
-        $res = &send_command($ua, $server, $id, $log_name, "create_pwd");
-        if (!defined($res)) {
-            return ([ RC_ERROR, "Send command Failed" ]);
-        }
-        $password = $cmdline_for_log{$log_name}{password};
-        print "create password for $log_name is '$cmdline_for_log{$log_name}{password}'\n";
-    }
-    my $out = sprintf("%9s:  Enabled, password: $password", $log_name);
-    return ([ SUCCESS, $out ]);
 }
 
 sub disconnect {

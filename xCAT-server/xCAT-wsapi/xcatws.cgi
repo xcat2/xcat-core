@@ -217,17 +217,17 @@ my %URIdef = (
                 outhdler => \&noout,
               }
         },
-        console => {
-            desc => "[URI:/nodes/{noderange}/console] - The console configuration for the node {noderange}",
-            matcher => '^/nodes/[^/]*/console$',
-            PUT     => {
-                desc => "Update conserver configuration for the node {noderange}.",
-                usage => "|Json Formatted DataBody: {action:on/off}.|$usagemsg{non_getreturn}|",
-                example => "|Enable the console capability for node1|PUT|/nodes/node1/console {\"action\":\"on\", \"trust_host\": \"host\"}||",
-                cmd => "makeconservercf",
+        provision => {
+            desc => "[URI:/nodes/{noderange}/provision] - The deployment resource for the node {noderange}",
+            matcher => '^/nodes/[^/]*/provision$',
+            PUT => {
+                desc => "OS provision for the node {noderange}.",
+                usage => "|Json Formatted DataBody: {osimage: ubuntu16.04.1-x86_64-install-compute, action: boot}.|$usagemsg{non_getreturn}|",
+                example => "|Provision the node|PUT|/nodes/node1/provision {\"osimage\":\"ubuntu16.04.1-x86_64-install-compute\"}||",
+                cmd => "rinstall",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
-              }
+            }
         },
         energy => {
             desc => "[URI:/nodes/{noderange}/energy] - The energy resource for the node {noderange}",
@@ -773,7 +773,7 @@ my %URIdef = (
         },
         #### definition for mknb <ppc64|x86_64> [-c]
         nbimage => {
-            desc => "[URI:/nbimage] - Create netboot root image for specified arch.",
+            desc => "[URI:/services/nbimage] - Create netboot root image for specified arch.",
             matcher => '^/services/nbimage/arch/[ppc64|x86_64]',
             POST    => {
                 desc => "creates a network boot root image",
@@ -782,6 +782,18 @@ my %URIdef = (
                 cmd      => "mknb",
                 fhandler => \&actionhdl,
             },
+        },
+        console => {
+            desc => "[URI:/services/console] - Conserver configuration on management node.",
+            matcher => '^/services/console$',
+            PUT => {
+                desc => "Update conserver configuration",
+                usage => "|Json Formatted DataBody: {nodes: [node1, node2], action: on/off trust_host: <host>}.|$usagemsg{non_getreturn}|",
+                example => "|Enable the console capability for node1|PUT|/services/console {\"nodes\":\n[\"node1\", \"node2\"]\"\n, \"action\": \"on\", \n\"trust_host\": \"host\"}||",
+                cmd => "makeconservercf",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            }
         },
     },
 
@@ -2194,15 +2206,25 @@ sub actionhdl {
         }
 
     } elsif ($params->{'resourcename'} eq "console") {
+        delete $request->{noderange};
         if ($paramhash->{'action'}) {
             my %action = ('on' => '', 'off' => '-d');
             push @args, $action{$paramhash->{'action'}};
-            if ($paramhash->{'trust_host'}) {
-                push @args, '-t';
-                push @args, $paramhash->{'trust_host'};
+            if ($paramhash->{'nodes'}) {
+                $request->{noderange} = join(',', @{$paramhash->{'nodes'}});
+            } else {
+                error("Missed node.")
             }
-        } else {
-            error("Missed Action.", $STATUS_NOT_FOUND);
+        }
+        if ($paramhash->{'trust_host'}) {
+            push @args, '-t';
+            push @args, $paramhash->{'trust_host'};
+        }
+    } elsif ($params->{'resourcename'} eq "provision") {
+        if ($paramhash->{'osimage'}) {
+            push @args, 'osimage='.$paramhash->{'osimage'};
+        } elsif ($paramhash->{'action'}) {
+            push @args, $paramhash->{'action'};
         }
     }
 

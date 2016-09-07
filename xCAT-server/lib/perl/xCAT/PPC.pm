@@ -2219,8 +2219,6 @@ sub process_request {
         $request->{fsp_api} = 1;
 
         #For using rspconfig options through ASMI
-        #my $arg = $request->{arg};
-        #if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1)/, @$arg)) {
         if ($request->{command} eq "rspconfig" and ref($request->{method}) eq 'HASH') {
             $request->{fsp_api} = 0;
         }

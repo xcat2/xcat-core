@@ -79,7 +79,7 @@ sub process_request {
         @ARGV = @{$args};
     }
     if (scalar(@ARGV) == 0) {
-        $callback->({ info => ["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -108,13 +108,17 @@ sub process_request {
         "help|h"      => \$help,
         "version|v"   => \$version
     );
+    if ($arch or $osver or $profile) {
+        $callback->({ error => ["-o, -p and -a options are obsoleted, please use 'packimage <osimage name>' instead."], errorcode => [1] });
+        return 1;
+    }
     if ($version) {
         my $version = xCAT::Utils->Version();
         $callback->({ info => [$version] });
         return 0;
     }
     if ($help) {
-        $callback->({ info => ["Usage:\n   packimage <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
+        $callback->({ info => ["Usage:\n   packimage [-m| --method=cpio|tar] [-c| --compress=gzip|pigz|xz] <imagename>\n   packimage [-h| --help]\n   packimage [-v| --version]"] });
         return 0;
     }
 
@@ -414,31 +418,30 @@ sub process_request {
     my $temppath;
     my $oldmask;
     unless (-d $rootimg_dir) {
-        $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"] });
+        $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"], errorcode => [1] });
         return 1;
     }
-    $callback->({ data => ["Packing contents of $rootimg_dir"] });
 
     my $suffix;
     if ($compress) {
         if ($compress eq 'gzip') {
             my $isgzip = system("bash -c 'type -p gzip' >/dev/null 2>&1");
             unless ($isgzip == 0) {
-                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "gz";
         } elsif ($compress eq 'pigz') {
             my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
             unless ($ispigz == 0) {
-                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "gz";
         } elsif ($compress eq 'xz') {
             my $isxz = system("bash -c 'type -p xz' >/dev/null 2>&1");
             unless ($isxz == 0) {
-                $callback->({ error => ["Command xz does not exist, please make sure it is installed."] });
+                $callback->({ error => ["Command xz does not exist, please make sure it is installed."], errorcode => [1] });
                 return 1;
             }
             $suffix = "xz";
@@ -455,21 +458,30 @@ sub process_request {
             if ($isgzip == 0) {
                 $compress = "gzip";
             } else {
-                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."] });
+                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."], errorcode => [1] });
                 return 1;
             }
         }
         $suffix = "gz";
     }
 
+    unless (($method eq 'cpio') or ($method eq 'tar') or ($method eq 'squashfs')) {
+        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
+        return 1;
+    }
+    $callback->({ data => ["Packing contents of $rootimg_dir"] });
     $callback->({ info => ["archive method:$method"] });
     unless ($method =~ /squashfs/) {
         $callback->({ info => ["compress method:$compress"] });
     }
 
     $suffix = $method.".".$suffix;
-    unlink("$destdir/rootimg.$suffix");
     unlink("$destdir/rootimg.sfs");
+    unlink("$destdir/rootimg.cpio.xz");
+    unlink("$destdir/rootimg.cpio.gz");
+    unlink("$destdir/rootimg.tar.xz");
+    unlink("$destdir/rootimg.tar.gz");
+    
     if ($method =~ /cpio/) {
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
@@ -483,15 +495,24 @@ sub process_request {
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /tar/) {
+        my $checkoption1 = `tar --xattrs-include 2>&1`;
+        my $checkoption2 = `tar --selinux 2>&1`;
+        my $option;
+        if ($checkoption1 !~ /unrecognized/) {
+            $option .= "--xattrs-include='*' ";
+        }
+        if ($checkoption2 !~ /unrecognized/) {
+            $option .= "--selinux ";
+        }
         if (!$exlistloc) {
-            $excludestr = "find . -xdev -print0 | tar --selinux --xattrs-include='*' --null -T - -c | $compress -c - > ../rootimg.$suffix";
+            $excludestr = "find . -xdev -print0 | tar $option --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
         } else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile");
             if ($includestr) {
                 system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattrs-include='*' -T - -c | $compress -c - > ../rootimg.$suffix";
+            $excludestr = "cat $xcat_packimg_tmpfile| tar $option --no-recursion --use-compress-program=$compress -T - -cf  ../rootimg.$suffix";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
@@ -503,13 +524,19 @@ sub process_request {
             system("$includestr >> $xcat_packimg_tmpfile");
         }
         $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath";
-    } else {
-        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
+    }
+
+    chdir("$rootimg_dir");
+    my $outputmsg = `$excludestr 2>&1`;
+    unless($?){
+        $callback->({ info => ["$outputmsg"] });
+    }else{
+        $callback->({ info => ["$outputmsg"] });
+        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] }); 
+        system("rm -rf $xcat_packimg_tmpfile");
         return 1;
     }
-    chdir("$rootimg_dir");
-    my $outputmsg = `$excludestr`;
-    $callback->({ info => ["$outputmsg"] });
+
     if ($method =~ /cpio/) {
         chmod 0644, "$destdir/rootimg.$suffix";
         if ($dotorrent) {

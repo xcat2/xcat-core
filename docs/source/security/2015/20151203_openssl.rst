@@ -1,0 +1,42 @@
+2015-12-03 - OpenSSL Vulnerabilities
+====================================
+
+OpenSSL announced security fixes on 12/03/15 in the following bulletin: http://openssl.org/news/secadv/20151203.txt
+
+Advisory CVEs
+-------------
+
+* CVE-2015-3193 - **BN_mod_exp may produce incorrect results on x86_64** (Severity:Moderate)
+
+    OpenSSL 1.0.2 users should upgrade to 1.0.2e
+
+* CVE-2015-3194 - **Certificate verify crash with missing PSS parameter** (Severity:Moderate)
+
+    OpenSSL 1.0.2 users should upgrade to 1.0.2e
+    OpenSSL 1.0.1 users should upgrade to 1.0.1q
+
+* CVE-2015-3195 - **X509_ATTRIBUTE memory leak** (Severity:Moderate)
+
+    OpenSSL 1.0.2 users should upgrade to 1.0.2e
+    OpenSSL 1.0.1 users should upgrade to 1.0.1q
+    OpenSSL 1.0.0 users should upgrade to 1.0.0t
+    OpenSSL 0.9.8 users should upgrade to 0.9.8zh
+
+* CVE-2015-3196 - **Race condition handling PSK identify hint** (Severity:Low)
+
+    OpenSSL 1.0.2 users should upgrade to 1.0.2d
+    OpenSSL 1.0.1 users should upgrade to 1.0.1p
+    OpenSSL 1.0.0 users should upgrade to 1.0.0t
+
+* CVE-2015-1794 - **Anon DH ServerKeyExchange with 0 p parameter** (Severity:Low)
+
+    OpenSSL 1.0.2 users should upgrade to 1.0.2e
+
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. 
+

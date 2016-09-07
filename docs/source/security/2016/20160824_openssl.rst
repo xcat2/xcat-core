@@ -1,0 +1,31 @@
+2016-08-24 - OpenSSL Vulnerabilities (Sweet32)
+==============================================
+
+**SWEET32: Birthday attacks against TLS ciphers with 64bit block size**
+
+**CVE-2016-2183**
+
+Description: OpenSSL could allow a remote attacker to obtain sensitive information, caused by an error in the in the Triple-DES on 64-bit block cipher, used as a part of the SSL/TLS protocol. By capturing large amounts of encrypted traffic between the SSL/TLS server and the client, a remote attacker able to conduct a man-in-the-middle attack could exploit this vulnerability to recover the plaintext data and obtain sensitive information.
+
+**CVE-2016-6329**
+
+Description: OpenVPN could allow a remote attacker to obtain sensitive information, caused by an error in the in the Triple-DES on 64-bit block cipher, used as a part of the SSL/TLS protocol. By capturing large amounts of encrypted traffic between the SSL/TLS server and the client, a remote attacker able to conduct a man-in-the-middle attack could exploit this vulnerability to recover the plaintext data and obtain sensitive information.
+
+
+A detailed description of this issue can be seen in the following blog posting: https://www.openssl.org/blog/blog/2016/08/24/sweet32/
+
+
+Advisory CVEs
+-------------
+
+* CVE-2016-2183
+* CVE-2016-6329
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+

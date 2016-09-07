@@ -1732,9 +1732,43 @@ sub do_firmware_update {
     }
     xCAT::SvrUtils::sendmsg("rflash started, please wait.......",
         $callback, $sessdata->{node}, %allerrornodes);
+    
+    # check for 8335-GTB Model Type to adjust buffer size
+    my $buffer_size = "30000";
+    my $cmd = $pre_cmd . " fru print 3";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+            $callback, $sessdata->{node}, %allerrornodes);
+        return -1;
+    }
+    if ($output =~ /8335-GTB/) {
+        $buffer_size = "15000";
+    }
+
+    # check for 8335-GTB Firmware above 1610A release.  If below, exit
+    if ($output =~ /8335-GTB/) {
+        $cmd = $pre_cmd . " fru print 47";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+        }
+        my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
+        if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
+            my $prim_grs_version = $1;
+            my $sec_grs_version = $2;
+            if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
+                xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+            }
+        }
+    }
 
     # step 1 power off
-    my $cmd = $pre_cmd . " chassis power off";
+    $cmd = $pre_cmd . " chassis power off";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
@@ -1751,14 +1785,14 @@ sub do_firmware_update {
         return -1;
     }
 
-    #check reset status
+    # check reset status
     unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
         xCAT::SvrUtils::sendmsg([ 1, "Timeout to check the bmc status" ],
             $callback, $sessdata->{node}, %allerrornodes);
         return -1;
     }
 
-    #step 3 protect network
+    # step 3 protect network
     $cmd = $pre_cmd . " raw 0x32 0xba 0x18 0x00";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
@@ -1768,9 +1802,9 @@ sub do_firmware_update {
     }
 
     # step 4 upgrade firmware
-    $cmd = $pre_cmd . " -z 30000 hpm upgrade $hpm_file force";
+    $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
-
+    
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed." ],
             $callback, $sessdata->{node}, %allerrornodes);

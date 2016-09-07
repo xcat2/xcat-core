@@ -31,6 +31,7 @@ Options:
     -h : get usage information of $program_name 
     -l : list all valid sub commands
     -V : print verbose information of $program_name
+    -w : show each line completely. By default long lines are truncated. 
 ";
 
 #-----------------------------------
@@ -274,7 +275,7 @@ if ($ARGV[0] eq "-l") {
 }
 
 if (!defined($pluginname)) {
-    print "There isn't sub command input from command line, please use '-l' to list all valid subcommand\n";
+    print "There isn't sub command input from command line, use '-l' to list all valid subcommand\n";
     exit 0;
 }
 
