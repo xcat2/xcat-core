@@ -1,4 +1,5 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# Lenovo (c) 2016
 #
 # Raw commands to set BMCs to defaults
 #   dx320
@@ -200,6 +201,8 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
             fi
         fi
     fi
+elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
+   LOCKEDUSERS=1
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
@@ -357,16 +360,13 @@ for user in $BMCUS; do
     if [ "$user" = "" ]; then 
         continue
     fi
-    DISABLEUSERS="1 2 3 4"
-    if [ ! -z "$LOCKEDUSERS" ]; then
-        # Get the User Slots
-        USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
-        if [ -z "$USERSLOT" ]; then
-            USERSLOT=4
-        fi
-    else
-        USERSLOT=2
+    DISABLEUSERS=$(ipmitool user list $LANCHAN|awk '{print $1}'|grep -v ID)
+    # Get the User Slots
+    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
+    if [ -z "$USERSLOT" ]; then
+        USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
+    if [ "$USERSLOT" == 0 ]; then USERSLOT=2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!
@@ -379,7 +379,7 @@ for user in $BMCUS; do
 
     # Get the specified user
     CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
-    DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
+    DISABLEUSERS=`echo $DISABLEUSERS|sed -e s/$USERSLOT//`
     logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
     for userid in $DISABLEUSERS; do
         TRIES=0
@@ -398,6 +398,8 @@ for user in $BMCUS; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    ipmitool raw 6 0x43 $(($LANCHAN|176))  $USERSLOT 4
+    
 
     TRIES=0
     # Last param in ipmitool user priv is the channel to set it on.
