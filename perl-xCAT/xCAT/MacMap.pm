@@ -439,6 +439,9 @@ sub refresh_table {
     my @switchentries = $self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
     my $community = "public";
 
+    #$self->{sitetab} = xCAT::Table->new('site');
+    #my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
+    #if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
     my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
     my $tmp    = $snmpcs[0];
     if (defined($tmp)) { $community = $tmp }
@@ -473,21 +476,17 @@ sub refresh_table {
     #Build hash of switch port names per switch
     $self->{switches} = {};
     
-    #get nodetype from nodetype table, build a temp nodetype hash
-    my %typehash;
-    my @typeentries;
+    #get nodetype from nodetype table, build a temp hash
+    my $typehash;
     my $ntable = xCAT::Table->new('nodetype');
     if ($ntable) {
-        @typeentries = $ntable->getAllNodeAttribs(['node', 'nodetype']);
-    }
-    for my $typeentry (@typeentries) {
-        $typehash{ $typeentry->{node} } = $typeentry->{nodetype};
+        $typehash = $ntable->getAllNodeAttribs(['node','nodetype'], 1);
     }
 
     foreach my $entry (@entries) {
         # if we are doing switch discovery and the node is not a switch, skip
         # if we are NOT doing switch discovery, and the node is a switch, skip
-        my $ntype = $typehash{$entry->{node}};
+        my $ntype = $typehash->{$entry->{node}}->[0]->{nodetype};
         if ( (($discover_switch) and ( $ntype ne "switch"))
             or ( !($discover_switch) and ( $ntype eq "switch")) ){
             xCAT::MsgUtils->message("S", "refresh_table: skip $entry->{node} and $entry->{switch}");
