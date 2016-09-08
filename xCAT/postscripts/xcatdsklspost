@@ -878,6 +878,17 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
 # TMP=`sed "/postscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /$xcatpost/mypostscript`
 #       echo "$TMP"> /$xcatpost/mypostscript
+    if [ "$MODE" = "6" ]; then
+        echo "
+if [ \"\$return_value\" -eq \"0\" ]; then
+    msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
+    updateflag.awk \$MASTER 3002 \"installstatus booted\"
+else
+    msgutil_r \$MASTER_IP \"debug\" \"node boot failed,reporting status...\" \"/var/log/xcat/xcat.log\"
+    updateflag.awk \$MASTER 3002 \"installstatus failed\"
+fi
+        " >> /$xcatpost/mypostscript
+    else
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
     msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
@@ -888,6 +899,7 @@ else
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
         " >> /$xcatpost/mypostscript
+    fi
   fi
 fi
 
