@@ -171,7 +171,7 @@ group Attributes:
 
 \ **consoleondemand**\  (nodehm.consoleondemand)
  
- This overrides the value from site.consoleondemand; (0=no, 1=yes). Default is the result from site.consoleondemand.
+ This overrides the value from site.consoleondemand. Set to 'yes', 'no', '1' (equivalent to 'yes'), or '0' (equivalent to 'no'). If not set, the default is the value from site.consoleondemand.
  
 
 
