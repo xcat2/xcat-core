@@ -1544,8 +1544,8 @@ sub defmk
     } else {
         my $invalidnodename = ();
         foreach my $node (@::allobjnames) {
-            if (($node =~ /[A-Z]/) && ((!$::opt_t) && ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node")) {
-                $invalidnodename .= ",$node";
+            if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
+               $invalidnodename .= ",$node";
             }
         }
         if ($invalidnodename) {
@@ -2783,7 +2783,7 @@ sub defch
                 my $newobj          = ();
                 my $invalidnodename = ();
                 foreach my $node (keys %newobjects) {
-                    if (($node =~ /[A-Z]/) && ((!$::opt_t) && ($::FILEATTRS{$node}{'objtype'} eq "node") ($::opt_t eq "node")) {
+                    if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) {
                         $invalidnodename .= ",$node";
                     }
                     $newobj .= ",$node";
