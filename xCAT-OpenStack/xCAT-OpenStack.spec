@@ -1,7 +1,7 @@
 Summary: Meta-Metapackage for a common, default xCAT management node setup with OpenStack 
 Name: xCAT-OpenStack
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.
@@ -10,7 +10,7 @@ Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
-Source:  xCAT-OpenStack-%(cat Version).tar.gz
+Source:  xCAT-OpenStack-%{version}.tar.gz
 
 Provides: xCAT-OpenStack = %{version}
 Requires: xCAT

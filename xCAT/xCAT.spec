@@ -1,7 +1,7 @@
 Summary: Meta-package for a common, default xCAT setup
 Name: xCAT
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.

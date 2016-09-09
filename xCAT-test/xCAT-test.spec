@@ -1,11 +1,11 @@
 Summary: xCAT automated test tool
 Name: xCAT-test
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-test-%(cat Version).tar.gz
+Source: xCAT-test-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
