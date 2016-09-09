@@ -16,7 +16,6 @@ BuildArch: noarch
 %define __prelink_undo_cmd %{nil}
 # To fix the issue error: Arch dependent binaries in noarch package, the following line is needed on Fedora 23 ppc64
 %define _binaries_in_noarch_packages_terminate_build   0
-Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 1
 AutoReq: false
 Prefix: /opt/xcat
@@ -25,7 +24,6 @@ AutoProv: false
 
 
 Name:	 %{name}
-Version: %{version}
 Group: System/Utilities
 License: Various (see individual packages for details)
 Vendor: IBM Corp.
