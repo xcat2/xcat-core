@@ -343,7 +343,13 @@ sub get_build{
    
     &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget $xcatdep_addr >/dev/null 2>&1");
     if($?){
-        send_msg(0, "[get_build] Can't download xcat-dep from $xcatcore_addr");
+        send_msg(0, "[get_build] Can't download xcat-dep from $xcatdep_addr");
+        return 1;
+    }
+
+    &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget http://xcat.org/files/go-xcat >/dev/null 2>&1");
+    if($?){
+        send_msg(0, "[get_build] Can't download go-xcat from xcat.org");
         return 1;
     }
 
@@ -562,6 +568,14 @@ sub prepare_mn {
         return 1;
     }
     send_msg(2, "[prepare_mn] copy $xcatcore and $xcatdep to $mn...[done]");
+
+    send_msg(2, "[prepare_mn] starting to copy go-xcat to $mn");
+    &runcmd("scp /$xcatpackagesdir/go-xcat root\@$mn:/  >/dev/null");
+    if($?){
+        send_msg(0, "[prepare_mn] copy go-xcat to $mn failed");
+        return 1;
+    }
+    send_msg(2, "[prepare_mn] copy go-xcat to $mn...[done]");
 
     send_msg(2, "[prepare_mn] starting to decompress xcat packages.....");
     &runcmd("xdsh $mn 'cd / && tar xvf /$xcatcore' >/dev/null 2>&1");
@@ -844,11 +858,16 @@ sub install_xcattest {
     } 
 
     #export some environment variables
-    XCATROOT=/opt/xcat
-    PATH=$XCATROOT/bin:$XCATROOT/sbin:$XCATROOT/share/xcat/tools:$PATH
-    MANPATH=$XCATROOT/share/man:$MANPATH
-    export XCATROOT PATH MANPATH
-    export PERL_BADLANG=0
+    my $rst0=0;
+    my @output0;
+    @output0=runcmd("xdsh $mn \"touch /etc/profile.d/xcatjk.sh; echo -e \"XCATROOT=/opt/xcat\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH\nexport PERL_BADLANG=0\" >> /etc/profile.d/xcatjk.sh;source /etc/profile.d/xcatjk.sh\" >/dev/null 2>&1");
+    $rst0=$?;
+    if($rst0){
+        send_msg(2, "[install_xcattest] set environment variables failed");
+        return 1;
+     }else{
+        send_msg(2, "[install_xcattest] set environment variables succeeded");
+     }
 
     send_msg(2, "[install_xcattest] install xcat-test in $mn successfully");
     return 0;
