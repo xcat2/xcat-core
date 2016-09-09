@@ -1,7 +1,7 @@
 Summary: Executables and data of the xCAT vlan management project
 Name: xCAT-vlan
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: IBM
 Group: Applications/System

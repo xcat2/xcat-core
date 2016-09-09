@@ -1,11 +1,11 @@
 Summary: Server and configuration utilities of the xCAT management project
 Name: xCAT-server
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-server-%(cat Version).tar.gz
+Source: xCAT-server-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -48,8 +48,8 @@ Requires: perl-IO-Tty perl-Crypt-SSLeay make
 %endif
 
 
-Requires: perl-xCAT >= %{epoch}:%(cat Version)
-Requires: xCAT-client  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: perl-xCAT >= %{epoch}:%{version}
+Requires: xCAT-client  >= %{epoch}:%{version}
 
 Provides: xCAT-server = %{epoch}:%{version}
 
