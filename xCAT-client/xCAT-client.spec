@@ -1,11 +1,11 @@
 Summary: Core executables and data of the xCAT management project
 Name: xCAT-client
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-client-%(cat Version).tar.gz
+Source: xCAT-client-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -23,7 +23,7 @@ BuildArch: noarch
 
 Provides: xCAT-client = %{epoch}:%{version}
 
-Requires: perl-xCAT >= %{epoch}:%(cat Version)
+Requires: perl-xCAT >= %{epoch}:%{version}
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
