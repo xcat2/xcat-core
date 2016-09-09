@@ -607,13 +607,6 @@ sub loadcase
 			$i    = $i + 1;
 	            }
 	        }
-#elsif($line =~ /^start:\s*:\s*(.*)/) {
-#		    $skip = 1;
-#		    my $wrongcasename = $1;
-#		    push(@wrongnamecase, $wrongcasename);
-#		    next;
-#		}
-                
             } elsif ($line =~ /^os\s*:\s*(\w[\w\,]+)/) {
                 next if $skip;
                 $string1 = $1;
@@ -704,13 +697,12 @@ sub loadcase
         foreach my $case (@cases) {
             log_this("$case->{name}");
         }
-        log_this("*Case name not supported:", @wrongnamecase);
-        return 0;
+    }else{
+       log_this("*To run:",     @rightcase);
+       log_this("*Not to run:", @notrightcase);
     }
 
-    log_this("*To run:",     @rightcase);
-    log_this("*Not to run:", @notrightcase);
-    log_this("*Case name not supported:", @wrongnamecase);
+    log_this("*Case name not supported, please use 'a-zA-Z0-9_-' :", @wrongnamecase);
     return 0;
 }
 sub getnodeattr
@@ -1155,7 +1147,7 @@ sub checkoptions{
             $configfile  = $1;
             $initallabel = $2;
             if ($initallabel ne $loadsysteminfo){
-                log_this("Error: $initallabel is not supported!");
+                log_this("Error: $initallabel is not supported, please use $loadsysteminfo");
                 return 1;
             }
         }else{
