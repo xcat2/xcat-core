@@ -11,7 +11,6 @@ AutoProv: false
 
 
 Name:	 %{name}
-Version: %{version}
 Group: System/Utilities
 License: EPL
 Vendor: IBM Corp.
