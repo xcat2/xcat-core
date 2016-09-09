@@ -174,7 +174,7 @@ fi
 function setversionvars {
     if [ ! -z "$USEGITVER" ]; then
         VER=`git describe`
-        VER=${GITVER/-/.post}
+        VER=${VER/-/.post}
         VER=${VER/-/.}
     else
         VER=`cat Version`
