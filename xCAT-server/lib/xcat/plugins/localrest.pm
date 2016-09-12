@@ -143,7 +143,8 @@ sub handle_rest_request {
 
 #-------------------------------------------------------
 sub list_adapters {
-    my ($rsp, $result, $cmd, $i, $tmpres);
+    my ($rsp, $result, $ifaces, $cmd, $i, $tmpres, @cmdres, $mac, $ip);
+    my (@cmdres, @iparr, @macarr);
     if (!opendir DIR, "/sys/class/net") {
         $rsp->{data}->[0] = "Unable open /sys/class/net dir.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -153,43 +154,37 @@ sub list_adapters {
     closedir(DIR);
     $i = 0;
     foreach my $item (@dir) {
-        if ($item eq '.' || $item eq '..') {
+        if ($item eq '.' || $item eq '..' || $item eq 'lo') {
             next;
         }
-        $cmd = "ifconfig| grep $item";
-        $tmpres = xCAT::Utils->runcmd("$cmd", -1);
-        $result->[ $i++ ] = $tmpres;
+        $cmd = "ip addr show dev $item";
+        @cmdres = xCAT::Utils->runcmd("$cmd", -1);
+        if (!@cmdres) {
+            $rsp->{data}->[0] = "Executing ip command failed.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+        # get net ip and mac
+        foreach my $in (@cmdres){
+            if ( $in =~ "inet" ) {
+                @iparr = split(' ',$in);
+                if ( $iparr[0] =~ /^inet$/ ) {
+                    $ip = $iparr[1];
+                    $tmpres->{'ip'} = $ip;
+                }
+            }
+            if ( $in =~ 'ether' ) {
+                @macarr = split(' ',$in);
+                $mac = $macarr[1];
+                $tmpres->{'mac'} = $mac;
+            }
+        }
+        $result->{$item} = $tmpres;
     }
     return $result
-}
-
-#-------------------------------------------------------
-
-=head3  handler to show network device resource
-
-  Subroutine to handle rest request
-  GET /localres/netres/<iface>/detail
-
-  Usage example:
-        This function is called from handle_rest_request,
-        do not call it directly.
-=cut
-
-#-------------------------------------------------------
-sub show_netres {
-    my @params = @_;
-    my ($rsp, $result, $iface, $cmd);
-    if (!@params) {
-        $rsp->{data}->[0] = "Argmument error.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return 1;
-    }
-    $iface = shift @params;
-    $cmd = "ip addr show dev $iface";
-    $result->[ 0 ] = xCAT::Utils->runcmd("$cmd", -1);
-    return $result;
 
 }
+
 
 #-------------------------------------------------------
 
