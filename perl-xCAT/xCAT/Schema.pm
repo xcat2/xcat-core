@@ -435,7 +435,7 @@ passed as argument rather than by table value',
            2 2   Third interface on ML2 or mezzanine adapter
 
            2 3   Fourth interface on ML2 or mezzanine adapter',
-            taggedvlan => 'Bmcsetup will configure the network interface of the BMC to be tagged to the VLAN specified.',
+            taggedvlan => 'bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.',
             bmcid => 'Unique identified data used by discovery processes to distinguish known BMCs from unrecognized BMCs',
             username => 'The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.',
             password => 'The BMC password.  If not specified, the key=ipmi row in the passwd table is used as the default.',
@@ -2341,7 +2341,7 @@ my @nodeattrs = (
         tabentry        => 'ipmi.password',
         access_tabentry => 'ipmi.node=attr:node',
     },
-    { attr_name => 'vlantag',
+    { attr_name => 'bmcvlantag',
         only_if         => 'mgt=ipmi',
         tabentry        => 'ipmi.taggedvlan',
         access_tabentry => 'ipmi.node=attr:node',
