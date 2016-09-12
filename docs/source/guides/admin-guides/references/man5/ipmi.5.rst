@@ -96,7 +96,7 @@ ipmi Attributes:
 
 \ **taggedvlan**\ 
  
- Bmcsetup will configure the network interface of the BMC to be tagged to the VLAN specified.
+ bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.
  
 
 
