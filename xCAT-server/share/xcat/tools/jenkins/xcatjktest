@@ -343,7 +343,13 @@ sub get_build{
    
     &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget $xcatdep_addr >/dev/null 2>&1");
     if($?){
-        send_msg(0, "[get_build] Can't download xcat-dep from $xcatcore_addr");
+        send_msg(0, "[get_build] Can't download xcat-dep from $xcatdep_addr");
+        return 1;
+    }
+
+    &runcmd("cd $xcatpackagesdir >/dev/null 2>&1 && wget http://xcat.org/files/go-xcat >/dev/null 2>&1");
+    if($?){
+        send_msg(0, "[get_build] Can't download go-xcat from xcat.org");
         return 1;
     }
 
@@ -563,6 +569,14 @@ sub prepare_mn {
     }
     send_msg(2, "[prepare_mn] copy $xcatcore and $xcatdep to $mn...[done]");
 
+    send_msg(2, "[prepare_mn] starting to copy go-xcat to $mn");
+    &runcmd("scp /$xcatpackagesdir/go-xcat root\@$mn:/  >/dev/null");
+    if($?){
+       send_msg(0, "[prepare_mn] copy go-xcat to $mn failed");
+       return 1;
+    }
+    send_msg(2, "[prepare_mn] copy go-xcat to $mn...[done]");
+
     send_msg(2, "[prepare_mn] starting to decompress xcat packages.....");
     &runcmd("xdsh $mn 'cd / && tar xvf /$xcatcore' >/dev/null 2>&1");
     if($?){
@@ -695,12 +709,11 @@ sub prepare_mn {
 }
 
 
-#######################################
-# install xcat 
-#######################################
-sub install_xcat {
-    send_msg(2, "[install_xcat] starting to install xcat in $mn");
-
+############################################################
+# install xcat-test package and other dependency packages
+############################################################
+sub install_xcattest {
+    send_msg(2, "[install_xcattest] starting to install xcat-test in $mn");
     if($os =~ /rhel/i){
         $os =~ /(\D+)(\d+)\.?(\d?)/;       
         &runcmd("xdsh $mn \"cd /xcat-core && ./mklocalrepo.sh\" >/dev/null 2>&1");
@@ -711,7 +724,7 @@ sub install_xcat {
             &runcmd("xdsh $mn \"cd /xcat-dep/rh$version/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
         }
         &runcmd("xdsh $mn \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"yum -y install xCAT xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"yum -y install xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"yum -y install createrepo expect\" >/dev/null 2>&1");
 
         if($os =~ /rhels7/i){
@@ -720,7 +733,6 @@ sub install_xcat {
             &runcmd("xdsh $mn \"yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc\" >/dev/null 2>&1");
         }
 
-        &runcmd("xdsh $mn \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
         if($arch =~ /x86/i){
             &runcmd("xdsh $mn \"yum install -y perl-Sys-Virt\" >/dev/null 2>&1");
         }
@@ -735,10 +747,9 @@ sub install_xcat {
         &runcmd("xdsh $mn \"zypper ar file:///xcat-core xCAT-core\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper sl -U\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper --gpg-auto-import-keys search --match-exact -s screen\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"zypper -n install xCAT xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"zypper -n install xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper -n install createrepo expect\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper -n install mysql-client libmysqlclient_r15  libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql unixODBC\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
         
         if($arch =~ /le/i || $arch =~ /el/i){
             &runcmd ("xdsh  $mn \"zypper -n install perl-Net-DNS-0.80-1.ppc64le\">/dev/null 2>&1");
@@ -750,7 +761,7 @@ sub install_xcat {
         &runcmd("xdsh $mn \"echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf\" >/dev/null 2>&1");
         &runcmd("xdsh $mn 'apt-get -y install software-properties-common' >/dev/null 2>&1");
         if($?){
-            send_msg(0, "[install_xcat] apt-get -y install software-properties-common in $mn failed");    
+            send_msg(0, "[install_xcattest] apt-get -y install software-properties-common in $mn failed");    
             return 1;
         }
 
@@ -762,40 +773,40 @@ sub install_xcat {
         }elsif($arch =~ /le/i || $arch =~ /el/i){
             &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\"' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\" in $mn failed");
+                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\" in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\" in $mn failed");
+                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\" in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\" in $mn failed");
+                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\" in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\" in $mn failed");
+                send_msg(0, "[install_xcattest] add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\" in $mn failed");
                 return 1;
             }
         }
         
         &runcmd("xdsh $mn \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" >/dev/null 2>&1");
         if($?){
-            send_msg(0, "[install_xcat] \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" in $mn failed");
+            send_msg(0, "[install_xcattest] \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" in $mn failed");
             return 1;
         }
         &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
         if($?){
-            send_msg(0, "[install_xcat] apt-get clean all  in $mn failed");
+            send_msg(0, "[install_xcattest] apt-get clean all  in $mn failed");
             return 1;
         }
         &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
         &runcmd("xdsh $mn 'apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl' >/dev/null 2>&1");
         if($?){
-            send_msg(0, "[install_xcat] apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl in $mn failed");
+            send_msg(0, "[install_xcattest] apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl in $mn failed");
             return 1;
         }
 
@@ -804,27 +815,27 @@ sub install_xcat {
             &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
             &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
             &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get -y install xcat xcat-test  > $installlog 2>&1' >/dev/null 2>&1");
+            &runcmd("xdsh $mn 'apt-get -y install xcat-test  > $installlog 2>&1' >/dev/null 2>&1");
         }elsif($arch =~ /le/i || $arch =~ /el/i){
             &runcmd("xdsh $mn \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] /xcat-core/mklocalrepo.sh in $mn failed");
+                send_msg(0, "[install_xcattest] /xcat-core/mklocalrepo.sh in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] /xcat-dep/mklocalrepo.sh in $mn failed");
+                send_msg(0, "[install_xcattest] /xcat-dep/mklocalrepo.sh in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] apt-get clean all in $mn failed");
+                send_msg(0, "[install_xcattest] apt-get clean all in $mn failed");
                 return 1;
             }
             &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get -y install xcat xcat-test  > $installlog  2>&1' >/dev/null 2>&1");
+            &runcmd("xdsh $mn 'apt-get -y install xcat-test  > $installlog  2>&1' >/dev/null 2>&1");
             if($?){
-                send_msg(0, "[install_xcat] apt-get -y install xcat xCAT-test in $mn failed");
+                send_msg(0, "[install_xcattest] apt-get -y install xcat-test in $mn failed");
             }else{
                 &runcmd("xdsh $mn 'mkdir -p /install/$os/%arch/install/netboot '");
                 &runcmd("scp /install/$os/%arch/install/netboot/initrd.gz $mn:/install/%os/%arch/install/netboot  ");
@@ -834,15 +845,28 @@ sub install_xcat {
 
     &runcmd("scp $mn:/$installlog $logfiledir/new_xcat_installation.log >/dev/null 2>&1"); 
 
-    #check if MN is installed successful
-    my $lsdefout = `ssh -t $mn 'bash -l -i -c "lsdef -v"'`;
-    chomp($lsdefout);
-    if($lsdefout !~ /^lsdef - Version/ ){
-        send_msg(0, "[install_xcat] install xcat in $mn failed");
-        return 1;
+    #check if xcat-test is installed successfully on mn
+    if($os =~ /rhel/i || $os =~ /sles/i){
+       &runcmd("xdsh $mn \"rpm -qa |grep -i xCAT-test\" >/dev/null 2>&1");
+    }else{
+       &runcmd("xdsh $mn 'dpkg -l |grep -i xcat-test' >/dev/null 2>&1");
     }
 
-    send_msg(2, "[install_xcat] install xcat in $mn successfully");
+    if($?){
+       send_msg(0, "[install_xcattest] install xcat-test in $mn failed");
+       return 1;
+    }    
+
+    #export some environment variables
+    &runcmd("xdsh $mn \"touch /etc/profile.d/xcatjk.sh; echo -e \"XCATROOT=/opt/xcat\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH\nexport PERL_BADLANG=0\" >> /etc/profile.d/xcatjk.sh;source /etc/profile.d/xcatjk.sh\" >/dev/null 2>&1");
+    if($?){
+       send_msg(2, "[install_xcattest] set environment variables failed");
+       return 1;
+     }else{
+       send_msg(2, "[install_xcattest] set environment variables succeeded");
+     }
+
+    send_msg(2, "[install_xcattest] install xcat-test in $mn successfully");
     return 0;
 
 }
@@ -852,6 +876,7 @@ sub install_xcat {
 #######################################
 sub do_test {
     my $casestop=0;
+    my $installcasestop=0;
 
     send_msg(2, "[do_test] starting to run regression test in $mn");
 
@@ -898,6 +923,30 @@ sub do_test {
         }
         close(FILE);
         &runcmd("echo $casecnt > /tmp/totalcase.$proid");
+
+      #run the special install_xcat case first
+      my $rst1=0;
+      my @output1;
+      send_msg(2, "[do_test] doing test for case install_xcat in $mn.....");
+      if($os !~ /ubuntu/i){
+         @output1=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -t install_xcat\" >/dev/null 2>&1");
+         $rst1=$?;
+       }else{
+          @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xcat\"' >/dev/null 2>&1");
+          $rst1=$?;
+       }
+       my $tmpoutput1=join(' ', @output1);
+       send_msg(2, "[do_test] install_xcat output of trigger xcattest: $tmpoutput1");
+       if($rst1){
+          $installcasestop=1;
+          send_msg(2, "[do_test] the install_xcat case on $mn was STOPPED for some reason");
+       }else{
+          send_msg(2, "[do_test] run install_xcat in $mn finished");
+       }
+
+        return 2 if($installcasestop);
+
+        #then run other cases with the bundle file
      
         my $rst=0; 
         my @output;
@@ -1185,14 +1234,14 @@ if ( !defined($pid) ) {
     }
     send_msg(2, "[$$]:Run prepare_mn...............[OK]");
 
-    #install xcat on mn
-    send_msg(2, "[$$]:Running install_xcat.............");
-    $res = install_xcat();
+    #install xcat-test on mn
+    send_msg(2, "[$$]:Running install_xcattest.............");
+    $res = install_xcattest();
     if ($res) {
-        syswrite MNWRITE,"[$$]:install xcat on $mn failed\n";
+        syswrite MNWRITE,"[$$]:install xcat-test on $mn failed\n";
         exit 1;
     }
-    send_msg(2, "[$$]:Run install_xcat...............[OK]");
+    send_msg(2, "[$$]:Run install_xcattest..............[OK]");
 
     my $deployenvtime=time();
 
