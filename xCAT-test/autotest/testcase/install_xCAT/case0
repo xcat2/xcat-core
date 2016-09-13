@@ -4,13 +4,13 @@ os:Linux
 stop:yes
 cmd:if grep "Red Hat" /etc/*release >/dev/null; then yum install -y yum-utils bzip2; fi
 check:rc==0
-cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
+cmd:cp /core-*-snap.tar.bz2 /install_xCAT_xcat-core.tar.bz2
 check:rc==0
-cmd:cp /xcat-dep*.tar.bz2 /xcat-dep.tar.bz2
+cmd:cp /xcat-dep*.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 check:rc==0
 cmd:ls /go-xcat
 check:rc==0
-cmd:cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
+cmd:cd /; ./go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
@@ -20,23 +20,24 @@ check:output=~Version
 cmd:service xcatd status
 check:rc==0
 check:output=~running
-cmd:rm -rf /xcat-core.tar.bz2 /xcat-dep.tar.bz2
+cmd:rm -rf /install_xCAT_xcat-core.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 end
+
 
 start:install_xCAT_on_ubuntu
 description:install xCAT with go-xcat tool in a fresh environment for ubuntu
 os:Linux
 stop:yes
-cmd:arc_all=`uname -a`; code=`lsb_release -sc`;if [[ $arc_all =~ "ppc64le" ]]; then arch="ppc64el";else arch="x86_64";fi; cp "/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-$arch.sources.list" "/etc/apt/sources.list" 
+cmd:arc_all=`uname -a`; code=`lsb_release -sc`;if [[ $arc_all =~ "ppc64le" ]]; then arch="ppc64el";else arch="x86_64";fi; cp "/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-$arch.sources.list" "/etc/apt/sources.list"
 cmd:apt-get clean;apt-get update
 check:rc==0
-cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
+cmd:cp /core-*-snap.tar.bz2 /install_xCAT_xcat-core.tar.bz2
 check:rc==0
-cmd:cp /xcat-dep*.tar.bz2 /xcat-dep.tar.bz2
+cmd:cp /xcat-dep*.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 check:rc==0
 cmd:ls /go-xcat
 check:rc==0
-cmd:cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
+cmd:cd /; ./go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
@@ -46,5 +47,7 @@ check:output=~Version
 cmd:service xcatd status
 check:rc==0
 check:output=~running
-cmd:rm -rf /xcat-core.tar.bz2 /xcat-dep.tar.bz2
+cmd:rm -rf /install_xCAT_xcat-core.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 end
+
+

@@ -27,15 +27,22 @@ my $needshow        = 0;
 my $restore         = 0;
 my $ret             = 0;
 my $string1         = undef;
-#below System label means: only load the [System] aspects in config file
-#this usage is only for the first install_xCAT cases used for xCAT daily regression
-#it is a workaround to avoid change the xcattest structure, so no need to public
-my $initallabel     = undef;
-my $loadsysteminfo  = "System";
 my $showbundlefiles  = 0;
 my $showcommandslist = 0;
 my $stop_to_keep_env = 0;
 
+#-----------------------------------
+=head1
+    System label usage:
+    In order to make install xCAT to be the first case for automation daily regression, "System" label is used in this xcattest command.
+    xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xCAT_on_rhels_sles
+    xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xCAT_on_ubuntu
+    System label means only the [System] aspect will be loaded and no other inital action will be done.
+=cut
+
+#-----------------------------------
+my $initallabel     = undef;
+my $loadsysteminfo  = "System";
 
 #Create result directory
 mkdir $resultdir unless -d $resultdir;
@@ -77,7 +84,7 @@ if (&checkoptions)
 my %bundlefilesinfo = ();
 if ($showbundlefiles)
 {
-    &undlefiles;
+    &listbundlefiles;
     exit 0;
 }
 
@@ -707,18 +714,27 @@ sub loadcase
 
         close(FILE);
     }
+    
     if ($needshow) {
-        log_this("*Test cases:");
-        foreach my $case (@cases) {
-            log_this("$case->{name}");
-        }
-        log_this("*Case name not supported:", @wrongnamecase);
+        if (@cases) {
+            log_this("Test cases:");            
+            foreach my $case (@cases) {
+                log_this("$case->{name}");
+            }
+        }else {
+            log_this("Error: Please check the case name or command name");
+        }   
+        log_this("Case name not supported:", @wrongnamecase) if (@wrongnamecase);
         return 0;
     }
-
-    log_this("*To run:",     @rightcase) if (@rightcase);
-    log_this("*Not to run:", @notrightcase) if (@notrightcase);
-    log_this("*Case name not supported:", @wrongnamecase) if (@wrongnamecase);
+    
+    if (@rightcase) {
+        log_this("To run:",     @rightcase);
+    }else {
+        log_this("Error: No case to run, please check the case name or command name");
+    }
+    log_this("Not to run:", @notrightcase) if (@notrightcase);
+    log_this("Case name not supported:", @wrongnamecase) if (@wrongnamecase);
     return 0;
 }
 sub getnodeattr
