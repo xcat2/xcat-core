@@ -32,7 +32,7 @@ for i in `/bin/cat /proc/cmdline`; do
         MACX=`/sbin/ip link show $ETHX | /bin/grep ether | /bin/awk '{print $2}'`
         break
     elif [ "$KEY" = "BOOTIF" ]; then
-        MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'|sed -e s/^01-// -e s/-/:/g`
+        MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'|sed -e 's/^01-//' -e 's/-/:/g'`
         #ETHX=`/sbin/ifconfig | /bin/grep -i $MACX | /bin/awk '{print $1}'`
         ETHX=`/sbin/ip -oneline link show |/bin/grep -i $MACX |/bin/awk -F ":" '{print $2}'|/bin/grep -o "[^ ]\+\( \+[^ ]\+\)*"`
         break
@@ -99,7 +99,7 @@ if [ ! -z "$DUMP" ]; then
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
     MOUNTPATH=""
-    if ((pmatch $OSVER "*6\.*")); then
+    if (pmatch $OSVER "*6\.*"); then
 	MOUNTPATH="/tmp"
     elif (pmatch $OSVER "*7\.*"); then
         MOUNTPATH="/mnt"
@@ -219,9 +219,29 @@ EOF
                /bin/mount -o vers=3 $KDIP:$KDPATH $MOUNTPATH
                #/bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
                [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
+
+               #The initramfs used in kdump does not need "root", however, the initramfs refused to continue
+               #if no valid "root" provided in redhat7.1 kdump; As a workaround,we provide a fake "root=nfs:$KDIP:$KDPATH"
+               #with a dummy "proc" inside, which will fake "root=nfs:$KDIP:$KDPATH" as a valid root directory 
+               [ -e $MOUNTPATH/proc ] || echo "Dummy file: fake the /proc to pass the checking of 'root=' inside dracut-cmdline " > $MOUNTPATH/proc
+
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf 
                echo "default shell" >> /etc/kdump.conf
-               sed -i 's/KDUMP_COMMANDLINE_APPEND="/KDUMP_COMMANDLINE_APPEND="nonodestatus /' /etc/sysconfig/kdump
+               #strip "xcat" out of the initramfs for kdump
+               echo "dracut_args --omit \"xcat\"" >> /etc/kdump.conf
+               #strip the unnecessary kernel options from /proc/cmdline
+               #the modified "cmdline" will be used as the kernel options
+               #for kdump initramfs; otherwise, the "service kdump restart" will fail
+               #with "command line overflow" since the kernel options are longer than 255 chars`
+               kdumpcmdline=
+               for i in $(cat /proc/cmdline)
+                   do 
+                       if [[ $i == console=* ]] || [[ $i == crashkernel=* ]]; then 
+                             kdumpcmdline="$kdumpcmdline $i "
+                       fi
+               done
+               sed -i "s#^[\t ]*KDUMP_COMMANDLINE=\"#KDUMP_COMMANDLINE=\"$kdumpcmdline#" /etc/sysconfig/kdump
+               sed -i "s#^[\t ]*KDUMP_COMMANDLINE_APPEND=\"#KDUMP_COMMANDLINE_APPEND=\"root=nfs:$KDIP:$KDPATH #" /etc/sysconfig/kdump
                [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
                restartservice kdump
                [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf 
