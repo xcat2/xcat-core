@@ -8,6 +8,8 @@ cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
 check:rc==0
 cmd:cp /xcat-dep*.tar.bz2 /xcat-dep.tar.bz2
 check:rc==0
+cmd:ls /go-xcat
+check:rc==0
 cmd:cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
@@ -32,7 +34,9 @@ cmd:cp /core-*-snap.tar.bz2 /xcat-core.tar.bz2
 check:rc==0
 cmd:cp /xcat-dep*.tar.bz2 /xcat-dep.tar.bz2
 check:rc==0
-cmd:./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
+cmd:ls /go-xcat
+check:rc==0
+cmd:cd /; ./go-xcat --xcat-core=/xcat-core.tar.bz2 --xcat-dep=/xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
