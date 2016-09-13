@@ -101,9 +101,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
           ip=10.1.2.1 
 
 
-#. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
+#. Set the chain table to run the ``bmcsetup`` script and append ``standby``, this will set the BMC IP to static and then standby to wait for the next task. ::
 
-       chdef cn01 chain="runcmd=bmcsetup"
+       chdef cn01 chain="runcmd=bmcsetup,standby"
 
 
 #. Change the BMC IP address 
