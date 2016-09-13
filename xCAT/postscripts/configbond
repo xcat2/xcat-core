@@ -193,6 +193,7 @@ DEVICE=${str_bond_name}
 BOOTPROTO=none
 IPADDR=${str_bond_ip}
 NETMASK=${str_bond_mask}
+TYPE=Bond
 ONBOOT=yes
 USERCTL=no
 BONDING_OPTS="${array_bond_opts[*]}"
@@ -216,6 +217,7 @@ elif [ "$str_os_type" = "sles" ];then
     cat > $str_master_file <<EOF
 NAME='Bonded Interface'
 BOOTPROTO=static
+TYPE=Bond
 BONDING_MASTER=yes
 IPADDR=${str_bond_ip}
 NETMASK=${str_bond_mask}
