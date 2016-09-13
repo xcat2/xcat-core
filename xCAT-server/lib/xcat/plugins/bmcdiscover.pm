@@ -204,24 +204,19 @@ sub bmcdiscovery_processargs {
         return 1;
     }
 
-    #
-    # Get the default bmc account from passwd table
-    #
-    ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
-
-    # overwrite the default user/pass with what is passed in
-    if ($::opt_U) {
-        $bmc_user = $::opt_U;
-    }
-    if ($::opt_P) {
-        $bmc_pass = $::opt_P;
-    }
-
     #########################################
     # Option -s -r should be together
     ######################################
     if (defined($::opt_R))
     {
+        # Option -c should not be used with -r 
+        if (defined($::opt_C)) {
+            my $msg = "The 'check' and 'range' option cannot be used together.";
+            my $rsp = {};
+            push @{ $rsp->{data} }, "$msg";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 2;
+        }
         ######################################
         # check if there is nmap or not
         ######################################
@@ -240,6 +235,24 @@ sub bmcdiscovery_processargs {
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
+
+        #
+        # Get the default bmc account from passwd table, this is only done for the 
+        # discovery process
+        #
+        ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+        # overwrite the default password if one is provided
+        if ($::opt_U) {
+            $bmc_user = $::opt_U;
+        } else {
+            # If password is provided, but no user, set the user to blank
+            # Support older FSP and Tuletta machines
+            $bmc_user = '';
+        }
+        if ($::opt_P) {
+            $bmc_pass = $::opt_P;
+        }
+
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);
         return 0;
     }
