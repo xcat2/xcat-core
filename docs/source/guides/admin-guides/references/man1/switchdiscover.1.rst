@@ -23,7 +23,8 @@ DESCRIPTION
 ***********
 
 
-The switchdiscover command scans the subnets and discovers all the swithches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command as default to discover the switches. However, you can specify other discovery methods such as lldp or snmp with \ **-s**\  flag. You can write the discovered switches into xCAT database with \ **-w**\  flag. This command supports may output formats such as xml(\ **-x**\ ), raw(\ **-r**\ ) and stanza(\ **-z**\ ) in addition to the default format.    
+The switchdiscover command scans the subnets and discovers all the swithches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command as default to discover the switches. However, you can specify other discovery methods such as lldp or snmp with \ **-s**\  flag. You can write the discovered switches into xCAT database with \ **-w**\  flag. This command supports may output formats such as xml(\ **-x**\ ), raw(\ **-r**\ ) and stanza(\ **-z**\ ) in addition to the default format.
+
 \ **-**\ **-setup**\  flag is for switch-based switch discovery.  It will find all the discovery switches in the subnets, then matched with pre-defined switches in the xCATDB. It then set discovery switches with static ip address and hostname based on the pre-defined switch.  It also enables snmpv3 configuration. The detail of process is defined in the http://xcat-docs.readthedocs.io/en/latest/advanced/networks/switchdiscover/switches_discovery.html.
 
 To view all the switches defined in the xCAT databasee use \ **lsdef -w "nodetype=switch"**\  command.
@@ -166,9 +167,14 @@ EXAMPLES
  
 
 
-4. To process switch-based switch discovery, the core switch has to configure already and top-of-rack (edge) switch has to pre-define into xCAT databse with attribute switch and switchport to core switch:
- switchdiscover --range 192.168.5.150-170 -s snmp --setup
-
+4. To process switch-based switch discovery, the core switch has to configure already and top-of-rack (edge) switch has to pre-define into xCAT databse with attribute \ **switch**\  and \ **switchport**\  to core switch:
+ 
+ 
+ .. code-block:: perl
+ 
+   switchdiscover --range 192.168.5.150-170 -s snmp --setup
+ 
+ 
 
 
 
