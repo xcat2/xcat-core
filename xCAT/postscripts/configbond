@@ -191,6 +191,7 @@ if [ "$str_os_type" = "redhat" ];then
     cat > $str_master_file <<EOF
 DEVICE=${str_bond_name}
 BOOTPROTO=none
+TYPE=Bond
 IPADDR=${str_bond_ip}
 NETMASK=${str_bond_mask}
 ONBOOT=yes
@@ -215,6 +216,7 @@ elif [ "$str_os_type" = "sles" ];then
     # Create the master file
     cat > $str_master_file <<EOF
 NAME='Bonded Interface'
+TYPE=Bond
 BOOTPROTO=static
 BONDING_MASTER=yes
 IPADDR=${str_bond_ip}
