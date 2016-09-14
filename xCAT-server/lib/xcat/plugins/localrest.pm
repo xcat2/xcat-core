@@ -143,48 +143,58 @@ sub handle_rest_request {
 
 #-------------------------------------------------------
 sub list_adapters {
-    my ($rsp, $result, $ifaces, $cmd, $i, $tmpres, @cmdres, $mac, $ip);
-    my (@cmdres, @iparr, @macarr);
-    if (!opendir DIR, "/sys/class/net") {
-        $rsp->{data}->[0] = "Unable open /sys/class/net dir.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return 1;
-    }
-    my @dir = readdir(DIR);
-    closedir(DIR);
-    $i = 0;
-    foreach my $item (@dir) {
-        if ($item eq '.' || $item eq '..' || $item eq 'lo') {
-            next;
-        }
-        $cmd = "ip addr show dev $item";
+    my ($rsp, $result, $cmd, $tmpres, $vline);
+    my ($mac, $ip, $adapter, $preadapter, $samenic);
+    my (@cmdres, @origin, @eachline, @line);
+        $cmd = "ip -o addr";
         @cmdres = xCAT::Utils->runcmd("$cmd", -1);
-        if (!@cmdres) {
+        if ($::RUNCMD_RC != 0) {
             $rsp->{data}->[0] = "Executing ip command failed.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 1;
         }
-        # get net ip and mac
-        foreach my $in (@cmdres){
-            if ( $in =~ "inet" ) {
-                @iparr = split(' ',$in);
-                if ( $iparr[0] =~ /^inet$/ ) {
-                    $ip = $iparr[1];
-                    $tmpres->{'ip'} = $ip;
-                }
+        # sort ip -o addr result
+        for (my $i=0; $i<@cmdres; $i++) {
+            @eachline = split(' ',$cmdres[$i]);
+            if ( $eachline[1] =~ "lo" ) {
+                next;
             }
-            if ( $in =~ 'ether' ) {
-                @macarr = split(' ',$in);
-                $mac = $macarr[1];
-                $tmpres->{'mac'} = $mac;
+            $adapter = $eachline[1];
+            $adapter =~ s/://;
+            if ( !$preadapter ) {
+                $preadapter = $adapter;
+            } elsif ( $preadapter ne $adapter ) {
+                $samenic->{$preadapter} = "@origin";
+                @origin = "";
+                $preadapter = $adapter;
+            }
+            push (@origin, @eachline);
+            if ( @cmdres == $i+1 ) {
+                $samenic->{$adapter} = "@origin";
             }
         }
-        $result->{$item} = $tmpres;
-    }
+        # get net ip and mac
+        foreach my $key (keys %{$samenic}){
+            $vline=${$samenic}{$key};
+            @line = split(' ',$vline);
+            my @tmpattr;
+            for (my $i=0; $i<@line; $i++) {
+
+                if ( $line[$i] =~ /^inet$/ ) {
+                    $ip = $line[$i+1];
+                    $tmpres->{'ip'} = $ip;
+                }
+
+                if ( $line[$i] =~ 'ether' ) {
+                    $mac = $line[$i+1];
+                    $tmpres->{'mac'} = $mac;
+                }
+           }
+           push (@tmpattr, $tmpres);
+           $result->{$key}=\@tmpattr;
+       }
     return $result
-
 }
-
 
 #-------------------------------------------------------
 
