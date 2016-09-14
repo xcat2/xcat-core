@@ -122,6 +122,10 @@ Retrieves mprom firmware level
 
 Retrieves device identification. Usually device, manufacturing and product ids. 
 
+=item B<uuid>
+
+Retrieves the universally unique identifier
+
 =item B<guid>
 
 Retrieves the global unique identifier 

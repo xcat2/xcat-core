@@ -191,6 +191,12 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
+\ **uuid**\ 
+ 
+ Retrieves the universally unique identifier
+ 
+
+
 \ **guid**\ 
  
  Retrieves the global unique identifier
