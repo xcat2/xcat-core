@@ -1530,16 +1530,15 @@ sub mkinstall
                 if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
                     $kcmdline .= " ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
                 } else {
-                    unless ($nicname) {
-                        $nicname = "bootnic";
-                        my $mactab = xCAT::Table->new("mac");
-                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                        my $mac = xCAT::Utils->parseMacTabEntry($macref->{mac}, $node);
-                        $kcmdline .= " ifname=$nicname:$mac";
+                    $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":";
+                    if($nicname){
+                        $kcmdline .= "$nicname";
                     }
 
-                    $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":" . "$nicname" . ":" . "none";
-                    $kcmdline .= " bootdev=$nicname ";
+                    $kcmdline .=":none::";
+                    if($net_params->{mac}){
+                        $kcmdline .="$net_params->{mac}";
+                    }
                 }
 
                 my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
