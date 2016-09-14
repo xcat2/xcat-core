@@ -1267,6 +1267,10 @@ sub addkit
                 push @{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
                 xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
+
+            #avoid while space in the dir name
+            $kit =~ s/(\s)/\\$1/g;
+
             $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
 
             opendir($dir, "/tmp/tmpkit/");
