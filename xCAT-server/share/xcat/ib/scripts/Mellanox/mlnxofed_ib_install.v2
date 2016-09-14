@@ -137,7 +137,9 @@ echo "NODESETSTATE is $NODESETSTATE"
 
 function hack_uname()
 {
-    BEFORE_UNAME_HACK="$($1/bin/uname -r)"
+    BEFORE_UNAME_R="$($1/bin/uname -r)"
+    BEFORE_UNAME_M="$($1/bin/uname -m)"
+    echo "Before hack_uname(), -r=>'${BEFORE_UNAME_R}' -m=>'${BEFORE_UNAME_M}'"
     mv "$1/bin/uname" "$1/bin/uname.save"
     cat <<-EOF >"$1/bin/uname"
 		#!/bin/sh
@@ -165,8 +167,9 @@ function hack_uname()
 		EOF
 
     chmod 0755 "$1/bin/uname"
-    AFTER_UNAME_HACK="$($1/bin/uname -r)"
-    echo "Before hack-uname() to replace 'uname' command, 'uname -r'='${BEFORE_UNAME_HACK}'. After, 'uname -r'='${AFTER_UNAME_HACK}'"
+    AFTER_UNAME_R="$($1/bin/uname -r)"
+    AFTER_UNAME_M="$($1/bin/uname -m)"
+    echo "After  hack_uname(), -r='${AFTER_UNAME_R}', -m='${AFTER_UNAME_M}'"
 }
 
 function cleanup()
