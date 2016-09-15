@@ -424,7 +424,14 @@ sub process_request {
         if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
             my $bmc_node = $request->{bmc_node}->[0];
             syslog("local4|info", "Found node corresponding to BMC=$bmc_node, removing it...");
-            $doreq->({ command => ['rmdef'], arg => [$bmc_node] });
+            my $rmcmd = "rmdef $bmc_node";
+            xCAT::Utils->runcmd($rmcmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                syslog("local4|info", "Failed to remove $bmc_node from xCAT");
+            } else {
+                syslog("local4|info", "$bmc_node definition removed from xCAT");
+            }
         }
     } else {
 
