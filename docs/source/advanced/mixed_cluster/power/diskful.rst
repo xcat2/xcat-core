@@ -26,7 +26,6 @@ Create a node definition for the x86_64 compute node, here is a sample: ::
         bmc=10.4.42.254
         bmcpassword=PASSW0RD
         bmcusername=USERID
-        chain=runcmd=bmcsetup,shell
         cons=ipmi
         groups=all
         initrd=xcat/osimage/rhels6.6-x86_64-install-compute/initrd.img
