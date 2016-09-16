@@ -56,7 +56,7 @@ chain Attributes:
 
 \ **chain**\ 
  
- A comma-delimited chain of actions to be performed automatically when this node is discovered for the first time.  (xCAT and the DHCP server does not recognize the MAC address of the node and xCAT initializes the discovery process.  The last step in this process is to run the operations listed in the chain attribute, one by one.  Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. Example, to have the genesis kernel pause, chain=shell.
+ A comma-delimited chain of actions to be performed automatically when this node is discovered for the first time.  (xCAT and the DHCP server do not recognize the MAC address of the node when xCAT initializes the discovery process.)  The last step in this process is to run the operations listed in the chain attribute, one by one.  Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. For example, to have the genesis kernel pause to the shell, use chain=shell.
  
 
 
