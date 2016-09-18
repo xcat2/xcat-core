@@ -1379,11 +1379,23 @@ do
 		verbose_usage
 		exit 0
 		;;
+	"--xcat-core")
+		shift
+		GO_XCAT_CORE_URL="$1"
+		;;
 	"--xcat-core="*)
 		GO_XCAT_CORE_URL="${1##--xcat-core=}"
 		;;
+	"--xcat-dep")
+		shift
+		GO_XCAT_DEP_URL="$1"
+		;;
 	"--xcat-dep="*)
 		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
+		;;
+	"--xcat-version")
+		shift
+		GO_XCAT_VERSION="$1"
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
