@@ -1595,18 +1595,15 @@ case "${GO_XCAT_ACTION}" in
 		commands to set environment variables into your PATH:
 
 		    for sh,
-		        \`source /etc/profile.d/xcat.sh\`
+		        \`source /etc/profile.d/xcat.sh'
 		    or csh,
-		        \`source /etc/profile.d/xcat.csh\`
+		        \`source /etc/profile.d/xcat.csh'
 		EOF
 		;;
 	"update")
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
-		xCAT has been updated!
-		======================
-
-		Congratulations!
+		xCAT has been successfully updated!
 		EOF
 		;;
 	esac
