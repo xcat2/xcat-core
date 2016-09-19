@@ -82,6 +82,10 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
        chdef cn01 chain="runcmd=bmcsetup"
 
+#. Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
+
+       chdef cn01 -p chain="osimage=<osimage_name>"
+
 #. Define the compute nodes into xCAT: ::
 
        cat predefined.stanzas | mkdef -z 
