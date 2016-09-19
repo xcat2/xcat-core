@@ -1268,7 +1268,7 @@ sub addkit
                 xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
 
-            #avoid white space in the dir name
+            #support white space in the dir name
             $kit =~ s/(\s)/\\$1/g;
 
             $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
