@@ -87,7 +87,7 @@ if **--setup** flag is specified, the command will perform following steps:
 
 3.  After switches are matched, the command will call config files to set up static IP address, hostname and enable the snmpv3.  Currently, BNT and Mellanox switches are supported.  The two config files are located in the **/opt/xcat/share/xcat/scripts/config.BNT** and **/opt/xcat/share/xcat/scripts/config.Mellanox**.  the log message ``the switch type is not support for config`` is displayed if switchtype is something other than BNT or Mellanox.
 
-4.  After discovery process, the predefined node attribute in the xCATdb should be updated. 
+4.  After discovery process, the predefined node attribute in the xCATdb will be updated. 
 
 ::
 
