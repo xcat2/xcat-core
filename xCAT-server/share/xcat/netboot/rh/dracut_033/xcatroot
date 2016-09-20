@@ -1,13 +1,13 @@
 #!/bin/sh
 
-
 NEWROOT=$3
 RWDIR=.statelite
-XCATMASTER=$XCAT
 
 . /lib/dracut-lib.sh
-rootlimit="$(getarg rootlimit=)"
+XCAT="$(getarg XCAT=)"
+XCATMASTER=$XCAT
 
+rootlimit="$(getarg rootlimit=)"
 
 getarg nonodestatus
 NODESTATUS=$?
@@ -15,22 +15,21 @@ NODESTATUS=$?
 MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
 XCATIPORT="$(getarg XCATIPORT=)"
 if [ $? -ne 0 ]; then
-XCATIPORT="3002"
+    XCATIPORT="3002"
 fi
 
-
 xcatdebugmode="$(getarg xcatdebugmode=)"
-
 
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "running xcatroot...."
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
 
-
 if [ "$NODESTATUS" != "0" ]; then
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "nodestatus: netbooting,reporting..."
-/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
+
+imgurl="$(getarg imgurl=)";
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
@@ -269,7 +268,7 @@ else
   e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
 
 "
-  /bin/dash
+  /bin/sh
   exit
 fi
 cd /
