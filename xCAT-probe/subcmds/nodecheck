@@ -1,0 +1,218 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Net::Ping;
+use Getopt::Long qw(:config no_ignore_case);
+
+use Data::Dumper;
+use warnings;
+
+my $program_name = basename("$0");
+my $help;
+my $noderange = "";
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+
+# Match pattern for discovered nodes: node-1234-ABCDE-123456
+#                                     node- d+ -[a-z]- d+
+#my $discovered_node_pattern =      '^node-\d+-[a-zA-Z]+-\d+';
+my $discovered_node_pattern = '^node-*';
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name -c {duplicate_mtm|valid_node_attributes} [-d|delete_duplicate] [-n noderange] [-V|--verbose]
+
+Description:
+    Use this command to check node defintions in xCAT DB. 
+
+Options:
+    -h : Get usage information of $program_name
+    -n : Range of nodes to check
+    -c : Check node definitions in xCAT DB
+         duplicate_mtm         : Check for node definitions with duplicate model type and serial numbers
+         valid_node_attributes : Check for validity of attributes in node definitions
+    -d : Remove duplicate model type and serial number node definition from xCAT DB
+    -V : To print additional debug information.
+";
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h" => \$help,
+        "T"                  => \$test,
+        "V|verbose"          => \$VERBOSE,
+        "n=s"                => \$noderange,
+        "c=s"                => \$what_to_check,
+        "d|delete_duplicate" => \$DELETE_DUPLICATE))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($what_to_check) {
+    if ($what_to_check eq "duplicate_mtm") {
+        $CHECK_MTM_SN = 1; 
+    }
+
+    if ($what_to_check eq "valid_node_attributes") {
+        $VALID_NODE_ATTRIBUTES = 1; 
+    }
+}
+
+if ($DELETE_DUPLICATE) {
+    unless ($CHECK_MTM_SN) {
+        probe_utils->send_msg("$output", "f", "delete_duplicate parameter can only be used with duplicate_mtm parameter.");
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+        exit 1;
+    }
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Use this command to check node defintions in xCAT DB.");
+    exit 0;
+}
+
+if (scalar(@ARGV) >= 1) {
+
+    # After processing all the expected flags and arguments,
+    # there is still left over stuff on the command line
+    probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($CHECK_MTM_SN) {
+    my $rc = check_for_duplicate_mtms_sn();
+    exit $rc;
+} elsif ($VALID_NODE_ATTRIBUTES) {
+    my $rc = check_for_valid_node_attributes();
+    exit $rc;
+} else {
+    probe_utils->send_msg("$output", "d", "Unknown type of node checking to perform: $what_to_check");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+# Check for node definitions with duplicate MTM+SERIAL
+sub check_for_duplicate_mtms_sn {
+    my $na = "N/A";
+
+    my %node_mtm_serial_hash;
+    my %mtm_serial_node_hash;
+    my %waiting_to_be_discovered;
+
+    my $all_nodes_mtm_serial = `lsdef -i mtm,serial -c $noderange 2> /dev/null`;
+    chomp($all_nodes_mtm_serial);
+    my @all_nodes_mtm_serial_lines = split("[\n\r]", $all_nodes_mtm_serial);
+
+    if ($all_nodes_mtm_serial =~ /Usage:/) {
+
+        # lsdef command displayed a Usage message. Must be some noderange formatting problem.
+        # Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
+        return 1;
+    }
+
+    if (scalar(@all_nodes_mtm_serial_lines) <= 0) {
+
+        # There were no nodes matching the noderange. Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
+        return 1;
+    }
+
+    # Build a hash of key="nodename" value="mtm+serial"
+    foreach (@all_nodes_mtm_serial_lines) {
+        probe_utils->send_msg("$output", "d", "Processing $_.") if ($VERBOSE);
+        my ($node_name, $value) = split ":", $_;
+        if (exists($node_mtm_serial_hash{$node_name})) {
+
+            # already have an entry for this node with mtm, concat the serial
+            $value = $node_mtm_serial_hash{$node_name} . $value;
+            if ($node_name =~ /$discovered_node_pattern/) {
+                probe_utils->send_msg("$output", "d", "Pattern match discovered for node: $node_name") if ($VERBOSE);
+
+                # Build a hash of key="mtm+serial" and value="nodename". Later entry will be removed if
+                # predefined node found with the same mtm + serial found
+                $waiting_to_be_discovered{$value} = $node_name;
+            }
+        }
+        $node_mtm_serial_hash{$node_name} = $value;
+
+    }
+
+    #print Dumper(\%node_mtm_serial_hash) if ($VERBOSE);
+
+    # Build a hash of key="mtm+serial" value = "nodename" for all non-empty mtm+serial
+    my $any_dups = 0;
+    while (($node_name, $mtm_serial) = each %node_mtm_serial_hash) {
+
+        # Check if hash already has the same key indicating another node definition has the same mtm+serial
+        if (exists($mtm_serial_node_hash{$mtm_serial})) {
+            if ($mtm_serial eq " mtm= serial=") {
+
+                # Exclude entries that do not have mtm+serial set
+                probe_utils->send_msg("$output", "d", "No mtm and no serial for node $node_name") if ($VERBOSE);
+                next;
+            }
+            probe_utils->send_msg("$output", "f", "Duplicate found for machine with $mtm_serial : $node_name and $mtm_serial_node_hash{$mtm_serial}");
+            if ($DELETE_DUPLICATE) {
+
+                # Removing node definition of the duplicate node entry
+                probe_utils->send_msg("$output", "d", "Removing node definition: $mtm_serial_node_hash{$mtm_serial}") if ($VERBOSE);
+                my $remove_result = `rmdef $mtm_serial_node_hash{$mtm_serial}`;
+            }
+
+            # Remove entries from waiting_to_be_discovered hash if duplicate entry is detected
+            delete $waiting_to_be_discovered{$mtm_serial};
+            $any_dups = 1;
+        }
+        else {
+            $mtm_serial_node_hash{$mtm_serial} = $node_name;
+        }
+    }
+
+    #print Dumper(\%mtm_serial_node_hash) if ($VERBOSE);
+    #print Dumper(\%waiting_to_be_discovered) if ($VERBOSE);
+
+    my $rc = 1;
+    unless ($any_dups) {
+        probe_utils->send_msg("$output", "o", "No nodes with duplicate mtm and serial numbers were found.");
+        $rc = 0;
+    }
+
+
+    # Display all discovered nodes (starting with "node-" that do not have a corresponding predefined node
+    foreach (values %waiting_to_be_discovered) {
+        probe_utils->send_msg("$output", "o", "$_: Waiting to be discovered");
+    }
+    return $rc;
+}
+
+# Check attributes in node definitions for valid format
+sub check_for_valid_node_attributes {
+    my $na = "N/A";
+
+    my $rc = 1;
+
+    probe_utils->send_msg("$output", "d", "Probe to check for valid node attributes is not yet implemented.");
+
+    return $rc;
+}
