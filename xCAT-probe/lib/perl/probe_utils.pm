@@ -16,13 +16,19 @@ use Socket;
         Format is [<flag>] : <message>
         The valid <flag> are debug, warning, failed, info and ok
     Arguments:
-        output: where should output the message 
-        num:  the number of <flag>
+        output: where should the message be output 
+              The vaild value are:
+              stdout : print message to STDOUT
+              a file name: print message to the file which "file name" specify 
+        tag:  the type of message, the valid value are:
               d: debug
               w: warning
               f: failed
               o: ok
               i: info
+
+              if tag is NULL, that means output message without tag
+             
         msg:  the information need to output
      Returns:
         1 : Failed 
@@ -35,7 +41,7 @@ sub send_msg {
     $output = shift if (($output) && ($output =~ /probe_utils/));
     my $tag = shift;
     my $msg = shift;
-    my $flag;
+    my $flag="";
 
     if ($tag eq "d") {
         $flag = "[debug]  :";
@@ -515,5 +521,26 @@ sub convert_to_epoch_seconds {
         $epoch_seconds = timelocal($6,$5,$4,$1,$monthsmap{$2},($3-1900));
     }
     return $epoch_seconds;
+}
+
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert node range in Regular Expression to a node name array
+    Arguments:
+        noderange : the range of node
+    Returns:
+        A array which contain each node name
+=cut
+
+#------------------------------------------
+sub parse_node_range {
+    my $noderange = shift;
+    $noderange= shift if (($noderange) && ($noderange =~ /probe_utils/));
+    my @nodeslist = `nodels $noderange`;
+    chomp($_) foreach(@nodeslist);
+    return @nodeslist;
 }
 1;
