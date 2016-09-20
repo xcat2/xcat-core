@@ -929,6 +929,19 @@ sub setnetinfo {
             $mask[$_] = $mask[$_] + 0;
         }
         @cmd = (0x01, $channel_number, 12, @mask);
+    } elsif ($subcommand =~ m/vlan/) {
+        unless ( int($argument) == $argument ) {
+            $callback->({ errorcode => [1], error => ["The input $argument is invalid, please input an integer"] });
+            return;
+        }
+        unless (($argument>=1) && ($argument<=4096)) {
+            $callback->({ errorcode => [1], error => ["The input $argument is invalid, valid value [1-4096]"] });
+            return;
+        }
+        my @vlanparam = ();
+        $vlanparam[0] = ($argument & 0xff);
+        $vlanparam[1] = 0x80 | (($argument & 0xf00) >> 8);
+        @cmd = (0x01, $channel_number, 0x14, @vlanparam);
     } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
         @cmd = (0x01, $channel_number, 0x4, 0x2);
     } elsif ($subcommand =~ m/ip/) {
@@ -1058,6 +1071,9 @@ sub getnetinfo {
     elsif ($subcommand =~ m/^snmpdest(\d+)/) {
         @cmd = (0x02, $channel_number, 0x13, $1, 0x00);
     }
+    elsif ($subcommand eq "vlan") {
+        @cmd = (0x02, $channel_number, 0x14, 0x00, 0x00);
+    }
     elsif ($subcommand eq "ip") {
         @cmd = (0x02, $channel_number, 0x03, 0x00, 0x00);
     }
@@ -1125,6 +1141,14 @@ sub getnetinfo_response {
                 $returnd[6],
                 $returnd[7],
                 $returnd[8]), $callback, $sessdata->{node}, %allerrornodes);
+    } elsif ($subcommand eq "vlan") {
+        if (($returnd[3] >> 7) & 0x01) {
+            xCAT::SvrUtils::sendmsg(sprintf("$format %d" . $bmcifo,
+                "BMC VLAN ID enabled:",
+                (($returnd[3] & 0x0f) << 8) | $returnd[2]), $callback, $sessdata->{node}, %allerrornodes);
+        } else {
+            xCAT::SvrUtils::sendmsg("BMC VLAN disabled" . $bmcifo, $callback, $sessdata->{node}, %allerrornodes);
+        }
     } elsif ($subcommand eq "ip") {
         xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d" . $bmcifo,
                 "BMC IP:",
