@@ -47,9 +47,9 @@ my $loadsysteminfo  = "System";
 #Create result directory
 mkdir $resultdir unless -d $resultdir;
 
-# create a log for xcattest -h,-s,-l related
+# create a log for xcattest 
 my $timestamp = `date +"%Y%m%d%H%M%S"`;
-open(LOG, ">$resultdir/command.logs.$timestamp")
+open(LOG, ">$resultdir/xcattest.log.$timestamp")
   or die "Can't open logfile for writing: $!";
 
 if (
@@ -113,9 +113,6 @@ if ($needshow) {
 
 
 # create a log for run test cases
-$timestamp = `date +"%Y%m%d%H%M%S"`;
-open(LOG, ">$resultdir/xcattest.log.$timestamp")
-  or die "Can't open logfile for writing: $!";
 &log_this("xCAT automated test started at " . scalar(localtime()));
 open(LOG_ERR, ">$resultdir/failedcases.$timestamp")
   or die "Can't open error logfile for writing: $!";
@@ -1056,7 +1053,7 @@ sub listbundlefiles
                 }             
             }
          }
-         
+         close(FILE);
          if (!$skip){
              $bundlefilesinfo{$bundlefile} = "No description, add \"description: details\" in this bundle file";
          }
@@ -1183,11 +1180,9 @@ sub reordercases
 
 sub checkoptions 
 {
-#print "$showbundlesorcommands\n";
-#print "$needshow\n";
     #-b,-c,-t,-s should be defined at least one
     if (!defined($bundlelist) && !defined($caselist) && !defined($cmdlist) && !defined($showbundlesorcommands)) {
-        log_this("Error: please define options correctly");
+        log_this("Error: please define options correctly, see below usage information:");
         return 1;
     }elsif (defined($showbundlesorcommands) && (defined($bundlelist) || defined($caselist) || defined($cmdlist))) {
     # -s can't be used together with -c,-b,-t 
