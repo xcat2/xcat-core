@@ -715,7 +715,7 @@ function extract_archive()
 	[[ -f "${archive}" ]]
 	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
 	mkdir -p "${install_path}" 2>/dev/null
-	warn_if_bad "$?" "create directory \`${install_path}' failed" ||
+	warn_if_bad "$?" "Failed to create directory \`${install_path}'" ||
 		return 1
 	case "${archive##*.}" in
 	"Z")
@@ -1097,7 +1097,7 @@ function update_repo_yum()
 	type yum >/dev/null 2>&1 || return 255
 	# Check if `yum' support `updateinfo' command.
 	yum --help 2>/dev/null | grep -q "^updateinfo" >/dev/null 2>&1
-	warn_if_bad "$?" "Lack support of \`updateinfo' command for \`yum'."
+	warn_if_bad "$?" "Lacking support of \`updateinfo' command for \`yum'."
 	exit_if_bad "$?" "Install the \`yum-plugin-security' package and rerun."
 	yum --nogpgcheck updateinfo
 }
@@ -1169,7 +1169,7 @@ function update_xcat()
 	local ver=""
 	local -a xcat_core_package_list
 	xcat_core_package_list=($(get_package_list xcat-core))
-	exit_if_bad "$?" "Fail to get package list from repository \`xcat-core'."
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-core'."
 	local -a install_list=($(
 		comm <(echo "${GO_XCAT_INSTALL_LIST[@]}") \
 			<(echo "${xcat_core_package_list[@]}")
@@ -1186,9 +1186,9 @@ function update_xcat()
 function list_xcat_packages()
 {
 	GO_XCAT_CORE_PACKAGE_LIST=($(get_package_list xcat-core))
-	exit_if_bad "$?" "Fail to get package list from repository \`xcat-core'."
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-core'."
 	GO_XCAT_DEP_PACKAGE_LIST=($(get_package_list xcat-dep))
-	exit_if_bad "$?" "Fail to get package list from repository \`xcat-dep'."
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."
 
 	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
