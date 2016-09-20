@@ -69,7 +69,7 @@ if ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}
 }
 else
 {
-    if (-p STDIN) {
+    unless (-t STDIN) {
         while (<STDIN>) { $data .= $_; }
         $cmdref->{stdin}->[0] = $data;
     }
