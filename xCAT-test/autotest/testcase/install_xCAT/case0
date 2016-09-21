@@ -10,7 +10,7 @@ cmd:cp /xcat-dep*.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 check:rc==0
 cmd:ls /go-xcat
 check:rc==0
-cmd:cd /; ./go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
+cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
@@ -37,7 +37,7 @@ cmd:cp /xcat-dep*.tar.bz2 /install_xCAT_xcat-dep.tar.bz2
 check:rc==0
 cmd:ls /go-xcat
 check:rc==0
-cmd:cd /; ./go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
+cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
