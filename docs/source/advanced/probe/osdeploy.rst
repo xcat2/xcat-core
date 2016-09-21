@@ -1,9 +1,11 @@
 osdeploy
 ========
 
-**osdeploy** can be used to probe OS provision process. Realtime monitor or replay history of OS provision process.
-
-If realtime monitor, run this command before ``rpower`` node(including the command rpower node indirectly, e.g ``rinstall``, ``rnetboot``).
+**osdeploy** operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.
+  
+Realtime monitor: This is a default. This tool with monitor provision state of the node. Trigger 'Realtime monitor' before rebooting target node to do provisioning.
+    
+Replay history: Used after provisioning is finished to probe the previously completed provisioning.
 
 **Note**: Currently, hierarchical structure is not supported.
 
@@ -13,15 +15,15 @@ Usage
 ::
 
     xcatprobe osdeploy -h
-    xcatprobe osdeploy -n <node_range> [-V]
+    xcatprobe osdeploy -n <node_range>  [-t <max_waiting_time>] [-V]
     xcatprobe osdeploy -n <node_range> -r <xxhxxm> [-V]
 
 Options:
 
-* **-n**: The range of nodes for monitor or replay log.
-* **-r**: Replay history log for probe provisioniong. Input a start time when probe should begin. Supported time formats are ``xxhxxm``, ``xxh``, or ``xxm``. If units not specified, hour will be used by default.
-* **-t**: The maximum time in minutes to wait when doing monitor, default is 60.
-* **-V**: Output more information for debug.
+* **-n**: The range of nodes to be monitored or replayed.
+* **-r**: Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute). If unit is not specified, hour will be used by default.
+* **-t**: The maximum time to wait when doing monitor, unit is minutes. default is 60.
+* **-V**: Output more information.
 
 ``-r`` means replay history of OS provision, if no ``-r`` means to do realtime monitor.
 
