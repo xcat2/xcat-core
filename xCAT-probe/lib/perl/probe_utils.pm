@@ -17,17 +17,17 @@ use Socket;
         The valid <flag> are debug, warning, failed, info and ok
     Arguments:
         output: where should the message be output 
-              The vaild value are:
+              The vaild values are:
               stdout : print message to STDOUT
-              a file name: print message to the file which "file name" specify 
-        tag:  the type of message, the valid value are:
+              a file name: print message to the specified "file name" 
+        tag:  the type of message, the valid values are:
               d: debug
               w: warning
               f: failed
               o: ok
               i: info
 
-              if tag is NULL, that means output message without tag
+              If tag is NULL, output message without a tag
              
         msg:  the information need to output
      Returns:
@@ -532,7 +532,7 @@ sub convert_to_epoch_seconds {
     Arguments:
         noderange : the range of node
     Returns:
-        A array which contain each node name
+        An array which contains each node name
 =cut
 
 #------------------------------------------

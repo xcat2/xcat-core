@@ -47,13 +47,13 @@ my $debug = 0;
 my $program_name = basename("$0");
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -n <node_range> [-t <max_waiting_time]> [-V]
+    $program_name -n <node_range> [-t <max_waiting_time>] [-V]
     $program_name -n <node_range> -r <roll_back_duration> [-V]
 
 Description:
-    Probe operating system provision process. Support two modes, they are 'Realtime monitor' and 'Replay history'.
-    Realtime monitor: Used during doing provision, trigger 'Realtime monitor' before triggering target node reboot to do provision. This tool will monitor the provision state of node. If without specific instruction, do 'Realtime monitor' by default. 
-    Replay history: Used after finish provision, to probe the provision happened some while ago.
+    Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'. 
+    Realtime monitor: This is a default. This tool with monitor provision state of the node. Trigger 'Realtime monitor' before rebooting target node to do provisioning.
+    Replay history: Used after provisioning is finished to probe the previously completed provisioning.
 
     [NOTE] Currently, hierarchial structure is not supported.
 
@@ -61,9 +61,9 @@ Options:
     -h : Get usage information of $program_name
     -V : Output more information 
     -n : The range of nodes to be monitored or replayed.
-    -t : The maximum time to wait when doing monitor, unit is minute. default is 60.
-    -r : Trigger 'Replay history' mode. follow the duration of rolling back. Unit are 'h' (hour) or 'm' (minute)
-         Supported formats look like 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
+    -t : The maximum time to wait when doing monitor, unit is minutes. default is 60.
+    -r : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
+         Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
          If unit is not specified, hour will be used by default.
 ";
 
@@ -141,6 +141,8 @@ if ($rollforward_time_of_replay) {
         $start_time_of_replay -= $1 * 60;
     }
 
+    #    $start_time_of_replay = 1472437250;    ########################
+
     $rst = do_replay($noderange, $start_time_of_replay, $end_time_of_replay);
     exit $rst;
 }
@@ -171,7 +173,7 @@ sub do_pre_check {
     my @error = ();
     my $sub_func_rst = obtain_install_nic(\$installnic, \@error);
     if ($sub_func_rst) {
-        probe_utils->send_msg("stdout", "f", "Obtain install NIC in current server failed");
+        probe_utils->send_msg("stdout", "f", "Failed to obtain install NIC in current server");
         probe_utils->send_msg("stdout", "d", "$_") foreach (@error);
     } else {
         probe_utils->send_msg("stdout", "i", "The install NIC in current server is $installnic");
@@ -184,7 +186,7 @@ sub do_pre_check {
         probe_utils->send_msg("stdout", "f", "There is something wrong in node definition");
         probe_utils->send_msg("stdout", "d", "$_") foreach (@error);
     } else {
-        probe_utils->send_msg("stdout", "o", "All nodes which will be deployed are valid");
+        probe_utils->send_msg("stdout", "o", "All nodes to be deployed are valid");
     }
     $rst |= $sub_func_rst;
 
@@ -358,8 +360,14 @@ sub do_replay {
 
     my $rc = 0;
 
+    #handle INT/TERM  signal
+    my $terminal = 0;
+    $SIG{TERM} = $SIG{INT} = sub {
+        $terminal = 1;
+    };
+
     my $timestr = scalar(localtime($start_time_of_replay));
-    probe_utils->send_msg("stdout", "d", "Start to scan logs which are later than '$timestr', please waiting for a while.............");
+    probe_utils->send_msg("stdout", "d", "Starting to scan logs which are later than '$timestr', please waiting for a while.............");
 
     my %node_state;
     init_node_state($noderange, \%node_state);
@@ -375,7 +383,7 @@ sub do_replay {
         my @valid_one_second_log_set;
         my $rst = $log_parse->obtain_one_second_logs($start_time_of_replay, \@valid_one_second_log_set);
         if ($rst) {
-            probe_utils->send_msg("stdout", "d", "Obtain logs failed from log files");
+            probe_utils->send_msg("stdout", "d", "Failed to obtain logs from log files");
             $rc = 1; 
             last;
         }
@@ -385,6 +393,13 @@ sub do_replay {
         }
 
         $start_time_of_replay = $log_parse->obtain_next_second();
+    
+        # receive terminal signal from customer
+        if ($terminal) {
+            probe_utils->send_msg("stdout", "d", "Get INT or TERM signal!!!");
+            probe_utils->send_msg("stdout", "w", "Haven't scaned all valid logs, report based on the logs have been scaned");
+            last;
+        }
     }
     $log_parse->destory();
 
@@ -455,11 +470,15 @@ sub conclusion_report {
         #   that means reboot target node failed.
         # 2 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
         #   It is very possible to just do reboot process
+        # 3 There isn't reboot operation for target node during the rollback time window 
+        #   That means there isn't provision process happened 
 
         if ($start_rpower && !$power_on) {
             $failed_node{$node}{non_provision_prediction} = "Trigger target node reboot failed";
         } elsif ($start_rpower && $power_on && !$isntalling && $postbootscript) {
             $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
+        } elsif (! $start_rpower){
+            $failed_node{$node}{non_provision_prediction} = "Without provision process during rollback time window"; 
         } else {
             if ($stop_stage != $::STATE_COMPLETED) {
                 $failed_node{$node}{provision_stop_point} = $stop_stage;
@@ -471,9 +490,9 @@ sub conclusion_report {
     if (%failed_node) {
         my $failed_node_num = keys %failed_node;
         if ($failed_node_num > 1) {
-            probe_utils->send_msg("stdout", "d", "There are $failed_node_num node provision failed");
+            probe_utils->send_msg("stdout", "d", "There are $failed_node_num node provision failures");
         } elsif ($failed_node_num == 1) {
-            probe_utils->send_msg("stdout", "d", "There is $failed_node_num node provision failed");
+            probe_utils->send_msg("stdout", "d", "There is $failed_node_num node provision failures");
         }
 
         foreach my $node (keys %failed_node) {
@@ -484,7 +503,7 @@ sub conclusion_report {
             }
         }
     } else {
-        probe_utils->send_msg("stdout", "o", "All nodes provision successfully");
+        probe_utils->send_msg("stdout", "o", "All nodes provisioned successfully");
     }
     return 0;
 }
@@ -545,7 +564,7 @@ Start capturing every message during OS provision process....
                 }
             }
         } else {
-            probe_utils->send_msg("stdout", "f", "There isn't any vaild log file to be scaned");
+            probe_utils->send_msg("stdout", "f", "There are no valid log files to be scanned");
             $rst = 1;
         }
 
@@ -764,8 +783,6 @@ sub handle_dhcp_msg {
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
                 my $warn_msg = "The ip($ip) assigned to $mac via DHCP is different from the ip($macmap{$mac}{'ip'}) in node definition.";
-
-                #probe_utils->send_msg("stdout", "w", "$warn_msg") if ($monitor);
                 probe_utils->send_msg("stdout", "w", "$warn_msg");
             }
 
@@ -800,7 +817,7 @@ sub handle_tftp_msg {
             probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $record") if ($monitor);
             push(@{ $node_state_ref->{ $ipnodemap{$ip} }{log} }, $log_ref->{msg}) if ($debug);
 
-            if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/grub2\-/i or $file =~ /\yb\/node\/yaboot\-/i) {
+            if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/powerpc-ieee1275\//i or $file =~ /\/yb\/node\/yaboot\-/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_BOOTLODER);
             } elsif ($file =~ /vmlinuz|inst64|linux/) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);
@@ -843,9 +860,9 @@ sub handle_http_msg {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);
             } elsif ($file =~ /initrd/i and $file =~ /osimage/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INITRD);
-            } elsif ($file =~ /\/install\/autoinst\/*/i) {
+            } elsif (($file =~ /^\/install\/autoinst\//i) and ($file !~ /getinstdisk$/i) and ($file !~ /\.pre$/i) and ($file !~ /\.post$/i)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KICKSTART);
-            } elsif ($file =~ /\.deb/i or ($file =~ /\/install\// and $file =~ /\/repodata\//i)) {
+            } elsif ($file =~ /\.deb$/i or $file =~ /\/Packages\/.+\.rpm$/ or $file =~ /\/suse\/noarch\/.+\.rpm$/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INSTALLRPM);
             }
         }

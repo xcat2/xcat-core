@@ -96,7 +96,7 @@ sub obtain_candidate_mn_hostname_in_log {
     if ($self->{debug}) {
         my $tmpstr = "";
         $tmpstr .= "$_ " foreach (@candidate_svr_hostname_inlog);
-        probe_utils->send_msg("stdout", "d", "The candidate MN hostname in log are $tmpstr");
+        probe_utils->send_msg("stdout", "d", "The candidate MN hostname(s) in log are $tmpstr");
     }
     return @candidate_svr_hostname_inlog;
 }
@@ -116,7 +116,7 @@ sub obtain_candidate_mn_hostname_in_log {
         $candidate_log{<label>}{type}
         <label> : The short name of log file 
         file:  The log file name, including full path
-        type: The valid type are $::LOGTYPE_HTTP and $::LOGTYPE_RSYSLOG, refer to 'probe_global_constant' for more information.
+        type: The valid types are $::LOGTYPE_HTTP and $::LOGTYPE_RSYSLOG, refer to 'probe_global_constant' for more information.
 =cut
 
 #------------------------------------------
@@ -285,7 +285,7 @@ sub obtain_one_second_logs {
                     $self->{log_open_info}->{$loglabel}{openning_file_index} = $i;
                     $self->{log_open_info}->{$loglabel}{next_read_point} = $next_read_point;
                     $self->{log_open_info}->{$loglabel}{next_start_time} = $next_start_time;
-                    $self->debuglogger("\tfound all vaild log");
+                    $self->debuglogger("\tfound all vaild logs");
                     last;
                 }
             }    #end ratate_files loop
