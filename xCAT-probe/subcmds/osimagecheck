@@ -1,0 +1,155 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Net::Ping;
+use Getopt::Long qw(:config no_ignore_case);
+
+use Data::Dumper;
+use warnings;
+
+my $program_name = basename("$0");
+my $help;
+my $noderange = "";
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name -c {duplicate_rootimgdir|valid_osimage_attributes} [-V|--verbose]
+
+Description:
+    Use this command to check osimage defintions in xCAT DB. 
+
+Options:
+    -h : Get usage information of $program_name
+    -c : Check osimage definitions in xCAT DB
+         duplicate_rootimgdir     : Check for osimage definitions with duplicate rootimgdir values
+         valid_osimage_attributes : Check for validity of attributes in osimage definitions
+    -V : To print additional debug information.
+";
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h" => \$help,
+        "T"                  => \$test,
+        "V|verbose"          => \$VERBOSE,
+        "c=s"                => \$what_to_check))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($what_to_check) {
+    if ($what_to_check eq "duplicate_rootimgdir") {
+        $CHECK_ROOTIMGDIR = 1; 
+    }
+
+    if ($what_to_check eq "valid_osimage_attributes") {
+        $VALID_OSIMAGE_ATTRIBUTES = 1; 
+    }
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Use this command to check osimage defintions in xCAT DB.");
+    exit 0;
+}
+
+if (scalar(@ARGV) >= 1) {
+
+    # After processing all the expected flags and arguments,
+    # there is still left over stuff on the command line
+    probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($CHECK_ROOTIMGDIR) {
+    my $rc = check_for_duplicate_rootimgdir();
+    exit $rc;
+} elsif ($VALID_OSIMAGE_ATTRIBUTES) {
+    my $rc = check_for_valid_osimage_attributes();
+    exit $rc;
+} else {
+    probe_utils->send_msg("$output", "d", "Unknown type of osimage checking to perform: $what_to_check");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+# Check for osimage definitions with duplicate values for rootimgdir
+sub check_for_duplicate_rootimgdir {
+    my $na = "N/A";
+
+    my %rootimgdir_osimage_hash;
+    my $any_dups = 0;
+
+    my $all_osimages_rootimgdir = `lsdef -t osimage -i rootimgdir -c 2> /dev/null`;
+    chomp($all_osimages_rootimgdir);
+    my @all_osimages_rootimgdir_lines = split("[\n\r]", $all_osimages_rootimgdir);
+
+    if (scalar(@all_osimages_rootimgdir_lines) <= 0) {
+
+        # There were no osimages found. Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "No osimages were found.");
+        return 1;
+    }
+
+    # Build a hash of key="rootimgdir" value="osimagename"
+    foreach (@all_osimages_rootimgdir_lines) {
+        probe_utils->send_msg("$output", "d", "Processing $_.") if ($VERBOSE);
+        my ($osimage_name, $rootimgdir) = split ":", $_;
+        if ($rootimgdir eq " rootimgdir=") {
+            # Exclude entries that do not have rootimg set
+            probe_utils->send_msg("$output", "d", "No rootimgdir for osimage $osimage_name") if ($VERBOSE);
+            next;
+        }
+        # Check if hash already has the same key indicating another osimage definition has the same rootimgdir
+        if (exists($rootimgdir_osimage_hash{$rootimgdir})) {
+            probe_utils->send_msg("$output", "w", "Duplicate found for osimage with $rootimgdir : \n    $osimage_name and $rootimgdir_osimage_hash{$rootimgdir}");
+            $any_dups = 1;
+        }
+        else {
+            $rootimgdir_osimage_hash{$rootimgdir} = $osimage_name;
+        }
+
+    }
+
+    print Dumper(\%rootimgdir_osimage_hash) if ($VERBOSE);
+
+    my $rc = 1;
+    unless ($any_dups) {
+        probe_utils->send_msg("$output", "o", "No osimages with duplicate rootimgdir were found.");
+        $rc = 0;
+    }
+
+    return $rc;
+}
+
+# Check attributes in osimage definitions for valid format
+sub check_for_valid_osimage_attributes {
+    my $na = "N/A";
+
+    my $rc = 1;
+
+    probe_utils->send_msg("$output", "d", "Probe to check for valid osimage attributes is not yet implemented.");
+
+    return $rc;
+}
