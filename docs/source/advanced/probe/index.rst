@@ -1,10 +1,11 @@
 xCAT probe
 ==========
 
-xCAT offers a tool **probe** to help customer to use xCAT.
+xCAT offers a new tool suite, which called **xCAT probe**, to help customer to probe all the possible issues in xCAT.
 
 You can use ``xcatprobe -l`` to list all valid subcommand, output will be as below  ::
 
+    # xcatprobe -l
     osdeploy                 Probe for OS provision process, realtime monitor of OS provision process.
     xcatmn                   After xcat installation, use this command to check if xcat has been installed correctly and is
                              ready for use. Before using this command, install 'tftp', 'nslookup' and 'wget' commands.

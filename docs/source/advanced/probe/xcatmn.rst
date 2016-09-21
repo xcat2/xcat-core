@@ -20,6 +20,7 @@ For example, run command on Management Node ::
  
 Output will be like this ::
 
+    # xcatprobe xcatmn -i eth0
     [MN]: Sub process 'xcatd: SSL listener' is running                                                                [ OK ]
     [MN]: Sub process 'xcatd: DB Access' is running                                                                   [ OK ]
     [MN]: Sub process 'xcatd: UDP listener' is running                                                                [ OK ]
