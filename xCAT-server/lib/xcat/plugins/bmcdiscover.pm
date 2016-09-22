@@ -204,6 +204,16 @@ sub bmcdiscovery_processargs {
         return 1;
     }
 
+    ############################################
+    # Option -U and -P for bmc user and password 
+    ############################################
+    if ($::opt_U) {
+        $bmc_user = $::opt_U;
+    }
+    if ($::opt_P) {
+        $bmc_pass = $::opt_P;
+    }
+
     #########################################
     # Option -s -r should be together
     ######################################
@@ -303,6 +313,8 @@ sub bmcdiscovery_processargs {
                 $msg = "The ipsource option requires a BMC IP.  Specify the IP using the -i|--bmcip option.";
             } elsif (!defined($::opt_P)) {
                 $msg = "The ipsource option requires a password.  Specify the password with the -p|--bmcpasswd option.";
+            } else {
+                $msg = "Failed to process ipsource command for bmc ip=$::opt_I user=$bmc_user password=$bmc_pass";
             }
             my $rsp = {};
             push @{ $rsp->{data} }, "$msg";
@@ -343,12 +355,14 @@ sub get_bmc_ip_source {
     my $callback = $::CALLBACK;
     my $pcmd;
 
+
     if ($bmcuser eq "none") {
         $pcmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -P $bmcpw -H $bmcip lan print ";
     }
     else {
         $pcmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U $bmcuser -P $bmcpw -H $bmcip lan print ";
     }
+
     my $output = xCAT::Utils->runcmd("$pcmd", -1);
 
     if ($output =~ "IP Address Source") {
@@ -372,9 +386,13 @@ sub get_bmc_ip_source {
             # Error: RAKP 2 HMAC is invalid <== incorrect password
             push @{ $rsp->{data} }, "$bmc_resp2";
         } else {
+            my $error_msg = `echo "$output"|grep "Error" `;
+            if ($error_msg eq ""){
+                $error_msg = "Can not find IP address Source";
+            }
 
             # all other errors
-            push @{ $rsp->{data} }, "Error: Can not find IP Address Source";
+            push @{ $rsp->{data} }, "$error_msg";
         }
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;
