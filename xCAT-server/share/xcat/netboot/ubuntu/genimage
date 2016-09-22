@@ -617,6 +617,17 @@ if ($postinstall_filename) {
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
+    #export some osimage attributes as the environment variables
+    #to postinstall script
+    $ENV{IMG_ARCH}=$arch if("" ne $arch);
+    $ENV{IMG_OSVER}=$osver if("" ne $osver);
+    $ENV{IMG_PROFILE}=$profile if("" ne $profile);
+    $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
+    $ENV{IMG_PKGDIR}=$srcdir if("" ne $srcdir);
+    $ENV{IMG_OTHERPKGLIST}=$otherpkglist if("" ne $otherpkglist);
+    $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
+    $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
+
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
@@ -628,6 +639,10 @@ if ($postinstall_filename) {
             exit 1;
         }
     }
+
+    #delete the osimage attributes from environment variable
+    delete @ENV{qw(IMG_ARCH IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+  
 }
 
 # Default to the first kernel found in the install image if nothing specified explicitly.
