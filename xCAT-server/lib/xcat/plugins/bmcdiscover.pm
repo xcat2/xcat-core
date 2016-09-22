@@ -207,8 +207,18 @@ sub bmcdiscovery_processargs {
     ############################################
     # Option -U and -P for bmc user and password 
     ############################################
+    #
+    # Get the default bmc account from passwd table, 
+    # this is only done for the discovery process
+    #
+    ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+    # overwrite the default user and password if one is provided
     if ($::opt_U) {
         $bmc_user = $::opt_U;
+    } elsif ($::opt_P) {
+        # If password is provided, but no user, set the user to blank
+        # Support older FSP and Tuletta machines
+        $bmc_user = '';
     }
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
@@ -244,23 +254,6 @@ sub bmcdiscovery_processargs {
             push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
-        }
-
-        #
-        # Get the default bmc account from passwd table, this is only done for the 
-        # discovery process
-        #
-        ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
-        # overwrite the default password if one is provided
-        if ($::opt_U) {
-            $bmc_user = $::opt_U;
-        } else {
-            # If password is provided, but no user, set the user to blank
-            # Support older FSP and Tuletta machines
-            $bmc_user = '';
-        }
-        if ($::opt_P) {
-            $bmc_pass = $::opt_P;
         }
 
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);
@@ -303,7 +296,7 @@ sub bmcdiscovery_processargs {
     # --ipsource option, requires -i, -p to be specified
     ####################################################
     if (defined($::opt_S)) {
-        if (defined($bmc_user) && defined($bmc_pass) && defined($::opt_I)) {
+        if (defined($bmc_pass) && defined($::opt_I)) {
             my $res = get_bmc_ip_source($::opt_I, $bmc_user, $bmc_pass);
             return $res;
         }
