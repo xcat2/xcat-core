@@ -143,9 +143,9 @@ sub handle_rest_request {
 
 #-------------------------------------------------------
 sub list_adapters {
-    my ($rsp, $result, $cmd, $tmpres, $vline);
+    my ($rsp, $cmd, $tmpres, $vline);
     my ($mac, $ip, $adapter, $preadapter, $samenic);
-    my (@cmdres, @origin, @eachline, @line);
+    my (@cmdres, @origin, @eachline, @line, @result);
         $cmd = "ip -o addr";
         @cmdres = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0) {
@@ -177,7 +177,7 @@ sub list_adapters {
         foreach my $key (keys %{$samenic}){
             $vline=${$samenic}{$key};
             @line = split(' ',$vline);
-            my @tmpattr;
+            $tmpres->{'name'} = $key;
             for (my $i=0; $i<@line; $i++) {
 
                 if ( $line[$i] =~ /^inet$/ ) {
@@ -190,11 +190,12 @@ sub list_adapters {
                     $tmpres->{'mac'} = $mac;
                 }
            }
-           push (@tmpattr, $tmpres);
-           $result->{$key}=\@tmpattr;
+           push (@result, $tmpres);
        }
-    return $result
+    return \@result;
 }
+
+
 
 #-------------------------------------------------------
 
