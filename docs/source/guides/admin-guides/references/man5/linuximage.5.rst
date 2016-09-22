@@ -92,8 +92,17 @@ linuximage Attributes:
 
 \ **postinstall**\ 
  
- The fully qualified name of the script file that will be run at the end of the genimage command. It could be set to multiple paths. The multiple paths must be separated by ",". It is used for diskless image only.
- 
+ Only supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be speperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts ::
+
+       IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
+       IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
+       IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
+       IMG_PKGLIST(the "pkglist" attribute of the osimage), 
+       IMG_PKGDIR(the "pkgdir" attribute of the osimage), 
+       IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage), 
+       IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage), 
+       IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)
+
 
 
 \ **rootimgdir**\ 
