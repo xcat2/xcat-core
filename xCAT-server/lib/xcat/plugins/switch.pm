@@ -318,7 +318,7 @@ sub process_request {
         }
 
         if ($node) {
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Found node: $node");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Found node: $node matching for discovery request");
 
             # No need to write mac table here, 'discovered' command will write
             # my $mactab = xCAT::Table->new('mac',-create=>1);
@@ -338,7 +338,7 @@ sub process_request {
             %{$request} = ();    #Clear req structure, it's done..
             undef $mactab;
         } else {
-            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Warning: Could not find any nodes using switch-based discovery");
+            xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Warning: Could not find any node matching using switch-based discovery");
         }
     }
 }
