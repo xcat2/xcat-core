@@ -620,6 +620,7 @@ if ($postinstall_filename) {
     #export some osimage attributes as the environment variables
     #to postinstall script
     $ENV{IMG_ARCH}=$arch if("" ne $arch);
+    $ENV{IMG_NAME}=$imagename if("" ne $imagename);
     $ENV{IMG_OSVER}=$osver if("" ne $osver);
     $ENV{IMG_PROFILE}=$profile if("" ne $profile);
     $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
@@ -641,7 +642,7 @@ if ($postinstall_filename) {
     }
 
     #delete the osimage attributes from environment variable
-    delete @ENV{qw(IMG_ARCH IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
   
 }
 

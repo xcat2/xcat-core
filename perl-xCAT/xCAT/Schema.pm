@@ -775,6 +775,7 @@ passed as argument rather than by table value',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
             postinstall => 'Only supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be speperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
       IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
+      IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
       IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
       IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
       IMG_PKGLIST(the "pkglist" attribute of the osimage), 
