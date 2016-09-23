@@ -15,6 +15,7 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use Getopt::Long;
 use Expect;
+use Net::Ping;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::NetworkUtils;
@@ -70,7 +71,7 @@ if ($::SWITCH)
         if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /Mellanox/) {
             push @nodes, $fsw;
         } else {
-            xCAT::MsgUtils->message("E","The $fsw is not BNT switch, will not config");
+            xCAT::MsgUtils->message("E","The $fsw is not Mellanox switch, will not config");
         }
     }
     unless (@nodes) {
@@ -118,11 +119,33 @@ sub config_ip {
     foreach my $switch (@nodes) {
         print "change $switch to static ip address\n";
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
+        if (!$dip) {
+            print "Add otherinterfaces attribute for discover ip: chdef $switch otherinterfaces=x.x.x.x\n";
+            next;
+        }
+
+        #Validate if this IP is reachable 
+        my $p = Net::Ping->new();
+        if (!$p->ping($dip)) {
+            print "$dip is not reachable\n";
+            next;
+        }
+ 
         my $static_ip= $nodehash->{$switch}->[0]->{ip};
+
+        # don't need to set if ip addresses are same
+        if ($dip eq $static_ip) {
+            print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
+            next;
+        }
 
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
-        print "dip=$dip, static=$static_ip, dsw=$dswitch\n";
+
+        # if hostnames are same, created different one for discovery name
+        if ($dswitch eq $switch) {
+            $dswitch="";
+        }
 
         #if not defined, need to create one for xdsh to use
         if (!$dswitch) {
@@ -247,11 +270,11 @@ sub run_rspconfig {
 sub usage
 {
     print "Usage:
-    configMellonax [-?│-h│--help] 
-    configMellonax [--switches switchnames] [--all]
-    configMellonax [--switches switchnames] [--ip]
-    configMellonax [--switches switchnames] [--name]
-    configMellonax [--switches switchnames] [--config]  
+    configMellanox [-?│-h│--help] 
+    configMellanox [--switches switchnames] [--all]
+    configMellanox [--switches switchnames] [--ip]
+    configMellanox [--switches switchnames] [--name]
+    configMellanox [--switches switchnames] [--config]  
     \n";
 }
 

@@ -48,7 +48,13 @@ In order to do switch-based switch discovery, the admin
       switchtype=BNT
 
 
-3.  Setup Dynamic IP range in network table for discovered switches to use. ::
+3.  Add switches to /etc/hosts for hostname lookup and xdsh command.  ::
+
+    makehosts switch-192-168-5-23
+    makehosts switch-192-168-5-22
+
+
+4.  Setup Dynamic IP range in network table for discovered switches to use. ::
 
      # tabdump networks
       #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
