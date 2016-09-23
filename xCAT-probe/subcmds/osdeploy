@@ -423,7 +423,7 @@ sub do_replay {
 sub conclusion_report {
     my $node_state_ref = shift;
 
-    probe_utils->send_msg("stdout", "", "==================conclusion_report=================");
+    probe_utils->send_msg("stdout", "", "==================osdeploy_probe_report=================");
 
     if ($debug) {
         print "---->the result of %node_state<------\n";
@@ -431,17 +431,22 @@ sub conclusion_report {
     }
 
     if ($verbose) {
-        probe_utils->send_msg("stdout", "d", "----------node history state----------");
+        probe_utils->send_msg("stdout", "d", "----------node state history----------");
         foreach my $node (keys %$node_state_ref) {
             my $allhistorystate;
             my $historystate;
+            probe_utils->send_msg("stdout", "d", "[$node]:");
             if (@{ $node_state_ref->{$node}{allstatehistory} }) {
-                $allhistorystate .= "$::STATE_DESC{$_} " foreach (@{ $node_state_ref->{$node}{allstatehistory} });
-                probe_utils->send_msg("stdout", "d", "[$node] the history before last loop provision: $allhistorystate");
+                $allhistorystate .= "$::STATE_DESC{$_}=>" foreach (@{ $node_state_ref->{$node}{allstatehistory} });
+                $allhistorystate =~ s/=>$//g;
+                probe_utils->send_msg("stdout", "d", "Setps executed prior to last provisioning attempt:");
+                probe_utils->send_msg("stdout", "d", "$allhistorystate");
             }
 
-            $historystate .= "$::STATE_DESC{$_} " foreach (@{ $node_state_ref->{$node}{statehistory} });
-            probe_utils->send_msg("stdout", "d", "[$node] last loop provision history: $historystate");
+            $historystate .= "$::STATE_DESC{$_}=>" foreach (@{ $node_state_ref->{$node}{statehistory} });
+            $historystate =~ s/=>$//g;
+            probe_utils->send_msg("stdout", "d", "Steps executed for last provisioning attempt:");
+            probe_utils->send_msg("stdout", "d", "$historystate");
         }
         probe_utils->send_msg("stdout", "d", "--------------------------------------");
     }
@@ -503,7 +508,7 @@ sub conclusion_report {
             }
         }
     } else {
-        probe_utils->send_msg("stdout", "o", "All nodes provisioned successfully");
+        probe_utils->send_msg("stdout", "o", "All nodes provision successfully");
     }
     return 0;
 }
@@ -919,7 +924,9 @@ sub handle_cluster_msg {
                 set_node_state($node_state_ref, $node, $::STATE_POWERINGON);
             } elsif ($status eq "booting") {
                 set_node_state($node_state_ref, $node, $::STATE_BOOTING);
-            }
+            } elsif ($status eq "failed") {
+                $node_state_ref->{$node}{done} = 1;
+            } 
         }
     }
 }

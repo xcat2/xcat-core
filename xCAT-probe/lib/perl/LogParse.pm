@@ -62,7 +62,7 @@ sub new {
         my $logfiledir = "/tmp/xcatprobedebug/";
         mkpath("$logfiledir") unless (-d "$logfiledir");
         $self->{debuglogpath} = $logfiledir;
-        $self->{debuglogfd};
+        $self->{debuglogfd} = undef;
     }
 
     bless($self, ref($class) || $class);
@@ -94,8 +94,7 @@ sub obtain_candidate_mn_hostname_in_log {
     push(@candidate_svr_hostname_inlog, $svr_hostname_short);
     push(@candidate_svr_hostname_inlog, "$svr_hostname_short.$svr_hostname_domain");
     if ($self->{debug}) {
-        my $tmpstr = "";
-        $tmpstr .= "$_ " foreach (@candidate_svr_hostname_inlog);
+        my $tmpstr = join(" ", @candidate_svr_hostname_inlog);
         probe_utils->send_msg("stdout", "d", "The candidate MN hostname(s) in log are $tmpstr");
     }
     return @candidate_svr_hostname_inlog;
@@ -180,9 +179,7 @@ sub obtain_one_second_logs {
 
     if ($self->{debug}) {
         my $logfile = "$self->{debuglogpath}/obtain_one_second_logs.$the_time_to_load";
-        my $fd;
-        open($fd, "> $logfile");
-        $self->{debuglogfd} = $fd;
+        open($self->{debuglogfd}, "> $logfile");
     }
 
     #read log for the first time
@@ -554,13 +551,13 @@ sub convert_to_epoch_seconds {
         $yday = $self->{current_ref_year};
         $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
         if ($epoch_seconds > $self->{current_ref_time}) {
-            $yday -= 1;
+            --$yday;
             $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
         }
 
         # The time format looks like "15/Aug/2016:01:10:24"
     } elsif ($timestr =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/) {
-        $epoch_seconds = timelocal($6, $5, $4, $1, $monthsmap{$2}, ($3 - 1900));
+        $epoch_seconds = timelocal($6, $5, $4, $1, $monthsmap{$2}, $3);
     }
     return $epoch_seconds;
 }
@@ -676,8 +673,7 @@ sub debuglogger {
     my $self = shift;
     my $msg  = shift;
     if ($self->{debug}) {
-        my $fd = $self->{debuglogfd};
-        print $fd "$msg\n";
+        print {$self->{debuglogfd}} "$msg\n";
     }
 }
 1;

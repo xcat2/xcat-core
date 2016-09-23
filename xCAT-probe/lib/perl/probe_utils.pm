@@ -540,7 +540,7 @@ sub parse_node_range {
     my $noderange = shift;
     $noderange= shift if (($noderange) && ($noderange =~ /probe_utils/));
     my @nodeslist = `nodels $noderange`;
-    chomp($_) foreach(@nodeslist);
+    chomp @nodeslist;
     return @nodeslist;
 }
 1;
