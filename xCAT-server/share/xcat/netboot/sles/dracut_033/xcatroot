@@ -36,7 +36,7 @@ if [ ! -z "$imgurl" ]; then
 		while [ ! -r "$FILENAME" ]; do
             [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "downloading $imgurl...."
 			echo Getting $imgurl...
-			if ! wget $imgurl; then
+			if ! wget -nv $imgurl; then
                 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "downloading $imgurl failed,retrying...."
 				rm -f $FILENAME
 				sleep 27
