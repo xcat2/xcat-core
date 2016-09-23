@@ -893,7 +893,7 @@ fi
 if [ \"\$return_value\" -eq \"0\" ]; then
     msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
-    logger -t xcat.provision -p local4.info \"provision completed.(\$NODE)\"
+    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\"
 else
     msgutil_r \$MASTER_IP \"debug\" \"node boot failed,reporting status...\" \"/var/log/xcat/xcat.log\"
     updateflag.awk \$MASTER 3002 \"installstatus failed\"
