@@ -462,7 +462,7 @@ sub obtain_valid_log_start_point {
         %log_content
         $log_content{time}   : the timestamp of log, the format is epoch_seconds
         $log_content{sender} : the sender of log
-        $log_content{label}  : the label of log, such as $::LOGLABEL_DHCPD, $::LOGLABEL_TFTP.... refer to "probe_golbal_constant" for all kinds vaild labels 
+        $log_content{label}  : the label of log, such as $::LOGLABEL_DHCPD, $::LOGLABEL_TFTP.... refer to "probe_global_constant" for all kinds vaild labels 
         $log_content{msg}    : the main message of log
 =cut
 

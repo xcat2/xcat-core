@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-package probe_golbal_constant;
+package probe_global_constant;
 
 #The type of log
 $::LOGTYPE_RSYSLOG = 0;    #rsyslog
