@@ -19,19 +19,17 @@ my $test;
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
+my $rc      = 0;
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -c {duplicate_rootimgdir|valid_osimage_attributes} [-V|--verbose]
+    $program_name [-V|--verbose]
 
 Description:
     Use this command to check osimage defintions in xCAT DB. 
 
 Options:
     -h : Get usage information of $program_name
-    -c : Check osimage definitions in xCAT DB
-         duplicate_rootimgdir     : Check for osimage definitions with duplicate rootimgdir values
-         valid_osimage_attributes : Check for validity of attributes in osimage definitions
     -V : To print additional debug information.
 ";
 
@@ -41,8 +39,7 @@ Options:
 if (
     !GetOptions("--help|h" => \$help,
         "T"                  => \$test,
-        "V|verbose"          => \$VERBOSE,
-        "c=s"                => \$what_to_check))
+        "V|verbose"          => \$VERBOSE))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
     probe_utils->send_msg("$output", "d", "$::USAGE");
@@ -56,16 +53,6 @@ if ($help) {
         print "$::USAGE";
     }
     exit 0;
-}
-
-if ($what_to_check) {
-    if ($what_to_check eq "duplicate_rootimgdir") {
-        $CHECK_ROOTIMGDIR = 1; 
-    }
-
-    if ($what_to_check eq "valid_osimage_attributes") {
-        $VALID_OSIMAGE_ATTRIBUTES = 1; 
-    }
 }
 
 if ($test) {
@@ -82,17 +69,10 @@ if (scalar(@ARGV) >= 1) {
     exit 1;
 }
 
-if ($CHECK_ROOTIMGDIR) {
-    my $rc = check_for_duplicate_rootimgdir();
-    exit $rc;
-} elsif ($VALID_OSIMAGE_ATTRIBUTES) {
-    my $rc = check_for_valid_osimage_attributes();
-    exit $rc;
-} else {
-    probe_utils->send_msg("$output", "d", "Unknown type of osimage checking to perform: $what_to_check");
-    probe_utils->send_msg("$output", "d", "$::USAGE");
-    exit 1;
-}
+# Run all osinage probe checks one after another
+$rc = check_for_duplicate_rootimgdir();
+$rc = check_for_valid_osimage_attributes();
+exit $rc;
 
 # Check for osimage definitions with duplicate values for rootimgdir
 sub check_for_duplicate_rootimgdir {
@@ -147,9 +127,7 @@ sub check_for_duplicate_rootimgdir {
 sub check_for_valid_osimage_attributes {
     my $na = "N/A";
 
-    my $rc = 1;
-
-    probe_utils->send_msg("$output", "d", "Probe to check for valid osimage attributes is not yet implemented.");
+    my $rc = 0;
 
     return $rc;
 }
