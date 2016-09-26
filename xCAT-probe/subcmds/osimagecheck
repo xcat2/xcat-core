@@ -19,7 +19,6 @@ my $test;
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
-my $rc      = 0;
 
 $::USAGE = "Usage:
     $program_name -h
@@ -70,9 +69,8 @@ if (scalar(@ARGV) >= 1) {
 }
 
 # Run all osinage probe checks one after another
-$rc = check_for_duplicate_rootimgdir();
-$rc = check_for_valid_osimage_attributes();
-exit $rc;
+check_for_duplicate_rootimgdir();
+check_for_valid_osimage_attributes();
 
 # Check for osimage definitions with duplicate values for rootimgdir
 sub check_for_duplicate_rootimgdir {
