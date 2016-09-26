@@ -16,7 +16,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
 cmd:sleep 20
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN -V; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -59,7 +59,7 @@ check:rc==0
 
 cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then rnetboot $$SN;elif [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rpower $$SN boot; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then rnetboot $$SN;else rpower $$SN boot; fi
 check:rc==0
 
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
