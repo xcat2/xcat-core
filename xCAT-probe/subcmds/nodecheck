@@ -19,6 +19,7 @@ my $test;
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
+my $rc      = 0;
 
 # Match pattern for discovered nodes: node-1234-ABCDE-123456
 #                                     node- d+ -[a-z]- d+
@@ -27,7 +28,7 @@ my $discovered_node_pattern = '^node-*';
 
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -c {duplicate_mtm|valid_node_attributes} [-d|delete_duplicate] [-n noderange] [-V|--verbose]
+    $program_name [-d|delete_duplicate] [-n noderange] [-V|--verbose]
 
 Description:
     Use this command to check node defintions in xCAT DB. 
@@ -35,9 +36,6 @@ Description:
 Options:
     -h : Get usage information of $program_name
     -n : Range of nodes to check
-    -c : Check node definitions in xCAT DB
-         duplicate_mtm         : Check for node definitions with duplicate model type and serial numbers
-         valid_node_attributes : Check for validity of attributes in node definitions
     -d : Remove duplicate model type and serial number node definition from xCAT DB
     -V : To print additional debug information.
 ";
@@ -50,7 +48,6 @@ if (
         "T"                  => \$test,
         "V|verbose"          => \$VERBOSE,
         "n=s"                => \$noderange,
-        "c=s"                => \$what_to_check,
         "d|delete_duplicate" => \$DELETE_DUPLICATE))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
@@ -67,24 +64,6 @@ if ($help) {
     exit 0;
 }
 
-if ($what_to_check) {
-    if ($what_to_check eq "duplicate_mtm") {
-        $CHECK_MTM_SN = 1; 
-    }
-
-    if ($what_to_check eq "valid_node_attributes") {
-        $VALID_NODE_ATTRIBUTES = 1; 
-    }
-}
-
-if ($DELETE_DUPLICATE) {
-    unless ($CHECK_MTM_SN) {
-        probe_utils->send_msg("$output", "f", "delete_duplicate parameter can only be used with duplicate_mtm parameter.");
-        probe_utils->send_msg("$output", "d", "$::USAGE");
-        exit 1;
-    }
-}
-
 if ($test) {
     probe_utils->send_msg("$output", "o", "Use this command to check node defintions in xCAT DB.");
     exit 0;
@@ -99,17 +78,9 @@ if (scalar(@ARGV) >= 1) {
     exit 1;
 }
 
-if ($CHECK_MTM_SN) {
-    my $rc = check_for_duplicate_mtms_sn();
-    exit $rc;
-} elsif ($VALID_NODE_ATTRIBUTES) {
-    my $rc = check_for_valid_node_attributes();
-    exit $rc;
-} else {
-    probe_utils->send_msg("$output", "d", "Unknown type of node checking to perform: $what_to_check");
-    probe_utils->send_msg("$output", "d", "$::USAGE");
-    exit 1;
-}
+$rc = check_for_duplicate_mtms_sn();
+$rc = check_for_valid_node_attributes();
+exit $rc;
 
 # Check for node definitions with duplicate MTM+SERIAL
 sub check_for_duplicate_mtms_sn {
@@ -210,9 +181,7 @@ sub check_for_duplicate_mtms_sn {
 sub check_for_valid_node_attributes {
     my $na = "N/A";
 
-    my $rc = 1;
-
-    probe_utils->send_msg("$output", "d", "Probe to check for valid node attributes is not yet implemented.");
+    my $rc = 0;
 
     return $rc;
 }
