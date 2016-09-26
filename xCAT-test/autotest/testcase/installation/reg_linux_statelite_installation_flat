@@ -9,7 +9,7 @@ check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:sleep 20
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
