@@ -206,11 +206,10 @@ sub bmcdiscovery_processargs {
 
     ############################################
     # Option -U and -P for bmc user and password 
-    ############################################
     #
     # Get the default bmc account from passwd table, 
     # this is only done for the discovery process
-    #
+    ############################################
     ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
     # overwrite the default user and password if one is provided
     if ($::opt_U) {
@@ -348,7 +347,6 @@ sub get_bmc_ip_source {
     my $callback = $::CALLBACK;
     my $pcmd;
 
-
     if ($bmcuser eq "none") {
         $pcmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -P $bmcpw -H $bmcip lan print ";
     }
@@ -359,7 +357,6 @@ sub get_bmc_ip_source {
     my $output = xCAT::Utils->runcmd("$pcmd", -1);
 
     if ($output =~ "IP Address Source") {
-
         # success case
         my $rsp      = {};
         my $ipsource = `echo "$output"|grep "IP Address Source"`;
@@ -371,11 +368,9 @@ sub get_bmc_ip_source {
     else {
         my $rsp = {};
         if ($output =~ $bmc_str1) {
-
             # Error: RAKP 2 message indicates an error : unauthorized name <== incorrect username
             push @{ $rsp->{data} }, "$bmc_resp1";
         } elsif ($output =~ $bmc_str2) {
-
             # Error: RAKP 2 HMAC is invalid <== incorrect password
             push @{ $rsp->{data} }, "$bmc_resp2";
         } else {
@@ -383,7 +378,6 @@ sub get_bmc_ip_source {
             if ($error_msg eq ""){
                 $error_msg = "Can not find IP address Source";
             }
-
             # all other errors
             push @{ $rsp->{data} }, "$error_msg";
         }
