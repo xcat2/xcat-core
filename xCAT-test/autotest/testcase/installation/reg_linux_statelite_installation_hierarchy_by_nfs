@@ -73,7 +73,7 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~statelite
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
 
 cmd:sleep 900
