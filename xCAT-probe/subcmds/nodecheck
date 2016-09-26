@@ -19,7 +19,6 @@ my $test;
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
-my $rc      = 0;
 
 # Match pattern for discovered nodes: node-1234-ABCDE-123456
 #                                     node- d+ -[a-z]- d+
@@ -78,9 +77,8 @@ if (scalar(@ARGV) >= 1) {
     exit 1;
 }
 
-$rc = check_for_duplicate_mtms_sn();
-$rc = check_for_valid_node_attributes();
-exit $rc;
+check_for_duplicate_mtms_sn();
+check_for_valid_node_attributes();
 
 # Check for node definitions with duplicate MTM+SERIAL
 sub check_for_duplicate_mtms_sn {
