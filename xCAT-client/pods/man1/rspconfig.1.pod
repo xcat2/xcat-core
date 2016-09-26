@@ -18,7 +18,7 @@ B<rspconfig> I<noderange> B<community>={B<public> | I<string>}
 
 =head2 BMC specific:
 
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
+B<rspconfig> I<noderange> {B<vlan>|B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
 
 B<rspconfig> I<noderange> B<garp>=I<time>
 
@@ -296,6 +296,10 @@ Set CEC/BPA system names to the names in xCAT DB or the input name.
 =item B<iocap>={B<enable> | B<disable>}
 
 Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
+
+=item B<vlan>
+
+Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
 
 =item B<ip>
 

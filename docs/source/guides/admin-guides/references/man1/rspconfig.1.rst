@@ -38,7 +38,7 @@ BMC specific:
 =============
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **vlan | ip | netmask | gateway | backupgateway | garp**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **garp**\ =\ *time*\ 
 
@@ -385,6 +385,12 @@ OPTIONS
 \ **iocap**\ ={\ **enable**\  | \ **disable**\ }
  
  Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
+ 
+
+
+\ **vlan**\ 
+ 
+ Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
  
 
 
