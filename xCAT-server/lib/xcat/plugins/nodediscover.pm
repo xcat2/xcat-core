@@ -462,7 +462,7 @@ sub process_request {
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);
 
-    xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: $node has been discovered so we can correlate the discovered definition to the pre-defined definition.");
+    xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: $node has been discovered");
 }
 
 1;

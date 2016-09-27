@@ -4546,7 +4546,7 @@ sub process_request {
             }
         }
         unless ($node) {
-            xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node matching using blade-based discovery");
+            xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any nodes using blade-based discovery");
             return 1;    #failure
         }
         if ($request->{mtm} and $request->{mtm} =~ /^(\w{4})/) {
@@ -4562,7 +4562,7 @@ sub process_request {
             undef $mactab;
         }
 
-        xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Found node: $node matching for discovery request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.blade: ($request->{_xcat_clientmac}->[0]) Found node: $node");
 
         #my %request = (
         #  command => ['makedhcp'],

@@ -749,7 +749,7 @@ sub process_request {
             }
         }
         unless ($macmap{$mac}) {
-            xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node matching using hpblade-based discovery");
+            xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any nodes using hpblade-based discovery");
             return 1;    #failure
         }
 
@@ -762,7 +762,7 @@ sub process_request {
         #  node => [$macmap{$mac}]
         #  );
         #$doreq->(\%request);
-        xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Found node: $macmap{$mac} matching for discovery request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.hpblade: ($request->{_xcat_clientmac}->[0]) Found node: $macmap{$mac}");
         my $req = {%$request};
         $req->{command}   = ['discovered'];
         $req->{noderange} = [ $macmap{$mac} ];

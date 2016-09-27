@@ -384,7 +384,7 @@ sub findme {
 
         # call the discovered command to update the discovery request to a node
 
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Found node: $node matching for discovery request");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Found node: $node");
         $request->{discoverymethod} = ['sequential'];
         my $req = {%$request};
         $req->{command}      = ['discovered'];
@@ -397,7 +397,7 @@ sub findme {
         undef $mactab;
     } else {
         nodediscoverstop($callback, undef, "node names");
-        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node matching using sequential-based discovery");
+        xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any nodes using sequential-based discovery");
         return;
     }
 
