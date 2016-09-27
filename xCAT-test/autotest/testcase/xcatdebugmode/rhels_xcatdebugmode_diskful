@@ -56,13 +56,15 @@ cmd:xdsh $$CN "file \/var\/log\/anaconda*"
 check:output!~No such file or directory
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 
 start:reg_set_xcatdebugmode_value_one_rhels_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -148,12 +150,14 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 start:reg_set_xcatdebugmode_value_two_rhels_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 2, , the following logs will be shown and ssh is supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -237,7 +241,6 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 
@@ -291,13 +294,14 @@ cmd:xdsh $$CN "file \/var\/log\/anaconda*"
 check:output!~No such file or directory
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 
 start:set_xcatdebugmode_value_one_rhels_diskful_flat_p8_le
 os:Linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
 
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
@@ -355,6 +359,7 @@ cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.po
 check:output=~\/xcatpost\/mypostscript\.post return
 cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"service xcatpostinit1 disabled\""
 check:output=~service xcatpostinit1 disabled
+
 cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
 check:output=~/opt/xcat/xcatinfo generated
 cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
@@ -375,7 +380,6 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
@@ -386,6 +390,8 @@ end
 start:set_xcatdebugmode_value_two_rhels_diskful_flat_p8_le
 os:Linux
 description:site.xcatdebugmode value is 2, the following logs will be shown and ssh is supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
 
 cmd:chtab key=xcatdebugmode site.value="2"
 check:rc==0
@@ -443,6 +449,7 @@ cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.po
 check:output=~\/xcatpost\/mypostscript\.post return
 cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"service xcatpostinit1 disabled\""
 check:output=~service xcatpostinit1 disabled
+
 cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
 check:output=~/opt/xcat/xcatinfo generated
 cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
@@ -461,7 +468,6 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0

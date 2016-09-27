@@ -88,6 +88,8 @@ end
 start:set_xcatdebugmode_value_one_ubuntule_diskful
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
@@ -158,6 +160,9 @@ end
 start:set_xcatdebugmode_value_one_ubuntux_vm_diskful
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:makedns -n

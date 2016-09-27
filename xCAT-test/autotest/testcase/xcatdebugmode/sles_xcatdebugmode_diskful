@@ -67,12 +67,13 @@ check:output!~No such file or directory
 
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 start:reg_set_xcatdebugmode_value_one_sles_diskful_flat
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -163,7 +164,6 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 
@@ -226,13 +226,14 @@ check:output!~No such file or directory
 
 cmd:rpower $$SN on
 check:rc==0
-check:output=~on
 end
 
 
 start:set_xcatdebugmode_value_one_sles_diskful_flat_p8_le
 os:linux
 description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
 
 cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
