@@ -8,7 +8,7 @@ function step_0100_welcome()
 		--title 'Welcome' \
 		--cr-wrap \
 		--yesno \
-		"Welcome to use xCAT Wizard.\n\nBy answering a series of questions, this wizard will help assist in the configuration of xCAT." \
+		"Welcome to use xCAT Wizard.\n\nBy answering a series of questions, this wizard will assist in the configuration of xCAT." \
 		18 72
 	ret="$?"
 	case "${ret}" in
@@ -28,7 +28,7 @@ function step_0200_cluster_size()
 		--extra-button --extra-label 'Skip' \
 		--title 'Cluster size' \
 		--inputbox \
-		"In the cluster of which this xCAT management node will manage, how many nodes are plan to have? Based on the number of this answer, xCAT Wizard will do some optimization and performance tunning.\n\nA precise number is not needed, but please enter a rough number below." \
+		"How many nodes do you plan to have in xCAT cluster? xCAT will do some optimization and performance tuning based on this number.\n\nAn exact number is not necessary, a rough estimate will do." \
 		18 72 "${XCAT_WIZARD_0200_NODES:-100}" \
 		2>&1 1>&3)"
 	ret="$?"
@@ -86,7 +86,7 @@ function step_0300_network_adapter()
 		--default-item "${XCAT_WIZARD_0300_NIC}" \
 		--title 'Network adapter' \
 		--menu \
-		"Please choose the network adapter which connected to the cluster management network.\n\nThe xCAT management network is the network used by the management node to do the operating system deployment.\n\nIf you have a large cluster in which service nodes are involved, please choose the network adapter which connected to the management network in which multiple service nodes are connected." \
+		"Please choose the network adapter which is connected to the cluster management network.\n\nThe xCAT management network is the network used by the management node to do the operating system deployment.\n\nIf you have a large cluster with service nodes, choose the network adapter connected to the management network to which multiple service nodes are connected." \
 		18 72 12 "${items[@]}" \
 		2>&1 1>&3)"
 	ret="$?"
@@ -133,7 +133,7 @@ function step_0400_configure_name_server()
 		--default-item "${XCAT_WIZARD_0400_DNS_SERVER}" \
 		--title 'Configure name server' \
 		--menu \
-		"Will this cluster have a separate DNS subdomain?\n\nIf you only have a small amount of nodes in this cluster, use external DNS server to do all the name resolution may be preferred. In this case, either all nodes in this cluster can be resolved with external DNS server, or a simple /etc/hosts file will be used to do all the name resolving in this cluster.\n\nOn the other hand, If you have a really large cluster with a great number of nodes, use a separate DNS subdomain for the whole cluster may be a good idea. In this case, this management node will act as the primary master name server of this subdomain." \
+		"Will this cluster have a separate DNS subdomain?\n\nIf you have a small number of nodes in this cluster, use an external DNS server to do all the name resolutions may be preferred. In this case, either all nodes in this cluster can be resolved with external DNS server, or a simple /etc/hosts file will be used to do all the name resolving in this cluster.\n\nOn the other hand, If you have a cluster with a large number of nodes, using a separate DNS subdomain for the whole cluster may be a good idea. In this case, this management node will act as the primary master name server of this subdomain." \
 		20 74 14 \
 		"No" "use external DNS server" \
 		"Yes" "use separate subdomain, and act as primary master name server" \
@@ -168,7 +168,7 @@ function step_0500_hostname()
 		--extra-button --extra-label 'Skip' \
 		--title 'Hostname' \
 		--inputbox \
-		"In order to make the xCAT management node running properly, the hostname of this machine must be configured correctly.\n\nPlease enter the hostname for this system.\n\nThe hostname is a single word that identifies your system to the network. If you do not know what your hostname should be, please consult your network administrator." \
+		"Please enter the hostname for this system.\n\nThe hostname is a single word that identifies your system to the network. If you do not know what your hostname should be, please consult your network administrator." \
 		18 72 "${XCAT_WIZARD_0500_HOSTNAME}" \
 		2>&1 1>&3)"
 	ret="$?"
@@ -234,7 +234,7 @@ function step_0700_dns_servers()
 		--extra-button --extra-label 'Skip' \
 		--title 'DNS Servers' \
 		--form \
-		"Please input the IP address of your DNS servers below.\n\nThese are Internet address of a name servers that the resolver should query, either an IPv4 address (in dot notation), or an IPv6 address in colon (and possibly dot) notation as per RFC 2373. Up to 3 DNS servers can be listed here.\n\nYou may consult your network administrator if needed." \
+		"Please input the IP address of your DNS servers below.\n\nThese are Internet addresses of name servers that the resolver should query, either an IPv4 address (in dot notation), or an IPv6 address in colon (and possibly dot) notation as per RFC 2373. Up to three DNS servers can be listed here.\n\nYou may consult your network administrator if needed." \
 		18 72 3 \
 		"Primary DNS Server"   1 1 "${nameservers[0]}" 1 25 40 255 \
 		"Secondary DNS Server" 2 1 "${nameservers[1]}" 2 25 40 255 \
@@ -303,7 +303,7 @@ function step_0800_ntp_servers()
 		--extra-button --extra-label 'Skip' \
 		--title 'NTP Servers' \
 		--form \
-		"Please input the IP address of your NTP servers below.\n\nNetwork Time Protocol (NTP) is a networking protocol for clock synchronization between computer systems over packet-switched, variable-latency data networks. Up to 4 NTP servers can be listed here.\n\nYou may consult your network administrator if needed." \
+		"Please input the IP addresses of your NTP servers below.\n\nNetwork Time Protocol (NTP) is a networking protocol for clock synchronization between computer systems over packet-switched, variable-latency data networks. Up to four NTP servers can be listed here.\n\nYou may consult your network administrator if needed." \
 		18 72 4 \
 		"Primary NTP Server"    1 1 "${ntp_servers[0]}" 1 25 40 255 \
 		"Secondary NTP Server"  2 1 "${ntp_servers[1]}" 2 25 40 255 \
