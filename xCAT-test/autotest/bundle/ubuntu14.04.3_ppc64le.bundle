@@ -14,7 +14,6 @@ chtab_modify_key
 chtab_h
 chtab_v
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -86,7 +85,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_colon
@@ -200,7 +198,6 @@ lskit_C
 lskitcomp_v
 lskitcomp_h
 lskitcomp_C
-lskitcomp_C
 lskitcomp_S
 lskitdeployparam_v
 lskitdeployparam_h
@@ -234,6 +231,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 xcatd_start
 xcatd_stop
 xcatd_restart
@@ -242,5 +242,3 @@ disable_root_permission_in_policy_table
 assign_certain_command_permission
 ubuntu_migration1_p8le
 ubuntu_migration2_p8le
-set_xcatdebugmode_off_ubuntule_diskful
-set_xcatdebugmode_value_one_ubuntule_diskful

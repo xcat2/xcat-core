@@ -13,7 +13,6 @@ chtab_modify_key
 chtab_h
 chtab_v
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -89,7 +88,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -197,9 +195,6 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
-reg_set_xcatdebugmode_off_rhels_diskful_flat
-reg_set_xcatdebugmode_value_one_rhels_diskful_flat
-reg_set_xcatdebugmode_value_two_rhels_diskful_flat
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case

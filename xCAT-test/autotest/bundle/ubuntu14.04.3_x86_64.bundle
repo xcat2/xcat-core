@@ -14,7 +14,6 @@ chtab_modify_key
 chtab_h
 chtab_v
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -86,7 +85,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -208,7 +206,6 @@ lskit_C
 lskitcomp_v
 lskitcomp_h
 lskitcomp_C
-lskitcomp_C
 lskitcomp_S
 lskitdeployparam_v
 lskitdeployparam_h
@@ -242,6 +239,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 nodeset_check_warninginfo
 Full_installation_flat_docker
 rpower_stop
@@ -259,6 +259,3 @@ lsdocker_h_command
 lsdocker_l_command
 ubuntux_migration1_vm
 ubuntux_migration2_vm
-set_xcatdebugmode_off_ubuntux_vm_diskful
-set_xcatdebugmode_value_one_ubuntux_vm_diskful
-

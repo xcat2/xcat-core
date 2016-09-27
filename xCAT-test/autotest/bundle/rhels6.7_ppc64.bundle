@@ -42,7 +42,6 @@ copycds_n_a
 copycds_a_err
 copycds_n_err
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -121,7 +120,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -276,7 +274,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
-runcmdinstaller
+runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
@@ -294,9 +292,6 @@ xcatd_restart
 run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
-reg_set_xcatdebugmode_off_rhels_diskful_flat
-reg_set_xcatdebugmode_value_one_rhels_diskful_flat
-reg_set_xcatdebugmode_value_two_rhels_diskful_flat
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case

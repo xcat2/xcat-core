@@ -1,4 +1,9 @@
 reg_linux_diskfull_installation_flat
+go_xcat_local_repo_case7
+go_xcat_noinput
+go_xcat_with_x
+go_xcat_with_xcat-version-1
+go_xcat_online_repo_case6
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -42,7 +47,6 @@ copycds_n_a
 copycds_a_err
 copycds_n_err
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -121,7 +125,6 @@ nodels_noderange_table
 nodels_tablevalue
 nodels_tablevalue_tablecolumn
 nodels_noderange_tablecolumn
-nodels_tablevalue_tablecolumn
 nodels_h
 nodels_v
 xcatstanzafile_normal
@@ -276,7 +279,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
-runcmdinstaller
+runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
@@ -294,10 +297,13 @@ xcatd_restart
 run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
-reg_set_xcatdebugmode_off_rhels_diskful_flat
-reg_set_xcatdebugmode_value_one_rhels_diskful_flat
-reg_set_xcatdebugmode_value_two_rhels_diskful_flat
 reg_linux_diskless_installation_flat
+packimage_m_cpio_c_gzip
+packimage_m_cpio_c_xz
+packimage_m_tar_c_gzip
+packimage_m_tar_c_xz
+packimage_m_invalid_archive_method
+packimage_m_invalid_compress_method
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy
