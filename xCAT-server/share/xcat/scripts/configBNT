@@ -16,6 +16,7 @@ use strict;
 use Socket;
 use Getopt::Long;
 use Expect;
+use Net::Ping;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::NetworkUtils;
@@ -121,10 +122,33 @@ sub config_ip {
     foreach my $switch (@nodes) {
         print "change $switch to static ip address\n";
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
+        if (!$dip) {
+            print "Add otherinterfaces attribute for discover ip: chdef $switch otherinterfaces=x.x.x.x\n";
+            next;
+        }
+
+        #Validate if this IP is reachable
+        my $p = Net::Ping->new();
+        if (!$p->ping($dip)) {
+            print "$dip is not reachable\n";
+            next;
+        }
+
         my $static_ip= $nodehash->{$switch}->[0]->{ip};
+
+        # don't need to set if ip addresses are same
+        if ($dip eq $static_ip) {
+            print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
+            next;
+        }
 
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
+
+        # if hostnames are same, created different one for discovery name
+        if ($dswitch eq $switch) {
+            $dswitch="";
+        }
 
         #if not defined, need to create one for xdsh to use
         if (!$dswitch) {
