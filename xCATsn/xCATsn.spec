@@ -17,7 +17,7 @@ Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12 
 
 Conflicts: xCAT
 

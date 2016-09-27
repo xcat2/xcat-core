@@ -40,6 +40,19 @@ function makenoarch {
 				fi
 			fi 
 		fi
+
+                #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
+                #1 make xcat probe code to be self-contained
+                #2 don't maintain two files for each script
+                #3 symbolic link can't work during package
+                if [ $RPMNAME = "xCAT-probe" ]; then
+                    CURDIR=$(pwd)
+                    mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/ServiceNodeUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                fi
+
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz

@@ -1,0 +1,11 @@
+Source: xcat-probe
+Section: admin
+Priority: extra
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: xcat-probe
+Architecture: all
+Depends: ${perl:Depends}
+Description: Provides a toolkits to help probe all the possible issues in xCAT 
