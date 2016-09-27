@@ -36,7 +36,7 @@ sub findme {
     }
     my $nodenum = $#nodes;
     if ($nodenum < 0) {
-        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node for $mtms matching using mtms-based discovery");
+        xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node for $mtms using mtms-based discovery");
         return;
     } elsif ($nodenum > 0) {
         xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Error: More than one node for $mtms was found");
