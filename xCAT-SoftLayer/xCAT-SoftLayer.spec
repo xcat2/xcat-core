@@ -1,11 +1,11 @@
 Summary: Utilities to make xCAT work in a SoftLayer environment
 Name: xCAT-SoftLayer
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-SoftLayer-%(cat Version).tar.gz
+Source: xCAT-SoftLayer-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -15,7 +15,6 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 Requires: xCAT-server
-#Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
 # perl-ExtUtils-MakeMaker, perl-CPAN, perl-Test-Harness are only available in rhel.
 # When this rpm supports being installed in sles, need to add these to xcat-dep.

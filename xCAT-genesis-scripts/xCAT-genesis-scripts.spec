@@ -13,7 +13,8 @@ BuildArch: noarch
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%{version}}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 1
 AutoReq: false
 Prefix: /opt/xcat
@@ -24,7 +25,6 @@ Provides: xCAT-genesis-%{tarch}
 
 
 Name:	 %{name}
-Version: %(cat Version)
 Group: System/Utilities
 License: EPL
 Vendor: IBM Corp

@@ -1,14 +1,14 @@
 Summary: Web Client for xCAT 2
 Name: xCAT-UI
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 License: EPL
 Group: Applications/System
 URL: http://xcat.org
 Packager: IBM
 Vendor: IBM
 
-Source: xCAT-UI-%(cat Version).tar.gz
+Source: xCAT-UI-%{version}.tar.gz
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch

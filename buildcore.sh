@@ -172,9 +172,17 @@ else
 fi
 
 function setversionvars {
-    VER=`cat Version`
-    SHORTVER=`cat Version|cut -d. -f 1,2`
-    SHORTSHORTVER=`cat Version|cut -d. -f 1`
+    if [ ! -z "$USEGITVER" ]; then
+        VER=`git describe`
+        VER=${VER/-/.post}
+        VER=${VER/-/.}
+    else
+        VER=`cat Version`
+    fi
+    XCATVER=$VER
+    export XCATVER
+    SHORTVER=`echo $VER|cut -d. -f 1,2`
+    SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
     COMMIT_ID=`git rev-parse --short HEAD`

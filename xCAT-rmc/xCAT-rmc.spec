@@ -1,11 +1,11 @@
 Summary: RMC monitoring plug-in for xCAT
 Name: xCAT-rmc
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: System Environment/Libraries
-Source: xCAT-rmc-%(cat Version).tar.gz
+Source: xCAT-rmc-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -15,8 +15,8 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%(cat Version)
-Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: perl-xCAT >= %{epoch}:%{version}
+Requires: xCAT-server  >= %{epoch}:%{version}
 
 Provides: xCAT-rmc = %{version}
 
