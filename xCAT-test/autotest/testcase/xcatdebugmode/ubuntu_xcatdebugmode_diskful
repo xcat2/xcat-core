@@ -1,0 +1,232 @@
+start:set_xcatdebugmode_off_ubuntule_diskful
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+check:output=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
+check:output=~Generating grub configuration file
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
+check:output!~No such file or directory
+end
+
+
+start:set_xcatdebugmode_off_ubuntux_vm_diskful
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+cmd:makedns -n
+check:rc==0
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:copycds $$ISO 
+check:rc==0
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+check:output=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
+check:output=~Generating grub configuration file
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
+check:output!~No such file or directory
+end
+
+
+start:set_xcatdebugmode_value_one_ubuntule_diskful
+os:linux
+description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:copycds $$ISO
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+checkoutput=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"postscripts downloaded successfully\""
+check:output=~\+ echo \'postscripts downloaded successfully\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"postscripts downloaded successfully\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"mypostscript returned\""
+check:output=~\+ echo \'mypostscript returned\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"mypostscript returned\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"finished node installation, reporting status\""
+check:output=~\+ echo \'finished node installation, reporting status
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"finished node installation, reporting status\""
+checkoutput=~2
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
+check:output=~/opt/xcat/xcatinfo generated
+cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
+check:output=~postscripts downloaded successfully
+cmd:cat /var/log/xcat/computes.log | grep "running /xcatpost/mypostscript.post"
+check:output=~running /xcatpost/mypostscript.post
+cmd:cat /var/log/xcat/computes.log | grep "/etc/init.d/xcatpostinit1 generated"
+check:output=~/etc/init.d/xcatpostinit1 generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinstallpost generated"
+check:output=~/opt/xcat/xcatinstallpost generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatdsklspost generated"
+check:output=~/opt/xcat/xcatdsklspost generated
+cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
+check:output=~running mypostscript
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
+check:output!~No such file or directory
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+end
+
+
+start:set_xcatdebugmode_value_one_ubuntux_vm_diskful
+os:linux
+description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:copycds $$ISO 
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+checkoutput=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"postscripts downloaded successfully\""
+check:output=~\+ echo \'postscripts downloaded successfully\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"postscripts downloaded successfully\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"mypostscript returned\""
+check:output=~\+ echo \'mypostscript returned\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"mypostscript returned\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"finished node installation, reporting status\""
+check:output=~\+ echo \'finished node installation, reporting status
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"finished node installation, reporting status\""
+checkoutput=~2
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
+check:output=~/opt/xcat/xcatinfo generated
+cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
+check:output=~postscripts downloaded successfully
+cmd:cat /var/log/xcat/computes.log | grep "running /xcatpost/mypostscript.post"
+check:output=~running /xcatpost/mypostscript.post
+cmd:cat /var/log/xcat/computes.log | grep "/etc/init.d/xcatpostinit1 generated"
+check:output=~/etc/init.d/xcatpostinit1 generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinstallpost generated"
+check:output=~/opt/xcat/xcatinstallpost generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatdsklspost generated"
+check:output=~/opt/xcat/xcatdsklspost generated
+cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
+check:output=~running mypostscript
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
+check:output!~No such file or directory
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+end
+
+
+

@@ -420,23 +420,22 @@ sub process_request {
         return;
     }
     if (defined($request->{bmcinband})) {
-        syslog("local4|info", "The attribute bmcinband is specified, just remove the temp BMC node if there is");
         if (defined($request->{bmc_node}) and defined($request->{bmc_node}->[0])) {
             my $bmc_node = $request->{bmc_node}->[0];
-            syslog("local4|info", "Found node corresponding to BMC=$bmc_node, removing it...");
+            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Removing discovered node definition: $bmc_node...");
             my $rmcmd = "rmdef $bmc_node";
             xCAT::Utils->runcmd($rmcmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                syslog("local4|info", "Failed to remove $bmc_node from xCAT");
+                xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to remove $bmc_node from xCAT");
             } else {
-                syslog("local4|info", "$bmc_node definition removed from xCAT");
+                xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: $bmc_node definition removed from xCAT");
             }
         }
     } else {
 
         # Only BMC that doesn't support in-band configuration need to run rspconfig out-of-band, such as S822L running in OPAL model
-        syslog("local4|info", "No bmcinband specified, need to configure BMC out-of-band");
+        xCAT::MsgUtils->message("S", "No bmcinband specified, need to configure BMC out-of-band");
         xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
     }
 
@@ -453,7 +452,7 @@ sub process_request {
         Timeout  => '1',
         Proto    => 'tcp'
     );
-    unless ($sock) { syslog("local4|err", "Failed to notify $clientip that it's actually $node."); return; } #Give up if the node won't hear of it.
+    unless ($sock) { xCAT::MsgUtils->message("S", "Failed to notify $clientip that it's actually $node."); return; }
     print $sock $restartstring;
     close($sock);
 
@@ -463,7 +462,7 @@ sub process_request {
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);
 
-    syslog("local4|info", "$node has been discovered");
+    xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: $node has been discovered");
 }
 
 1;

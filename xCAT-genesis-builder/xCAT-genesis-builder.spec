@@ -4,7 +4,7 @@ Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 1
 AutoReq: false
-Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33
+Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33 mstflint xfsprogs nc reiserfs-utils
 Prefix: /opt/xcat
 AutoProv: false
 
