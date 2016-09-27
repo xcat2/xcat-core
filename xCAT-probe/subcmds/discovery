@@ -1,0 +1,1175 @@
+#!/usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use xCAT::NetworkUtils;
+use File::Basename;
+use IO::Select;
+use Getopt::Long qw(:config no_ignore_case);
+use Data::Dumper;
+
+my $program_name = basename("$0");
+my $help;
+my $test;
+my $output       = "stdout";
+my $verbose      = 0;
+my $rst          = 0;
+my $no_pre_check = 0;
+my $discovery_type;
+my @valid_discovery_type = ("mtms", "switch");
+my $valid_discovery_type_str = join(",", @valid_discovery_type);
+my $noderange;
+my $nics;    #reservation attribute, format : xxx|xxx|xxx
+
+#used for discovery monitor
+my %rawdata;
+my %ipmacmap;
+my $terminal = 0;
+my %monitor_nodes;
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name [-V] [-m <discovery_type> -n <node_range>] [--noprecheck] 
+
+Description:
+    Probe the discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
+    If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name will exit.  
+    In order to do realtime monitor, $program_name probe must be run along with the node discovery procedure. Trigger this command before triggering node discovery procedure.
+    Currently, this command does not support hierarchy.
+
+Options:
+    -h : Get usage information of $program_name.
+    -V : Output more information for debug.
+    -m : The method of discovery, the valid values are $valid_discovery_type_str.
+    -n : The range of predefined nodes, must be used with option -m.
+    --noprecheck : skip pre-checking discovery to validate correct configuration. 
+";
+
+#------------------------------------------
+
+=head3
+    Description:
+        Check if all genesis files are available. 
+    Arguments:
+        arch: valid value are ppc64 and x86_64 
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub check_genesis_file {
+    my $arch = shift;
+    if (($arch ne "ppc64") and ($arch ne "x86_64")) {
+        probe_utils->send_msg("$output", "d", "Specify correct arch type") if ($verbose);
+        return 1;
+    }
+
+    my $rst_f = 0;
+    probe_utils->send_msg("$output", "d", "Starting to check genesis files for $arch...") if ($verbose);
+
+    my $os = probe_utils->get_os();
+    my $genesis_base;
+    my $genesis_scripts;
+
+    if ($arch eq "x86_64") {
+        $arch_tmp = "amd64";
+    } else {
+        $arch_tmp = $arch;
+    }
+
+    if ($os =~ "unknown") {
+        probe_utils->send_msg("$output", "d", "The OS is not supported.") if ($verbose);
+        return 1;
+    } elsif ($os =~ "ubuntu") {
+        $genesis_base = `dpkg -l | grep -iE "ii\\s+xcat-genesis-base" | grep -i "$arch_tmp"`;
+        $genesis_scripts = `dpkg -l | grep -iE "ii\\s+xcat-genesis-scripts" | grep -i "$arch_tmp"`;
+    } else {
+        $genesis_base = `rpm -qa | grep -i "xcat-genesis-base" | grep -i "$arch"`;
+        $genesis_scripts = `rpm -qa | grep -i "xcat-genesis-scripts" | grep -i "$arch"`;
+    }
+    unless ($genesis_base and $genesis_scripts) {
+        probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch is not installed.") if ($verbose);
+        return 1;
+    }
+
+    probe_utils->send_msg("$output", "d", "xCAT-genesis for $arch is installed, starting to check files...") if ($verbose);
+
+    my $tftpdir = `tabdump site | awk -F',' '/^"tftpdir",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+    chomp($tftpdir);
+    $tftpdir =~ s/"//g;
+    my $genesis_folder;
+    my @genesis_files;
+    my $genesis_line;
+    my $wget_rst;
+
+    if ($arch eq "ppc64") {
+        $genesis_folder = "$tftpdir/pxelinux.cfg/p";
+        unless (-d "$genesis_folder") {
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Run 'mknb ppc64' if using ppc64/ppc64le machine.") if ($verbose);
+            return 1;
+        }
+
+        @genesis_files = glob("$genesis_folder/*");
+
+        foreach (@genesis_files) {
+            unless (open(FILE, $_)) {
+                probe_utils->send_msg("$output", "d", "Cannot open file $_.") if ($verbose);
+                $rst_f = 1;
+                next;
+            }
+
+            while ($genesis_line = <FILE>) {
+                chomp($genesis_line);
+                $genesis_line =~ s/^\s+|\s+$//g;
+
+                if ($genesis_line =~ /^initrd/) {
+                    @initrd_info = split(' ', $genesis_line);
+                    $initrd_path = $initrd_info[1];
+                    $wget_rst = system("wget -q --spider $initrd_path -T 0.5 -t 3");
+                    if ($wget_rst) {
+                        probe_utils->send_msg("$output", "d", "'initrd' cannot be downloaded from $initrd_path.") if ($verbose);
+                        $rst_f = 1;
+                    } else {
+                        probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_path PASS.") if ($verbose);
+                    }
+                }
+
+                if ($genesis_line =~ /^kernel/) {
+                    @kernel_info = split(' ', $genesis_line);
+                    $kernel_path = $kernel_info[1];
+                    $wget_rst = system("wget -q --spider $kernel_path -T 0.5 -t 3");
+                    if ($wget_rst) {
+                        probe_utils->send_msg("$output", "d", "kernel cannot be downloaded from $kernel_path.") if ($verbose);
+                        $rst_f = 1;
+                    } else {
+                        probe_utils->send_msg("$output", "d", "Check kernel file: $kernel_path PASS.") if ($verbose);
+                    }
+                }
+            }
+        }
+    } else {
+        $genesis_folder = "$tftpdir/xcat/xnba/nets";
+        unless (-d "$genesis_folder") {
+            probe_utils->send_msg("$output", "d", "There is no genesis file for $arch. Run 'mknb x86_64' if using x86_64 machine.") if ($verbose);
+            return 1;
+        }
+
+        my @host_ip_arr;
+        my @netmask_arr;
+        my @output = `ip addr show|awk -F" " '/inet / {print \$2}'`;
+        foreach (@output) {
+            my ($ip, $mask) = split("/", $_);
+            my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+            push(@host_ip_arr, $ip);
+            push(@netmask_arr, $strmask);
+        }
+
+        @genesis_files = glob("$genesis_folder/*");
+        foreach (@genesis_files) {
+            if ($_ =~ /uefi$/) {
+                my $file_name = basename($_);
+                my @tmp_ip    = split('_', $file_name);
+                my $ip_range  = shift(@tmp_ip);
+                my $host_ip;
+                my $netmask_num = 0;
+                foreach (@host_ip_arr) {
+                    chomp($_);
+                    if (xCAT::NetworkUtils->ishostinsubnet($_, $netmask_arr[$netmask_num], $ip_range)) {
+                        $host_ip = $_;
+                    }
+                    $netmask_num++;
+                }
+
+                unless ($host_ip) {
+                    probe_utils->send_msg("$output", "d", "There is no IP for range $ip_range") if ($verbose);
+                    $rst_f = 1;
+                    next;
+                }
+
+                unless (open(FILE, $_)) {
+                    probe_utils->send_msg("$output", "d", "Cannot open file $_.");
+                    $rst_f = 1;
+                    next;
+                }
+
+                $host_ip .= ":80";
+                while ($genesis_line = <FILE>) {
+                    chomp($genesis_line);
+                    $genesis_line =~ s/^\s+|\s+$//g;
+                    if ($genesis_line =~ /^chain/) {
+                        my @file_path  = split(' ', $genesis_line);
+                        my $elilo_efi  = $file_path[1];
+                        my $elilo_path = $file_path[3];
+                        $elilo_efi =~ s/\$\{next-server\}/$host_ip/i;
+
+                        $wget_rst = system("wget -q --spider $elilo_efi -T 0.5 -t 3");
+                        if ($wget_rst) {
+                            probe_utils->send_msg("$output", "d", "elilo-x64.efi cannot be downloaded from $elilo_efi.") if ($verbose);
+                            $rst_f = 1;
+                        } else {
+                            probe_utils->send_msg("$output", "d", "Check elilo-x64.efi file: $elilo_efi PASS.") if ($verbose);
+                        }
+
+                        my $elilo_http = "http://$host_ip/$elilo_path";
+                        $wget_rst = system("wget -q --spider $elilo_http -T 0.5 -t 3");
+                        if ($wget_rst) {
+                            probe_utils->send_msg("$output", "d", "elilo file cannot be downloaded from $elilo_http.") if ($verbose);
+                            $rst_f = 1;
+                        } else {
+                            probe_utils->send_msg("$output", "d", "Check elilo file: $elilo_http PASS.") if ($verbose);
+                            unless (open(FILE_ELILO, $elilo_path)) {
+                                probe_utils->send_msg("$output", "d", "Cannot open file $_.") if ($verbose);
+                                $rst_f = 1;
+                                next;
+                            }
+
+                            while ($line_elilo = <FILE_ELILO>) {
+                                chomp($line_elilo);
+                                $line_elilo =~ s/^\s+|\s+$//g;
+                                if ($line_elilo =~ /^image/) {
+                                    my @image_info = split('=', $line_elilo);
+                                    my $image_path = pop(@image_info);
+                                    my $image_http = "http://$host_ip/$image_path";
+
+                                    $wget_rst = system("wget -q --spider $image_http -T 0.5 -t 3");
+                                    if ($wget_rst) {
+                                        probe_utils->send_msg("$output", "d", "image cannot be downloaded from $image_http.") if ($verbose);
+                                        $rst_f = 1;
+                                    } else {
+                                        probe_utils->send_msg("$output", "d", "Check image file: $image_http PASS.") if ($verbose);
+                                    }
+                                }
+                                if ($line_elilo =~ /^initrd/) {
+                                    my @initrd_info = split('=', $line_elilo);
+                                    my $initrd_path = pop(@initrd_info);
+                                    my $initrd_http = "http://$host_ip/$initrd_path";
+
+                                    $wget_rst = system("wget -q --spider $initrd_http -T 0.5 -t 3");
+                                    if ($wget_rst) {
+                                        probe_utils->send_msg("$output", "d", "'initrd' cannot be downloaded from $initrd_http.") if ($verbose);
+                                        $rst_f = 1;
+                                    } else {
+                                        probe_utils->send_msg("$output", "d", "Check initrd file: $initrd_http PASS.") if ($verbose);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return $rst_f;
+}
+
+sub get_node_ip {
+    my $ip_net;
+    my @node_info = `lsdef $noderange -i ip -c 2>&1`;
+    my %nodeip;
+    my %nodecheckrst;
+
+    foreach (@node_info) {
+        chomp($_);
+        $_ =~ s/^\s+|\s+$//g;
+        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+            $nodecheckrst{$1}{"error"} = "Could not find node definition";
+            $rst = 1;
+        } elsif ($_ =~ /^(\w+): ip=(.*)/i) {
+            $nodeip{$1} = $2;
+        }
+    }
+
+    foreach my $node (keys %nodeip) {
+        $ip_net = xCAT::NetworkUtils->getipaddr($node);
+        if ($nodeip{$node} and ($nodeip{$node} ne $ip_net)) {
+            probe_utils->send_msg("$output", "d", "IP $nodeip{$node} definition for $node is not correct") if ($verbose);
+        }
+        $nodeip{$node} = $ip_net;
+    }
+
+    foreach my $node (keys %nodecheckrst) {
+        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
+    }
+
+    return %nodeip;
+}
+
+sub compare_ip_value {
+    my $ip1 = shift;
+    my $ip2 = shift;
+
+    my @ip_arr1 = split(/\./, $ip1);
+    my @ip_arr2 = split(/\./, $ip2);
+
+    my $ip_num1 = ($ip_arr1[0] << 24) | ($ip_arr1[1] << 16) | ($ip_arr1[2] << 8) | $ip_arr1[3];
+    my $ip_num2 = ($ip_arr2[0] << 24) | ($ip_arr2[1] << 16) | ($ip_arr2[2] << 8) | $ip_arr2[3];
+
+    if ($ip_num1 <= $ip_num2) {
+        return 1;
+    }
+
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        1. check if there are dynamic range for specific networks defineded in dhcp conf file
+        2. check if these specific networks have corresponding genesis configuration 
+    Arguments:
+        networks: Array of networks. Every network is combined by network address and mask(i.e. network/mask).
+        For example: (10.0.0.0/255.0.0.0, 50.1.0.0/255.255.0.0)
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub dhcp_dynamic_range_check {
+    my $nets = shift;
+    my $rst  = 0;
+
+    my $dhcpconfig;
+    if (-e "/etc/dhcp/dhcpd.conf") {
+        $dhcpconfig = "/etc/dhcp/dhcpd.conf";
+    } elsif (-e "/etc/dhcp3/dhcpd.conf") {
+        $dhcpconfig = "/etc/dhcp3/dhcpd.conf";
+    } elsif (-e "/etc/dhcpd.conf") {
+        $dhcpconfig = "/etc/dhcpd.conf";
+    }
+
+    unless ($dhcpconfig) {
+        probe_utils->send_msg("$output", "d", "Cannot find the dhcpd.conf file.") if ($verbose);
+        return 1;
+    }
+
+    my $config_line;
+    my $subnet;
+    my @dynamic_range;
+    my %subnet_hash;
+
+    unless (open(FILE, $dhcpconfig)) {
+        probe_utils->send_msg("$output", "d", "Cannot open file $dhcpconfig.") if ($verbose);
+        ($net_ip, $net_mask) = split('/', $net);
+        return 1;
+    }
+
+    while ($config_line = <FILE>) {
+        chomp($config_line);
+        $config_line =~ s/^\s+|\s+$//g;
+
+        if ($config_line =~ /^subnet\s+(\d+\.\d+\.\d+\.\d+)\s+netmask\s+(\d+\.\d+\.\d+\.\d+)\s+/) {
+            $subnet = "$1/$2";
+            $subnet_hash{$subnet} = "unknown";
+        }
+        if ($config_line =~ /subnet_end/) {
+            $subnet_hash{$subnet} = [@dynamic_range] if (@dynamic_range);
+            $subnet               = "";
+            @dynamic_range        = "";
+        }
+        if ($config_line =~ /^range dynamic-bootp (\d+.\d+.\d+.\d+) (\d+.\d+.\d+.\d+)/) {
+            if (compare_ip_value($1, $2)) {
+                push @dynamic_range, "$1-$2";
+            } else {
+                push @dynamic_range, "$2-$1";
+            }
+
+        }
+    }
+
+    my $net_ip;
+    my $netmask;
+    my $netfile;
+    my $net_cdir;
+    my $arch = `uname -i`;
+    chomp($arch);
+    my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F "=" '{print \$2}'`;
+    chomp($tftpdir);
+
+    unless ($tftpdir) {
+        $tftpdir = "/tftpboot";
+    }
+
+    my %node_ip;
+    if ($noderange) {
+        %node_ip = get_node_ip();
+    }
+
+    foreach my $net (@$nets) {
+
+        if (!exists($subnet_hash{$net})) {
+            probe_utils->send_msg("$output", "d", "The net $net is not matched.") if ($verbose);
+            $rst = 1;
+            next;
+        }
+
+        if ($subnet_hash{$net} ne "unknown") {
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is @{$subnet_hash{$net}}.") if ($verbose);
+
+            if (%node_ip) {
+                foreach my $node (keys %node_ip) {
+                    foreach my $dr (@{ $subnet_hash{$net} }) {
+                        my @dr_ip = split(/-/, $dr);
+
+                        if (compare_ip_value($dr_ip[0], $node_ip{$node}) and compare_ip_value($node_ip{$node}, $dr_ip[1])) {
+                            probe_utils->send_msg("$output", "d", "$node ip $node_ip{$node} is conflicting with dynamic range.") if ($verbose);
+                            $rst = 1;
+                        }
+                    }
+                }
+            }
+        } else {
+            probe_utils->send_msg("$output", "d", "Dynamic range for net $net is not configured.") if ($verbose);
+            $rst = 1;
+            next;
+        }
+
+        ($net_ip, $net_mask) = split('/', $net);
+        $net_cdir = xCAT::NetworkUtils::formatNetmask($net_mask, 0, 1);
+        if ($arch =~ /ppc64/i) {
+            $net_file = "$tftpdir/pxelinux.cfg/p/$net_ip" . "_$net_cdir";
+        } else {
+            $net_file = "$tftpdir/xcat/xnba/nets/$net_ip" . "_$net_cdir.uefi";
+        }
+
+        if (-e "$net_file") {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net exists.") if ($verbose);
+        } else {
+            probe_utils->send_msg("$output", "d", "The genesis file $net_file for net $net dose not exist.") if ($verbose);
+            $rst = 1;
+        }
+    }
+
+    return $rst;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Handle one line log come from tftp log file
+    Arguments:
+       msg: one line tftp log       
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub handle_tftp_msg {
+    my $msg = shift;
+    if ($msg =~ /RRQ\s+from\s+(.+)\s+filename\s+(.+)/i) {
+        my $ip     = $1;
+        my $file   = $2;
+        my $record = "Via TFTP $ip download $file";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{"$ipmacmap{$ip}"})) {
+            push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
+        }
+    }
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Handle one line log come from http log file
+    Arguments:
+       msg: one line http log 
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub handle_http_msg {
+    my $msg = shift;
+    if ($msg =~ /(\d+\.\d+.\d+.\d+)\s.+GET\s+(.+)\s+HTTP.+/) {
+        my $ip     = $1;
+        my $file   = $2;
+        my $record = "Via HTTP $ip download $file";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{"$ipmacmap{$ip}"})) {
+            push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
+        }
+    }
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Handle one line log come from dhcp log file
+    Arguments:
+       msg: one line http log
+       nics: target network interfaces
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub handle_dhcp_msg {
+    my $msg = shift;
+
+    if ($msg =~ /.+DHCPDISCOVER\s+from\s+(.+)\s+via\s+([^:]+)(.*)/i) {
+        my $mac = $1;
+        my $nic = $2;
+        if ($3 =~ /no free leases/) {
+            probe_utils->send_msg("$output", "d", "Receive DHCPDISCOVER from $mac via $nic, no free leases");
+            return 0;
+        }
+        my $record = "Receive DHCPDISCOVER from $mac via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        push(@{ $rawdata{$mac}{"history"} }, $record);
+    } elsif ($msg =~ /.+DHCPOFFER\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/i) {
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
+        my $record = "Send DHCPOFFER on $ip back to $mac via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{$mac})) {
+            push(@{ $rawdata{$mac}{"history"} }, $record);
+        }
+    } elsif ($msg !~ /unknown lease/ && $msg !~ /ignored/ && $msg =~ /.+DHCPREQUEST\s+for\s+(.+)\s\((.+)\)\s+from\s+(.+)\s+via\s+(.+)/) {
+        my $ip     = $1;
+        my $server = $2;
+        my $mac    = $3;
+        my $nic    = $4;
+        my $record = "Receive DHCPREQUEST from $mac for $ip via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{$mac})) {
+            push(@{ $rawdata{$mac}{"history"} }, $record);
+        }
+    } elsif ($msg =~ /.+DHCPACK\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/) {
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
+        my $record = "Send DHCPACK on $ip back to $mac via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{$mac})) {
+            $rawdata{$mac}{"ip"} = $ip;
+            push(@{ $rawdata{$mac}{"history"} }, $record);
+            $ipmacmap{$ip} = $mac;
+        }
+    } elsif ($msg =~ /.+BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
+        my $mac = $1;
+        my $nic = $2;
+        if ($3 =~ /no dynamic leases/) {
+            probe_utils->send_msg("$output", "d", "Receive DHCPDISCOVER from $mac via $nic, no dynamic leases");
+            return 0;
+        }
+        my $record = "Receive BOOTREQUEST from $mac via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        push(@{ $rawdata{$mac}{"history"} }, $record);
+    } elsif ($msg =~ /.+BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
+        my $ip     = $1;
+        my $mac    = $2;
+        my $nic    = $3;
+        my $record = "Send BOOTREPLY on $ip back to $mac via $nic";
+        probe_utils->send_msg("$output", "d", "$record");
+        if (exists($rawdata{$mac})) {
+            $rawdata{$mac}{"ip"} = $ip;
+            push(@{ $rawdata{$mac}{"history"} }, $record);
+            $ipmacmap{$ip} = $mac;
+        }
+    }
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Handle one line log come from computes.log 
+    Arguments:
+       msg: one line compute log
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub handle_compute_msg {
+
+    my $line   = shift;
+    my $sender = "";
+    my $ip     = "";
+    my $msg;
+
+    my @splitline = split(/\s+/, $line);
+    if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
+        $sender = $splitline[3];
+        if (($splitline[4] =~ /^xcat/i) && ($splitline[5] !~ /^xcat/i)) {
+            splice(@splitline, 0, 4);
+        } else {
+            splice(@splitline, 0, 5);
+        }
+        $msg = join(" ", @splitline);
+
+        if (!xCAT::NetworkUtils->isIpaddr($sender)) {
+            $ip = xCAT::NetworkUtils->getipaddr($sender);
+        } else {
+            $ip = $sender;
+        }
+
+        if ($ip ne "" && defined($ipmacmap{$ip})) {
+            my $record = "Recv from $ip : $msg";
+            probe_utils->send_msg("$output", "d", "$record");
+            push(@{ $rawdata{ $ipmacmap{$ip} }{"history"} }, $record);
+        }
+
+        # There is a node finish discovry process
+        if ($msg =~ /xcat.genesis.dodiscovery: Restart/) {
+            my $node = `lsdef -i mac -c 2>&1 | awk -F: '/$ipmacmap{$ip}/ {print \$1}'`;
+            chomp($node);
+            $monitor_nodes{$node} = 1 if (defined($monitor_nodes{$node}));
+            probe_utils->send_msg("$output", "o", "Node $node has finished its discovery process");
+            my $output = `lsdef $node 2>&1`;
+            print "-------------------\n$output-------------------\n";
+        }
+    }
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Handle one line log come from cluster.log 
+    Arguments:
+       msg: one line log
+    Returns:
+        0 : pass
+        1 : failed
+=cut
+
+#------------------------------------------
+sub handle_cluster_msg {
+    my $line   = shift;
+    my $sender = "";
+    my $ip     = "";
+    my $msg;
+
+    my @splitline = split(/\s+/, $line);
+    if (($splitline[4] =~ /^xcat/i) || ($splitline[5] =~ /^xcat/i)) {
+        if (($splitline[5] =~ /^xcat.discovery/i) && ($splitline[6] =~ /^\((.+)\)$/)) {
+            my $mac = $1;
+            if (xCAT::NetworkUtils->isValidMAC($mac) && defined($rawdata{$mac})) {
+                splice(@splitline, 0, 5);
+                splice(@splitline, 1, 1);
+                $msg = join(" ", @splitline);
+                if (defined($rawdata{$mac}{"ip"})) {
+                    $record = "Recv from $rawdata{$mac}{ip} : $msg";
+                } else {
+                    $record = "Recv from $mac : $msg";
+                }
+                probe_utils->send_msg("$output", "d", "$record");
+                push(@{ $rawdata{$mac}{"history"} }, $record);
+            }
+        }
+    }
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Dump monitor history,  categorised by mac address.
+    Arguments:
+       NULL
+    Returns:
+=cut
+
+#------------------------------------------
+sub dump_history {
+
+    my $title = "
+=============================================================
+=  The summary of discovery:
+=============================================================
+";
+    print "$title\n";
+
+    foreach $mac (keys %rawdata) {
+        my $nodehostname = `lsdef -i mac -c 2>&1 | awk -F: '/$mac/ {print \$1}'`;
+        chomp($nodehostname);
+        if ($nodehostname ne "") {
+            probe_utils->send_msg("$output", "d", "[$mac ($nodehostname)]");
+        } else {
+            probe_utils->send_msg("$output", "d", "[$mac]:");
+        }
+        foreach my $line (@{ $rawdata{$mac}{"history"} }) {
+            probe_utils->send_msg("$output", "d", "\t$line");
+        }
+        print "\n";
+    }
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Check if all predefined node are valid
+    Arguments:
+       discovery_type: valid value are mtms and switch 
+       noderange: node range
+    Returns:
+       0: pass
+       1: failed
+=cut
+
+#------------------------------------------
+sub check_pre_defined_node {
+    my $discovery_type = shift;
+    my $noderange      = shift;
+
+    my $rst = 0;
+    my @cmdoutput;
+    my %nodecheckrst;
+    my $currentnode = "";
+
+    @cmdoutput = `lsdef $noderange 2>&1`;
+    foreach (@cmdoutput) {
+        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+            $currentnode = $1;
+            $nodecheckrst{$currentnode}{"error"} = "Could not find node definition";
+            $rst = 1;
+        } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
+            $currentnode = $1;
+            $monitor_nodes{$1} = 0;
+        } elsif ($_ =~ /^\s+(\w+)\s*=\s*(\w+)/) {
+            $nodecheckrst{$currentnode}{$1} = $2;
+        }
+    }
+
+    #print Dumper(%nodecheckrst);
+
+    foreach my $node (keys %nodecheckrst) {
+        if (!exists($nodecheckrst{$node}{error})) {
+            if ($discovery_type eq "mtms") {
+                if (!(exists($nodecheckrst{$node}{"mtm"}) && exists($nodecheckrst{$node}{"serial"}))) {
+                    $nodecheckrst{$node}{"error"} = "Node definition is wrong for '$discovery_type' type discovery";
+                    $rst = 1;
+                }
+            } elsif ($discovery_type eq "switch") {
+                {    #important to hold a block
+                    if (!(exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"}))) {
+                        $nodecheckrst{$node}{"error"} = "Atrribute 'switch' or 'switchport' isn't defined for '$discovery_type' type discovery";
+                        $rst = 1;
+                        last;
+                    }
+
+                    my $tmpoutput = `lsdef $nodecheckrst{$node}{"switch"} 2>&1`;
+                    if ($?) {
+                        $nodecheckrst{$node}{"error"} = "Missing definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+
+                    if ($tmpoutput !~ /snmpversion=/) {
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'snmpversion' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+                    if ($tmpoutput !~ /username=/) {
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'username' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+                    if ($tmpoutput !~ /password=/) {
+                        $nodecheckrst{$node}{"error"} = "Missing attribute 'password' definition for related switch $nodeswitch";
+                        $rst = 1;
+                        last;
+                    }
+                }
+            }
+        }
+    }
+
+    foreach my $node (keys %nodecheckrst) {
+        probe_utils->send_msg("$output", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
+    }
+
+    return $rst;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Test if all nodes have finished job
+    Arguments:
+       One golble attribute %monitor_nodes;
+    Returns:
+=cut
+
+#------------------------------------------
+sub all_monitor_node_done {
+    my $done = 1;
+    foreach my $node (keys %monitor_nodes) {
+        if ($monitor_nodes{$node} == 0) {
+            $done = 0;
+            last;
+        }
+    }
+    return $done;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Do pre_checking
+    Arguments:
+        nics: target network interface
+              if not specified, using the network which master belongs to
+    Returns:
+        0: pass
+        1: failed
+=cut
+
+#------------------------------------------
+sub do_pre_check {
+    my $nics = shift;
+    my @nets = ();
+    my $rst  = 0;
+    my $msg;
+
+    #The block of $nics is ture is a reservation part, this part don't show up in usage
+    if ($nics) {
+        if ($nics =~ /[^\w|]/) {
+            probe_utils->send_msg("$output", "f", "Invalid NIC list");
+            probe_utils->send_msg("$output", "d", "$::USAGE");
+            exit 1;
+        }
+
+        $msg = "The input network interfaces $nics exist and are configured correctly on current server";
+        my $miss = 0;
+        my @nic_array = split(",", $nics);
+        foreach my $nic (@nic_array) {
+            my $tmp_nic = `ip addr show $nic >/dev/null 2>&1`;
+            if ($?) {
+                probe_utils->send_msg("$output", "d", "Network interface $nic doesn't exist on current server") if ($verbose);
+                $miss = 1;
+            } else {
+                my $tmp = `echo $tmp_nic |awk -F" " '/inet / {print \$2}'`;
+                chomp($tmp);
+                if (!length($tmp)) {
+                    probe_utils->send_msg("$output", "d", "Network interface $nic isn't set IP address") if ($verbose);
+                    $miss = 1;
+                } else {
+                    my ($ip, $mask) = split("/", $tmp);
+                    my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+                    push(@nets, probe_utils->get_network($ip, $strmask));
+                }
+            }
+        }
+        if ($miss) {
+            probe_utils->send_msg("$output", "f", $msg);
+            $rst = 1;
+        } else {
+            probe_utils->send_msg("$output", "o", $msg);
+        }
+    } else {
+        $msg = "Attribute 'master' in 'site' table is configured well";
+        my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+        chomp($masteripinsite);
+        if ($masteripinsite eq "") {
+            probe_utils->send_msg("$output", "d", "There isn't 'master' definition in 'site' table") if ($verbose);
+            probe_utils->send_msg("$output", "f", $msg);
+            exit 1;
+        }
+
+        if (!xCAT::NetworkUtils->isIpaddr("$masteripinsite")) {
+            probe_utils->send_msg("$output", "d", "The value of 'master' in 'site' table isn't an IP address") if ($verbose);
+            probe_utils->send_msg("$output", "f", $msg);
+            exit 1;
+        }
+        my $tmpoutput = `ip addr 2>&1 |grep  $masteripinsite`;
+        if ($?) {
+            probe_utils->send_msg("$output", "d", "The IP $masteripinsite of 'master' in 'site' table dosen't belong to any network on current server") if ($verbose);
+            probe_utils->send_msg("$output", "f", $msg);
+            exit 1;
+        }
+        probe_utils->send_msg("$output", "o", $msg);
+
+        chomp($tmpoutput);
+        my $tmp = `echo $tmpoutput | awk -F" " '{print \$2}'`;
+        chomp($tmp);
+        my ($ip, $mask) = split("/", $tmp);
+        my $strmask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+        push(@nets, probe_utils->get_network($ip, $strmask));
+    }
+
+    my $arch = `uname -i`;
+    chomp($arch);
+    $msg = "Genesis files for $arch are available";
+    if ($arch =~ /ppc64/i) {
+        if (check_genesis_file("ppc64")) {
+            probe_utils->send_msg("$output", "f", $msg);
+            $rst = 1;
+        } else {
+            probe_utils->send_msg("$output", "o", $msg);
+            if (check_genesis_file("x86_64")) {
+                probe_utils->send_msg("$output", "w", "Genesis files for x86 are not available");
+                probe_utils->send_msg("$output", "i", "Ignore above warning if not planning on managing x86 server");
+            } else {
+                probe_utils->send_msg("$output", "o", "Genesis files for x86 are available");
+            }
+        }
+    } elsif ($arch =~ /x86/i) {
+        if (check_genesis_file("x86_64")) {
+            probe_utils->send_msg("$output", "f", $msg);
+            $rst = 1;
+        } else {
+            probe_utils->send_msg("$output", "o", $msg);
+            if (check_genesis_file("ppc64")) {
+                probe_utils->send_msg("$output", "w", "Genesis files for ppc64/ppc64le are not available");
+                probe_utils->send_msg("$output", "i", "ignore above warning if not planning on managing ppc64/ppc64le server");
+            } else {
+                probe_utils->send_msg("$output", "o", "Genesis files for ppc64/ppc64le are available");
+            }
+        }
+    }
+
+    $msg = "DHCP dynamic range is configured well";
+    if (dhcp_dynamic_range_check(\@nets)) {
+        probe_utils->send_msg("$output", "f", $msg);
+        $rst = 1;
+    } else {
+        probe_utils->send_msg("$output", "o", $msg);
+    }
+
+    return $rst;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+       Monitor the process of discovery 
+    Arguments:
+        nics: target network interface
+              if not specified, using the network which master belongs to
+    Returns:
+        0: pass
+        1: failed
+=cut
+
+#------------------------------------------
+sub do_monitor {
+
+    $SIG{TERM} = $SIG{INT} = sub {
+        $terminal = 1;
+    };
+
+    if (!$nics) {
+        my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
+        chomp($masteripinsite);
+        $nics = `ip addr |grep -B2 $masteripinsite|awk -F" " '/mtu/{gsub(/:/,"",\$2); print \$2}'`;
+        chomp($nics);
+        if (!$nics) {
+            probe_utils->send_msg("$output", "f", "The value of 'master' in 'site' table is $masteripinsite, can't get corresponding network interface");
+            return 1;
+        }
+    }
+
+    my $startline = "
+-------------------------------------------------------------
+                               ___
+        ____    _  _____   _.-|   |          |\\__/,|   (`\\
+ __  __/ ___|  / \\|_   _| {   |   |          |x x  |__ _) )
+ \\ \\/ / |     / _ \\ | |    \"-.|___|        _.( T   )  `  /
+  >  <| |___ / ___ \\| |    .--'-`-.     _((_ `^--' /_<  \\
+ /_/\\_\\\\____/_/   \\_\\_|  .+|______|__.-||__)`-'(((/  (((/
+-------------------------------------------------------------
+";
+    print "$startline\nStart capturing every message during discovery process......\n";
+
+    my $varlogmsg  = "/var/log/messages";
+    my $clusterlog = "/var/log/xcat/cluster.log";
+    my $computelog = "/var/log/xcat/computes.log";
+
+    #http logs are saved in different file in different distro
+    my $httplog;
+    if (-e "/var/log/httpd/access_log") {
+        $httplog = "/var/log/httpd/access_log";
+    } elsif (-e "/var/log/apache2/access_log") {
+        $httplog = "/var/log/apache2/access_log";
+    } elsif (-e "/var/log/apache2/access.log") {
+        $httplog = "/var/log/apache2/access.log";
+    }
+
+    my $clusterpid;
+    my $httppid;
+    my $computerpid;
+    my $varlogpid;
+    my $rst = 0;
+    {    #important to hold a block
+        if (!-e "$varlogmsg") {
+            probe_utils->send_msg("$output", "w", "$varlogmsg doesn't exist");
+        }
+        if (!-e "$clusterlog") {
+            probe_utils->send_msg("$output", "w", "$clusterlog doesn't exist");
+        }
+        if (!-e "$computelog") {
+            probe_utils->send_msg("$output", "w", "$computelog doesn't exist");
+        }
+        if (!-e "$httplog") {
+            probe_utils->send_msg("$output", "w", "$httplog doesn't exist");
+        }
+
+        # start ot obtain logs from every log file
+        if (!($varlogpid = open(VARLOGMSGFILE, "tail -f -n 0 $varlogmsg 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $varlogmsg to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($clusterpid = open(CLUSTERLOGFILE, "tail -f -n 0 $clusterlog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $clusterlog to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($httppid = open(HTTPLOGFILE, "tail -f -n 0 $httplog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $httplog to get logs");
+            $rst = 1;
+            last;
+        }
+        if (!($computerpid = open(COMPUTERFILE, "tail -f -n 0 $computelog 2>&1 |"))) {
+            probe_utils->send_msg("$output", "f", "Can't open $computelog to get logs");
+            $rst = 1;
+            last;
+        }
+
+        my $select = new IO::Select;
+        $select->add(\*VARLOGMSGFILE);
+        $select->add(\*CLUSTERLOGFILE);
+        $select->add(\*HTTPLOGFILE);
+        $select->add(\*COMPUTERFILE);
+        $| = 1;
+
+        my $line = "";
+        my @hdls;
+        my $hdl;
+        for (; ;) {
+            if (@hdls = $select->can_read(0)) {
+                foreach $hdl (@hdls) {
+                    if ($hdl == \*VARLOGMSGFILE) {
+                        chomp($line = <VARLOGMSGFILE>);
+                        my @tmp = split(/\s+/, $line);
+                        if ($tmp[4] =~ /dhcpd:/i && $line =~ /$nics/) {
+                            handle_dhcp_msg("$line");
+                        } elsif ($tmp[4] =~ /in.tftpd/i) {
+                            handle_tftp_msg("$line");
+                        }
+                    } elsif ($hdl == \*CLUSTERLOGFILE) {
+                        chomp($line = <CLUSTERLOGFILE>);
+                        handle_cluster_msg("$line");
+                    } elsif ($hdl == \*HTTPLOGFILE) {
+                        chomp($line = <HTTPLOGFILE>);
+                        handle_http_msg("$line");
+                    } elsif ($hdl == \*COMPUTERFILE) {
+                        chomp($line = <COMPUTERFILE>);
+                        handle_compute_msg("$line");
+                    }
+                }
+            }
+
+            if ($terminal || (%monitor_nodes && all_monitor_node_done())) {
+                if ($terminal) {
+                    probe_utils->send_msg("$output", "d", "Got <Ctrl+c> from STDIN");
+                } else {
+                    probe_utils->send_msg("$output", "o", "All nodes specified to monitor have finished discovery process");
+                }
+                last;
+            }
+            sleep 0.01;
+        }
+        &dump_history;
+    }
+
+    kill 'INT', $clusterpid  if ($clusterpid);
+    kill 'INT', $httppid     if ($httppid);
+    kill 'INT', $computerpid if ($computerpid);
+    kill 'INT', $varlogpid   if ($varlogpid);
+    close(VARLOGMSGFILE)  if (VARLOGMSGFILE);
+    close(CLUSTERLOGFILE) if (CLUSTERLOGFILE);
+    close(COMPUTERFILE)   if (COMPUTERFILE);
+    close(HTTPLOGFILE)    if (HTTPLOGFILE);
+
+    return $rst;
+}
+
+#-------------------------------------
+## main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h|?" => \$help,
+        "T"            => \$test,
+        "V"            => \$verbose,
+        "--noprecheck" => \$no_pre_check,
+        "m=s"          => \$discovery_type,
+        "n=s"          => \$noderange,
+        "N=s" => \$nics)) #option N is a reservation option, dosen't show up in usage now
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Probe the discovery process, including pre-check for required configuration and realtime monitor of discovery process. Before using this command, please install 'nslookup' command. Currently, this command does not support hierarchy.");
+    exit 0;
+}
+
+if (defined($noderange) && !defined($discovery_type)) {
+    probe_utils->send_msg("$output", "f", "Option '-n' must used with '-m'");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if (defined($discovery_type)) {
+    unless (grep(/^$discovery_type$/, @valid_discovery_type)) {
+        probe_utils->send_msg("$output", "f", "Invalid discovery type. the vaild types are $valid_discovery_type_str");
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+        exit 1;
+    }
+}
+
+if (defined($noderange) && defined($discovery_type)) {
+    $msg = "All pre_defined nodes are valid";
+    my $rc = check_pre_defined_node($discovery_type, $noderange);
+    if ($rc) {
+        probe_utils->send_msg("$output", "f", $msg);
+        exit 1;
+    } else {
+        probe_utils->send_msg("$output", "o", $msg);
+    }
+}
+
+if (!$no_pre_check) {
+    $rst = do_pre_check();
+    exit 1 if ($rst);
+}
+
+$rst = do_monitor();
+
+exit $rst;
