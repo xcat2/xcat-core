@@ -434,8 +434,8 @@ EOF
     fi
     sed -i '/127.0.1.1/d' /etc/hosts
 else
-    sed -i 's/^serial/#serial/' /boot/grub/grub.conf
-    sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
+    [ -f /boot/grub/grub.conf  ] && sed -i 's/^serial/#serial/' /boot/grub/grub.conf
+    [ -f /boot/grub/grub.conf  ] && sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
        msgutil_r "$MASTER_IP" "debug" "/boot/grub/grub.conf updated" "/var/log/xcat/xcat.log"
     fi
