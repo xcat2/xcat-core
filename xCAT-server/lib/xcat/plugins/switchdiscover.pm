@@ -1383,7 +1383,7 @@ sub switchsetup {
         # issue makehosts so we can use xdsh
         my $dswitch = get_hostname($outhash->{$mac}->{name}, $ip);
 
-        my $node = $macmap->find_mac($mac,0);
+        my $node = $macmap->find_mac($mac,0,1);
         if (!$node) {
             send_msg($request, 0, "NO predefined switch matched this switch $dswitch with ip address $ip and mac address $mac");
             next;

@@ -8,29 +8,11 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m cpio
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m cpio
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 check:rc==0
 cmd:rm -rf  /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
-cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
-cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
-cmd:mv -f /rootimg.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
-end
-
-start:packimage_p_a_o
-os:Linux
-cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg /rootimg.bak;fi
-cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz /rootimg.cpio.gz.bak;fi
-cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
-check:rc==0
-cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
-check:rc==0
-cmd:packimage -p compute -a __GETNODEATTR($$CN,arch)__ -o __GETNODEATTR($$CN,os)__
-check:rc==0
-cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
-check:rc==0
-cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:mv -f /rootimg.cpio.gz.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.cpio.gz
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 cmd:mv -f /rootimg.bak /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -79,7 +61,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m cpio -c gzip
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m cpio -c gzip
 check:rc==0
 check:output=~archive method:cpio
 check:output=~compress method:gzip
@@ -89,8 +71,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -125,7 +106,7 @@ cmd:if grep SUSE /etc/*release;then zypper install -y pigz;fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then apt-get install pigz -y; fi
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m cpio -c pigz 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m cpio -c pigz 
 check:rc==0
 check:output=~archive method:cpio
 check:output=~compress method:pigz
@@ -135,8 +116,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -167,7 +147,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m cpio -c xz 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m cpio -c xz 
 check:rc==0
 check:output=~archive method:cpio
 check:output=~compress method:xz
@@ -177,8 +157,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -213,7 +192,7 @@ cmd:if grep SUSE /etc/*release;then zypper install -y pigz;fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then apt-get install pigz -y; fi
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m tar -c pigz 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m tar -c pigz 
 check:rc==0
 check:output=~archive method:tar
 check:output=~compress method:pigz
@@ -223,8 +202,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -255,7 +233,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m tar -c gzip 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m tar -c gzip 
 check:rc==0
 check:output=~archive method:tar
 check:output=~compress method:gzip
@@ -265,8 +243,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -297,7 +274,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m tar -c xz 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m tar -c xz 
 check:rc==0
 check:output=~archive method:tar
 check:output=~compress method:xz
@@ -307,8 +284,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 900
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -338,7 +314,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -m invalid 
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -m invalid 
 check:rc!=0
 check:output=~Error: Invalid archive method 'invalid' requested
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
@@ -354,7 +330,7 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__ -c invalid
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -c invalid
 check:rc!=0
 check:output=~Error: Invalid compress method 'invalid' requested
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg

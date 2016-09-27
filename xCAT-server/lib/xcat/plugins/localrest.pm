@@ -134,7 +134,7 @@ sub handle_rest_request {
 =head3  handler to list network adapters
 
   Subroutine to handle rest request
-  GET /localres/adapter/
+  GET /localres/adapters/
 
   Usage example:
         This function is called from handle_rest_request,
@@ -142,24 +142,60 @@ sub handle_rest_request {
 =cut
 
 #-------------------------------------------------------
-sub list_adapter {
-    my ($rsp, $result, $i);
-    if (!opendir DIR, "/sys/class/net") {
-        $rsp->{data}->[0] = "Unable open /sys/class/net dir.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-        return 1;
-    }
-    my @dir = readdir(DIR);
-    closedir(DIR);
-    $i = 0;
-    foreach my $item (@dir) {
-        if ($item eq '.' || $item eq '..') {
-            next;
+sub list_adapters {
+    my ($rsp, $cmd, $tmpres, $vline);
+    my ($mac, $ip, $adapter, $preadapter, $samenic);
+    my (@cmdres, @origin, @eachline, @line, @result);
+        $cmd = "ip -o addr";
+        @cmdres = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0) {
+            $rsp->{data}->[0] = "Executing ip command failed.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
         }
-        $result->[ $i++ ] = $item;
-    }
-    return $result;
+        # sort ip -o addr result
+        for (my $i=0; $i<@cmdres; $i++) {
+            @eachline = split(' ',$cmdres[$i]);
+            if ( $eachline[1] =~ "lo" ) {
+                next;
+            }
+            $adapter = $eachline[1];
+            $adapter =~ s/://;
+            if ( !$preadapter ) {
+                $preadapter = $adapter;
+            } elsif ( $preadapter ne $adapter ) {
+                $samenic->{$preadapter} = "@origin";
+                @origin = "";
+                $preadapter = $adapter;
+            }
+            push (@origin, @eachline);
+            if ( @cmdres == $i+1 ) {
+                $samenic->{$adapter} = "@origin";
+            }
+        }
+        # get net ip and mac
+        foreach my $key (keys %{$samenic}){
+            $vline=${$samenic}{$key};
+            @line = split(' ',$vline);
+            $tmpres->{'name'} = $key;
+            for (my $i=0; $i<@line; $i++) {
+
+                if ( $line[$i] =~ /^inet$/ ) {
+                    $ip = $line[$i+1];
+                    $tmpres->{'ip'} = $ip;
+                }
+
+                if ( $line[$i] =~ 'ether' ) {
+                    $mac = $line[$i+1];
+                    $tmpres->{'mac'} = $mac;
+                }
+           }
+           push (@result, $tmpres);
+       }
+    return \@result;
 }
+
+
 
 #-------------------------------------------------------
 

@@ -527,8 +527,11 @@ sub mknetboot
                         $nfsdir = $resHash->{nfsdir} . "/netboot/$osver/$arch/$profile";
                     }
                 }
-                $kcmdline =
-                  "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
+                if (&using_dracut($rootimgdir)) {
+                    $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+                } else {
+                    $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
+                }
             } else {
                 $kcmdline =
 "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
@@ -703,7 +706,13 @@ sub mknetboot
         }
 
         my $initrdstr = "$rtftppath/initrd-stateless.gz";
-        $initrdstr = "$rtftppath/initrd-statelite.gz" if ($statelite);
+
+        # special case for the dracut-enabled OSes
+        if ($statelite) {
+            unless (&using_dracut($rootimgdir) && ($rootfstype eq "ramdisk")) {
+                $initrdstr = "$rtftppath/initrd-statelite.gz";
+            }
+        }
 
         if ($statelite)
         {
@@ -1719,6 +1728,19 @@ erver, if so, stop it first and try again" ],
             );
             return 1;
         }
+    }
+}
+
+# Check whether the dracut is supported by this os
+sub using_dracut
+{
+    my $rootimgdir = shift;
+    my $chkcmd = "chroot $rootimgdir/rootimg dracut --list-modules";
+    my $rc = system($chkcmd);
+    if ($rc) {
+        return 0;
+    } else {
+        return 1;
     }
 }
 

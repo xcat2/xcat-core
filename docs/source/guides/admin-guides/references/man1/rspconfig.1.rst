@@ -38,7 +38,7 @@ BMC specific:
 =============
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **vlan | ip | netmask | gateway | backupgateway | garp**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **garp**\ =\ *time*\ 
 
@@ -80,15 +80,11 @@ FSP/CEC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **autopower | iocap | dev | celogin1 | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **autopower | iocap | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **autopower**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **iocap**\ ={\ **enable | disable**\ }
-
-\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable | disable**\ }
-
-\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **time**\ =\ *hh:mm:ss*\ 
 
@@ -142,17 +138,13 @@ BPA/Frame Specific:
 ===================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **network | dev | celogin1**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **network**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,**\ \*}
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,[IP,][hostname,][gateway,][netmask]**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,0.0.0.0**\ }
-
-\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable | disable**\ }
-
-\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
@@ -255,7 +247,7 @@ DESCRIPTION
 \ **rspconfig**\  configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the \ **=**\ , it displays the current value.
 
-For options \ **autopower | iocap | dev | celogin1 | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first. For options \ **dev | celogin1**\ , user also need to contact IBM service to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use \ *chdef -t site enableASMI=no*\  to disable ASMI.
+For options \ **autopower | iocap | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first.
 
 
 *******
@@ -396,15 +388,9 @@ OPTIONS
  
 
 
-\ **dev**\ ={\ **enable**\  | \ **disable**\ }
+\ **vlan**\ 
  
- Enable or disable the CEC|Frame 'dev' account or display account status if no value specified.
- 
-
-
-\ **celogin1**\ ={\ **enable**\  | \ **disable**\ }
- 
- Enable or disable the CEC|Frame 'celogin1' account or display account status if no value specified.
+ Get or set vlan ID. For get vlan ID, if vlan is not enabled, 'BMC VLAN disabled' will be outputed. For set vlan ID, the valid value are [1-4096].
  
 
 

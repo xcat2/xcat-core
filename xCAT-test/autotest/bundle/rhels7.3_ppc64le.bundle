@@ -19,7 +19,6 @@ chtab_modify_key
 chtab_h
 chtab_v
 packimage_o_p_a_m
-packimage_p_a_o
 packimage_imagename
 packimage_h
 packimage_v
@@ -205,4 +204,10 @@ switchdiscover_range_z_V
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+reg_linux_statelite_installation_flat
+SN_setup_case
+reg_linux_diskfull_installation_hierarchy
+reg_linux_diskless_installation_hierarchy
+reg_linux_statelite_installation_hierarchy_by_ramdisk
+reg_linux_statelite_installation_hierarchy_by_nfs
 clean_up_env

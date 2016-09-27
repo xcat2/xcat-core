@@ -214,9 +214,21 @@ probe_utils->send_msg("$output", "d", "---- Gathering information from all diskl
 my $pingable_hostname_list = join ",", @pingable_nodes;
 my $all_xdsh_output = `xdsh $pingable_hostname_list "cat /opt/xcat/xcatinfo"`;
 my $xcatinfo_image_UUID = ` echo "$all_xdsh_output" | awk -F"=" '/IMAGEUUID/ {gsub(/IMAGEUUID/,"",\$1); gsub(/'"'"'/,"",\$2);; print \$1 \$2}'`;
+
+# Check to verify xdsh worked and returned some usefull information
+if (length($xcatinfo_image_UUID) <= 1) {
+    probe_utils->send_msg("$output", "w", "Unable to extract image UUID information from compute nodes using xdsh command. No image consistency verification will be performed.");
+    exit 1;
+}
 my @xdsh_UUID_lines = split("[\n\r]", $xcatinfo_image_UUID);
 
 my $xcatinfo_image_name = ` echo "$all_xdsh_output" | awk -F"=" '/IMAGENAME/ {gsub(/IMAGENAME/,"",\$1); gsub(/'"'"'/,"",\$2); print \$1 \$2}'`;
+
+# Check to verify xdsh worked and returned some usefull information
+if (length($xcatinfo_image_name) <= 1) {
+    probe_utils->send_msg("$output", "w", "Unable to extract image name information from compute nodes using xdsh command. No image consistency verification will be performed.");
+    exit 1;
+}
 my @xdsh_name_lines = split("[\n\r]", $xcatinfo_image_name);
 
 my %node_running_image_uuid_hash;

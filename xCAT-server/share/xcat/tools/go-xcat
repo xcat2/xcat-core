@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.2
+# Version 1.0.7
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -12,6 +12,8 @@
 #     - created
 # 2016-06-20 GONG Jie <gongjie@linux.vnet.ibm.com>
 #     - released to the field
+# 2016-09-20 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - bug fix
 #
 
 function usage()
@@ -136,14 +138,7 @@ GO_XCAT_DEFAULT_BASE_URL="http://xcat.org/files/xcat/repos"
 GO_XCAT_DEFAULT_INSTALL_PATH="/install/xcat"
 
 # The package list of xcat-core
-GO_XCAT_CORE_PACKAGE_LIST=(perl-xCAT xCAT xCAT-SoftLayer xCAT-buildkit
-	xCAT-client xCAT-confluent xCAT-genesis-scripts-ppc64
-	xCAT-genesis-scripts-x86_64 xCAT-server xCAT-test xCAT-vlan xCATsn)
-# For Debian/Ubuntu, it will need a sight different package list
-type dpkg >/dev/null 2>&1 &&
-GO_XCAT_CORE_PACKAGE_LIST=(perl-xcat xcat xcat-buildkit xcat-client
-	xcat-confluent xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64
-	xcat-server xcat-test xcat-vlan xcatsn)
+GO_XCAT_CORE_PACKAGE_LIST=()
 GO_XCAT_DEP_PACKAGE_LIST=()
 
 # The package list of all the packages should be installed
@@ -293,7 +288,7 @@ function internal_cleanup()
 #
 function custom_setup()
 {
-	check_exec_or_exit awk cat printf sort sleep tee
+	check_exec_or_exit awk cat comm grep printf sleep tee
 	check_root_or_exit
 }
 
@@ -483,7 +478,8 @@ function check_repo_version_dnf()
 function check_repo_version_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	check_exec_or_exit repoquery
+	check_executes repoquery
+	exit_if_bad "$?" "Install the \`yum-utils' package and rerun."
 	local -a name=()
 	local -a ver=()
 	while read -r name ver
@@ -588,12 +584,12 @@ function get_package_list_dnf()
 function get_package_list_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	check_exec_or_exit repoquery
+	check_executes repoquery
+	exit_if_bad "$?" "Install the \`yum-utils' package and rerun."
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
-
 #       $1      repo id
 function get_package_list_zypper()
 {
@@ -611,8 +607,13 @@ function get_package_list_apt()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	awk '/^Package: / { print $2 }' \
-		<"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
+		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
 		2>/dev/null
+	# This is a dirty hack, and use recursion.
+	# For the `devel' branch of the online repo for apt, it has the
+	# subdirectory name of `core-snap' instead of `xcat-core'.
+	[[ "$?" -ne "0" && "${repo_id}" = "xcat-core" ]] &&
+		"${FUNCNAME}" "core-snap"
 }
 
 #       $1      repo id
@@ -714,7 +715,7 @@ function extract_archive()
 	[[ -f "${archive}" ]]
 	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
 	mkdir -p "${install_path}" 2>/dev/null
-	warn_if_bad "$?" "create directory \`${install_path}\' failed" ||
+	warn_if_bad "$?" "Failed to create directory \`${install_path}'" ||
 		return 1
 	case "${archive##*.}" in
 	"Z")
@@ -1094,6 +1095,10 @@ function update_repo_dnf()
 function update_repo_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
+	# Check if `yum' support `updateinfo' command.
+	yum --help 2>/dev/null | grep -q "^updateinfo" >/dev/null 2>&1
+	warn_if_bad "$?" "Lacking support of \`updateinfo' command for \`yum'."
+	exit_if_bad "$?" "Install the \`yum-plugin-security' package and rerun."
 	yum --nogpgcheck updateinfo
 }
 
@@ -1162,12 +1167,12 @@ function update_xcat()
 {
 	local -i i=0
 	local ver=""
+	local -a xcat_core_package_list
+	xcat_core_package_list=($(get_package_list xcat-core))
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-core'."
 	local -a install_list=($(
-	for p in "${GO_XCAT_INSTALL_LIST[@]}" \
-		$(get_package_list xcat-core)
-	do
-		echo "${p}"
-	done | sort -u
+		comm <(echo "${GO_XCAT_INSTALL_LIST[@]}") \
+			<(echo "${xcat_core_package_list[@]}")
 	))
 	for i in "${!install_list[@]}"
 	do
@@ -1180,14 +1185,10 @@ function update_xcat()
 
 function list_xcat_packages()
 {
-	GO_XCAT_CORE_PACKAGE_LIST=($(
-	for p in "${GO_XCAT_CORE_PACKAGE_LIST[@]}" \
-		$(get_package_list xcat-core)
-	do
-		echo "${p}"
-	done | sort -u
-	))
+	GO_XCAT_CORE_PACKAGE_LIST=($(get_package_list xcat-core))
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-core'."
 	GO_XCAT_DEP_PACKAGE_LIST=($(get_package_list xcat-dep))
+	exit_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."
 
 	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
@@ -1384,11 +1385,23 @@ do
 		verbose_usage
 		exit 0
 		;;
+	"--xcat-core")
+		shift
+		GO_XCAT_CORE_URL="$1"
+		;;
 	"--xcat-core="*)
 		GO_XCAT_CORE_URL="${1##--xcat-core=}"
 		;;
+	"--xcat-dep")
+		shift
+		GO_XCAT_DEP_URL="$1"
+		;;
 	"--xcat-dep="*)
 		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
+		;;
+	"--xcat-version")
+		shift
+		GO_XCAT_VERSION="$1"
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
@@ -1401,13 +1414,13 @@ do
 		GO_XCAT_YES=("-y")
 		;;
 	"-"*)
-		warn_if_bad 1 "invalid option -- '$1'"
+		warn_if_bad 1 "invalid option -- \`$1'"
 		exit_if_bad 1 "Try \`$0 --help' for more information"
 		;;
 	*)
 		[ "$1" == "--" ] && shift
 		[ -z "${GO_XCAT_ACTION}" ]
-		warn_if_bad "$?" "redundancy action -- '$1'"
+		warn_if_bad "$?" "redundancy action -- \`$1'"
 		exit_if_bad "$?" "Try \`$0 --help' for more information"
 		GO_XCAT_ACTION="$1"
 		;;
@@ -1427,7 +1440,7 @@ case "${GO_XCAT_ACTION}" in
 	exit 1
 	;;
 *)
-	warn_if_bad 1 "invalid action -- '${GO_XCAT_ACTION}'"
+	warn_if_bad 1 "invalid action -- \`${GO_XCAT_ACTION}'"
 	exit_if_bad 1 "Try \`$0 --help' for more information"
 	;;
 esac
@@ -1478,9 +1491,9 @@ echo
 echo -n "Reading repositories "
 show_progress_meters
 ERR_MSG="$({
-	if add_xcat_core_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
+	if add_xcat_core_repo -y "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
-		if add_xcat_dep_repo "${GO_XCAT_YES[@]}" "${GO_XCAT_DEP_URL}"
+		if add_xcat_dep_repo -y "${GO_XCAT_DEP_URL}"
 		then
 			update_repo && exit 0
 			remove_repo "xcat-dep"
@@ -1518,12 +1531,13 @@ case "${GO_XCAT_ACTION}" in
 			exit 0
 		esac
 	fi
-	(
-		"${GO_XCAT_INSTALLER}" "${GO_XCAT_YES[@]}" 2>&1 1>&42 |
-			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
-		exit "${PIPESTATUS[0]}"
-	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
-	RET="${PIPESTATUS[0]}"
+	# Use `-y' here. Since the STDOUT is redirect to tee.
+	# `yum' does not display the prompt message properly when
+	# working with tee.
+	"${GO_XCAT_INSTALLER}" -y \
+		> >(tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout") \
+		2> >(tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2)
+	RET="$?"
 	{
 		# Creating logs
 		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
@@ -1557,8 +1571,6 @@ case "${GO_XCAT_ACTION}" in
 		fi
 	fi >"${TMP_DIR}/go-xcat.log.008"
 
-	list_xcat_packages | tee "${TMP_DIR}/go-xcat.log.099"
-
 	if [[ "${RET}" -ne "0" ]]
 	then
 		GO_XCAT_LOG="/tmp/go-xcat.log"
@@ -1589,17 +1601,15 @@ case "${GO_XCAT_ACTION}" in
 		commands to set environment variables into your PATH:
 
 		    for sh,
-		        \`source /etc/profile.d/xcat.sh\`
+		        \`source /etc/profile.d/xcat.sh'
 		    or csh,
-		        \`source /etc/profile.d/xcat.csh\`
+		        \`source /etc/profile.d/xcat.csh'
 		EOF
 		;;
 	"update")
 		while read -r ; do echo "${REPLY}" ; done <<-EOF
 
-		xCAT has been updated!
-		======================
-
+		xCAT has been successfully updated!
 		EOF
 		;;
 	esac

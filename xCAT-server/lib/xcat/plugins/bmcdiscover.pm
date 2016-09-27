@@ -204,14 +204,20 @@ sub bmcdiscovery_processargs {
         return 1;
     }
 
+    ############################################
+    # Option -U and -P for bmc user and password 
     #
-    # Get the default bmc account from passwd table
-    #
+    # Get the default bmc account from passwd table, 
+    # this is only done for the discovery process
+    ############################################
     ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
-
-    # overwrite the default user/pass with what is passed in
+    # overwrite the default user and password if one is provided
     if ($::opt_U) {
         $bmc_user = $::opt_U;
+    } elsif ($::opt_P) {
+        # If password is provided, but no user, set the user to blank
+        # Support older FSP and Tuletta machines
+        $bmc_user = '';
     }
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
@@ -222,6 +228,14 @@ sub bmcdiscovery_processargs {
     ######################################
     if (defined($::opt_R))
     {
+        # Option -c should not be used with -r 
+        if (defined($::opt_C)) {
+            my $msg = "The 'check' and 'range' option cannot be used together.";
+            my $rsp = {};
+            push @{ $rsp->{data} }, "$msg";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 2;
+        }
         ######################################
         # check if there is nmap or not
         ######################################
@@ -240,6 +254,7 @@ sub bmcdiscovery_processargs {
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
         }
+
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);
         return 0;
     }
@@ -280,7 +295,7 @@ sub bmcdiscovery_processargs {
     # --ipsource option, requires -i, -p to be specified
     ####################################################
     if (defined($::opt_S)) {
-        if (defined($bmc_user) && defined($bmc_pass) && defined($::opt_I)) {
+        if (defined($bmc_pass) && defined($::opt_I)) {
             my $res = get_bmc_ip_source($::opt_I, $bmc_user, $bmc_pass);
             return $res;
         }
@@ -290,6 +305,8 @@ sub bmcdiscovery_processargs {
                 $msg = "The ipsource option requires a BMC IP.  Specify the IP using the -i|--bmcip option.";
             } elsif (!defined($::opt_P)) {
                 $msg = "The ipsource option requires a password.  Specify the password with the -p|--bmcpasswd option.";
+            } else {
+                $msg = "Failed to process ipsource command for bmc ip=$::opt_I user=$bmc_user password=$bmc_pass";
             }
             my $rsp = {};
             push @{ $rsp->{data} }, "$msg";
@@ -336,10 +353,10 @@ sub get_bmc_ip_source {
     else {
         $pcmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U $bmcuser -P $bmcpw -H $bmcip lan print ";
     }
+
     my $output = xCAT::Utils->runcmd("$pcmd", -1);
 
     if ($output =~ "IP Address Source") {
-
         # success case
         my $rsp      = {};
         my $ipsource = `echo "$output"|grep "IP Address Source"`;
@@ -351,17 +368,18 @@ sub get_bmc_ip_source {
     else {
         my $rsp = {};
         if ($output =~ $bmc_str1) {
-
             # Error: RAKP 2 message indicates an error : unauthorized name <== incorrect username
             push @{ $rsp->{data} }, "$bmc_resp1";
         } elsif ($output =~ $bmc_str2) {
-
             # Error: RAKP 2 HMAC is invalid <== incorrect password
             push @{ $rsp->{data} }, "$bmc_resp2";
         } else {
-
+            my $error_msg = `echo "$output"|grep "Error" `;
+            if ($error_msg eq ""){
+                $error_msg = "Can not find IP address Source";
+            }
             # all other errors
-            push @{ $rsp->{data} }, "Error: Can not find IP Address Source";
+            push @{ $rsp->{data} }, "$error_msg";
         }
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;

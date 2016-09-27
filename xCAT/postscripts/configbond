@@ -195,6 +195,7 @@ IPADDR=${str_bond_ip}
 NETMASK=${str_bond_mask}
 ONBOOT=yes
 USERCTL=no
+TYPE=Bond
 BONDING_OPTS="${array_bond_opts[*]}"
 EOF
 
@@ -217,6 +218,7 @@ elif [ "$str_os_type" = "sles" ];then
 NAME='Bonded Interface'
 BOOTPROTO=static
 BONDING_MASTER=yes
+TYPE=Bond
 IPADDR=${str_bond_ip}
 NETMASK=${str_bond_mask}
 STARTMODE=onboot

@@ -56,12 +56,6 @@ OPTIONS
 
 \ **-v**\           Command Version.
 
-\ **-o**\           Operating system (fedora8, rhel5, sles10,etc)
-
-\ **-p**\           Profile (compute,service)
-
-\ **-a**\           Architecture (ppc64,x86_64,etc)
-
 \ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
 \ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)

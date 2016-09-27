@@ -54,10 +54,12 @@ Requires: conserver-xcat
 %endif
 %endif
 
+#support mixed cluster
+Requires: elilo-xcat xnba-undi
+
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux elilo-xcat
+Requires: syslinux
 Requires: ipmitool-xcat >= 1.8.15-2
-Requires: xnba-undi
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
@@ -66,10 +68,8 @@ Requires: ipmitool-xcat >= 1.8.15-2
 %endif
 
 %if %notpcm
-%ifarch i386 i586 i686 x86 x86_64
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
-%endif
 %endif
 
 %description

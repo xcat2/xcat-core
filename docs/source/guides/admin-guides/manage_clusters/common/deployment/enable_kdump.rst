@@ -163,11 +163,7 @@ Normally, kernel panic() will trigger booting into capture kernel. Once the kern
 
 #. For SLES10 the directory is <kdump_path>/<node hostname>
 	
-For RHELS6 testing purposes, you can simulate the trigger through /proc interface: ::
-	
-    echo c > /proc/sysrq-trigger
-	
-For SLES11.1 testing, you can use the following commands: ::
+For Redhat and SLES11.1 testing, you can use the following commands: ::
 
     echo 1 > /proc/sys/kernel/sysrq
     echo c > /proc/sysrq-trigger
