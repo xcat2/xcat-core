@@ -41,7 +41,7 @@ For stateful:
 For stateless:
   kernel
   initrd.gz
-  rootimg.gz
+  rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
   x.pkglist
   x.otherpkgs.pkglist
   x.synclist
