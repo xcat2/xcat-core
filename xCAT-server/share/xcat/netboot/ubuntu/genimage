@@ -2110,6 +2110,11 @@ sub mount_chroot {
 
 sub umount_chroot {
     my $rootimage_dir = shift;
+    if ($rootimage_dir eq "") {
+        print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
+        return 1;
+    }
+
 
     system("umount -l $rootimage_dir/proc");
     system("umount -l $rootimage_dir/sys");
