@@ -273,7 +273,7 @@ LSB_HOSTS_FILE_ORIG="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts
 mv $LSB_HOSTS_FILE $LSB_HOSTS_FILE_ORIG
 
 PRIMARY_MASTER_NODE=`echo $LSF_MASTER_LIST |  awk '{print $1}'`
-echo "Begin Host" >> lsb.hosts
+echo "Begin Host" >> $LSB_HOSTS_FILE 
 echo "HOST_NAME MXJ   r1m     pg    ls    tmp  DISPATCH_WINDOW  AFFINITY" >> $LSB_HOSTS_FILE
 echo "default	!	()	()	()	()	()	(Y)" >> $LSB_HOSTS_FILE
 echo "$PRIMARY_MASTER_NODE	0	()	()	()	()	()    (Y)" >> $LSB_HOSTS_FILE
