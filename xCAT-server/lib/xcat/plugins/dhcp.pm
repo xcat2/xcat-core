@@ -1383,6 +1383,8 @@ sub process_request
     my $querynics = 1;
 
     if (xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces}) {
+        # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+        $dhcpinterfaces->{dhcpinterfaces} =~ s/:noboot//g;
         my @dhcpifs = split ',', $dhcpinterfaces->{dhcpinterfaces};
         foreach my $nic (@dhcpifs) {
             $activenics{$nic} = 1;
@@ -1404,6 +1406,9 @@ sub process_request
           #depending on complexity of network wished to be described
         {
             my $dhcpinterfaces = $t_entry;
+            # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+            $dhcpinterfaces =~ s/:noboot//g;
+
             my $dhcpif;
           INTF: foreach $dhcpif (split /;/, $dhcpinterfaces) {
                 my $host;
