@@ -551,7 +551,7 @@ sub get_files {
     # for stateless I need to save the
     # ramdisk
     # the kernel
-    # the rootimg.gz
+    # the rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz
     if ($osvers !~ /esx/) {
 
         # don't do anything because these files don't exist for ESX stateless.
@@ -599,7 +599,7 @@ sub get_files {
                 my $kernel;
                 my $rootimg;
 
-                # look for ramdisk, kernel and rootimg.gz
+                # look for ramdisk, kernel and rootimg.cpio.xz | rootimg.cpio.gz | rootimg.tar.xz | rootimg.tar.gz | rootimg.gz
                 if ($rootimgdir) {
                     if (-f "$rootimgdir/initrd-stateless.gz") {
                         $ramdisk = "$rootimgdir/initrd-stateless.gz";
@@ -607,14 +607,29 @@ sub get_files {
                     if (-f "$rootimgdir/kernel") {
                         $kernel = "$rootimgdir/kernel";
                     }
-                    if (-f "$rootimgdir/rootimg.gz") {
+                    if (-f "$rootimgdir/rootimg.cpio.xz") {
+                        $rootimg = "$rootimgdir/rootimg.cpio.xz";
+                    } elsif (-f "$rootimgdir/rootimg.cpio.gz") {
+                        $rootimg = "$rootimgdir/rootimg.cpio.gz";
+                    } elsif (-f "$rootimgdir/rootimg.tar.xz") {
+                        $rootimg = "$rootimgdir/rootimg.tar.xz";
+                    } elsif (-f "$rootimgdir/rootimg.tar.gz") {
+                        $rootimg = "$rootimgdir/rootimg.tar.gz";
+                    } elsif (-f "$rootimgdir/rootimg.gz") {
                         $rootimg = "$rootimgdir/rootimg.gz";
                     }
 
                 } else {
                     $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);
                     $kernel = look_for_file('kernel', $callback, $attrs, @arr);
-                    $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
+
+                    my @rootimg_array = ("rootimg.cpio.xz","rootimg.cpio.gz","rootimg.tar.xz","rootimg.tar.gz","rootimg.gz");
+                    foreach my $ra (@rootimg_array) {
+                        $rootimg = look_for_file("$ra", $callback, $attrs, @arr);
+                        if ($rootimg) {
+                            last;
+                        }
+                    }
                 }
                 unless ($ramdisk) {
                     $callback->({ error => ["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"], errorcode => [1] });
@@ -631,7 +646,7 @@ sub get_files {
                 }
 
                 unless ($rootimg) {
-                    $callback->({ error => ["Couldn't find rootimg (rootimg.gz) for  $imagename"], errorcode => [1] });
+                    $callback->({ error => ["Couldn't find compressed rootimg for $imagename"], errorcode => [1] });
                     $errors++;
                 } else {
                     $attrs->{rootimg} = $rootimg;
