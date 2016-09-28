@@ -22,7 +22,7 @@ For stateful, the following files will be copied to the appropriate directories.
 For stateless, the following files will be copied to the appropriate directories.
   kernel
   initrd.gz
-  rootimg.gz
+  rootimg.cpio.xz or rootimg.cpio.gz or rootimg.tar.xz or rootimg.tar.gz or rootimg.gz(for backward-compatibility)
   x.pkglist
   x.otherpkgs.pkglist
   x.synclist
