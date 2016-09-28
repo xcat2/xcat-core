@@ -1,11 +1,11 @@
 Summary: Install and configuration utilities for IBM HPC products in an xCAT cluster
 Name: xCAT-IBMhpc
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-IBMhpc-%(cat Version).tar.gz
+Source: xCAT-IBMhpc-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -23,8 +23,8 @@ BuildArch: noarch
 #Requires: 
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%(cat Version)
-Requires: xCAT-client  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
+Requires: perl-xCAT >= %{epoch}:%{version}
+Requires: xCAT-client  >= %{epoch}:%{version}
 
 Provides: xCAT-IBMhpc = %{epoch}:%{version}
 

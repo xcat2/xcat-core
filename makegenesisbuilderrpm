@@ -1,5 +1,7 @@
 #!/bin/sh
-VER=`cat Version`
+VER=`git describe`
+VER=${VER/-/.post}
+VER=${VER/-/.}
 rpmbuild --version > /dev/null
 if [ $? -gt 0 ]
 then
@@ -20,4 +22,4 @@ cp LICENSE.html $RPMROOT/BUILD
 cp xCAT-genesis-builder.spec $RPMROOT/SOURCES
 cd -
 rm -f $RPMROOT/SRPMS/xCAT-genesis-builder-$VER*rpm $RPMROOT/RPMS/*/xCAT-genesis-builder-$VER*rpm
-rpmbuild -ba xCAT-genesis-builder/xCAT-genesis-builder.spec
+rpmbuild -ba xCAT-genesis-builder/xCAT-genesis-builder.spec --define "version $VER" --define "release 1"
