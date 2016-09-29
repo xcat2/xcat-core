@@ -6,6 +6,7 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_global_constant;
 use probe_utils;
+use xCAT::NetworkUtils;
 
 use strict;
 use Data::Dumper;
@@ -473,13 +474,17 @@ sub obtain_log_content {
     my $original_log = shift;
 
     my %log_content = ();
-    my $sender;
     my @split_line = split(/\s+/, $original_log);
 
     if ($log_type == $::LOGTYPE_RSYSLOG) {
         if ($split_line[0] =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(.+)-(.+)/) {
             $log_content{time} = $self->convert_to_epoch_seconds($split_line[0]);
-            $log_content{sender} = $split_line[1];
+            if (!xCAT::NetworkUtils->isIpaddr($split_line[1])) {
+                my @sender_tmp = split(/\./, $split_line[1]);
+                $log_content{sender} = $sender_tmp[0];
+            } else {
+                $log_content{sender} = $split_line[1];
+            }
             if ($split_line[2] =~ /dhcpd/i) {
                 $log_content{label} = $::LOGLABEL_DHCPD;
             } elsif ($split_line[2] =~ /in.tftpd/i) {
@@ -493,7 +498,12 @@ sub obtain_log_content {
         } else {
             my $timestamp = join(" ", @split_line[ 0 .. 2 ]);
             $log_content{time}   = $self->convert_to_epoch_seconds($timestamp);
-            $log_content{sender} = $split_line[3];
+            if (!xCAT::NetworkUtils->isIpaddr($split_line[3])) {
+                my @sender_tmp = split(/\./, $split_line[3]);
+                $log_content{sender} = $sender_tmp[0];
+            } else {
+                $log_content{sender} = $split_line[3];
+            }
             if ($split_line[4] =~ /dhcpd/i) {
                 $log_content{label} = $::LOGLABEL_DHCPD;
             } elsif ($split_line[4] =~ /in.tftpd/i) {
@@ -508,7 +518,12 @@ sub obtain_log_content {
     } elsif ($log_type == $::LOGTYPE_HTTP) {
         $split_line[3] =~ s/^\[(.+)/$1/g;
         $log_content{time}   = $self->convert_to_epoch_seconds($split_line[3]);
-        $log_content{sender} = $split_line[0];
+        if (!xCAT::NetworkUtils->isIpaddr($split_line[0])) {
+            my @sender_tmp = split(/\./, $split_line[0]);
+            $log_content{sender} = $sender_tmp[0];
+        } else {
+            $log_content{sender} = $split_line[0];
+        }
         $log_content{label}  = $::LOGLABEL_HTTP;
         $log_content{msg}    = join(" ", @split_line[ 5 .. @split_line - 1 ]);
     }

@@ -822,31 +822,21 @@ fi
 #echo "$MYCONT"
 
 # use the run_ps subroutine to run the postscripts
-if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1 postbootscript/;s/run_ps\s*#/#/;s/-here\spostbootscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
-else
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1 postscript/;s/run_ps\s*#/#/;s/-here\spostscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
-fi
+TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "
 . /xcatpost/xcatlib.sh
 
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
 # subroutine used to run postscripts
-# $1 argument is the script name
-# $2 argument is the script type
 run_ps () {
  local ret_local=0
  mkdir -p "\"/var/log/xcat\""
  local logfile=\"/var/log/xcat/xcat.log\"
 
- if [ -z \"\$2\"]; then
-  scriptype=\"postscript\"
- fi
-
  if [ -f \$1 ]; then 
-  echo \"\`date\` Running \$scriptype: \$1\" 
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running \$scriptype: \$1\"" \"\$logfile\"
+  echo \"\`date\` Running postscript: \$*\" 
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
      local compt=\$(file \$1)
      local reg=\"shell script\"
@@ -865,11 +855,11 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"\$scriptype: \$1 exited with code \$ret_local\" 
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` \$scriptype \$1 return with \$ret_local\"" \"\$logfile\"
+  echo \"Postscript: \$* exited with code \$ret_local\" 
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$* return with \$ret_local\"" \"\$logfile\"
  else
-  echo \"\`date\` \$scriptype \$1 does NOT exist.\" 
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` \$scriptype \$1 does NOT exist.\"" \"\$logfile\"
+  echo \"\`date\` Postscript \$1 does NOT exist.\" 
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Postscript \$1 does NOT exist.\"" \"\$logfile\"
   return_value=-1
  fi
 
@@ -879,11 +869,7 @@ run_ps () {
 
 " > /$xcatpost/mypostscript
 echo "$TMP" >> /$xcatpost/mypostscript
-if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]  || [ "$MODE" = "3" ] || [ "$MODE" = "5" ]; then
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1 postscript/;s/run_ps\s*#/#/;s/-here\spostscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
-else
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1 postbootscript/;s/run_ps\s*#/#/;s/-here\spostbootscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
-fi
+TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "$TMP" > /$xcatpost/mypostscript 
 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then

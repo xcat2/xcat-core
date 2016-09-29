@@ -40,6 +40,7 @@ my %global_switch_type = (
     BNT => "BNT",
     Blade => "BNT",
     G8052 => "BNT",
+    RackSwitch => "BNT",
     Mellanox => "Mellanox",
     mellanox => "Mellanox",
     MLNX => "Mellanox",
