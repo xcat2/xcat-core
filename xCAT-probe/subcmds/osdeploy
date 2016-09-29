@@ -954,6 +954,8 @@ sub handle_compute_msg {
         push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         if ($log_ref->{msg} =~ /Running postscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTSCRIPT);
+        } elsif ($log_ref->{msg} =~ /Running postbootscript:/i) {
+            set_node_state($node_state_ref, $node, $::STATE_POSTBOOTSCRIPT);
         } elsif ($log_ref->{msg} =~ /provision completed/) {
             set_node_state($node_state_ref, $node, $::STATE_COMPLETED);
             $node_state_ref->{$node}{done} = 1;
