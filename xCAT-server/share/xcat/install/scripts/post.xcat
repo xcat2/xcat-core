@@ -192,8 +192,9 @@ run_ps () {
     chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\""
     local logfile=\"/var/log/xcat/xcat.log\"
 
-    if [ -z \"\$2\"]; then
-        scriptype=\"postscript\"
+    scriptype=\$2
+    if [ -z \"\$2\" ]; then
+        \scriptype=\"postscript\"
     fi
 
     if [ -f \$1 ]; then
@@ -203,14 +204,14 @@ run_ps () {
             local compt=\$(file \$1)
             local reg=\"shell script\"
             if [[ \"\$compt\" =~ \$reg ]]; then
-                bash -x ./\$@ 2>&1
+                bash -x ./\$1 2>&1
                 ret_local=\$?
             else
-                ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
+                ./\$1 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
                 ret_local=\${PIPESTATUS[0]}
             fi
         else
-            ./\$@ 2>&1 | tee -a \$logfile
+            ./\$1 2>&1 | tee -a \$logfile
             ret_local=\${PIPESTATUS[0]}
         fi
 

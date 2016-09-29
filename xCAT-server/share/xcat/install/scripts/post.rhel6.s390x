@@ -102,13 +102,14 @@ run_ps () {
     mkdir -p \$logdir
     logfile=\"/var/log/xcat/xcat.log\"
 
-    if [ -z \"\$2\"]; then
-        scriptype=\"postscript\"
-    fi
+    scriptype=\$2
+    if [ -z \"\$2\" ]; then
+        \scriptype=\"postscript\"
+    fi 
  
     if [ -f \$1 ]; then 
         echo \"Running \$scriptype: \$1\" | tee -a \$logfile
-        ./\$@ 2>&1 | tee -a $logfile
+        ./\$1 2>&1 | tee -a \$logfile
     else
         echo \"\$scriptype \$1 does NOT exist.\" | tee -a \$logfile
     fi
