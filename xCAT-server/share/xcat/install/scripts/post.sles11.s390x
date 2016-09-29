@@ -101,26 +101,20 @@ PATH=$PATH:/xcatpost
 export PATH
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1 postscript/;s/run_ps\s*#/#/;s/-here\spostscript/-here/;s/run_ps\s*$//" /tmp/mypostscript`
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "
 # subroutine used to run postscripts
-# $1 argument is the script name
-# $2 argument is the script type
 run_ps () {
  logdir=\"/var/log/xcat\"
  mkdir -p \$logdir
  logfile=\"/var/log/xcat/xcat.log\"
-
- if [ -z \"\$2\"]; then
-  scriptype=\"postscript\"
- fi
  
  if [ -f \$1 ]; then 
-  echo \"Running \$scriptype: \$1\" | tee -a \$logfile
+  echo \"Running postscript: \$@\" | tee -a \$logfile
   ./\$@ 2>&1 1> /tmp/tmp4xcatlog
   cat /tmp/tmp4xcatlog | tee -a \$logfile
  else
-  echo \"\$scriptype \$1 does NOT exist.\" | tee -a \$logfile
+  echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
  fi
 }
 # subroutine end
@@ -128,7 +122,7 @@ run_ps () {
 " > /tmp/mypostscript
 echo "cd /xcatpost" >> /tmp/mypostscript
 echo "$TMP" >> /tmp/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1 postbootscript/;s/run_ps\s*#/#/;s/-here\spostbootscript/-here/;s/run_ps\s*$//" /tmp/mypostscript`
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
 
 
