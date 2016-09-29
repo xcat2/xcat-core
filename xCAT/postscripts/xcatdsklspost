@@ -823,9 +823,9 @@ fi
 
 # use the run_ps subroutine to run the postscripts
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1 postbootscript/;s/run_ps\s*#/#/;s/-here\spostbootscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps postbootscript\s*#/#/;s/run_ps postbootscript\s*$//" /$xcatpost/mypostscript`
 else
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1 postscript/;s/run_ps\s*#/#/;s/-here\spostscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /$xcatpost/mypostscript`
 fi
 echo "
 . /xcatpost/xcatlib.sh
@@ -833,14 +833,16 @@ echo "
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
 # subroutine used to run postscripts
-# $1 argument is the script name
-# $2 argument is the script type
+# \$1 argument is the script type
+# rest argument is the script name and arguments
 run_ps () {
  local ret_local=0
  mkdir -p "\"/var/log/xcat\""
  local logfile=\"/var/log/xcat/xcat.log\"
+ local scriptype=\$1
+ shift;
 
- if [ -z \"\$2\"]; then
+ if [ -z \"\$scriptype\" ]; then
   scriptype=\"postscript\"
  fi
 
@@ -880,9 +882,9 @@ run_ps () {
 " > /$xcatpost/mypostscript
 echo "$TMP" >> /$xcatpost/mypostscript
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]  || [ "$MODE" = "3" ] || [ "$MODE" = "5" ]; then
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1 postscript/;s/run_ps\s*#/#/;s/-here\spostscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 else
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1 postbootscript/;s/run_ps\s*#/#/;s/-here\spostbootscript/-here/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 fi
 echo "$TMP" > /$xcatpost/mypostscript 
 
