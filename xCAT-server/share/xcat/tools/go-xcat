@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.8
+# Version 1.0.9
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -712,11 +712,19 @@ function extract_archive()
 	local archive="$1"
 	local repo_id="$2"
 	local install_path="$3"
+	local umask="$(umask)"
+	local -i ret=0
+
 	[[ -f "${archive}" ]]
 	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
-	mkdir -m 0755 -p "${install_path}" 2>/dev/null
-	warn_if_bad "$?" "Failed to create directory \`${install_path}'" ||
+
+	umask 0022
+	mkdir -p "${install_path}" 2>/dev/null
+	ret="$?"
+	umask "${umask}"
+	warn_if_bad "${ret}" "Failed to create directory \`${install_path}'" ||
 		return 1
+
 	case "${archive##*.}" in
 	"Z")
 		check_executes uncompress tar grep || return 1
