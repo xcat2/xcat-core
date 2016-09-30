@@ -259,7 +259,6 @@ site Attributes:
                   them.
   
    installdir:  The local directory name used to hold the node deployment packages.
-                It must be the full path including the leading '/'.
   
    installloc:  The location from which the service nodes should mount the 
                 deployment packages in the format hostname:/path.  If hostname is
