@@ -4,9 +4,9 @@ Set attributes in the ``networks`` table
 #. Display the network settings defined in the xCAT ``networks`` table using: ``tabdump networks`` ::
   
        #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,
-       dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,
+       dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,
        comments,disable
-       "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.0.0.101",,"10.4.27.5",,,,,,,,,,,,
+       "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.0.0.101",,"10.4.27.5",,,,,,,,,,,,,
 
    A default network is created for the detected primary network using the same netmask and gateway.  There may be additional network entries in the table for each network present on the management node where xCAT is installed.
 

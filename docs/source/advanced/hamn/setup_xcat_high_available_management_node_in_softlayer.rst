@@ -132,8 +132,8 @@ Execute steps on xCAT MN rhmn1
     # chdef -t site master=10.2.2.250 nameservers=10.2.2.250
     # chdef -t network 10_0_0_0-255_0_0_0 tftpserver=10.2.2.250
     # tabdump networks
-    ~]#netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
-    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.2.0.221",,"10.2.2.250",,,,,,,,,,,,
+    ~]#netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
+    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.2.0.221",,"10.2.2.250",,,,,,,,,,,,,
 
 #. Add 2 nodes into policy table: ::
 

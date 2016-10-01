@@ -317,8 +317,8 @@ function query_nicnetworks_net {
 # get network attribute from NETWORKS_LINEX
 #
 # NETWORKS_LINES=2
-# NETWORKS_LINE1='netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth2||gateway=&lt;xcatmaster&gt;||dhcpserver=||tftpserver=10.0.0.153||nameservers=||ntpservers=||logservers=||dynamicrange=10.0.0.1-10.0.0.254||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=__BEAT_IPRANGE_10.0.0.1-10.0.0.254'
-# NETWORKS_LINE2='netname=10_9_10_0-255_255_255_0||net=10.9.10.0||mask=255.255.255.0||mgtifname=eth1:1||gateway=&lt;xcatmaster&gt;||dhcpserver=||tftpserver=10.9.10.1||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=10.9.10.11-10.9.10.30||staticrangeincrement=1||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=__BEAT_IPRANGE_10.9.10.11-10.9.10.30'
+# NETWORKS_LINE1='netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth2||gateway=&lt;xcatmaster&gt;||dhcpserver=||tftpserver=10.0.0.153||nameservers=||ntpservers=||logservers=||dynamicrange=10.0.0.1-10.0.0.254||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=__BEAT_IPRANGE_10.0.0.1-10.0.0.254'
+# NETWORKS_LINE2='netname=10_9_10_0-255_255_255_0||net=10.9.10.0||mask=255.255.255.0||mgtifname=eth1:1||gateway=&lt;xcatmaster&gt;||dhcpserver=||tftpserver=10.9.10.1||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=10.9.10.11-10.9.10.30||staticrangeincrement=1||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=__BEAT_IPRANGE_10.9.10.11-10.9.10.30'
 #
 # input : network_name attribute_name
 #

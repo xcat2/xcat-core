@@ -30,8 +30,8 @@
 #   NICNETWORKS=bond0!10_0_0_0-255_255_255_0
 #   NICCUSTOMSCRIPTS=bond0!configbond 
 #   NETWORKS_LINES=2
-#   NETWORKS_LINE1=netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=10.0.0.10||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=
-#   NETWORKS_LINE2=netname=10_0_2_0-255_255_255_0||net=10.0.2.0||mask=255.255.255.0||mgtifname=eth0||gateway=10.0.2.2||dhcpserver=||tftpserver=10.0.2.15||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=
+#   NETWORKS_LINE1=netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=10.0.0.10||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=
+#   NETWORKS_LINE2=netname=10_0_2_0-255_255_255_0||net=10.0.2.0||mask=255.255.255.0||mgtifname=eth0||gateway=10.0.2.2||dhcpserver=||tftpserver=10.0.2.15||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments=
 
 
 # load library for network caculation

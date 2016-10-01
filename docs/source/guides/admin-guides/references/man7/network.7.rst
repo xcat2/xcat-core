@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ 
+\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ , \ *mtu*\
 
 
 ***********
@@ -142,6 +142,12 @@ network Attributes:
 \ **vlanid**\  (networks.vlanid)
  
  The vlan ID if this network is within a vlan.
+ 
+
+
+\ **mtu**\  (networks.mtu)
+ 
+ The default MTU for the network.
  
 
 

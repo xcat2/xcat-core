@@ -13,9 +13,9 @@
 # NICTYPES='eth1!ethernet,ib1!infiniband,ib2!infiniband'
 # NICNETWORKS='eth0!10_1_0_0-255_255_255_0,ib1!ib1,ib2!ib2'
 # NETWORKS_LINES=3
-# NETWORKS_LINE1='netname=10_1_0_0-255_255_255_0||net=10.1.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=10.1.0.205||tftpserver=10.1.0.205||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
-# NETWORKS_LINE2='netname=ib1||net=15.0.1.0||mask=255.255.255.0||mgtifname=||gateway=15.0.1.254||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
-# NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
+# NETWORKS_LINE1='netname=10_1_0_0-255_255_255_0||net=10.1.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=10.1.0.205||tftpserver=10.1.0.205||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
+# NETWORKS_LINE2='netname=ib1||net=15.0.1.0||mask=255.255.255.0||mgtifname=||gateway=15.0.1.254||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
+# NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
 
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
