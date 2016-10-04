@@ -42,6 +42,10 @@ if (
                 'config'     => \$::CONFIG,
                 'ip'         => \$::IP,
                 'name'       => \$::NAME,
+                'snmp'       => \$::SNMP,
+                'user=s'     => \$::USER,
+                'password=s' => \$::PASSWORD,
+                'auth=s'     => \$::AUTH,
                 'all'        => \$::ALL,
     )
   )
@@ -98,6 +102,10 @@ if (($::NAME) || ($::ALL)) {
     config_hostname();
 }
 
+if (($::SNMP) || ($::ALL))
+{
+    config_snmp();
+}
 
 if (($::CONFIG) || ($::ALL)) {
     run_rspconfig();
@@ -224,6 +232,57 @@ sub config_hostname {
     }
 }
 
+#setup secure SNMP v3
+sub config_snmp {
+    my $snmp_user;
+    my $snmp_passwd;
+    my $snmp_auth;
+    my @config_switches;
+
+    if ($::USER) {
+        $snmp_user = $::USER;
+    } else {
+        $snmp_user = "xcatadmin\r";
+    }
+    if ($::PASSWORD) {
+        $snmp_passwd = $::PASSWORD;
+    } else {
+        # Need a special character
+        $snmp_passwd = "passw0rd\r";
+    }
+    if ($::AUTH) {
+        $snmp_auth = $::AUTH;
+    } else {
+        $snmp_auth = "sha\r";
+    }
+
+    my $switchtab = xCAT::Table->new('switches');
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth']);
+    foreach my $switch (@nodes) {
+        my $user = $switchhash->{$switch}->[0]->{sshusername};
+        #NOTES: should replace here?
+        if ($switchhash->{$switch}->[0]->{username}) {
+            $snmp_user = $switchhash->{$switch}->[0]->{username};
+        }
+        if ($switchhash->{$switch}->[0]->{password}) {
+            $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+        }
+        if ($switchhash->{$switch}->[0]->{auth}) {
+            $snmp_auth = $switchhash->{$switch}->[0]->{auth};
+        }
+        $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;snmp-server user $snmp_user v3 enable;snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd;no snmp-server user $snmp_user v3 require-privacy;configuration write;exit;exit" `;
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+
+
+}
+
 sub run_rspconfig {
     my @config_switches;
     my $switchtab = xCAT::Table->new('switches');
@@ -274,6 +333,7 @@ sub usage
     configMellanox [--switches switchnames] [--all]
     configMellanox [--switches switchnames] [--ip]
     configMellanox [--switches switchnames] [--name]
+    configMellanox [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--auth snmp_auth]
     configMellanox [--switches switchnames] [--config]  
     \n";
 }
