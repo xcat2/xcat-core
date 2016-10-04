@@ -138,7 +138,7 @@ networks Attributes:
 
 \ **mtu**\ 
  
- The default MTU on the network (ex. 1500 or 9000).
+ The default MTU for the network
  
 
 

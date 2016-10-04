@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ , \ *mtu*\
+\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *mtu*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ 
 
 
 ***********
@@ -87,6 +87,12 @@ network Attributes:
  
 
 
+\ **mtu**\  (networks.mtu)
+ 
+ The default MTU for the network
+ 
+
+
 \ **nameservers**\  (networks.nameservers)
  
  A comma delimited list of DNS servers that each node in this network should use. This value will end up in the nameserver settings of the /etc/resolv.conf on each node in this network. If this attribute value is set to the IP address of an xCAT node, make sure DNS is running on it. In a hierarchical cluster, you can also set this attribute to "<xcatmaster>" to mean the DNS server for each node in this network should be the node that is managing it (either its service node or the management node).  Used in creating the DHCP network definition, and DNS configuration.
@@ -142,12 +148,6 @@ network Attributes:
 \ **vlanid**\  (networks.vlanid)
  
  The vlan ID if this network is within a vlan.
- 
-
-
-\ **mtu**\  (networks.mtu)
- 
- The default MTU for the network.
  
 
 
