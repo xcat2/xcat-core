@@ -586,11 +586,11 @@ This is an example of the generated postscript for a servicenode install. It is 
     export ENABLESSHBETWEENNODES
     NETWORKS_LINES=4
      export NETWORKS_LINES
-    NETWORKS_LINE1='netname=public_net||net=8.112.154.64||mask=255.255.255.192||mgtifname=eth0||gateway=8.112.154.126||dhcpserver=||tftpserver=8.112.154.69||nameservers=8.112.8.1||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
+    NETWORKS_LINE1='netname=public_net||net=8.112.154.64||mask=255.255.255.192||mgtifname=eth0||gateway=8.112.154.126||dhcpserver=||tftpserver=8.112.154.69||nameservers=8.112.8.1||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
     export NETWORKS_LINE2
-    NETWORKS_LINE3='netname=sn21_net||net=10.2.1.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=||nameservers=10.2.1.100,10.2.1.101||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
+    NETWORKS_LINE3='netname=sn21_net||net=10.2.1.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=||nameservers=10.2.1.100,10.2.1.101||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
     export NETWORKS_LINE3
-    NETWORKS_LINE4='netname=sn22_net||net=10.2.2.0||mask=255.255.255.0||mgtifname=eth1||gateway=10.2.2.100||dhcpserver=10.2.2.100||tftpserver=10.2.2.100||nameservers=10.2.2.100||ntpservers=||logservers=||dynamicrange=10.2.2.120-10.2.2.250||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
+    NETWORKS_LINE4='netname=sn22_net||net=10.2.2.0||mask=255.255.255.0||mgtifname=eth1||gateway=10.2.2.100||dhcpserver=10.2.2.100||tftpserver=10.2.2.100||nameservers=10.2.2.100||ntpservers=||logservers=||dynamicrange=10.2.2.120-10.2.2.250||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||mtu=||disable=||comments='
     export NETWORKS_LINE4
     NODE=xcatsn23
     export NODE

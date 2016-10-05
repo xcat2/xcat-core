@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **networks Attributes:**\   \ *netname*\ , \ *net*\ , \ *mask*\ , \ *mgtifname*\ , \ *gateway*\ , \ *dhcpserver*\ , \ *tftpserver*\ , \ *nameservers*\ , \ *ntpservers*\ , \ *logservers*\ , \ *dynamicrange*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *nodehostname*\ , \ *ddnsdomain*\ , \ *vlanid*\ , \ *domain*\ , \ *comments*\ , \ *disable*\ 
+\ **networks Attributes:**\   \ *netname*\ , \ *net*\ , \ *mask*\ , \ *mgtifname*\ , \ *gateway*\ , \ *dhcpserver*\ , \ *tftpserver*\ , \ *nameservers*\ , \ *ntpservers*\ , \ *logservers*\ , \ *dynamicrange*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *nodehostname*\ , \ *ddnsdomain*\ , \ *vlanid*\ , \ *domain*\ , \ *mtu*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -133,6 +133,12 @@ networks Attributes:
 \ **domain**\ 
  
  The DNS domain name (ex. cluster.com).
+ 
+
+
+\ **mtu**\ 
+ 
+ The default MTU for the network
  
 
 

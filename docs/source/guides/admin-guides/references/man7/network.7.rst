@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ 
+\ **network Attributes:**\   \ *ddnsdomain*\ , \ *dhcpserver*\ , \ *domain*\ , \ *dynamicrange*\ , \ *gateway*\ , \ *logservers*\ , \ *mask*\ , \ *mgtifname*\ , \ *mtu*\ , \ *nameservers*\ , \ *net*\ , \ *netname*\ , \ *nodehostname*\ , \ *ntpservers*\ , \ *staticrange*\ , \ *staticrangeincrement*\ , \ *tftpserver*\ , \ *usercomment*\ , \ *vlanid*\ 
 
 
 ***********
@@ -84,6 +84,12 @@ network Attributes:
 \ **mgtifname**\  (networks.mgtifname)
  
  The interface name of the management/service node facing this network.  !remote!<nicname> indicates a non-local network on a specific nic for relay DHCP.
+ 
+
+
+\ **mtu**\  (networks.mtu)
+ 
+ The default MTU for the network
  
 
 

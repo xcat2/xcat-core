@@ -57,8 +57,8 @@ In order to do switch-based switch discovery, the admin
 4.  Setup Dynamic IP range in network table for discovered switches to use. ::
 
      # tabdump networks
-      #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
-      "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,
+      #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
+      "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,,
 
 
 dhcp should be restarted after seting up dynamic IP range.
