@@ -7,8 +7,7 @@ Mellanox provides a tested and packaged version of the OpenFabrics Enterprise Di
    :maxdepth: 2
 
    mlnxofed_ib_install_v2_preparation.rst
-   mlnxofed_ib_install_v2_diskful.rst
-   mlnxofed_ib_install_v2_diskless.rst
+   mlnxofed_configuration.rst
    mlnxofed_ib_verified_scenario_matrix.rst
    mlnxofed_ib_known_issue.rst
    
