@@ -55,7 +55,7 @@ For KVM:
 \ **mkvm**\  \ *noderange*\  [\ **-s|-**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ] [\ **-f|-**\ **-force**\ ]
 
 
-For Vmware:
+For VMware:
 ===========
 
 
@@ -81,13 +81,13 @@ For PPC (with HMC) specific:
 ============================
 
 
-The first form of mkvm command creates new partition(s) with the same profile/resources as the partition specified by \ *singlenode*\ . The -i and \ *noderange*\  specify the starting numeric partition number and the \ *noderange*\  for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition.
+The first form of \ **mkvm**\  command creates new partition(s) with the same profile/resources as the partition specified by \ *singlenode*\ . The -i and \ *noderange*\  specify the starting numeric partition number and the \ *noderange*\  for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition.
 
 The second form of this command duplicates all the partitions from the source specified by \ *profile*\  to the destination specified by \ *destcec*\ . The source and destination CECs can be managed by different HMCs.
 
 Please make sure the nodes in the \ *noderange*\  is defined in the \ *nodelist*\  table and the \ *mgt*\  is set to 'hmc' in the \ *nodehm*\  table before running this command.
 
-Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+Please note that the \ **mkvm**\  command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
 
 
 For PPC (using Direct FSP Management) specific:
@@ -99,20 +99,18 @@ With option \ *full*\ , a partition using all the resources on a normal power ma
 If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
 
 
-For KVM and Vmware:
+For KVM and VMware:
 ===================
 
 
-The mkvm command creates new virtual machine(s) with the \ *disksize*\  size of hard disk, \ *memsize*\  size of memory and \ *cpucount*\  number of cpu.
-
-For KVM: If \ **-f | -**\ **-force**\  is specified, the storage will be destroyed first if it existed.
+The \ **mkvm**\  command creates new virtual machine(s) with the \ *disksize*\  size of hard disk, \ *memsize*\  size of memory and \ *cpucount*\  number of cpu.
 
 
 For zVM:
 ========
 
 
-The first form of mkvm creates a new virtual machine based on a directory entry.
+The first form of \ **mkvm**\  creates a new virtual machine based on a directory entry.
 
 The second form of this creates a new virtual machine with the same profile/resources as the specified node (cloning).
 
@@ -158,7 +156,7 @@ OPTIONS
 
 \ **-f|-**\ **-force**\ 
  
- If \ **-f|-**\ **-force**\  is specified, the storage will be destroyed first if it existed.
+ If the storage already exists, remove it before creating a new virtual machine.
  
 
 

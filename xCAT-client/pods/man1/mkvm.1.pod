@@ -28,7 +28,7 @@ B<mkvm> I<noderange> [B<vmcpus=> I<min/req/max>] [B<vmmemory=> I<min/req/max>] [
 
 B<mkvm> I<noderange> [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
 
-=head2 For Vmware:
+=head2 For VMware:
 
 B<mkvm> I<noderange> [B<-s>|B<--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>]
 
@@ -42,13 +42,13 @@ B<mkvm> I<noderange> [I<source_virtual_machine>] [B<pool=> I<disk_pool>]
 
 =head2 For PPC (with HMC) specific:
 
-The first form of mkvm command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
+The first form of B<mkvm> command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
 
 The second form of this command duplicates all the partitions from the source specified by I<profile> to the destination specified by I<destcec>. The source and destination CECs can be managed by different HMCs.
 
 Please make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
 
-Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+Please note that the B<mkvm> command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
 
 =head2 For PPC (using Direct FSP Management) specific:
 
@@ -56,15 +56,13 @@ With option I<full>, a partition using all the resources on a normal power machi
 
 If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
 
-=head2 For KVM and Vmware:
+=head2 For KVM and VMware:
 
-The mkvm command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu. 
+The B<mkvm> command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu. 
 
-For KVM: If B<-f>|B<--force> is specified, the storage will be destroyed first if it existed.
- 
 =head2 For zVM:
 
-The first form of mkvm creates a new virtual machine based on a directory entry.
+The first form of B<mkvm> creates a new virtual machine based on a directory entry.
 
 The second form of this creates a new virtual machine with the same profile/resources as the specified node (cloning).
 
@@ -96,7 +94,7 @@ The option I<vios> is used to specify the partition that will be created is a VI
 
 =item B<-f|--force>
 
-If B<-f|--force> is specified, the storage will be destroyed first if it existed.
+If the storage already exists, remove it before creating a new virtual machine.
 
 =item B<-i>              
 
