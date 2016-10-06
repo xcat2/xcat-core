@@ -28,7 +28,7 @@ B<mkvm> I<noderange> [B<vmcpus=> I<min/req/max>] [B<vmmemory=> I<min/req/max>] [
 
 B<mkvm> I<noderange> [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
 
-=head2 For Vmware:
+=head2 For VMware:
 
 B<mkvm> I<noderange> [B<-s>|B<--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>]
 
@@ -56,7 +56,7 @@ With option I<full>, a partition using all the resources on a normal power machi
 
 If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
 
-=head2 For KVM and Vmware:
+=head2 For KVM and VMware:
 
 The B<mkvm> command creates new virtual machine(s) with the I<disksize> size of hard disk, I<memsize> size of memory and I<cpucount> number of cpu. 
 

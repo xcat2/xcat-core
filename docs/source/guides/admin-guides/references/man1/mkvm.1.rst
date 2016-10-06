@@ -55,7 +55,7 @@ For KVM:
 \ **mkvm**\  \ *noderange*\  [\ **-s|-**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ] [\ **-f|-**\ **-force**\ ]
 
 
-For Vmware:
+For VMware:
 ===========
 
 
@@ -99,7 +99,7 @@ With option \ *full*\ , a partition using all the resources on a normal power ma
 If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '\*def' commands running before or be specified with this command.
 
 
-For KVM and Vmware:
+For KVM and VMware:
 ===================
 
 
