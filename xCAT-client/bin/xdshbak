@@ -24,6 +24,7 @@ eval "use Sort::Versions qw/versioncmp/; 1;" or  *versioncmp = sub ($$) { ($a,$b
 #              output from multiple nodes preceded by the hostname  #
 #                                                                   #
 # Inputs:                                                           #
+#  -b : bare output, don't prepend hostname per line. only with -x  #
 #  -c : list distinct output only once                              #
 #  -h : usage                                                       #
 #  -x : omit extra header output for each node.                     #
@@ -53,7 +54,7 @@ $::dsh_command = 'xdshbak';
 #
 # Process the command line...
 #
-if (!getopts('cxhq'))
+if (!getopts('bcxhq'))
 {    # Gather options; if errors
     &d_syntax;
     exit(-1);
@@ -70,6 +71,11 @@ if ($::opt_c && $::opt_x)
     &d_syntax;
     exit(-1);
 }    # these 2 options are mutually exclusive
+
+if ($::opt_b && !($::opt_x)) {
+    &d_syntax;
+    exit(-1);
+}    # -b only makes sense with -x
 
 if ($::opt_c)
 {
@@ -201,14 +207,15 @@ else
 
 sub d_syntax
 {
-    my $usage1 = "Usage: xdshbak   [-c | -x | -h | -q] \n";
-    my $usage2 =
-      "-c : compresses the output by listing unique output only once.\n";
-    my $usage3 = "-h : help  \n";
-    my $usage4 =
-      "-x : omit extra header output for each node.  Can not be used with -c. \n";
-    my $usage5 = "-q : quiet mode.\n";
-    my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4 .= $usage5;
+    # Duplicates POD - pod2usage ?
+    my @usage;
+    push @usage, "Usage: xdshbak   [-c | -x [-b] | -h | -q]";
+    push @usage, "    -b : bare output, don't prepend hostname per line. only with -x";
+    push @usage, "    -c : compresses the output by listing unique output only once.";
+    push @usage, "    -h : help";
+    push @usage, "    -x : omit extra header output for each node.  Can not be used with -c.";
+    push @usage, "    -q : quiet mode.";
+    my $usage = join "\n", @usage;
     xCAT::MsgUtils->message("I", $usage);
 
 }
@@ -240,7 +247,13 @@ sub print_list
         $num_hosts++;
 
         if ($::opt_x) {
-            map { print "$hostname: $_\n" } split(/\n/, $ls{$hostname});
+            if ($::opt_b) {
+                # Bare output
+                print $ls{$hostname};
+            } else {
+                # No header. hostname prepended on every line
+                map { print "$hostname: $_\n" } split(/\n/, $ls{$hostname});
+            }
         }
         else
         {
