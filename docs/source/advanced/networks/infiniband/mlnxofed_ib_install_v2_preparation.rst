@@ -1,46 +1,59 @@
 Preparation
 ===========
 
-Obtain the Mellanox OFED ISO
-----------------------------
-
-Obtain the Mellanox OFED ISO file from `Mellanox official Download Page <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_ and put it into one place under ``/install`` directory depending on your need.
-
-**[NOTE]** 
-
-* Mellanox provides OFED drivers in **tarball** and **ISO image** formats.  xCAT only supports the **iso** format at this time.
-* Mellanox provides different OFED ISOs depending on operating system and machine architecture, named like MLNX_OFED_LINUX-<packver1>-<packver2>-<osver>-<arch>.iso, you should download correct one according to your environment.
-* Mellanox has some updates and known issues for echo OFED, please read `InfiniBand/VPI Software Overview <http://www.mellanox.com/page/software_overview_ib>`_ to understand these information. 
-* The Mellanox links offered above maybe outdate in future for Mellanox updates its web page, xCAT will keep updating for synchronization. If we don't update in time, please access `Mellanox web portal <http://www.mellanox.com>`_ to find ``Support/Education`` then ``InfiniBand/VPI Drivers`` lables.
-
-Prepare Install Script
+Download MLNX_OFED ISO
 ----------------------
 
-**mlnxofed_ib_install.v2** is a sample script, its framework can help you install Mellanox drives easily. But in specific scenario, some detail need to be modified to meet requirement, such like dependency package list. It has been verified in limited scenarios and can work as solution in these scenarios. For these scenarions information please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. 
+**xCAT only supports installation using the ISO format.** 
 
-Copy **mlnxofed_ib_install.v2** into ``/install/postscripts`` and change name to **mlnxofed_ib_install** ::
+Download the Mellanox OFED ISO file `here (MLNX_OFED) <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_.
 
-	cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
-	   /install/postscripts/mlnxofed_ib_install
-	   
-	chmod +x /install/postscripts/mlnxofed_ib_install
-	
-``mlnxofed_ib_install`` has some options, **'-p' is always needed**.
-Below are the details of these options:
 
-* **-p**: [required]--the directory where the OFED iso file is located
-* **-m**: [optional]--the mlnxofed_ib_install invokes a script ``mlnxofedinstall`` shipped by Mellanox OFED iso. Use this option to pass arguments to the ``mlnxofedinstall``. You must include ``-end-`` at the completion of the options to distinguish the option list. if you don't pass any argument to ``mlnxofedinstall``, **defualt value** ``--without-32bit --without-fw-update --force`` will be passed to ``mlnxofedinstall`` by xCAT. 
-* **-i**: [required for diskless]--the image root path
-* **-n**: [required for diskless]--nodeset status, the value is 'genimage'
+Prepare Installation Script
+---------------------------
 
-In general you can use ``mlnxofed_ib_install`` like below ::
+The ``mlnxofed_ib_install.v2`` is a sample script intended to assist with the installation of the Mellanox OFED drivers.  The following support matrix documents the limited number of scenarios that have been verified: :doc:`support matrix </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`.
 
-    mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>
-	
-If need to pass ``--without-32bit --without-fw-update --add-kernel-support --force`` to ``mlnxofedinstall``, refer to below command. ::
+#. Copy the ``mlnxofed_ib_install.v2`` to ``/install/postscripts``, renaming to ``mlnxofed_ib_install``. ::
 
-    mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso> \
-	-m --without-32bit --without-fw-update --add-kernel-support --force -end- 
+       cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
+          /install/postscripts/mlnxofed_ib_install
 
-**[Note]** We recommend to update your firmware to the version Mellanox supported in its release notes to avoid unexpected problem when you install InfiniBand driver.
+       # ensure the script has execute permission
+       chmod +x /install/postscripts/mlnxofed_ib_install
+
+#. Familarize the options available for the xCAT ``mlnxofed_ib_install`` script. 
+
+   +---------+------------------+----------------------------------------------------------+
+   | Option  | Required         | Description                                              |
+   +=========+==================+==========================================================+
+   |``-p``   | Yes              || The full path to the MLNX_OFED ISO image                |
+   +---------+------------------+----------------------------------------------------------+
+   |``-m``   | No               || Use this option to pass arguments to the Mellanox OFED  |
+   |         |                  || installation script ``mlnxofedinstall``.                |
+   |         |                  ||                                                         |
+   |         |                  || The special keyword ``-end-`` must be added to the end  |
+   |         |                  || of the string to mark the completion of the option list |
+   |         |                  || option list.                                            |
+   |         |                  ||                                                         |
+   |         |                  || If nothing is specified, xCAT passes the the following  |
+   |         |                  || ``--without-32bit --with out-fw-update --force``        |
+   +---------+------------------+----------------------------------------------------------+
+   |``-i``   | For diskless     || The image root path of the diskless image               |
+   |         |                  ||                                                         |
+   +---------+------------------+----------------------------------------------------------+
+   |``-n``   | For diskless     || nodeset status, value is ``genimage``                   |
+   |         |                  ||                                                         |
+   +---------+------------------+----------------------------------------------------------+
+
+
+   A very basic usage of the install script: ::
+
+       /install/postscripts/mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso>
+
+
+   To pass the ``--add-kernel-support`` option to ``mlnxofedinstall``, use the following command: ::
+
+       /install/postscripts/mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso> \
+           -m --without-32bit --without-fw-update --add-kernel-support --force -end- 
 

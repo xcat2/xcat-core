@@ -1,13 +1,18 @@
 InfiniBand (Mellanox)
 =====================
 
-xCAT offers a certain degree support for Mellanox InfiniBand product, it help you to configurate Mellanox InfiniBand products easily. For more information about Mellanox InfiniBand, please refer to `Mellanox official site <http://www.mellanox.com/>`_.
+xCAT has the ability to help with Mellanox InfiniBand (IB) adapter installation and network configuration as part of the node provisioning process.
+
 
 .. toctree::
    :maxdepth: 2
 
-   driver_and_installation.rst
+   mlnxofed_ib_install_v2.rst
    network_configuration.rst
    switch_configuration.rst
    ufm_configuration.rst
    firmware_updates.rst
+
+
+
+For more information about Mellanox products, refer to http://www.mellanox.com.
