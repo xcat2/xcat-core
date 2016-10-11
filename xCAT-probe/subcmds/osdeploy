@@ -97,7 +97,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("stdout", "o", "Probe for OS provision process, realtime monitor of OS provision process.");
+    probe_utils->send_msg("stdout", "o", "Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.");
     exit 0;
 }
 
@@ -140,8 +140,6 @@ if ($rollforward_time_of_replay) {
     } elsif ($rollforward_time_of_replay =~ /^(\d+)m$/) {
         $start_time_of_replay -= $1 * 60;
     }
-
-    #    $start_time_of_replay = 1472437250;    ########################
 
     $rst = do_replay($noderange, $start_time_of_replay, $end_time_of_replay);
     exit $rst;
@@ -508,7 +506,7 @@ sub conclusion_report {
             }
         }
     } else {
-        probe_utils->send_msg("stdout", "o", "All nodes provision successfully");
+        probe_utils->send_msg("stdout", "o", "All nodes provisioned successfully");
     }
     return 0;
 }
