@@ -31,7 +31,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
    To discover the BMC with an IP address of 172.30.0.1, use the command: ::
 
-      bmcdiscover --range 172.30.0.1 -t -z -w 
+      bmcdiscover --range 172.30.0.1 -z -w 
 
    The discovered nodes will be written to xCAT database: ::
 
