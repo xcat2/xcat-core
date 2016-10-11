@@ -74,8 +74,8 @@ When all the nodes complete provision, will exit and output summary as below ::
     [c910f03c17k20] provision completed.(c910f03c17k20)
     [c910f03c17k20] provision completed                                                                               [ OK ]
     All nodes specified to monitor, have finished OS provision process                                                [ OK ]
-    ==================conclusion_report=================
-    All nodes provision successfully                                                                                  [ OK ]
+    ==================osdeploy_probe_report=================
+    All nodes provisioned successfully                                                                                [ OK ]
 
     
 If there is something wrong when provision, will exit when timeout or press ``Ctrl+C`` by user. The maximum time can be set by using ``-t`` as below ::
@@ -97,6 +97,6 @@ The outout will be as below ::
     The install NIC in current server is enp0s1                                                                       [INFO]
     All nodes which will be deployed are valid                                                                        [ OK ]
     Start to scan logs which are later than *********, waiting for a while.............
-    ==================conclusion_report=================
-    All nodes provision successfully                                                                                  [ OK ]
+    ==================osdeploy_probe_report=================
+    All nodes provisioned successfully                                                                                [ OK ]
 

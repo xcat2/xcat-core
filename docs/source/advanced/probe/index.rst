@@ -6,7 +6,7 @@ xCAT offers a new tool suite, which called **xCAT probe**, to help customer to p
 You can use ``xcatprobe -l`` to list all valid subcommand, output will be as below  ::
 
     # xcatprobe -l
-    osdeploy                 Probe for OS provision process, realtime monitor of OS provision process.
+    osdeploy                 Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.
     xcatmn                   After xcat installation, use this command to check if xcat has been installed correctly and is
                              ready for use. Before using this command, install 'tftp', 'nslookup' and 'wget' commands.
     switch-macmap            To retrieve MAC address mapping for the specified switch, or all the switches defined in
