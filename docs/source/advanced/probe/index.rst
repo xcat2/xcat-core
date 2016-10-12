@@ -3,7 +3,7 @@ xCAT probe
 
 xCAT offers a new tool suite, which called **xCAT probe**, to help customer to probe all the possible issues in xCAT.
 
-You can use ``xcatprobe -l`` to list all valid subcommand, output will be as below  ::
+You can use ``xcatprobe -l`` to list all valid subcommands, output will be as below  ::
 
     # xcatprobe -l
     osdeploy                 Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.
@@ -22,5 +22,6 @@ You can use ``xcatprobe -l`` to list all valid subcommand, output will be as bel
    osdeploy.rst
    discovery.rst
    switch-macmap.rst 
-
+   nodecheck.rst
+   osimagecheck.rst
 
