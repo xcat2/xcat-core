@@ -168,6 +168,7 @@ sub bmcdiscovery_processargs {
         'bmcpasswd|p=s' => \$::opt_P,
         'ipsource'      => \$::opt_S,
         'version|v'     => \$::opt_v,
+        't'             => \$::opt_T,
     );
 
     if (!$getopt_success) {
@@ -252,6 +253,13 @@ sub bmcdiscovery_processargs {
             push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
+        }
+
+        if ($::opt_T) {
+            my $msg = "WARN: The -t option is deprecated and will be ignored";
+            my $rsp = {};
+            push @{ $rsp->{data} }, "$msg";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
 
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);

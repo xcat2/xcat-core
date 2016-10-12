@@ -27,7 +27,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
 #. Detect the BMCs and add the node definitions into xCAT.
 
-   Use the ``bmcdiscover`` command to discover the BMCs responding over an IP range and automatically write the output into the xCAT database.  You **must** use the ``-t`` option to indicate node type is bmc and the ``-w`` option to automatically write the output into the xCAT database. 
+   Use the ``bmcdiscover`` command to discover the BMCs responding over an IP range and automatically write the output into the xCAT database.  You **must** use the ``-w`` option to automatically write the output into the xCAT database. 
 
    To discover the BMC with an IP address of 172.30.0.1, use the command: ::
 
