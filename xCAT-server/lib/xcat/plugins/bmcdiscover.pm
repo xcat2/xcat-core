@@ -256,10 +256,10 @@ sub bmcdiscovery_processargs {
         }
 
         if ($::opt_T) {
-            my $msg = "WARN: The -t option is deprecated and will be ignored";
+            my $msg = "The -t option is deprecated and will be ignored";
             my $rsp = {};
             push @{ $rsp->{data} }, "$msg";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         }
 
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);
