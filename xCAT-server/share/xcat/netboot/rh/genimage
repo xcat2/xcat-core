@@ -2303,7 +2303,7 @@ KERNELVER=$kernelver
 
 case "\$1" in
 "-m")
-    if [ -z "$ARCH" ]; then
+    if [ -z "\$ARCH" ]; then
       ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
     fi
     case "\$ARCH" in 
@@ -2312,8 +2312,8 @@ case "\$1" in
         esac
     echo "\$ARCH" ;;
 "-r")
-    if [ -n "$KERNELVER" ]; then
-        echo $KERNELVER
+    if [ -n "\$KERNELVER" ]; then
+        echo \$KERNELVER
     else
       for d in \$(ls /lib/modules | sort -V) ; do : ; done && echo \$d
     fi
