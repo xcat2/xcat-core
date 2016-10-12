@@ -8,7 +8,7 @@ B<bmcdiscover> [B<-?>|B<-h>|B<--help>]
 
 B<bmcdiscover> [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>] [B<-t>] B<--range> I<ip_ranges>
+B<bmcdiscover> [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>] B<--range> I<ip_ranges>
 
 B<bmcdiscover> B<-u> I<bmc_user> B<-p> I<bmc_passwd> B<-i> I<bmc_ip> B<--check>
 
@@ -44,10 +44,6 @@ List the data returned in xCAT stanza format
 =item B<-w>            
 
 Write to the xCAT database.
-
-=item B<-t>
-
-Generate a BMC type node object
 
 =item B<-i|--bmcip>    
 

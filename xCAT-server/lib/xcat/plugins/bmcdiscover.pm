@@ -115,7 +115,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] [-t] --range ip_range\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
 
     push @{ $rsp->{data} }, "\tCheck BMC administrator User/Password:\n";
     push @{ $rsp->{data} }, "\t\tbmcdiscover -u bmc_user -p bmc_password -i bmc_ip --check\n";
@@ -253,6 +253,13 @@ sub bmcdiscovery_processargs {
             push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             return 1;
+        }
+
+        if ($::opt_T) {
+            my $msg = "The -t option is deprecated and will be ignored";
+            my $rsp = {};
+            push @{ $rsp->{data} }, "$msg";
+            xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         }
 
         scan_process($::opt_M, $::opt_R, $::opt_Z, $::opt_W, $request_command);
@@ -935,9 +942,7 @@ sub bmcdiscovery_ipmi {
             } else {
                 $ip .= ",,";
             }
-            if ($::opt_T) {
-                $ip .= ",mp,bmc";
-            }
+            $ip .= ",mp,bmc";
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
