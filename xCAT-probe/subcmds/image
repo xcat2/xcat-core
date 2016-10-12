@@ -153,11 +153,16 @@ foreach (@all_nodes_provmethod_lines) {
             print "Node $node_name has defined image $node_osimage_name at $rootimagedir with UUID $defined_UUID\n" if ($VERBOSE);
         }
         else {
-            probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.");
+            probe_utils->send_msg("$output", "w", "$node_name is not diskless. No image consistency verification will be performed.") if ($VERBOSE);
         }
     }
     else {
-        probe_utils->send_msg("$output", "w", "$node_name has no provision method defined. No image consistency verification will be performed.");
+        my $nodetype   = `lsdef -i nodetype -c $node_name`;
+        my ($node, $type) = split "=", $nodetype;
+        # If node object happens to be switch, do not display this warning message
+        unless ($type =~ /switch/) {
+            probe_utils->send_msg("$output", "w", "$node_name has no provision method defined. No image consistency verification will be performed.") if ($VERBOSE);
+        }
     }
 }
 
@@ -204,7 +209,7 @@ if ((scalar(@pingable_nodes) == 1) && ($CONSISTENCY_CHECK)) {
 
     # There was only one node in noderange and comparison check was requested.
     # Nothing to compare the single node to.
-    probe_utils->send_msg("$output", "w", "Comparison check for a single diskless pingable node will not be performed. Minimum of 2 nodes are needed for that.");
+    probe_utils->send_msg("$output", "w", "Comparison check for a single diskless pingable node $pingable_nodes[0] will not be performed.\nMinimum of 2 nodes are needed for that.");
     exit 1;
 }
 
