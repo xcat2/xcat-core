@@ -1748,7 +1748,11 @@ sub plugin_command {
     # make the request handler process to take care all the plugin children
     $SIG{TERM} = $SIG{INT} = sub {
         foreach (keys %plugin_children) {
+            # Send signal to the whole process group
+            kill 'INT', -$_;
             kill 'INT', $_;
+            kill 'TERM', -$_;
+            kill 'TERM', $_;
         }
         $SIG{ALRM} = sub { xexit 0; };    # wait 1s for grace exit
         alarm(1);
@@ -1873,6 +1877,14 @@ sub plugin_command {
                     binmode($parfd, ':utf8');
                     binmode($pfd,   ':utf8');
                     $child = xCAT::Utils->xfork;
+                    unless (defined $child) {
+                        xCAT::MsgUtils->message("S", "Fork failed");
+                        die;
+                    }
+                    # Fix github issue #448. For the child process, setpgrp()
+                    # here. In this way, the parent can send SIGINT or SIGTERM
+                    # to all the process group.
+                    setpgrp unless $child;
                 } else {
                     if ($req_back) {
                         $req = dclone($req_back);
@@ -1880,10 +1892,6 @@ sub plugin_command {
                         $req_back = dclone($req);
                     }
                     $child = 0;
-                }
-                unless (defined $child) {
-                    xCAT::MsgUtils->message("S", "Fork failed");
-                    die;
                 }
                 if ($child == 0) {
                     if ($parfd) { # If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
@@ -2918,7 +2926,10 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             print "Aborting...";
             foreach (keys %plugin_children) {
                 print "Sending INT to $_\n";
+                # Send signal to the whole process group
+                kill 'INT',  -$_;
                 kill 'INT',  $_;
+                kill 'TERM', -$_;
                 kill 'TERM', $_;
             }
             foreach my $cin ($fds->handles) {
