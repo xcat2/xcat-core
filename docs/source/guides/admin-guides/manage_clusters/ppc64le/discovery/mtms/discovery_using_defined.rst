@@ -47,6 +47,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
           postbootscripts=otherpkgs
           postscripts=syslog,remoteshell,syncfiles
           serial=10112CA
+          nodetype=mp
 
 
 #. **Pre-define** the compute nodes:
@@ -68,6 +69,8 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
         mgt=ipmi
         mtm=8247-22L
         serial=10112CA
+        nodetype=mp
+        hwtype=bmc
 
 
 #. Edit the ``predefined.stanzas`` file and change the discovered nodes to the intended ``hostname`` and ``IP address``. 
@@ -83,6 +86,8 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
     #. Add a ``ip`` attribute and give it the compute node IP address: ::
 
           ip=10.1.2.1
+
+    #. Remove ``nodetype`` and ``hwtype`` from ``predefined.stanza`` file based on the MTMS mapping.
 
     #. Repeat for additional nodes in the ``predefined.stanza`` file based on the MTMS mapping.
 
