@@ -9,7 +9,7 @@ B<pgsqlsetup> {B<-h> | B<--help>}
 
 B<pgsqlsetup> {B<-v> | B<--version>}
 
-B<pgsqlsetup> {B<-i> | B<--init>} [B<-N> | B<--nostart>] [B<--listen> I<address>] [B<-P> | B<--PCM>] [B<-o> | B<--odbc>] [B<-V> | B<--verbose>]
+B<pgsqlsetup> {B<-i> | B<--init>} [B<-N> | B<--nostart>] [B<--listen> | B<-l> I<address>] [B<-P> | B<--PCM>] [B<-o> | B<--odbc>] [B<-V> | B<--verbose>]
 
 B<pgsqlsetup> {B<-o> | B<--setupODBC>} [B<-V> | B<--verbose>] 
 
