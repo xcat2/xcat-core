@@ -882,9 +882,9 @@ run_ps () {
 " > /$xcatpost/mypostscript
 echo "$TMP" >> /$xcatpost/mypostscript
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]  || [ "$MODE" = "3" ] || [ "$MODE" = "5" ]; then
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /$xcatpost/mypostscript`
 else
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps postbootscript\s*#/#/;s/run_ps postbootscript\s*$//" /$xcatpost/mypostscript`
 fi
 echo "$TMP" > /$xcatpost/mypostscript 
 
