@@ -183,6 +183,7 @@ sub config_ip {
 
         $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+
         push (@discover_switches, $dswitch);
         push (@config_switches, $switch);
     }
@@ -237,50 +238,39 @@ sub config_snmp {
     my $snmp_user;
     my $snmp_passwd;
     my $snmp_auth;
-    my @config_switches;
-
-    if ($::USER) {
-        $snmp_user = $::USER;
-    } else {
-        $snmp_user = "xcatadmin\r";
-    }
-    if ($::PASSWORD) {
-        $snmp_passwd = $::PASSWORD;
-    } else {
-        # Need a special character
-        $snmp_passwd = "passw0rd\r";
-    }
-    if ($::AUTH) {
-        $snmp_auth = $::AUTH;
-    } else {
-        $snmp_auth = "sha\r";
-    }
 
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth']);
     foreach my $switch (@nodes) {
         my $user = $switchhash->{$switch}->[0]->{sshusername};
-        #NOTES: should replace here?
-        if ($switchhash->{$switch}->[0]->{username}) {
+        if ($::USER) {
+            $snmp_user = $::USER;
+        } elsif ($switchhash->{$switch}->[0]->{username}) {
             $snmp_user = $switchhash->{$switch}->[0]->{username};
+        } else {
+            $snmp_user = "xcatadmin\r";
         }
-        if ($switchhash->{$switch}->[0]->{password}) {
+        if ($::PASSWORD) {
+            $snmp_passwd = $::PASSWORD;
+        } elsif ($switchhash->{$switch}->[0]->{password}) {
             $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+        } else {
+            # Need a special character
+            $snmp_passwd = "passw0rd\r";
         }
-        if ($switchhash->{$switch}->[0]->{auth}) {
+        if ($::AUTH) {
+            $snmp_auth = $::AUTH;
+        } elsif ($switchhash->{$switch}->[0]->{auth}) {
             $snmp_auth = $switchhash->{$switch}->[0]->{auth};
+        } else {
+            $snmp_auth = "sha\r";
         }
+
         $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;snmp-server user $snmp_user v3 enable;snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd;no snmp-server user $snmp_user v3 require-privacy;configuration write;exit;exit" `;
-        push (@config_switches, $switch);
-    }
-    if (@config_switches) {
-        #update switch status
-        my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
+
+        $cmd = "chdef $switch status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
-
-
 }
 
 sub run_rspconfig {
