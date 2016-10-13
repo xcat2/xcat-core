@@ -140,7 +140,7 @@ $updates{'pkgdir'} = $srcdir if ($tempfile);
 #$srcdir = $srcdir . "/1";
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
+#$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 $destdir = "$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($tempfile);
