@@ -9,7 +9,7 @@ use File::Basename;
 use Net::Ping;
 use Getopt::Long qw(:config no_ignore_case);
 
-#use Data::Dumper;
+use Data::Dumper;
 use warnings;
 
 my $program_name = basename("$0");
@@ -120,15 +120,15 @@ sub check_for_duplicate_rootimgdir {
             my @list_of_osimages = split ",", $rootimgdir_osimage_hash{$rootimgdirpath};
             if (scalar(@list_of_osimages) > 1) {
                 # More than one entry in the hash value, means we
-                # have more than on osimage point to the same rootimgdir
+                # have more than one osimage point to the same rootimgdir
                 my $print_list = join("\n  ",@list_of_osimages);
                 $rootimgdirpath=~s/^\s+//; #discard leading space
-                probe_utils->send_msg("$output", "w", "Same attribute value ($rootimgdirpath) used by : \n  $print_list");
+                probe_utils->send_msg("$output", "w", "Same attribute value ($rootimgdirpath) used by diskless osimages: \n  $print_list");
             }
         }
     }
     else {
-        probe_utils->send_msg("$output", "o", "No osimages with duplicate rootimgdir were found.");
+        probe_utils->send_msg("$output", "o", "No diskless osimages with duplicate rootimgdir were found.");
         $rc = 0;
     }
 
@@ -165,7 +165,7 @@ sub check_for_valid_osimage_attributes {
         }
         my ($junk, $template_file) = split "=", $template;
         if (($template_file =~ /compute.tmpl/) || ($template_file =~ /service.tmpl/)) {
-            probe_utils->send_msg("$output", "w", "$osimage_name contains depricted 'template' value \n  $template_file");
+            probe_utils->send_msg("$output", "w", "$osimage_name contains depricated 'template' value \n  $template_file");
         }
     }
 
