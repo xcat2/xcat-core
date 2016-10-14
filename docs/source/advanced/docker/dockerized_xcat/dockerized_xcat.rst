@@ -24,7 +24,7 @@ By pulling xCAT Docker image and running xCAT Docker image in a container, you g
 xCAT Docker images
 ------------------
 
-xCAT shippes 2 Docker images for Docker host with different architecture: 
+xCAT ships 2 Docker images for Docker host with different architecture: 
 
 * "xcat/xcat-ubuntu-x86_64": run on x86_64 Docker host
 * "xcat/xcat-ubuntu-ppc64le": run on ppc64le Docker host 
@@ -86,7 +86,7 @@ If you start up the xCAT Docker container by following the steps described in se
 Save and Restore xCAT data 
 ----------------------------
 
-According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker uses "Data Volume" to save persisent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
+According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker uses "Data Volume" to save persistent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
 
 For dockerized xCAT, there are 3 volumes recommended to save and restore xCAT user data.
 

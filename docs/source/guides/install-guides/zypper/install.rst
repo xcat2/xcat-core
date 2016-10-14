@@ -5,7 +5,7 @@ Installing xCAT
    :start-after: BEGIN_install_xcat_introduction
    :end-before: END_install_xcat_introduction 
 
-xCAT is installed by configuring software repositories for ``xcat-core`` and ``xcat-dep`` and using zypper package manager. The repositories can be publically hosted or locally hosted.
+xCAT is installed by configuring software repositories for ``xcat-core`` and ``xcat-dep`` and using zypper package manager. The repositories can be publicly hosted or locally hosted.
 
 
 .. toctree::

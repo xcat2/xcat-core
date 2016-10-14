@@ -17,7 +17,7 @@ Setting Up Docker Registry Manually
 
 Docker registry needed to be set up on xCAT's MN.
 
-This section describes two methods of setting up docker registry manullay.
+This section describes two methods of setting up docker registry manually.
 
 First, create some folders where files for this tutorial will live. ::
 

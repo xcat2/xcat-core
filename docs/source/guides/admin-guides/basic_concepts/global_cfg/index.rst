@@ -1,7 +1,7 @@
 Global Configuration
 ====================
 
-All the xCAT global configurations are stored in site table, xCAT Admin can adjust the configuration by modifing the site attibute with ``tabedit``.    
+All the xCAT global configurations are stored in site table, xCAT Admin can adjust the configuration by modifying the site attribute with ``tabedit``.    
 
 This section only presents some key global configurations, for the complete reference on the xCAT global configurations, please refer to the ``tabdump -d site``.
 
@@ -83,7 +83,7 @@ Install/Deployment Attributes
 
     '0':  disable debug mode
     '1':  enable basic debug mode
-    '2':  enalbe expert debug mode
+    '2':  enable expert debug mode
 
   For the details on 'basic debug mode' and 'expert debug mode', please refer to xCAT documentation.
 

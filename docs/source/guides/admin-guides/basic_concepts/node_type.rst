@@ -1,7 +1,7 @@
 xCAT Cluster OS Running Type
 ============================
 
-Whether a node is a pyhsical server or a virtual machine, it needs to run an Operating System to support user applications. Generally, the OS is installed in the hard disk of the compute node. But xCAT also support the type that running OS in the RAM.
+Whether a node is a physical server or a virtual machine, it needs to run an Operating System to support user applications. Generally, the OS is installed in the hard disk of the compute node. But xCAT also support the type that running OS in the RAM.
 
 This section gives the pros and cons of each OS running type, and describes the cluster characteristics that will impact from each.
 
