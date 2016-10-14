@@ -169,7 +169,7 @@ function hack_uname()
     chmod 0755 "$1/bin/uname"
     AFTER_UNAME_R="$($1/bin/uname -r)"
     AFTER_UNAME_M="$($1/bin/uname -m)"
-    echo "After  hack_uname(), -r='${AFTER_UNAME_R}', -m='${AFTER_UNAME_M}'"
+    echo "After  hack_uname(), -r=>'${AFTER_UNAME_R}', -m=>'${AFTER_UNAME_M}'"
 }
 
 function cleanup()
