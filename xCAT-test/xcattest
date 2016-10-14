@@ -12,22 +12,53 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
-my $rootdir     = "$::XCATROOT/share/xcat/tools/autotest";
-my $needhelp    = 0;
-my $configfile  = "$rootdir/default.conf";
-my $bundle_list = undef;
-my $case_list   = undef;
-my $cmd_list    = undef;
-my $needshow    = 0;
-my $restore     = 0;
-my $ret         = 0;
-my $string1     = undef;
+my $rootdir         = "$::XCATROOT/share/xcat/tools/autotest";
+my $needhelp        = 0;
+my $configinfo      = undef;
+my $configfile      = "$rootdir/default.conf";
+my $casedir         = "$rootdir/testcase";
+my $bundledir       = "$rootdir/bundle";
+my $resultdir       = "$rootdir/result";
+my $bundlelist      = undef;
+my $caselist        = undef;
+my $cmdlist         = undef;
+my $showbundlesorcommands = undef;
+my $needshow        = 0;
+my $restore         = 0;
+my $ret             = 0;
+my $string1         = undef;
+my $showbundlefiles  = 0;
+my $showcommandslist = 0;
+my $stop_to_keep_env = 0;
+
+#-----------------------------------
+=head1
+    System label usage:
+    In order to make install xCAT to be the first case for automation daily regression, "System" label is used in this xcattest command.
+    xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xCAT_on_rhels_sles
+    xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xCAT_on_ubuntu
+    System label means only the [System] aspect will be loaded and no other inital action will be done.
+=cut
+
+#-----------------------------------
+my $initallabel     = undef;
+my $loadsysteminfo  = "System";
+
+#Create result directory
+mkdir $resultdir unless -d $resultdir;
+
+# create a log for xcattest 
+my $timestamp = `date +"%Y%m%d%H%M%S"`;
+open(LOG, ">$resultdir/xcattest.log.$timestamp")
+  or die "Can't open logfile for writing: $!";
+
 if (
     !GetOptions("h|?" => \$needhelp,
-        "f=s"     => \$configfile,
-        "b=s"     => \$bundle_list,
-        "t=s"     => \$case_list,
-        "c=s"     => \$cmd_list,
+        "f=s"     => \$configinfo,
+        "b=s"     => \$bundlelist,
+        "t=s"     => \$caselist,
+        "c=s"     => \$cmdlist,
+        "s=s"     => \$showbundlesorcommands,
         "l"       => \$needshow,
         "restore" => \$restore)
   )
@@ -39,6 +70,28 @@ if (
 if ($needhelp)
 {
     &usage;
+    exit 0;
+}
+
+
+if (&checkoptions)
+{
+    &usage;
+    exit 1;
+}
+
+#show bundle files under $bundledir with .bundle as file suffix
+my %bundlefilesinfo = ();
+if ($showbundlefiles)
+{
+    &listbundlefiles;
+    exit 0;
+}
+
+#show commands, which is the folder name  $casedir, with case* files and test cases
+if ($showcommandslist)
+{
+    &listcommands;
     exit 0;
 }
 
@@ -58,21 +111,16 @@ if ($needshow) {
     exit 0;
 }
 
-my $resultdir        = "$rootdir/result";
-my $stop_to_keep_env = 0;
 
-#Create result directory
-mkdir $resultdir unless -d $resultdir;
-
-# create a log
-my $timestamp = `date +"%Y%m%d%H%M%S"`;
-open(LOG, ">$resultdir/xcattest.log.$timestamp")
-  or die "Can't open logfile for writing: $!";
+# create a log for run test cases
 &log_this("xCAT automated test started at " . scalar(localtime()));
 open(LOG_ERR, ">$resultdir/failedcases.$timestamp")
   or die "Can't open error logfile for writing: $!";
-
+  
 #read config file
+log_this("******************************");
+log_this("Reading Configure");
+log_this("******************************");
 #config{object}{type}{name}{attr}
 #config{table}{name}{entry}{key}
 #config{script_prev}->[]
@@ -84,26 +132,42 @@ if ($ret != 0) {
     goto EXIT;
 }
 
-$ret = &init;
-if ($ret != 0) {
-    goto EXIT;
+#if not only load System aspects from config file, then init test enviroment 
+if (!defined($initallabel)){
+    log_this("******************************");
+    log_this("Initialize xCAT test evironment");
+    log_this("******************************");    
+    $ret = &init;
+    if ($ret != 0) {
+        goto EXIT;
+    }
 }
-my @filespath = ();
 
+my @filespath = ();
 #loading and check cases
+log_this("******************************");
+log_this("loading test cases");
+log_this("******************************");
 $ret = &loadcase;
 if ($ret != 0) {
     goto EXIT;
 }
 
 #run case
-&reordercases if (defined($bundle_list) || defined($case_list));
+log_this("******************************");
+log_this("Start to run test cases");
+log_this("******************************");
+&reordercases if (defined($bundlelist) || defined($caselist));
 &runcase;
 
 EXIT:
+log_this("******************************");
+log_this("un-initialize xCAT test evironment");
+log_this("******************************");
 if ($restore) {
     &uninit;
 }
+
 &log_this("\nxCAT automated test finished at " . scalar(localtime()));
 &log_this("Please check results in the $resultdir, \nand see $resultdir/failedcases.$timestamp file for failed cases.\nsee $resultdir/performance.report.$timestamp file for time consumption");
 close(LOG);
@@ -126,9 +190,6 @@ if ($stop_to_keep_env) {
 
 sub log_this
 {
-    if ($needshow) {
-        return;
-    }
     print LOG join("\n", @_), "\n";
     my $msg = join("\n", @_);
     if ($msg =~ /\[Pass\]/) {
@@ -147,14 +208,6 @@ sub log_error
 
 sub getConfig
 {
-    log_this("******************************");
-    log_this("Reading Configure");
-    log_this("******************************");
-    if (!(-e $configfile)) {
-        log_this("Warning: The xCAT test Configure file doesn't exist!");
-        return 0;
-    }
-
     my $type     = undef;    #Script_Prev,Script_Post,Table,Object,System,Custom
     my $sub_type = undef;    # The string after $type_
                              # Script-->
@@ -172,11 +225,32 @@ sub getConfig
     my $value = undef;
     my $c     = 0;
     my $cmd   = undef;
-
     my $mgt_name = undef;
+    
+    if (!open(FILE, "$configfile")) {
+       log_this("Error: can't open xCAT config file: $configfile");
+       return 1;
+    }  
+    
+    #Only load System information 
+    if (defined($initallabel) && ($initallabel eq $loadsysteminfo)) {
+        while (my $line = <FILE>) {
+	    $line = &trim($line);
+            next if (length($line) == 0);
 
-    open(FILE, "$configfile") or die "can't to open $configfile";
-    while (my $line = <FILE>) {
+            #Only read System variable
+            if ($line =~ /\[System\]/) {
+               $type = "Varible";
+            } 
+            if (defined($type) && ($type eq "Varible")) {
+                if ($line =~ /(\w+)\s*=\s*([\w\.\-\+\/:]+)/) {
+                    $config{var}{$1} = $2;
+                }
+            }  
+        }            
+    }else{
+    #Load all config files information    
+        while (my $line = <FILE>) {
         $line = &trim($line);
         next if (length($line) == 0);
 
@@ -232,6 +306,7 @@ sub getConfig
             }
         }
     }
+}
 
     if (exists $config{object}) {
         foreach my $type (keys %{ $config{object} }) {
@@ -297,9 +372,6 @@ sub init
             return 1;
         }
     }
-    log_this("******************************");
-    log_this("Initialize xCAT test evironment");
-    log_this("******************************");
     my $cmd = undef;
     foreach $cmd (@{ $config{script_prev} }) {
         log_this("$cmd");
@@ -355,7 +427,7 @@ sub init
     if (!exists $config{var}{ARCH}) {
         if (!exists $config{var}{CN}) {
             $config{var}{ARCH} = "Unknown";
-            log_this("No compute node defined,can't get ARCH of compute node");
+            log_this("Error: No compute node defined, can't get ARCH of compute node");
         } else {
             $config{var}{ARCH} = getnodeattr($config{var}{CN}, "arch");
             if ($config{var}{ARCH} =~ /ppc/) {
@@ -369,7 +441,7 @@ sub init
     if (!exists $config{var}{HCP}) {
         if (!exists $config{var}{CN}) {
             $config{var}{HCP} = "Unknown";
-            log_this("No compute node defined,can't get HCP TYPE of compute node");
+            log_this("Error: No compute node defined, can't get HCP TYPE of compute node");
         } else {
             $config{var}{HCP} = getnodeattr($config{var}{CN}, "mgt");
             log_this("Detecting: HCP = $config{var}{HCP}");
@@ -381,9 +453,6 @@ sub init
 
 sub uninit
 {
-    log_this("******************************");
-    log_this("un-initialize xCAT test evironment");
-    log_this("******************************");
     my $cmd = undef;
 
     #    if(exists $config{object}){
@@ -416,7 +485,7 @@ sub uninit
         log_this($cmd);
         runcmd($cmd);
         if ($::RUNCMD_RC != 0) {
-            log_this("Fail to run $cmd");
+            log_this("Error: Fail to run $cmd");
             return 1;
         }
     }
@@ -444,7 +513,7 @@ sub Get_Files_Recursive
             }
             else
             { my $dirpath = $dir . '/' . $direntry . "\n";
-                print $dirpath;
+                #print $dirpath;
 
                 #print $dir."\n";
                 push(@filespath, glob("$dirpath"));
@@ -455,17 +524,12 @@ sub Get_Files_Recursive
     }
 }
 
-
 sub loadcase
 {
-    log_this("******************************");
-    log_this("loading test cases");
-    log_this("******************************");
-    my $casedir = "/opt/xcat/share/xcat/tools/autotest/testcase";
     my @files   = ();
 
-    #if($cmd_list){
-    #    my @cmds = split /,/,$cmd_list;
+    #if($cmdlist){
+    #    my @cmds = split /,/,$cmdlist;
     #    for my $cmd (@cmds){
     #         push (@files, glob("$casedir/$cmd/*"));
     #    }
@@ -475,8 +539,9 @@ sub loadcase
     Get_Files_Recursive("$casedir");
     for (my $countfile = 0 ; $countfile < @filespath ; $countfile++)
     {
-        if ($cmd_list) {
-            my @cmds = split /,/, $cmd_list;
+        #TODO:if commands are not right, no action or message now
+        if ($cmdlist) {
+            my @cmds = split /,/, $cmdlist;
             for (my $countcmd = 0 ; $countcmd < @cmds ; $countcmd++) {
                 if ($filespath[$countfile] =~ m/\/$cmds[$countcmd]\/case/) {
                     push(@files, glob("$filespath[$countfile]"));
@@ -498,11 +563,12 @@ sub loadcase
     my @caserange    = ();
     my @rightcase    = ();
     my @notrightcase = ();
-    if ($bundle_list) {
-        my @bundles = split /,/, $bundle_list;
+    my @wrongnamecase= ();
+    if ($bundlelist) {
+        my @bundles = split /,/, $bundlelist;
         foreach my $bundle (@bundles) {
-            if (!open(FILE, "<$rootdir/bundle/$bundle")) {
-                log_this("can't open $rootdir/bundle/$bundle");
+            if (!open(FILE, "<$bundledir/$bundle")) {
+                log_this("can't open $bundledir/$bundle");
                 return 1;
             }
             while ($line = <FILE>) {
@@ -513,9 +579,12 @@ sub loadcase
             close(FILE);
         }
     }
-    if ($case_list) {
-        @caserange = split /,/, $case_list;
+    
+    #TODO:if cases are not existed, no action or message.
+    if ($caselist) {
+        @caserange = split /,/, $caselist;
     }
+    
     foreach $file (@files) {
         if (!open(FILE, "<$file")) {
             log_this("can't open $file");
@@ -531,26 +600,32 @@ sub loadcase
             #TODO: description line is treated as a comment line for now
             next if ($line =~ /^description\s*:/);
 
-            if ($line =~ /^start\s*:\s*([\w-]+)/) {
-                $skip = 0;
-                my $name = $1;
-                if ($caserange[0] && !(grep { /^$name$/ } @caserange)) {
-                    $skip = 1;
-                    next;
-                }
-                $j                     = -1;
-                $cases[$i]             = {};
-                $cases[$i]->{name}     = $name;
-                $cases[$i]->{filename} = $file;
-                if (!$needshow) {
-                    $cases[$i]->{cmd}      = [];
-                    $cases[$i]->{check}    = [];
-                    $cases[$i]->{cmdcheck} = [];
-                    push(@rightcase, $name);
-                } else {
-                    $skip = 1;
-                    $i    = $i + 1;
-                }
+            if ($line =~ /^start\s*:\s*(.*)/) {
+                my $name =$1;
+                if ($name =~ /[^a-zA-Z0-9_-]/) {
+		    $skip = 1;
+		    push(@wrongnamecase, $name);
+		    next;
+		}else {
+                    $skip = 0;
+		    if ($caserange[0] && !(grep { /^$name$/ } @caserange)) {
+                        $skip = 1;
+                        next;
+                    }
+                    $j                     = -1;
+                    $cases[$i]             = {};
+                    $cases[$i]->{name}     = $name;
+                    $cases[$i]->{filename} = $file;
+                    if (!$needshow) {
+			$cases[$i]->{cmd}      = [];
+			$cases[$i]->{check}    = [];
+			$cases[$i]->{cmdcheck} = [];
+			push(@rightcase, $name);
+			} else {
+			$skip = 1;
+			$i    = $i + 1;
+	            }
+	        }
             } elsif ($line =~ /^os\s*:\s*(\w[\w\,]+)/) {
                 next if $skip;
                 $string1 = $1;
@@ -636,17 +711,29 @@ sub loadcase
 
         close(FILE);
     }
+    
     if ($needshow) {
-        foreach my $case (@cases) {
-            print "$case->{name}\n";
-        }
+        if (@cases) {
+            log_this("Test cases:");            
+            foreach my $case (@cases) {
+                log_this("$case->{name}");
+            }
+        }else {
+            log_this("Error: Please check the case name or command name");
+        }   
+        log_this("Case name not supported:", @wrongnamecase) if (@wrongnamecase);
         return 0;
     }
-    log_this("To run:",     @rightcase);
-    log_this("Not to run:", @notrightcase);
+    
+    if (@rightcase) {
+        log_this("To run:",     @rightcase);
+    }else {
+        log_this("Error: No case to run, please check the case name or command name");
+    }
+    log_this("Not to run:", @notrightcase) if (@notrightcase);
+    log_this("Case name not supported:", @wrongnamecase) if (@wrongnamecase);
     return 0;
 }
-
 sub getnodeattr
 {
     my ($node, $attr) = @_;
@@ -656,7 +743,7 @@ sub getnodeattr
 
         #    return "Unknown";
         foreach $t (1 .. 40) {
-            log_this("could not get node attr $attr ");
+            log_this("Error: could not get node attr $attr ");
             @output = runcmd("lsdef -t node -o $node -i $attr");
             last if ($::RUNCMD_RC == 0);
         }
@@ -702,7 +789,7 @@ sub getvar
         if (exists($config{var}{$varname})) {
             $str =~ s/\$\$$varname/$config{var}{$varname}/g;
         } else {
-            log_this("Error:can't get varible $varname");
+            log_this("Error: can't get varible $varname");
             return '';
         }
     }
@@ -739,9 +826,6 @@ sub getfunc
 
 sub runcase
 {
-    log_this("******************************");
-    log_this("Start to run test cases");
-    log_this("******************************");
     my @output  = ();
     my $rc      = 0;
     my $j       = 0;
@@ -917,13 +1001,120 @@ sub runcmd
 
 sub usage
 {
-    print "Usage:xcattest - Run xcat test cases.\n";
-    print "  xcattest [-?|-h]\n";
-    print "  xcattest [-f configure file] [-b case bundle list] [--restore]\n";
-    print "  xcattest [-f configure file] [-t case list] [--restore]\n";
-    print "  xcattest [-f configure file] [-c cmd list] [-l] [--restore]\n";
-    print "\n";
+    log_this("Usage:Run xcat test cases:");
+    log_this("  xcattest [-?|-h]");
+    log_this("  xcattest [-f configure file] [-b case bundle files]");
+    log_this("  xcattest [-f configure file] [-t cases list]");
+    log_this("  xcattest [-f configure file] [-c cmds list]");
+    log_this("Show xcat test cases, bundle files, commands lists:");
+    log_this("  xcattest [-f configure file] [-b case bundle files] [-l]");
+    log_this("  xcattest [-f configure file] [-t cases list] [-l]");
+    log_this("  xcattest [-f configure file] [-c cmds list] [-l]");
+    log_this("  xcattest [-s command|bundle]");
+    log_this("");
     return;
+}
+
+sub listbundlefiles
+{
+    my @bundlefiles     = ();
+    
+    #get all .bundle files from /opt/xcat/share/xcat/tools/autotest/bundle/
+    opendir(DIR, $bundledir);
+    my @files = readdir(DIR);
+    foreach my $file (@files){
+        next if (-d $file);
+        if ($file =~ /\.bundle$/){
+            push(@bundlefiles, $file);
+         }
+    }
+    closedir(DIR);
+    
+    #read all .bundle files, get descriptions for each file.
+    my $skip =0;
+    my $line;
+    foreach my $bundlefile (@bundlefiles) {
+        if (!open(FILE, "<$bundledir/$bundlefile")) {
+            log_this("Error: Can't open bundle file: $bundlefile");
+            log_this("Use 'xcattest -s bundle' to list out available bundles");
+            return 1;
+        }
+        $skip = 0;
+        while ($line = <FILE>) {
+            $line = &trim($line);
+            next if (length($line) == 0);
+
+            #description line is treated as a comment line for now
+            if ($line =~ /^description\s*:\s*(.*)/){
+                if (length($1) != 0) {
+                    $bundlefilesinfo{$bundlefile} = $1;
+                    $skip=1;
+                    last; 
+                }             
+            }
+         }
+         close(FILE);
+         if (!$skip){
+             $bundlefilesinfo{$bundlefile} = "No description, add \"description: details\" in this bundle file";
+         }
+     }
+     &listformatbundleinfo(%bundlefilesinfo);
+    
+    return 0;
+}
+
+sub listformatbundleinfo 
+{
+    my $maxlen = 0;
+    foreach my $filename (keys %bundlefilesinfo) {
+      $maxlen = length($filename) if (length($filename) > $maxlen);
+    }
+    $maxlen += 4;
+
+    my $desiredwidth = 120;
+    my $screenwidth  = (`tput cols` + 0);
+    my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
+
+    print "bundle files and descriptions:\n";
+
+    foreach my $filename (keys %bundlefilesinfo) {
+        my @desc       = split(" ", $bundlefilesinfo{$filename});
+        my $str        = "";
+        my @formatdesc = ();
+        foreach my $word (@desc) {
+        if (length($str) + length($word) > $finallen - $maxlen) {
+                $str =~ s/([^\s]+)\s$/$1/g;
+                push @formatdesc, $str;
+                $str = "";
+            }
+            $str .= $word . " ";
+        }
+        $str =~ s/([^\s]+)\s$/$1/g;
+        push @formatdesc, $str;
+
+        print "$filename";
+
+        my $space = " " x ($maxlen - length($filename));
+        print "$space$formatdesc[0]\n";
+        delete $formatdesc[0];
+        $space = " " x $maxlen;
+        foreach my $line (@formatdesc) {
+            print "$space$line\n" if (length($line));
+        }
+    }
+}
+
+sub listcommands
+{
+    my @files   = ();
+  
+    Get_Files_Recursive("$casedir");
+    for (my $countfile = 0 ; $countfile < @ filespath ; $countfile++)
+    {
+        if ($filespath[$countfile] =~ /testcase\/(.*)\/case/) {
+            log_this("$1");
+            }
+    }
 }
 
 sub getreport
@@ -947,26 +1138,27 @@ sub getreport
 }
 
 
-sub reordercases {
+sub reordercases 
+{
     my @caserange = ();
     my $line;
-    if ($bundle_list) {
-        my @bundles = split /,/, $bundle_list;
+    if ($bundlelist) {
+        my @bundles = split /,/, $bundlelist;
         foreach my $bundle (@bundles) {
-            if (!open(FILE, "<$rootdir/bundle/$bundle")) {
-                log_this("can't open $rootdir/bundle/$bundle");
+            if (!open(FILE, "<$bundledir/$bundle")){
+                log_this("Error: Can't open bundle file: $bundle");
                 return 1;
             }
             while ($line = <FILE>) {
                 $line = trim($line);
-                next if (length($line) == 0);
+                next if ((length($line) == 0) || ($line =~ /^description\s*:\s*(.*)/));
                 push(@caserange, $line);
             }
             close(FILE);
         }
     }
-    if ($case_list) {
-        @caserange = split /,/, $case_list;
+    if ($caselist) {
+        @caserange = split /,/, $caselist;
     }
 
     my @tmpcases = ();
@@ -985,4 +1177,71 @@ sub reordercases {
     }
     @cases = @tmpcases;
 }
+
+sub checkoptions 
+{
+    #-b,-c,-t,-s should be defined at least one
+    if (!defined($bundlelist) && !defined($caselist) && !defined($cmdlist) && !defined($showbundlesorcommands)) {
+        log_this("Error: please define options correctly, see below usage information:");
+        return 1;
+    }elsif (defined($showbundlesorcommands) && (defined($bundlelist) || defined($caselist) || defined($cmdlist))) {
+    # -s can't be used together with -c,-b,-t 
+        log_this("Error: -b,-c or -t can't be used together with -s");
+        return 1;
+    }elsif (defined($showbundlesorcommands) && $needshow) {
+	log_this("Error: -s, -l can't be used together");
+	return 1;
+    } 
+    
+    #check the L option, it only should be bundle or command
+    if (defined($showbundlesorcommands)) {
+       if (($showbundlesorcommands ne "bundle") && ($showbundlesorcommands ne "command")) {
+           log_this("Error: please use \"bundle\" or \"command\" as the \-s value");
+           return 1;
+       }elsif ($showbundlesorcommands eq "bundle") {
+           $showbundlefiles = 1;
+       }else {
+       }          
+           $showcommandslist= 1;
+    }
+    #get and check config file and System label
+    #this System label means only the [System] variable will be loaded
+    if ($configinfo) {   
+          if ($configinfo =~ /(.*):(.*)/) {
+            $configfile  = $1;
+            $initallabel = $2;
+            if ($initallabel ne $loadsysteminfo) {
+                log_this("Error: $initallabel is not supported!");
+                return 1;
+            }
+        }else {
+            $configfile = $configinfo;
+        }
+    }
+    
+    if (!(-e $configfile)) {
+        log_this("Error: Can't open config file: $configfile");
+        return 1;
+    }
+    
+    #check bundle files
+    if (defined($bundlelist)) {
+        my @bundles = split /,/, $bundlelist;
+        foreach my $bundle (@bundles){
+            if ("$bundledir/$bundle" !~ /\.bundle$/) {
+                log_this("Error: please input the .bundle file");
+                log_this("Use 'xcattest -s bundle' to list out available bundles");
+                return 1;
+            }
+            if (!(-e "$bundledir/$bundle")) {
+                log_this("Error: Can't open bundle file: $bundle");
+                log_this("Use 'xcattest -b bundle' to list out available bundles");
+                return 1;
+            }
+        }
+    }
+    
+    return 0;
+}
+
 

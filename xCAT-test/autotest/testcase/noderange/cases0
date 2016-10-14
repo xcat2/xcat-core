@@ -31,7 +31,7 @@ cmd:rmdef -t node -o nrtestnode01-nrtestnode10
 check:rc==0
 end
 
-start:noderange_node[01-10]
+start:noderange_node_01-10
 description: noderange node[01-10]
 cmd:mkdef -t node -o nrtestnode[01-10] groups=all
 check:rc==0
@@ -44,7 +44,7 @@ cmd:rmdef -t node -o nrtestnode[01-10]
 check:rc==0
 end
 
-start:noderange_node[01:10]
+start:noderange_node01_10
 description: noderange node[01:10]
 cmd:mkdef -t node -o nrtestnode[01:10] groups=all
 check:rc==0
@@ -57,7 +57,7 @@ cmd:rmdef -t node -o nrtestnode[01:10]
 check:rc==0
 end
 
-start:noderange_f[1-2]n[1-3]
+start:noderange_f1-f2_n1-n3
 description: noderange f[1-2]n[1-3]
 cmd:mkdef -t node -o f[1-2]n[1-3] groups=all
 check:rc==0
@@ -101,7 +101,7 @@ end
 #check:rc==0
 #end
 
-start:noderange_node10+3
+start:noderange_node10_plus_3
 description: noderange node10+3
 cmd:mkdef -t node -o nrtestnode10+3 groups=all
 check:rc==0
@@ -142,7 +142,7 @@ cmd: XCAT_NODE_PREFIX=abc XCAT_NODE_SUFFIX=def XCATBYPASS=1 nodels 10-20
 check:output=~abc10def,abc11def,abc12def,abc13def,abc14def,abc15def,abc16def,abc17def,abc18def,abc19def,abc20def
 end
 
-start:noderange_/nrtestnode.*
+start:noderange_slash_urtestnode_dot_star
 description: noderange /nrtestnode.*
 cmd:mkdef -t node -o nrtestnode1-nrtestnode3 groups=all
 check:rc==0
@@ -155,7 +155,7 @@ cmd:rmdef -t node -o nrtestnode1-nrtestnode3
 check:rc==0
 end
 
-start:noderange_/tmp/nodelistfile
+start:noderange_dir_tmp-nodelistfile
 description: noderange ^/tmp/nodelistfile
 #cmd:echo #testnode1 > /tmp/nodelist
 cmd:mkdef -t node -o nrnode1,nrnode2 groups=all
