@@ -724,7 +724,7 @@ sub install_xcattest {
             &runcmd("xdsh $mn \"cd /xcat-dep/rh$version/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
         }
         &runcmd("xdsh $mn \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"yum -y install xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"rpm -ivh /xcat-core/xCAT-test-*.rpm --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"yum -y install createrepo expect\" >/dev/null 2>&1");
 
         if($os =~ /rhels7/i){
@@ -747,7 +747,7 @@ sub install_xcattest {
         &runcmd("xdsh $mn \"zypper ar file:///xcat-core xCAT-core\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper sl -U\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper --gpg-auto-import-keys search --match-exact -s screen\" >/dev/null 2>&1");
-        &runcmd("xdsh $mn \"zypper -n install xCAT-test > $installlog 2>&1\" >/dev/null 2>&1");
+        &runcmd("xdsh $mn \"rpm -ivh /xcat-core/xCAT-test-*.rpm --nodeps > $installlog 2>&1 \" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper -n install createrepo expect\" >/dev/null 2>&1");
         &runcmd("xdsh $mn \"zypper -n install mysql-client libmysqlclient_r15  libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql unixODBC\" >/dev/null 2>&1");
         
@@ -815,7 +815,7 @@ sub install_xcattest {
             &runcmd("xdsh $mn \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
             &runcmd("xdsh $mn 'apt-get clean all' >/dev/null 2>&1");
             &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get -y install xcat-test  > $installlog 2>&1' >/dev/null 2>&1");
+            &runcmd("xdsh $mn \"dpkg -i /xcat-core/pool/main/x/xcat-test/xcat-test_*.deb > $installlog 2>&1\" >/dev/null 2>&1");
         }elsif($arch =~ /le/i || $arch =~ /el/i){
             &runcmd("xdsh $mn \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
             if($?){
@@ -833,7 +833,7 @@ sub install_xcattest {
                 return 1;
             }
             &runcmd("xdsh $mn 'apt-get update' >/dev/null 2>&1");
-            &runcmd("xdsh $mn 'apt-get -y install xcat-test  > $installlog  2>&1' >/dev/null 2>&1");
+            &runcmd("xdsh $mn \"dpkg -i /xcat-core/pool/main/x/xcat-test/xcat-test_*.deb > $installlog 2>&1\" >/dev/null 2>&1");
             if($?){
                 send_msg(0, "[install_xcattest] apt-get -y install xcat-test in $mn failed");
             }else{
@@ -843,7 +843,7 @@ sub install_xcattest {
         }
     }
 
-    &runcmd("scp $mn:/$installlog $logfiledir/new_xcat_installation.log >/dev/null 2>&1"); 
+    &runcmd("scp $mn:/$installlog $logfiledir/new_xcattest_installation.log >/dev/null 2>&1"); 
 
     #check if xcat-test is installed successfully on mn
     if($os =~ /rhel/i || $os =~ /sles/i){
@@ -858,7 +858,7 @@ sub install_xcattest {
     }    
 
     #export some environment variables
-    &runcmd("xdsh $mn \"touch /etc/profile.d/xcatjk.sh; echo -e \"XCATROOT=/opt/xcat\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH\nexport PERL_BADLANG=0\" >> /etc/profile.d/xcatjk.sh;source /etc/profile.d/xcatjk.sh\" >/dev/null 2>&1");
+    &runcmd("xdsh $mn \"touch /etc/profile.d/xcatjk.sh; echo -e \\\"XCATROOT=/opt/xcat\nPATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:\$PATH\nMANPATH=\$XCATROOT/share/man:\$MANPATH\nexport XCATROOT PATH MANPATH\nexport PERL_BADLANG=0\\\" >> /etc/profile.d/xcatjk.sh;source /etc/profile.d/xcatjk.sh\" >/dev/null 2>&1");
     if($?){
        send_msg(2, "[install_xcattest] set environment variables failed");
        return 1;
@@ -929,22 +929,30 @@ sub do_test {
       my @output1;
       send_msg(2, "[do_test] doing test for case install_xcat in $mn.....");
       if($os !~ /ubuntu/i){
-         @output1=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -t install_xcat\" >/dev/null 2>&1");
+         @output1=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System  -t install_xCAT_on_rhels_sles >/dev/null\"");
          $rst1=$?;
        }else{
-          @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t install_xcat\"' >/dev/null 2>&1");
-          $rst1=$?;
+         @output1=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf:System -t  install_xCAT_on_ubuntu >/dev/null\"'");
+         $rst1=$?;
        }
-       my $tmpoutput1=join(' ', @output1);
-       send_msg(2, "[do_test] install_xcat output of trigger xcattest: $tmpoutput1");
-       if($rst1){
+       
+      if($rst1){
           $installcasestop=1;
+          my $tmpoutput1=join(' ', @output1);
+          send_msg(2, "[do_test] install_xcat output of trigger xcattest: $tmpoutput1");
           send_msg(2, "[do_test] the install_xcat case on $mn was STOPPED for some reason");
        }else{
           send_msg(2, "[do_test] run install_xcat in $mn finished");
        }
 
-        return 2 if($installcasestop);
+       if($installcasestop)
+       {
+           &runcmd("scp -r $mn:/opt/xcat/share/xcat/tools/autotest/result/* $logfiledir >/dev/null 2>&1");
+           if ($?){
+            send_msg(0, "[do_test] copy install_case result to $logfiledir failed");
+           } 
+           return 2;       
+       }
 
         #then run other cases with the bundle file
      
@@ -952,10 +960,10 @@ sub do_test {
         my @output;
         send_msg(2, "[do_test] doing test [$bundle] in $mn.....");
         if($os !~ /ubuntu/i){
-            @output=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $bundle\" >/dev/null 2>&1");
+            @output=runcmd("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $bundle >/dev/null\"");
             $rst=$?;
         }else{
-            @output=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -b $bundle\"' >/dev/null 2>&1");
+            @output=runcmd("ssh -t $mn 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -b $bundle >/dev/null\"'");
             $rst=$?;
         }
         my $tmpoutput=join(' ', @output);
