@@ -123,12 +123,12 @@ sub check_for_duplicate_rootimgdir {
                 # have more than one osimage point to the same rootimgdir
                 my $print_list = join("\n  ",@list_of_osimages);
                 $rootimgdirpath=~s/^\s+//; #discard leading space
-                probe_utils->send_msg("$output", "w", "Same attribute value ($rootimgdirpath) used by diskless osimages: \n  $print_list");
+                probe_utils->send_msg("$output", "w", "Identical root image directory ($rootimgdirpath) is configured for the diskless osimages: \n  $print_list");
             }
         }
     }
     else {
-        probe_utils->send_msg("$output", "o", "No diskless osimages with duplicate rootimgdir were found.");
+        probe_utils->send_msg("$output", "o", "No diskless osimages with identical root image directories were found.");
         $rc = 0;
     }
 
@@ -159,13 +159,16 @@ sub check_for_valid_osimage_attributes {
         probe_utils->send_msg("$output", "d", "Processing $_.") if ($VERBOSE);
         my ($osimage_name, $template) = split ":", $_;
         if ($template eq " template=") {
-            # Exclude entries that do not have template set
+            # Exclude entries that do not have template attribute set
             probe_utils->send_msg("$output", "d", "No template for osimage $osimage_name") if ($VERBOSE);
             next;
         }
         my ($junk, $template_file) = split "=", $template;
         if (($template_file =~ /compute.tmpl/) || ($template_file =~ /service.tmpl/)) {
-            probe_utils->send_msg("$output", "w", "$osimage_name contains depricated 'template' value \n  $template_file");
+            if ($template_file !~ /ubuntu/) {
+                # Skip Ubintu osimages, currently ok to have service.tmpl and compute.tmpl for them
+                probe_utils->send_msg("$output", "w", "$osimage_name contains depricated 'template' value \n  $template_file");
+            }
         }
     }
 
