@@ -14,6 +14,7 @@ cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --x
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
+cmd:sleep 30
 cmd:lsxcatd -v
 check:rc==0
 check:output=~Version
@@ -41,6 +42,7 @@ cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --x
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
+cmd:sleep 30
 cmd:lsxcatd -v
 check:rc==0
 check:output=~Version
