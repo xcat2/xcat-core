@@ -27,16 +27,14 @@ Options:
 
 ``-r`` means replay history of OS provision, if no ``-r`` means to do realtime monitor.
 
-This command will do pre-check before realtime monitor and replay history automatically. If all nodes' definition are valid, will run monitor or replay. Or will exit and show error message.
-
 Realtime monitor
 ----------------
 
-If want to realtime monitor OS provision, please Open 2 terminal windows at least. One is to run ``osdeploy`` command as below ::
+To monitor OS provisioning in real time, open at least 2 terminal windows. One to run ``osdeploy`` probe: ::
 
     xcatprobe osdeploy -n cn1 [-V]
 
-after pre-check will wait for provision information and show as below ::
+After some pre-checks, the probe will wait for provisioning information, similar to output below:  ::
 
     # xcatprobe osdeploy -n c910f03c17k20
     The install NIC in current server is enp0s1                                                                       [INFO]
@@ -45,12 +43,12 @@ after pre-check will wait for provision information and show as below ::
     Start capturing every message during OS provision process......
     -------------------------------------------------------------
 
-do provision on another terminal window. ::
+Open second terminal window to run provisioning: ::
 
     nodeset cn1 osimage=<osimage>
     rpower cn1 boot
 
-When all the nodes complete provision, will exit and output summary as below ::
+When all the nodes complete provisioning, the probe will exit and display output similar to: ::
 
     # xcatprobe osdeploy -n c910f03c17k20
     The install NIC in current server is enp0s1                                                                       [INFO]
@@ -78,20 +76,19 @@ When all the nodes complete provision, will exit and output summary as below ::
     All nodes provisioned successfully                                                                                [ OK ]
 
     
-If there is something wrong when provision, will exit when timeout or press ``Ctrl+C`` by user. The maximum time can be set by using ``-t`` as below ::
+If there is something wrong when provisioning, this probe will exit when timeout is reachedd or ``Ctrl+C`` is pressed by user. The maximum time can be set by using ``-t`` as below(default 30 minutes) ::
+
 
     xcatprobe osdeploy -n cn1 -t 30
-
-The maximum time is set to 30 minites.
 
 Replay history
 --------------
 
-It want to replay history of OS provision from 1 hour 20 minutes ago, use command as ::
+To replay history of OS provision from 1 hour 20 minutes ago, use command as ::
 
     xcatprobe osdeploy -n cn1 -r 1h20m
 
-The outout will be as below ::
+Outout will be similar to: ::
 
     # xcatprobe osdeploy -n c910f03c17k20
     The install NIC in current server is enp0s1                                                                       [INFO]

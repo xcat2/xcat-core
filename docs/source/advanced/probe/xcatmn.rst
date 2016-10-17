@@ -3,7 +3,7 @@ xcatmn
 
 **xcatmn** can be used to check if xcat has been installed correctly and is ready for use.
 
-**Note**: For several check items(eg. tftp service, dns service, http service), 'tftp', 'nslookup' and 'wget' are need. If not be installed, will not check that item and give warning message.
+**Note**: For several check items(eg. tftp service, dns service, http service), 'tftp', 'nslookup' and 'wget' are need. If not installed, a warning message will be displayed..
 
 Command is as below ::
 
@@ -16,9 +16,7 @@ For example, run command on Management Node ::
 
     xcatprobe xcatmn -i eth0
 
-**xcatmn** will check xcatd's process, xcat config and xcat service. If the item is ready for xcat use, result label is ``[ OK ]``. If the item is not ready and xcat can not be used, result label is ``[FAIL]``. If the item is not ready but maybe xcat can be used, result label is ``[WARN]``.
- 
-Output will be like this ::
+Output will be similar to: ::
 
     # xcatprobe xcatmn -i eth0
     [MN]: Sub process 'xcatd: SSL listener' is running                                                                [ OK ]
@@ -51,8 +49,8 @@ Output will be like this ::
     ======================do summary=====================
     [MN]: Check on MN PASS.                                                                                           [ OK ]
 
-**[MN]** means it's MN's check result. When complete all items' check, will show summary to give a conclusion ``PASS`` or ``FAILED``.
+**[MN]** means that the verfication is performerd on the Management Node. Overall status of ``PASS`` or ``FAILED`` will be displayed after all items are verified..
 
-For hierarchical clusters, ``xcatmn`` will check Service Node automatically.
+Service Nodes are checked automatically for hierarchical clusters.
 
 For Service Nodes, the output will contain ``[SN:nodename]`` to distinguish different Service Nodes.

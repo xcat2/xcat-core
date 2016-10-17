@@ -1,7 +1,7 @@
 xCAT probe
 ==========
 
-xCAT offers a new tool suite, which called **xCAT probe**, to help customer to probe all the possible issues in xCAT.
+To help identify some of the common issues with xCAT, a new tool suite is now available **xCAT probe**.
 
 You can use ``xcatprobe -l`` to list all valid subcommands, output will be as below  ::
 
