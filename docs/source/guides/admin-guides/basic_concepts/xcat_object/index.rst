@@ -67,7 +67,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
 * **group Object**
 
-  **group** is an object which includes multiple **node object**. When you set **group** attribute for a **node object** to a group name like **x86_64**, the group **x86_64** is automatically genereated and the node is assigned to the group.
+  **group** is an object which includes multiple **node object**. When you set **group** attribute for a **node object** to a group name like **x86_64**, the group **x86_64** is automatically generated and the node is assigned to the group.
 
   The benefits of using **group object**:
 

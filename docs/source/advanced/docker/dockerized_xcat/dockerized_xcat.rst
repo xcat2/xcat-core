@@ -24,7 +24,7 @@ By pulling xCAT Docker image and running xCAT Docker image in a container, you g
 xCAT Docker images
 ------------------
 
-xCAT shippes 2 Docker images for Docker host with different architecture: 
+xCAT ships 2 Docker images for Docker host with different architecture: 
 
 * "xcat/xcat-ubuntu-x86_64": run on x86_64 Docker host
 * "xcat/xcat-ubuntu-ppc64le": run on ppc64le Docker host 
@@ -81,12 +81,12 @@ Once you attach or ssh to the container, you will find that xCAT is running and 
 
 Currently, since xCAT can only generate the diskless osimages of Linux distributions with the same OS version and architecture with xCAT MN. If you need to provision diskless osimages besides ubuntu x86_64 with xCAT running in the Docker, you can use ``imgexport`` and ``imgimport`` to import the diskless osimages generated before.
 
-If you start up the xCAT Docker container by following the steps described in sections above strictly, without specifying "--dns=IP_ADDRESS...", "--dns-search=DOMAIN...", or "--dns-opt=OPTION..." options, Docker uses the /etc/resolv.conf of the host machine (where the docker daemon runs). Any DNS problem inside container, please make sure the DNS server on the Docker host works well.
+If you start up the xCAT Docker container by following the steps described in sections above strictly, without specifying "--dns=IP_ADDRESS...", "--dns-search=DOMAIN...", or "--dns-opt=OPTION..." options, Docker uses the /etc/resolv.conf of the host machine (where the docker daemon runs). Any DNS problem inside container, make sure the DNS server on the Docker host works well.
 
 Save and Restore xCAT data 
 ----------------------------
 
-According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker uses "Data Volume" to save persisent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
+According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker uses "Data Volume" to save persistent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
 
 For dockerized xCAT, there are 3 volumes recommended to save and restore xCAT user data.
 

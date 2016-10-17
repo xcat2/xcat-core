@@ -13,15 +13,15 @@ The data synchronization is important for any high availability configuration. W
 * The configuration files for the services that are required by xCAT, like named, DHCP, apache, nfs, ssh, etc. 
 * The operating systems images repository and users customization data repository, the ``/install`` directory contains these repositories in most cases. 
 
-There are a lot of ways for data syncronization, but considering the specific xCAT HAMN requirements, only several of the data syncronziation options are practical for xCAT HAMN. 
+There are a lot of ways for data synchronization, but considering the specific xCAT HAMN requirements, only several of the data synchronziation options are practical for xCAT HAMN. 
 
 **1\. Move physical disks between the two management nodes**: if we could physically move the hard disks from the failed management node to the backup management node, and bring up the backup management node, then both the operating system and xCAT data will be identical between the new management node and the failed management node. RAID1 or disk mirroring could be used to avoid the disk be a single point of failure. 
 
-**2\. Shared data**: the two management nodes use the single copy of xCAT data, no matter which management node is the primary MN, the cluster management capability is running on top of the single data copy. The access to the data could be done through various ways like shared storage, NAS, NFS, samba etc. Based on the protocol being used, the data might be accessable only on one management node at a time or be accessable on both management nodes in parellel. If the data could only be accessed from one management node, the failover process need to take care of the data access transition; if the data could be accessed on both management nodes, the failover does not need to consider the data access transition, it usually means the failover process could be faster. 
+**2\. Shared data**: the two management nodes use the single copy of xCAT data, no matter which management node is the primary MN, the cluster management capability is running on top of the single data copy. The access to the data could be done through various ways like shared storage, NAS, NFS, samba etc. Based on the protocol being used, the data might be accessible only on one management node at a time or be accessible on both management nodes in parellel. If the data could only be accessed from one management node, the failover process need to take care of the data access transition; if the data could be accessed on both management nodes, the failover does not need to consider the data access transition, it usually means the failover process could be faster. 
 
-Warning: Running database through network file system has a lot of potential problems and is not practical, however, most of the database system provides database replication feature that can be used to synronize the database between the two management nodes. 
+Warning: Running database through network file system has a lot of potential problems and is not practical, however, most of the database system provides database replication feature that can be used to synchronize the database between the two management nodes. 
 
-**3\. Mirroring**: each of the management node has its own copy of the xCAT data, and the two copies of data are syncronized through mirroring mechanism. DRBD is used widely in the high availability configuration scenarios, to provide data replication by mirroring a whole block device via network. If we put all the important data for xCAT onto the DRBD devices, then it could assure the data is synchronized between the two management nodes. Some parallel file system also provides capability to mirror data through network. 
+**3\. Mirroring**: each of the management node has its own copy of the xCAT data, and the two copies of data are synchronized through mirroring mechanism. DRBD is used widely in the high availability configuration scenarios, to provide data replication by mirroring a whole block device via network. If we put all the important data for xCAT onto the DRBD devices, then it could assure the data is synchronized between the two management nodes. Some parallel file system also provides capability to mirror data through network. 
 
 Manual vs. Automatic Failover
 -----------------------------
@@ -36,7 +36,7 @@ From xCAT perspective, if the management node needs to provide network services 
 
 **2\. Configuration complexity**
 
-The configuration for the high availability applications is usually complex, it may take a long time to configure, debug and stablize the high availability configuration. 
+The configuration for the high availability applications is usually complex, it may take a long time to configure, debug and stabilize the high availability configuration. 
 
 **3\. Maintenance effort**
 
