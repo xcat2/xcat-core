@@ -16,6 +16,7 @@ Advanced Topics
    mixed_cluster/index.rst
    networks/index.rst
    ports/xcat_ports.rst
+   probe/index.rst
    raid/index.rst
    restapi/index.rst
    security/index.rst
