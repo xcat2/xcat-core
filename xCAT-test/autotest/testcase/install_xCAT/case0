@@ -14,7 +14,7 @@ cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --x
 check:rc==0
 cmd:source "/etc/profile.d/xcat.sh"
 check:rc==0
-cmd:sleep 30
+cmd:a=0;while ! `lsxcatd -v|grep Version >/dev/null`; do sleep 10;((a++));if [ $a -gt 100 ];then break;fi done
 cmd:lsxcatd -v
 check:rc==0
 check:output=~Version
