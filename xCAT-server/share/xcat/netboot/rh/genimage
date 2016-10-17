@@ -467,7 +467,7 @@ unless ($onlyinitrd) {
         #        }
 
         # Hack uname when deal otherpkgs
-        use_hackuname();
+        use_hackuname($arch, $kernelver);
         use_devnull();
 
 
@@ -713,31 +713,7 @@ unless ($imagename) {
 
 if ($postinstall_filename) {
 
-    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level,
-    #because the "uname -r" only returns the version of the kernel in use
-    #create a temporary uname script. for every flag except for -r, it should just call the real
-    #uname with the same flags and return that info.
-    if (!(-e "$rootimg_dir/bin/orig_uname")) {
-        system("mv $rootimg_dir/bin/uname $rootimg_dir/bin/orig_uname");
-    }
-    my $tmpuname;
-    open($tmpuname, ">", "$rootimg_dir/bin/uname");
-    print $tmpuname <<EOS_UNAME;
-#!/bin/sh
-
-if [[ \$\# -eq 1 && \$1 == "-r" ]]; then
-    echo $kernelver
-    exit 0
-fi
-
-res=`/bin/orig_uname \$\*`
-echo \$res
-
-EOS_UNAME
-
-    close($tmpuname);
-    system("chmod +x $rootimg_dir/bin/uname");
-
+    use_hackuname($arch, $kernelver);
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
@@ -756,12 +732,14 @@ EOS_UNAME
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
+            unuse_hackuname();
             exit 1;
         }
 
         my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
         if ($rc) {
             print "postinstall script $postinstall failed\n";
+            unuse_hackuname();
             exit 1;
         }
     }
@@ -769,9 +747,7 @@ EOS_UNAME
     #delete the osimage attributes from environment variable
     delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
 
-    # restore the orig uname
-    system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
-
+    unuse_hackuname();
 }
 
 # all the attributes have been gathered
@@ -2303,8 +2279,14 @@ sub use_devnull {
     }
 }
 
-#To hack the uname, same function with the one in ubuntu genimage
+# Hack uname functions to match what's installed in the rootimg
+# instead of what's running on the management node.
+# Needed for some RPMs, especially kernel modules via DKMS.
+# Make sure to restore the original uname with unuse_hackuname()
 sub use_hackuname {
+    my $arch = shift;
+    my $kernelver = shift;
+
     unless (-e "$rootimg_dir/bin/uname-binary") {
         if (-e -x "$rootimg_dir/bin/uname") {
             move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");
@@ -2316,18 +2298,30 @@ sub use_hackuname {
     print $unamefile <<UNAME_FILE;
 #!/bin/bash
 
-case "\$1" in 
+ARCH=$arch
+KERNELVER=$kernelver
+
+case "\$1" in
 "-m")
-    ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+    if [ -z "\$ARCH" ]; then
+      ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+    fi
     case "\$ARCH" in 
         "amd64") ARCH="x86_64" ;;
         "ppc64el") ARCH="ppc64le" ;;
         esac
     echo "\$ARCH" ;;
 "-r")
-    cd /lib/modules && for d in * ; do : ; done && echo \$d ;; 
+    if [ -n "\$KERNELVER" ]; then
+        echo \$KERNELVER
+    else
+      for d in \$(ls /lib/modules | sort -V) ; do : ; done && echo \$d
+    fi
+    ;;
 "-s"|"")
     echo "Linux";;
+*)
+    /bin/uname-binary \$1;;
     esac
     exit 0
 
