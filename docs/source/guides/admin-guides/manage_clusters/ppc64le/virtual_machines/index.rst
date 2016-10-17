@@ -32,6 +32,6 @@ This section introduces the steps of management node preparation, KVM hypervisor
    :maxdepth: 2
 
    kvmMN.rst
-   powerKVM.rst
+   hypervisorKVM.rst
    manage_vms.rst
    FAQ.rst
