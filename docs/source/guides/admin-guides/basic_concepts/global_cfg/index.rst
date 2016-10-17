@@ -3,7 +3,7 @@ Global Configuration
 
 All the xCAT global configurations are stored in site table, xCAT Admin can adjust the configuration by modifying the site attribute with ``tabedit``.    
 
-This section only presents some key global configurations, for the complete reference on the xCAT global configurations, please refer to the ``tabdump -d site``.
+This section only presents some key global configurations, for the complete reference on the xCAT global configurations, refer to the ``tabdump -d site``.
 
 
 Database Attributes
@@ -71,7 +71,7 @@ Install/Deployment Attributes
   The local directory name used to hold the node deployment packages.
 
 * runbootscripts:  
-  If set to ``yes`` the scripts listed in the postbootscripts attribute in the osimage and postscripts tables will be run during each reboot of stateful (diskful) nodes. This attribute has no effect on stateless nodes. Please run the following command after you change the value of this attribute :: 
+  If set to ``yes`` the scripts listed in the postbootscripts attribute in the osimage and postscripts tables will be run during each reboot of stateful (diskful) nodes. This attribute has no effect on stateless nodes. Run the following command after you change the value of this attribute :: 
 
    updatenode <nodes> -P setuppostbootscripts
 
@@ -85,7 +85,7 @@ Install/Deployment Attributes
     '1':  enable basic debug mode
     '2':  enable expert debug mode
 
-  For the details on 'basic debug mode' and 'expert debug mode', please refer to xCAT documentation.
+  For the details on 'basic debug mode' and 'expert debug mode', refer to xCAT documentation.
 
 
 Remoteshell Attributes
