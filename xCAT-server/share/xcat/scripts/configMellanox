@@ -267,9 +267,12 @@ sub config_snmp {
         }
 
         $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;snmp-server user $snmp_user v3 enable;snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd;no snmp-server user $snmp_user v3 require-privacy;configuration write;exit;exit" `;
-
-        $cmd = "chdef $switch status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to set snmpv3 for $switch");
+        } else {
+            $cmd = "chdef $switch status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+        }
     }
 }
 
