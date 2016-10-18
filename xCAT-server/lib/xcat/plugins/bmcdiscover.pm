@@ -645,10 +645,6 @@ sub format_stanza {
         if ($bmcpass) {
             $result .= "\tbmcpassword=$bmcpass\n";
         }
-        if ($nodetype && $hwtype) {
-            $result .= "\tnodetype=$nodetype\n";
-            $result .= "\thwtype=$hwtype\n";
-        }
         my $rsp = {};
         push @{ $rsp->{data} }, "$result";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
