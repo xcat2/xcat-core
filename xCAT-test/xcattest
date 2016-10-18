@@ -6,6 +6,8 @@ use Getopt::Long;
 use Data::Dumper;
 use Term::ANSIColor;
 use Time::Local;
+use File::Basename;
+use File::Path;
 
 BEGIN
 {
@@ -204,6 +206,53 @@ sub log_this
 sub log_error
 {
     print LOG_ERR join("\n", @_), "\n";
+}
+
+sub include_file
+{
+    my $file = shift;
+    my $idir = shift;
+    my @text = ();
+    unless ($file =~ /^\//) {
+        $file = $idir . "/" . $file;
+    }
+    open(INCLUDE, $file) || \
+      return "#INCLUDEBAD:cannot open $file#";
+    while (<INCLUDE>) {
+        chomp($_);
+        s/\s+$//;    #remove trailing spaces
+        next if /^\s*$/;    #-- skip empty lines
+        push(@text, $_);
+    }
+    close(INCLUDE);
+    return join(",", @text);
+}
+
+sub sort_caserange
+{
+    my @caserange = @_;
+    my $bundletext = join(',', @caserange);
+    #handle the #INLCUDE# tag recursively
+    my $idir = "$rootdir/bundle";
+    my $doneincludes = 0;
+    while (not $doneincludes) {
+        $doneincludes = 1;
+        if ($bundletext =~ /#INCLUDE:[^#^\n]+#/) {
+            $doneincludes = 0;
+            $bundletext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
+        }
+    }
+    @caserange=split(",",$bundletext);
+    my @diff;
+    foreach my $case (@caserange) {
+        unless (grep { $_ eq $case } @diff) {
+            push @diff, $case;
+        }
+    }
+    my %index;
+    my @same = grep($index{$_}++, @caserange);
+    my @error =grep /INCLUDEBAD/, @caserange;
+    return (\@diff, \@same, \@error);
 }
 
 sub getConfig
@@ -564,6 +613,8 @@ sub loadcase
     my @rightcase    = ();
     my @notrightcase = ();
     my @wrongnamecase= ();
+    my @samecase = ();
+    my @errorcase = ();
     if ($bundlelist) {
         my @bundles = split /,/, $bundlelist;
         foreach my $bundle (@bundles) {
@@ -572,11 +623,15 @@ sub loadcase
                 return 1;
             }
             while ($line = <FILE>) {
-                $line = trim($line);
+                chomp($line);
                 next if (length($line) == 0);
                 push(@caserange, $line);
             }
             close(FILE);
+            my @refs=sort_caserange(@caserange);
+            @caserange=@{$refs[0]};
+            @samecase=@{$refs[1]};
+            @errorcase=@{$refs[2]};
         }
     }
     
@@ -731,6 +786,8 @@ sub loadcase
         log_this("Error: No case to run, please check the case name or command name");
     }
     log_this("Not to run:", @notrightcase) if (@notrightcase);
+    log_this("Duplicated case:", @samecase) if (@samecase);
+    log_this("INCLUDEBAD case:", @errorcase) if (@errorcase);
     log_this("Case name not supported:", @wrongnamecase) if (@wrongnamecase);
     return 0;
 }
@@ -1150,11 +1207,13 @@ sub reordercases
                 return 1;
             }
             while ($line = <FILE>) {
-                $line = trim($line);
+                chomp($line);
                 next if ((length($line) == 0) || ($line =~ /^description\s*:\s*(.*)/));
                 push(@caserange, $line);
             }
             close(FILE);
+            my @refs=sort_caserange(@caserange);
+            @caserange=@{$refs[0]};
         }
     }
     if ($caselist) {
