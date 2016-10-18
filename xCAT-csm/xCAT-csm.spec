@@ -33,18 +33,19 @@ xCAT-csm provides Packages for installation of CSM nodes
 rm -rf %{buildroot}
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
-
-set +x
+mkdir -p $RPM_BUILD_ROOT/install/postscripts/csm/
 
 cp csm* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
+cp install/postscripts/* $RPM_BUILD_ROOT/install/postscripts/csm/
 
 %clean
 # This step does not happen until *after* the %files packaging below
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%{prefix}
 %defattr(-,root,root,-)
+%{prefix}
+/install/poscripts
 %doc
 
 
