@@ -88,20 +88,34 @@ cmd:xcatconfig --version
 check:output=~version|Version
 end
 
-start:xcatconfig_f_check_xcatsslversion
-description:after xcatconfig -f the site.xcatsslversion will not be changed
+start:xcatconfig_u_check_xcatsslversion_rhels_sles
+description:after xcatconfig -u the site.xcatsslversion will not be changed
 cmd:tabdump site | grep xcatsslversion
 check:output=~TLSv1
-cmd:if cat /etc/*-release | grep SUSE >/dev/null; then chtab key=xcatsslversion site.value=TLSv12;elif  cat /etc/*release |grep "Red Hat" >/dev/null;then chtab key=xcatsslversion site.value=TLSv12;elif  cat /etc/*release |grep "Ubuntu"  >/dev/null;then chtab key=xcatsslversion site.value=TLSv1_2;fi
+cmd:chtab key=xcatsslversion site.value=TLSv12
 check:rc==0
 cmd:tabdump site | grep "xcatsslversion"
-check:output=~TLSv12|TLSv1_2
+check:output=~TLSv12
 cmd:xcatconfig -u
 check:rc==0
 cmd:tabdump site | grep "xcatsslversion"
 check:output=~TLSv12
 cmd:chtab key=xcatsslversion site.value=TLSv1
 check:rc==0
-cmd:tabdump site | grep "xcatsslversion"
+end
+
+start:xcatconfig_u_check_xcatsslversion_ubuntu
+description:after xcatconfig -u the site.xcatsslversion will not be changed
+cmd:tabdump site | grep xcatsslversion
 check:output=~TLSv1
+cmd:chtab key=xcatsslversion site.value=TLSv1_2
+check:rc==0
+cmd:tabdump site | grep "xcatsslversion"
+check:output=~TLSv1_2
+cmd:xcatconfig -u
+check:rc==0
+cmd:tabdump site | grep "xcatsslversion"
+check:output=~TLSv1_2
+cmd:chtab key=xcatsslversion site.value=TLSv1
+check:rc==0
 end
