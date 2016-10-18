@@ -1,93 +1,32 @@
-Setup Hypervisor
-================
-
+Install and Configure Hypervisor
+================================
 
 Provision Hypervisor
 --------------------
 
-
-Follow the :ref:`Diskful Installation <diskful_installation>` to provision kvm hypervisor for PowerKVM or RHEV.
-
- 
 * **[PowerKVM]**
 
-   Obtain a PowerKVM iso and create PowerKVM osimages with it: :: 
-
-     copycds ibm-powerkvm-3.1.0.0-39.0-ppc64le-gold-201511041419.iso
-    
-   The following PowerKVM osimage will be created ::
-     
-     # lsdef -t osimage -o pkvm3.1-ppc64le-install-compute
-     Object name: pkvm3.1-ppc64le-install-compute
-         imagetype=linux
-         osarch=ppc64le
-         osdistroname=pkvm3.1-ppc64le
-         osname=Linux
-         osvers=pkvm3.1
-         otherpkgdir=/install/post/otherpkgs/pkvm3.1/ppc64le
-         pkgdir=/install/pkvm3.1/ppc64le
-         profile=compute
-         provmethod=install
-         template=/opt/xcat/share/xcat/install/pkvm/compute.pkvm3.ppc64le.tmpl
+   .. include:: pKVMHypervisor.rst
 
 * **[RHEV]**
 
-   At the time of this writing there is no ISO image availabe for RHEV. Individual RPM packages need to be downloaded.
-
-   * Download *Management-Agent-Power-7* and *Power_Tools-7* RPMs from RedHat to the xCAT management node. Steps below assume all RPMs were downloaded to */install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA* directory.
-
-   * Run ``createrepo .`` in the */install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA* directory.
-
-   * Create new osimage definition based on an existing RH7 osimage definition ::
-
-      mkdef -t osimage -o rhels7.3-ppc64le-RHEV4-install-compute --template rhels7.3-ppc64le-install-compute
-   * Modify ``otherpkgdir`` attribute to point to the package directory with downloaded RPMs ::
-
-      chdef -t osimage rhels7.3-ppc64le-RHEV4-install-compute otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA
-
-   * Create a new file */opt/xcat/share/xcat/install/rh/other.pkglist* to list required packages ::
-
-      libvirt 
-      qemu-kvm-rhev 
-      qemu-kvm-tools-rhev 
-      virt-manager-common 
-      virt-install
-
-   * Modify ``otherpkglist`` attribute to point to the file from the step above ::
-
-      chdef -t osimage rhels7.3-snap3-ppc64le-RHEV4-install-compute otherpkglist=/opt/xcat/share/xcat/install/rh/other.pkglist
-
-   * The RHEV osimage should look similar to: ::
-
-      Object name: rhels7.3-ppc64le-RHEV4-install-compute
-          imagetype=linux
-          osarch=ppc64le
-          osdistroname=rhels7.3-ppc64le
-          osname=Linux
-          osvers=rhels7.3
-          otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA
-          otherpkglist=/opt/xcat/share/xcat/install/rh/other.pkglist
-          pkgdir=/install/rhels7.3/ppc64le
-          pkglist=/install/custom/install/rh/compute.rhels7.ppc64le.pkglist
-          profile=compute
-          provmethod=install
-          template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
+   .. include:: RHEVHypervisor.rst
 
 #. Customize the hypervisor node definition to create network bridge
 
-   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Specify the **xHRM** with appropriate parameters in  **postscripts** attibute. Here is some examples on this:
+   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Specify the **xHRM** with appropriate parameters in  **postscripts** attibute. For example:
 
-   To create a bridge with default name 'default' against the installation network device which was specified by **installnic** attribute ::
+   * To create a bridge with default name 'default' against the installation network device which was specified by **installnic** attribute ::
 
-     chdef kvmhost1 -p postscripts="xHRM bridgeprereq"
+        chdef kvmhost1 -p postscripts="xHRM bridgeprereq"
 
-   To create a bridge named 'br0' against the installation network device which was specified by **installnic** attribute(recommended) ::
+   * To create a bridge named 'br0' against the installation network device which was specified by **installnic** attribute(recommended) ::
 
-     chdef kvmhost1 -p postscripts="xHRM bridgeprereq br0"
+        chdef kvmhost1 -p postscripts="xHRM bridgeprereq br0"
 
-   To create a bridge named 'br0' against the network device 'eth0' ::
+   * To create a bridge named 'br0' against the network device 'eth0' ::
 
-     chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
+        chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
 
    **Note**: The network bridge name you use should not be the virtual bridges created by libvirt installation  [1]_. 
 
