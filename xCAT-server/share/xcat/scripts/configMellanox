@@ -243,6 +243,12 @@ sub config_snmp {
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth']);
     foreach my $switch (@nodes) {
         my $user = $switchhash->{$switch}->[0]->{sshusername};
+        if (!$user) {
+            print "switch ssh username is not defined, add default one\n";
+            $cmd = "chdef $switch username=admin";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            $user="admin";
+        }
         if ($::USER) {
             $snmp_user = $::USER;
         } elsif ($switchhash->{$switch}->[0]->{username}) {
