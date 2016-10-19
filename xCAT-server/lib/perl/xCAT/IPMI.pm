@@ -864,8 +864,10 @@ sub got_rakp2 {
             return;
         }
         if ($rmcp_codes{$byte}) {
+            $self->{sessionestablishmentcontext} = STATE_FAILED;
             $self->{onlogon}->("ERROR: " . $rmcp_codes{$byte}, $self->{onlogon_args}); #TODO: errors
         } else {
+            $self->{sessionestablishmentcontext} = STATE_FAILED;
             $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session", $self->{onlogon_args}); #TODO: errors
         }
         return 9;
