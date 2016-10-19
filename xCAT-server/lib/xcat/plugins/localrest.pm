@@ -143,7 +143,7 @@ sub handle_rest_request {
 
 #-------------------------------------------------------
 sub list_adapters {
-    my ($rsp, $cmd, $tmpres, $vline);
+    my ($rsp, $cmd, $vline);
     my ($mac, $ip, $adapter, $preadapter, $samenic);
     my (@cmdres, @origin, @eachline, @line, @result);
         $cmd = "ip -o addr";
@@ -174,27 +174,29 @@ sub list_adapters {
             }
         }
         # get net ip and mac
+        my $i=0;
         foreach my $key (keys %{$samenic}){
             $vline=${$samenic}{$key};
             @line = split(' ',$vline);
-            $tmpres->{'name'} = $key;
+            my %tmpres = ();
+            $tmpres{'name'} = $key;
             for (my $i=0; $i<@line; $i++) {
 
                 if ( $line[$i] =~ /^inet$/ ) {
                     $ip = $line[$i+1];
-                    $tmpres->{'ip'} = $ip;
+                    $tmpres{'ip'} = $ip;
                 }
 
                 if ( $line[$i] =~ 'ether' ) {
                     $mac = $line[$i+1];
-                    $tmpres->{'mac'} = $mac;
+                    $tmpres{'mac'} = $mac;
                 }
            }
-           push (@result, $tmpres);
+           push (@result, \%tmpres);
+
        }
     return \@result;
 }
-
 
 
 #-------------------------------------------------------
