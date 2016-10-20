@@ -26,6 +26,10 @@ B<rvitals> I<noderange> {B<temp>|B<wattage>|B<fanspeed>|B<leds>|B<summary>|B<all
 
 B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>}
 
+=head2 OpenPOWER server specific:
+
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>}
+
 =head1 B<Description>
 
 B<rvitals>  retrieves hardware vital information from the on-board Service

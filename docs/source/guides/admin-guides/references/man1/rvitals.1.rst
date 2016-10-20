@@ -56,6 +56,13 @@ BMC specific:
 \ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | all**\ }
 
 
+OpenPOWER server specific:
+==========================
+
+
+\ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | all**\ }
+
+
 
 *******************
 \ **Description**\ 
