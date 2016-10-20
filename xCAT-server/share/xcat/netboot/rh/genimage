@@ -722,6 +722,7 @@ if ($postinstall_filename) {
     $ENV{IMG_NAME}=$imagename if("" ne $imagename);
     $ENV{IMG_ARCH}=$arch if("" ne $arch);
     $ENV{IMG_OSVER}=$osver if("" ne $osver);
+    $ENV{IMG_KERNELVERSION} = $kernelver if("" ne $kernelver);
     $ENV{IMG_PROFILE}=$profile if("" ne $profile);
     $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
     $ENV{IMG_PKGDIR}=$srcdir if("" ne $srcdir);
@@ -745,7 +746,7 @@ if ($postinstall_filename) {
     }
 
     #delete the osimage attributes from environment variable
-    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_KERNELVERSION IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
 
     unuse_hackuname();
 }

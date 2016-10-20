@@ -157,7 +157,11 @@ function hack_uname()
 			echo "\$ARCH"
 			;;
 		"-r")
-			cd /lib/modules && for d in * ; do : ; done && echo \$d
+                        if [ -n "\$KERNELVERSION" ]; then
+                            echo \$KERNELVERSION
+                        else
+                            for d in \$(ls /lib/modules | sort -V) ; do : ; done && echo \$d
+                        fi
 			;;
 		"-s"|"")
 			echo "Linux"
