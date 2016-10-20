@@ -1844,7 +1844,7 @@ sub validate_os {
         return 1;
     }
 
-    if ($kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion})) {
+    if ($kitcomp->{osminorversion} and ($osimage->{minorversion} lt $kitcomp->{osminorversion})) {
 
         #        my %rsp;
         #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute minorversion";
@@ -2149,7 +2149,7 @@ sub addkitcomp
                 return 1;
             }
 
-            if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
+            if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} lt $kitcomps{$kitcomp}{osminorversion})) {
                 my %rsp;
                 push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
                 xCAT::MsgUtils->message("E", \%rsp, $callback);
@@ -3606,7 +3606,7 @@ sub chkkitcomp
             return 1;
         }
 
-        if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
+        if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} lt $kitcomps{$kitcomp}{osminorversion})) {
             my %rsp;
             push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
             xCAT::MsgUtils->message("E", \%rsp, $callback);
@@ -5080,7 +5080,7 @@ sub get_compat_kitreponames {
         if (defined($kitrepo->{osmajorversion}) && $kitrepo->{osmajorversion} ne $osdistro->{majorversion}) {
             next;
         }
-        if (defined($kitrepo->{osminorversion}) && $kitrepo->{osminorversion} ne $osdistro->{minorversion}) {
+        if (defined($kitrepo->{osminorversion}) && $osdistro->{minorversion} lt $kitrepo->{osminorversion} ) {
             next;
         }
         if (defined($kitrepo->{osarch}) && $kitrepo->{osarch} ne $osdistro->{arch} && $kitrepo->{osarch} ne 'noarch') {
