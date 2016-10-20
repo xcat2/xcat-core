@@ -7,11 +7,13 @@ $::LOGTYPE_RSYSLOG = 0;    #rsyslog
 $::LOGTYPE_HTTP    = 1;    #apache log
 
 #The lable of specific line log
-$::LOGLABEL_DHCPD = 0;
-$::LOGLABEL_TFTP  = 1;
-$::LOGLABEL_HTTP  = 2;
-$::LOGLABEL_XCAT  = 3;
-$::LOGLABEL_UNDEF = 4;
+$::LOGLABEL_DHCPD  = 0;
+$::LOGLABEL_TFTP   = 1;
+$::LOGLABEL_HTTP   = 2;
+$::LOGLABEL_XCAT   = 3;
+$::LOGLABEL_UNDEF  = 4;
+$::LOGLABEL_DOXCAT = 5;
+$::LOGLABEL_DISCOVERY = 6;
 
 #The important stage of provision process
 $::STATE_POWER_ON       = 1;
@@ -44,4 +46,28 @@ $::STATE_COMPLETED      = 13;
     $::STATE_POSTBOOTSCRIPT => "running_postbootscripts",
     $::STATE_COMPLETED      => "complete",
 );
+
+# The important stage of discovery process
+$::STATE_DISCOVER_DHCP           = 1;
+$::STATE_DISCOVER_BOOTLODER      = 2;
+$::STATE_DISCOVER_KERNEL         = 3;
+$::STATE_DISCOVER_INITRD         = 4;
+$::STATE_DISCOVER_DOXCAT         = 5;
+$::STATE_DISCOVER_DISCOVERY      = 6;
+$::STATE_DISCOVER_REPORT         = 7;
+$::STATE_DISCOVER_COMPLETED      = 8;
+
+#The description of every important stage of discovery process
+%::STATE_DISCOVER_DESC = (
+    $::STATE_DISCOVER_DHCP           => "got_ip_from_dhcp",
+    $::STATE_DISCOVER_BOOTLODER      => "download_genesis_bootloder",
+    $::STATE_DISCOVER_KERNEL         => "download_genesis_kernel",
+    $::STATE_DISCOVER_INITRD         => "download_genesis_initrd",
+    $::STATE_DISCOVER_DOXCAT         => "enter_genesis",
+    $::STATE_DISCOVER_DISCOVERY      => "start_to_discovery",
+    $::STATE_DISCOVER_REPORT         => "send_discovery_request",
+    $::STATE_DISCOVER_COMPLETED      => "discovery_complete",
+);
+
+
 1;
