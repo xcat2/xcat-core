@@ -2303,8 +2303,14 @@ sub copycd
     my $osdistroname = $distname . "-" . $arch;
 
     my $defaultpath = "$installroot/$distname/$arch";
-    unless ($path)
-    {
+    if ($path) {
+        # Path is specified. Make sure it starts with $installroot
+        unless ($path =~ /^$installroot\//) {
+            $callback->({ error => "The path $path does not start with 'installdir=$installroot' defined in the site table", errorcode => 2 });
+            return;
+        }
+    }
+    else {
         $path = $defaultpath;
     }
     if ($::XCATSITEVALS{osimagerequired}) {
