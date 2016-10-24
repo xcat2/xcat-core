@@ -367,20 +367,20 @@ unless ($onlyinitrd) {
             my $pa  = $pkg_hash{$pass}{$_};
             my @npa = ();
 
-            # replace the kernel package with the name has the specific version
+            # replace the kernel package (and headers, tools, etc) with the specific version
             foreach my $p (@$pa) {
-                if ($p =~ /^kernel$/ && $kernelver) {
+                if ($kernelver && $p =~ /^kernel(-headers|-devel|-bootwrapper|-tools)?$/) {
                     my $kernelname;
                     if ($krpmver) {
-                        $kernelname = "kernel-" . $krpmver;
+                        $kernelname = $p . "-" . $krpmver;
                     } else {
-                        $kernelname = "kernel-" . $kernelver;
+                        $kernelname = $p . "-" . $kernelver;
                     }
                     my $searchkern = $yumcmd . " list $kernelname -q";
                     my @kernpkgs   = `$searchkern`;
                     my $found      = 0;
                     foreach my $k (@kernpkgs) {
-                        if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
+                        if ($k =~ /\s*$p\.[^\s]*\s+([\w\.-]+)/) {
                             my $version = $1;
                             if ($kernelver =~ /$version/) {
                                 $found++;
@@ -388,7 +388,7 @@ unless ($onlyinitrd) {
                         }
                     }
                     if ($found eq 0) {
-                        print "Cannot find the kernel with version $kernelver.\n";
+                        print "Cannot find the $p package with version $kernelver.\n";
                         umount_chroot($rootimg_dir);
                         exit 1;
                     }
@@ -546,7 +546,9 @@ unless ($onlyinitrd) {
 
                 # run yum update to update any installed rpms
                 # needed when running genimage again after updating software in repositories
-                my $yumcmd_update = $yumcmd_base . " update  ";
+                # exclude updating the kernel if a specific version was specified
+                my $excludecmd = $kernelver ? " --exclude=kernel\*" : "";
+                my $yumcmd_update = $yumcmd_base . $excludecmd . " update  ";
                 $rc = system("$yumcmd_update");
             }
         }
