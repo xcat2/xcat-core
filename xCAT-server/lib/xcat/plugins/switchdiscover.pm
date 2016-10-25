@@ -32,6 +32,14 @@ my %global_scan_type = (
     snmp => "snmp_scan"
 );
 
+my %global_mac_identity = (
+    "a8:97:dc" => "BNT G8052 switch",
+    "6c:ae:8b" => "BNT G8264-T switch",
+    "fc:cf:62" => "BNT G8124 switch",
+    "7c:fe:90" => "Mellanox IB switch",
+    "8c:ea:1b" => "Edgecore switch"
+);
+
 my %global_switch_type = (
     Juniper => "Juniper",
     juniper => "Juniper",
@@ -44,7 +52,8 @@ my %global_switch_type = (
     Mellanox => "Mellanox",
     mellanox => "Mellanox",
     MLNX => "Mellanox",
-    MELLAN => "Mellanox"
+    MELLAN => "Mellanox",
+    Edgecore => "cumulus"
 );
 
 
@@ -727,28 +736,42 @@ sub nmap_scan {
                         if ($vendor) {
                             my $search_string = join '|', keys(%global_switch_type);
                             if ($vendor =~ /($search_string)/) {
-                                $switches->{$mac}->{ip} = $ip;
-                                $switches->{$mac}->{vendor} = $vendor;
-                                $switches->{$mac}->{name} = $host->{hostname};
                                 $found = 1;
-                                if (exists($globalopt{verbose}))    {
-                                    send_msg($request, 0, "FOUND Switch: ip=$ip, mac=$mac, vendor=$vendor\n");
-                                }
                             }
                         } 
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            push(@$osguess_ips, $ip);
-                        } # end nmap osscan command
+                            my $search_string = join '|', keys(%global_mac_identity);
+                            if ($mac =~ /($search_string)/i) {
+                                my $key = $1;
+                                $vendor = $global_mac_identity{lc $key};
+                                $found = 1;
+                            }
+
+                            # still not found, used nmap osscan command
+                            if ( $found == 0) {
+                                push(@$osguess_ips, $ip);
+                            }
+                        } 
+                        if ($found == 1) {
+                            $switches->{$mac}->{ip} = $ip;
+                            $switches->{$mac}->{vendor} = $vendor;
+                            $switches->{$mac}->{name} = $host->{hostname};
+                            if (exists($globalopt{verbose}))    {
+                                send_msg($request, 0, "FOUND Switch: found = $found, ip=$ip, mac=$mac, vendor=$vendor\n");
+                            }
+                        }
                     } #end for each address
                 }
             } #end for each host
         }
     }
 
-    my $guess_switches = nmap_osguess($request, $osguess_ips);
-    foreach my $guess_mac ( keys %$guess_switches ) {
-        $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
-        $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
+    if (!$osguess_ips) {
+        my $guess_switches = nmap_osguess($request, $osguess_ips);
+        foreach my $guess_mac ( keys %$guess_switches ) {
+            $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
+            $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
+        }
     }
 
     return $switches;
@@ -1406,9 +1429,13 @@ sub switchsetup {
         my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
-            send_msg($request, 0, "call to config $mytype switches $switches\n");
-            my $out = `$config_script --switches $switches --all`;
-            send_msg($request, 0, "output = $out\n");
+            if ($mytype eq "cumulus") {
+                send_msg($request, 0, "Cumulus switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configcumulus after cumulus OS installed on switch\n");
+            } else {
+                send_msg($request, 0, "call to config $mytype switches $switches\n");
+                my $out = `$config_script --switches $switches --all`;
+                send_msg($request, 0, "output = $out\n");
+            }
         } else {
             send_msg($request, 0, "the switch type $mytype is not support yet\n");
         }
