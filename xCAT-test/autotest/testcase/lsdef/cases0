@@ -243,8 +243,7 @@ end
 start:lsdef_template_with_invalid_name
 os:linux
 description:lsdef --template with invalid template name
-cmd:lsdef --template | grep "test_with_invalid_name"
-check:rc==1
+cmd:result=`lsdef | grep  test_with_invalid_name`; if [[ $result =~ "test_with_invalid_name" ]]; then noderm test_with_invalid_name; fi
 cmd:lsdef --template "test_with_invalid_name"
 check:rc==1
 check:output=~Error: Could not find test_with_invalid_name in xCAT templates.
