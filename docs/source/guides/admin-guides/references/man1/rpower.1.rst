@@ -200,7 +200,7 @@ OPTIONS
  
  Don't try to run \ **wake**\  against the 'on' state node, it would cause the node gets to 'off' state.
  
- For some of xCAT hardware such as NeXtScale, it may need to enable S3 before using \ **wake**\ . The following steps can be used to enable S3. Please reference pasu(1)|pasu.1 for "pasu" usage.
+ For some of xCAT hardware such as NeXtScale, it may need to enable S3 before using \ **wake**\ . The following steps can be used to enable S3. Reference pasu(1)|pasu.1 for "pasu" usage.
  
  
  .. code-block:: perl

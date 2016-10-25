@@ -191,28 +191,20 @@ In  plain  English,  a  node or group name is in \ **xCAT Node Name Format**\  i
 from the begining there are:
 
 
-\*
- 
- one or more alpha characters  of  any  case and  any  number  of "-" in any combination
- 
+\* one or more alpha characters  of  any  case and  any  number  of "-" in any combination
 
 
-\*
- 
- followed by one or more numbers
- 
+
+\* followed by one or more numbers
 
 
-\*
- 
- then optionally followed by one alpha character of any case  or "-"
- 
+
+\* then optionally followed by one alpha character of any case  or "-"
 
 
-\*
- 
- followed by any combination of case mixed alphanumerics and "-"
- 
+
+\* followed by any combination of case mixed alphanumerics and "-"
+
 
 
 \ **noderange**\  supports node/group names in \ *any*\  format.  \ **xCAT Node Name Format**\  is

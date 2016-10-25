@@ -49,7 +49,7 @@ Output will be similar to: ::
     ======================do summary=====================
     [MN]: Check on MN PASS.                                                                                           [ OK ]
 
-**[MN]** means that the verfication is performerd on the Management Node. Overall status of ``PASS`` or ``FAILED`` will be displayed after all items are verified..
+**[MN]** means that the verification is performed on the Management Node. Overall status of ``PASS`` or ``FAILED`` will be displayed after all items are verified..
 
 Service Nodes are checked automatically for hierarchical clusters.
 

@@ -36,11 +36,11 @@ Database Connection Changes
 
 Granting or revoking access privilege in the database for the service node.
 
-* For mysql, please refer to :ref:`grante_revoke_mysql_access_label`.
+* For mysql, refer to :ref:`grante_revoke_mysql_access_label`.
 .. There is no procedure in old document on sourceforge for postgress to
    grant or revoke the access privilege for service node.
 
-* For postgress, please refer to `TODO <https://localhost/todo>`_.
+* For postgress, refer to `TODO <https://localhost/todo>`_.
 
 Update Provision Environment on Service Node
 --------------------------------------------

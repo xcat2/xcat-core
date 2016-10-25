@@ -128,19 +128,15 @@ from the begining there are:
 =over 2
 
 =item *
-
 one or more alpha characters  of  any  case and  any  number  of "-" in any combination
 
 =item *
-
 followed by one or more numbers
 
 =item *
-
 then optionally followed by one alpha character of any case  or "-"
 
 =item *
-
 followed by any combination of case mixed alphanumerics and "-"
 
 =back

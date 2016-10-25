@@ -26,7 +26,7 @@ Another example is if "node1" is assigned the IP address "10.0.0.1", node2 is as
     #node,ip,hostnames,otherinterfaces,comments,disable
     "compute","|node(\d+)|10.0.0.($1+0)|",,,,
 
-In this example, the regular expression in the ``ip`` attribute uses ``|`` to separate the 1st and 2nd part. This means that xCAT will allow arithmetic operations in the 2nd part. In the 1st part, ``(\d+)``, will match the number part of the node name and put that in a variable called ``$1``. The 2nd part is what value to give the ``ip`` attribute. In this case it will set it to the string "10.0.0." and the number that is in ``$1``. (Zero is added to ``$1`` just to remove any leading zeroes.)
+In this example, the regular expression in the ``ip`` attribute uses ``|`` to separate the 1st and 2nd part. This means that xCAT will allow arithmetic operations in the 2nd part. In the 1st part, ``(\d+)``, will match the number part of the node name and put that in a variable called ``$1``. The 2nd part is what value to give the ``ip`` attribute. In this case it will set it to the string "10.0.0." and the number that is in ``$1``. (Zero is added to ``$1`` just to remove any leading zeros.)
 
 A more involved example is with the ``vm`` table. If your kvm nodes have node names c01f01x01v01, c01f02x03v04, etc., and the kvm host names are c01f01x01, c01f02x03, etc., then you might have an ``vm`` table like ::
 
@@ -45,14 +45,14 @@ Before you panic, let me explain each column:
 
 ``|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|``
 
-    This item is similar to the one above. This substituion pattern will produce the value for the 5th column (a list of storage files or devices to be used). Because this row was the match for "c01f02x03v04", the produced value is "dir:///install/vms/vm4".
+    This item is similar to the one above. This substitution pattern will produce the value for the 5th column (a list of storage files or devices to be used). Because this row was the match for "c01f02x03v04", the produced value is "dir:///install/vms/vm4".
 
 Just as the explained above, when the node definition "c01f02x03v04" is created  with ::
 
     # mkdef -t node -o c01f02x03v04 groups=kvms
     1 object definitions have been created or modified.
 
-The generated node deinition is ::
+The generated node definition is ::
 
     # lsdef c01f02x03v04
     Object name: c01f02x03v04

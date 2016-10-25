@@ -29,7 +29,7 @@ Installing Additional OS Distro Packages
 
 For packages from the OS distro, add the new package names (without the version number) in the .pkglist file. If you have newer updates to some of your operating system packages that you would like to apply to your OS image, you can place them in another directory, and add that directory to your osimage pkgdir attribute. How to add additional OS distro packages, go to :ref:`Install-Additional-OS-Packages-label`
 
-Note:If the objective node is not installed by xCAT, please make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
+Note:If the objective node is not installed by xCAT, make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
 
 Install Additional non-OS Packages
 ``````````````````````````````````
@@ -132,8 +132,8 @@ Linux: xdsh <noderange> -e /install/postscripts/xcatdsklspost -m <server> <scrip
 where <scripts> is a comma separated postscript like ospkgs,otherpkgs etc.
 
   * wget is used in xcatdsklspost/xcataixpost to get all the postscripts from the <server> to the node. You can check /tmp/wget.log file on the node to see if wget was successful or not. You need to make sure the  /xcatpost directory has enough space to hold the postscripts.
-  * A file called /xcatpost/mypostscript (Linux) is created on the node which contains the environmental variables and scripts to be run. Please make sure this file exists and it contains correct info. You can also run this file on the node manually to debug.
-  * For ospkgs/otherpkgs, if /install is not mounted on the <server>, it will download all the rpms from the <server> to the node using wget. Please make sure /tmp and /xcatpost have enough space to hold the rpms and please check /tmp/wget.log for errors.
-  * For ospkgs/otherpkgs, If zypper or yum is installed on the node, it will be used the command to install the rpms. Please make sure to run createrepo on the source direcory on the <server> every time a rpm is added or removed. Otherwise, the rpm command will be used, in this case, please make sure all the necessary depended rpms are copied in the same source directory.
+  * A file called /xcatpost/mypostscript (Linux) is created on the node which contains the environmental variables and scripts to be run. Make sure this file exists and it contains correct info. You can also run this file on the node manually to debug.
+  * For ospkgs/otherpkgs, if /install is not mounted on the <server>, it will download all the rpms from the <server> to the node using wget. Make sure /tmp and /xcatpost have enough space to hold the rpms and check /tmp/wget.log for errors.
+  * For ospkgs/otherpkgs, If zypper or yum is installed on the node, it will be used the command to install the rpms. Make sure to run createrepo on the source direcory on the <server> every time a rpm is added or removed. Otherwise, the rpm command will be used, in this case, make sure all the necessary depended rpms are copied in the same source directory.
   * You can append -x on the first line of ospkgs/otherpkgs to get more debug info.
 

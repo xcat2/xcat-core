@@ -37,5 +37,5 @@ The discovery process works with the following four kind of switches: ::
     BNT
     Juniper
 
-The ``switchdiscover`` command can display the output in xml format, stanza forma and normal list format. Please see the man pages for this command for details.
+The ``switchdiscover`` command can display the output in xml format, stanza forma and normal list format. See the man pages for this command for details.
 

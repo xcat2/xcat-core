@@ -54,7 +54,7 @@ It is important to note that some HA-related software like DRDB, Pacemaker, and 
 HA Service Nodes
 ````````````````
 
-When you have NFS-based diskless (statelite) nodes, there is sometimes the motivation make the NFS serving highly available among all of the service nodes. This is not recommended because it is a very complex configuration. In our opinion, the complexity of this setup can nullify much of the availibility you hope to gain. If you need your compute nodes to be highly available, you should strongly consider stateful or stateless nodes.
+When you have NFS-based diskless (statelite) nodes, there is sometimes the motivation make the NFS serving highly available among all of the service nodes. This is not recommended because it is a very complex configuration. In our opinion, the complexity of this setup can nullify much of the availability you hope to gain. If you need your compute nodes to be highly available, you should strongly consider stateful or stateless nodes.
 
 If you still have reasons to pursue HA service nodes:
 

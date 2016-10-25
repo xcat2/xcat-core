@@ -20,7 +20,7 @@ This command is used to register a monitoring plug-in module to monitor the xCAT
 
 I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use I<monls -a> command to list all the monitoring plug-in modules that can be used.
 
-I<settings> is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: I<-s key-value -s key=value ...> Please note that the square brackets are needed here. Use I<monls name -d> command to look for the possbile setting keys for a plug-in module.
+I<settings> is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: I<-s key-value -s key=value ...> Note that the square brackets are needed here. Use I<monls name -d> command to look for the possbile setting keys for a plug-in module.
 
 =head1 OPTIONS
 

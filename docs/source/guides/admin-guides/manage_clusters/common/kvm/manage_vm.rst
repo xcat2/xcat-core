@@ -109,7 +109,7 @@ To create the virtual machine "vm1" with 20G hard disk on a hypervisor directory
 
   mkvm vm1 -s 20G
    
-When "vm1" is created successfully, a VM hard disk file with a name like "vm1.sda.qcow2" will be found in the location specified by **vmstorage**. What's more, the **mac** attribute of "vm1" is set automatically, please check it with: ::
+When "vm1" is created successfully, a VM hard disk file with a name like "vm1.sda.qcow2" will be found in the location specified by **vmstorage**. What's more, the **mac** attribute of "vm1" is set automatically, check it with: ::
 
   lsdef vm1 -i mac
 
@@ -132,7 +132,7 @@ or running the following command on the kvm hypervisor "kvmhost1" ::
 Monitoring the Virtual Machine
 ``````````````````````````````
 
-When the VM has been created and powered on, please choose one of the following methods to monitor and access it. 
+When the VM has been created and powered on, choose one of the following methods to monitor and access it. 
 
 * Open the console on kvm hypervisor: ::
 

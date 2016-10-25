@@ -39,7 +39,7 @@ B<-v | --version>       Command Version.
 
   monrm gangliamon
 
-Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command B<monls>.
+Note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command B<monls>.
 
 
 

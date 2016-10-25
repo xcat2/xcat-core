@@ -206,8 +206,8 @@ correspond to a valid device configuration file.
 xCAT ships some default configuration files
 for Ethernet switches and and IB switches under 
 I</opt/xcat/share/xcat/devicetype> directory. If you want to overwrite
-any of the configuration files, please copy it to I</var/opt/xcat/>
-directory and cutomize it. 
+any of the configuration files, copy them to I</var/opt/xcat/>
+directory and cutomize. 
 For example, I<base/IBSwitch/Qlogic/config> is the configuration
 file location if devicetype is specified as IBSwitch::Qlogic.
 xCAT will first search config file using I</var/opt/xcat/> as the base. 

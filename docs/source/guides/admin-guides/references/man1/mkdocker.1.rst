@@ -54,7 +54,7 @@ OPTIONS
 
 \ **dockerflag**\ 
  
- A JSON string which will be used as parameters to create a docker. Please reference https://docs.docker.com/engine/reference/api/docker_remote_api_v1.22/ for more information about which parameters can be specified.
+ A JSON string which will be used as parameters to create a docker. Reference https://docs.docker.com/engine/reference/api/docker_remote_api_v1.22/ for more information about which parameters can be specified.
  
  Some useful flags are:
  
