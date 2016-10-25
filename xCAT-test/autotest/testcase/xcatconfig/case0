@@ -90,32 +90,32 @@ end
 
 start:xcatconfig_u_check_xcatsslversion_rhels_sles
 description:after xcatconfig -u the site.xcatsslversion will not be changed
-cmd:tabdump site | grep xcatsslversion
-check:output=~TLSv1
+cmd:default_value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$default_value" = "TLSv1" ]; then echo "xcatsslversion default value is TLSv1"; else echo "xcatsslversion is $default_value"; fi
+check:output=~xcatsslversion default value is TLSv1
 cmd:chtab key=xcatsslversion site.value=TLSv12
 check:rc==0
-cmd:tabdump site | grep "xcatsslversion"
-check:output=~TLSv12
+cmd:value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$value" = "TLSv12" ]; then echo "xcatsslversion is changed to be TLSv12"; else echo "xcatsslversion is $value"; fi
+check:output=~xcatsslversion is changed to be TLSv12
 cmd:xcatconfig -u
 check:rc==0
-cmd:tabdump site | grep "xcatsslversion"
-check:output=~TLSv12
+cmd:value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$value" = "TLSv12" ]; then echo "xcatsslversion is still TLSv12"; else echo "xcatsslversion is $value"; fi
+check:output=~xcatsslversion is still TLSv12
 cmd:chtab key=xcatsslversion site.value=TLSv1
 check:rc==0
 end
 
 start:xcatconfig_u_check_xcatsslversion_ubuntu
 description:after xcatconfig -u the site.xcatsslversion will not be changed
-cmd:tabdump site | grep xcatsslversion
-check:output=~TLSv1
+cmd:default_value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$default_value" = "TLSv1" ]; then echo "xcatsslversion default value is TLSv1"; else echo "xcatsslversion is $default_value"; fi
+check:output=~xcatsslversion default value is TLSv1
 cmd:chtab key=xcatsslversion site.value=TLSv1_2
 check:rc==0
-cmd:tabdump site | grep "xcatsslversion"
-check:output=~TLSv1_2
+cmd:value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$value" = "TLSv1_2" ]; then echo "xcatsslversion is changed to be TLSv1_2"; else echo "xcatsslversion is $value"; fi
+check:output=~xcatsslversion is changed to be TLSv1_2
 cmd:xcatconfig -u
 check:rc==0
-cmd:tabdump site | grep "xcatsslversion"
-check:output=~TLSv1_2
+cmd:value=`tabdump site | grep xcatsslversion | awk -F '"' '{print $4}'`; if [ "$value" = "TLSv1_2" ]; then echo "xcatsslversion is still TLSv1_2"; else echo "xcatsslversion is $value"; fi
+check:output=~xcatsslversion is still TLSv1_2
 cmd:chtab key=xcatsslversion site.value=TLSv1
 check:rc==0
 end
