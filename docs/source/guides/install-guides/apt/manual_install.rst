@@ -1,5 +1,5 @@
-Manually Installing xCAT
-========================
+Manual Install Using Software Repositories
+==========================================
 
 .. include:: ../common_sections.rst
    :start-after: BEGIN_install_xcat_introduction
