@@ -9,6 +9,10 @@ cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
 #cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$SN,vmstorage)__" =~ "phy" ]]; then rmvm $$SN -f -p  &&  mkvm $$SN; else rmvm $$SN -f -p  &&  mkvm $$SN -s 20G; fi;fi
 #Add for debug rmvm issue
+cmd:tabdump -w node==$$SN kvm_nodedata |grep -i $$SN
+check:rc==0
+cmd:kvmhost=__GETNODEATTR($$SN,vmhost)__;xdsh $kvmhost ls -l /var/lib/libvirt/images/
+check:rc==0 
 cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$SN,vmstorage)__" =~ "phy" ]]; then rmvm $$SN -f -p  &&  mkvm $$SN; else rmvm $$SN -f -p;mkvm $$SN;rmvm $$SN -f -p;mkvm $$SN -s 20G; fi;fi
 
 cmd:makedns -n
