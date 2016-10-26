@@ -132,7 +132,7 @@ OSIMAGE="$(lsdef -t osimage | grep -- -netboot-compute | head -n 1)"
 [ -n "${OSIMAGE}" ]
 exit_if_bad "$?" "Diskless osimage not found"
 
-lsdef -t osimage "${OSIMAGE}" -z | sed -e 's/^.*:$/compute_9999z/'
+lsdef -t osimage "${OSIMAGE}" -z | sed -e 's/^.*:$/compute_9999z/' | mkdef -z
 
 # The new osimage name is compute_9999z
 OSIMAGE="compute_9999z"
