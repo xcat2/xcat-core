@@ -55,17 +55,21 @@ $::STATE_DISCOVER_INITRD         = 4;
 $::STATE_DISCOVER_DOXCAT         = 5;
 $::STATE_DISCOVER_DISCOVERY      = 6;
 $::STATE_DISCOVER_REPORT         = 7;
-$::STATE_DISCOVER_COMPLETED      = 8;
+$::STATE_DISCOVER_UPDATE         = 8;
+$::STATE_DISCOVER_FAILED         = 9;
+$::STATE_DISCOVER_COMPLETED      = 10;
 
 #The description of every important stage of discovery process
 %::STATE_DISCOVER_DESC = (
     $::STATE_DISCOVER_DHCP           => "got_ip_from_dhcp",
-    $::STATE_DISCOVER_BOOTLODER      => "download_genesis_bootloder",
+    $::STATE_DISCOVER_BOOTLODER      => "download_bootloder",
     $::STATE_DISCOVER_KERNEL         => "download_genesis_kernel",
     $::STATE_DISCOVER_INITRD         => "download_genesis_initrd",
     $::STATE_DISCOVER_DOXCAT         => "enter_genesis",
     $::STATE_DISCOVER_DISCOVERY      => "start_to_discovery",
     $::STATE_DISCOVER_REPORT         => "send_discovery_request",
+    $::STATE_DISCOVER_UPDATE         => "start_update_node_information",
+    $::STATE_DISCOVER_FAILED         => "can't_find_related_node",
     $::STATE_DISCOVER_COMPLETED      => "discovery_complete",
 );
 

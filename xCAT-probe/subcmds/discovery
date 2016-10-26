@@ -116,10 +116,6 @@ if (defined($discovery_type)) {
     }
 }
 
-my $rst = check_pre_defined_node();
-probe_utils->send_msg("stdout", "o", "All pre_defined nodes are valid") unless ($rst);
-exit $rst if ($rst);
-
 if ($rollforward_time_of_replay) {
     if (($rollforward_time_of_replay !~ /(\d+)h(\d+)m/i) && ($rollforward_time_of_replay !~ /^(\d+)h*$/i) && ($rollforward_time_of_replay !~ /^(\d+)m$/i)) {
         probe_utils->send_msg("stdout", "f", "Unsupported time format for option '-r'");
@@ -380,6 +376,10 @@ sub do_pre_check {
     my @nets = ();
     my $rst  = 0;
     my $msg;
+
+    $rst = check_pre_defined_node();
+    probe_utils->send_msg("stdout", "o", "All pre_defined nodes are valid") unless ($rst);
+    return $rst if ($rst);
 
     # $nics is undef now, this part is for reservation
     if ($nics) {
@@ -1315,13 +1315,20 @@ sub handle_cluster_msg {
     my $node_state_ref = shift;
     my $log_msg = $log_ref->{msg};
 
-    if ($log_ref->{msg} =~ /xcat.discovery.(.+): \((.+)\) Found node: (.+)/) {
-        my $mac = $2;
-        my $node = $3;
+    if ($log_ref->{msg} =~ /xcat.discovery.$discovery_type: \((.+)\) Found node: (.+)/) {
+        my $mac = $1;
+        my $node = $2;
         $node_state_ref->{$mac}{id} = $node;
         $node_state_ref->{$node}{id} = $mac;
-        my $record = "Found node $node";
+        my $record = "Start to update node information";
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_UPDATE);
+        push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
+    } elsif ($log_ref->{msg} =~ /xcat.discovery.$discovery_type: \((.+)\) Warning: Could not find any nodes using (.+) discovery/i) {
+        my $mac = $1;
+        my $type = $2;
+        probe_utils->send_msg("stdout", "w", "[$mac] Could not find any nodes using $type discovery") if ($monitor);
+        set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_FAILED);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     }
 }
@@ -1352,11 +1359,11 @@ sub handle_compute_msg {
         if ($log_ref->{label} == $::LOGLABEL_DOXCAT) {
             set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_DOXCAT);
         } elsif ($log_ref->{label} == $::LOGLABEL_DISCOVERY) {
-            if ($log_ref->{msg} =~ /Beginning node discovery process.../i) {
+            if ($log_ref->{msg} =~ /Beginning node discovery process/i) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_DISCOVERY);
             } elsif ($log_ref->{msg} =~ /Sending the discovery packet to xCAT/i) {
                 set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_REPORT);
-            } elsif ($log_ref->{msg} =~ /Restart network interfaces.../i) {
+            } elsif ($log_ref->{msg} =~ /Restart network interfaces/i) {
                 my $node = "";
                 if (exists ($node_state_ref->{$mac}{id})) {
                     $node = $node_state_ref->{$mac}{id};
@@ -1461,7 +1468,7 @@ sub conclusion_report {
     }
 
     if ($verbose) {
-        probe_utils->send_msg("stdout", "d", "----------node state history----------");
+        probe_utils->send_msg("stdout", "d", "----------MAC state history----------");
         foreach my $identify (keys %$node_state_ref) {
             if ($node_state_ref->{$identify}{type} eq "mac") {
                 my $allhistorystate;
@@ -1510,19 +1517,16 @@ sub conclusion_report {
     }
 
     if (@failed_node) {
-        if (@success_node) {
-            my $success_node_num = @success_node;
-            probe_utils->send_msg("stdout", "o", "Found $success_node_num node(s) matched successfully");
-        }
-
+        my $success_node_num = @success_node;
         my $failed_node_num = @failed_node;
         my $failed_nodes = join(",", @failed_node);
-        if ($failed_node_num > 1) {
-            probe_utils->send_msg("stdout", "d", "There are $failed_node_num nodes matched failures: $failed_nodes");
-        } elsif ($failed_node_num == 1) {
-            probe_utils->send_msg("stdout", "d", "There is $failed_node_num node matched failures: $failed_nodes");
-        }
+        probe_utils->send_msg("stdout", "", "Discover $success_node_num node(s) successfully, $failed_node_num node(s) failed.");
+        probe_utils->send_msg("stdout", "", "Unmatched node(s):");
+        probe_utils->send_msg("stdout", "", "$failed_nodes");
 
+        if (%failed_mac) {
+            probe_utils->send_msg("stdout", "", "Unmatched MAC(s):");
+        }
         foreach my $mac (keys %failed_mac) {
             probe_utils->send_msg("stdout", "f", "[$mac] : stop at stage '$::STATE_DISCOVER_DESC{$failed_mac{$mac}{stop_point}}'"); 
         }
