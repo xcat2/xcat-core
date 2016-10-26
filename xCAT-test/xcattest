@@ -216,8 +216,7 @@ sub include_file
     unless ($file =~ /^\//) {
         $file = $idir . "/" . $file;
     }
-    open(INCLUDE, $file) || \
-      return "#INCLUDEBAD:cannot open $file#";
+    open(INCLUDE, $file) || return "#INCLUDEBAD:cannot open $file#";
     while (<INCLUDE>) {
         chomp($_);
         s/\s+$//;    #remove trailing spaces
