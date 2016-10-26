@@ -2460,6 +2460,7 @@ sub beacon_answer {
 
 sub inv {
     my $sessdata   = shift;
+    my $command = $sessdata->{command};
     my $subcommand = $sessdata->{subcommand};
 
     my $rc = 0;
@@ -2515,9 +2516,9 @@ sub inv {
         @types = qw(guid);
     }
     else {
-        @types = ($subcommand);
-
-        #return(1,"unsupported BMC inv argument $subcommand");
+        my $usage_string = xCAT::Usage->getUsage($command);
+        $callback->({ error => ["$usage_string"], errorcode => [1] });
+        return 1;
     }
     $sessdata->{invtypes} = \@types;
     initfru($sessdata);
