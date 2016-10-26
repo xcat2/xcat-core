@@ -37,6 +37,8 @@ use File::Path;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
+use Digest::MD5 qw(md5_hex);
+
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -97,7 +99,8 @@ sub process_request {
     my $provmethod;
     my $help;
     my $version;
-
+    my $lock;  
+ 
     GetOptions(
         "profile|p=s" => \$profile,
         "arch|a=s"    => \$arch,
@@ -198,6 +201,14 @@ sub process_request {
         $destdir = "$installroot/netboot/$osver/$arch/$profile";
     }
     $rootimg_dir = "$destdir/rootimg";
+
+    
+    my $retcode;
+    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if($retcode){
+        $callback->({ error => ["$lock"], errorcode => [1]});
+        return 1;
+    }
 
     my $distname = $osver;
     until (-r "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
