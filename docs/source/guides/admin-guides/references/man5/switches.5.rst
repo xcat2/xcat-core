@@ -74,19 +74,19 @@ switches Attributes:
 
 \ **linkports**\ 
  
- The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.
+ The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Refer to the switch table for details on how to specify the port numbers.
  
 
 
 \ **sshusername**\ 
  
- The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
+ The remote login user name. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
 
 \ **sshpassword**\ 
  
- The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
+ The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
 

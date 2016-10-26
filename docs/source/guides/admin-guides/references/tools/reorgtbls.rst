@@ -8,7 +8,7 @@ reorgtbls
     Usage:
             --V - Verbose mode
             --h - usage
-            --t -comma delimitated list of tables.
+            --t -comma delimited list of tables.
                  Without this flag it reorgs all tables in the xcatdb database .
     
 Author:  Lissa Valletta

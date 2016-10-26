@@ -336,7 +336,7 @@ VMware/KVM specific:
 
 \ **-**\ **-resize**\  \ *disk*\ =\ *size*\ 
  
- Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than it's current size. The disk in \ *raw*\  format can be resized smaller, please use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
+ Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than it's current size. The disk in \ *raw*\  format can be resized smaller, use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
  
 
 
@@ -838,7 +838,7 @@ The resource information after modification is similar to:
   lpar1: 128.
 
 
-Note: The physical I/O resources specified with \ *add_physlots*\  will be appended to the specified partition. The physical I/O resources which are not specified but belonged to the partition will not be removed. For more information about \ *add_physlots*\ , please refer to lsvm(1)|lsvm.1.
+Note: The physical I/O resources specified with \ *add_physlots*\  will be appended to the specified partition. The physical I/O resources which are not specified but belonged to the partition will not be removed. For more information about \ *add_physlots*\ , refer to lsvm(1)|lsvm.1.
 
 
 VMware/KVM specific:

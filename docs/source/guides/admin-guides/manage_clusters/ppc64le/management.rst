@@ -14,7 +14,7 @@ With xCAT, the end user can turn the beacon light on or off with the commands sh
     rbeacon cn1 on
     rbeacon cn1 off
 
-Please notice, the current state of the beacon light can not be inquery remotely. As a workaround, one can always use the ``rbeacon`` command to turn all the beacon lights in one frame off, and then turn a particular beancon light on. ::
+The current state of the beacon light can not be queried remotely. As a workaround, one can always use the ``rbeacon`` command to turn all the beacon lights in one frame off, and then turn a particular beacon light on. ::
 
     rbeacon a_group_of_cn off
     rbeacon cn5 on
@@ -35,7 +35,7 @@ Or do a hardware reset, run ::
 
     rpower cn1 reset
 
-Get the current rpower state of a machine, please refer to the example below. ::
+Get the current rpower state of a machine, refer to the example below. ::
 
     # rpower cn1 state
     cn1: Running
@@ -80,16 +80,16 @@ To get all the hardware information, which including the model type, serial numb
 
     rinv cn1 all
 
-As an example, in order to get only the information of firmware version, the follwing command can be used. ::
+As an example, in order to get only the information of firmware version, the following command can be used. ::
 
     rinv cn1 firm
 
 Remote Hardware Vitals
 ``````````````````````
 
-Collect runtime information from running physical machine is also a big requirement for real life system administrators. This kind of information includes, temperature of CPU, internal voltage of paricular socket, wattage with workload, speed of cooling fan, et al.
+Collect runtime information from running physical machine is also a big requirement for real life system administrators. This kind of information includes, temperature of CPU, internal voltage of particular socket, wattage with workload, speed of cooling fan, et al.
 
-In order to get such information, please use ``rvitals`` command. Please also notice, this kind of information various among different model types of the machine. Thus, please check the actual output of the ``rvitals`` command against your machine, to verify which kinds of information can be get. The information may change due to the firmware updating of the machine.  ::
+In order to get such information, use ``rvitals`` command. This kind of information varies among different model types of the machine. Thus, check the actual output of the ``rvitals`` command against your machine, to verify which kinds of information can be extracted. The information may change after the firmware update of the machine.  ::
 
     rvitals cn1 all
 
@@ -115,7 +115,7 @@ Update node firmware to the version of the HPM file
 Configures Nodes' Service Processors
 ````````````````````````````````````
 
-Here comes the command, ``rspconfig``. It is used to configure the service processor of a physical machine. On a OpenPower system, the service processor is the BMC, Baseboard Management Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among different machine-model types.
+Here comes the command, ``rspconfig``. It is used to configure the service processor of a physical machine. On a OpenPower system, the service processor is the BMC, Baseboard Management Controller. Various variables can be set through the command. Also notice, the actual configuration may change among different machine-model types.
 
 Examples
 

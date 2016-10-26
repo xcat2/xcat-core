@@ -10,7 +10,7 @@ use xCAT::ExtTab;
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-#  When making additions or deletions to this file please be sure to
+#  When making additions or deletions to this file be sure to
 #       modify BOTH the tabspec and defspec definitions.  This includes
 #       adding descriptions for any new attributes.
 #
@@ -154,9 +154,9 @@ use xCAT::ExtTab;
             file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
             options => "Options for the file:\n\n" .
 qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n} .
-qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Please do not confuse it with the "rw" permission in the file system. \n\n} .
+qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Do not confuse it with the "rw" permission in the file system. \n\n} .
 qq{ persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted on the local file or directory. Anything written to that file or directory is preserved. It means, if the file/directory does not exist at first, it will be copied to the persistent location. Next time the file/directory in the persistent location will be used. The file/directory will be persistent across reboots. Its permission will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. This option can be performed on files and directories. \n\n} .
-qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Please do not use it for one directory.\n\n} .
+qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Do not use it for one directory.\n\n} .
 qq{ ro - The file/directory will be overmounted read-only on the local file/directory. It will be located in the directory hierarchy specified in the litetree table. Changes made to this file or directory on the server will be immediately seen in this file/directory on the node. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. This option can be performed on files and directories.\n\n} .
 qq{ link - It provides one file/directory for the node to use when booting, it is copied from the server, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to one file/directory in tmpfs. And the permission of the symbolic link is "lrwxrwxrwx", which is not the real permission of the file/directory on the node. So for some application sensitive to file permissions, it will be one issue to use "link" as its option, for example, "/root/.ssh/", which is used for SSH, should NOT use "link" as its option. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option can be performed on files and directories. \n\n} .
 qq{ link,con -  It works similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files. \n\n} .
@@ -232,7 +232,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
 'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
 'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
-'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, please reference to manpage of 'lsvm'.",
+'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, reference manpage for 'lsvm'.",
 'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
 'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
 'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
@@ -609,7 +609,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The hostname of a node in the cluster.',
             groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group. Internal group names are designated by using __<groupname>.  For example, __Unmanaged, could be the internal name for a group of nodes that is not managed by xCAT. Admins should avoid using the __ characters when defining their groups.",
-            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Please note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
+            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
             statustime => "The data and time when the status was updated.",
             appstatus => "A comma-delimited list of application status. For example: 'sshd=up,ftp=down,ll=down'",
             appstatustime => 'The date and time when appstatus was updated.',
@@ -690,9 +690,9 @@ passed as argument rather than by table value',
             password => 'The password string for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.',
             privacy => 'The privacy protocol to use for v3. xCAT will use authNoPriv if this is unspecified. DES is recommended to use if v3 enabled, as it is the most readily available.',
             auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
-            linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.',
-            sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
-            sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
+            linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Refer to the switch table for details on how to specify the port numbers.',
+            sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
+            sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
             protocol => 'Protocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.',
             switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this switch. The valid values are: Mellanox, Cisco, BNT and Juniper.',
         },
@@ -1115,7 +1115,7 @@ passed as argument rather than by table value',
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
-"                  effect on stateless and statelite nodes. Please run the following\n" .
+"                  effect on stateless and statelite nodes. Run the following\n" .
 "                  command after you change the value of this attribute: \n" .
 "                  'updatenode <nodes> -P setuppostbootscripts'\n\n" .
 " precreatemypostscripts: (yes/1 or no/0). Default is no. If yes, it will  \n" .
@@ -1145,7 +1145,7 @@ passed as argument rather than by table value',
               "                   '1':  enable basic debug mode\n" .
               "                   '2':  enable expert debug mode\n" .
 "                 For the details on 'basic debug mode' and 'expert debug mode',\n" .
-              "                 please refer to xCAT documentation.\n\n" .
+              "                 refer to xCAT documentation.\n\n" .
               " --------------------\n" .
               "REMOTESHELL ATTRIBUTES\n" .
               " --------------------\n" .

@@ -25,7 +25,7 @@ The ``image.tgz`` **must** have the following properties:
   * Created using the ``tar zcvf`` command
   * The tarball must include a ``runme.sh`` script to initiate the execution of the runimage
 
-To create your own image, please reference :ref:`creating image for runimage <create_image_for_runimage>`. 
+To create your own image, reference :ref:`creating image for runimage <create_image_for_runimage>`. 
 
 **Tip**: You could try to run ``wget http://<IP of xCAT Management Node>/<dir>/image.tgz`` manually to make sure the path has been set correctly.
 

@@ -69,7 +69,7 @@ Now run the xCAT Docker container with the Docker image "xcat/xcat-ubuntu-x86_64
 * use ``--privileged=true`` to give extended privileges to this container
 * use ``--hostname`` to specify the hostname of the container, which is available inside the container
 * use ``--name`` to assign a name to the container, this name can be used to manipulate the container on Docker host 
-* use ``--add-host="xcatmn.clusers.com xcatmn:10.5.107.101"`` to write the ``/etc/hosts`` entries of Docker container inside container. Since xCAT use the FQDN(Fully Qualified Domain Name) to determine the cluster domain on startup, please make sure the format to be "<FQDN> <hostname>: <IP Address>", otherwise, you need to set the cluster domain with ``chdef -t site -o clustersite domain="clusters.com"`` inside the container manually
+* use ``--add-host="xcatmn.clusers.com xcatmn:10.5.107.101"`` to write the ``/etc/hosts`` entries of Docker container inside container. Since xCAT use the FQDN(Fully Qualified Domain Name) to determine the cluster domain on startup, make sure the format to be "<FQDN> <hostname>: <IP Address>", otherwise, you need to set the cluster domain with ``chdef -t site -o clustersite domain="clusters.com"`` inside the container manually
 * use ``--volume /docker/xcatdata/:/install`` to mount a pre-created "/docker/xcatdata" directory on Docker host to "/install" directory inside container as a data volume. This is optional, it is mandatory if you want to backup and restore xCAT data.
 * use ``--net=mgtnet`` to connect the container to the Docker network "mgtnet"
 * use ``--ip=10.5.107.101`` to specify the IP address of the xCAT Docker container

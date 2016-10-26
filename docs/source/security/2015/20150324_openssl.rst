@@ -9,4 +9,4 @@ This issue affects OpenSSL version: 1.0.2
 Action
 ------
 
-xCAT uses OpenSSL for client-server communication but **does not** ship it.  Please upgrade OpenSSL to 1.0.2a or higher. 
+xCAT uses OpenSSL for client-server communication but **does not** ship it. Upgrade OpenSSL to 1.0.2a or higher. 

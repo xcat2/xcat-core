@@ -85,9 +85,9 @@ The first form of \ **mkvm**\  command creates new partition(s) with the same pr
 
 The second form of this command duplicates all the partitions from the source specified by \ *profile*\  to the destination specified by \ *destcec*\ . The source and destination CECs can be managed by different HMCs.
 
-Please make sure the nodes in the \ *noderange*\  is defined in the \ *nodelist*\  table and the \ *mgt*\  is set to 'hmc' in the \ *nodehm*\  table before running this command.
+Make sure the nodes in the \ *noderange*\  is defined in the \ *nodelist*\  table and the \ *mgt*\  is set to 'hmc' in the \ *nodehm*\  table before running this command.
 
-Please note that the \ **mkvm**\  command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+Note that the \ **mkvm**\  command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
 
 
 For PPC (using Direct FSP Management) specific:

@@ -54,7 +54,7 @@ Display MAC only. The default is to write the first valid adapter MAC to the xCA
 
 B<-D>          
 
-Perform discovery for mac address.  By default, it will run ping test to test the connection between adapter and xCAT management node. Use '--noping' can skip the ping test to save time. Please be aware that in this way, the lpars will be reset.
+Perform discovery for mac address.  By default, it will run ping test to test the connection between adapter and xCAT management node. Use '--noping' can skip the ping test to save time. Be aware that in this way, the lpars will be reset.
 
 B<-f>          
 

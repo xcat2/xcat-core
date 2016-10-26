@@ -46,9 +46,9 @@ The first form of B<mkvm> command creates new partition(s) with the same profile
 
 The second form of this command duplicates all the partitions from the source specified by I<profile> to the destination specified by I<destcec>. The source and destination CECs can be managed by different HMCs.
 
-Please make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
+Make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
 
-Please note that the B<mkvm> command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+Note that the B<mkvm> command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
 
 =head2 For PPC (using Direct FSP Management) specific:
 

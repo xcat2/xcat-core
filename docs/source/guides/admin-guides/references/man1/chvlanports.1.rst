@@ -47,7 +47,7 @@ OPTIONS
 
 
 
-\ **-n|-**\ **-nodes**\     The nodes or groups to be added or removed. It takes the noderange format. Please check the man page for noderange for details.
+\ **-n|-**\ **-nodes**\     The nodes or groups to be added or removed. It takes the noderange format. Check the man page for noderange for details.
 
 
 

@@ -32,7 +32,7 @@ By default, it sets up the NTP server for xCAT management node. If -a flag is sp
 
 \ *site.ntpservers*\  -- the NTP servers for the service node and compute node to sync with. The keyword <xcatmaster> means that the node's NTP server is the node that is managing it (either its service node or the management node).
 
-To setup NTP on the compute node, please add \ **setupntp**\  postscript to the \ *postscripts*\  table and run \ *updatenode node -P setupntp*\  command.
+To setup NTP on the compute node, add \ **setupntp**\  postscript to the \ *postscripts*\  table and run \ *updatenode node -P setupntp*\  command.
 
 
 *******

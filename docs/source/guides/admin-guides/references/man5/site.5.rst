@@ -274,7 +274,7 @@ site Attributes:
    runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts
                     attribute in the osimage and postscripts tables will be run during
                     each reboot of stateful (diskful) nodes. This attribute has no
-                    effect on stateless and statelite nodes. Please run the following
+                    effect on stateless and statelite nodes. Run the following
                     command after you change the value of this attribute: 
                     'updatenode <nodes> -P setuppostbootscripts'
   
@@ -309,7 +309,7 @@ site Attributes:
                      '1':  enable basic debug mode
                      '2':  enable expert debug mode
                    For the details on 'basic debug mode' and 'expert debug mode',
-                   please refer to xCAT documentation.
+                   refer to xCAT documentation.
   
    --------------------
   REMOTESHELL ATTRIBUTES

@@ -149,7 +149,7 @@ So, in this documentation, we will setup xCAT on both management nodes before we
     chdef -t site nameservers=10.1.0.1
     chdef -t network 10_1_0_0-255_255_255_0 tftpserver=10.1.0.1
 
-#. Install and configure MySQL. MySQL will be used as the xCAT database system, please refer to the doc [ **todo** Setting_Up_MySQL_as_the_xCAT_DB].
+#. Install and configure MySQL. MySQL will be used as the xCAT database system, refer to the doc [ **todo** Setting_Up_MySQL_as_the_xCAT_DB].
 
    Verify xcat is running on MySQL by running: ::
 
@@ -219,7 +219,7 @@ Setup xCAT on the Standby Management Node
 
 #. Install xCAT. The procedure described in :doc:`xCAT Install Guide <../../guides/install-guides/index>` should be used for the xCAT setup on the standby management node.
 
-#. Install and configure MySQL. MySQL will be used as the xCAT database system, please refer to the doc [Setting_Up_MySQL_as_the_xCAT_DB].
+#. Install and configure MySQL. MySQL will be used as the xCAT database system, refer to the doc [Setting_Up_MySQL_as_the_xCAT_DB].
 
    Verify xcat is running on MySQL by running: ::
 
@@ -689,7 +689,7 @@ Configure Pacemaker
 
 All the cluster resources are managed by Pacemaker, here is an example ``pacemaker`` configuration that has been used by different HA MN customers. You might need to do some minor modifications based on your cluster configuration.
 
-Please be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead. ::
+Be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead. ::
 
      node x3550m4n01
      node x3550m4n02
@@ -1043,7 +1043,7 @@ Add a crontab entry to check the differences
 
      0 6 * * * /sbin/drbdadm verify all
 
-Please note that this process will take a few hours. You could schedule it at a time when it can be expected to run when things are relatively idle. You might choose to only run it once a week, but nightly seems to be a nice choice as well. You should only put this cron job on one side or the other of the DRBD mirror . not both.
+Note that this process will take a few hours. You could schedule it at a time when it can be expected to run when things are relatively idle. You might choose to only run it once a week, but nightly seems to be a nice choice as well. You should only put this cron job on one side or the other of the DRBD mirror . not both.
 
 Correcting the differences automatically
 ----------------------------------------

@@ -104,7 +104,7 @@ Skip this section if you want to use the image as is.
 
 * Modify .pkglist file to add or remove packges that are from the os distro
 
-* Modify .otherpkgs.pkglist to add or remove packages from other sources. Please refer to ``Using_Updatenode`` for details 
+* Modify .otherpkgs.pkglist to add or remove packages from other sources. Refer to ``Using_Updatenode`` for details 
 
 * For diskful, modify the .tmpl file to change the kickstart/autoyast configuration
 
