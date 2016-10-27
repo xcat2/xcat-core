@@ -33,7 +33,7 @@ If you have newer updates to some of your operating system packages that you wou
        createrepo .
        chdef -t osimage <os>-<arch>-<inst_type>-<profile> pkgdir=/install/<os>/<arch>,/install/osupdates/<os>/<arch>
 
-Note:If the objective node is not installed by xCAT,please make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
+Note:If the objective node is not installed by xCAT, make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
 
 .. _File-Format-for-pkglist-label:
 

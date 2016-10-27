@@ -13,7 +13,8 @@ BuildArch: noarch
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%{version}}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 1
 AutoReq: false
 Prefix: /opt/xcat
@@ -24,7 +25,6 @@ Provides: xCAT-genesis-%{tarch}
 
 
 Name:	 %{name}
-Version: %(cat Version)
 Group: System/Utilities
 License: EPL
 Vendor: IBM Corp
@@ -99,21 +99,9 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/update_flash
 %{rpminstallroot}/bin/update_flash_nv
 %{rpminstallroot}/bin/restart
-%{rpminstallroot}/debian/changelog
-%{rpminstallroot}/debian/compat
-%{rpminstallroot}/debian/control-amd64
-%{rpminstallroot}/debian/control-ppc64el
-%{rpminstallroot}/debian/copyright
-#%{rpminstallroot}/debian/dirs
-%{rpminstallroot}/debian/docs
-#%{rpminstallroot}/debian/install
-%{rpminstallroot}/debian/postinst
-%{rpminstallroot}/debian/postrm
-%{rpminstallroot}/debian/preinst
-%{rpminstallroot}/debian/prerm
-%{rpminstallroot}/debian/rules
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/sbin/setupimmnic
 %{rpminstallroot}/sbin/loadmlxeth 
+%exclude %{rpminstallroot}/debian/*

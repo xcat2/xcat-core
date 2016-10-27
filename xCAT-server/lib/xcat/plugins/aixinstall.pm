@@ -5175,7 +5175,7 @@ sub chk_resolv_conf
                             last;
                         }
                     }
-                    if (!$nfsvers || ($nfsvers eq 3))
+                    if (!$nfsvers || ($nfsvers == 3))
                     {
                         my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/resolv_conf/$resolv_conf_name/resolv.conf -B 2>/dev/null~;
                         xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd, 0);
@@ -7426,7 +7426,7 @@ sub updatespot
         chomp $sharedinstall;
         if ($sharedinstall eq "sns") {
             my $rc = xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodelist, $callback, $subreq);
-            if ($rc eq 1) {    # error
+            if ($rc == 1) {    # error
                 my $rsp;
                 push @{ $rsp->{data} }, qq{Could not complete the statelite setup.};
                 xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -8796,7 +8796,7 @@ qq~mkdir -m 644 -p $install_dir/nim/scripts; cp $install_dir/postscripts/xcataix
                         last;
                     }
                 }
-                if (!$nfsvers || ($nfsvers eq 3))
+                if (!$nfsvers || ($nfsvers == 3))
                 {
                     # make sure we clean up the /etc/exports file of NFSv3 exports
                     my $ecmd = qq~/usr/sbin/rmnfsexp -d $install_dir/nim/scripts/xcataixscript -B 2>/dev/null~;
@@ -11260,7 +11260,7 @@ sub mkdsklsnode
                 }
 
                 my $rc = xCAT::InstUtils->dolitesetup($image, \%imagehash, \@osinodes, $callback, $subreq);
-                if ($rc eq 1) {    # error
+                if ($rc == 1) {    # error
                     my $rsp;
                     push @{ $rsp->{data} }, qq{Could not complete the statelite setup.};
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -12405,7 +12405,7 @@ sub mkdsklsnode
             my $xcatmaster = $objhash{$tnode}{'xcatmaster'};
             $xcatmasterhash{$xcatmaster} = 1;
         }
-        if (scalar(keys %snhash) ne 2)
+        if (scalar(keys %snhash) != 2)
         {
             $setuphanfserr++;
             my $rsp;
@@ -12414,7 +12414,7 @@ sub mkdsklsnode
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
 
-        if (scalar(keys %xcatmasterhash) ne 1)
+        if (scalar(keys %xcatmasterhash) != 1)
         {
             my %masteriphash = ();
             foreach my $master (keys %xcatmasterhash)
@@ -12422,7 +12422,7 @@ sub mkdsklsnode
                 my $xcatmasterip = xCAT::NetworkUtils->getipaddr($master);
                 $masteriphash{$xcatmasterip} = 1;
             }
-            if (scalar(keys %masteriphash) ne 1)
+            if (scalar(keys %masteriphash) != 1)
             {
                 $setuphanfserr++;
                 my $rsp;

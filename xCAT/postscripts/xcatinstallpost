@@ -96,7 +96,7 @@ if [ \"\$return_value\" -eq \"0\" ]; then
         msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
     fi
     updateflag.awk \$MASTER 3002 \"installstatus booted\"
-    logger -t xcat.provision -p local4.info \"provision completed.(\$NODE)\"
+    msgutil_r \$MASTER_IP \"info\" \"provision completed.(\$NODE)\" \"/var/log/xcat/xcat.log\"
 else
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
         msgutil_r \"\$MASTER_IP\" \"info\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\"

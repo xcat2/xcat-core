@@ -1,0 +1,20 @@
+2015-05-20 - OpenSSL Vulnerabilities (LOGJAM)
+=============================================
+
+A Logjam vulnerability attacks openssl and web services on weak (512-bit) Diffie-Hellman key groups. Refer to the following documents for details.
+
+Main site: https://weakdh.org/
+
+Server test: https://weakdh.org/sysadmin.html
+
+Refer to the following openssl link for more details regarding the fix: https://www.openssl.org/blog/blog/2015/05/20/logjam-freak-upcoming-changes/
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2b
+  OpenSSL 1.0.1 users should upgrade to 1.0.1n
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  It uses the default ciphers from openssl. It also allows the user to customize it through site.xcatsslversion and site.xcatsslciphers. Make sure you do not enable DH or DHE ciphers. 
+
+Get the latest openssl package from the os distros and upgrade it on all the xCAT management nodes, the service nodes and xCAT client nodes.

@@ -1,0 +1,2 @@
+deb http://ports.ubuntu.com/ubuntu-ports trusty main universe
+deb http://ports.ubuntu.com/ubuntu-ports trusty-updates main universe

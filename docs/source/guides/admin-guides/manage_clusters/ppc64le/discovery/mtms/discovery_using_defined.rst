@@ -27,11 +27,11 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
 #. Detect the BMCs and add the node definitions into xCAT.
 
-   Use the ``bmcdiscover`` command to discover the BMCs responding over an IP range and automatically write the output into the xCAT database.  You **must** use the ``-t`` option to indicate node type is bmc and the ``-w`` option to automatically write the output into the xCAT database. 
+   Use the ``bmcdiscover`` command to discover the BMCs responding over an IP range and automatically write the output into the xCAT database.  You **must** use the ``-w`` option to automatically write the output into the xCAT database. 
 
    To discover the BMC with an IP address of 172.30.0.1, use the command: ::
 
-      bmcdiscover --range 172.30.0.1 -t -z -w 
+      bmcdiscover --range 172.30.0.1 -z -w 
 
    The discovered nodes will be written to xCAT database: ::
 
@@ -47,6 +47,7 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
           postbootscripts=otherpkgs
           postscripts=syslog,remoteshell,syncfiles
           serial=10112CA
+          nodetype=mp
 
 
 #. **Pre-define** the compute nodes:
@@ -84,6 +85,8 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
           ip=10.1.2.1
 
+    #. Remove ``nodetype`` and ``hwtype`` if defined in the ``predefined.stanza``.
+
     #. Repeat for additional nodes in the ``predefined.stanza`` file based on the MTMS mapping.
 
 
@@ -105,6 +108,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
        chdef cn01 chain="runcmd=bmcsetup"
 
+#. Set the target `osimage` into the chain table to automatically provision the operating system after the node discovery is complete. ::
+
+       chdef cn01 -p chain="osimage=<osimage_name>"
 
 #. Change the BMC IP address 
 

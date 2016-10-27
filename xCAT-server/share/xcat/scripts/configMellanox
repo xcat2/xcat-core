@@ -1,0 +1,341 @@
+#!/usr/bin/env perl
+
+#---------------------------------------------------------
+# Configure Ethnet Mellonax switches
+#---------------------------------------------------------
+
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+
+use strict;
+use Getopt::Long;
+use Expect;
+use Net::Ping;
+use xCAT::Usage;
+use xCAT::NodeRange;
+use xCAT::NetworkUtils;
+use xCAT::Utils;
+use xCAT::Table;
+use xCAT::MsgUtils;
+
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+#global variables
+my @nodes;
+my @filternodes;
+
+
+#---------------------------------------------------------
+#Main
+
+# parse the options
+if (
+    !GetOptions(
+                'h|help'     => \$::HELP,
+                'switches=s' => \$::SWITCH,  
+                'config'     => \$::CONFIG,
+                'ip'         => \$::IP,
+                'name'       => \$::NAME,
+                'snmp'       => \$::SNMP,
+                'user=s'     => \$::USER,
+                'password=s' => \$::PASSWORD,
+                'auth=s'     => \$::AUTH,
+                'all'        => \$::ALL,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+    &usage;
+    exit(0);
+}
+
+if ($::SWITCH)
+{
+    my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
+    if (nodesmissed) {
+        my $nodenotdefined = join(',', nodesmissed);
+        xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT DB: $nodenotdefined");
+    }
+    # check switch type
+    my $switchestab =  xCAT::Table->new('switches');
+    my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
+    foreach my $fsw (@filternodes)  {
+        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /Mellanox/) {
+            push @nodes, $fsw;
+        } else {
+            xCAT::MsgUtils->message("E","The $fsw is not Mellanox switch, will not config");
+        }
+    }
+    unless (@nodes) {
+        xCAT::MsgUtils->message("E","No Valid Switch to process");
+        exit(1);
+    }
+} else {
+    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --switches");
+    &usage;
+    exit(1);
+}
+
+my $switches = join(",",@nodes);
+my $user;
+my $cmd;
+my $rc;
+my $master;
+
+if (($::IP) || ($::ALL)) {
+    config_ip();
+}
+
+if (($::NAME) || ($::ALL)) {
+    config_hostname();
+}
+
+if (($::SNMP) || ($::ALL))
+{
+    config_snmp();
+}
+
+if (($::CONFIG) || ($::ALL)) {
+    run_rspconfig();
+}
+
+
+sub config_ip {
+    my @config_switches;
+    my @discover_switches;
+    # get host table for otherinterfaces
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
+    # get netmask from network table
+    my $nettab = xCAT::Table->new("networks");
+    my @nets;
+    if ($nettab) {
+        @nets = $nettab->getAllAttribs('net','mask');
+    }
+    foreach my $switch (@nodes) {
+        print "change $switch to static ip address\n";
+        my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
+        if (!$dip) {
+            print "Add otherinterfaces attribute for discover ip: chdef $switch otherinterfaces=x.x.x.x\n";
+            next;
+        }
+
+        #Validate if this IP is reachable 
+        my $p = Net::Ping->new();
+        if (!$p->ping($dip)) {
+            print "$dip is not reachable\n";
+            next;
+        }
+ 
+        my $static_ip= $nodehash->{$switch}->[0]->{ip};
+
+        # don't need to set if ip addresses are same
+        if ($dip eq $static_ip) {
+            print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
+            next;
+        }
+
+        #get hostname
+        my $dswitch = xCAT::NetworkUtils->gethostname($dip);
+
+        # if hostnames are same, created different one for discovery name
+        if ($dswitch eq $switch) {
+            $dswitch="";
+        }
+
+        #if not defined, need to create one for xdsh to use
+        if (!$dswitch) {
+            my $ip_str = $dip;
+            $ip_str =~ s/\./\-/g;
+            $dswitch = "switch-$ip_str";
+        }
+        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin nodetype=switch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "makehosts $dswitch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        # verify if xdsh works
+        $cmd = "xdsh $dswitch -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;exit' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Couldn't communicate with $dswitch, $dip");
+            next;
+        }
+        #get netmask
+        my $mask;
+        foreach my $net (@nets) {
+            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $static_ip, $net->{'mask'}, 0)) {
+                $mask=$net->{'mask'};
+            }
+        }
+
+        $cmd="xdsh $dswitch -t 10 -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;no interface mgmt0 dhcp;interface mgmt0 ip address $static_ip $mask;configuration write;exit;exit' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        push (@discover_switches, $dswitch);
+        push (@config_switches, $switch);
+    }
+
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=ip_configed otherinterfaces=";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+ 
+     if (@discover_switches) {
+        my $dsw = join(",",@discover_switches);
+        #remove discover switch from xCATdb and /etc/hosts
+        $cmd = "makehosts -d $dsw";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "rmdef $dsw";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+}
+
+sub config_hostname {
+    my @config_switches;
+    my $switchtab = xCAT::Table->new('switches');
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
+    foreach my $switch (@nodes) {
+        my $user= $switchhash->{$switch}->[0]->{sshusername};
+        if (!$user) {
+            print "switch ssh username is not defined, add default one\n";
+            $cmd = "chdef $switch username=admin";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            $user="admin";
+        }
+        $cmd="xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;hostname $switch;configuration write' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
+            next;
+        }
+         push (@config_switches, $switch);
+    }
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=hostname_configed" ;
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+}
+
+#setup secure SNMP v3
+sub config_snmp {
+    my $snmp_user;
+    my $snmp_passwd;
+    my $snmp_auth;
+
+    my $switchtab = xCAT::Table->new('switches');
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth']);
+    foreach my $switch (@nodes) {
+        my $user = $switchhash->{$switch}->[0]->{sshusername};
+        if (!$user) {
+            print "switch ssh username is not defined, add default one\n";
+            $cmd = "chdef $switch username=admin";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            $user="admin";
+        }
+        if ($::USER) {
+            $snmp_user = $::USER;
+        } elsif ($switchhash->{$switch}->[0]->{username}) {
+            $snmp_user = $switchhash->{$switch}->[0]->{username};
+        } else {
+            $snmp_user = "xcatadmin\r";
+        }
+        if ($::PASSWORD) {
+            $snmp_passwd = $::PASSWORD;
+        } elsif ($switchhash->{$switch}->[0]->{password}) {
+            $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+        } else {
+            # Need a special character
+            $snmp_passwd = "passw0rd\r";
+        }
+        if ($::AUTH) {
+            $snmp_auth = $::AUTH;
+        } elsif ($switchhash->{$switch}->[0]->{auth}) {
+            $snmp_auth = $switchhash->{$switch}->[0]->{auth};
+        } else {
+            $snmp_auth = "sha\r";
+        }
+
+        $cmd = "xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;snmp-server user $snmp_user v3 enable;snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd;no snmp-server user $snmp_user v3 require-privacy;configuration write;exit' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to set snmpv3 for $switch");
+        } else {
+            $cmd = "chdef $switch status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+        }
+    }
+}
+
+sub run_rspconfig {
+    my @config_switches;
+    my $switchtab = xCAT::Table->new('switches');
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
+    $master = `hostname -i`;
+    print "master=$master\n";
+    foreach my $switch (@nodes) {
+        my $user= $switchhash->{$switch}->[0]->{sshusername};
+        #call rspconfig command to setup switch
+        #enable ssh
+        $cmd=`rspconfig $switch sshcfg=enable`;
+
+        #enable snmp function on the switch
+        $cmd=`rspconfig $switch snmpcfg=enable`;
+
+        #enable the snmp trap
+        $cmd=`rspconfig $switch alert=enable`;
+
+        #Logging destination:
+        $cmd=`rspconfig $switch logdest=$master`;
+
+        #config ntp
+        $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp" `;
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=switch_configed" ;
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+
+}
+
+#---------------------------------------------------------
+
+=head3    usage
+
+        Displays message for -h option
+
+=cut
+
+#---------------------------------------------------------
+sub usage
+{
+    print "Usage:
+    configMellanox [-?│-h│--help] 
+    configMellanox [--switches switchnames] [--all]
+    configMellanox [--switches switchnames] [--ip]
+    configMellanox [--switches switchnames] [--name]
+    configMellanox [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--auth snmp_auth]
+    configMellanox [--switches switchnames] [--config]  
+    \n";
+}
+
+

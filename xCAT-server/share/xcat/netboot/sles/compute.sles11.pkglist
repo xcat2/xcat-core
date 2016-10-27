@@ -17,3 +17,6 @@ rsync
 timezone
 bc
 ntp
+gzip
+tar
+xz

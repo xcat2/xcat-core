@@ -27,3 +27,6 @@ s390-tools
 mdadm
 udev
 ntp
+tar
+gzip
+xz

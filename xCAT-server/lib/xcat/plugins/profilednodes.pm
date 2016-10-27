@@ -996,8 +996,16 @@ Usage:
 
         # Add BMC/FSP as reserve NICs and not remove it form nics table
         foreach my $oldNic (keys %$oldNicsRef) {
-            if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP') {
-                $updateNicsHash{$oldNic} = 1;
+            if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP'){
+                if ($oldNicsRef->{$oldNic}->{'network'} eq $newNicsRef->{$oldNic}->{'network'}){
+                    $reserveNicsHash{$oldNic} = 1;
+                    if(exists $updateNicsHash{$oldNic})
+                    {
+                        delete($updateNicsHash{$oldNic});
+                    }
+                } else {
+                    $updateNicsHash{$oldNic} = 1;
+                }
             } else {
                 $reserveNicsHash{$oldNic} = 1;
             }

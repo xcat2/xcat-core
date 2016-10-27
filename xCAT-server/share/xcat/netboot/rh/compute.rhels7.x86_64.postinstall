@@ -32,6 +32,14 @@ END
 #echo "co:2345:respawn:/sbin/agetty -L 38400 console" >> $installroot/etc/inittab
 
 
+#-- Disable SELinux in the rootimg
+#-- Redhat 7.3 will install selinux-policy and selinux is enabled by default
+#-- Need to disable selinux, otherwise, the booting  will hang on "Loading selinux policy"
+if [ -f "$installroot/etc/selinux/config" ]
+then
+    sed -i 's/SELINUX=enforcing\|permissive/SELINUX=disabled/' $installroot/etc/selinux/config
+fi
+
 #-- Example of booted image versioning
 #-- We want to know, with what configuration (version of the image) each node was booted.
 #-- Hence, we keep image definition files and postscripts in CVS. During image generation we create file /etc/IMGVERSION and fill it with CVS "$Id$" of files with image definition (.pkglist, .exlist, .repolist, .postinstall). Then, during boot, each  "CVS enabled" postscript (see /install/postscripts/cvs_template.sh and /install/postscripts/cvs_template.pl) adds one line to /etc/IMGVERSION. Then you can determine in any time what image you are running and what postscipts in which versions were run.

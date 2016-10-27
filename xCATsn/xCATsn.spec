@@ -1,7 +1,7 @@
 Summary: Metapackage for a common, default xCAT service node setup
 Name: xCATsn
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -17,7 +17,7 @@ Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-probe >= 2.12.2 
 
 Conflicts: xCAT
 
@@ -54,23 +54,22 @@ Requires: conserver-xcat
 %endif
 %endif
 
+#support mixed cluster
+Requires: elilo-xcat xnba-undi
+
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
-Requires: ipmitool-xcat >= 1.8.15-2
-Requires: xnba-undi
+Requires: syslinux
+Requires: ipmitool-xcat >= 1.8.17
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
-Requires: xCAT-genesis-scripts-ppc64
-Requires: ipmitool-xcat >= 1.8.15-2
+Requires: ipmitool-xcat >= 1.8.17
 %endif
 %endif
 
 %if %notpcm
-%ifarch i386 i586 i686 x86 x86_64
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
-%endif
 %endif
 
 %description

@@ -150,7 +150,7 @@ Currently, only NFS is supported for the setup of kdump.
 
 If the dump attribute is not set, the kdump service will not be enabled. 
 
-Please make sure the NFS remote path(nfs://<nfs_server_ip>/<kdump_path>) is exported and it is read-writeable to the node where kdump service is enabled.
+Make sure the NFS remote path(nfs://<nfs_server_ip>/<kdump_path>) is exported and it is read-writeable to the node where kdump service is enabled.
 
 How to trigger kernel panic on Linux
 ------------------------------------
@@ -163,11 +163,7 @@ Normally, kernel panic() will trigger booting into capture kernel. Once the kern
 
 #. For SLES10 the directory is <kdump_path>/<node hostname>
 	
-For RHELS6 testing purposes, you can simulate the trigger through /proc interface: ::
-	
-    echo c > /proc/sysrq-trigger
-	
-For SLES11.1 testing, you can use the following commands: ::
+For Redhat and SLES11.1 testing, you can use the following commands: ::
 
     echo 1 > /proc/sys/kernel/sysrq
     echo c > /proc/sysrq-trigger

@@ -11,7 +11,7 @@ chomp($snnodename);
 sleep 300;
 
 my $timecnt = 0;
-while ($timecnt < 200) {
+while ($timecnt < 120) {
     my $booted = system("lsdef -l $snnodename|grep status|grep booted > /dev/null 2>&1");
     last if ($booted == 0);
 
@@ -21,7 +21,7 @@ while ($timecnt < 200) {
         `echo "send signal to $snnodename for the $timecnt times" >> $log`;
     }
 
-    sleep 10;
+    sleep 30;
     $timecnt++;
 }
 

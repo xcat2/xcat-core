@@ -537,7 +537,7 @@ sub addnode
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
-                    elsif ($nxtsrvd[0] eq 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
+                    elsif ($nxtsrvd[0] == 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
                     else {
                         $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
                         return;
@@ -1383,6 +1383,8 @@ sub process_request
     my $querynics = 1;
 
     if (xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces}) {
+        # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+        $dhcpinterfaces->{dhcpinterfaces} =~ s/:noboot//g;
         my @dhcpifs = split ',', $dhcpinterfaces->{dhcpinterfaces};
         foreach my $nic (@dhcpifs) {
             $activenics{$nic} = 1;
@@ -1404,6 +1406,9 @@ sub process_request
           #depending on complexity of network wished to be described
         {
             my $dhcpinterfaces = $t_entry;
+            # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+            $dhcpinterfaces =~ s/:noboot//g;
+
             my $dhcpif;
           INTF: foreach $dhcpif (split /;/, $dhcpinterfaces) {
                 my $host;
@@ -2371,6 +2376,7 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
+        my $mtu;
         my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
         unless ($myipd[0]) { $myip = $myipd[1]; }
 
@@ -2387,7 +2393,7 @@ sub addnet
 
             my ($ent) =
               $nettab->getAttribs({ net => $net, mask => $mask_formated },
-                qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver domain));
+                qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver domain mtu));
             if ($ent and $ent->{ntpservers}) {
                 $ntpservers = $ent->{ntpservers};
             } elsif ($sitentpservers) {
@@ -2486,6 +2492,10 @@ sub addnet
                     }
                 );
             }
+            if ($ent and $ent->{mtu})
+            {   
+                $mtu = $ent->{mtu};
+            }
         }
         else
         {
@@ -2503,7 +2513,7 @@ sub addnet
         {
             return gen_aix_net($myip, $net, $mask, $gateway, $tftp,
                 $logservers, $ntpservers, $domain,
-                $nameservers, $range);
+                $nameservers, $range, $mtu);
         }
         my @netent;
 
@@ -2555,6 +2565,10 @@ sub addnet
         {
             push @netent, "    option domain-name \"$domain\";\n";
             push @netent, "    option domain-name-servers  $nameservers;\n";
+        }
+        if ($mtu)
+        {
+            push @netent, "    option interface-mtu $mtu;\n";
         }
 
         #  add domain-search if not sles10 or rh5
@@ -2662,6 +2676,7 @@ sub gen_aix_net
     my $domain      = shift;
     my $nameservers = shift;
     my $range       = shift;
+    my $mtu         = shift;
 
     my $idx = 0;
     while ($idx <= $#dhcpconf)
@@ -2719,6 +2734,9 @@ sub gen_aix_net
         push @netent, "    option 7 $logservers\n";
     } elsif ($myip) {
         push @netent, "    option 7 $myip\n";
+    }
+    if ($mtu) {
+        push @netent, "    option 26 $mtu\n";
     }
     if ($ntpservers) {
         $ntpservers =~ s/,/ /g;

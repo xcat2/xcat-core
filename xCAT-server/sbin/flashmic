@@ -171,7 +171,7 @@ foreach (@$output) {
         if ($line =~ /^mic(\d+):/) {
             $line =~ s/^mic(\d+):/MICMSG:$miccfg{$1}{'name'}:/;
         }
-        print $line. "\n";
+        print $line . "\n";
     }
 }
 

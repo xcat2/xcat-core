@@ -26,10 +26,10 @@ cmd:nodeset  $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-in
 check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
-cmd:sleep 40
-cmd:lsdef -l $$CN | grep status
-cmd:sleep 2400
-check:rc==0
+
+cmd:sleep 900
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 check:rc==0

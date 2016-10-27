@@ -53,7 +53,7 @@ For example: ::
 
 This means port 42 of switch1 is connected to port 50 of switch2. And switch1 can be accessed using SNMP version 3 and switch 2 can be accessed using SNMP version 2.
 
-Note: The **username** and the **password** on the switches table are NOT the same as SSH user name and password. You have to configure SNMP on the switch for these parameters and then fill up this table. Please use **tabdump switches -d** command to find out the meaning of each column.
+Note: The **username** and the **password** on the switches table are NOT the same as SSH user name and password. You have to configure SNMP on the switch for these parameters and then fill up this table. Use **tabdump switches -d** command to find out the meaning of each column.
 
 **2. Populate the switch table**
 
@@ -80,7 +80,7 @@ The interface eth1 is for the application network on node1, node2 and node3. Not
 
 **3. Configure the switch for SNMP access**
 
-Please make sure that the MN can access the switch using SNMP and the switch is configured such that it has SNMP read and write permissions.
+Make sure that the MN can access the switch using SNMP and the switch is configured such that it has SNMP read and write permissions.
 
 You can use **snmpwalk/snmpget** and **snmpset** commands on the mn to check. These commands are from **net-snmp-utils** rpm.
 
@@ -215,7 +215,7 @@ For example: ::
 VLAN Security
 -------------
 
-To make the vlan more secure, the root guard and the bpdu guard are enabled for each ports within the vlan by **mkvlan** and **chvlan** commands. This way it guards the topology changes on the switch by the hackers who hack the STP. However, when the vlan is removed by the **rmvlan** and the **chvlan (-d)** commands, the root guard and the bpdu guard are not disabled because the code cannot tell if the guards were enabled by the admin or not. If you want to remove the gurads after the vlan is removed, you need to use the switch command line interface to do so. Please refer to the documents for the switch command line interfaces for details.
+To make the vlan more secure, the root guard and the bpdu guard are enabled for each ports within the vlan by **mkvlan** and **chvlan** commands. This way it guards the topology changes on the switch by the hackers who hack the STP. However, when the vlan is removed by the **rmvlan** and the **chvlan (-d)** commands, the root guard and the bpdu guard are not disabled because the code cannot tell if the guards were enabled by the admin or not. If you want to remove the gurads after the vlan is removed, you need to use the switch command line interface to do so. Refer to the documents for the switch command line interfaces for details.
 
 Limitation
 ----------

@@ -50,11 +50,12 @@ function makenoarch {
                     mkdir -p ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                     cp -f ${CURDIR}/perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                     cp -f ${CURDIR}/perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
+                    cp -f ${CURDIR}/perl-xCAT/xCAT/ServiceNodeUtils.pm ${CURDIR}/xCAT-probe/lib/perl/xCAT/
                 fi
 
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
-		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
+		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz --define "version $VER"
 		RC=$?
 
 		if [ $RPMNAME = "xCAT-UI" ]; then
@@ -136,7 +137,7 @@ function makexcat {
 
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER*rpm
 		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
-		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET
+		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER"
 		RC=$?
 	fi
 }
@@ -169,7 +170,7 @@ function makegenesis {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec
+	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec --define "version $VER" 
 }
 
 function makegenesisscripts {
@@ -189,7 +190,7 @@ function makegenesisscripts {
 	cd - >/dev/null
 	rm -f $RPMROOT/SRPMS/$RPMNAME-$ARCH-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER*rpm
 	echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$ARCH-$VER-snap*.noarch.rpm $EMBEDTXT..."
-	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET
+	rpmbuild $QUIET -ba $DIR/$RPMNAME.spec $TARGET --define "version $VER" 
 }
 
 
@@ -212,7 +213,13 @@ if [ -z "$1" ]; then
 fi
 
 OSNAME=$(uname)
-VER=`cat Version`
+if [ -z "$XCATVER" ] ; then
+	VER=`cat Version`
+else
+	VER=$XCATVER
+        REL="--define"
+	EASE='release 1'
+fi
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ];then
 	QUIET=""
 else

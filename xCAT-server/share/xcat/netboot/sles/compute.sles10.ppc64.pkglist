@@ -26,3 +26,6 @@ powerpc-utils
 timezone
 iputils
 ntp
+tar
+gzip
+xz

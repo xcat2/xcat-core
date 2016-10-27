@@ -114,7 +114,8 @@ sub subvars {
     }
 
     unless ($master) {
-        die "Unable to identify master for $node";
+        $tmplerr = "Unable to identify master for $node";
+        return;
     }
 
     $ENV{XCATMASTER} = $master;
@@ -670,7 +671,7 @@ sub windows_net_cfg {
                             }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="' . $num++ . '">' . $ip . "/$netmask" . '</IpAddress>';
                         }
-                        if ($num eq 1) {
+                        if ($num == 1) {
 
                             # no correct IP with correct network is found
                             next;
@@ -1009,7 +1010,7 @@ sub kickstartnetwork {
         $line .= $ulaaddr;
     } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
         my ($ipaddr, $hostname, $gateway, $netmask) = xCAT::NetworkUtils->getNodeNetworkCfg($node);
-        unless ($ipaddr) { die "cannot resolve the network configuration of $node"; }
+        unless ($ipaddr) { $tmplerr = "cannot resolve the network configuration of $node"; return; }
 
         if ($gateway eq '<xcatmaster>') {
 
@@ -1116,9 +1117,9 @@ sub yast2network {
     my $line;
     my $hoststab;
     my $mactab = xCAT::Table->new('mac', -create => 0);
-    unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+    unless ($mactab) { $tmplerr="mac table should always exist prior to template processing when doing autoula"; return;}
     my $ent = $mactab->getNodeAttribs($node, ['mac'], prefetchcache => 1);
-    unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+    unless ($ent and $ent->{mac}) { $tmplerr="missing mac data for $node"; return; }
     my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
     $suffix = lc($suffix);
 
@@ -1128,7 +1129,7 @@ sub yast2network {
         return "#YAST2NET autoula unsupported"
     } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
         my ($ipaddr, $hostname, $gateway, $netmask) = xCAT::NetworkUtils->getNodeNetworkCfg($node);
-        unless ($ipaddr) { die "cannot resolve the network configuration of $node"; }
+        unless ($ipaddr) { $tmplerr = "cannot resolve the network configuration of $node"; return; }
 
         if ($gateway eq '<xcatmaster>') {
             my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);

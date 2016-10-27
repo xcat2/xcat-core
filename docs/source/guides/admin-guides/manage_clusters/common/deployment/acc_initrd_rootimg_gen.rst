@@ -18,15 +18,15 @@ The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` pac
   
   EPEL has an ``epel-release`` package that includes gpg keys for package signing and repository information. Installing this package for your Enterprise Linux version should allow you to use normal tools such as ``yum`` to install packages and their dependencies. 
   
-  Please refer to the http://fedoraproject.org/wiki/EPEL for more details on EPEL
+  Refer to the http://fedoraproject.org/wiki/EPEL for more details on EPEL
   
   1) Enabling the ``pigz`` in ``genimage`` (only supported in RHELS6 or above)
   
-     ``pigz`` should be installed in the diskless rootimg. Please download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then customize the diskless osimage to install ``pigz`` as the additional packages, see :doc:`Install Additional Other Packages</guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/additional_pkg>` for more details.
+     ``pigz`` should be installed in the diskless rootimg. Download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then customize the diskless osimage to install ``pigz`` as the additional packages, see :doc:`Install Additional Other Packages</guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/additional_pkg>` for more details.
   
   2) Enabeling the ``pigz`` in ``packimage``
   
-     ``pigz`` should be installed on the management server. Please download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then install the ``pigz`` with  ``yum`` or ``rpm``.
+     ``pigz`` should be installed on the management server. Download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then install the ``pigz`` with  ``yum`` or ``rpm``.
 
 * **[UBUNTU]**
 

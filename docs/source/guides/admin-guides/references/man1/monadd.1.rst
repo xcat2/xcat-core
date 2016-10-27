@@ -41,7 +41,7 @@ Parameters
 
 \ *name*\  is the name of the monitoring plug-in module. For example, if the the \ *name*\  is called \ *xxx*\ , then the actual file name that the xcatd looks for is \ */opt/xcat/lib/perl/xCAT_monitoring/xxx.pm*\ . Use \ *monls -a*\  command to list all the monitoring plug-in modules that can be used.
 
-\ *settings*\  is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: \ *-s key-value -s key=value ...*\  Please note that the square brackets are needed here. Use \ *monls name -d*\  command to look for the possbile setting keys for a plug-in module.
+\ *settings*\  is the monitoring plug-in specific settings. It is used to customize the behavior of the plug-in or configure the 3rd party software. Format: \ *-s key-value -s key=value ...*\  Note that the square brackets are needed here. Use \ *monls name -d*\  command to look for the possbile setting keys for a plug-in module.
 
 
 *******

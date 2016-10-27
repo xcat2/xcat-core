@@ -1,0 +1,18 @@
+2016-08-16 - OpenSSL Vulnerabilities
+====================================
+
+This vulnerability has no fix available at this time (other then mentioned patches below)
+
+Issue: https://bugzilla.redhat.com/show_bug.cgi?id=1359615
+
+Patch: https://github.com/openssl/openssl/commit/0ed26acce328ec16a3aa635f1ca37365e8c7403a
+
+Advisory CVEs
+-------------
+
+`CVE-2016-2180 <https://exchange.xforce.ibmcloud.com/vulnerabilities/115829>`_ - OpenSSL is vulnerable to a denial of service, caused by an out-of-bounds read in the TS_OBJ_print_bio function. 
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  It is highly recommended to keep your OpenSSL levels up-to-date to prevent any potential security threats.  

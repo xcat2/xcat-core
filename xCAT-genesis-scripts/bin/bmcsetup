@@ -1,4 +1,5 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# Lenovo (c) 2016
 #
 # Raw commands to set BMCs to defaults
 #   dx320
@@ -131,7 +132,7 @@ done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
 logger -s -t $log_label -p local4.debug "BMC Information obtained from xCAT"
-logger -s -t $log_label -p local4.debug "NUMBMCS=$NUMBMCS ==> BMC IP=$BMCIP/$BMCNM, GW=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW"
+logger -s -t $log_label -p local4.debug "NUMBMCS=$NUMBMCS ==> BMC IP=$BMCIP/$BMCNM, GW=$BMCGW, VLAN=$BMCVLAN"
 
 #
 # Get the BMC Version and Manufacturer ID
@@ -200,6 +201,8 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
             fi
         fi
     fi
+elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
+   LOCKEDUSERS=1
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
@@ -222,9 +225,10 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
                 # so we might be halfway through setting up when the net config 
                 # reverts to dhcp then static, which setting a static ip for is
                 # considered invalid
+                CHECKBMCPORT=$(echo $p|awk '{print $1}')
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
-                while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
+                while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne 0"$CHECKBMCPORT" ]; do
                     sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
@@ -357,16 +361,13 @@ for user in $BMCUS; do
     if [ "$user" = "" ]; then 
         continue
     fi
-    DISABLEUSERS="1 2 3 4"
-    if [ ! -z "$LOCKEDUSERS" ]; then
-        # Get the User Slots
-        USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
-        if [ -z "$USERSLOT" ]; then
-            USERSLOT=4
-        fi
-    else
-        USERSLOT=2
+    DISABLEUSERS=$(ipmitool user list $LANCHAN|awk '{print $1}'|grep -v ID)
+    # Get the User Slots
+    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
+    if [ -z "$USERSLOT" ]; then
+        USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
+    if [ "$USERSLOT" == 0 ]; then USERSLOT=2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!
@@ -379,7 +380,7 @@ for user in $BMCUS; do
 
     # Get the specified user
     CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
-    DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
+    DISABLEUSERS=`echo $DISABLEUSERS|sed -e s/$USERSLOT//`
     logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
     for userid in $DISABLEUSERS; do
         TRIES=0
@@ -398,6 +399,8 @@ for user in $BMCUS; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    ipmitool raw 6 0x43 $(($LANCHAN|176))  $USERSLOT 4
+    
 
     TRIES=0
     # Last param in ipmitool user priv is the channel to set it on.
@@ -521,7 +524,7 @@ while [ $idev -gt 0 ]; do
         TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
         THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
         ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
-        logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
+        # logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
         NEWACCESS=""
         i=1
         for elem in $ACCESS; do
@@ -536,7 +539,7 @@ while [ $idev -gt 0 ]; do
             i=$((i+1))
         done
 
-        logger -s -t $log_label -p local4.info "ACCESS=$NEWACCESS"
+        # logger -s -t $log_label -p local4.info "ACCESS=$NEWACCESS"
 
         MSG="Set the cipher_privileges for the channel"
         logger -s -t $log_label -p local4.info "$MSG"

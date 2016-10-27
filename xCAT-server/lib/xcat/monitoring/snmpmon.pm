@@ -417,7 +417,6 @@ sub deconfig {
       (return code, message)      
 =cut
 
-=cut
 #--------------------------------------------------------------------------------
 sub deconfigSNMP {
    return (0, ""); 

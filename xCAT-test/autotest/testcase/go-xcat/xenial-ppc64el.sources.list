@@ -1,0 +1,3 @@
+deb http://ports.ubuntu.com/ubuntu-ports xenial-security main restricted
+deb http://ports.ubuntu.com/ubuntu-ports xenial universe main
+deb http://ports.ubuntu.com/ubuntu-ports xenial-updates universe main

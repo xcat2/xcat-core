@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
 
 \ **bmcdiscover**\  \ **-u**\  \ *bmc_user*\  \ **-p**\  \ *bmc_passwd*\  \ **-i**\  \ *bmc_ip*\  \ **-**\ **-check**\ 
 
@@ -71,12 +71,6 @@ OPTIONS
 \ **-w**\ 
  
  Write to the xCAT database.
- 
-
-
-\ **-t**\ 
- 
- Generate a BMC type node object
  
 
 

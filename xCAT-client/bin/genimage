@@ -188,7 +188,7 @@ if ((!$imagename) && (!$os)) {
         }
     }
 
-    if ($#oses eq -1) {
+    if ($#oses == -1) {
         print "There are no OS repositories in $installdir.  Please run copycds for the OS first.\n";
         exit 1;
     }
@@ -266,7 +266,7 @@ if ((!$imagename) && (!$profile)) {
         $seen{$f}++;
     }
     @profiles = sort keys %seen;
-    if ($#profiles eq -1) {
+    if ($#profiles == -1) {
         print "There are no profiles in $::XCATROOT/share/xcat/netboot/$osfamily.\n";
         exit 1;
     }
@@ -293,7 +293,7 @@ if ((!$imagename) && (!$profile)) {
                 $match = 1;
             }
         }
-        if ($match eq 1) {
+        if ($match == 1) {
             last;
         }
     }

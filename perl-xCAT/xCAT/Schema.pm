@@ -10,7 +10,7 @@ use xCAT::ExtTab;
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #
-#  When making additions or deletions to this file please be sure to
+#  When making additions or deletions to this file be sure to
 #       modify BOTH the tabspec and defspec definitions.  This includes
 #       adding descriptions for any new attributes.
 #
@@ -154,9 +154,9 @@ use xCAT::ExtTab;
             file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
             options => "Options for the file:\n\n" .
 qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n} .
-qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Please do not confuse it with the "rw" permission in the file system. \n\n} .
+qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Do not confuse it with the "rw" permission in the file system. \n\n} .
 qq{ persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted on the local file or directory. Anything written to that file or directory is preserved. It means, if the file/directory does not exist at first, it will be copied to the persistent location. Next time the file/directory in the persistent location will be used. The file/directory will be persistent across reboots. Its permission will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. This option can be performed on files and directories. \n\n} .
-qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Please do not use it for one directory.\n\n} .
+qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Do not use it for one directory.\n\n} .
 qq{ ro - The file/directory will be overmounted read-only on the local file/directory. It will be located in the directory hierarchy specified in the litetree table. Changes made to this file or directory on the server will be immediately seen in this file/directory on the node. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. This option can be performed on files and directories.\n\n} .
 qq{ link - It provides one file/directory for the node to use when booting, it is copied from the server, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to one file/directory in tmpfs. And the permission of the symbolic link is "lrwxrwxrwx", which is not the real permission of the file/directory on the node. So for some application sensitive to file permissions, it will be one issue to use "link" as its option, for example, "/root/.ssh/", which is used for SSH, should NOT use "link" as its option. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option can be performed on files and directories. \n\n} .
 qq{ link,con -  It works similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files. \n\n} .
@@ -232,7 +232,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
 'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
 'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
-'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, please reference to manpage of 'lsvm'.",
+'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, reference manpage for 'lsvm'.",
 'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
 'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
 'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
@@ -358,7 +358,7 @@ passed as argument rather than by table value',
             node => 'The node name or group name.',
             currstate => 'The current or next chain step to be executed on this node by xCAT-genesis.  Set by xCAT during node discovery or as a result of nodeset.',
             currchain => 'The chain steps still left to do for this node.  This attribute will be automatically adjusted by xCAT while xCAT-genesis is running on the node (either during node discovery or a special operation like firmware update).  During node discovery, this attribute is initialized from the chain attribute and updated as the chain steps are executed.',
-            chain => 'A comma-delimited chain of actions to be performed automatically when this node is discovered. ("Discovered" means a node booted, but xCAT and DHCP did not recognize the MAC of this node. In this situation, xCAT initiates the discovery process, the last step of which is to run the operations listed in this chain attribute, one by one.) Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. (Default - same as no chain - it will do only the discovery.).  Example, for BMC machines use: runcmd=bmcsetup,shell.',
+            chain => 'A comma-delimited chain of actions to be performed automatically when this node is discovered for the first time.  (xCAT and the DHCP server do not recognize the MAC address of the node when xCAT initializes the discovery process.)  The last step in this process is to run the operations listed in the chain attribute, one by one.  Valid values:  boot, runcmd=<cmd>, runimage=<URL>, shell, standby. For example, to have the genesis kernel pause to the shell, use chain=shell.',
             ondiscover => 'This attribute is currently not used by xCAT.  The "nodediscover" operation is always done during node discovery.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -435,7 +435,7 @@ passed as argument rather than by table value',
            2 2   Third interface on ML2 or mezzanine adapter
 
            2 3   Fourth interface on ML2 or mezzanine adapter',
-            taggedvlan => 'Have bmcsetup place the BMC on the specified vlan tag on a shared netwirk interface.  Some network devices may be incompatible with this option',
+            taggedvlan => 'bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.',
             bmcid => 'Unique identified data used by discovery processes to distinguish known BMCs from unrecognized BMCs',
             username => 'The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.',
             password => 'The BMC password.  If not specified, the key=ipmi row in the passwd table is used as the default.',
@@ -537,7 +537,7 @@ passed as argument rather than by table value',
         },
     },
     networks => {
-        cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange staticrange staticrangeincrement nodehostname ddnsdomain vlanid domain  comments disable)],
+        cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange staticrange staticrangeincrement nodehostname ddnsdomain vlanid domain mtu comments disable)],
         keys       => [qw(net mask)],
         tablespace => 'XCATTBS16K',
         table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
@@ -559,6 +559,7 @@ passed as argument rather than by table value',
             ddnsdomain => 'A domain to be combined with nodename to construct FQDN for DDNS updates induced by DHCP.  This is not passed down to the client as "domain"',
             vlanid   => 'The vlan ID if this network is within a vlan.',
             domain   => 'The DNS domain name (ex. cluster.com).',
+            mtu      => 'The default MTU for the network',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -595,7 +596,7 @@ passed as argument rather than by table value',
             serialflow => "The flow control value of the serial port for this node.  For SOL this is typically 'hard'.",
             getmac => 'The method to use to get MAC address of the node with the getmac command. If not set, the mgt attribute will be used.  Valid values: same as values for mgmt attribute.',
             cmdmapping => 'The fully qualified name of the file that stores the mapping between PCM hardware management commands and xCAT/third-party hardware management commands for a particular type of hardware device.  Only used by PCM.',
-            consoleondemand => 'This overrides the value from site.consoleondemand; (0=no, 1=yes). Default is the result from site.consoleondemand.',
+            consoleondemand => "This overrides the value from site.consoleondemand. Set to 'yes', 'no', '1' (equivalent to 'yes'), or '0' (equivalent to 'no'). If not set, the default is the value from site.consoleondemand.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -608,7 +609,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The hostname of a node in the cluster.',
             groups => "A comma-delimited list of groups this node is a member of.  Group names are arbitrary, except all nodes should be part of the 'all' group. Internal group names are designated by using __<groupname>.  For example, __Unmanaged, could be the internal name for a group of nodes that is not managed by xCAT. Admins should avoid using the __ characters when defining their groups.",
-            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Please note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
+            status => 'The current status of this node.  This attribute will be set by xCAT software.  Valid values: defined, booting, netbooting, booted, discovering, configuring, installing, alive, standingby, powering-off, unreachable. If blank, defined is assumed. The possible status change sequences are: For installation: defined->[discovering]->[configuring]->[standingby]->installing->booting->booted->[alive],  For diskless deployment: defined->[discovering]->[configuring]->[standingby]->netbooting->booted->[alive],  For booting: [alive/unreachable]->booting->[alive],  For powering off: [alive]->powering-off->[unreachable], For monitoring: alive->unreachable. Discovering and configuring are for x Series discovery process. Alive and unreachable are set only when there is a monitoring plug-in start monitor the node status for xCAT. Note that the status values will not reflect the real node status if you change the state of the node from outside of xCAT (i.e. power off the node using HMC GUI).',
             statustime => "The data and time when the status was updated.",
             appstatus => "A comma-delimited list of application status. For example: 'sshd=up,ftp=down,ll=down'",
             appstatustime => 'The date and time when appstatus was updated.',
@@ -689,9 +690,9 @@ passed as argument rather than by table value',
             password => 'The password string for SNMPv3 or community string for SNMPv1/SNMPv2.  Falls back to passwd table, and site snmpc value if using SNMPv1/SNMPv2.',
             privacy => 'The privacy protocol to use for v3. xCAT will use authNoPriv if this is unspecified. DES is recommended to use if v3 enabled, as it is the most readily available.',
             auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
-            linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.',
-            sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
-            sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
+            linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Refer to the switch table for details on how to specify the port numbers.',
+            sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
+            sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
             protocol => 'Protocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.',
             switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this switch. The valid values are: Mellanox, Cisco, BNT and Juniper.',
         },
@@ -773,7 +774,17 @@ passed as argument rather than by table value',
             otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
             otherpkgdir => 'The base directory where the non-distro packages are stored. Only 1 local directory supported at present.',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
-            postinstall => 'The fully qualified name of the script file that will be run at the end of the genimage command. It could be set to multiple paths. The multiple paths must be separated by ",". It is used for diskless image only.',
+            postinstall => 'Only supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be speperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
+      IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
+      IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
+      IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
+      IMG_KERNELVERSION(the "kernelver" attribute of the osimage),
+      IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
+      IMG_PKGLIST(the "pkglist" attribute of the osimage), 
+      IMG_PKGDIR(the "pkgdir" attribute of the osimage), 
+      IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage), 
+      IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage), 
+      IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)', 
             rootimgdir => 'The directory name where the image is stored.  It is generally used for diskless image. it also can be used in sysclone environment to specify where the image captured from golden client is stored. in sysclone environment, rootimgdir is generally assigned to some default value by xcat, but you can specify your own store directory. just one thing need to be noticed, wherever you save the image, the name of last level directory must be the name of image. for example, if your image name is testimage and you want to save this image under home directoy, rootimgdir should be assigned to value /home/testimage/',
             kerneldir => 'The directory name where the 3rd-party kernel is stored. It is used for diskless image only.',
             nodebootif => 'The network interface the stateless/statelite node will boot over (e.g. eth0)',
@@ -1104,7 +1115,7 @@ passed as argument rather than by table value',
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
-"                  effect on stateless and statelite nodes. Please run the following\n" .
+"                  effect on stateless and statelite nodes. Run the following\n" .
 "                  command after you change the value of this attribute: \n" .
 "                  'updatenode <nodes> -P setuppostbootscripts'\n\n" .
 " precreatemypostscripts: (yes/1 or no/0). Default is no. If yes, it will  \n" .
@@ -1134,7 +1145,7 @@ passed as argument rather than by table value',
               "                   '1':  enable basic debug mode\n" .
               "                   '2':  enable expert debug mode\n" .
 "                 For the details on 'basic debug mode' and 'expert debug mode',\n" .
-              "                 please refer to xCAT documentation.\n\n" .
+              "                 refer to xCAT documentation.\n\n" .
               " --------------------\n" .
               "REMOTESHELL ATTRIBUTES\n" .
               " --------------------\n" .
@@ -2341,6 +2352,11 @@ my @nodeattrs = (
         tabentry        => 'ipmi.password',
         access_tabentry => 'ipmi.node=attr:node',
     },
+    { attr_name => 'bmcvlantag',
+        only_if         => 'mgt=ipmi',
+        tabentry        => 'ipmi.taggedvlan',
+        access_tabentry => 'ipmi.node=attr:node',
+    },
 ################
     #  mp table    #
 ################
@@ -3318,6 +3334,10 @@ push(@{ $defspec{node}->{'attrs'} }, @nodeattrs);
     },
     { attr_name => 'staticrangeincrement',
         tabentry        => 'networks.staticrangeincrement',
+        access_tabentry => 'networks.netname=attr:netname',
+    },
+    { attr_name => 'mtu',
+        tabentry        => 'networks.mtu',
         access_tabentry => 'networks.netname=attr:netname',
     },
     { attr_name => 'usercomment',

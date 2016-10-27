@@ -1,0 +1,12 @@
+2015-03-24 - OpenSSL Vulnerabilities 
+====================================
+
+OpenSSL 1.0.2 introduced the "multiblock" performance improvement. This feature only applies on 64 bit x86 architecture platforms that support AES NI instructions. A defect in the implementation of "multiblock" can cause a segmentation fault within OpenSSL, thus enabling a potential DoS attack. 
+
+This issue affects OpenSSL version: 1.0.2
+
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it. Upgrade OpenSSL to 1.0.2a or higher. 

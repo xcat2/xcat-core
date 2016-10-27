@@ -50,9 +50,7 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "hostname",
-        "resetnet",
-        "dev",
-        "celogin1"
+        "resetnet"
     );
     my @bpa = (
         "frame",
@@ -63,9 +61,7 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "hostname",
-        "resetnet",
-        "dev",
-        "celogin1"
+        "resetnet"
     );
     my @ppc = (
         "sshcfg"
@@ -169,16 +165,6 @@ sub parse_args {
             return (usage("No argument specified for '$_'"));
         }
     }
-    {
-        if ($request->{dev} eq '1' && $request->{other} eq '1') {
-            return (usage("Invalid command arrays"));
-        }
-
-        #       my $result = parse_dev_option( $request, \%cmds);
-        #       if ($result) {
-        #           return ( usage($result));
-        #       }
-    }
     ####################################
     # Return method to invoke
     ####################################
@@ -216,25 +202,6 @@ sub parse_args {
     return (\%opt);
 }
 
-
-sub parse_dev_option {
-    my $req  = shift;
-    my $cmds = shift;
-    foreach my $cmd (keys %$cmds) {
-        if ($cmd =~ /^(dev|celogin1)$/) {
-            if ($cmds->{$cmd} and ($cmds->{$cmd} !~ /^(enable|disable)$/i)) {
-                return ("Invalid argument " . $cmds->{$cmd} . " for " . $cmd);
-            }
-            $req->{dev} = 1;
-        } else {
-            $req->{other} = 1;
-        }
-    }
-    if ($req->{dev} eq '1' && $req->{other} eq '1') {
-        return ("Invalid command arrays");
-    }
-    return undef;
-}
 ##########################################################################
 # Parse the command line optional arguments
 ##########################################################################
@@ -324,14 +291,6 @@ sub parse_option {
         }
     }
 
-    if ($command eq 'dev' or $command eq 'celogin1') {
-        if ($value !~ /^(enable|disable)$/i) {
-            return ("Invalid argument '$value'");
-        }
-        $request->{dev} = 1;
-    } else {
-        $request->{other} = 1;
-    }
     return undef;
 }
 

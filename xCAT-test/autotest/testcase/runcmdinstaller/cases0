@@ -12,9 +12,8 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 300
-cmd:xdsh $$CN date
-check:output=~$$DATE
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
 cmd:runcmdinstaller $$CN "ls -al /tmp"
 check:rc==0
 check:output=~yum
@@ -28,7 +27,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
-cmd:sleep 1200
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "Running post-installation scripts"
 cmd:rc==0
 cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "program: ++"

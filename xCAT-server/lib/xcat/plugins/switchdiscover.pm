@@ -14,11 +14,13 @@ use xCAT::NodeRange;
 use xCAT::NetworkUtils;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::MacMap;
 use xCAT::Table;
 use XML::Simple;
 no strict;
 use Data::Dumper;
 use Socket;
+use Expect;
 
 #global variables for this module
 my %globalopt;
@@ -37,6 +39,8 @@ my %global_switch_type = (
     cisco => "Cisco",
     BNT => "BNT",
     Blade => "BNT",
+    G8052 => "BNT",
+    RackSwitch => "BNT",
     Mellanox => "Mellanox",
     mellanox => "Mellanox",
     MLNX => "Mellanox",
@@ -153,14 +157,14 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version x z w r n range=s s=s))) {
+            qw(h|help V|Verbose v|version x z w r n range=s s=s setup))) {
         return( usage() );
     }
 
     #############################################
     # Check for node range
     #############################################
-    if ( scalar(@ARGV) eq 1 ) {
+    if ( scalar(@ARGV) == 1 ) {
         my @nodes = xCAT::NodeRange::noderange( @ARGV );
         if (nodesmissed) {
             return (usage( "The following nodes are not defined in xCAT DB:\n  " . join(',', nodesmissed)));
@@ -260,6 +264,14 @@ sub parse_args {
     if ( exists( $opt{n} )) {
         $globalopt{n} = 1;
     }
+
+    #########################################################
+    # setup discover switch
+    #########################################################
+    if ( exists( $opt{setup} )) {
+            $globalopt{setup} = 1;
+    }
+
 
     return;
 }
@@ -445,10 +457,10 @@ sub process_request {
             if (exists($result->{$key}->{vendor})) {
                 $vendor = $result->{$key}->{vendor};
             }
-            if ($key != /nomac/) {
+            if ($key !~ /nomac/) {
                 $mac = $key;
             }
-            my $msg = sprintf $format, $ip, $name, $vendor, $key;
+            my $msg = sprintf $format, $ip, $name, $vendor, $mac;
             send_msg(\%request, 0, $msg);
         }
     }
@@ -459,6 +471,11 @@ sub process_request {
         send_msg(\%request, 0, "Writing the data into xCAT DB....");
         xCATdB($result, \%request, $sub_req);
     }
+
+    if (exists($globalopt{setup})) {
+        switchsetup($result, \%request, $sub_req);
+    }
+
 
     return;
 }
@@ -1117,14 +1134,14 @@ sub get_hostname {
 #--------------------------------------------------------------------------------
 sub get_switchtype {
     my $vendor = shift;
-    my $key;
+    my $key = "Not support";
     
     my $search_string = join '|', keys(%global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
         return $global_switch_type{$key};
     } else {
-        return $vendor;
+        return $key;
     }
 }
 
@@ -1327,6 +1344,80 @@ sub format_xml {
     }
     return ($xml);    
 }
+
+#--------------------------------------------------------------------------------
+=head3  switchsetup
+      find discovered switches with predefine switches
+      for each discovered switches:
+      1) matching mac to a predefined node
+      2) if get predefined node, config the discovered switch, if failed, update
+         'otherinterface' attribute of predefined node
+      3) remove hosts record and node definition for the discovered switch
+    Arguments:
+      outhash: a hash containing the switches discovered
+    Returns:
+      result:
+=cut
+#--------------------------------------------------------------------------------
+
+sub switchsetup {
+    my $outhash = shift;
+    my $request = shift;
+    my $sub_req = shift;
+    my @switchnode = ();
+    my $static_ip;
+    my $discover_switch;
+    my $nodes_to_config;
+
+    #print Dumper($outhash);
+    my $macmap = xCAT::MacMap->new();
+
+    #################################################
+    # call find_mac to match pre-defined switch and
+    # discovery switch
+    ##################################################
+   
+     foreach my $mac ( keys %$outhash ) {
+        my $ip = $outhash->{$mac}->{ip};
+        my $vendor = $outhash->{$mac}->{vendor};
+
+        # issue makehosts so we can use xdsh
+        my $dswitch = get_hostname($outhash->{$mac}->{name}, $ip);
+
+        my $node = $macmap->find_mac($mac,0,1);
+        if (!$node) {
+            send_msg($request, 0, "NO predefined switch matched this switch $dswitch with ip address $ip and mac address $mac");
+            next;
+        }
+
+        # get predefine node ip address
+        $static_ip = xCAT::NetworkUtils->getipaddr($node);
+        my $stype = get_switchtype($vendor);
+
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 0, "Found Discovery switch $dswitch, $ip, $mac with predefine switch $node, $static_ip $stype switch\n" );
+        }
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+
+        push (@{$nodes_to_config->{$stype}}, $node);
+    }
+
+    foreach my $mytype (keys %$nodes_to_config) {
+        my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
+        if (-r -x $config_script) {
+            my $switches = join(",",@{${nodes_to_config}->{$mytype}});
+            send_msg($request, 0, "call to config $mytype switches $switches\n");
+            my $out = `$config_script --switches $switches --all`;
+            send_msg($request, 0, "output = $out\n");
+        } else {
+            send_msg($request, 0, "the switch type $mytype is not support yet\n");
+        }
+    }
+
+    return;
+
+}
+
 
 1;
 

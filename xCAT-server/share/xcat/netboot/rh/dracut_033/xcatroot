@@ -1,13 +1,13 @@
 #!/bin/sh
 
-
 NEWROOT=$3
 RWDIR=.statelite
-XCATMASTER=$XCAT
 
 . /lib/dracut-lib.sh
-rootlimit="$(getarg rootlimit=)"
+XCAT="$(getarg XCAT=)"
+XCATMASTER=$XCAT
 
+rootlimit="$(getarg rootlimit=)"
 
 getarg nonodestatus
 NODESTATUS=$?
@@ -15,22 +15,21 @@ NODESTATUS=$?
 MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
 XCATIPORT="$(getarg XCATIPORT=)"
 if [ $? -ne 0 ]; then
-XCATIPORT="3002"
+    XCATIPORT="3002"
 fi
 
-
 xcatdebugmode="$(getarg xcatdebugmode=)"
-
 
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "running xcatroot...."
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
 
-
 if [ "$NODESTATUS" != "0" ]; then
 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "nodestatus: netbooting,reporting..."
-/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+    /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
+
+imgurl="$(getarg imgurl=)";
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
@@ -38,7 +37,7 @@ if [ ! -z "$imgurl" ]; then
 		while [ ! -r "$FILENAME" ]; do
             [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "downloading $imgurl...."
 			echo Getting $imgurl...
-			if ! wget $imgurl; then
+			if ! wget -nv $imgurl; then
                 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "downloading $imgurl failed,retrying...."
 				rm -f $FILENAME
 				sleep 27
@@ -69,8 +68,8 @@ if [ -r /rootimg.sfs ]; then
   mkdir -p $NEWROOT/rw
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
-elif [ -r /rootimg.gz ]; then
-  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg.gz downloaded,setting up RAM-root tmpfs...."
+elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -81,16 +80,24 @@ elif [ -r /rootimg.gz ]; then
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
   echo -n "Extracting root filesystem:"
-  if [ -x /bin/cpio ]; then
-    gzip -cd /rootimg.gz |/bin/cpio -idum
-  else
-    gzip -cd /rootimg.gz |cpio -idum
+  if [ -r /rootimg.cpio.gz ]; then
+    if [ -x /bin/cpio ]; then
+      gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
+    else
+      gzip -cd /rootimg.cpio.gz |cpio -idum
+    fi
+  elif [ -r /rootimg.cpio.xz ]; then
+    if [ -x /bin/cpio ]; then
+      xz -cd /rootimg.cpio.xz |/bin/cpio -idum
+    else
+      xz -cd /rootimg.cpio.xz |cpio -idum
+    fi
   fi
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
-elif [ -r /rootimg.txz ]; then
-  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg.txz downloaded,setting up RAM-root tmpfs...."
+elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
+  [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -101,7 +108,17 @@ elif [ -r /rootimg.txz ]; then
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
   echo -n "Extracting root filesystem:"
-  tar -Jxvf /rootimg.txz
+  if [ -r /rootimg.tar.gz ]; then
+    tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz
+    if [ $? -ne 0 ]; then
+        tar --selinux -zxf /rootimg.tar.gz
+    fi
+  elif [ -r /rootimg.tar.xz ]; then
+    tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz
+    if [ $? -ne 0 ]; then
+        tar --selinux -Jxf /rootimg.tar.xz
+    fi
+  fi
   $NEWROOT/etc/init.d/localdisk
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Done...."
   echo Done
@@ -251,7 +268,7 @@ else
   e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
 
 "
-  /bin/dash
+  /bin/sh
   exit
 fi
 cd /
@@ -283,6 +300,9 @@ if [ -z $STATEMNT ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
   done
 
+  ifname="$(getarg ifname=)"
+  netdev="$(getarg netdev=)"
+  BOOTIF="$(getarg BOOTIF=)"
   if [ ! -z "$ifname" ]; then
     MACX=${ifname#*:}
     ETHX=${ifname%:$MACX*}

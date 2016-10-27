@@ -55,6 +55,8 @@ $Getopt::Long::ignorecase = 0;
 #@::objfilelist;     # list of object names from the "-f" option
 #@::allobjnames;     # combined list
 
+my $doreq;
+
 #@::noderange;       # list of nodes derived from command line
 
 #------------------------------------------------------------------------------
@@ -137,6 +139,7 @@ sub process_request
 
     $::request  = shift;
     $::callback = shift;
+    $doreq = shift;
 
     my $ret;
     my $msg;
@@ -406,7 +409,7 @@ sub processArgs
         }
     }
     if (defined($::args) && @{$::args}) {
-        if (scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+        if (scalar(@{$::args}) == 1 and $::args->[0] eq '-S')
         {
             if ($::command eq "lsdef") {
                 push @ARGV, "-t";
@@ -1541,8 +1544,8 @@ sub defmk
     } else {
         my $invalidnodename = ();
         foreach my $node (@::allobjnames) {
-            if (($node =~ /[A-Z]/) && ((!$::opt_t) || ($::opt_t eq "node"))) {
-                $invalidnodename .= ",$node";
+            if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
+               $invalidnodename .= ",$node";
             }
         }
         if ($invalidnodename) {
@@ -2780,7 +2783,7 @@ sub defch
                 my $newobj          = ();
                 my $invalidnodename = ();
                 foreach my $node (keys %newobjects) {
-                    if (($node =~ /[A-Z]/) && ((!$::opt_t) || ($::opt_t eq "node"))) {
+                    if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) {
                         $invalidnodename .= ",$node";
                     }
                     $newobj .= ",$node";
@@ -3649,7 +3652,7 @@ sub defls
                 my @def_nodes = keys %defhash;
                 my $hidden_nodes = $listtab->getNodesAttribs(\@def_nodes, ['hidden']);
                 foreach my $n (keys %{$hidden_nodes}) {
-                    if (defined($hidden_nodes->{$n}->[0]->{'hidden'}) && $hidden_nodes->{$n}->[0]->{'hidden'} eq 1) {
+                    if (defined($hidden_nodes->{$n}->[0]->{'hidden'}) && $hidden_nodes->{$n}->[0]->{'hidden'} == 1) {
                         delete $defhash{$n};
                     }
                 }
@@ -4237,6 +4240,26 @@ sub defrm
                 }
             }
         }
+    }
+
+    # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
+    if ($doreq) {
+        # Go through each object and make sure it is a node type
+        my @allnodes;
+        foreach my $single_object (keys %objhash) {
+            if ($objhash{$single_object} eq "node") {
+                # build a list of nodes to offline
+                push @allnodes, $single_object;
+            }
+        }
+        # Run nodeset offline and capture output.
+        # But the output can be ignored since we do not want to prevent user from doing rmdef if
+        # nodeset returns some error.
+        my @output = xCAT::Utils->runxcmd({
+            command => ['nodeset'],
+            node => [@allnodes],
+            arg  => ['offline'],
+        }, $doreq, 0 ,1);
     }
 
     # remove the objects

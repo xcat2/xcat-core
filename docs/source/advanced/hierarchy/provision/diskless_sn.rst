@@ -1,7 +1,7 @@
 Diskless (Stateless) Installation
 =================================
 
-**Note: The stateless Service Node is not supported in ubuntu hierarchy cluster. For ubuntu, please skip this section.**
+**Note: The stateless Service Node is not supported in ubuntu hierarchy cluster. For ubuntu, skip this section.**
 
 If you want, your Service Nodes can be stateless (diskless). The Service Node
 must contain not only the OS, but also the xCAT software and its dependencies.

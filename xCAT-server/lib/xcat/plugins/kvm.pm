@@ -1226,6 +1226,25 @@ sub getpowstate {
     }
 }
 
+# Return storageformat definition
+sub getstorageformat {
+    my $cfginfo = shift;
+
+    my @flags = split /,/, $cfginfo->{virtflags};
+    my $format;
+    foreach (@flags) {
+        if (/^imageformat=(.*)\z/) {
+            $format = $1;
+        } elsif (/^clonemethod=(.*)\z/) {
+            $clonemethod = $1;
+        }
+    }
+    if ($cfginfo->{storageformat}) {
+        $format = $cfginfo->{storageformat};
+    }
+    return $format;
+}
+
 sub xhrm_satisfy {
     my $node    = shift;
     my $hyp     = shift;
@@ -1410,23 +1429,10 @@ sub createstorage {
     my $cfginfo    = shift;
     my $force      = shift;
 
-    #my $diskstruct = shift;
     my $node = $cfginfo->{node};
-    my @flags = split /,/, $cfginfo->{virtflags};
-    my $format;
-    foreach (@flags) {
-        if (/^imageformat=(.*)\z/) {
-            $format = $1;
-        } elsif (/^clonemethod=(.*)\z/) {
-            $clonemethod = $1;
-        }
-    }
-    if ($cfginfo->{storageformat}) {
-        $format = $cfginfo->{storageformat};
-    }
     my $mountpath;
     my $pathappend;
-
+    my $format = getstorageformat($cfginfo);
 
     #for nfs paths and qemu-img, we do the magic locally only for now
     my $basename;
@@ -1754,6 +1760,10 @@ sub rmvm {
         }
     } else {
         $currxml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
+        unless ($currxml) {
+            xCAT::SvrUtils::sendmsg([ 1, "Cannot remove guest vm, no such vm found" ], $callback, $node);
+            return;
+        }
     }
     if ($purge and $currxml) {
         my $deadman    = $parser->parse_string($currxml);
@@ -1801,7 +1811,7 @@ sub rmvm {
 sub chvm {
     shift;
     my @addsizes;
-    my %resize;
+    my $resize;
     my $cpucount;
     my @purge;
     my @derefdisks;
@@ -1825,7 +1835,7 @@ sub chvm {
             "eject"               => \$eject,
             "cpus|cpu=s"          => \$cpucount,
             "p=s"                 => \@purge,
-            "resize=s%"           => \%resize,
+            "resize=s"            => \$resize,
             "cpupin=s"            => \$pcpuset,
             "membind=s"           => \$numanodeset,
             "devpassthru=s"       => \$passthrudevices,
@@ -1888,9 +1898,26 @@ sub chvm {
             }
         }
     }
+
+    # The function get_multiple_paths_by_url() is used to polulate useddisks hash, 
+    # but it only returns disk volumes from kvm host.
+    # cdrom is not returned by get_multiple_paths_by_url() but is defined as a disk device
+    # in xml definition of the VM.
+    # We add cdrom entry to useddisks hash to make sure the device name used by cdrom is not 
+    # selected for the new disk about to be added (chvm -a)
+    my @cdrom_names = get_cdrom_device_names($vmxml);
+    foreach my $cdrom_name (@cdrom_names) {
+        $useddisks{$cdrom_name} = 1;
+    }
+
     if (@addsizes) {    #need to add disks, first identify used devnames
         my @diskstoadd;
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
+        unless ($location) {
+            # Calling add disk for a vm with no storage defined
+            xCAT::SvrUtils::sendmsg([ 1, "Can not add storage, vmstorage attribute not defined." ], $callback, $node);
+            return;
+        }
         $location =~ s/.*\|//; #use the rightmost location for making new devices
         $location =~ s/,.*//;  #no comma specified parameters are valid
         $location =~ s/=(.*)//;    #store model if specified here
@@ -1920,14 +1947,16 @@ sub chvm {
         foreach (@addsizes) {
             push @newsizes, split /,/, $_;
         }
+        my $format = getstorageformat($confdata->{vm}->{$node}->[0]);
         foreach (@newsizes) {
             my $dev;
             do {
                 $dev = $prefix . shift(@suffixes);
             } while ($useddisks{$dev});
 
+
             #ok, now I need a volume created to attach
-            push @diskstoadd, get_filepath_by_url(url => $location, dev => $dev, create => $_);
+            push @diskstoadd, get_filepath_by_url(url => $location, dev => $dev, create => $_, format => $format);
         }
 
         #now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
@@ -2082,6 +2111,62 @@ sub chvm {
         }
         if ($vmxml) {
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $vmxml;
+        }
+    }
+    if ($resize) {
+        my $shrinking_not_supported = "qcow2 doesn't support shrinking images yet";
+        # Get a list of disk=size pairs
+        my @resize_disks = split(/,/, $resize);
+        for my $single_disk (@resize_disks) {
+            # For each comma separated disk, get disk name and the size to change it to
+            my ($disk_to_resize, $value) = split(/=/, $single_disk);
+            if ($disk_to_resize) {
+                unless (exists $useddisks{$disk_to_resize}) {
+                    # Disk name given does not match any disks for this vm
+                    xCAT::SvrUtils::sendmsg([ 1, "Disk $disk_to_resize does not exist" ], $callback, $node);
+                    next;
+                }
+                # Get desired (new) disk size
+                $value = getUnits($value, "G", 1);
+                # Now search kvm_nodedata table to find the volume for this disk
+                my $myxml    = $parser->parse_string($vmxml);
+                my @alldisks = $myxml->findnodes("/domain/devices/disk");
+                # Look through all the disk entries
+                foreach my $disknode (@alldisks) {
+                    my $devicetype = $disknode->getAttribute("device");
+                    # Skip cdrom devices
+                    if ($devicetype eq "cdrom") { next; }
+                    # Get name of the disk
+                    my $diskname = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+                    # Is this a disk we were looking for to resize ?
+                    if ($diskname eq $disk_to_resize) {
+                        my $file = $disknode->findnodes('./source')->[0]->getAttribute('file');
+                        my $vol = $hypconn->get_storage_volume_by_path($file);
+                        if ($vol) {
+                            # Always pass RESIZE_SHRINK flag to resize(). It is required when shrinking
+                            # the volume size and is ignored when growing volume size
+                            eval {
+                                $vol->resize($value, &Sys::Virt::StorageVol::RESIZE_SHRINK);
+                            };
+                            if ($@) {
+                                if ($@ =~ /$shrinking_not_supported/) {
+                                    # qcow2 does not support shrinking volumes, display more readable error
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $shrinking_not_supported" ], $callback, $node);
+                                }
+                                else {
+                                    # some other resize error from libvirt, just display it
+                                    xCAT::SvrUtils::sendmsg([ 1, "Resizing disk $disk_to_resize failed, $@" ], $callback, $node);
+                                }
+                            }
+                            else {
+                                # success
+                                xCAT::SvrUtils::sendmsg([ 0, "Resized disk $disk_to_resize" ], $callback, $node);
+                            }
+                        }
+                        last; # Found the disk we were looking for. Go to the next disk.
+                    }
+                }
+            }
         }
     }
     if ($cpucount or $memory) {
@@ -2510,6 +2595,31 @@ sub chvm {
     }
 }
 
+#######################################################################
+# get_disks_by_userspecs
+# Description: get the storage device info ( xml and source file ) of 
+#              the user specified disk devices 
+# Arguments:   
+#              $specs : ref to the user specified disk name list           
+#              $xml   : the xml string of the domain
+#              $returnmoddedxml : switch on whether to prepend
+#              the domain xml with the user specified disk removed
+#              to the beginning of the return array  
+# Return   :
+#              An array with the structure 
+#             [
+#              <domain xml>(optional: with the user specified disk removed, 
+#                           exist only if $returnmoddedxml specified),
+#              [<the disk device xml>, <the source file of the disk device>],
+#              [<the disk device xml>, <the source file of the disk device>],
+#              ...
+#             ]
+# Example  :   
+#             1. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml, 'returnmoddedxml');
+#                my $moddedxml = shift @disklist;
+#             2. my @disklist = get_disks_by_userspecs(\@diskname, $vmxml)
+#
+#######################################################################
 sub get_disks_by_userspecs {
     my $specs           = shift;
     my $xml             = shift;
@@ -2942,8 +3052,9 @@ sub mkvm {
                 @return = createstorage($diskname, $mastername, $disksize, $confdata->{vm}->{$node}->[0], $force);
             };
             if ($@) {
-                if ($@ =~ /ath already exists/) {
-                    return 1, "Storage creation request conflicts with existing file(s)";
+                if ($@ =~ /Path (\S+) already exists at /) {
+                    return 1, "Storage creation request conflicts with existing file(s) $1. To force remove the existing storage file, rerun mkvm with the -f option.";
+
                 } else {
                     return 1, "Unknown issue $@";
                 }
@@ -3424,29 +3535,6 @@ sub guestcmd {
     } elsif ($command eq "rscan") {
         return rscan($node, @args);
     }
-
-=cut
-  } elsif ($command eq "rvitals") {
-    return vitals(@args);
-  } elsif ($command =~ /r[ms]preset/) {
-    return resetmp(@args);
-  } elsif ($command eq "rspconfig") {
-    return mpaconfig($mpa,$user,$pass,$node,$slot,@args);
-  } elsif ($command eq "rbootseq") {
-    return bootseq(@args);
-  } elsif ($command eq "switchblade") {
-     return switchblade(@args);
-  } elsif ($command eq "getmacs") {
-    return getmacs(@args);
-  } elsif ($command eq "rinv") {
-    return inv(@args);
-  } elsif ($command eq "reventlog") {
-    return eventlog(@args);
-  } elsif ($command eq "rscan") {
-    return rscan(\@args);
-  }
-  
-=cut
 
     return (1, "$command not a supported command by kvm method");
 }
@@ -4021,6 +4109,27 @@ sub dohyp {
 
     #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
     #print $out $msgtoparent; #$node.": $_\n";
+}
+
+# Return array of device names used by cdrom as defined in the kvm_nodedata table
+sub get_cdrom_device_names() {
+    my $xml = shift;
+    my $device_name;
+    my @cdrom_device_names;
+
+    my $myxml    = $parser->parse_string($xml);
+    my @alldisks = $myxml->findnodes("/domain/devices/disk");
+    # Look through all the disk entries defined in the xml
+    foreach my $disknode (@alldisks) {
+         my $devicetype = $disknode->getAttribute("device");
+         # Check if it is cdrom
+         if ($devicetype eq "cdrom") {
+             # Get name of the cdrom
+             $device_name = $disknode->findnodes('./target')->[0]->getAttribute('dev');
+             push @cdrom_device_names, $device_name;
+         }
+    }
+    return @cdrom_device_names;
 }
 
 1;

@@ -46,7 +46,7 @@ for stateless: \ **packimage**\
 
 for statelite: \ **liteimg**\ 
 
-Besides prompting for some paramter values, the \ **genimage**\  command takes default guesses for the parameters not specified or not defined in the \ *osimage*\  and \ *linuximage*\  tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Please use \ **-**\ **-interactive**\  flag if you want the yum/zypper command to prompt you for the answers.
+Besides prompting for some paramter values, the \ **genimage**\  command takes default guesses for the parameters not specified or not defined in the \ *osimage*\  and \ *linuximage*\  tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Use \ **-**\ **-interactive**\  flag if you want the yum/zypper command to prompt you for the answers.
 
 If \ **-**\ **-onlyinitrd**\  is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 

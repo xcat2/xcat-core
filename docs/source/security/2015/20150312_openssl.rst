@@ -1,0 +1,20 @@
+2015-03-12 - OpenSSL Vulnerabilities  (FREAK)
+=============================================
+
+OpenSSL announced security fixes on 01/08/15 in the following bulletin: https://www-origin.openssl.org/news/secadv/20150108.txt  
+
+Advisory CVEs
+-------------
+
+* CVE-2015-0204 **RSA silently downgrades to EXPORT_RSA [Client]** (Severity: Low)
+
+FREAK vulnerability CVE-2015-0204 is involved when 'RSA_EXPORT' ssl cipher suit is used in ssl server/client. 
+
+Action
+------
+
+xCAT does not use RSA_EXPORT ciphers for ssl communication by default. However, xCAT does allow user to choose the ciphers from the site.xcatsslciphers attribute. 
+
+Make sure you do not put RSA_EXPORT related ciphers in this attribute.
+
+It is recommended that you upgrade openssl to 1.0.1L and upper version for the fix of this problem. Go to the os distribution to get the latest openssl package.

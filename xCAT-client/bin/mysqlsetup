@@ -405,12 +405,8 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
     my $cmd      = "grep master $sitefile";
     my @output   = xCAT::Utils->runcmd($cmd, -1);
     my $hname;
-    if ($::RUNCMD_RC != 0)    # no entry in site table
-    {
-        $hname = `hostname`;
-        chomp $hname;
-    }
-    else                      # from site.master
+    # from site.master
+    if ($::RUNCMD_RC == 0 )
     {
         (my $attr, my $master) = split(",", $output[0]);
         (my $q, $hname) = split("\"", $master);
@@ -418,6 +414,11 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
 
     }
 
+    if( "$hname" eq ""){
+        $hname = `hostname`;
+        chomp $hname;
+    }
+    
     #my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
     my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
     if ($ipaddr)
@@ -915,7 +916,13 @@ sub initmysqldb
     }
     else
     {
-        $cmd = "/usr/bin/mysql_install_db --user=mysql";
+        my $sqlcmd = "/usr/bin/mysql_install_db";
+        if (!(-x ($sqlcmd))) {
+            xCAT::MsgUtils->message("E", "$sqlcmd is not available, please install required mysql/mariadb packages");
+            exit(1);
+        }
+
+        $cmd = "$sqlcmd --user=mysql";
     }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)

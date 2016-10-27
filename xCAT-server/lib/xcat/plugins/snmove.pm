@@ -2227,7 +2227,7 @@ sub sfsSLconfig
         #  dolitesetup to update the shared_root table files
         #  - updates files in the sopot and shared_root resour
         my $rc = xCAT::InstUtils->dolitesetup($i, \%imghash, \@{ $osinodes{$i} }, $callback, $sub_req);
-        if ($rc eq 1) {    # error
+        if ($rc == 1) {    # error
             my $rsp;
             push @{ $rsp->{data} }, "Could not complete the statelite setup.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);

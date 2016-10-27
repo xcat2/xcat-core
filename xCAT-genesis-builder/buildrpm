@@ -32,7 +32,7 @@ if [ $BUILDARCH = 'ppc64' -a $HOSTOS != 'mcp' -a $HOSTOS != '-y' ]; then
     echo "2. Download Mellanox EN Driver for Linux from http://www.mellanox.com/downloads/Drivers/mlnx-en-3.2-1.0.1.1.tgz"
     echo "3. Extract it and run ./install.sh from the extracted directory"
     echo "    tar -xvf mlnx-en-3.2-1.0.1.1.tgz"
-    echo "    ./mlnx-en-3.2-1.0.1/install.sh"
+    echo "    ./mlnx-en-3.2-1.0.1.1/install.sh"
     echo "4. Check whether the mlx4 driver is updated"
     echo "    modprobe mlx4-en"
     echo "    modinfo mlx4-en | grep version"
@@ -170,9 +170,20 @@ if [ $BUILDARCH = "ppc64" ]; then
 else
     dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 fi
+
+if [ $? -ne 0 ]; then
+    echo "ERROR - creating the initramfs, please correct the issues and try again"
+    exit 1
+fi
+
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
+
+if [ $? -ne 0 ]; then
+    echo "ERROR - expanding the initramfs, please correct the issues and try again"
+    exit 1
+fi
 
 # add the kernel
 if [ "$HOSTOS" = "mcp" ]; then

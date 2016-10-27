@@ -1,7 +1,7 @@
 Summary: Meta-package for a common, default xCAT setup
 Name: xCAT
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.
@@ -25,7 +25,7 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
@@ -59,23 +59,23 @@ Requires: conserver-xcat
 %endif
 %endif
 
+#support mixed cluster
+Requires: elilo-xcat xnba-undi
+
 %ifarch i386 i586 i686 x86 x86_64
-Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
-Requires: ipmitool-xcat >= 1.8.15-2
-Requires: xnba-undi
+Requires: syslinux
+Requires: ipmitool-xcat >= 1.8.17
 %endif
+
 %ifos linux
 %ifarch ppc ppc64 ppc64le
-Requires: xCAT-genesis-scripts-ppc64
-Requires: ipmitool-xcat >= 1.8.15-2
+Requires: ipmitool-xcat >= 1.8.17
 %endif
 %endif
 
 %if %notpcm
-%ifarch i386 i586 i686 x86 x86_64
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
-%endif
 %endif
 
 %description

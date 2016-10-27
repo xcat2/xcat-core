@@ -191,6 +191,7 @@ sub docfheaders {
 
     # Put in standard headers common to all conserver.cf files
     my $content    = shift;
+    my $cb         = shift;
     my @newheaders = ();
     my $numlines   = @$content;
     my $idx        = 0;
@@ -283,18 +284,19 @@ sub docfheaders {
     #-- then start all consoles on demand
     #-- this helps eliminate many ssh connections to blade AMM
     #-- which seems to kill AMMs occasionally
-    #my $sitetab  = xCAT::Table->new('site');
-    #my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
     my @entries    = xCAT::TableUtils->get_site_attribute("consoleondemand");
     my $site_entry = $entries[0];
-    if (defined($site_entry) and $site_entry eq "yes") {
-        push @newheaders, "  options ondemand;\n";
-        $siteondemand = 1;
+    $siteondemand = 0;
+    if (defined($site_entry)) {
+        if (lc($site_entry) eq "yes") {
+            push @newheaders, "  options ondemand;\n";
+            $siteondemand = 1;
+        }
+        elsif (lc($site_entry) ne "no") {
+            # consoleondemand attribute is set, but it is not "yes" or "no"
+            xCAT::SvrUtils::sendmsg([ 1, "Unexpected value $site_entry for consoleondemand attribute in site table" ], $cb);
+        }
     }
-    else {
-        $siteondemand = 0;
-    }
-
     push @newheaders, "}\n";
     unshift @$content, @newheaders;
 }
@@ -327,7 +329,7 @@ sub makeconservercf {
         push @filecontent, $_;
     }
     close $cfile;
-    docfheaders(\@filecontent);
+    docfheaders(\@filecontent,$cb);
 
     my $isSN     = xCAT::Utils->isServiceNode();
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
@@ -575,10 +577,11 @@ sub donodeent {
             }
         }
         if (defined($cfgent->{consoleondemand})) {
-            if ($cfgent->{consoleondemand} && !$siteondemand) {
+            # consoleondemand attribute for node can be "1", "yes", "0" and "no"
+            if ((($cfgent->{consoleondemand} eq "1") || lc($cfgent->{consoleondemand}) eq "yes") && !$siteondemand) {
                 push @$content, "  options ondemand;\n";
             }
-            elsif (!$cfgent->{consoleondemand} && $siteondemand) {
+            elsif ((($cfgent->{consoleondemand} eq "0") || lc($cfgent->{consoleondemand}) eq "no") && $siteondemand) {
                 push @$content, "  options !ondemand;\n";
             }
         }

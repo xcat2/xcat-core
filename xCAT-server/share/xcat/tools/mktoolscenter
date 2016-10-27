@@ -574,7 +574,7 @@ if (symlink($repo, "$path/repo") eq 0) {
     exit;
 }
 
-if ($surrogate eq 1) {
+if ($surrogate == 1) {
     output("Creating tar");
     my $tarme = "";
     if (-d "$instroot/netboot/toolscenter") {

@@ -72,7 +72,7 @@ Here is partition definition file example for RedHat LVM partition in IBM Power 
 
 .. BEGIN_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
 
-Partition definition file example for RedHat RAID1 please refer to :doc:`Configure RAID before Deploy OS </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg>`
+To partition definition file example for RedHat RAID1 refer to :doc:`Configure RAID before Deploy OS </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg>`
 
 .. END_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
 
@@ -287,7 +287,7 @@ Here is partition definition file example for SLES standard partition in ppc64 m
 
 .. BEGIN_partition_definition_file_example_SLES_RAID1
 
-Partition definition file example for SLES RAID1 please refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_ 
+To partition definition file example for SLES RAID1 refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_ 
 
 .. END_partition_definition_file_example_SLES_RAID1
 

@@ -1172,7 +1172,7 @@ sub addkit
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -1267,6 +1267,10 @@ sub addkit
                 push @{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
                 xCAT::MsgUtils->message("I", \%rsp, $callback);
             }
+
+            #support white space in the dir name
+            $kit =~ s/(\s)/\\$1/g;
+
             $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
 
             opendir($dir, "/tmp/tmpkit/");
@@ -1508,7 +1512,7 @@ sub rmkit
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -1929,7 +1933,7 @@ sub addkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -2481,7 +2485,7 @@ sub rmkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }
@@ -3403,7 +3407,7 @@ sub chkkitcomp
 
     unless (defined($request->{arg})) { $xusage->(1); return; }
     @ARGV = @{ $request->{arg} };
-    if ($#ARGV eq -1) {
+    if ($#ARGV == -1) {
         $xusage->(1);
         return;
     }

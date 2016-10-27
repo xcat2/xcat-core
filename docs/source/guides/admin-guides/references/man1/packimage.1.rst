@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **packimage  [-v| -**\ **-version]**\ 
 
-\ **packimage**\  \ *imagename*\ 
+\ **packimage**\  [\ **-m | -**\ **-method**\  \ *cpio|tar*\ ] [\ **-c | -**\ **-compress**\  \ *gzip|pigz|xz*\ ]  \ *imagename*\ 
 
 
 ***********
@@ -31,12 +31,9 @@ DESCRIPTION
 ***********
 
 
-Packs the stateless image from the chroot file system into a file system to be
-sent to the node for a diskless install.
-The install dir is setup by using "installdir" attribute set in the site table.
-The nodetype table "profile" attribute for the node should reflect the profile of the install image.
+Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot.
 
-This command will get all the necessary os image definition files from the \ *osimage*\  and \ *linuximage*\  tables.
+Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while the command executes.
 
 
 **********
@@ -44,7 +41,7 @@ PARAMETERS
 **********
 
 
-\ *imagename*\  specifies the name of a os image definition to be used. The specification for the image is stored in the \ *osimage*\  table and \ *linuximage*\  table.
+\ *imagename*\  specifies the name of a OS image definition to be used. The specification for the image is stored in the \ *osimage*\  table and \ *linuximage*\  table.
 
 
 *******
@@ -56,13 +53,9 @@ OPTIONS
 
 \ **-v**\           Command Version.
 
-\ **-o**\           Operating system (fedora8, rhel5, sles10,etc)
+\ **-m| -**\ **-method**\           Archive Method (cpio,tar,squashfs, default is cpio)
 
-\ **-p**\           Profile (compute,service)
-
-\ **-a**\           Architecture (ppc64,x86_64,etc)
-
-\ **-m**\           Method (cpio,txc,squashfs, default is cpio)
+\ **-c| -**\ **-compress**\           Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
 
 ************
@@ -80,12 +73,20 @@ EXAMPLES
 ********
 
 
-1. To pack the osimage rhels7.1-x86_64-netboot-compute:
+1. To pack the osimage 'rhels7.1-x86_64-netboot-compute':
 
 
 .. code-block:: perl
 
   packimage rhels7.1-x86_64-netboot-compute
+
+
+2. To pack the osimage 'rhels7.1-x86_64-netboot-compute' with "tar" to archive and "pigz" to compress:
+
+
+.. code-block:: perl
+
+  packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
 
 
 

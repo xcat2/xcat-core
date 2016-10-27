@@ -617,6 +617,19 @@ if ($postinstall_filename) {
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
+    #export some osimage attributes as the environment variables
+    #to postinstall script
+    $ENV{IMG_ARCH}=$arch if("" ne $arch);
+    $ENV{IMG_NAME}=$imagename if("" ne $imagename);
+    $ENV{IMG_OSVER}=$osver if("" ne $osver);
+    $ENV{IMG_KERNELVERSION} = $kernelver if("" ne $kernelver);
+    $ENV{IMG_PROFILE}=$profile if("" ne $profile);
+    $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
+    $ENV{IMG_PKGDIR}=$srcdir if("" ne $srcdir);
+    $ENV{IMG_OTHERPKGLIST}=$otherpkglist if("" ne $otherpkglist);
+    $ENV{IMG_OTHERPKGDIR}=$srcdir_otherpkgs if("" ne $srcdir_otherpkgs);
+    $ENV{IMG_ROOTIMGDIR}=$rootimg_dir if("" ne $rootimg_dir);
+
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
@@ -628,6 +641,10 @@ if ($postinstall_filename) {
             exit 1;
         }
     }
+
+    #delete the osimage attributes from environment variable
+    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_KERNELVERSION IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+  
 }
 
 # Default to the first kernel found in the install image if nothing specified explicitly.
@@ -1441,8 +1458,8 @@ if [ -r /rootimg.sfs ]; then
     mount --move /ro \$NEWROOT/ro
     mount --move /rw \$NEWROOT/rw
 EOMS
-    print $inifile "elif [ -r /rootimg.gz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.gz downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
         print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
@@ -1452,15 +1469,23 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    if [ -x /bin/cpio ]; then\n";
-    print $inifile "        zcat /rootimg.gz |/bin/cpio -idum\n";
-    print $inifile "    else\n";
-    print $inifile "        zcat /rootimg.gz |cpio -idum\n";
+    print $inifile "    if [ -r /rootimg.cpio.gz ]; then\n";
+    print $inifile "        if [ -x /bin/cpio ]; then\n";
+    print $inifile "            zcat /rootimg.cpio.gz |/bin/cpio -idum\n";
+    print $inifile "        else\n";
+    print $inifile "            zcat /rootimg.cpio.gz |cpio -idum\n";
+    print $inifile "        fi\n";
+    print $inifile "    elif [ -r /rootimg.cpio.xz ]; then\n";
+    print $inifile "        if [ -x /bin/cpio ]; then\n";
+    print $inifile "            xz -cd /rootimg.cpio.xz |/bin/cpio -idum\n";
+    print $inifile "        else\n";
+    print $inifile "            xz -cd /rootimg.cpio.xz |cpio -idum\n";
+    print $inifile "        fi\n";
     print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
-    print $inifile "elif [ -r /rootimg.txz ]; then\n";
-    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg.txz downloaded,setting up RAM-root tmpfs...\"\n";
+    print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"rootimg downloaded,setting up RAM-root tmpfs...\"\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
 
     if ($rootlimit) {
@@ -1471,7 +1496,11 @@ EOMS
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Extracting root filesystem:\"\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
-    print $inifile "    tar -Jxvf /rootimg.txz\n";
+    print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";
+    print $inifile "        /bin/tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz\n";
+    print $inifile "    elif [ -r /rootimg.tar.xz ]; then\n";
+    print $inifile "        /bin/tar --selinux --xattrs-include='*' -Jxf /rootimg.tar.xz\n";
+    print $inifile "    fi\n";
     print $inifile "    ([ \"\$xcatdebugmode\" = \"1\" ] || [ \"\$xcatdebugmode\" = \"2\" ]) && logger -t xcat -p debug \"Done...\"\n";
     print $inifile "    echo Done\n";
     print $inifile "else\n";
@@ -1612,7 +1641,7 @@ EOMS
     }
 
     # add rsync for statelite
-    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz") {
+    foreach ("usr/bin/dig", "bin/busybox", "bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod", "usr/bin/wget", "usr/bin/xz", "bin/gzip", "bin/tar") {
         getlibs($_);
         push @filestoadd, $_;
     }
@@ -2082,6 +2111,11 @@ sub mount_chroot {
 
 sub umount_chroot {
     my $rootimage_dir = shift;
+    if ($rootimage_dir eq "") {
+        print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
+        return 1;
+    }
+
 
     system("umount -l $rootimage_dir/proc");
     system("umount -l $rootimage_dir/sys");

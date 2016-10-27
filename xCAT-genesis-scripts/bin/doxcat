@@ -217,15 +217,16 @@ else
 	                fi
                 fi
                 done
-                sleep 2
+                sleep 3
                 tries=$(($tries+1))
-                if [ $tries -ge 10 ]; then
+                # Wait for 60 seconds to make sure the STP is done for at least one port
+                if [ $tries -ge 20 ]; then
                     break
                 fi
 	    done
             if [ -z "$bootnic" ]; then
+                logger -s -t $log_label -p local4.info "still can not get bootnic, go into /bin/bash"
                 /bin/bash
-                logger -s -t $log_label -p local4.info "still can not get $bootnic, go into /bin/bash"
             fi
         else
 	    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
@@ -273,14 +274,17 @@ logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
 
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
+
+if [ -e "/dev/rtc" ]; then
+    ( sleep 8 ; hwclock --systohc ) </dev/null >/dev/null 2>&1 &
+    disown
+fi
+
 # rv 0 state does not work with the new ntp versions
-while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}' | sed s/-//`" -ge 1000 ]; do 
+while [ "`ntpq -c 'rv 0 offset' | awk -F '=' '/offset=/ { print $2 }' | awk -F '.' '{ print $1 }' | sed s/-//`" -ge 1000 ]; do 
     sleep 1
 done
 
-if [ -e "/dev/rtc" ]; then
-    hwclock --systohc
-fi
 HOST_ARCH=`uname -m`
 if echo $HOST_ARCH | grep "ppc64"; then
     modprobe ipmi_powernv

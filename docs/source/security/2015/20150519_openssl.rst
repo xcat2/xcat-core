@@ -1,0 +1,27 @@
+2015-05-19 - OpenSSL Vulnerabilities (VENOM)
+============================================
+
+Advisory CVEs
+-------------
+
+* CVE-2015-3456 - **(aka VENOM) is a security flaw in the QEMU's Floppy Disk Controller (FDC) emulation.** 
+
+VENOM vulnerability could expose virtual machines on unpatched host systems
+
+A new vulnerability known as VENOM has been discovered, which could allow an attacker to escape a guest virtual machine (VM) and access the host system along with other VMs running on this system. The VENOM bug could potentially allow an attacker to steal sensitive data on any of the virtual machines on this system and gain elevated access to the host''''s local network and its systems.
+
+The VENOM bug (CVE-2015-3456) exists in the virtual Floppy Disk Controller for the open-source hypervisor QEMU, which is installed by default in a number of virtualization infrastructures such as Xen hypervisors, the QEMU client, and Kernel-based Virtual Machine (KVM). VENOM does not affect VMware, Microsoft Hyper-V, and Bochs hypervisors.
+
+* QEMU: http://git.qemu.org/?p=qemu.git;a=commitdiff;h=e907746266721f305d67bc0718795fedee2e824c
+* Xen Project: http://xenbits.xen.org/xsa/advisory-133.html
+* Red Hat: https://access.redhat.com/articles/1444903
+* SUSE: https://www.suse.com/support/kb/doc.php?id=7016497
+* Ubuntu: http://www.ubuntu.com/usn/usn-2608-1/
+
+
+Action
+------
+
+xCAT does not ship any rpms that have QEMU component directly. However xCAT does make system calls to QEMU when doing KVM/Xen visualization. If you are using xCAT to manage KVM or Xen hosts and quests, get the latest rpms that have QEMU component from the os distro and do a upgrade on both xCAT management node and the KVM/Xen hosts. 
+
+

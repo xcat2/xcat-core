@@ -292,7 +292,7 @@ sub isallchassis {
     }
     foreach (1 .. 14) {
         my $tmp = $session->get([ $bladexistsoid . ".$_" ]);
-        if ($tmp eq 1) { $bladesinchassis++ }
+        if ($tmp == 1) { $bladesinchassis++ }
     }
     my $count = keys %{ $mpahash{$mpa}->{nodes} };
     if ($count >= $bladesinchassis) { $allinchassis++; return 1 }; #commands that affect entire are okayed, i.e eventlog clear
@@ -498,7 +498,7 @@ m/Severity:(\S+)\s+Source:(\S+)\s+Name:\S*\s+Date:(\S+)\s+Time:(\S+)\s+Text:(.+)
         $data = $session->set($varbind);
         if ($session->{ErrorStr}) { return (1, $session->{ErrorStr}); }
         $didchassis = 1;
-        if ($varbind->[2] eq 1) {
+        if ($varbind->[2] == 1) {
             return 0, "eventlog cleared";
         }
     }
@@ -1001,7 +1001,7 @@ sub vitals {
 
         if (grep /temp/, @vitems) {
             for my $idx (6 .. 20) {
-                if ($idx eq 11) {
+                if ($idx == 11) {
                     next;
                 }
                 push @bindlist, [ ".1.3.6.1.4.1.2.3.51.2.22.1.5.3.1.$idx", $slot ];
@@ -1429,14 +1429,14 @@ sub populateblowervitals {
             my $idx      = $_->[1];
             my $tmp_type = $_->[0];
             $tmp_type =~ s/^.*\.(\d*)$/$1/;
-            if ($tmp_type eq 3) {
+            if ($tmp_type == 3) {
                 $blowerstats{$idx}->{percentage} = $_->[2];
                 $blowerstats{$idx}->{percentage} =~ s/^(\d*)%.*$/$1/;
-            } elsif ($tmp_type eq 4) {
+            } elsif ($tmp_type == 4) {
                 $blowerstats{$idx}->{state} = $_->[2];
-            } elsif ($tmp_type eq 5) {
+            } elsif ($tmp_type == 5) {
                 $blowerstats{$idx}->{rpm} = $_->[2];
-            } elsif ($tmp_type eq 6) {
+            } elsif ($tmp_type == 6) {
                 $blowerstats{$idx}->{cstate} = $_->[2];
             }
         }
@@ -1525,7 +1525,7 @@ sub rscan {
 
     foreach (1 .. 14) {
         my $tmp = $session->get([ $bladexistsoid . ".$_" ]);
-        if ($tmp eq 1) {
+        if ($tmp == 1) {
             my $type = $session->get([ $blademtmoid, $_ ]);
             if ($session->{ErrorStr}) {
                 return (1, $session->{ErrorStr});
@@ -3779,7 +3779,7 @@ sub bladecmd {
     if ($slot > 0 and not $slot =~ /:/) {
         my $tmp = $session->get([ $bladexistsoid . ".$slot" ]);
         if     ($session->{ErrorStr}) { return (1, $session->{ErrorStr}); }
-        unless ($tmp eq 1)            { return (1, "Target bay empty"); }
+        unless ($tmp == 1)            { return (1, "Target bay empty"); }
     }
     if ($command eq "rbeacon") {
         return beacon(@args);

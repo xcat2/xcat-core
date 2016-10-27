@@ -14,3 +14,6 @@ syslog-ng
 klogd
 vim
 rsync
+tar
+gzip
+xz

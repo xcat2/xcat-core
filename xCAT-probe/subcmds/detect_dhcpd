@@ -26,11 +26,10 @@ Description:
     This command can be used to detect the dhcp server in a network for a specific mac address.
 
 Options:
-    -i interface:  Required. The interface which facing the target network.
-    -m macaddress: The mac that will be used to detect dhcp server. Recommend to use the real mac of the node that will be netboot. If no specified, the mac of interface which specified by -i will be used.
+    -i interface:  Required. The interface facing the target network.
+    -m macaddress: The mac that will be used to detect dhcp server. Use the real mac of the node that will be netboot. If not specified, the mac specified by -i will be used.
     -d duration:   The time to wait to detect the dhcp messages. The default value is 10s.
-    -V verbose:    To print additional debug information. 
-    -T         :   To verify if $program_name can work, reserve option for probe framework.
+    -V verbose:    Print additional debug information. 
 ";
 
 #---------------------------
@@ -60,7 +59,7 @@ if ($::HELP) {
 }
 
 if ($::TEST) {
-    probe_utils->send_msg("$output", "o", "$program_name can be used to detect the dhcp server in a network for a specific mac address. Before using this command, please install tcpdump command ahead. The operating system supported are redhat, sles, ubuntu and debian.");
+    probe_utils->send_msg("$output", "o", "$program_name can be used to detect the dhcp server in a network for a specific mac address. Before using this command, install 'tcpdump' command. The operating system supported are RedHat, SLES and Ubuntu.");
     exit 0;
 }
 
@@ -73,12 +72,12 @@ unless (-x "/usr/sbin/tcpdump") {
 if ($::IF) {
     $nic = $::IF;
 } else {
-    probe_utils->send_msg("$output", "f", "Option '-i' needs to be assigned value for $program_name");
+    probe_utils->send_msg("$output", "f", "Option '-i' needs to be assigned a value for $program_name");
     probe_utils->send_msg("$output", "d", "$::USAGE");
     exit 1;
 }
 
-my $msg = "Find right IP/MAC to do dhcp discover";
+my $msg = "Find correct IP/MAC to do dhcp discover";
 my $IP = `ip addr show dev $nic | awk -F" " '/inet / {print \$2}' | head -n 1 |awk -F"/" '{print \$1}'`;
 chomp($IP);
 my $MAC;
@@ -89,7 +88,7 @@ if ($::MACADD) {
 }
 chomp($MAC);
 
-probe_utils->send_msg("$output", "d", "Send out dhcp discover from: NIC = $nic, IP = $IP, MAC = $MAC") if ($::VERBOSE);
+probe_utils->send_msg("$output", "d", "Send dhcp discover from: NIC = $nic, IP = $IP, MAC = $MAC") if ($::VERBOSE);
 
 if (!$IP || !$MAC) {
     probe_utils->send_msg("$output", "f", $msg);
@@ -105,11 +104,11 @@ if (-f "/etc/redhat-release") {
     $os = "sles";
 } elsif (-f "/etc/lsb-release") {
     $os = "ubuntu";
-} elsif (-f "/etc/debian_version") {
-    $os = "debian";
+#} elsif (-f "/etc/debian_version") {
+#    $os = "debian";
 } else {
     probe_utils->send_msg("$output", "f", $msg);
-    probe_utils->send_msg("$output", "d", "Only support the redhat, sles, ubuntu and debian OS");
+    probe_utils->send_msg("$output", "d", "Only support the RedHat, SLES and Ubuntu.");
     exit 1;
 }
 probe_utils->send_msg("$output", "d", "Current operating system is $os") if ($::VERBOSE);
@@ -119,7 +118,7 @@ if ($::DURATION) {
     $duration = $::DURATION;
 }
 
-probe_utils->send_msg("$output", "d", "The duration of capturing DHCP package is $duration second") if ($::VERBOSE);
+probe_utils->send_msg("$output", "d", "The duration of capturing DHCP package is $duration second(s)") if ($::VERBOSE);
 
 # send out the package
 $msg = "Build the socket to send out DHCP request";
@@ -205,7 +204,7 @@ while (<FILE>) {
     if ($line =~ /^\d\d:\d\d:\d\d/) {
 
         # A new packet was captured. Parse the last one.
-        probe_utils->send_msg("$output", "d", "The server I found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer") if ($::VERBOSE);
+        probe_utils->send_msg("$output", "d", "The server found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer") if ($::VERBOSE);
         if ($os eq "sles") { $offer = 1; }
         if ($chaddr =~ /$MAC/i && $offer && $ciaddr && $siaddr && $rsiaddr) {
             $output{$rsiaddr}{'client'} = $ciaddr;
@@ -246,15 +245,15 @@ close(FILE);
 my $sn = scalar(keys %output);
 probe_utils->send_msg("$output", "i", "++++++++++++++++++++++++++++++++++");
 
-probe_utils->send_msg("$output", "i", "There are $sn servers reply the dhcp discover.");
+probe_utils->send_msg("$output", "i", "There are $sn servers replied to dhcp discover.");
 foreach my $server (keys %output) {
-    probe_utils->send_msg("$output", "i", "    Server:$server assign IP [$output{$server}{'client'}] to you. The next server is [$output{$server}{'nextsv'}]!");
+    probe_utils->send_msg("$output", "i", "    Server:$server assign IP [$output{$server}{'client'}]. The next server is [$output{$server}{'nextsv'}]!");
 }
 probe_utils->send_msg("$output", "i", "++++++++++++++++++++++++++++++++++");
 
 if (scalar(@snack)) {
     probe_utils->send_msg("$output", "i", "===================================");
-    probe_utils->send_msg("$output", "i", "The dhcp servers which sending out NACK in present network:");
+    probe_utils->send_msg("$output", "i", "The dhcp servers sending out NACK in present network:");
     foreach my $nack (@snack) {
         probe_utils->send_msg("$output", "i", "    $nack");
     }
@@ -380,5 +379,5 @@ sub kill_child {
     foreach my $cpid (@pidoftcpdump) {
         kill 15, $cpid;
     }
-    probe_utils->send_msg("$output", "d", "Kill process $pid which is used to capture the packet by tcpdump") if ($::VERBOSE);
+    probe_utils->send_msg("$output", "d", "Kill process $pid used to capture the packet by 'tcpdump'") if ($::VERBOSE);
 }

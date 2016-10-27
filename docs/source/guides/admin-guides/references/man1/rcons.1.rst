@@ -35,7 +35,7 @@ multiple read-only instances of the console, plus console logging.
 
 If \ *conserver-host*\  is specified, the conserver daemon on that host will be contacted, instead of on the local host.
 
-To exit the console session, enter:  <ctrl><shift>e c .
+To exit the console session, enter:  <ctrl>e c .
 
 
 ***************

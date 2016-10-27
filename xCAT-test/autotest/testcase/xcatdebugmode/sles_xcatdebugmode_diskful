@@ -1,0 +1,319 @@
+start:reg_set_xcatdebugmode_off_sles_diskful_flat
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+check:rc=0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:sleep 10
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
+check:output=~$$CN
+cmd:copycds $$ISO 
+check:rc==0
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
+check:rc==0
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:sleep 120
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Pre-Installation script\""
+check:output=~Running AutoYaST Pre-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"installstatus installing\""
+check:output=~installstatus installing
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Chroot-Installation script\""
+check:output=~Running AutoYaST Chroot-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Post\-Installation script\""
+check:output=~Running AutoYaST Post\-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"ready\""
+check:output=~ready
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"done\""
+check:output=~done
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"running \/xcatpost\/mypostscript\.post\""
+check:output=~running \/xcatpost\/mypostscript\.post
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.post return\""
+check:output=~\/xcatpost\/mypostscript\.post return
+cmd:xdsh $$CN "file \/var\/log\/YaST2"
+check:rc==0
+check:output!~No such file or directory
+
+cmd:rpower $$SN on
+check:rc==0
+end
+
+start:reg_set_xcatdebugmode_value_one_sles_diskful_flat
+os:linux
+description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+check:rc=0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:sleep 10
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
+check:output=~$$CN
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
+check:rc==0
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:sleep 120
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+
+cmd:xdsh $$CN "cat /var/log/xcat/xcat.log | grep \"Running AutoYaST Pre-Installation script\""
+check:output=~Running AutoYaST Pre-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"installstatus installing\""
+check:output=~\+ \/tmp\/bar\.awk \'installstatus installing\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"installstatus installing\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\+ echo \'\[get\_install\_disk\]Information from \/proc\/partitions\:\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Chroot\-Installation script\""
+check:output=~Running AutoYaST Chroot\-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"updateflag\.awk\""
+check:output=~\+ \/tmp\/updateflag\.awk
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"ready\""
+check:output=~ready
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"done\""
+check:output=~done
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Post-Installation script\""
+check:output=~Running AutoYaST Post-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"running \/xcatpost\/mypostscript\.post\""
+check:output=~running \/xcatpost\/mypostscript\.post
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"finished node installation\, reporting status\""
+check:output=~\+ echo \'finished node installation\, reporting status\.\.\.\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.post return\""
+check:output=~\/xcatpost\/mypostscript\.post return
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"service xcatpostinit1 disabled\""
+check:output=~service xcatpostinit1 disabled
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
+check:output=~/opt/xcat/xcatinfo generated
+cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
+check:output=~postscripts downloaded successfully
+cmd:cat /var/log/xcat/computes.log | grep "running /xcatpost/mypostscript.post"
+check:output=~running /xcatpost/mypostscript.post
+cmd:cat /var/log/xcat/computes.log | grep "/etc/init.d/xcatpostinit1 generated"
+check:output=~/etc/init.d/xcatpostinit1 generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinstallpost generated"
+check:output=~/opt/xcat/xcatinstallpost generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatdsklspost generated"
+check:output=~/opt/xcat/xcatdsklspost generated
+cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
+check:output=~running mypostscript
+cmd:xdsh $$CN "file \/var\/log\/YaST2"
+check:rc==0
+check:output!~No such file or directory
+
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+cmd:rpower $$SN on
+check:rc==0
+end
+
+
+start:set_xcatdebugmode_off_sles_diskful_flat_p8_le
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:sleep 120
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Pre-Installation script\""
+check:output=~Running AutoYaST Pre-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"installstatus installing\""
+check:output=~installstatus installing
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Chroot-Installation script\""
+check:output=~Running AutoYaST Chroot-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Post\-Installation script\""
+check:output=~Running AutoYaST Post\-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"ready\""
+check:output=~ready
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"done\""
+check:output=~done
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"running \/xcatpost\/mypostscript\.post\""
+check:output=~running \/xcatpost\/mypostscript\.post
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.post return\""
+check:output=~\/xcatpost\/mypostscript\.post return
+cmd:xdsh $$CN "file \/var\/log\/YaST2"
+check:rc==0
+check:output!~No such file or directory
+
+cmd:rpower $$SN on
+check:rc==0
+end
+
+
+start:set_xcatdebugmode_value_one_sles_diskful_flat_p8_le
+os:linux
+description:site.xcatdebugmode value is 1, the following logs will be shown and ssh is not supported.
+cmd:echo " " > /var/log/xcat/computes.log
+check:rc==0
+
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:sleep 120
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+
+cmd:xdsh $$CN "cat /var/log/xcat/xcat.log | grep \"Running AutoYaST Pre-Installation script\""
+check:output=~Running AutoYaST Pre-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"installstatus installing\""
+check:output=~\+ \/tmp\/bar\.awk \'installstatus installing\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"installstatus installing\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\+ echo \'\[get\_install\_disk\]Information from \/proc\/partitions\:\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep -c \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+checkoutput=~2
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Chroot\-Installation script\""
+check:output=~Running AutoYaST Chroot\-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"updateflag\.awk\""
+check:output=~\+ \/tmp\/updateflag\.awk
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"ready\""
+check:output=~ready
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"done\""
+check:output=~done
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running AutoYaST Post-Installation script\""
+check:output=~Running AutoYaST Post-Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"running \/xcatpost\/mypostscript\.post\""
+check:output=~running \/xcatpost\/mypostscript\.post
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"finished node installation\, reporting status\""
+check:output=~\+ echo \'finished node installation\, reporting status\.\.\.\'
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\/xcatpost\/mypostscript\.post return\""
+check:output=~\/xcatpost\/mypostscript\.post return
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"service xcatpostinit1 disabled\""
+check:output=~service xcatpostinit1 disabled
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinfo generated"
+check:output=~/opt/xcat/xcatinfo generated
+cmd:cat /var/log/xcat/computes.log | grep "postscripts downloaded successfully"
+check:output=~postscripts downloaded successfully
+cmd:cat /var/log/xcat/computes.log | grep "running /xcatpost/mypostscript.post"
+check:output=~running /xcatpost/mypostscript.post
+cmd:cat /var/log/xcat/computes.log | grep "/etc/init.d/xcatpostinit1 generated"
+check:output=~/etc/init.d/xcatpostinit1 generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatinstallpost generated"
+check:output=~/opt/xcat/xcatinstallpost generated
+cmd:cat /var/log/xcat/computes.log | grep "/opt/xcat/xcatdsklspost generated"
+check:output=~/opt/xcat/xcatdsklspost generated
+cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
+check:output=~running mypostscript
+cmd:xdsh $$CN "file \/var\/log\/YaST2"
+check:rc==0
+check:output!~No such file or directory
+
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+end
+
+

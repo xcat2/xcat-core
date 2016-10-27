@@ -60,14 +60,16 @@ my %usage = (
       rvitals [-h|--help|-v|--version]
   FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
-  CEC/LPAR/Frame (using Direct FSP Management)specific:
+  CEC/LPAR/Frame (using Direct FSP Management) specific:
       rvitals noderange {rackenv|lcds|all}
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
+  OpenPOWER server specific:
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>
@@ -79,20 +81,22 @@ my %usage = (
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
     BMC specific:
-       rinv <noderange> [mprom|deviceid|uuid|guid|vpd [-t]|all [-t]]
+       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|all]
+    OpenPOWER server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
     MPA specific:
-       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm [-t]] 
+       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
-       rinv <noderange> [all|bus|config|serial|model|firm [-t]]
+       rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
        rinv <noderange> [firm]
        rinv <noderange> [deconfig [-x]]
     Blade specific:
-       rinv <noderange> [all|serial|mac|bios|diag|mprom|mparom|firm|mtm [-t]]
+       rinv <noderange> [all|serial|mac|bios|diag|mprom|mparom|firm|mtm]
     IBM Flex System Compute Node specific:
        rinv <noderange> [firm]
     VMware specific:
-       rinv <noderange>
+       rinv <noderange> [-t]
     zVM specific:
        rinv noderange [all|config]
     MIC specific:
@@ -187,10 +191,6 @@ my %usage = (
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
-   CEC|Frame(using ASM)Specific:
-       rspconfig <noderange>  [dev|celogin1]
-       rspconfig <noderange>  [dev=<enable|disable>]|
-       rspconfig <noderange>  [celogin1=<enable|disable>]
     ",
     "getmacs" =>
       "Usage: 
@@ -305,7 +305,7 @@ my %usage = (
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
     "switchdiscover" =>
       "Usage: switchdiscover [-h|--help|-v|--version]
-       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
+       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose] [--setup]",
     "switchprobe" =>
       "Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>

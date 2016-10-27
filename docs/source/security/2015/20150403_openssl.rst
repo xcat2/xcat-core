@@ -1,0 +1,14 @@
+2015-04-03 - OpenSSL Vulnerabilities (BAR MITZVAH)
+==================================================
+
+The RC4 Bar mitzvah attack is an attack on the SSL/TLS protocols when both the client and server have RC4 enabled. 
+
+* http://www.darkreading.com/attacks-breaches/ssl-tls-suffers-bar-mitzvah-attack-/d/d-id/1319633 
+* http://www.imperva.com/docs/HII_Attacking_SSL_when_using_RC4.pdf.
+
+Action
+------
+
+xCAT uses OpenSSL shipped with OS distribution for client-server communication. It does not use RC4 ciphers explicitly. However, it allows user to specify xcatsslciphers on the site table for ssl communication. It is recommended that the user not specify RC4 ciphers to avoid the Bar mitzvah attack. 
+
+It is also recommended that the user go to the OS distribution to get latest OpenSSL package for the fix of this problem. 

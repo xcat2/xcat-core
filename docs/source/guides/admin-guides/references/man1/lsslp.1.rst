@@ -31,7 +31,7 @@ DESCRIPTION
 ***********
 
 
-The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output. If you can't receive all the hardware, please use -T to increase the waiting time.
+The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output. If you can't receive all the hardware, use -T to increase the waiting time.
 
 NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -i flag.
 
@@ -41,7 +41,7 @@ OPTIONS
 *******
 
 
-\ **noderange**\    The nodes which the user want to discover.  If the user specify the noderange, lsslp will just return the nodes in the node range. Which means it will help to add the new nodes to the xCAT database without modifying the existed definitions. But the nodes' name specified in noderange should be defined in database in advance. The specified nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).  Please do not use noderange with the flag -s.
+\ **noderange**\    The nodes which the user want to discover.  If the user specify the noderange, lsslp will just return the nodes in the node range. Which means it will help to add the new nodes to the xCAT database without modifying the existed definitions. But the nodes' name specified in noderange should be defined in database in advance. The specified nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).  Do not use noderange with the flag -s.
 
 \ **-i**\           IP(s) the command will send out (defaults to all available adapters).
 
@@ -75,7 +75,7 @@ OPTIONS
 
 \ **-z**\           Stanza formated output.
 
-\ **-I**\           Give the warning message for the nodes in database which have no SLP responses. Please note that this flag noly can be used after the database migration finished successfully.
+\ **-I**\           Give the warning message for the nodes in database which have no SLP responses. Note that this flag noly can be used after the database migration finished successfully.
 
 
 ************
@@ -298,7 +298,7 @@ Output is similar to:
   bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
 
 
-8. To find the nodes within the user specified. Please make sure the noderange input have been defined in xCAT database.
+8. To find the nodes within the user specified. Make sure the noderange input have been defined in xCAT database.
 
 
 .. code-block:: perl

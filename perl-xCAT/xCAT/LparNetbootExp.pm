@@ -99,12 +99,12 @@ sub nc_msg
     my $msg     = shift;
     my $rsp;
 
-    if ($verbose eq 1) {
+    if ($verbose == 1) {
         $rsp->{data}->[0] = $msg;
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
 
-    if ($verbose eq 2) {
+    if ($verbose == 2) {
         $rsp->{data}->[0] = $msg;
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
     }
@@ -468,7 +468,7 @@ sub get_phandle {
               }
         ],
     );
-    return 1 if ($rc eq 1);
+    return 1 if ($rc == 1);
 
     # Next, the 'ls' command is sent. The result is a display of the entire
     # device tree. The code then looks at the
@@ -552,7 +552,7 @@ sub get_phandle {
                   }
             ],
         );
-        return 1 if ($rc eq 1);
+        return 1 if ($rc == 1);
         if ($result[2] =~ /(\w*)\:(\s*)\/(\S*)/) {
 
             my $x1 = $1;
@@ -698,7 +698,7 @@ sub get_adap_prop {
     # state 7, done
     $done[7] = 1;
 
-    while ($done[$state] eq 0) {
+    while ($done[$state] == 0) {
         nc_msg($verbose, "Status: command is $cmd[$state]\n");
         send_command($verbose, $rconsole, $cmd[$state]);
         @result = ();
@@ -706,7 +706,7 @@ sub get_adap_prop {
             $timeout,
             [ qr/$pattern[$state]/i,
                 sub {
-                    if ($state eq 1) {
+                    if ($state == 1) {
                         if ($rconsole->before() =~ /-\d+/) {
                             nc_msg($verbose, "Status: Error getting adapter property for phandle=$phandle.\n");
                             $state = 7;
@@ -750,12 +750,12 @@ sub get_adap_prop {
                   }
             ]
         );
-        return 1 if ($rc eq 1);
+        return 1 if ($rc == 1);
 
         # After state 3, the network type is parsed and the connector
         # type extracted.  If the type hasn't been found, add it to
         # the list of supported connector types.
-        if ($state eq 4) {
+        if ($state == 4) {
 
             #  Build the adapter properties from the string
             #regexp .*,(.*),(.*),(.*) $nw_type dummy nw_speed nw_conn nw_duplex
@@ -784,7 +784,7 @@ sub get_adap_prop {
         # state variable is left alone. if not, the state variable is
         # set to 2, causing a loop back to the step where the
         # decode-string command is sent.
-        if ($state eq 5) {
+        if ($state == 5) {
             if ($result[3] =~ /2 > \.s \w+ (\w*)/) {
                 $state = 2 if ($1 != 0);
             }
@@ -899,14 +899,14 @@ sub get_mac_addr {
     # state 4, all done
     $done[4] = 1;
 
-    while ($done[$state] eq 0) {
+    while ($done[$state] == 0) {
         @result = ();
         send_command($verbose, $rconsole, $cmd[$state]);
         @result = $rconsole->expect(
             $timeout,
             [ qr/$pattern[$state]/ =>
                   sub {
-                    if ($state eq 1) {
+                    if ($state == 1) {
                         if ($rconsole->before() =~ /-\d+/) {
                             nc_msg($verbose, "Status: Error getting MAC address for phandle=$phandle.\n");
                             $rconsole->clear_accum();
@@ -990,11 +990,11 @@ sub get_mac_addr {
                   }
             ],
         );
-        return undef if ($rc eq 1);
+        return undef if ($rc == 1);
     }
 
     # if the state is 0, 1, or 2, an error occurred and the join will fail
-    if ($state eq 4) {
+    if ($state == 4) {
         if ($result[2] =~ /dump-mac\s*(\w*)\s*ok/) {
             $mac_address = $1;
         }
@@ -1097,7 +1097,7 @@ sub get_adaptr_loc {
             $timeout,
             [ qr/$pattern[$state]/ =>
                   sub {
-                    if ($state eq 1) {
+                    if ($state == 1) {
                         if ($rconsole->before() =~ /-\d+/) {
                             nc_msg($verbose, "Status: Error getting adapter location for phandle=$phandle.");
                             $rconsole->clear_accum();
@@ -1178,7 +1178,7 @@ sub get_adaptr_loc {
                   }
             ],
         );
-        return undef if ($rc eq 1);
+        return undef if ($rc == 1);
     }
 
     # Did we find one or more adapters?
@@ -1353,7 +1353,7 @@ sub ping_server {
         # Get the list of properties for this adapter
         #
         $adap_prop_list_array = get_adap_prop($phandle, $rconsole, $node, $verbose);
-        if ($adap_prop_list_array eq 1) {
+        if ($adap_prop_list_array == 1) {
             nc_msg($verbose, "ERROR return from get_adap_prop\n");
             return 1;
         }
@@ -1444,23 +1444,23 @@ sub ping_server {
             ],
         );
 
-        return 1 if ($rc eq 1);
+        return 1 if ($rc == 1);
 
-        if ($state eq 1) {
+        if ($state == 1) {
             $adap_conn = $adap_conn_list[$j];
             $cmd[1] = "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r";
             nc_msg($verbose, "Status: Trying connector type $adap_conn\n");
             $j++;
         }
-        if ((($tty_do_ping eq 1) && ($state eq 4)) || ($tty_do_ping != 1) && ($state eq 3)) {
+        if ((($tty_do_ping == 1) && ($state == 4)) || ($tty_do_ping != 1) && ($state == 3)) {
             $ping_debug = $result[2];
         }
-        if ((($tty_do_ping eq 1) && ($state eq 5)) || ($tty_do_ping != 1) && ($state eq 4)) {
-            if (($tty_do_ping eq 1) && ($state eq 5)) {
+        if ((($tty_do_ping == 1) && ($state == 5)) || ($tty_do_ping != 1) && ($state == 4)) {
+            if (($tty_do_ping == 1) && ($state == 5)) {
 
                 #$ping_rc = $result[2];
                 $stack_level = length($result[4]);
-            } elsif (($state eq 4) && ($tty_do_ping != 1) && ($result[2] =~ /PING SUCCESS/)) {
+            } elsif (($state == 4) && ($tty_do_ping != 1) && ($result[2] =~ /PING SUCCESS/)) {
                 $ping_rc = 0;
 
                 #} elsif ( $result[2] =~ /unknown word/ ) {
@@ -1497,7 +1497,7 @@ sub ping_server {
 
             if ($ping_rc eq 0) {
                 nc_msg($verbose, "# $full_path_name ping successful.\n");
-            } elsif ($ping_rc eq 1) {
+            } elsif ($ping_rc == 1) {
                 nc_msg($verbose, "# $full_path_name ping unsuccessful.\n");
                 nc_msg($verbose, "# $full_path_name ping unsuccessful.\n");
                 nc_msg($verbose, "$ping_debug\n");
@@ -1711,7 +1711,7 @@ sub set_disk_boot {
             [ qr/$pattern[$state]/ =>
                   sub {
                     $rconsole->clear_accum();
-                    if ($state eq 4) {
+                    if ($state == 4) {
                         if ($expect_out[6] eq "None") {
                             $state = 8;
                         }
@@ -1744,7 +1744,7 @@ sub set_disk_boot {
                   }
             ],
         );
-        if ($rc eq 1) {
+        if ($rc == 1) {
             return 1;
         } else {
             return 0;
@@ -1898,25 +1898,25 @@ sub boot_network {
                   sub {
                     $rconsole->clear_accum();
                     my @expect_out = shift;
-                    if ($state eq 2) {
-                        if ($set_boot_order eq 1) {
+                    if ($state == 2) {
+                        if ($set_boot_order == 1) {
                             ########################################
                             # Set network as boot device
                             ########################################
                             $cmd[3] = "setenv boot-device $net_device[$newstate[3]]\r";
-                        } elsif ($set_boot_order eq 2) {
+                        } elsif ($set_boot_order == 2) {
                             ########################################
                             # Set network as 1st boot device,disk as 2nd boot device
                             ########################################
                             $boot_device_bk = $expect_out[1];
                             $cmd[3] = "setenv boot-device $net_device[$newstate[3]] $boot_device_bk\r";
-                        } elsif ($set_boot_order eq 3) {
+                        } elsif ($set_boot_order == 3) {
                             ########################################
                             # Set disk as 1st boot device,network as 2nd boot device
                             ########################################
                             $boot_device_bk = $expect_out[1];
                             $cmd[3] = "setenv boot-device $boot_device_bk $net_device[$newstate[3]]\r";
-                        } elsif ($set_boot_order eq 4) {
+                        } elsif ($set_boot_order == 4) {
                             ########################################
                             # set disk as boot device
                             ########################################
@@ -1973,7 +1973,7 @@ sub boot_network {
                   }
             ],
         );
-        return 1 if ($rc eq 1);
+        return 1 if ($rc == 1);
     }
     return 0;
 }
@@ -2363,7 +2363,7 @@ sub Firmware_Dump {
                   }
             ],
         );
-        return 1 if ($rc eq 1);
+        return 1 if ($rc == 1);
     }
     return 0;
 }
@@ -2846,7 +2846,7 @@ sub lparnetbootexp
                     return [1];
                 }
                 unless ($output =~ /Success/) {
-                    if ($retry_count eq 3) {
+                    if ($retry_count == 3) {
                         nc_msg($verbose, "Power off failed, msg is $output.\n");
                         return [1];
                     }
@@ -2874,7 +2874,7 @@ sub lparnetbootexp
                     return [1];
                 }
                 unless ($output =~ /Success/) {
-                    if ($retry_count eq 3) {
+                    if ($retry_count == 3) {
                         nc_msg($verbose, "Power off failed, msg is $output.\n");
                         return [1];
                     }
@@ -2988,7 +2988,7 @@ sub lparnetbootexp
                   sub {
                     $rconsole->send("\r");
                     $retry_count++;
-                    if ($retry_count eq 9) {
+                    if ($retry_count == 9) {
                         nc_msg($verbose, "Timeout waiting for ok prompt; exiting.\n");
                         $rconsole->soft_close();
                         $rc = 1;
@@ -3003,7 +3003,7 @@ sub lparnetbootexp
                   }
             ],
         );
-        return [1] if ($rc eq 1);
+        return [1] if ($rc == 1);
     }
 
 
@@ -3033,10 +3033,10 @@ sub lparnetbootexp
     nc_msg($verbose, "begin to run get_phandle");
     while (!$done) {
         my $result = get_phandle($rconsole, $node, $verbose);
-        if ($result eq 1) {
+        if ($result == 1) {
             $retry_count++;
             $rconsole->send("\r");
-            if ($retry_count eq 3) {
+            if ($retry_count == 3) {
                 nc_msg($verbose, "Unable to obtain network adapter information.  Quitting.\n");
                 return [1];
             }
@@ -3053,7 +3053,7 @@ sub lparnetbootexp
     ##############################
     nc_msg($verbose, "begin to run multiple_open_dev");
     my $result = xCAT::LparNetbootExp->multiple_open_dev($rconsole, $node, $verbose);
-    if ($result eq 1) {
+    if ($result == 1) {
         nc_msg($verbose, "Unable to obtain network adapter information.  Quitting.\n");
         return [1];
     }
@@ -3230,7 +3230,7 @@ sub lparnetbootexp
                 }
                 $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                 if ($macaddress =~ /$mac_address/) {
-                    if (($discovery eq 1) && !$discoverynoping) {
+                    if (($discovery == 1) && !$discoverynoping) {
                         unless ($adap_type[$i] eq "hfi-ent") {
                             $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         }
@@ -3281,7 +3281,7 @@ sub lparnetbootexp
             for ($i = 0 ; $i < $adapter_found ; $i++) {
                 nc_msg($verbose, " begint to boot from first adapter in the device tree \n");
                 if ($adap_type[$i] eq $list_type) {
-                    if (($discovery eq 1) && !$discoverynoping) {
+                    if (($discovery == 1) && !$discoverynoping) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
                             return [1];
@@ -3318,7 +3318,7 @@ sub lparnetbootexp
         # Need to retry network boot because of intermittant network failure
         # after partition reboot.  Force partition to stop at Open Firmware prompt.
         ###########################################################################
-        if ($result eq 5) {
+        if ($result == 5) {
 
             $timeout = 300;
             $rconsole->expect(
@@ -3360,7 +3360,7 @@ sub lparnetbootexp
                     }
                 ],
             );
-            return [1] if ($rc eq 1);
+            return [1] if ($rc == 1);
             nc_msg($verbose, "# bootp sent over network.\n");
             $rc = Boot($rconsole, $node, $verbose);    #, @expect_out);
             unless ($rc eq 0) {

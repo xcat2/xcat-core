@@ -15,7 +15,7 @@ SYNOPSIS
 
 \ **switchdiscover [-v| -**\ **-version]**\ 
 
-\ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\ ]
+\ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\  \ **-**\ **-setup**\ ]
 
 
 ***********
@@ -25,11 +25,13 @@ DESCRIPTION
 
 The switchdiscover command scans the subnets and discovers all the swithches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command as default to discover the switches. However, you can specify other discovery methods such as lldp or snmp with \ **-s**\  flag. You can write the discovered switches into xCAT database with \ **-w**\  flag. This command supports may output formats such as xml(\ **-x**\ ), raw(\ **-r**\ ) and stanza(\ **-z**\ ) in addition to the default format.
 
+\ **-**\ **-setup**\  flag is for switch-based switch discovery.  It will find all the discovered switches on the subnets, then match them with predefined switches in the xCATDB. Next, it will set discovered switches with static ip address and hostname based on the predefined switch.  It will also enable snmpv3 configuration. The details of the process are defined in the http://xcat-docs.readthedocs.io/en/latest/advanced/networks/switchdiscover/switches_discovery.html.
+
 To view all the switches defined in the xCAT databasee use \ **lsdef -w "nodetype=switch"**\  command.
 
-For lldp method, please make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
+For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
 
-For snmp method, please make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
+For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
 
 
 *******
@@ -110,6 +112,12 @@ OPTIONS
  
 
 
+\ **-**\ **-setup**\ 
+ 
+ Process switch-based switch discovery. Update discovered switch's ip address, hostname and enable snmpv3 configuration based on the predefined switch.
+ 
+
+
 
 ************
 RETURN VALUE
@@ -149,14 +157,22 @@ EXAMPLES
  
 
 
-3.
- 
- To use lldp method to discover the switches:
+3. To use lldp method to discover the switches:
  
  
  .. code-block:: perl
  
    switchdiscover -s lldp
+ 
+ 
+
+
+4. To process switch-based switch discovery, the core switch has to be configured and top-of-rack (edge) switch has to be predefine into xCAT databse with attribute \ **switch**\  and \ **switchport**\  to core switch:
+ 
+ 
+ .. code-block:: perl
+ 
+   switchdiscover --range 192.168.5.150-170 -s snmp --setup
  
  
 

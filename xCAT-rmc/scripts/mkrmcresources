@@ -826,7 +826,7 @@ if (
 }
 
 if ($::HELP) { &usage; exit; }
-if (isHMC() && ($ENV{'DC_ENVIRONMENT'} ne 1))
+if (isHMC() && ($ENV{'DC_ENVIRONMENT'} != 1))
 {
     print "mkresources is not supported on HMC.\n";
 }

@@ -5,7 +5,7 @@ Docker Registry is a stateless, highly scalable server side application that sto
 
 This document describes how to set up a local private docker registry on Ubuntu 15.04 on x86_64.
 
-**Note:** Please ensure that docker registry is not already set up on this docker host.
+**Note:** Ensure that docker registry is not already set up on this docker host.
 
 Setting Up Docker Host
 ----------------------
@@ -17,7 +17,7 @@ Setting Up Docker Registry Manually
 
 Docker registry needed to be set up on xCAT's MN.
 
-This section describes two methods of setting up docker registry manullay.
+This section describes two methods of setting up docker registry manually.
 
 First, create some folders where files for this tutorial will live. ::
 

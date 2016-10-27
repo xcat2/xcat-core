@@ -9,7 +9,7 @@ xCAT Management Node (xCAT Mgmt Node):
   The server where xCAT software is installed and used as the single point to perform system management over the entire cluster.  On this node, a database is configured to store the xCAT node definitions.  Network services (dhcp, tftp, http, etc) are enabled to respond in Operating system deployment.
 
 Service Node:
-  One or more defined "slave" servers operating under the Management Node to assist in system management to reduce the load (cpu, network badnwidth) when using a single Management Node.  This concept is necessary when managing very large clusters.
+  One or more defined "slave" servers operating under the Management Node to assist in system management to reduce the load (cpu, network bandwidth) when using a single Management Node.  This concept is necessary when managing very large clusters.
 
 Compute Node:
   The compute nodes are the target servers which xCAT is managing.

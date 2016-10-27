@@ -4,6 +4,8 @@
 .. toctree::
    :maxdepth: 1
 
+   20160824_openssl.rst
+   20160815_openssl.rst
    20160503_openssl.rst
    20160301_openssl.rst
    20160128_openssl.rst

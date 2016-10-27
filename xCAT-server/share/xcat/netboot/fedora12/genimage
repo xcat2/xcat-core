@@ -122,7 +122,7 @@ $updates{'pkgdir'} = $srcdir if ($tempfile);
 if (!$srcdir_otherpkgs) {
     $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
 }
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
+#$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 if (!$destdir)
 {

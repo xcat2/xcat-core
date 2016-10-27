@@ -462,9 +462,11 @@ sub mknetboot
         }
 
         $platform = xCAT_plugin::anaconda::getplatform($osver);
-        my $suffix = 'gz';
+        my $suffix = 'cpio.gz';
         $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'txz' if (-r "$rootimgdir/rootimg.txz");
+        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
+        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
+        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
 
         # statelite images are not packed.
         if ($statelite) {
@@ -513,7 +515,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.txz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });
@@ -1528,16 +1530,15 @@ sub mkinstall
                 if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
                     $kcmdline .= " ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
                 } else {
-                    unless ($nicname) {
-                        $nicname = "bootnic";
-                        my $mactab = xCAT::Table->new("mac");
-                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                        my $mac = xCAT::Utils->parseMacTabEntry($macref->{mac}, $node);
-                        $kcmdline .= " ifname=$nicname:$mac";
+                    $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":";
+                    if($nicname){
+                        $kcmdline .= "$nicname";
                     }
 
-                    $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":" . "$nicname" . ":" . "none";
-                    $kcmdline .= " bootdev=$nicname ";
+                    $kcmdline .=":none::";
+                    if($net_params->{mac}){
+                        $kcmdline .="$net_params->{mac}";
+                    }
                 }
 
                 my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
@@ -2239,17 +2240,27 @@ sub copycd
         }
     }
 
-
     unless ($distname)
     {
+        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno, attempt to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
             my @pkvm_version = split / /, $desc;
             $distname = "pkvm" . $pkvm_version[1];
         }
+        elsif ($desc =~ /Red Hat Enterprise Linux/)
+        {
+            #
+            # Attempt to auto-detect for RHEL OS.
+            # RHEL 7.3 description is: Red Hat Enterprise Linux 7.3
+            #
+            my @rhel_version = split / /, $desc;
+            $distname = "rhels" . $rhel_version[4];
+        }
         else
         {
+            print "INFO - Could not auto-detect operating system.\n";
             return;    #Do nothing, not ours..
         }
     }

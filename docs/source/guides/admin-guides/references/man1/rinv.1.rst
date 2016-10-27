@@ -28,6 +28,13 @@ BMC/MPA specific:
 \ **rinv**\  \ *noderange*\  {\ **pci | model | serial | asset | vpd | mprom | deviceid | guid | firm | diag | bios | mparom | mac | all**\ }
 
 
+OpenPOWER server specific:
+==========================
+
+
+\ **rinv**\  \ *noderange*\  {\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | all**\ }
+
+
 PPC (with HMC) specific:
 ========================
 
@@ -181,6 +188,12 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
 \ **deviceid**\ 
  
  Retrieves device identification. Usually device, manufacturing and product ids.
+ 
+
+
+\ **uuid**\ 
+ 
+ Retrieves the universally unique identifier
  
 
 

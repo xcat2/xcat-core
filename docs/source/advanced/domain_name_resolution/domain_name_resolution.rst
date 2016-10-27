@@ -101,7 +101,7 @@ You must set the **forwarders** attribute in the xCAT cluster **site** definitio
 
 An xCAT **network** definition must be defined for each management network used in the cluster. The **net** and **mask** attributes will be used by the ``makedns`` command.
 
-A network **domain** and **nameservers** value must be provided either in the network definiton corresponding to the nodes or in the site definition.
+A network **domain** and **nameservers** value must be provided either in the network definition corresponding to the nodes or in the site definition.
 
 For example, if the cluster domain is **mycluster.com**, the IP address of the management node, (as known by the cluster nodes), is **100.0.0.41** and the site DNS servers are **50.1.2.254,50.1.3.254** then you would run the following command. ::
 
@@ -249,7 +249,7 @@ To use this support you must set one or more of the following node definition at
 The additional NIC information may be set by directly editing the xCAT **nics** table or by using the **xCAT *defs** commands to modify the node definitions.
 
 The details for how to add the additional information is described below. As you will see, entering this
-information manually can be tedious and error prone. This support is primarily targetted to be used in
+information manually can be tedious and error prone. This support is primarily targeted to be used in
 conjunction with other IBM products that have tools to fill in this information in an automated way.
 
 Managing additional interface information using the **xCAT *defs** commands
@@ -269,7 +269,7 @@ For example, the expanded format for the **nicips** and **nichostnamesuffixes** 
      nicips.eth1=10.1.1.6
      nichostnamesuffixes.eth1=-eth1
 
-If we assume that your xCAT node name is **compute02** then this would mean that you have an additonal interface **("eth1")** and that the hostname and IP address are **compute02-eth1** and **10.1.1.6**.
+If we assume that your xCAT node name is **compute02** then this would mean that you have an additional interface **("eth1")** and that the hostname and IP address are **compute02-eth1** and **10.1.1.6**.
 
 A "|" delimiter is used to specify multiple values for an interface. For example: ::
 
@@ -285,7 +285,7 @@ For the **nicaliases** attribute a list of additional aliases may be provided. :
 
 This indicates that the **compute02-eth1** hostname would get the additional two aliases, alias1 alias2, included in the **/etc/hosts** file, (when using the ``makehosts`` command).
 
-The second line indicates that **compute02-eth2** would get the additonal alias **alias3** and that **compute02-eth-lab** would get **alias4**
+The second line indicates that **compute02-eth2** would get the additional alias **alias3** and that **compute02-eth-lab** would get **alias4**
 
 Setting individual nic attribute values
 '''''''''''''''''''''''''''''''''''''''

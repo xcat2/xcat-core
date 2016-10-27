@@ -67,14 +67,14 @@ if [ -z "$UP" ]; then
 fi
 
 # These are the rpms that should be built for each kind of xcat build
-ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
 # xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
 # xCAT-client has PCM specific configuration - getxcatdocs(perl-JSON) 
 PCMBUILD="xCAT xCAT-server xCAT-client xCATsn"
-PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-vlan"
+PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-vlan xCAT-probe"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
@@ -172,9 +172,17 @@ else
 fi
 
 function setversionvars {
-    VER=`cat Version`
-    SHORTVER=`cat Version|cut -d. -f 1,2`
-    SHORTSHORTVER=`cat Version|cut -d. -f 1`
+    if [ ! -z "$USEGITVER" ]; then
+        VER=`git describe`
+        VER=${VER/-/.post}
+        VER=${VER/-/.}
+    else
+        VER=`cat Version`
+    fi
+    XCATVER=$VER
+    export XCATVER
+    SHORTVER=`echo $VER|cut -d. -f 1,2`
+    SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
     COMMIT_ID=`git rev-parse --short HEAD`
@@ -291,7 +299,7 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm; do
     if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
     if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix

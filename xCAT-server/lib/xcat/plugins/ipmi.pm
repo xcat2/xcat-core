@@ -524,6 +524,10 @@ sub on_bmc_connect {
     } elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
     } elsif ($command eq "rbeacon") {
+        unless (defined $sessdata->{device_id}) { #need get device id data initted for SD350 workaround
+            $sessdata->{ipmisession}->subcmd(netfn => 6, command => 1, data => [], callback => \&gotdevid, callback_args => $sessdata);
+            return;
+        }
         return beacon($sessdata);
     } elsif ($command eq "rsetboot") {
         return setboot($sessdata);
@@ -925,6 +929,19 @@ sub setnetinfo {
             $mask[$_] = $mask[$_] + 0;
         }
         @cmd = (0x01, $channel_number, 12, @mask);
+    } elsif ($subcommand =~ m/vlan/) {
+        unless ( int($argument) == $argument ) {
+            $callback->({ errorcode => [1], error => ["The input $argument is invalid, please input an integer"] });
+            return;
+        }
+        unless (($argument>=1) && ($argument<=4096)) {
+            $callback->({ errorcode => [1], error => ["The input $argument is invalid, valid value [1-4096]"] });
+            return;
+        }
+        my @vlanparam = ();
+        $vlanparam[0] = ($argument & 0xff);
+        $vlanparam[1] = 0x80 | (($argument & 0xf00) >> 8);
+        @cmd = (0x01, $channel_number, 0x14, @vlanparam);
     } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
         @cmd = (0x01, $channel_number, 0x4, 0x2);
     } elsif ($subcommand =~ m/ip/) {
@@ -1054,6 +1071,9 @@ sub getnetinfo {
     elsif ($subcommand =~ m/^snmpdest(\d+)/) {
         @cmd = (0x02, $channel_number, 0x13, $1, 0x00);
     }
+    elsif ($subcommand eq "vlan") {
+        @cmd = (0x02, $channel_number, 0x14, 0x00, 0x00);
+    }
     elsif ($subcommand eq "ip") {
         @cmd = (0x02, $channel_number, 0x03, 0x00, 0x00);
     }
@@ -1121,6 +1141,14 @@ sub getnetinfo_response {
                 $returnd[6],
                 $returnd[7],
                 $returnd[8]), $callback, $sessdata->{node}, %allerrornodes);
+    } elsif ($subcommand eq "vlan") {
+        if (($returnd[3] >> 7) & 0x01) {
+            xCAT::SvrUtils::sendmsg(sprintf("$format %d" . $bmcifo,
+                "BMC VLAN ID enabled:",
+                (($returnd[3] & 0x0f) << 8) | $returnd[2]), $callback, $sessdata->{node}, %allerrornodes);
+        } else {
+            xCAT::SvrUtils::sendmsg("BMC VLAN disabled" . $bmcifo, $callback, $sessdata->{node}, %allerrornodes);
+        }
     } elsif ($subcommand eq "ip") {
         xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d" . $bmcifo,
                 "BMC IP:",
@@ -1570,10 +1598,13 @@ sub isfpc {
     return 1
 }
 
-sub isfirestone {
+sub isopenpower {
     my $sessdata = shift;
-    if ($sessdata->{prod_id} == 43707) {
+    if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         return 1;
+    }
+    else {
+        return 0;
     }
 }
 
@@ -1728,9 +1759,43 @@ sub do_firmware_update {
     }
     xCAT::SvrUtils::sendmsg("rflash started, please wait.......",
         $callback, $sessdata->{node}, %allerrornodes);
+    
+    # check for 8335-GTB Model Type to adjust buffer size
+    my $buffer_size = "30000";
+    my $cmd = $pre_cmd . " fru print 3";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+            $callback, $sessdata->{node}, %allerrornodes);
+        return -1;
+    }
+    if ($output =~ /8335-GTB/) {
+        $buffer_size = "15000";
+    }
+
+    # check for 8335-GTB Firmware above 1610A release.  If below, exit
+    if ($output =~ /8335-GTB/) {
+        $cmd = $pre_cmd . " fru print 47";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+        }
+        my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
+        if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
+            my $prim_grs_version = $1;
+            my $sec_grs_version = $2;
+            if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
+                xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
+                $callback, $sessdata->{node}, %allerrornodes);
+            return -1;
+            }
+        }
+    }
 
     # step 1 power off
-    my $cmd = $pre_cmd . " chassis power off";
+    $cmd = $pre_cmd . " chassis power off";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
@@ -1747,14 +1812,14 @@ sub do_firmware_update {
         return -1;
     }
 
-    #check reset status
+    # check reset status
     unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
         xCAT::SvrUtils::sendmsg([ 1, "Timeout to check the bmc status" ],
             $callback, $sessdata->{node}, %allerrornodes);
         return -1;
     }
 
-    #step 3 protect network
+    # step 3 protect network
     $cmd = $pre_cmd . " raw 0x32 0xba 0x18 0x00";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
@@ -1764,9 +1829,9 @@ sub do_firmware_update {
     }
 
     # step 4 upgrade firmware
-    $cmd = $pre_cmd . " -z 30000 hpm upgrade $hpm_file force";
+    $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
-
+    
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed." ],
             $callback, $sessdata->{node}, %allerrornodes);
@@ -1783,7 +1848,7 @@ sub do_firmware_update {
 
 sub rflash {
     my $sessdata = shift;
-    if (isfirestone($sessdata)) {
+    if (isopenpower($sessdata)) {
 
         # Do firmware update for firestone here.
         @{ $sessdata->{component_ids} } = qw/1 2 4/;
@@ -2354,7 +2419,9 @@ sub beacon {
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
     if ($subcommand eq "on") {
-        if ($ipmiv2) {
+        if ($sessdata->{mfg_id} == 19046 and $sessdata->{prod_id} == 13616) { # Lenovo SD350
+            $sessdata->{ipmisession}->subcmd(netfn => 0x3a, command => 6, data => [ 1, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
+	} elsif ($ipmiv2) {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [ 0, 1 ], callback => \&beacon_answer, callback_args => $sessdata);
         } else {
             $sessdata->{ipmisession}->subcmd(netfn => 0, command => 4, data => [0xff], callback => \&beacon_answer, callback_args => $sessdata);
@@ -2393,6 +2460,7 @@ sub beacon_answer {
 
 sub inv {
     my $sessdata   = shift;
+    my $command = $sessdata->{command};
     my $subcommand = $sessdata->{subcommand};
 
     my $rc = 0;
@@ -2448,9 +2516,9 @@ sub inv {
         @types = qw(guid);
     }
     else {
-        @types = ($subcommand);
-
-        #return(1,"unsupported BMC inv argument $subcommand");
+        my $usage_string = xCAT::Usage->getUsage($command);
+        $callback->({ error => ["$usage_string"], errorcode => [1] });
+        return 1;
     }
     $sessdata->{invtypes} = \@types;
     initfru($sessdata);
@@ -2544,9 +2612,17 @@ sub add_textual_frus {
     my $type         = shift;
     my $sessdata     = shift;
     unless ($type) { $type = 'hw'; }
-    add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
+    if ($desc =~ /System Firmware/i and $category =~ /product/i) {
+        $type = 'firmware,bmc';
+    }
+    if ($desc =~ /NODE \d+/ and $category =~ /chassis/) {
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
+    } else {
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
+        add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
+    }
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Manufacturer", $category, "manufacturer", $type, $sessdata);
-    add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "FRU Number", $category, "frunum", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Version", $category, "version", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "MAC Address", $category, "macaddrs", "mac", $sessdata, addnumber => 1);
@@ -2897,6 +2973,7 @@ sub initfru_with_mprom {
         fru_initted($sessdata);
         return;
     }
+
     $sessdata->{currfruid} = 0;
     $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [0], callback => \&process_currfruid, callback_args => $sessdata);
 }
@@ -3162,10 +3239,29 @@ sub initfru_zero {
         }
         $sessdata->{fru_hash}->{ $frudex++ } = $fru;
     }
-
     #Ok, done with fru 0, on to the other fru devices from SDR
     $sessdata->{frudex} = $frudex;
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
+
+        if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
+            # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
+            @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
+            foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
+                my $sdr = $sessdata->{sdr_hash}->{$key};
+                unless ($sdr->rec_type == 0x11) {
+                    next;
+                }
+                my $fru_id = $sdr->sensor_number;
+                if (defined($fruids_hash{$fru_id})) {
+                    $sessdata->{sdr_info_for_openpower}->{$fru_id} = $sdr; 
+                }
+            }
+            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
+            return;
+        }
         fru_initted($sessdata);
         return;
     }
@@ -3481,6 +3577,18 @@ sub add_fruhash {
             add_textual_frus($fruhash, $sessdata->{currfrusdr}->id_string, "Chassis ", "chassis", undef, $sessdata);
         }
     }
+
+    if ($sessdata->{skipotherfru}) {
+        if (scalar @{$sessdata->{frus_for_openpower}}) {
+            $sessdata->{currfruid} = shift @{$sessdata->{frus_for_openpower}};
+            $sessdata->{currfrusdr} = $sessdata->{sdr_info_for_openpower}->{$sessdata->{currfruid}}; 
+            $sessdata->{ipmisession}->subcmd(netfn => 0xa, command => 0x10, data => [ $sessdata->{currfruid} ], callback => \&process_currfruid, callback_args => $sessdata);
+            return;
+        }
+        fru_initted($sessdata);
+        return; 
+    }
+
     if (scalar @{ $sessdata->{dimmfru} }) {
         $sessdata->{currfrusdr} = shift @{ $sessdata->{dimmfru} };
         while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{ $sessdata->{dimmfru} }) {
@@ -5836,7 +5944,7 @@ sub do_dcmi_operating {
 sub renergy {
     my $sessdata    = shift;
     my @subcommands = @{ $sessdata->{extraargs} };
-    if (isfirestone($sessdata)) {
+    if (isopenpower($sessdata)) {
         unless (@subcommands) {
             @subcommands = qw/powerusage temperature/;
         }

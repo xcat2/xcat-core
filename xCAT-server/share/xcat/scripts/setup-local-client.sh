@@ -15,15 +15,30 @@ umask 0077 #nothing make by this script should be readable by group or others
 if [ -z "$XCATDIR" ]; then
   XCATDIR=/etc/xcat
 fi
+# if `-f`|`--force` option is supplied, set a variable and remove option from paraameters
+# This allows use of the old code without modification
+FORCE=0
+for v in "$@"; do
+  case "$v" in
+    "-f"|"--force")
+      FORCE=1
+      continue
+      ;;
+  esac
+  ARGS[${#ARGS[@]}]="$v"
+done
+if [ ${#ARGS[@]} -gt 0 ]; then
+  set "${ARGS[@]}"
+fi
 if [ -z "$1" ]; then
   set `whoami`
 fi
 # if directory is not supplied then just use home
 if [ -z "$2" ]; then
-   CNA="$*"
-#  getent doesn't exist on AIX
+  CNA="$*"
+# getent doesn't exist on AIX
   if [ -x /usr/bin/getent ];then
-   USERHOME=`getent passwd $1|awk -F: '{print $6}'`
+    USERHOME=`getent passwd $1|awk -F: '{print $6}'`
   else
     USERHOME=`grep ^$1: /etc/passwd | cut -d: -f6` 
   fi
@@ -35,34 +50,44 @@ XCATCADIR=$XCATDIR/ca
 
 if [ -e $USERHOME/.xcat ]; then
 # exit 0
-  echo -n "$USERHOME/.xcat already exists, delete and start over (y/n)?"
-  read ANSWER
-  if [ "$ANSWER" != "y" ]; then
-    echo "Aborting at user request"
-    exit 0
+  if [ $FORCE -eq 0 ]; then
+    echo -n "$USERHOME/.xcat already exists, delete and start over (y/n)?"
+    read ANSWER
+    if [ "$ANSWER" != "y" ]; then
+      echo "Aborting at user request"
+      exit 0
+    fi
   fi
   rm -rf $USERHOME/.xcat
 fi
 # remove user from index
-index=`grep $CNA /etc/xcat/ca/index  |  cut -f4  2>&1`
-for id  in $index; do
+index=`grep $CNA /etc/xcat/ca/index | cut -f4 2>&1`
+for id in $index; do
   openssl ca -startdate 19600101010101Z -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$id.pem
 done
 mkdir -p $USERHOME/.xcat
 cd $USERHOME/.xcat
 openssl genrsa -out client-key.pem 2048
-openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_cert -subj "/CN=$CNA"
-cp client-req.pem  $XCATDIR/ca/root.csr
-cd -
+if [ $FORCE -eq 0 ]; then
+  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_cert -subj "/CN=$CNA"
+else
+  openssl req -config $XCATCADIR/openssl.cnf -new -key client-key.pem -out client-req.pem -extensions usr_cert -subj "/CN=$CNA" -batch
+fi
+cp client-req.pem $XCATDIR/ca/root.csr
+cd - >/dev/null
 cd $XCATDIR/ca
 
 #   - "make sign" doesn't work on my AIX test system????
 #   - seems to be a problem with the use of the wildcard in the Makefile
 #   - calling cmds directly instead - should be safe
 # make sign
-openssl ca -startdate 600101010101Z -config openssl.cnf -in root.csr -out root.cert
+if [ $FORCE -eq 0 ]; then
+  openssl ca -startdate 600101010101Z -config openssl.cnf -in root.csr -out root.cert
+else
+  openssl ca -startdate 600101010101Z -config openssl.cnf -in root.csr -out root.cert -batch
+fi
 if [ -f root.cert ]; then
-    rm root.csr
+  rm root.csr
 fi
 
 cp root.cert $USERHOME/.xcat/client-cert.pem
@@ -74,4 +99,4 @@ find $USERHOME/.xcat -type f -exec chmod 600 {} \;
 find $USERHOME/.xcat -type d -exec chmod 700 {} \;
 chmod 644 $USERHOME/.xcat/ca.pem
 chmod 755 $USERHOME/.xcat
-cd -
+cd - >/dev/null

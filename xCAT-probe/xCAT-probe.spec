@@ -1,11 +1,11 @@
 Summary: xCAT diagnostic tool 
 Name: xCAT-probe
-Version: %(cat Version)
-Release: snap%(date +"%Y%m%d%H%M")
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 4
 License: EPL
 Group: Applications/System
-Source: xCAT-probe-%(cat Version).tar.gz
+Source: xCAT-probe-%{version}.tar.gz
 Packager: IBM Corp.
 Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
@@ -37,14 +37,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/probe/
 
 cp xcatprobe $RPM_BUILD_ROOT/%{prefix}/bin
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
-
 cp -r subcmds  $RPM_BUILD_ROOT/%{prefix}/probe/
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/probe/subcmds/*
-
 cp -r lib $RPM_BUILD_ROOT/%{prefix}/probe/
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/
-chmod -R 644 $RPM_BUILD_ROOT/%{prefix}/probe/lib/perl/xCAT/
 
 %clean
 # This step does not happen until *after* the %files packaging below

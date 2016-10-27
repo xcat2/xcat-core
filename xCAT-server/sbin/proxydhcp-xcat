@@ -127,7 +127,7 @@ until ($quit) {
     my $strp  = 0xf0;
     my $archp = 0;
     while ($strp < $#package) {
-        if ($package[$strp] eq 60) {
+        if ($package[$strp] == 60) {
             $archp = $strp + 0x11;
             last;
         } else {
@@ -240,12 +240,12 @@ until ($quit) {
             }
             if (($num - 5) % 16 eq 0) {
                 syslog("info", $msg);
-                print $msg. "\n";
+                print "$msg \n";
                 $msg = "";
             }
             $num++;
         }
-        print $msg. "\n";
+        print "$msg \n";
     }
 }
 
