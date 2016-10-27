@@ -8,3 +8,4 @@ Networks
    switchdiscover/index.rst
    infiniband/index.rst
    ipv6/index.rst
+   edgecore_switches/index.rst
