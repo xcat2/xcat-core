@@ -1722,6 +1722,16 @@ sub setAttribs
         @bind   = ();
         $cols   = "";
         my %newpairs;
+        # NOTE(chenglch): Just work around, set the default value to '' due to
+        # null value can not be allowed in composite primary keys in standard
+        # SQL rules.
+        my $descr = $xCAT::Schema::tabspec{ $self->{tabname} };
+        my @pkeys = @{$descr->{keys}};
+        for my $p (@pkeys) {
+            if(!defined($elems->{$p}) && !defined($pKeypairs->{$p})) {
+                $elems->{$p}= '';
+            }
+        }
 
         #first, merge the two structures to a single hash
         foreach (keys %keypairs)
