@@ -228,15 +228,15 @@ my %cmdline_for_log = (
         enable => "registry -Hw nets/DevEnabled 1",
         disable => "registry -Hw nets/DevEnabled 0",
         check_pwd => "registry -l DevPwdFile",
-        create_pwd => "netsDynPwdTool --create dev FipSdev",
-        password => "FipSdev"
+        create_pwd => "netsDynPwdTool --create dev xxxxxx",
+        password => "xxxxxx"
     },
     celogin1 => {
         enable => "registry -Hw nets/CE1Enabled 1",
         disable => "registry -Hw nets/CE1Enabled 0",
         check_pwd => "registry -l Ce1PwdFile",
-        create_pwd => "netsDynPwdTool --create celogin1 FipSce1",
-        password => "FipSce1"
+        create_pwd => "netsDynPwdTool --create celogin1 xxxxxx",
+        password => "xxxxxx"
     },
     );
 sub send_command {

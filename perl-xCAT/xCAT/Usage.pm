@@ -173,10 +173,6 @@ my %usage = (
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
-   CEC|Frame(using ASM)Specific:
-       rspconfig <noderange>  [dev|celogin1]
-       rspconfig <noderange>  [dev=<enable|disable>]|
-       rspconfig <noderange>  [celogin1=<enable|disable>]
     ",
     "getmacs" => 
 "Usage: 
