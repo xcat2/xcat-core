@@ -326,10 +326,7 @@ sub parse_option {
     }
     
     if ( $command eq 'dev' or $command eq 'celogin1' ) {
-       if ($value !~ /^(enable|disable)$/i ) {
-           return( "Invalid argument '$value'" );
-       }
-       $request->{dev} = 1;
+        return( "Argument '$command' is obsoleted" );
     } elsif ( $command eq 'sslmode' ) {
        if ($value !~ /^(default|enabled|disabled)$/i ) {
            return( "Invalid argument '$value'. sslmode must be set to 'Disabled', 'Enabled', or 'Default'." );
