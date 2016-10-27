@@ -60,14 +60,16 @@ my %usage = (
       rvitals [-h|--help|-v|--version]
   FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
-  CEC/LPAR/Frame (using Direct FSP Management)specific:
+  CEC/LPAR/Frame (using Direct FSP Management) specific:
       rvitals noderange {rackenv|lcds|all}
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
+  OpenPOWER server specific:
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>

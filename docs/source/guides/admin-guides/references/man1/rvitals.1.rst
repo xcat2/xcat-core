@@ -28,8 +28,8 @@ FSP/LPAR (with HMC) specific:
 \ **rvitals**\  \ *noderange*\  {\ **temp | voltage | lcds | all**\ }
 
 
-CEC/LPAR/Frame (using Direct FSP Management ) specific:
-=======================================================
+CEC/LPAR/Frame (using Direct FSP Management) specific:
+======================================================
 
 
 \ **rvitals**\  \ *noderange*\  {\ **rackenv | lcds | all**\ } [\ **-V**\ | \ **-**\ **-verbose**\ ]
