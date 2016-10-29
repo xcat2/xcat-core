@@ -326,7 +326,7 @@ sub process_request {
     my $req      = shift;
     my $callback = shift;
     my $sub_req  = shift;
-  
+
     ###########################################
     # Build hash to pass around
     ###########################################
@@ -472,19 +472,20 @@ sub process_request {
             my $msg = sprintf $format, $ip, $name, $vendor, $mac;
             send_msg(\%request, 0, $msg);
         }
+        send_msg(\%request, 0,"\n");        
     }
 
+    my ($discoverswitch, $predefineswitch) = matchPredefineSwitch($result, \%request, $sub_req);
 
     # writes the data into xCAT db
     if (exists($globalopt{w})) {
         send_msg(\%request, 0, "Writing the data into xCAT DB....");
-        xCATdB($result, \%request, $sub_req);
+        xCATdB($discoverswitch, \%request, $sub_req);
     }
 
     if (exists($globalopt{setup})) {
-        switchsetup($result, \%request, $sub_req);
+        switchsetup($predefineswitch, \%request, $sub_req);
     }
-
 
     return;
 }
@@ -1199,7 +1200,6 @@ sub xCATdB {
             $mac=" ";
         }
 
-
         #################################################
         # use lsdef command to check if this switch is
         # already in the switch table
@@ -1369,13 +1369,9 @@ sub format_xml {
 }
 
 #--------------------------------------------------------------------------------
-=head3  switchsetup
+=head3 matchPredefineSwitch 
       find discovered switches with predefine switches
       for each discovered switches:
-      1) matching mac to a predefined node
-      2) if get predefined node, config the discovered switch, if failed, update
-         'otherinterface' attribute of predefined node
-      3) remove hosts record and node definition for the discovered switch
     Arguments:
       outhash: a hash containing the switches discovered
     Returns:
@@ -1383,14 +1379,13 @@ sub format_xml {
 =cut
 #--------------------------------------------------------------------------------
 
-sub switchsetup {
+sub matchPredefineSwitch {
     my $outhash = shift;
     my $request = shift;
     my $sub_req = shift;
-    my @switchnode = ();
+    my $discoverswitch;
+    my $configswitch;
     my $static_ip;
-    my $discover_switch;
-    my $nodes_to_config;
 
     #print Dumper($outhash);
     my $macmap = xCAT::MacMap->new();
@@ -1409,7 +1404,10 @@ sub switchsetup {
 
         my $node = $macmap->find_mac($mac,0,1);
         if (!$node) {
-            send_msg($request, 0, "NO predefined switch matched this switch $dswitch with ip address $ip and mac address $mac");
+            send_msg($request, 0, "Switch discovered: $dswitch ");
+            $discoverswitch->{$mac}->{ip} = $ip;
+            $discoverswitch->{$mac}->{vendor} = $vendor;
+            $discoverswitch->{$mac}->{name} = $dswitch;
             next;
         }
 
@@ -1417,14 +1415,29 @@ sub switchsetup {
         $static_ip = xCAT::NetworkUtils->getipaddr($node);
         my $stype = get_switchtype($vendor);
 
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "Found Discovery switch $dswitch, $ip, $mac with predefine switch $node, $static_ip $stype switch\n" );
-        }
+        send_msg($request, 0, "Switch discovered and matched: $dswitch to $node" );
+
         xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
 
-        push (@{$nodes_to_config->{$stype}}, $node);
+        push (@{$configswitch->{$stype}}, $node);
     }
 
+    return ($discoverswitch, $configswitch);
+}
+
+#--------------------------------------------------------------------------------
+=head3 switchsetup 
+      configure the switch 
+    Arguments:
+      outhash: a hash containing the switches need to configure
+    Returns:
+      result:
+=cut
+#--------------------------------------------------------------------------------
+sub switchsetup {
+    my $nodes_to_config = shift;
+    my $request = shift;
+    my $sub_req = shift;
     foreach my $mytype (keys %$nodes_to_config) {
         my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
