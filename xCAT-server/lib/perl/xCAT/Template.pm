@@ -288,11 +288,11 @@ sub subvars {
             @pkgdirs = split(",", $media_dir);
             my $source;
             my $source_in_pre;
+            my $writerepo;
             my $c = 0;
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|fedora)$/) {
                     if ($c == 0) {
-
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
                         $source_in_pre .= "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
@@ -300,6 +300,18 @@ sub subvars {
                     } else {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #for rhels5.9
+                    }
+                    if( -f "$pkgdir/local-repository.tmpl"){
+                        my $repofd;
+                        my $repo_in_post;
+                        local $/=undef;
+                        open($repofd,"<","$pkgdir/local-repository.tmpl");
+                        $repo_in_post = <$repofd>;
+                        close($repofd);
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master/#g;
+                        $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
+                        $writerepo .="$repo_in_post\n";
+                        $writerepo .="EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse)/) {
                     my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
@@ -320,6 +332,7 @@ sub subvars {
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
             }
+            $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
 
         #ok, now do everything else..
