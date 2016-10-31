@@ -23,7 +23,7 @@ my $rst     = 0;
 # Match pattern for discovered nodes: node-1234-ABCDE-123456
 #                                     node- d+ -[a-z]- d+
 #my $discovered_node_pattern =      '^node-\d+-[a-zA-Z]+-\d+';
-my $discovered_node_pattern = '^node-*';
+my $discovered_node_pattern = '^node-';
 
 $::USAGE = "Usage:
     $program_name -h
@@ -118,9 +118,12 @@ sub check_for_duplicate_mtms_sn {
             if ($node_name =~ /$discovered_node_pattern/) {
                 probe_utils->send_msg("$output", "d", "Pattern match discovered for node: $node_name") if ($VERBOSE);
 
-                # Build a hash of key="mtm+serial" and value="nodename". Later entry will be removed if
-                # predefined node found with the same mtm + serial found
-                $waiting_to_be_discovered{$value} = $node_name;
+                # Check if mtm and serial are set
+                unless ($value eq " mtm= serial=") {
+                    # Build a hash of key="mtm+serial" and value="nodename". Later, this entry 
+                    # will be removed if predefined node found with the same mtm + serial found
+                    $waiting_to_be_discovered{$value} = $node_name;
+                }
             }
         }
         $node_mtm_serial_hash{$node_name} = $value;
@@ -141,7 +144,19 @@ sub check_for_duplicate_mtms_sn {
                 probe_utils->send_msg("$output", "d", "No mtm and no serial for node $node_name") if ($VERBOSE);
                 next;
             }
-            probe_utils->send_msg("$output", "f", "Duplicate found for machine with $mtm_serial : $node_name and $mtm_serial_node_hash{$mtm_serial}");
+
+            # Check whioh of the 2 matching node definitions is the discovered node
+            # for proper message display
+            if ($node_name =~ /$discovered_node_pattern/) {
+                probe_utils->send_msg("$output", "f", "$node_name has been discovered as $mtm_serial_node_hash{$mtm_serial} and can be removed using \"rmdef $node_name\"");
+            }
+            elsif ($mtm_serial_node_hash{$mtm_serial} =~ /$discovered_node_pattern/) {
+                probe_utils->send_msg("$output", "f", "$mtm_serial_node_hash{$mtm_serial} has been discovered as $node_name and can be removed using \"rmdef $mtm_serial_node_hash{$mtm_serial}\"");
+            }
+            else {
+                # None of the node names start with discovered_node_pattern, display generic message
+                probe_utils->send_msg("$output", "f", "Duplicate node definition found for the same $mtm_serial : $node_name and $mtm_serial_node_hash{$mtm_serial}");
+            }
             if ($DELETE_DUPLICATE) {
 
                 # Removing node definition of the duplicate node entry

@@ -66,7 +66,7 @@ For example:
 
 This command will automatically configure the cross-over ports if the given nodes are on different switches.
 
-For added security, the root guard and bpdu guard will be enabled for the ports in this vlan. However, the guards will not be disabled if the ports are removed from the vlan using chvlan or rmvlan commands. To disable them, you need to use the switch command line interface. Please refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port.
+For added security, the root guard and bpdu guard will be enabled for the ports in this vlan. However, the guards will not be disabled if the ports are removed from the vlan using chvlan or rmvlan commands. To disable them, you need to use the switch command line interface. Refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port.
 
 
 **********
@@ -83,7 +83,7 @@ OPTIONS
 
 
 
-\ **-n|-**\ **-nodes**\      The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Please check the man page for noderange for details.
+\ **-n|-**\ **-nodes**\      The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Check the man page for noderange for details.
 
 
 
@@ -137,7 +137,7 @@ To start, the xCAT switches and switches table needs to be filled with switch an
 "node3","switch1","12",,"primary:eth0",,
 "node3","switch2","3",,"eth1",,
 
-Please note that the interface value for the management (primary) network can be empty, the word "primary" or "primary:ethx". For other networks, the interface attribute must be specified.
+Note that the interface value for the management (primary) network can be empty, the word "primary" or "primary:ethx". For other networks, the interface attribute must be specified.
 
 The following is an example of the switches table
 

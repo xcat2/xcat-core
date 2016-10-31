@@ -58,7 +58,7 @@ Remove xCAT Files
   
       dpkg -l | awk '/xcat/ { print $2 }'
 
-  If you want to remove more cleanly. below list maybe helpful for you. They are the packages list of xcat installation tarball. These list are the whole RPMs list, it's possible for some RPMs not to be installed due to them are not suitable for your environment. Please do judgment by yourself.
+  If you want to remove more cleanly, the list bleow maybe helpful. Listed are the packages of xcat installation tarball. Some RPMs may not to be installed in a specific environment.
 
   * XCAT Core Packages list (xcat-core):
 

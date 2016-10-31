@@ -300,6 +300,9 @@ if [ -z $STATEMNT ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
   done
 
+  ifname="$(getarg ifname=)"
+  netdev="$(getarg netdev=)"
+  BOOTIF="$(getarg BOOTIF=)"
   if [ ! -z "$ifname" ]; then
     MACX=${ifname#*:}
     ETHX=${ifname%:$MACX*}

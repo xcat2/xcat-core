@@ -3,7 +3,7 @@ Docker life-cycle management in xCAT
 
 The Docker linux container technology is currently very popular. xCAT can help managing Docker containers. xCAT, as a system management tool has the natural advantage for supporting multiple operating systems, multiple architectures and large scale clusters.
 
-This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
+This document describes how to use xCAT for docker management, from Docker Host setup to docker container operations. 
 
 **Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64**, **ubuntu16.04 x86_64** and **ubuntu16.04 ppc64el**.
 

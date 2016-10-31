@@ -18,7 +18,7 @@ Following sections show how to use ``diskdiscover`` and ``configraid``, we assum
 Discovering disk devices
 ------------------------
 
-Command ``diskdiscover`` scans disk devices, it can get the overview of disks and RAID arrays information from compute node; The outputs contain useful information for ``configraid`` to configure RAID arrays, user can get ``pci_id``, ``pci_slot_name``, ``disk names``, ``RAID arrays`` and other informations from the outputs. It should be ran in xcat genesis system. It can be executed without input parameter or with pci_id, pci_id includes PCI vender and device ID. For example, power8 SAS adapter pci_id is ``1014:034a``, ``1014`` is vender info, ``034a`` is PCI-E IPR SAS Adapter, more info about pci_id refer to ``http://pci-ids.ucw.cz/read/PC/1014/``.
+Command ``diskdiscover`` scans disk devices, it can get the overview of disks and RAID arrays information from compute node; The outputs contain useful information for ``configraid`` to configure RAID arrays, user can get ``pci_id``, ``pci_slot_name``, ``disk names``, ``RAID arrays`` and other informations from the outputs. It should be ran in xcat genesis system. It can be executed without input parameter or with pci_id, pci_id includes PCI vendor and device ID. For example, power8 SAS adapter pci_id is ``1014:034a``, ``1014`` is vendor info, ``034a`` is PCI-E IPR SAS Adapter, more info about pci_id refer to ``http://pci-ids.ucw.cz/read/PC/1014/``.
 
 Here are steps to use ``diskdiscover``:
 
@@ -70,19 +70,19 @@ Here are the input parameters introduction:
 #. **delete_raid** : List raid arrays which should be removed.
 
      * If its value is all, all raid arrays detected should be deleted.
-     * If its value is a list of raid array names, these raid arrays will be deleted. Raid array names should be seperated by ``#``.
+     * If its value is a list of raid array names, these raid arrays will be deleted. Raid array names should be separated by ``#``.
      * If its value is null or there is no delete_raid, no raid array will be deleted.
      * If there is no delete_raid, the default value is null.
 
 #. **stripe_size** : It is optional used when creating RAID arrays. If stripe size is not specified, it will default to the recommended stripe size for the selected RAID level.
 
-#. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are seperated by ``#``. The formats are as followings: 
+#. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are separated by ``#``. The formats are as followings: 
 
-     * ``rl`` means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6. ``rl`` is a mandatory attribute for every create_raid. Supported RAID level is depend on pysical server's RAID adapter.
+     * ``rl`` means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6. ``rl`` is a mandatory attribute for every create_raid. Supported RAID level is depend on physical server's RAID adapter.
 
      * User can select disks based on following attributes value. User can find these value based on ``diskdiscover`` outputs as above section described.
  
-         a. ``pci_id`` is PCI vender and device ID.
+         a. ``pci_id`` is PCI vendor and device ID.
          b. ``pci_slot_name`` is the specified PCI location. If using ``pci_slot_name``, this RAID array will be created using disks from it.
          c. ``disk_names`` is a list of advanced format disk names. If using ``disk_names``, this RAID array will be created using these disks.
 
@@ -139,7 +139,7 @@ Configuring RAID manually in xcat genesis system shell
 
     xdsh cn1 'configraid delete_raid=all create_raid="rl#0|pci_id#1014:034a|disk_num#2"'
 
-Monitoring and debuging RAID configration process
+Monitoring and debuging RAID configuration process
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
 #. Creating some RAID level arrays take very long time, for example, If user creates RAID 10, it will cost tens of minutes or hours. During this period, you can use xCAT xdsh command to monitor the progress of raid configuration. ::

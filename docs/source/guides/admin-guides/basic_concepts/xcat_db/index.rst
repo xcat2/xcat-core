@@ -40,7 +40,7 @@ For a complete reference, see the man page for xcatdb: ``man xcatdb``.
 
 **Manipulate xCAT Database Tables**
 
-xCAT offers 5 commands to manipulate the databse tables:
+xCAT offers 5 commands to manipulate the database tables:
 
 * ``tabdump``
 

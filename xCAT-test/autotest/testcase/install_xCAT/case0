@@ -12,9 +12,7 @@ cmd:ls /go-xcat
 check:rc==0
 cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
-cmd:source "/etc/profile.d/xcat.sh"
-check:rc==0
-cmd:lsxcatd -v
+cmd:source "/etc/profile.d/xcat.sh";env;lsxcatd -v
 check:rc==0
 check:output=~Version
 cmd:service xcatd status
@@ -39,9 +37,7 @@ cmd:ls /go-xcat
 check:rc==0
 cmd:chmod 777 /go-xcat; /go-xcat --xcat-core=/install_xCAT_xcat-core.tar.bz2 --xcat-dep=/install_xCAT_xcat-dep.tar.bz2  -y install;
 check:rc==0
-cmd:source "/etc/profile.d/xcat.sh"
-check:rc==0
-cmd:lsxcatd -v
+cmd:source "/etc/profile.d/xcat.sh";env;lsxcatd -v
 check:rc==0
 check:output=~Version
 cmd:service xcatd status

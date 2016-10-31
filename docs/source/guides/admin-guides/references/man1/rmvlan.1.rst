@@ -33,7 +33,7 @@ DESCRIPTION
 
 The \ **rmvlan**\  command removes the given vlan ID from the cluster. It removes the vlan id from all the swithces involved, deconfigures the nodes so that vlan adaptor (tag) will be remved, cleans up /etc/hosts, DNS and database tables for the given vlan.
 
-For added security, the root guard and bpdu guard were enabled for the ports in this vlan by mkvlan and chvlan commands. However, the guards will not be disabled by this command. To disable them, you need to use the switch command line interface. Please refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port.
+For added security, the root guard and bpdu guard were enabled for the ports in this vlan by mkvlan and chvlan commands. However, the guards will not be disabled by this command. To disable them, you need to use the switch command line interface. Refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port.
 
 
 **********

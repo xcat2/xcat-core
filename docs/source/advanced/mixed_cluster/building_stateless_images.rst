@@ -5,9 +5,9 @@ A **stateless**, or **diskless**, provisioned nodes is one where the operating s
 
 To deploy stateless compute nodes, you must first create a stateless image.  The "netboot" osimages created from ``copycds`` in the **osimage** table are sample osimage definitions that can be used for deploying stateless nodes. 
 
-In a homogenous cluster, the management node is the same hardware architecture and running the same Operating System (OS) as the compute nodes, so ``genimage`` can directly be executed from the management node. 
+In a homogeneous cluster, the management node is the same hardware architecture and running the same Operating System (OS) as the compute nodes, so ``genimage`` can directly be executed from the management node. 
 
-The issues arises in a heterogenous cluster, where the management node is running a different level operating system *or* hardware architecture as the compute nodes in which to deploy the image.  The ``genimage`` command that builds stateless images depends on various utilities provided by the base operating system and needs to be run on a node with the same hardware architecture and *major* Operating System release as the nodes that will be booted from the image. 
+The issues arises in a heterogeneous cluster, where the management node is running a different level operating system *or* hardware architecture as the compute nodes in which to deploy the image.  The ``genimage`` command that builds stateless images depends on various utilities provided by the base operating system and needs to be run on a node with the same hardware architecture and *major* Operating System release as the nodes that will be booted from the image. 
 
 Same Operating System, Different Architecture
 ---------------------------------------------
@@ -27,7 +27,7 @@ The following describes creating stateless images of the same Operating System, 
 
 	lsdef -t osimage -z rhels6.3-x86_64-netboot-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
 
-#. To obtain the ``genimage`` command to execte on ``n01``, execute the ``genimage`` command with the ``--dryrun`` option: ::
+#. To obtain the ``genimage`` command to execute on ``n01``, execute the ``genimage`` command with the ``--dryrun`` option: ::
 
 	genimage --dryrun mycomputeimage
 	

@@ -28,7 +28,7 @@ I<site.ntpservers> -- the NTP servers for the service node and compute node to s
 
 =back
 
-To setup NTP on the compute node, please add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp> command. 
+To setup NTP on the compute node, add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp> command. 
 
 
 =head1 OPTIONS

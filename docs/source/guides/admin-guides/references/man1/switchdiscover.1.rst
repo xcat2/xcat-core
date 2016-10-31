@@ -29,9 +29,9 @@ The switchdiscover command scans the subnets and discovers all the swithches on 
 
 To view all the switches defined in the xCAT databasee use \ **lsdef -w "nodetype=switch"**\  command.
 
-For lldp method, please make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
+For lldp method, make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
 
-For snmp method, please make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
+For snmp method, make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
 
 
 *******

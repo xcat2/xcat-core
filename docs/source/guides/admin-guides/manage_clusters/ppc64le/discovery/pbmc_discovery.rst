@@ -22,7 +22,7 @@ The discovered PBMC node will be like this::
     postscripts=syslog,remoteshell,syncfiles
     serial=10112CA
 
-**Note**: Pls note that the PBMC node is just used to control the physical during hardware discovery process, it will be deleted after the correct server node object is found.
+**Note**: Note that the PBMC node is just used to control the physical during hardware discovery process, it will be deleted after the correct server node object is found.
 
 Start discovery process
 -----------------------

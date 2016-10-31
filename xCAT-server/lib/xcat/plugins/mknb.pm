@@ -18,6 +18,7 @@ sub process_request {
     my $serialport;
     my $serialspeed;
     my $serialflow;
+    my %nobootnicips = ();
     my $initrd_file = undef;
     my $xcatdport   = 3001;
     my @entries     = xCAT::TableUtils->get_site_attribute("defserialport");
@@ -42,6 +43,41 @@ sub process_request {
     $t_entry = $entries[0];
     if (defined($t_entry)) {
         $xcatdport = $t_entry;
+    }
+    
+    @entries = xCAT::TableUtils->get_site_attribute("dhcpinterfaces");
+    $t_entry = $entries[0];
+    if (defined($t_entry)) {
+        my %nobootnics = ();
+        foreach my $dhcpif (split /;/, $t_entry) {
+            if ($dhcpif =~ /\|/) {
+                my $isself = 0;
+                (my $ngroup, $dhcpif) = split /\|/, $dhcpif;
+                foreach my $host (noderange($ngroup)) {
+                    unless(xCAT::NetworkUtils->thishostisnot($host)) {
+                        $isself = 1;
+                    }
+                }
+                unless(xCAT::NetworkUtils->thishostisnot($ngroup)) {
+                    $isself = 1;
+                }
+                unless ($isself) {
+                    next;
+                }
+            }
+            foreach (split /[,\s]+/, $dhcpif) {
+                my ($nicname, $flag) = split /:/;
+                if ($flag and $flag =~ /noboot/i) {
+                    $nobootnics{$nicname} = 1; 
+                }
+            }
+        }
+        my $nicips = xCAT::NetworkUtils->get_nic_ip();
+        foreach (keys %nobootnics)  {
+            if (defined($nicips->{$_})) {
+                $nobootnicips{$nicips->{$_}} = 1;
+            }
+        }
     }
 
     my $tftpdir = xCAT::TableUtils->getTftpDir();
@@ -207,7 +243,14 @@ sub process_request {
     my $dopxe = 0;
     foreach (keys %{$normnets}) {
         my $net = $_;
+        my $nicip = $normnets->{$net};
         $net =~ s/\//_/;
+        if (defined($nobootnicips{$nicip})) {
+            if ($arch =~ /ppc/ and -r "$tftpdir/pxelinux.cfg/p/$net") {
+                unlink("$tftpdir/pxelinux.cfg/p/$net");
+            }
+            next;
+        }
         $dopxe = 0;
         if ($arch =~ /x86/) {    #only do pxe if just x86 or x86_64 and no x86
             if ($arch =~ /x86_64/ and not $invisibletouch) {

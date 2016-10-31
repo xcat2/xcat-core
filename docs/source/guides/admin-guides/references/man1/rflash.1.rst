@@ -73,7 +73,7 @@ PPC (with HMC) specific:
 ========================
 
 
-The \ **rflash**\  command uses the \ **xdsh**\  command to connect to the HMC controlling the given managed system and perform the updates. Before run \ **rflash**\ , please use \ **rspconfig**\  to check if the related HMC ssh is enabled. If enable a HMC ssh connection, please use \ **rspconfig**\  comamnd.
+The \ **rflash**\  command uses the \ **xdsh**\  command to connect to the HMC controlling the given managed system and perform the updates. Before running \ **rflash**\ , use \ **rspconfig**\  to check if the related HMC ssh is enabled. To enable a HMC ssh connection, use \ **rspconfig**\  comamnd.
 
 \ **Warning!**\   This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
 
@@ -91,7 +91,7 @@ Any previously activated code on the affected systems will be automatically acce
 
 \ **IMPORTANT!**\   If the power subsystem is recycled, all of its attached managed systems will be recycled.
 
-If it outputs \ **"Timeout waiting for prompt"**\  during the upgrade, please set the \ **"ppctimeout"**\  larger in the \ **site**\  table. After the upgrade, remeber to change it back. If run the \ **"rflash"**\  command on an AIX management node, need to make sure the value of \ **"useSSHonAIX"**\  is \ **"yes"**\  in the site table.
+If it outputs \ **"Timeout waiting for prompt"**\  during the upgrade, set the \ **"ppctimeout"**\  larger in the \ **site**\  table. After the upgrade, remeber to change it back. If run the \ **"rflash"**\  command on an AIX management node, need to make sure the value of \ **"useSSHonAIX"**\  is \ **"yes"**\  in the site table.
 
 
 PPC (using Direct FSP Management) specific:

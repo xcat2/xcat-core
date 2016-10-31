@@ -59,11 +59,11 @@ Requires: elilo-xcat xnba-undi
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux
-Requires: ipmitool-xcat >= 1.8.15-2
+Requires: ipmitool-xcat >= 1.8.17
 %endif
 %ifos linux
 %ifarch ppc ppc64 ppc64le
-Requires: ipmitool-xcat >= 1.8.15-2
+Requires: ipmitool-xcat >= 1.8.17
 %endif
 %endif
 

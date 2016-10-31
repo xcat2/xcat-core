@@ -39,7 +39,7 @@ The \ **diskless**\  type:
 
 The attributes of osimage will be used to capture and prepare the root image. The \ **osver**\ , \ **arch**\  and \ **profile**\  attributes for the stateless/statelite image to be created are duplicated from the \ **node**\ 's attribute. If the \ **-p|-**\ **-profile**\  \ *profile*\  option is specified, the image will be created under "/<\ *installroot*\ >/netboot/<osver>/<arch>/<\ *profile*\ >/rootimg".
 
-The default files/directories excluded in the image are specified by /opt/xcat/share/xcat/netboot/<os>/<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist; also, you can put your customized file (<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist) to /install/custom/netboot/<osplatform>. The directories in the default \ *.imgcapture.exlist*\  file are necessary to capture image from the diskful Linux node managed by xCAT, please don't remove it.
+The default files/directories excluded in the image are specified by /opt/xcat/share/xcat/netboot/<os>/<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist; also, you can put your customized file (<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist) to /install/custom/netboot/<osplatform>. The directories in the default \ *.imgcapture.exlist*\  file are necessary to capture the image from the diskful Linux node managed by xCAT, don't remove it.
 
 The image captured will be extracted into the /<\ *installroot*\ >/netboot/<\ **osver**\ >/<\ **arch**\ >/<\ **profile**\ >/rootimg directory.
 

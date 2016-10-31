@@ -8,7 +8,7 @@ Pre-requirement
 
 In order to do switch-based switch discovery, the admin 
 
-1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, please set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:   
+1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:   
 
 ::
 

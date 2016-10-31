@@ -40,7 +40,7 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 
 =head2 PPC (with HMC) specific:
 
-The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before run B<rflash>, please use B<rspconfig> to check if the related HMC ssh is enabled. If enable a HMC ssh connection, please use B<rspconfig> comamnd.
+The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before running B<rflash>, use B<rspconfig> to check if the related HMC ssh is enabled. To enable a HMC ssh connection, use B<rspconfig> comamnd.
 
 B<Warning!>  This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
 
@@ -58,7 +58,7 @@ Any previously activated code on the affected systems will be automatically acce
 
 B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed systems will be recycled. 
 
-If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remeber to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
+If it outputs B<"Timeout waiting for prompt"> during the upgrade, set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remeber to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
 
 =head2 PPC (using Direct FSP Management) specific:
 

@@ -8,7 +8,7 @@ Differentiators
 
 * Open Source
 
-  Eclipse Public License. Support contracts are also available, please contact IBM.
+  Eclipse Public License. Support contracts are also available, contact IBM.
 
 * Supports Multiple Operating Systems
 

@@ -329,7 +329,7 @@ Install corosync and pacemaker on both rhmn2 and rhmn1
 Customize corosync/pacemaker configuration for xCAT
 ------------------------------------------------------
 
-Please be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead.
+Be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead.
 
     Check that both rhmn2 and chetha are standby state now: ::
 

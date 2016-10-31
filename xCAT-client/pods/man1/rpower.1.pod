@@ -123,7 +123,7 @@ Wake up the target nodes which is in B<suspend> state.
 
 Don't try to run B<wake> against the 'on' state node, it would cause the node gets to 'off' state.
 
-For some of xCAT hardware such as NeXtScale, it may need to enable S3 before using B<wake>. The following steps can be used to enable S3. Please reference L<pasu(1)|pasu.1> for "pasu" usage.
+For some of xCAT hardware such as NeXtScale, it may need to enable S3 before using B<wake>. The following steps can be used to enable S3. Reference L<pasu(1)|pasu.1> for "pasu" usage.
 
  [root@xcatmn home]# echo "set Power.S3Enable Enable" > power-setting
  [root@xcatmn home]# pasu -b power-setting node01

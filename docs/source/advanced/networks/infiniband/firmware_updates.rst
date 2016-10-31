@@ -5,7 +5,7 @@ Firmware Updates
 Adapter Firmware Update
 -----------------------
 
-Please download the OFED IB adapter firmware from the Mellanox site `http://www.mellanox.com/page/firmware_table_IBM <http://www.mellanox.com/page/firmware_table_IBM>`_ .
+Download the OFED IB adapter firmware from the Mellanox site `http://www.mellanox.com/page/firmware_table_IBM <http://www.mellanox.com/page/firmware_table_IBM>`_ .
 
 Obtain device id:  ::
 

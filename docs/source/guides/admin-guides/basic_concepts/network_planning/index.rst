@@ -19,7 +19,7 @@ For a cluster, several networks are necessary to enable the cluster management a
 
   * DHCP(Dynamic Host Configuration Protocol)
 
-    The dhcp server, usually the management node or service node, privides the dhcp service for the entire cluster.
+    The dhcp server, usually the management node or service node, provides the dhcp service for the entire cluster.
 
   * TFTP(Trivial File Transfer Protocol)
 

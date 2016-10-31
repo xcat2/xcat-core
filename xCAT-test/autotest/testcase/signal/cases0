@@ -1,0 +1,4 @@
+start:genimage_sigint
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/signal/test-sigint-genimage.sh
+check:rc==0
+end

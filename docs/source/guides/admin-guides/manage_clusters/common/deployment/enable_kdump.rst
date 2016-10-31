@@ -150,7 +150,7 @@ Currently, only NFS is supported for the setup of kdump.
 
 If the dump attribute is not set, the kdump service will not be enabled. 
 
-Please make sure the NFS remote path(nfs://<nfs_server_ip>/<kdump_path>) is exported and it is read-writeable to the node where kdump service is enabled.
+Make sure the NFS remote path(nfs://<nfs_server_ip>/<kdump_path>) is exported and it is read-writeable to the node where kdump service is enabled.
 
 How to trigger kernel panic on Linux
 ------------------------------------

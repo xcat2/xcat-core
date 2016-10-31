@@ -1,7 +1,7 @@
 Configure Ethernet Switches
 ---------------------------
 
-It is recommended that spanning tree be set in the switches to portfast or edge-port for faster boot performance. Please see the relevant switch documentation as to how to configure this item.
+It is recommended that spanning tree be set in the switches to portfast or edge-port for faster boot performance. See the relevant switch documentation as to how to configure this item.
 
 It is recommended that lldp protocol in the switches is enabled to collect the switch and port information for compute node during discovery process.
 
@@ -71,9 +71,9 @@ Running Remote Commands in Parallel
 
 You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: 
 
-**[Note]**:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Please refer to the switch command references to find out how to do it.
+**[Note]**:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Refer to the switch command references to find out how to do it.
 
-Add the switch in xCAT DB. Please refer to the "Discovering Switches" section if you want xCAT to discover and define the switches for you. ::
+Add the switch in xCAT DB. Refer to the "Discovering Switches" section if you want xCAT to discover and define the switches for you. ::
 
      mkdef bntc125 groups=switch mgt=switch ip=10.4.25.1 nodetype=switch switchtype=BNT
 
@@ -97,9 +97,9 @@ Set the ssh or telnet username an d password. ::
 
     xdsh bntc125 --devicetype EthSwitch::BNT "enable;configure terminal;vlan 3;end;show vlan"
 
-Please note that you can run multiple switch commands, they are separated by comma.
+Note that you can run multiple switch commands, they are separated by comma.
 
-Please also note that --devicetype is used here. xCAT supports the following switch types out of the box: ::
+Also note that --devicetype is used here. xCAT supports the following switch types out of the box: ::
 
              * BNT 
              * Cisco 
@@ -178,7 +178,7 @@ The new configuration file will look like this: ::
 
 For **BNT** switches, the **command-to-set-term-length-to-0** is **terminal-length 0**.
 
-Please make sure to add a semi-colon at the end of the "pre-command" line.
+Make sure to add a semi-colon at the end of the "pre-command" line.
 
 Then you can run the xdsh like this: ::
 
