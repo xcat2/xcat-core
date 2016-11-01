@@ -33,7 +33,7 @@ DESCRIPTION
 
 Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot.
 
-Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while the command executes.
+Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while packimage is running.
 
 
 **********
