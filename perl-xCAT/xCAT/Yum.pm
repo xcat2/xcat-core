@@ -8,10 +8,11 @@ my $yumrepofile;
 my $distname;
 my $arch;
 my $installpfx;
+my $installroot;
 
 sub localize_yumrepo {
     my $self        = shift;
-    my $installroot = shift;
+    $installroot = shift;
     $distname = shift;
     $arch     = shift;
 
@@ -57,7 +58,15 @@ sub generate_repo
     my @dircomps    = File::Spec->splitdir($dirlocation);
     pop(@dircomps);
     my $yumurl = File::Spec->catdir(@dircomps);
-    $yumurl =~ s!$installpfx!http://#INSTSERVER#/install/$distname/$arch/!;
+    my $yumurl_mg = $yumurl;
+
+    if (my $real_link = readlink($installpfx)) {
+        # if installpfx is a link, use the path it is pointing to
+        $yumurl =~ s!$installpfx!http://#INSTSERVER#/$real_link/!;
+    }
+    else {
+        $yumurl =~ s!$installpfx!http://#INSTSERVER#/$installroot/$distname/$arch/!;
+    }
     my $reponame = $dircomps[$#dircomps];
     print $yumrepofile "[local-$distname-$arch-$reponame]\n";
     print $yumrepofile "name=xCAT configured yum repository for $distname/$arch/$reponame\n";
