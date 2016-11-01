@@ -253,7 +253,7 @@ sub check_noderange {
     foreach (@cmdoutput) {
         chomp($_);
         $_ =~ s/^\s+|\s+$//g;
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
             $rst = 1;
             push @$error_ref, "Node $1 without node definition";
         } elsif ($_ =~ /(\S+):\s+mac=(.*)/i) {

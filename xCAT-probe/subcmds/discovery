@@ -170,14 +170,14 @@ sub check_pre_defined_node {
 
     @cmdoutput = `lsdef $noderange 2>&1`;
     foreach (@cmdoutput) {
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
             $currentnode = $1;
             push @errornodes, $currentnode;
             $rst = 1;
         } elsif ($_ =~ /^\s*Object name: (\w+)/i) {
             $currentnode = $1;
             $monitor_nodes{$1} = 0;
-        } elsif ($_ =~ /^\s+(\w+)\s*=\s*(\w+)/) {
+        } elsif ($_ =~ /^\s+(\w+)\s*=\s*(.*)/) {
             $nodecheckrst{$currentnode}{$1} = $2;
         }
     }
@@ -284,15 +284,24 @@ sub check_pre_defined_node {
         }
 
         my %switch_node = ();
-        my @switchoutput = `tabdump switch`;
-        foreach my $switch_line (@switchoutput) {
-            next if ($switch_line =~ /#node,switch,port,vlan,interface,comments,disable/);
-            chomp ($switch_line);
-            $switch_line =~ s/"//g;
-            my @split_switch = split(",", $switch_line);
-            if (($split_switch[1] ne "") and ($split_switch[2] ne "")) {
-                my $switchport = "$split_switch[1]*$split_switch[2]";
-                push @{ $switch_node{$switchport} }, $split_switch[0];
+        my @switchoutput = `lsdef -t node -i switch,switchport -c 2>&1`;
+        my $node_s;
+        my $node_p;
+        my $switch;
+        my $port;
+        foreach (@switchoutput) {
+            chomp($_);
+            $_ =~ s/^\s+|\s+$//g;
+            if ($_ =~ /(\S+):\s+switch=(.*)/i) {
+                $node_s = $1;
+                $switch = $2;
+            } elsif ($_ =~ /(\S+):\s+switchport=(.*)/i) {
+                $node_p = $1;
+                $port = $2;
+            }
+            if (($node_s eq $node_p) and $switch and $port) {
+                my $switchport = "$switch*$port";
+                push @{ $switch_node{$switchport} }, $node_s;
             }
         }
 
@@ -1283,6 +1292,9 @@ sub handle_http_msg {
         if ($log_ref->{msg} =~ /GET\s+(.+)\s+HTTP.+/ or $log_ref->{msg} =~ /HEAD\s+(.+)\s+HTTP.+/) {
             my $file   = $1;
             my $record = "Via HTTP $ip get $file";
+            if ($file =~ /\/install\//i) {
+                return;
+            }
             probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
             push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
