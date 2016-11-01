@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.9
+# Version 1.0.10
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -1188,6 +1188,9 @@ function update_xcat()
 		[[ "${ver}" = "(not installed)" ]] &&
 			unset "install_list[${i}]"
 	done < <(check_package_version "${install_list[@]}")
+	[[ "${#install_list[@]}" -gt "0" ]]
+	warn_if_bad "$?" "There are no xCAT packages installed."
+	exit_if_bad "$?" "In order to install xCAT, please rerun with \`${0##*/} install'."
 	install_packages "$@" "${install_list[@]}"
 }
 
