@@ -12,7 +12,7 @@ Set attributes in the ``networks`` table
 
 #. To define additional networks, use one of the following options:
 
-   *  (**Recommended**) Use ``mkdef`` to create/update an entry into ``networks`` table.
+   *  [**Recommended**] Use ``mkdef`` to create/update an entry into ``networks`` table.
 
       To create a network entry for 192.168.X.X/16 with a gateway of 192.168.1.254: ::
 
@@ -35,26 +35,33 @@ Set attributes in the ``networks`` table
 Initialize DHCP services
 ------------------------
 
-#. Configure DHCP to listen on different network interfaces (**Optional**)
+Configure DHCP to listen on different network interfaces [**Optional**]
 
-   The ``dhcpinterfaces`` keyword allows users to specify or limit the DHCP to listen over certain network interfaces.
+   The default behavior of xCAT is to configure DHCP to listen on all interfaces defined in the ``networks`` table.  
 
-   If the management node has 4 interfaces, (eth0, eth1, eth2, and eth3), and you want DHCP to listen only on "eth1" and "eth3", set ``dhcpinterfaces`` with: ::
+   The ``dhcpinterfaces`` keyword in the ``site`` table allows administrators to limit the interfaces that DHCP will listen over.  If the management node has 4 interfaces, (eth0, eth1, eth2, and eth3), and you want DHCP to listen only on "eth1" and "eth3", set ``dhcpinterfaces`` using: ::
 
       chdef -t site dhcpinterfaces="eth1,eth3"
 
-   To set "eth1" and "eth3" on the management node, and "bond0" on all the nodes in the "service" nodegroup, set ``dhcpinterfaces`` with: ::
+   To set "eth1" and "eth3" on the management node and "bond0" on all nodes in the nodegroup="service", set ``dhcpinterfaces`` using: ::
 
       chdef -t site dhcpinterfaces="xcatmn|eth1,eth3;service|bond0"
 
-   [**noboot**]: For the IBM OpenPower S822LC for HPC ("Minsky") nodes, the BMC and "eth0" on the compute side shares the same physical ethernet port.  However, it is recommended to allow the BMC to be dedicated and to use "eth1" for the compute node.   When an open range is configured on the two networks, the xCAT Genesis Kernel will be sent to the BMC interface and will cause problems with discovery.  In this scenario, if "eth1" is the BMC network and "eth3" is the compute network, disabled genesis by setting ``:noboot`` in ``dhcpinterfaces`` with: ::
+**noboot**
+``````````
+   For the *IBM OpenPOWER S822LC for HPC ("Minsky")* nodes, the BMC and compute "eth0" share the left-size integrated ethernet port and compute "eth1" is the right-side integrated ethernet port.  For these servers, it is recommended to use two physical cables allowing the BMC port to be dedicated and "eth1" used by the OS.  When an open range is configured on the two networks, the xCAT Genesis kernel will be sent to the BMC interface and causes problems during hardware discovery.  To support this scenario, on the xCAT management node, if "eth1" is connected to the BMC network and "eth3" is connected to the compute network, disable genesis boot for the BMC network by setting ``:noboot`` in ``dhcpinterfaces`` using: ::
      
       chdef -t site dhcpinterfaces="eth1:noboot,eth3" 
 
-   
-   For more information, see ``dhcpinterfaces`` keyword in the :doc:`site </guides/admin-guides/references/man5/site.5>` table.
+      # run the mknb command to remove the genesis 
+      # configuration file for the specified network
+      mknb ppc64
 
-#. Create a new DHCP configuration file with the networks defined using the ``makedhcp`` command. ::
+   
+For more information, see ``dhcpinterfaces`` keyword in the :doc:`site </guides/admin-guides/references/man5/site.5>` table.
+
+
+After making any DHCP changes, create a new DHCP configuration file with the networks defined using the ``makedhcp`` command. ::
 
        makedhcp -n
 
