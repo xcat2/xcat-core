@@ -2257,6 +2257,17 @@ sub copycd
             #
             my @rhel_version = split / /, $desc;
             $distname = "rhels" . $rhel_version[4];
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /variant = ComputeNode/) {
+                    $distname = "rhelhpc" . $rhel_version[4];
+                    last;
+                }
+            }
+            close($dinfo);
         }
         else
         {
