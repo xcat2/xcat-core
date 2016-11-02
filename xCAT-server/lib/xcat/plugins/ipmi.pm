@@ -1851,6 +1851,19 @@ sub do_firmware_update {
             "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
         $callback, $sessdata->{node});
     exec($cmd);
+
+    # step 5 power on
+    $cmd = $pre_cmd . " chassis power on";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
+            $callback, $sessdata->{node}, %allerrornodes);
+        return -1;
+    }
+
+    xCAT::SvrUtils::sendmsg("rflash completed.", $callback, $sessdata->{node},
+        %allerrornodes);
+    return 0;
 }
 
 sub rflash {
