@@ -16,19 +16,19 @@ Provision Hypervisor
 
    xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Specify the **xHRM** with appropriate parameters in  **postscripts** attibute. For example:
 
-   * To create a bridge with default name 'default' against the installation network device which was specified by **installnic** attribute ::
-
-        chdef kvmhost1 -p postscripts="xHRM bridgeprereq"
-
-   * To create a bridge named 'br0' against the installation network device which was specified by **installnic** attribute(recommended) ::
+   * To create a bridge named 'br0' against the installation network device specified by **installnic**: ::
 
         chdef kvmhost1 -p postscripts="xHRM bridgeprereq br0"
 
-   * To create a bridge named 'br0' against the network device 'eth0' ::
+   * To create a bridge with default name 'default' against the installation network device specified by **installnic**: ::
+
+        chdef kvmhost1 -p postscripts="xHRM bridgeprereq"
+
+   * To create a bridge named 'br0' against the network device 'eth0': ::
 
         chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
 
-   **Note**: The network bridge name you use should not be the virtual bridges created by libvirt installation  [1]_. 
+   **Note**: The network bridge name you use should not be the virtual bridges (vbrX) created by libvirt installation  [1]_. 
 
 
 #. Customize the hypervisor node definition to mount the shared kvm storage directory on management node **(optional)**

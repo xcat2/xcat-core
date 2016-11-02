@@ -17,7 +17,17 @@
       chdef -t osimage rhels7.3-ppc64le-RHEV4-install-compute \
          otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA
 
-   * Create a new file ``/opt/xcat/share/xcat/install/rh/other.pkglist`` to list required packages ::
+   * Create a new file ``/install/custom/rhels7.3/ppc64le/rhelv4.pkglist`` to include necessary packages provided from the OS. :: 
+
+      #INCLUDE:/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglis#
+      bridge-utils
+
+   * Modify ``pkglist`` attribute to point to the file from the step above ::
+
+      chdef -t osimage rhels7.3-snap3-ppc64le-RHEV4-install-compute \
+         pkglist=/install/custom/rhels7.3/ppc64le/rhelv4.pkglist
+
+   * Create a new file ``/install/custom/rhels7.3/ppc64le/rhev4.otherpkgs.pkglist`` to list required packages ::
 
       libvirt 
       qemu-kvm-rhev 
@@ -28,7 +38,7 @@
    * Modify ``otherpkglist`` attribute to point to the file from the step above ::
 
       chdef -t osimage rhels7.3-snap3-ppc64le-RHEV4-install-compute \
-         otherpkglist=/opt/xcat/share/xcat/install/rh/other.pkglist
+         otherpkglist=/install/custom/rhels7.3/ppc64le/rhev4.otherpkgs.pkglist
 
    * The RHEV osimage should look similar to: ::
 
@@ -39,9 +49,9 @@
           osname=Linux
           osvers=rhels7.3
           otherpkgdir=/install/post/otherpkgs/rhels7.3/ppc64le/RHEV4/4.0-GA
-          otherpkglist=/opt/xcat/share/xcat/install/rh/other.pkglist
+          otherpkglist=/install/custom/rhels7.3/ppc64le/rhev4.otherpkgs.pkglist
           pkgdir=/install/rhels7.3/ppc64le
-          pkglist=/install/custom/install/rh/compute.rhels7.ppc64le.pkglist
+          pkglist=/install/custom/rhels7.3/ppc64le/rhelv4.pkglist
           profile=compute
           provmethod=install
           template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
