@@ -49,7 +49,7 @@ Configure DHCP to listen on different network interfaces [**Optional**]
 
 **noboot**
 ``````````
-   For the *IBM OpenPOWER S822LC for HPC ("Minsky")* nodes, the BMC and compute "eth0" share the left-size integrated ethernet port and compute "eth1" is the right-side integrated ethernet port.  For these servers, it is recommended to use two physical cables allowing the BMC port to be dedicated and "eth1" used by the OS.  When an open range is configured on the two networks, the xCAT Genesis kernel will be sent to the BMC interface and causes problems during hardware discovery.  To support this scenario, on the xCAT management node, if "eth1" is connected to the BMC network and "eth3" is connected to the compute network, disable genesis boot for the BMC network by setting ``:noboot`` in ``dhcpinterfaces`` using: ::
+   For the *IBM OpenPOWER S822LC for HPC ("Minsky")* nodes, the BMC and compute "eth0" share the left-side integrated ethernet port and compute "eth1" is the right-side integrated ethernet port.  For these servers, it is recommended to use two physical cables allowing the BMC port to be dedicated and "eth1" used by the OS.  When an open range is configured on the two networks, the xCAT Genesis kernel will be sent to the BMC interface and causes problems during hardware discovery.  To support this scenario, on the xCAT management node, if "eth1" is connected to the BMC network and "eth3" is connected to the compute network, disable genesis boot for the BMC network by setting ``:noboot`` in ``dhcpinterfaces`` using: ::
      
       chdef -t site dhcpinterfaces="eth1:noboot,eth3" 
 
