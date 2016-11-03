@@ -1,6 +1,26 @@
 #!/usr/bin/perl
 # IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
 
+#--------------------------------------------------------
+#This is a template for developing a new probe sub_command. Especially in hierarchical environment.
+#This template mainly implement the sub_comamd dispatch in hierarchical structure and basic framework of a new sub_comamd.
+#Developer only need to focus on main probe job (by implement do_main_job function) and friendly output (by implement summary_all_jobs_output function) for user.
+#This template can also be used in flat structure. but if developer think it's too heavy in flat, it's fine to develop sub command directly.
+#But in hierarchical structure, we strongly recommand using this template.
+#
+#The main dispatch policy are:
+#1. if there isn't noderange input from commmand line and  there are service nodes defined in current MN,
+#   dispatch exact same command input from STDIN to all SNs and current MN. if there isn't service nodes defined,
+#   just hanld command input from STDIN in current MN
+#2. If there is noderange input from command line by opion "-n", we will dispatch the command input from STDIN to SN which can hanle these ndoes
+#   For example, if we got command from STDIN like "probecommand -n test[1-15] -V" and test[1-5] 's SN is SN1, test[6-10]'s SN is SN2
+#   The dispatch result will be:
+#   For MN run:  probecommand -n test[11-15] -V
+#   For SN1 run: probecommand -n test[1-5] -V
+#   For SN2 run: probecommand -n test[6-10] -V
+#3. All the return message from SNs and MN will be saved in hash %summaryoutput, develper can use it when implement summary_all_jobs_output function
+#--------------------------------------------------------
+
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
 
 use lib "$::XCATROOT/probe/lib/perl";
@@ -54,20 +74,20 @@ Options:
 ";
 
 #------------------------------------
-# Please implement the main checking job of current command in do_main_job function
-# Recommand to use probe_utils->send_msg() to handle message you plan to print out
+# Please implement the main job of current command in do_main_job function
+# Recommand to use probe_utils->send_msg() to handle message you plan to print out to STDOUT
 # A simple example has been written in funciton.
 #------------------------------------
 sub do_main_job {
     my $rst = 0;
 
-    probe_utils->send_msg("$output", "o", "I reveive node range is $noderange");
+    probe_utils->send_msg("$output", "o", "Received node range:  $noderange");
 
-    #<#DO YOUR OWN CHECKING JOB1#>
-    probe_utils->send_msg("$output", "o", "first checking point");
+    #<#DO YOUR OWN JOB1#>
+    probe_utils->send_msg("$output", "o", "Do the first job");
 
-    #<#DO YOUR OWN CHECKING JOB2#>
-    probe_utils->send_msg("$output", "f", "second checking point");
+    #<#DO YOUR OWN JOB2#>
+    probe_utils->send_msg("$output", "f", "Do the second job");
 
     return $rst;
 }

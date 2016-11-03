@@ -100,11 +100,12 @@ sub calculate_dispatch_cmd {
     } else {
 
         #there isn't noderange input from STDIN, dispatch command to all SN if there are SN defined in MN
+        #if there isn't SN defined in MN, just dispatch command to MN itself
+        my $args = join(" ", @$argv_ref);
+        $self->{dispatchcmd}->{mn} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1";
         if (@snlist) {
-            my $args = join(" ", @$argv_ref);
             my $sns  = join(",", @snlist);
-            $self->{dispatchcmd}->{$sns} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1" if (!$?);
-            $self->{dispatchcmd}->{mn} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1";
+            $self->{dispatchcmd}->{$sns} = "$::XCATROOT/probe/subcmds/$self->{program_name} $args -H 2>&1";
         }
     }
 
