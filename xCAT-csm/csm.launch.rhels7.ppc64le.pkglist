@@ -1,1 +1,26 @@
 #csm launch
+bash
+nfs-utils
+openssl
+dhclient
+kernel
+openssh-server
+openssh-clients
+wget
+rsyslog
+vim-minimal
+ntp
+rsyslog
+rpm
+rsync
+ppc64-utils
+iputils
+dracut
+dracut-network
+e2fsprogs
+bc
+lsvpd
+irqbalance
+procps-ng
+parted
+net-tools
