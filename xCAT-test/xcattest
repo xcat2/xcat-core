@@ -17,7 +17,6 @@ use lib "$::XCATROOT/lib/perl";
 my $rootdir         = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp        = 0;
 my $configinfo      = undef;
-#my $configfile      = "$rootdir/default.conf";
 my $configfile      = undef;
 my $casedir         = "$rootdir/testcase";
 my $bundledir       = "$rootdir/bundle";
@@ -1135,7 +1134,6 @@ sub listformatbundleinfo
     print "bundle files and descriptions:\n";
     
     foreach my $filename (sort { $a cmp $b } keys %bundlefilesinfo ) { 
-   # foreach my $filename (keys %bundlefilesinfo) {
         my @desc       = split(" ", $bundlefilesinfo{$filename});
         my $str        = "";
         my @formatdesc = ();
