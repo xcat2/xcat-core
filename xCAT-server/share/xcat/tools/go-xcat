@@ -1189,7 +1189,7 @@ function update_xcat()
 			unset "install_list[${i}]"
 	done < <(check_package_version "${install_list[@]}")
 	[[ "${#install_list[@]}" -gt "0" ]]
-	warn_if_bad "$?" "There are no xCAT packages installed."
+	warn_if_bad "$?" "xCAT is not installed."
 	exit_if_bad "$?" "In order to install xCAT, please rerun with \`${0##*/} install'."
 	install_packages "$@" "${install_list[@]}"
 }
