@@ -1,11 +1,14 @@
 start:xcatconfig_null
 description:xcatconfig with no argument
+os:Linux
 cmd:xcatconfig
-check:output=~Usage
+check:output=~No parameters were supplied on the xcatconfig command. Run xcatconfig -h
+check:rc!=0
 end
 
 start:xcatconfig_f
 description:To force regeneration of keys and credentials and reinitialize the site table
+os:Linux
 cmd:xcatconfig -f 
 check:rc==0
 end
@@ -13,6 +16,7 @@ end
 
 start:xcatconfig_k
 description:To regenerate root's ssh keys
+os:Linux
 cmd:cp -rf /root/.ssh /root/.sshbak
 cmd:xcatconfig -k
 check:rc==0
@@ -25,22 +29,42 @@ cmd:cp -rf /root/.sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
 cmd:mv -f /root/.sshbak /root/.ssh
 end
 
+start:xcatconfig_k_c
+description:To regenerate root's ssh keys
+os:Linux
+cmd:cp -rf /root/.ssh /root/.sshbak
+cmd:xcatconfig -k -c
+check:rc==0
+check:output=~(Generated /root/.ssh/id_rsa.pub)
+check:output=~Created xCAT certificate
+check:output=~Signature ok
+check:output!=Fail
+cmd:diff /root/.ssh/id_rsa.pub /root/.sshbak/id_rsa.pub
+check:rc!=0
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+cmd:cp -rf /root/.sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+cmd:mv -f /root/.sshbak /root/.ssh
+end
 
-start:xcatconfig_d
+start:xcatconfig_d_V
 description:This option will reinitialize the basic xCAT database table setup
-cmd:dumpxCATdb -p /tmp
+os:Linux
+cmd:dumpxCATdb -p /tmp/xcatconfig
 check:rc==0
-cmd:xcatconfig -d
+cmd:xcatconfig -d -V
 check:rc==0
-check:output=~(Updated cluster site definition)
-cmd:restorexCATdb -p /tmp
+check:output=~Updated cluster site definition
+check:output=~Created postscripts definition
+cmd:restorexCATdb -p /tmp/xcatconfig
 check:rc==0
-cmd:rm -rf /tmp/*.csv
+cmd:rm -rf /tmp/xcatconfig/*.csv
 end
 
 
 start:xcatconfig_s
 description:To regenerate node host ssh keys
+os:Linux
 cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
 check:rc==0
 cmd:xcatconfig -s
@@ -53,6 +77,7 @@ end
 
 start:xcatconfig_s_c
 description:To regenerate node host ssh keys and credentials
+os:Linux
 cmd:cp -rf /root/.xcat /root/.xcatbak
 check:rc==0
 cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
@@ -61,7 +86,6 @@ cmd:xcatconfig -s -c
 check:rc==0
 check:output=~Created xCAT certificate
 check:output=~Signature ok
-check:output=~OK
 check:output!~Fail
 cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
 check:rc!=0
@@ -71,6 +95,7 @@ end
 
 start:xcatconfig_h
 description:xcatconfig -h and --help
+os:Linux
 cmd:xcatconfig -h
 check:output=~Usage
 cmd:xcatconfig --help
@@ -80,6 +105,7 @@ end
 
 start:xcatconfig_v
 description:xcatconfig -v and --version
+os:Linux
 cmd:xcatconfig -v 
 check:output=~version|Version
 cmd:xcatconfig --version
@@ -87,6 +113,7 @@ check:output=~version|Version
 end
 
 start:xcatconfig_u_check_xcatsslversion_rhels_sles
+os:rhels,sles
 description:after xcatconfig -u the site.xcatsslversion will not be changed
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
@@ -105,6 +132,7 @@ end
 
 start:xcatconfig_u_check_xcatsslversion_ubuntu
 description:after xcatconfig -u the site.xcatsslversion will not be changed
+os:ubuntu
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
 cmd:chtab key=xcatsslversion site.value=TLSv1_2
