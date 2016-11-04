@@ -20,10 +20,21 @@ fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
-
+# Get the name of the installnic
 MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g`
 INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
+# Also get the any interface names set in NICIPS (nics table)
+NICIPS=$(grep NICIPS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g)
+NICS=""
+OIFS=$IFS
+IFS=$','
+for n in $NICIPS; do
+  NAME=$(echo $n | awk -F \! '{print $1}')
+  NICS="$NICS $NAME"
+done
+IFS=$OIFS
+INSTALLNIC="$INSTALLNIC $NICS"
 
 #the nics have not been configured when running the PBS sometimes, need to make sure... 
 RETRY=0
