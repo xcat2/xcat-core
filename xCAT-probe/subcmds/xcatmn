@@ -498,11 +498,11 @@ sub check_disk {
     my %dir_expectedspace_list = ("/var" => 1, "/tmp" => 1, "/install" => 10);
     my %mountpointinfo;
     foreach my $dir (keys %dir_expectedspace_list) {
-        my $output = `df -k $dir|tail -n 1`;
+        my $output = `df --block-size=1G $dir|tail -n 1`;
         chomp($output);
         my @splitoutput = split(" ", $output);
         $mountpointinfo{ $splitoutput[5] }{available} = $splitoutput[3];
-        $mountpointinfo{ $splitoutput[5] }{need} += $dir_expectedspace_list{$dir} * 1048576;
+        $mountpointinfo{ $splitoutput[5] }{need} += $dir_expectedspace_list{$dir};
         push @{ $mountpointinfo{ $splitoutput[5] }{mount} }, $dir;
     }
 
@@ -512,8 +512,7 @@ sub check_disk {
             foreach (@{ $mountpointinfo{$mountpoint}{mount} }) {
                 $msg .= "'$_' needs $dir_expectedspace_list{$_} G, ";
             }
-            my $size_g = $mountpointinfo{$mountpoint}{available} / 1048576;
-            $msg .= "These directories are mounted on '$mountpoint', the free space of '$mountpoint' is $size_g G, it isn't enough.";
+            $msg .= "These directories are mounted on '$mountpoint', the free space of '$mountpoint' is $mountpointinfo{$mountpoint}{available} G, it isn't enough.";
             $rst = 1;
         }
     }
