@@ -335,8 +335,8 @@ while :; do
 		/bin/getcert $XCATMASTER:$XCATPORT
 		destiny=''
 		dest=''
-		DISCOVERYDONE=1
-		export DISCOVERYDONE
+		XCAT_DISCOVERY_WAS_DONE=1
+		export XCAT_DISCOVERY_WAS_DONE
 	elif [ "$dest" = shell ]; then
 		logger -s -t $log_label -p local4.info "Dropping to debug shell(exit to run next destiny)..."
 		destiny=''
@@ -400,7 +400,7 @@ while :; do
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
 			if [ $((delay%10)) == 0 ]; then 
-				if [ $DISCOVERYDONE == 1 ]; then
+				if [ "$XCAT_DISCOVERY_WAS_DONE" == 1 ]; then
 					logger -s -t $log_label -p local4.info "Received request=$dest, will call xCAT back in $delay seconds. Discovery is complete, run nodeset on this node to provision an Operating System"
 				else
 					logger -s -t $log_label -p local4.info "Received request to retry in a bit, will call xCAT back in $delay seconds"
@@ -409,8 +409,8 @@ while :; do
 			delay=$((delay-1))
 			sleep 1
 		done
-                destiny=''
-                dest=''
+		destiny=''
+		dest=''
 		echo "Retrying                                                                                   ";
 	elif [ "$dest" = shutdown ]; then
 		logger -s -t $log_label -p local4.info "Poweroff..."
