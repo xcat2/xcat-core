@@ -1,9 +1,8 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-# this script is deprecated,please use xcatpostinit1.netboot instead
 # chkconfig: 345 84 59
-# description: service node postboot script hack
-# processname: xcatpostinit
+# description: the hook in systemd service unit to run PB or report node status on  diskless & statelite node
+# processname: xcatpostinit1
 
 ### BEGIN INIT INFO
 # Provides: xcatpostinit
@@ -20,6 +19,8 @@ if [ -x /etc/rc.d/init.d/functions ]; then
   . /etc/rc.d/init.d/functions
 fi
 
+XCATSERVER=$(grep --only-matching "\<XCAT=[^ ]*\>" /proc/cmdline |cut -d= -f2 |cut -d: -f1 2>/dev/null)
+
 logger -t xcat -p local4.info "$0: action is $1"
 case $1 in
 restart)
@@ -33,6 +34,7 @@ status)
 stop)
   echo -n "nothing to stop "
   logger -t xcat -p local4.info "nothing to stop"
+  grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off" 
   ;;
 start)
         # Node is stateless by default
