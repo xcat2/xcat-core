@@ -343,7 +343,9 @@ sub dump_mac_info {
             }
             elsif (defined($self->{macinfo}->{$switch}->{ErrorStr})) {
                 $ret{$switch}->{ErrorStr} = $self->{macinfo}->{$switch}->{ErrorStr};
-
+                if ($ret{$switch}->{ErrorStr} =~ /Unknown user name/) {
+                    $ret{$switch}->{ErrorStr} = "Unknown snmp user name";
+                }
                 # To show the error message that the username/password related error is for SNMP only
                 if ($ret{$switch}->{ErrorStr} =~ /username|password/i) {
                     $ret{$switch}->{ErrorStr} .= " through SNMP";
