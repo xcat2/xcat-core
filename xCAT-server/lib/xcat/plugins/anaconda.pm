@@ -2464,30 +2464,8 @@ sub copycd
     }
 
 
-    unless ($path =~ /^($defaultpath)/)
-    {
-        mkpath($defaultpath);
-        if (-d $defaultpath)
-        {
-            rmtree($defaultpath);
-        }
-        else
-        {
-            unlink($defaultpath);
-        }
-
-        my $hassymlink = eval { symlink("", ""); 1 };
-        if ($hassymlink) {
-            symlink($path, $defaultpath);
-        } else
-        {
-            link($path, $defaultpath);
-        }
-
-    }
-
     require xCAT::Yum;
-    xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    xCAT::Yum->localize_yumrepo($path, $distname, $arch);
 
     if ($rc != 0)
     {
