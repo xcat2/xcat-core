@@ -209,3 +209,42 @@ check:rc==0
 cmd:lsdef testnode1
 check:output=~Could not find
 end
+
+start:lsdef_template
+os:linux
+description:check xCAT supported template
+cmd:lsdef --template
+check:rc==0
+check:output=~hmc\-template  \(node\)
+check:output=~ppc64le\-template  \(node\)
+check:output=~ppc64lekvmguest\-template  \(node\)
+check:output=~switch\-template  \(node\)
+check:output=~x86_64\-template  \(node\)
+check:output=~x86_64kvmguest\-template  \(node\)
+end
+
+start:lsdef_template_switch_template
+os:linux
+description:check xCAT supported template for switch template
+cmd:lsdef --template switch-template
+check:rc==0
+check:output=~Object name\: switch-template
+check:output=~groups=switch
+check:output=~nodetype=switch
+check:output=~postbootscripts\=otherpkgs
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
+check:output=~usercomment\=the switch definition template  
+check:output=~postscripts\=syslog\,remoteshell\,syncfiles 
+check:output=~ip\=OPTIONAL\:the ip address of the switch
+check:output=~mac\=OPTIONAL\:the MAC address of the switch
+check:output=~switchtype\=OPTIONAL\:The type of switch 
+end
+
+start:lsdef_template_with_invalid_name
+os:linux
+description:lsdef --template with invalid template name
+cmd:result=`lsdef | grep  test_with_invalid_name`; if [[ $result =~ "test_with_invalid_name" ]]; then noderm test_with_invalid_name; fi
+cmd:lsdef --template "test_with_invalid_name"
+check:rc==1
+check:output=~Error: Could not find test_with_invalid_name in xCAT templates.
+end 

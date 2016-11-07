@@ -204,6 +204,7 @@ switchdiscover_range_z_V
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy

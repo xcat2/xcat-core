@@ -454,3 +454,23 @@ check:output=~postscripts has completed
 check:output=~Software Maintenance has completed
 end
 
+start:updatenode_P_syslog_V_xcatdebugmode_is_one
+description:xcatdebugmode value is one, there should be execution outputs.
+cmd:chtab key=xcatdebugmode site.value=1
+check:rc==0
+cmd:updatenode $$CN -P syslog -V
+check:output=~$$CN: ++
+cmd:chtab key=xcatdebugmode site.value=0
+check:rc==0
+end
+
+start:updatenode_P_syslog_V_xcatdebugmode_is_two
+description:xcatdebugmode value is two, there should be execution outputs.
+cmd:chtab key=xcatdebugmode site.value=2
+check:rc==0
+cmd:updatenode $$CN -P syslog -V
+check:output=~$$CN: ++
+cmd:chtab key=xcatdebugmode site.value=0
+check:rc==0
+end
+

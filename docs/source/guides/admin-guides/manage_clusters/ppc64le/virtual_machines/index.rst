@@ -26,12 +26,12 @@ The xCAT based KVM solution offers users the ability to:
 *  install copy on write instances of virtual machines
 *  clone virtual machines
 
-This section introduces the steps of management node preparation, KVM hypervisor setup and virtual machine management, and presents some typical problems and solutions on xCAT kvm support.
+This section introduces the steps of management node preparation, hypervisor setup and virtual machine management, and presents some typical problems and solutions on xCAT kvm support.
 
 .. toctree::
    :maxdepth: 2
 
    kvmMN.rst
-   powerKVM.rst
+   hypervisorKVM.rst
    manage_vms.rst
    FAQ.rst

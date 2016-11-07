@@ -39,12 +39,15 @@ my $program_name = basename("$0");
 $::USAGE = "Usage:
     $program_name -h
     $program_name -n <node_range> -m <discovery_type> [-t <max_waiting_time>] [-V] [--noprecheck] 
+    $program_name -n <node_range> -m <discovery_type> -r <roll_back_duration> [-V] [--noprecheck]
 
 Description:
-    Probe the discovery process, including pre-check for required configuration and realtime monitor of discovery process. 
-    If all pre-check items pass, $program_name will go to monitor directly, otherwise $program_name will exit.  
-    In order to do realtime monitor, $program_name probe must be run along with the node discovery procedure. Trigger this command before triggering node discovery procedure.
-    Currently, this command does not support hierarchy.
+    Probe the discovery process, including pre-check for required configuration, 'Realtime monitor' and 'Replay history' of discovery process. 
+    If all pre-check items failed, $program_name will exit.  
+    Realtime monitor: This is a default. This tool with monitor discovery state of the node. Trigger 'Realtime monitor' before rebooting target node to do discovery.
+    Replay history: Used after discovery is finished to probe the previously completed discovery.
+
+    [NOTE] Currently, hierarchial structure is not supported.
 
 Options:
     -h : Get usage information of $program_name.
@@ -53,6 +56,9 @@ Options:
     -n : The range of predefined nodes, must be used with option -m.
     --noprecheck : skip pre-checking discovery to validate correct configuration. 
     -t : The maximum time to wait when doing monitor, unit is minutes. default is 60.
+    -r : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
+         Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
+         If unit is not specified, hour will be used by default.
 ";
 
 #----------------------------------------------
@@ -78,7 +84,7 @@ if (
         "m=s"          => \$discovery_type,
         "n=s"          => \$noderange,
         "t=s"          => \$maxwaittime,
-#        "r=s"          => \$rollforward_time_of_replay,
+        "r=s"          => \$rollforward_time_of_replay,
         "i=s"          => \$nics)) #option i is a reservation option, dosen't show up in usage now
 {
     probe_utils->send_msg("stdout", "f", "Invalid parameter for $program_name");
@@ -424,7 +430,7 @@ sub do_pre_check {
             probe_utils->send_msg("stdout", "d", "$_") foreach (@errors);
         }
     } else {
-        $msg = "Attribute 'master' in 'site' table is configured well";
+        $msg = "Attribute 'master' in 'site' table is configured";
         my $masteripinsite = `tabdump site | awk -F',' '/^"master",/ { gsub(/"/, "", \$2) ; print \$2 }'`;
         chomp($masteripinsite);
         if ($masteripinsite eq "") {
@@ -694,7 +700,7 @@ sub check_genesis_file {
 sub dhcp_dynamic_range_check {
     my $nets = shift;
     my $rst  = 0;
-    my $msg = "DHCP dynamic range is configured well";
+    my $msg = "DHCP dynamic range is configured";
 
     my $dhcpconfig;
     if (-e "/etc/dhcp/dhcpd.conf") {
@@ -756,12 +762,18 @@ sub dhcp_dynamic_range_check {
         $tftpdir = "/tftpboot";
     }
 
+    my @errors = ();
     my %node_ip;
     if ($noderange) {
         %node_ip = get_node_ip();
+        foreach my $node (keys %node_ip) {
+            if ($node_ip{$node}{"error"}) {
+                push @errors, $node_ip{$node}{"error"};
+                $rst = 1;
+            }
+        }
     }
 
-    my @errors = ();
     foreach my $net (@$nets) {
         if (!exists($subnet_hash{$net})) {
             push @errors, "The net $net is not matched.";
@@ -772,11 +784,12 @@ sub dhcp_dynamic_range_check {
         if ($subnet_hash{$net} ne "unknown") {
             if (%node_ip) {
                 foreach my $node (keys %node_ip) {
+                    next if ($node_ip{$node}{"error"});
                     foreach my $dr (@{ $subnet_hash{$net} }) {
                         my @dr_ip = split(/-/, $dr);
 
-                        if (compare_ip_value($dr_ip[0], $node_ip{$node}) and compare_ip_value($node_ip{$node}, $dr_ip[1])) {
-                            push @errors, "$node ip $node_ip{$node} is conflicting with dynamic range.";
+                        if (compare_ip_value($dr_ip[0], $node_ip{$node}{"ip"}) and compare_ip_value($node_ip{$node}{"ip"}, $dr_ip[1])) {
+                            push @errors, "$node ip $node_ip{$node}{\"ip\"} is conflicting with dynamic range.";
                             $rst = 1;
                             next;
                         }
@@ -817,33 +830,28 @@ sub dhcp_dynamic_range_check {
 sub get_node_ip {
     my $ip_net;
     my @node_info = `lsdef $noderange -i ip -c 2>&1`;
-    my %nodeip;
-    my %nodecheckrst;
+    my %nodeipcheck = ();
 
     foreach (@node_info) {
         chomp($_);
         $_ =~ s/^\s+|\s+$//g;
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
-            $nodecheckrst{$1}{"error"} = "Could not find node definition";
-            $rst = 1;
-        } elsif ($_ =~ /^(\w+): ip=(.*)/i) {
-            $nodeip{$1} = $2;
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
+            $nodeipcheck{$1}{"error"} = "Could not find node definition";
+        } elsif ($_ =~ /^(.+): ip=(.*)/i) {
+            $nodeipcheck{$1}{"ip"} = $2;
         }
     }
 
-    foreach my $node (keys %nodeip) {
+    foreach my $node (keys %nodeipcheck) {
         $ip_net = xCAT::NetworkUtils->getipaddr($node);
-        if ($nodeip{$node} and ($nodeip{$node} ne $ip_net)) {
-            probe_utils->send_msg("stdout", "d", "IP $nodeip{$node} definition for $node is not correct") if ($verbose);
+        if ($nodeipcheck{$node}{"ip"} and $ip_net and ($nodeipcheck{$node}{"ip"} ne $ip_net)) {
+            $nodeipcheck{$node}{"error"} = "IP $nodeipcheck{$node}{\"ip\"} definition for $node is not correct";
+            $nodeipcheck{$node}{"ip"} = $ip_net;
         }
-        $nodeip{$node} = $ip_net;
+        $nodeipcheck{$node}{"error"} = "IP for $node is not on any network this server attached, please run 'makehosts' and 'makedns -n'." unless (xCAT::NetworkUtils->nodeonmynet($node));
     }
 
-    foreach my $node (keys %nodecheckrst) {
-        probe_utils->send_msg("stdout", "d", "$node : $nodecheckrst{$node}{error}") if (exists($nodecheckrst{$node}{error}));
-    }
-
-    return %nodeip;
+    return %nodeipcheck;
 }
 
 sub compare_ip_value {
@@ -1174,17 +1182,17 @@ sub handle_dhcp_msg {
         my $nic = $2;
 
         if ($3 =~ /no free leases/) {
-            probe_utils->send_msg("stdout", "d", "[$mac] Receive DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$mac] Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
             return 0;
         }
-        my $record = "Receive DHCPDISCOVER from $mac via $nic";
+        my $record = "Received DHCPDISCOVER from $mac via $nic";
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /DHCPOFFER\s+on\s+(.+)\s+to\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/i) {
         my $ip     = $1;
         my $mac    = $2;
         my $nic    = $3;
-        my $record = "Send DHCPOFFER on $ip back to $mac via $nic";
+        my $record = "Sent DHCPOFFER on $ip back to $mac via $nic";
 
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug); 
@@ -1192,7 +1200,7 @@ sub handle_dhcp_msg {
         my $ip  = $1;
         my $mac = $2;
         my $nic = $3;
-        my $record = "Receive DHCPREQUEST from $mac for $ip via $nic";
+        my $record = "Received DHCPREQUEST from $mac for $ip via $nic";
 
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
@@ -1200,7 +1208,7 @@ sub handle_dhcp_msg {
         my $ip     = $1;
         my $mac    = $2;
         my $nic    = $3;
-        my $record = "Send DHCPACK on $ip back to $mac via $nic";
+        my $record = "Sent DHCPACK on $ip back to $mac via $nic";
 
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
@@ -1211,17 +1219,17 @@ sub handle_dhcp_msg {
         my $mac = $1;
         my $nic = $2;
         if ($3 =~ /no dynamic leases/) {
-            probe_utils->send_msg("stdout", "d", "Receive DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
             return 0;
         }
-        my $record = "Receive BOOTREQUEST from $mac via $nic";
+        my $record = "Received BOOTREQUEST from $mac via $nic";
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip  = $1;
         my $mac = $2;
         my $nic = $3;
-        my $record = "Send BOOTREPLY on $ip back to $mac via $nic";
+        my $record = "Sent BOOTREPLY on $ip back to $mac via $nic";
 
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
@@ -1520,7 +1528,7 @@ sub conclusion_report {
             }
         } elsif ($node_state_ref->{$identify}{type} eq "mac") {
             foreach (@{ $node_state_ref->{$identify}{statehistory} }) {
-                $stop_stage     = $_ if ($stop_stage < $_);
+                $stop_stage = $_ if ($stop_stage < $_);
             }
             if ($stop_stage != $::STATE_DISCOVER_COMPLETED) {
                 $failed_mac{$identify}{stop_point} = $stop_stage;
@@ -1532,7 +1540,7 @@ sub conclusion_report {
         my $success_node_num = @success_node;
         my $failed_node_num = @failed_node;
         my $failed_nodes = join(",", @failed_node);
-        probe_utils->send_msg("stdout", "", "Discover $success_node_num node(s) successfully, $failed_node_num node(s) failed.");
+        probe_utils->send_msg("stdout", "", "Discovered $success_node_num node(s) successfully, $failed_node_num node(s) failed.");
         probe_utils->send_msg("stdout", "", "Unmatched node(s):");
         probe_utils->send_msg("stdout", "", "$failed_nodes");
 

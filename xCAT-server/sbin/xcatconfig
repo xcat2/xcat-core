@@ -1464,6 +1464,13 @@ sub initDB
                 xCAT::MsgUtils->message('E', "Could not add default value for site.xcatsslversion.");
             }
         }
+
+        # Set dhcpd.conf be updated when update xcat
+        my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/makedhcp -n 2>/dev/null";
+        xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message('E', "Could not create a new dhcp configuration file.");
+        }
     }
 
     # remove xcatserver,xcatclient

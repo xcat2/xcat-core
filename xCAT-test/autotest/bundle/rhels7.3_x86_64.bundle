@@ -209,6 +209,7 @@ nodeset_check_warninginfo
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case
