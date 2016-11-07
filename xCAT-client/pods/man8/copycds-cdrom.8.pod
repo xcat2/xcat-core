@@ -10,9 +10,9 @@ B<copycds-cdrom> I<[copycds options]> I<[drive]>
 
 =head1 DESCRIPTION
 
-B<copycds-cdrom> is a wrapper scripts for copycds to copy from physical CD/DVD-ROM drives located on the management server.
+B<copycds-cdrom> is a wrapper scripts for B<copycds> to copy from physical CD/DVD-ROM drives located on the management server.
 
-I<[copycds options]> are passed unmolested to copycds.
+I<[copycds options]> are passed unchanged to copycds.
 
 If I<[drive]> is not specified, /dev/cdrom is assumed.
 
