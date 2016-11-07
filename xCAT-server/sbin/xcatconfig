@@ -548,7 +548,6 @@ if ($::INITIALINSTALL || $::FORCE)
             xCAT::MsgUtils->message('E', "Failed to disable firewall on boot");
         }
 
-        #}
 
         # Enable ip forwarding. In most cases,
         # the MN itself will act as the default gateway for the compute nodes,
@@ -591,9 +590,25 @@ if ($::INITIALINSTALL || $::FORCE)
 
 }    #End - more - Linux-only config
 
+
+
 # Run mknb to put xCAT-genesis-scripts-x86_64 and xCAT-genesis-base-x86_64 together and in /tftpboot
 if (($::INITIALINSTALL || $::UPDATEINSTALL) && $::osname eq 'Linux') {
     &mknb;
+}
+
+if($::UPDATEINSTALL){
+    # update dhcpd.conf when updating xcat
+    my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/makedhcp -n 2>/dev/null";
+    xCAT::Utils->runcmd("$cmds", -1);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message('E', "Fail to generate a new dhcp configuration file.");
+    }
+
+    my $linux_note =
+"xCAT is upgraded. If you upgraded xCAT on a management node in hierachy environment (with service node), Please run \"updatenode <service node> -P servicenode\" to update the xCAT credentials on service node.";
+    xCAT::MsgUtils->message('I', $linux_note);
+    
 }
 
 END
@@ -1465,12 +1480,7 @@ sub initDB
             }
         }
 
-        # Set dhcpd.conf be updated when update xcat
-        my $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/makedhcp -n 2>/dev/null";
-        xCAT::Utils->runcmd("$cmds", -1);
-        if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->message('E', "Could not create a new dhcp configuration file.");
-        }
+
     }
 
     # remove xcatserver,xcatclient
