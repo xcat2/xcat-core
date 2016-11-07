@@ -1,0 +1,36 @@
+start:updatenode_scripts
+cmd:mkdir -p /install/postscripts
+check:rc==0
+cmd:echo "#!/bin/bash" >/install/postscripts/blah
+cmd:echo "echo FOO BAR BAZ QUX" >>/install/postscripts/blah
+cmd:chmod 0755 /install/postscripts/blah
+check:rc==0
+cmd:updatenode $$CN -P blah >/tmp/updatenode.blah.out
+check:rc==0
+cmd:grep 'FOO BAR BAZ QUX' /tmp/updatenode.blah.out
+check:rc==0
+check:rc==0
+cmd:rm -f /install/postscripts/blah /tmp/updatenode.blah.out
+check:rc==0
+end 
+
+start:updatenode_scripts_timeout
+cmd:mkdir -p /install/postscripts
+check:rc==0
+cmd:echo "#!/bin/bash" >/install/postscripts/blah
+cmd:echo "echo FOO BAR BAZ QUX" >>/install/postscripts/blah
+cmd:echo "sleep 20" >>/install/postscripts/blah
+cmd:echo "echo XYZZY ZZZ" >>/install/postscripts/blah
+cmd:chmod 0755 /install/postscripts/blah
+check:rc==0
+cmd:updatenode $$CN -P blah -t 5 >/tmp/updatenode.blah.out 2>/tmp/updatenode.blah.err
+check:rc==0
+cmd:grep 'FOO BAR BAZ QUX' /tmp/updatenode.blah.out
+check:rc==0
+cmd:grep 'XYZZY ZZZ' /tmp/updatenode.blah.out
+check:rc==1
+cmd:grep 'SIGINT' /tmp/updatenode.blah.err
+check:rc==0
+cmd:rm -f /install/postscripts/blah /tmp/updatenode.blah.out /tmp/updatenode.blah.err
+check:rc==0
+end 
