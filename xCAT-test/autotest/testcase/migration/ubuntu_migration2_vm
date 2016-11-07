@@ -1,4 +1,4 @@
-start:ubuntux_migration2_vm
+start:ubuntu_migration2_vm
 os:Linux
 description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 
