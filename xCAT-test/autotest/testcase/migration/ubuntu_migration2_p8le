@@ -1,6 +1,6 @@
 start:ubuntu_migration2_p8le
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 
 cmd:copycds $$ISO
 check:rc==0
@@ -76,7 +76,7 @@ cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
 check:rc==0
-cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$MIGRATION2_VERSION"
+cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$UBUNTU_MIGRATION2_VERSION"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
