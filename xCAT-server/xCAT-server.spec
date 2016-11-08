@@ -11,6 +11,8 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+%define lenovo %(if [ "$lenovobuild" = "1" ];then echo 1; else echo 0; fi)
+%define notlenovo %(if [ "$lenovobuild" = "1" ];then echo 0; else echo 1; fi)
 
 %ifnos linux
 AutoReqProv: no
@@ -305,6 +307,19 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/snmpmon.pm
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
+%endif
+%if lenovo
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/FIP.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xcat2nim.pm
 %endif
 
 

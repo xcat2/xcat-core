@@ -25,7 +25,13 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
+%define lenovo %(if [ "$lenovobuild" = "1" ];then echo 1; else echo 0; fi)
+%define notlenovo %(if [ "$lenovobuild" = "1" ];then echo 0; else echo 1; fi)
+%if lenovo
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64
+%else
 Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64
+%endif
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
@@ -50,6 +56,7 @@ Requires: perl-IO-Stty
 %endif
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
+%if %notlenovo
 %if %notpcm
 %ifos linux
 %ifnarch s390x
@@ -58,10 +65,12 @@ Requires: conserver-xcat
 %endif
 %endif
 %endif
+%endif
 
 #support mixed cluster
 Requires: elilo-xcat xnba-undi
 
+%if %notlenovo
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux
 Requires: ipmitool-xcat >= 1.8.17
@@ -76,6 +85,7 @@ Requires: ipmitool-xcat >= 1.8.17
 %if %notpcm
 # PCM does not need or ship syslinux-xcat
 Requires: syslinux-xcat
+%endif
 %endif
 
 %description
