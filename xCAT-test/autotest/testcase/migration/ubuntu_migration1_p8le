@@ -1,6 +1,6 @@
-start:ubuntu_migration2_p8le
+start:ubuntu_migration1_p8le
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$UBUNTU_MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 
 cmd:copycds $$ISO
 check:rc==0
@@ -20,8 +20,8 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
-cmd:sleep 300
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:sleep 600
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
@@ -56,9 +56,9 @@ check:rc==0
 cmd:xdsh $$CN "rm -rf /oldxcat"
 cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION2_CORE"
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_CORE"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION2_DEP"
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_DEP"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
@@ -76,7 +76,7 @@ cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
 check:rc==0
-cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$MIGRATION2_VERSION"
+cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$UBUNTU_MIGRATION1_VERSION"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
