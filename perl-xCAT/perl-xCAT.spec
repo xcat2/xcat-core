@@ -11,6 +11,8 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+%define lenovo %(if [ "$lenovobuild" = "1" ];then echo 1; else echo 0; fi)
+%define notlenovo %(if [ "$lenovobuild" = "1" ];then echo 0; else echo 1; fi)
 %ifos linux
 BuildArch: noarch
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
@@ -82,6 +84,17 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPCdb.pm
 %endif
 # Don't ship these on FSM, to reduce dependencies
 %if %fsm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RemoteShellExp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/LparNetbootExp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC*.pm
+# have to put PPCdb.pm back because it is needed by Postage.pm
+cp xCAT/PPCdb.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPCdb.pm
+%endif
+%if %lenovo
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/vboxService.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/FSP*.pm
