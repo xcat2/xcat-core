@@ -844,11 +844,18 @@ sub get_node_ip {
 
     foreach my $node (keys %nodeipcheck) {
         $ip_net = xCAT::NetworkUtils->getipaddr($node);
+        my $isonmynet = xCAT::NetworkUtils->nodeonmynet($node);
         if ($nodeipcheck{$node}{"ip"} and $ip_net and ($nodeipcheck{$node}{"ip"} ne $ip_net)) {
             $nodeipcheck{$node}{"error"} = "IP $nodeipcheck{$node}{\"ip\"} definition for $node is not correct";
             $nodeipcheck{$node}{"ip"} = $ip_net;
+        } elsif (!$nodeipcheck{$node}{"ip"} and $ip_net) {
+            $nodeipcheck{$node}{"ip"} = $ip_net;
+        } 
+        if ($ip_net and !$isonmynet) {
+            $nodeipcheck{$node}{"error"} = "IP for $node is not on any network this server attached.";
+        } elsif (!$isonmynet) {
+            $nodeipcheck{$node}{"error"} = "Can not get IP for $node.";
         }
-        $nodeipcheck{$node}{"error"} = "IP for $node is not on any network this server attached, please run 'makehosts' and 'makedns -n'." unless (xCAT::NetworkUtils->nodeonmynet($node));
     }
 
     return %nodeipcheck;
