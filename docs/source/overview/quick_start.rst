@@ -65,7 +65,7 @@ When managing a cluster with hundreds or thousands of nodes, operating on many n
 
 #. Contribute to xCAT (Optional)
 
-While using xCAT, if you find something (code, documentation, ...) that can be improved and you want to contribute that to xCAT, please do that for your and other xCAT users benefit. And welcome to xCAT community!
+While using xCAT, if you find something (code, documentation, ...) that can be improved and you want to contribute that to xCAT, do that for your and other xCAT users benefit. And welcome to xCAT community!
 
    Refer to the :doc:`/developers/index` to learn how to contribute to xCAT community.
 

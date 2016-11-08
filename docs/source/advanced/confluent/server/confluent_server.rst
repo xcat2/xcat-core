@@ -56,8 +56,7 @@ The following example describes the steps for **rhels7.1** on **ppc64le**::
     cd confluent-dep-rh7-ppc64le/
     ./mklocalrepo.sh 
 
-**Note:** If the OS/architecture you are looking for is not provided under confluent-dep, 
-please send an email to the xcat-user mailing list: xcat-user@lists.sourceforge.net
+**Note:** If the OS/architecture you are looking for is not provided under confluent-dep, send an email to the xcat-user mailing list: xcat-user@lists.sourceforge.net
 
 
 Install 

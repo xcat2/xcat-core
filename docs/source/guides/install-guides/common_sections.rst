@@ -52,6 +52,28 @@ xCAT consists of two software packages: ``xcat-core`` and ``xcat-dep``
 
 .. END_install_xcat_introduction 
 
+.. BEGIN_installation_methods
+
+The following sections describe the different methods for installing xCAT.
+
+.. END_installation_methods
+
+.. BEGIN_automatic_install
+
+``go-xcat`` is a tool that can be used to fully install or update xCAT.  ``go-xcat`` will automatically download the correct package manager repository file from xcat.org and use the public repository to install xCAT.  If the xCAT management node does not have internet connectivity, use process described in the Manual Installation section of the guide.
+
+#. Download the ``go-xcat`` tool using ``wget``: ::
+
+        wget http://xcat.org/files/go-xcat -O - >/tmp/go-xcat
+        chmod +x /tmp/go-xcat
+
+#. Run the ``go-xcat`` tool: ::
+        
+        /tmp/go-xcat install            # installs the latest stable version of xCAT
+        /tmp/go-xcat -x devel install   # installs the latest development version of xCAT
+
+.. END_automatic_install
+
 .. BEGIN_configure_xcat_local_repo_xcat-core_RPM
 
 **[xcat-core]**

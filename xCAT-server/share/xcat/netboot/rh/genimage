@@ -19,6 +19,8 @@ use File::Temp qw/mkdtemp/;
 use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
+use xCAT::Utils;
+use Digest::MD5 qw(md5_hex);
 
 #use strict;
 Getopt::Long::Configure("bundling");
@@ -66,6 +68,8 @@ my $tempfile;
 my $prompt;
 my $ignorekernelchk;
 my $noupdate;
+my $lock;
+
 
 
 sub xdie {
@@ -112,17 +116,30 @@ sub mount_chroot {
 
 sub umount_chroot {
     my $rootimage_dir = shift;
-    if ($rootimage_dir eq "") {
+
+    $rootimage_dir=realpath($rootimage_dir);
+    if ($rootimage_dir eq "/") {
         print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
         return 1;
     }
-
+    
+    #unmount all the mount points under rootimg directory
+    #to avoid removing the direcoty/files on managemment node by mistake
+    my @mntptlist;
+    my $FILEHD=undef;
+    open($FILEHD,"<","/proc/mounts");
+    while(<$FILEHD>){
+	my @arr=split / /;
+        push @mntptlist,$arr[1] if(substr($arr[1],0,length($rootimage_dir)) eq $rootimage_dir);
+    }
+    close($FILEHD);
+    foreach my $mntpt (@mntptlist){
+        system("umount -l $mntpt >/dev/null 2>&1")
+    }
+    
     if (majversion($osver) > 6) {
-        system("umount -l $rootimage_dir/proc");
-        system("umount -l $rootimage_dir/sys");
-
-        #system("umount -l $rootimage_dir/dev");
-        system("rm -rf $rootimage_dir/dev/*");
+        #only remove the /dev in rootimg directory if it is not a mount point
+        system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
 }
 
@@ -189,10 +206,11 @@ $srcdir = "$installroot/$osver/$arch" unless ($srcdir);
 $updates{'pkgdir'} = $srcdir if ($tempfile);
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
+#$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 $destdir = "$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($tempfile);
+
 
 $rootimg_dir = "$destdir/rootimg";
 
@@ -348,6 +366,14 @@ unless ($onlyinitrd) {
         exit 1;
     }
 
+    my $retcode;
+    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if($retcode){
+        print "$lock";
+        exit 1;
+    } 
+
+
     mount_chroot($rootimg_dir);
 
     my %pkg_hash = imgutils::get_package_names($pkglist);
@@ -367,20 +393,20 @@ unless ($onlyinitrd) {
             my $pa  = $pkg_hash{$pass}{$_};
             my @npa = ();
 
-            # replace the kernel package with the name has the specific version
+            # replace the kernel package (and headers, tools, etc) with the specific version
             foreach my $p (@$pa) {
-                if ($p =~ /^kernel$/ && $kernelver) {
+                if ($kernelver && $p =~ /^kernel(-headers|-devel|-bootwrapper|-tools)?$/) {
                     my $kernelname;
                     if ($krpmver) {
-                        $kernelname = "kernel-" . $krpmver;
+                        $kernelname = $p . "-" . $krpmver;
                     } else {
-                        $kernelname = "kernel-" . $kernelver;
+                        $kernelname = $p . "-" . $kernelver;
                     }
                     my $searchkern = $yumcmd . " list $kernelname -q";
                     my @kernpkgs   = `$searchkern`;
                     my $found      = 0;
                     foreach my $k (@kernpkgs) {
-                        if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
+                        if ($k =~ /\s*$p\.[^\s]*\s+([\w\.-]+)/) {
                             my $version = $1;
                             if ($kernelver =~ /$version/) {
                                 $found++;
@@ -388,7 +414,7 @@ unless ($onlyinitrd) {
                         }
                     }
                     if ($found eq 0) {
-                        print "Cannot find the kernel with version $kernelver.\n";
+                        print "Cannot find the $p package with version $kernelver.\n";
                         umount_chroot($rootimg_dir);
                         exit 1;
                     }
@@ -467,7 +493,7 @@ unless ($onlyinitrd) {
         #        }
 
         # Hack uname when deal otherpkgs
-        use_hackuname();
+        use_hackuname($arch, $kernelver);
         use_devnull();
 
 
@@ -546,7 +572,9 @@ unless ($onlyinitrd) {
 
                 # run yum update to update any installed rpms
                 # needed when running genimage again after updating software in repositories
-                my $yumcmd_update = $yumcmd_base . " update  ";
+                # exclude updating the kernel if a specific version was specified
+                my $excludecmd = $kernelver ? " --exclude=kernel\*" : "";
+                my $yumcmd_update = $yumcmd_base . $excludecmd . " update  ";
                 $rc = system("$yumcmd_update");
             }
         }
@@ -713,31 +741,7 @@ unless ($imagename) {
 
 if ($postinstall_filename) {
 
-    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level,
-    #because the "uname -r" only returns the version of the kernel in use
-    #create a temporary uname script. for every flag except for -r, it should just call the real
-    #uname with the same flags and return that info.
-    if (!(-e "$rootimg_dir/bin/orig_uname")) {
-        system("mv $rootimg_dir/bin/uname $rootimg_dir/bin/orig_uname");
-    }
-    my $tmpuname;
-    open($tmpuname, ">", "$rootimg_dir/bin/uname");
-    print $tmpuname <<EOS_UNAME;
-#!/bin/sh
-
-if [[ \$\# -eq 1 && \$1 == "-r" ]]; then
-    echo $kernelver
-    exit 0
-fi
-
-res=`/bin/orig_uname \$\*`
-echo \$res
-
-EOS_UNAME
-
-    close($tmpuname);
-    system("chmod +x $rootimg_dir/bin/uname");
-
+    use_hackuname($arch, $kernelver);
 
     $updates{'postinstall'} = $postinstall_filename if ($tempfile);
 
@@ -746,6 +750,7 @@ EOS_UNAME
     $ENV{IMG_NAME}=$imagename if("" ne $imagename);
     $ENV{IMG_ARCH}=$arch if("" ne $arch);
     $ENV{IMG_OSVER}=$osver if("" ne $osver);
+    $ENV{IMG_KERNELVERSION} = $kernelver if("" ne $kernelver);
     $ENV{IMG_PROFILE}=$profile if("" ne $profile);
     $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
     $ENV{IMG_PKGDIR}=$srcdir if("" ne $srcdir);
@@ -756,22 +761,22 @@ EOS_UNAME
     foreach my $postinstall (split /,/, $postinstall_filename) {
         if (!-x $postinstall) {
             print "postinstall script $postinstall is not executable\n";
+            unuse_hackuname();
             exit 1;
         }
 
         my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
         if ($rc) {
             print "postinstall script $postinstall failed\n";
+            unuse_hackuname();
             exit 1;
         }
     }
 
     #delete the osimage attributes from environment variable
-    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_KERNELVERSION IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
 
-    # restore the orig uname
-    system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
-
+    unuse_hackuname();
 }
 
 # all the attributes have been gathered
@@ -2009,9 +2014,21 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
         }
 
-        copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-        chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-        system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+        if(-e "$rootimg_dir/usr/lib/systemd/"){
+            #if systemd is the service management framework for the diskless image
+            #enable the xcatpostinit1.service
+            copy("/install/postscripts/xcatpostinit1.netboot","$rootimg_dir/opt/xcat/xcatpostinit1");
+            chmod(0755,"$rootimg_dir/opt/xcat/xcatpostinit1");
+            copy("/install/postscripts/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/xcatpostinit1.service");
+            symlink("$rootimg_dir/etc/systemd/system/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.targ
+et.wants/xcatpostinit1.service") ;
+       }else{
+            #for traditional sysvinit
+            copy("$installroot/postscripts/xcatpostinit1.netboot", "$rootimg_dir/etc/init.d/xcatpostinit");
+            chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+            system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+       }
+
     }
 }
 
@@ -2303,8 +2320,14 @@ sub use_devnull {
     }
 }
 
-#To hack the uname, same function with the one in ubuntu genimage
+# Hack uname functions to match what's installed in the rootimg
+# instead of what's running on the management node.
+# Needed for some RPMs, especially kernel modules via DKMS.
+# Make sure to restore the original uname with unuse_hackuname()
 sub use_hackuname {
+    my $arch = shift;
+    my $kernelver = shift;
+
     unless (-e "$rootimg_dir/bin/uname-binary") {
         if (-e -x "$rootimg_dir/bin/uname") {
             move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");
@@ -2316,18 +2339,30 @@ sub use_hackuname {
     print $unamefile <<UNAME_FILE;
 #!/bin/bash
 
-case "\$1" in 
+ARCH=$arch
+KERNELVER=$kernelver
+
+case "\$1" in
 "-m")
-    ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+    if [ -z "\$ARCH" ]; then
+      ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+    fi
     case "\$ARCH" in 
         "amd64") ARCH="x86_64" ;;
         "ppc64el") ARCH="ppc64le" ;;
         esac
     echo "\$ARCH" ;;
 "-r")
-    cd /lib/modules && for d in * ; do : ; done && echo \$d ;; 
+    if [ -n "\$KERNELVER" ]; then
+        echo \$KERNELVER
+    else
+      for d in \$(ls /lib/modules | sort -V) ; do : ; done && echo \$d
+    fi
+    ;;
 "-s"|"")
     echo "Linux";;
+*)
+    /bin/uname-binary \$1;;
     esac
     exit 0
 

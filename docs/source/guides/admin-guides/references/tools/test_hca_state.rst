@@ -26,7 +26,7 @@ test_hca_state
         Having consistent OFED settings, and even HCA firmware, can be very
         important for a properly functioning InfiniBand fabric.  This tool
         can help you confirm that your nodes are using the settings you
-        want, and if any nodes have settings descrepancies.
+        want, and if any nodes have settings discrepancies.
 
 
     Example output:

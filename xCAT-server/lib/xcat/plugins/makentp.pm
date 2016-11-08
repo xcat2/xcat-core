@@ -110,6 +110,7 @@ sub parse_args {
     # Responds with usage statement
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
+        send_msg($request, 0, " $usage_string");
         return ([ $_[0], $usage_string ]);
     };
 
@@ -124,6 +125,7 @@ sub parse_args {
     @ARGV                     = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("bundling");
+    Getopt::Long::Configure("no_pass_through");
 
     # Process command-line flags
     if (!GetOptions(\%opt,
@@ -288,7 +290,7 @@ sub process_request {
     }
 
     if ($verbose) {
-        send_msg(\%request, 0, " ...changing the ntpp configuration file /etc/ntp.conf.\n    ntp servers are: $ntp_servers");
+        send_msg(\%request, 0, " ...changing the ntp configuration file /etc/ntp.conf.\n    ntp servers are: $ntp_servers");
     }
 
     # create ntp server config file

@@ -32,6 +32,7 @@ else {
 use IPC::Open3;
 use IO::Select;
 use xCAT::GlobalDef;
+use Digest::MD5 qw(md5_hex);
 eval {
     require xCAT::RemoteShellExp;
 };
@@ -2394,18 +2395,20 @@ sub acquire_lock {
     use Fcntl ":flock";
     my $tlock;
     $tlock->{path} = "/var/lock/xcat/" . $lock_name;
-    open($tlock->{fd}, ">", $tlock->{path}) or return undef;
+    sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
     unless ($tlock->{fd}) { return undef; }
-
     if ($nonblock_mode) {
         flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
     } else {
         flock($tlock->{fd}, LOCK_EX) or return undef;
     }
-    print { $tlock->{fd} } $$;
+
+    truncate $tlock->{fd},0;
+    syswrite $tlock->{fd} ,$$;
     $tlock->{fd}->autoflush(1);
     return $tlock;
 }
+
 
 #---------------------
 
@@ -3362,6 +3365,7 @@ my %MTM_P6P7 = (
     '9117-MMB' => 1,
     '9179-MHB' => 1,
     '9119-FHB' => 1,
+    '9125-F2C' => 1,
 );
 
 #-----------------------------------------------------------------------------
@@ -4778,6 +4782,47 @@ sub get_nmapversion {
     my @version_array = split / /, $result;
     $nmap_version = $version_array[2];
     return $nmap_version;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  acquire_lock_imageop
+      acquire lock for the image related operations on specific rootimg dir
+      the image related operation includes genimage,packimage,rmimage...
+      Arguments:
+         $rootimg_dir: the full path of osimage rootimage dir
+         lock mode: 0-block, 1-non-block
+      Returns:
+         a list with format (<error code>, <error messgae> or <lock handler>)
+
+         the <error code>: 0  on success, 1 on fail
+         the <error message>: available on fail
+         the <lock handler>: available on success
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub acquire_lock_imageop {
+    my $self=shift;
+    my $rootimg_dir=shift;
+    my $NON_BLOCK=shift;
+
+    $NON_BLOCK=1 unless(defined $NON_BLOCK);
+    my $mylockfile=Cwd::realpath($rootimg_dir);
+    my $mymd5=md5_hex($mylockfile);
+    $mylockfile=~s/\//./g;
+    $mylockfile=$mylockfile.".".$mymd5;
+
+    my $lock = xCAT::Utils->acquire_lock("$mylockfile", $NON_BLOCK);
+    unless ($lock){
+        my $pidfd;
+        open($pidfd,"<","/var/run/lock/xcat/$mylockfile");
+        my $pid=<$pidfd>;
+        close($pidfd);
+        return (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process $pid running on root image dir \"$rootimg_dir\"");
+    }
+    return (0,$lock);
 }
 
 1;

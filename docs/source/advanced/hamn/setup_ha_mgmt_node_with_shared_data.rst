@@ -408,7 +408,7 @@ The operating system is installed on the internal disks.
 
 #. Connect the shared disk to both management nodes
 
-   To verify the shared disks are connected correctly, run the sginfo command on both management nodes and look for the same serial number in the output. Please be aware that the sginfo command may not be installed by default on Linux, the sginfo command is shipped with package sg3_utils, you can manually install the package sg3_utils on both management nodes. 
+   To verify the shared disks are connected correctly, run the sginfo command on both management nodes and look for the same serial number in the output. Be aware that the sginfo command may not be installed by default on Linux, the sginfo command is shipped with package sg3_utils, you can manually install the package sg3_utils on both management nodes. 
 
    Once the sginfo command is installed, run sginfo -l command on both management nodes to list all the known SCSI disks, for example, enter: ::
 

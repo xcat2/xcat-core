@@ -90,12 +90,12 @@ Other information about the network should be defined in the ``networks`` table.
 Use the ``tabedit`` command to add/modify the networks in the``networks`` table ::
 
     tabdump networks
-    #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
+    #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
     ...
-    "net11", "11.1.89.0", "255.255.255.0", "eth1",,,,,,,,,,,,,,,
-    "net12", "12.1.89.0", "255.255.255.0", "eth1",,,,,,,,,,,,,,,
-    "net13", "13.1.89.0", "255.255.255.0", "eth2",,,,,,,,,,,,,,,
-    "net14", "14.1.89.0", "255.255.255.0", "eth2",,,,,,,,,,,,,,,
+    "net11", "11.1.89.0", "255.255.255.0", "eth1",,,,,,,,,,,,,,,,
+    "net12", "12.1.89.0", "255.255.255.0", "eth1",,,,,,,,,,,,,,,,
+    "net13", "13.1.89.0", "255.255.255.0", "eth2",,,,,,,,,,,,,,,,
+    "net14", "14.1.89.0", "255.255.255.0", "eth2",,,,,,,,,,,,,,,,
 
 Option -r to remove the undefined NICS
 --------------------------------------

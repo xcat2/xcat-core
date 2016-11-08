@@ -8,9 +8,9 @@ Configure network table
 Normally, there will be at least two entries for the two subnet on MN in ``networks`` table after xCAT is installed::
 
     #tabdump networks
-    #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
-    "10_0_0_0-255_255_0_0","10.0.0.0","255.255.0.0","eth1","<xcatmaster>",,"10.0.1.1",,,,,,,,,,,,
-    "50_0_0_0-255_255_0_0","50.0.0.0","255.255.0.0","eth2","<xcatmaster>",,"50.0.1.1",,,,,,,,,,,,
+    #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
+    "10_0_0_0-255_255_0_0","10.0.0.0","255.255.0.0","eth1","<xcatmaster>",,"10.0.1.1",,,,,,,,,,,,,
+    "50_0_0_0-255_255_0_0","50.0.0.0","255.255.0.0","eth2","<xcatmaster>",,"50.0.1.1",,,,,,,,,,,,,
 
 Run the following command to add networks in ``networks`` table if there are no entries in it::
 

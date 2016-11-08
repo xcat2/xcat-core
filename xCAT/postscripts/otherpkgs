@@ -715,7 +715,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    fi
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
-		    result=`yum list $fn 2>&1`
+		    result=`yum --showduplicates list $fn 2>&1`
 		    if [ $? -eq 0 ]; then  
 		        rc=0
 		        array_set_element repo_path $index $path

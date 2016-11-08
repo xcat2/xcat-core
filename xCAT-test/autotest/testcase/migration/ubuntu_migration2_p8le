@@ -1,15 +1,16 @@
-start:ubuntux_migration2_vm
+start:ubuntu_migration2_p8le
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:makedns -n
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
-cmd:sleep 60
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
 check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
@@ -19,8 +20,8 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
-cmd:sleep 600
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
@@ -32,13 +33,13 @@ cmd:xdsh $$CN "echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf"
 check:rc==0
 cmd:xdsh $$CN "apt-get -y install software-properties-common"
 check:rc==0
-cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu $lsb_r main"' 
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports $lsb_r main"'
 check:rc==0
-cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates main"'
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r}-updates main"'
 check:rc==0
-cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r} universe"'
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r} universe"'
 check:rc==0
-cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates universe"'
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports ${lsb_r}-updates universe"'
 check:rc==0
 cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
@@ -46,7 +47,7 @@ cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"
 check:rc==0
-cmd:xdsh $$CN "apt-get clean all" 
+cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
@@ -75,7 +76,7 @@ cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
 check:rc==0
-cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$MIGRATION2_VERSION"
+cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$UBUNTU_MIGRATION2_VERSION"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -118,4 +119,6 @@ cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
 check:output!~node0001
 cmd:xdsh $$CN "diff /oldxcat/old_version /newxcat/new_version"
 check:rc!=0
+
 end
+

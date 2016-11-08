@@ -457,7 +457,7 @@ ProcessType () {
             # before mount, need to check whether it exists or not
             STRPATH="${TMPFS}${2}"
             STRLEN=${#STRPATH}
-            CHAREND=`echo ${STRPATH} | /bin/cut -c${STRLEN}`            
+            CHAREND=`echo ${STRPATH} | /usr/bin/cut -c${STRLEN}`            
 
             if [ "${CHAREND}" = "/" ]; then # it is one directory
                 if [ ! -d ${STRPATH} ]; then

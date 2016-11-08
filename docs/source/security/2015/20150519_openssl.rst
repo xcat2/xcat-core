@@ -22,6 +22,6 @@ The VENOM bug (CVE-2015-3456) exists in the virtual Floppy Disk Controller for t
 Action
 ------
 
-xCAT does not ship any rpms that have QEMU component directly. However xCAT does make system calls to QEMU when doing KVM/Xen visualization. If you are using xCAT to manage KVM or Xen hosts and quests, please get the latest rpms that have QEMU component from the os distro and do a upgrade on both xCAT management node and the KVM/Xen hosts. 
+xCAT does not ship any rpms that have QEMU component directly. However xCAT does make system calls to QEMU when doing KVM/Xen visualization. If you are using xCAT to manage KVM or Xen hosts and quests, get the latest rpms that have QEMU component from the os distro and do a upgrade on both xCAT management node and the KVM/Xen hosts. 
 
 

@@ -161,7 +161,7 @@ Add links to refer other web page  is a very common way in writting document, it
 Add OS or ARCH Specific Contents
 --------------------------------
 
-When writing a common xCAT doc, we always encounter the case that certain small part of content needs to be OS or ARCH specific. In this case, please use the following format to add specific branches.
+When writing a common xCAT doc, we always encounter the case that certain small part of content needs to be OS or ARCH specific. In this case, use the following format to add specific branches.
 
 The keyword in the **[]** can be an OS name or ARCH name, or any name which can distinguish the content from other part.
 

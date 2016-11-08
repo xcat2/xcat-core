@@ -26,7 +26,7 @@ Set the target `osimage` into the chain table to automatically provision the ope
 
     chdef cn1 -p chain="osimage=<osimage_name>"
 
-For more information about chain, please refer to :doc:`Chain <../../../../../advanced/chain/index>`
+For more information about chain, refer to :doc:`Chain <../../../../../advanced/chain/index>`
 
 Initialize the discovery process
 ````````````````````````````````

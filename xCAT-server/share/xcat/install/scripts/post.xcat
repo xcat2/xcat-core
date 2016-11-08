@@ -34,6 +34,8 @@ fi
 EOF
 ) >/tmp/updateflag
 
+chmod 0755 /tmp/updateflag
+
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
@@ -153,9 +155,9 @@ if [ ! -x /xcatpost/mypostscript ]; then
     done
 fi
 
-TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
-TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ s/\(.*\)/run_ps postbootscript \1/;s/run_ps postbootscript\s*#/#/;s/run_ps postbootscript\s*$//" /xcatpost/mypostscript`
 
 cd /xcatpost
 #gunzip xcatpost.tar.gz
@@ -178,48 +180,56 @@ echo "
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
 # subroutine used to run postscripts
+# \$1 argument is the script type
+# rest argument is the script name and arguments
 run_ps () {
- local ret_local=0
- mkdir -p "\"/var/log/xcat\""
- # On some Linux distro, the rsyslogd daemon write log files with permision
- # other than root:root. And in some case, the directory /var/log/xcat was
- # created by xCAT, and had root:root ownership. In this way, rsyslogd
- # did not have enough permission to write to log files under this directory.
- # As a dirty hack, change the ownership of directory /var/log/xcat to the
- # same ownership of directory /var/log.
- chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\""
- local logfile=\"/var/log/xcat/xcat.log\"
+    local ret_local=0
+    mkdir -p "\"/var/log/xcat\""
+    # On some Linux distro, the rsyslogd daemon write log files with permision
+    # other than root:root. And in some case, the directory /var/log/xcat was
+    # created by xCAT, and had root:root ownership. In this way, rsyslogd
+    # did not have enough permission to write to log files under this directory.
+    # As a dirty hack, change the ownership of directory /var/log/xcat to the
+    # same ownership of directory /var/log.
+    chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\""
+    local logfile=\"/var/log/xcat/xcat.log\"
+    local scriptype=\$1
+    shift;
 
- if [ -f \$1 ]; then
-  echo \"\`date\` Running postscript: \$*\"
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
-  if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
-     local compt=\$(file \$1)
-     local reg=\"shell script\"
-     if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1
-        ret_local=\$?
-     else
-        ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
-        ret_local=\${PIPESTATUS[0]}
-     fi
-  else
-     ./\$@ 2>&1 | tee -a \$logfile
-     ret_local=\${PIPESTATUS[0]}
-  fi
+    if [ -z \"\$scriptype\" ]; then
+        scriptype=\"postscript\"
+    fi
 
-  if [ \"\$ret_local\" -ne \"0\" ]; then
-     return_value=\$ret_local
-  fi
-  echo \"Postscript: \$* exited with code \$ret_local\"
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$* return with \$ret_local\"" \"\$logfile\"
- else
-  echo \"\`date\` Postscript \$1 does NOT exist.\" 
-  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Postscript \$1 does NOT exist.\"" \"\$logfile\"
-  return_value=-1
- fi
+    if [ -f \$1 ]; then
+        echo \"\`date\` Running \$scriptype: \$1\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running \$scriptype: \$1\"" \"\$logfile\"
+        if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
+            local compt=\$(file \$1)
+            local reg=\"shell script\"
+            if [[ \"\$compt\" =~ \$reg ]]; then
+                bash -x ./\$@ 2>&1
+                ret_local=\$?
+            else
+                ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
+                ret_local=\${PIPESTATUS[0]}
+            fi
+        else
+            ./\$@ 2>&1 | tee -a \$logfile
+            ret_local=\${PIPESTATUS[0]}
+        fi
 
- return 0
+        if [ \"\$ret_local\" -ne \"0\" ]; then
+            return_value=\$ret_local
+        fi
+        echo \"\$scriptype: \$1 exited with code \$ret_local\"
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` \$scriptype \$1 return with \$ret_local\"" \"\$logfile\"
+    else
+        echo \"\`date\` \$scriptype \$1 does NOT exist.\" 
+        msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` \$scriptype \$1 does NOT exist.\"" \"\$logfile\"
+        return_value=-1
+    fi
+
+    return 0
 }
 # subroutine end
 
@@ -258,49 +268,68 @@ else
 fi
 
 
-#create the post init
-cat >/etc/init.d/xcatpostinit1 << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
-EOF
-chmod 755 /etc/init.d/xcatpostinit1
-
-if [ ! -x /etc/init.d/xcatpostinit1 ]; then
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "failed to generate /etc/init.d/xcatpostinit1" "/var/log/xcat/xcat.log"
-    fi
-else
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "/etc/init.d/xcatpostinit1 generated" "/var/log/xcat/xcat.log"
-    fi
-fi
-
 export OSVER=#TABLE:nodetype:THISNODE:os#
-
-if [[ $OSVER == ubuntu* ]]; then
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
-else
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
+#create the post init service as a hook to run PS and PBS, as well as status updating
+hassystemd=0
+systemctl --version 2>/dev/null
+if [ $? -eq 0 ]; then
+    hassystemd=1
 fi
 
-if [[ $OSVER == ubuntu* ]]; then
-    update-rc.d xcatpostinit1 defaults
+if [ $hassystemd -eq 1 ] ; then
+    cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service#
+EOF
+    msgutil_r "$MASTER_IP" "debug" "/etc/systemd/system/xcatpostinit1.service generated" "/var/log/xcat/xcat.log"
+
+    ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service    
+    msgutil_r "$MASTER_IP" "debug" "xcatpostinit1.service enabled" "/var/log/xcat/xcat.log"
+
+    cat >/opt/xcat/xcatpostinit1 << 'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.install#
+EOF
+    chmod 755 /opt/xcat/xcatpostinit1
 else
-    if [[ $OSVER == sles* ]]; then
-        if [[ $OSVER == sles10* ]]; then
-            /sbin/insserv xcatpostinit1
-        else
-            /sbin/insserv -p /etc/init.d xcatpostinit1
+    cat >/etc/init.d/xcatpostinit1 << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.install#
+EOF
+    chmod 755 /etc/init.d/xcatpostinit1
+
+    if [ ! -x /etc/init.d/xcatpostinit1 ]; then
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "failed to generate /etc/init.d/xcatpostinit1" "/var/log/xcat/xcat.log"
+        fi
+    else
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "/etc/init.d/xcatpostinit1 generated" "/var/log/xcat/xcat.log"
         fi
     fi
-    #chkconfig --add xcatpostinit1
-    chkconfig xcatpostinit1 on
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
+    
+    if [[ $OSVER == ubuntu* ]]; then
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
+    else
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
+    fi
+    
+    if [[ $OSVER == ubuntu* ]]; then
+        update-rc.d xcatpostinit1 defaults
+    else
+        if [[ $OSVER == sles* ]]; then
+            if [[ $OSVER == sles10* ]]; then
+                /sbin/insserv xcatpostinit1
+            else
+                /sbin/insserv -p /etc/init.d xcatpostinit1
+            fi
+        fi
+        #chkconfig --add xcatpostinit1
+        chkconfig xcatpostinit1 on
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
+        fi
     fi
 fi
-
 
 #create the xcatinstallpost
 mkdir -p /opt/xcat
@@ -319,12 +348,13 @@ if [[ $OSVER == ubuntu* ]]; then
         msgutil_r "$MASTER_IP" "debug" "update-rc.d -f xcatpostinit1 remove" "/var/log/xcat/xcat.log"
     fi
 else
-    if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    if [ "$RUNBOOTSCRIPTS" != "'yes'" ] && [ "$NODESTATUS" = "'n'" ]; then
         chkconfig xcatpostinit1 off
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
+        fi
     fi
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
-    fi
+
 fi
 
 EOF
@@ -365,9 +395,11 @@ chmod 755 /xcatpost/mypostscript
 
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#
-if [[ $OSVER != ubuntu* ]]; then
-    addsiteyum
-fi
+
+#for redhat:
+##place-holder for the code to save the repo info on compute node,pointing to the "pkgdir" of the osimage
+##so that the provisioned node
+##WRITEREPO#
 
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "info" "running mypostscript" "/var/log/xcat/xcat.log"

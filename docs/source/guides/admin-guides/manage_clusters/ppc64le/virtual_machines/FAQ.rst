@@ -28,7 +28,7 @@ rpower fails with "Error: internal error Process exited while reading console lo
 
      Then restart the NFS services and try to power on the VM again...
    
-     **Note**: For stateless hypervisor, please purge the VM by ``rmvm -p vm1``, reboot the hypervisor and then create the VM.
+     **Note**: For stateless hypervisor, purge the VM by ``rmvm -p vm1``, reboot the hypervisor and then create the VM.
 
 rpower fails with "Error: internal error: process exited while connecting to monitor qemu: Permission denied"
 -------------------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ Error: Cannot communicate via libvirt to kvmhost1
      The kvm related commands complain "Error: Cannot communicate via libvirt to kvmhost1"
 
    **Solution**: 
-     Usually caused by incorrect ssh configuration between xCAT management node and hypervisor. Please make sure it is possible to access the hypervisor from management node via ssh without password.
+     Usually caused by incorrect ssh configuration between xCAT management node and hypervisor. Make sure it is possible to access the hypervisor from management node via ssh without password.
 
 
 Fail to ping the installed VM
@@ -89,7 +89,7 @@ Fail to ping the installed VM
        ADDRCONF(NETDEV_UP): eth0 link is not ready.
 
    **Solutoin**: 
-     Usually caused by the incorrect VM NIC model. Please try the following steps to specify "virtio": :: 
+     Usually caused by the incorrect VM NIC model. Try the following steps to specify "virtio": :: 
 
        rmvm vm1
        chdef vm1 vmnicnicmodel=virtio

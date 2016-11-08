@@ -909,7 +909,7 @@ Usage:
         } else {
             $ent->{'node'}   = 'undef' unless ($ent->{'node'});
             $ent->{'method'} = 'undef' unless ($ent->{'method'});
-            push @discoverednodes, sprintf("  %-40s%-20s%-15s%-10s%-13s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'}, 0, 12));
+            push @discoverednodes, sprintf("  %-40s%-20s%-15s%-10s%-20s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'}, 0, 19));
         }
     }
 

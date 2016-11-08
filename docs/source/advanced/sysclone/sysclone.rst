@@ -40,7 +40,7 @@ This document describes how to install and configure a template node (called gol
 Prepare the xCAT Management Node for Support Sysclone
 `````````````````````````````````````````````````````
 
-How to configure xCAT management node please refer to section :ref:`install_guides`
+To configure xCAT management node refer to section :ref:`install_guides`
 
 For support Sysclone, we need to install some extra rpms on management node and the golden client.
 
@@ -93,7 +93,7 @@ Install and Configure the Golden Client
 	
 The Golden Client acts as a regular node for xCAT, just have some extra rpms to support clone. When you deploy golden client with xCAT, you just need to add a few additional definitions to the image which will be used to deploy golden client.
 
-For information of how to install a regular node, please refer to section :ref:`Diskful Installation <diskful_installation>`
+For information of how to install a regular node, refer to section :ref:`Diskful Installation <diskful_installation>`
 
 For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. then the golden client will have extra rpms to support clone. If you have deployed your golden client already, using 'updatenode' command to push these extra rpms to golden client. CentOS share the same pkglist file with RHEL. For example: 
 
@@ -121,7 +121,7 @@ For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image 
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.3/ppc64
     updatenode <golden-cilent> -S
 
-*[Note]: If you install systemimager RPMs on CentOS 6.5 node by above steps, you maybe hit failure. this is a known issue because some defect of CentOS6.5 itself. Please refer to known issue section for help.*
+*[Note]: If you install systemimager RPMs on CentOS 6.5 node by above steps, you maybe hit failure. this is a known issue because some defect of CentOS6.5 itself. Refer to known issue section for help.*
 
 Capture Image from Golden Client
 ````````````````````````````````
@@ -159,7 +159,7 @@ If, at a later time, you need to make changes to the golden client (install new 
 
 **[Limitation]**: In xcat2.8.5, this feature has limitation in RHEL and CentOS. when your delta changes related bootloader, it would encounter error. This issue will be fixed in xcat higher version. So up to now, in RHEL and CentOS, this feature just update files not related bootloader.
 
-Update delta changes please follow below steps:
+Update delta changes follow below steps:
 
 1. Make changes to your golden node (install new rpms, change config files, etc.).
 
@@ -199,7 +199,7 @@ Known Issue
 Can not install systemimager RPMs in CentOS6.5 by yum
 ``````````````````````````````````````````````````````
 
-If you install systemimager RPMs on CentOS 6.5 node by yum, you maybe hit failure because some defect of CentOS6.5 itself. So please copy related RPMs to CentOS 6.5 node and install them by hand.
+If you install systemimager RPMs on CentOS 6.5 node using yum, you may experience some problems due to CentOS6.5 itself. If that happens, copy related RPMs to CentOS 6.5 node and install them by hand.
 
 * **On management node**::
 

@@ -132,8 +132,8 @@ Execute steps on xCAT MN rhmn1
     # chdef -t site master=10.2.2.250 nameservers=10.2.2.250
     # chdef -t network 10_0_0_0-255_0_0_0 tftpserver=10.2.2.250
     # tabdump networks
-    ~]#netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
-    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.2.0.221",,"10.2.2.250",,,,,,,,,,,,
+    ~]#netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
+    "10_0_0_0-255_0_0_0","10.0.0.0","255.0.0.0","eth0","10.2.0.221",,"10.2.2.250",,,,,,,,,,,,,
 
 #. Add 2 nodes into policy table: ::
 
@@ -329,7 +329,7 @@ Install corosync and pacemaker on both rhmn2 and rhmn1
 Customize corosync/pacemaker configuration for xCAT
 ------------------------------------------------------
 
-Please be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead.
+Be aware that you need to apply ALL the configuration at once. You cannot pick and choose which pieces to put in, and you cannot put some in now, and some later. Don't execute individual commands, but use crm configure edit instead.
 
     Check that both rhmn2 and chetha are standby state now: ::
 

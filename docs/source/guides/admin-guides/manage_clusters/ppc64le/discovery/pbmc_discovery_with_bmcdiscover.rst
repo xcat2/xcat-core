@@ -5,7 +5,7 @@ After environment is ready, and the server is powered, we can start server disco
 
 The following command can be used to discovery BMC within an IP range and write the discovered node definition into xCAT database::
 
-    bmcdiscover -s nmap --range 50.0.100.1-100 -t -z -w
+    bmcdiscover -s nmap --range 50.0.100.1-100 -z -w
 
 The discovered BMC node will be like this::
 
@@ -27,7 +27,7 @@ The discovered BMC node will be like this::
     
     2. bmcdiscover will use username/password pair set in ``passwd`` table with **key** equal **ipmi**. If you'd like to use other username/password pair, you can use ::
 
-        bmcdiscover -s nmap --range 50.0.100.1-100 -t -z -w -u <username> -p <password>
+        bmcdiscover -s nmap --range 50.0.100.1-100 -z -w -u <username> -p <password>
 
 Start discovery process
 -----------------------

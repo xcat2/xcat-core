@@ -1,7 +1,7 @@
 Transmission Channel
 --------------------
 
-The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. All xCAT commands are initiated as an xCAT **client**, even when run commands from the xCAT management node. This **client** opens an SSL socket to the xCAT daemon, sends the command and receives responses through this one socket. xCAT has configured the certificate for root, if you nee to authorize other users, please refer to below section.
+The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. All xCAT commands are initiated as an xCAT **client**, even when run commands from the xCAT management node. This **client** opens an SSL socket to the xCAT daemon, sends the command and receives responses through this one socket. xCAT has configured the certificate for root, if you nee to authorize other users, refer to the section below.
 
 
 Create SSL Certificate So That User Can Be Authenticated By xCAT
@@ -25,7 +25,7 @@ This will create the following files in the <username> 's ``$HOME/.xcat`` direct
 Commands Access Control
 -----------------------
 
-Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, please refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
+Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
 
 
 Granting Users xCAT Privileges
@@ -74,7 +74,7 @@ Below are the steps of how to set up a login node.
 
 1. Install the xCAT client
 
-  In order to avoid stucking in dependence problem in different distro. We recommand to create repository first by referring to below links.
+  In order to avoid dependency problems on different distros, we recommend creating repository first by referring to links below.
 
   * :doc:`Configure xCAT Software Repository in RHEL</guides/install-guides/yum/configure_xcat>`
 
@@ -111,11 +111,11 @@ Below are the steps of how to set up a login node.
 
   The remote not-root user still needs to set up the credentials for communication with management node. By running the ``/opt/xcat/share/xcat/scripts/setup-local-client.sh <username>`` command as root in management node, the credentials are generated in <username>'s ``$HOME/.xcat`` directory in management node. These credential files must be copied to the <username>'s ``$HOME/.xcat`` directory on the login node.  **Note**: After ``scp``, in the login node, you must make sure the owner of the credentials is <username>.
 
-  Setup your ``policy`` table on the managment node with the permissions that you would like the non-root id to have. 
+  Setup your ``policy`` table on the management node with the permissions that you would like the non-root id to have. 
 
   At this time, the non-root id should be able to execute any commands that have been set in the ``policy`` table from the Login Node.
 
-  If any remote shell commmands (psh,xdsh) are needed, then you need to follow `Extra Setup For Remote Commands`_. 
+  If any remote shell commands (psh,xdsh) are needed, then you need to follow `Extra Setup For Remote Commands`_. 
 
 
 Auditing
@@ -142,7 +142,7 @@ Password Management
 
 xCAT is required to store passwords for various logons so that the application can login to the devices without having to prompt for a password. The issue is how to securely store these passwords.
 
-Currently xCAT stores passwords in ``passwd`` table. You can store them as plaintext, you also can store them as MD5 ciphertext.  
+Currently xCAT stores passwords in ``passwd`` table. You can store them as plain text, you can also store them as MD5 ciphertext.  
 
 Here is an example about how to store a MD5 encrypted password for root in ``passwd`` table.  ::
 
@@ -178,5 +178,5 @@ This setting of site.sshbetweennodes will only enable root ssh between nodes of 
 Secure Zones
 ````````````
 
-You can set up multiple zones in an xCAT cluster. A node in the zone can ssh without password to any other node in the zone, but not to nodes in other zones. Please refer :doc:`Zones </advanced/zones/index>`  for more information.
+You can set up multiple zones in an xCAT cluster. A node in the zone can ssh without password to any other node in the zone, but not to nodes in other zones. Refer to :doc:`Zones </advanced/zones/index>` for more information.
 

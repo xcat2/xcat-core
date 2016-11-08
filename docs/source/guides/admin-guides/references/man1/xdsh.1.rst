@@ -234,8 +234,8 @@ running commands, are terminated (SIGTERM).
  xCAT ships some default configuration files
  for Ethernet switches and and IB switches under 
  \ */opt/xcat/share/xcat/devicetype*\  directory. If you want to overwrite
- any of the configuration files, please copy it to \ */var/opt/xcat/*\ 
- directory and cutomize it. 
+ any of the configuration files, copy them to \ */var/opt/xcat/*\ 
+ directory and cutomize. 
  For example, \ *base/IBSwitch/Qlogic/config*\  is the configuration
  file location if devicetype is specified as IBSwitch::Qlogic.
  xCAT will first search config file using \ */var/opt/xcat/*\  as the base. 

@@ -46,7 +46,7 @@ B<-v | -version>       Command Version.
 
   monstop gangliamon
 
-Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<monls>.
+Note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<monls>.
 
 
 

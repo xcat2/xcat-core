@@ -489,12 +489,20 @@ sub obtain_log_content {
                 $log_content{label} = $::LOGLABEL_DHCPD;
             } elsif ($split_line[2] =~ /in.tftpd/i) {
                 $log_content{label} = $::LOGLABEL_TFTP;
+            } elsif ($split_line[2] =~ /^xcat.genesis.doxcat/i or $split_line[3] =~ /^xcat.genesis.doxcat/i) {
+                $log_content{label} = $::LOGLABEL_DOXCAT;
+            } elsif ($split_line[2] =~ /^xcat.genesis.dodiscovery/i or $split_line[3] =~ /^xcat.genesis.dodiscovery/i) {
+                $log_content{label} = $::LOGLABEL_DISCOVERY;
             } elsif ($split_line[2] =~ /^xcat/i) {
                 $log_content{label} = $::LOGLABEL_XCAT;
             } else {
                 $log_content{label} = $::LOGLABEL_UNDEF;
             }
-            $log_content{msg} = join(" ", @split_line[ 3 .. @split_line - 1 ]);
+            if ($split_line[3] =~ /^xcat.genesis.doxcat/i or $split_line[3] =~ /^xcat.genesis.dodiscovery/i) {
+                $log_content{msg} = join(" ", @split_line[ 4 .. @split_line - 1 ]);
+            } else {
+                $log_content{msg} = join(" ", @split_line[ 3 .. @split_line - 1 ]);
+            }
         } else {
             my $timestamp = join(" ", @split_line[ 0 .. 2 ]);
             $log_content{time}   = $self->convert_to_epoch_seconds($timestamp);
@@ -508,12 +516,20 @@ sub obtain_log_content {
                 $log_content{label} = $::LOGLABEL_DHCPD;
             } elsif ($split_line[4] =~ /in.tftpd/i) {
                 $log_content{label} = $::LOGLABEL_TFTP;
-            } elsif ($split_line[4] =~ /^xcat/i) {
+            } elsif ($split_line[4] =~ /^xcat.genesis.doxcat/i or $split_line[5] =~ /^xcat.genesis.doxcat/i) {
+                $log_content{label} = $::LOGLABEL_DOXCAT;
+            } elsif ($split_line[4] =~ /^xcat.genesis.dodiscovery/i or $split_line[5] =~ /^xcat.genesis.dodiscovery/i) {
+                $log_content{label} = $::LOGLABEL_DISCOVERY;
+            } elsif ($split_line[4] =~ /^xcat/i or $split_line[5] =~ /^xcat/i) {
                 $log_content{label} = $::LOGLABEL_XCAT;
             } else {
                 $log_content{label} = $::LOGLABEL_UNDEF;
             }
-            $log_content{msg} = join(" ", @split_line[ 5 .. @split_line - 1 ]);
+            if ($split_line[5] =~ /^xcat.genesis.doxcat/i or $split_line[5] =~ /^xcat.genesis.dodiscovery/i) {
+                $log_content{msg} = join(" ", @split_line[ 6 .. @split_line - 1 ]);
+            } else {
+                $log_content{msg} = join(" ", @split_line[ 5 .. @split_line - 1 ]);
+            }
         }
     } elsif ($log_type == $::LOGTYPE_HTTP) {
         $split_line[3] =~ s/^\[(.+)/$1/g;

@@ -75,7 +75,7 @@ EXAMPLES
    monrm gangliamon
 
 
-Please note that gangliamon must have been registered in the xCAT \ *monitoring*\  table. For a list of registered plug-in modules, use command \ **monls**\ .
+Note that gangliamon must have been registered in the xCAT \ *monitoring*\  table. For a list of registered plug-in modules, use command \ **monls**\ .
 
 
 *****

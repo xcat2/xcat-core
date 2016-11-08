@@ -1760,6 +1760,10 @@ sub rmvm {
         }
     } else {
         $currxml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
+        unless ($currxml) {
+            xCAT::SvrUtils::sendmsg([ 1, "Cannot remove guest vm, no such vm found" ], $callback, $node);
+            return;
+        }
     }
     if ($purge and $currxml) {
         my $deadman    = $parser->parse_string($currxml);
@@ -3048,8 +3052,9 @@ sub mkvm {
                 @return = createstorage($diskname, $mastername, $disksize, $confdata->{vm}->{$node}->[0], $force);
             };
             if ($@) {
-                if ($@ =~ /ath already exists/) {
-                    return 1, "Storage creation request conflicts with existing file(s)";
+                if ($@ =~ /Path (\S+) already exists at /) {
+                    return 1, "Storage creation request conflicts with existing file(s) $1. To force remove the existing storage file, rerun mkvm with the -f option.";
+
                 } else {
                     return 1, "Unknown issue $@";
                 }

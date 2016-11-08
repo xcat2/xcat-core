@@ -2257,6 +2257,17 @@ sub copycd
             #
             my @rhel_version = split / /, $desc;
             $distname = "rhels" . $rhel_version[4];
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /variant = ComputeNode/) {
+                    $distname = "rhelhpc" . $rhel_version[4];
+                    last;
+                }
+            }
+            close($dinfo);
         }
         else
         {
@@ -2453,30 +2464,8 @@ sub copycd
     }
 
 
-    unless ($path =~ /^($defaultpath)/)
-    {
-        mkpath($defaultpath);
-        if (-d $defaultpath)
-        {
-            rmtree($defaultpath);
-        }
-        else
-        {
-            unlink($defaultpath);
-        }
-
-        my $hassymlink = eval { symlink("", ""); 1 };
-        if ($hassymlink) {
-            symlink($path, $defaultpath);
-        } else
-        {
-            link($path, $defaultpath);
-        }
-
-    }
-
     require xCAT::Yum;
-    xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    xCAT::Yum->localize_yumrepo($path, $distname, $arch);
 
     if ($rc != 0)
     {

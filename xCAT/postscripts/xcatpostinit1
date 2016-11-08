@@ -1,5 +1,6 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# This script is deprecated, please use xcatpostinit1.install instead 
 # chkconfig: 345 84 59
 # description: service node postboot script hack
 # processname: xcatpostinit

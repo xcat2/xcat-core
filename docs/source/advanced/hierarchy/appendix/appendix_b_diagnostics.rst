@@ -16,7 +16,7 @@ Appendix B: Diagnostics
 * **otherpkgs(including xCAT rpms) installation failed on the SN** --The OS
   repository is not created on the SN. When the "yum" command is processing
   the dependency, the rpm packages (including expect, nmap, and httpd, etc)
-  required by xCATsn can't be found. In this case, please check whether the
+  required by xCATsn can't be found. In this case, check whether the
   ``/install/postscripts/repos/<osver>/<arch>/`` directory exists on the MN.
   If it is not on the MN, you need to re-run the "copycds" command, and there
   will be some file created under the

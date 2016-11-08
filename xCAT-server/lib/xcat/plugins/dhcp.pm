@@ -526,7 +526,7 @@ sub addnode
         {
             $guess_next_server = 1;
         }
-        if ($nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
+        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' )) {
             if ($guess_next_server) {
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
@@ -693,6 +693,8 @@ sub addnode
             $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
+            $lstatements = 'if option vendor-class-identifier = \"onie_vendor:arm-accton_as4610_54-r0\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
@@ -1383,6 +1385,8 @@ sub process_request
     my $querynics = 1;
 
     if (xCAT::Utils->isServiceNode() and $dhcpinterfaces and $dhcpinterfaces->{dhcpinterfaces}) {
+        # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+        $dhcpinterfaces->{dhcpinterfaces} =~ s/:noboot//g;
         my @dhcpifs = split ',', $dhcpinterfaces->{dhcpinterfaces};
         foreach my $nic (@dhcpifs) {
             $activenics{$nic} = 1;
@@ -1404,6 +1408,9 @@ sub process_request
           #depending on complexity of network wished to be described
         {
             my $dhcpinterfaces = $t_entry;
+            # The keyword 'noboot' was appended to the NICs that doesn't need to reply DHCP configuration file, only used for mknb at present.
+            $dhcpinterfaces =~ s/:noboot//g;
+
             my $dhcpif;
           INTF: foreach $dhcpif (split /;/, $dhcpinterfaces) {
                 my $host;
@@ -1960,7 +1967,7 @@ sub process_request
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {
-            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os)]);
+            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod)]);
         }
         my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
         if ($iscsitab) {
@@ -2371,6 +2378,7 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
+        my $mtu;
         my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
         unless ($myipd[0]) { $myip = $myipd[1]; }
 
@@ -2387,7 +2395,7 @@ sub addnet
 
             my ($ent) =
               $nettab->getAttribs({ net => $net, mask => $mask_formated },
-                qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver domain));
+                qw(tftpserver nameservers ntpservers logservers gateway dynamicrange dhcpserver domain mtu));
             if ($ent and $ent->{ntpservers}) {
                 $ntpservers = $ent->{ntpservers};
             } elsif ($sitentpservers) {
@@ -2486,6 +2494,10 @@ sub addnet
                     }
                 );
             }
+            if ($ent and $ent->{mtu})
+            {   
+                $mtu = $ent->{mtu};
+            }
         }
         else
         {
@@ -2503,7 +2515,7 @@ sub addnet
         {
             return gen_aix_net($myip, $net, $mask, $gateway, $tftp,
                 $logservers, $ntpservers, $domain,
-                $nameservers, $range);
+                $nameservers, $range, $mtu);
         }
         my @netent;
 
@@ -2555,6 +2567,10 @@ sub addnet
         {
             push @netent, "    option domain-name \"$domain\";\n";
             push @netent, "    option domain-name-servers  $nameservers;\n";
+        }
+        if ($mtu)
+        {
+            push @netent, "    option interface-mtu $mtu;\n";
         }
 
         #  add domain-search if not sles10 or rh5
@@ -2662,6 +2678,7 @@ sub gen_aix_net
     my $domain      = shift;
     my $nameservers = shift;
     my $range       = shift;
+    my $mtu         = shift;
 
     my $idx = 0;
     while ($idx <= $#dhcpconf)
@@ -2719,6 +2736,9 @@ sub gen_aix_net
         push @netent, "    option 7 $logservers\n";
     } elsif ($myip) {
         push @netent, "    option 7 $myip\n";
+    }
+    if ($mtu) {
+        push @netent, "    option 26 $mtu\n";
     }
     if ($ntpservers) {
         $ntpservers =~ s/,/ /g;
@@ -2903,6 +2923,7 @@ sub newconfig
         push @dhcpconf, "option tcode \"" . $::XCATSITEVALS{timezone} . "\";\n";
     }
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
+    push @dhcpconf, "option www-server code 114 = string;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";

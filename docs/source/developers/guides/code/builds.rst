@@ -12,7 +12,7 @@ Clone the xCAT project from `GitHub <https://github.com/xcat2/xcat-core>`_::
 xcat-deps
 ---------
 
-The ``xcat-deps`` package is currently owned and maintained by the core development on our internal servers.  Please use the packages created at: http://xcat.org/download.html#xcat-dep 
+The ``xcat-deps`` package is currently owned and maintained by the core development on our internal servers. Use the packages created at: http://xcat.org/download.html#xcat-dep 
 
 
 man pages

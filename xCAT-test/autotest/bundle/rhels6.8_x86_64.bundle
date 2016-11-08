@@ -203,6 +203,7 @@ nodeset_shell
 nodeset_cmdline
 nodeset_runimg
 nodeset_check_warninginfo
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 packimage_m_cpio_c_gzip
 packimage_m_cpio_c_xz
@@ -216,4 +217,6 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+redhat_migration1
+redhat_migration2
 clean_up_env

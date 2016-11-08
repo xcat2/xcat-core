@@ -12,16 +12,13 @@ B<packimage> [B<-m>|B<--method> I<cpio|tar>] [B<-c>|B<--compress> I<gzip|pigz|xz
 
 =head1 DESCRIPTION
 
-Packs the stateless image from the chroot file system into a file system to be
-sent to the node for a diskless install.
-The install dir is setup by using "installdir" attribute set in the site table.
-The nodetype table "profile" attribute for the node should reflect the profile of the install image.
+Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot. 
 
-This command will get all the necessary os image definition files from the I<osimage> and I<linuximage> tables.
+Note: For an osimage that is deployed on a cluster, running packimage will overwrite the existing rootimage file and be unavailable to the compute nodes while packimage is running. 
 
 =head1 PARAMETERS
 
-I<imagename> specifies the name of a os image definition to be used. The specification for the image is stored in the I<osimage> table and I<linuximage> table.
+I<imagename> specifies the name of a OS image definition to be used. The specification for the image is stored in the I<osimage> table and I<linuximage> table.
 
 =head1 OPTIONS
 
@@ -43,11 +40,11 @@ B<-c| --compress>          Compress Method (pigz,gzip,xz, default is pigz/gzip)
 
 =head1 EXAMPLES
 
-1. To pack the osimage rhels7.1-x86_64-netboot-compute:
+1. To pack the osimage 'rhels7.1-x86_64-netboot-compute':
 
  packimage rhels7.1-x86_64-netboot-compute
 
-2. To pack the osimage rhels7.1-x86_64-netboot-compute with "tar" to archive and "pigz" to compress:
+2. To pack the osimage 'rhels7.1-x86_64-netboot-compute' with "tar" to archive and "pigz" to compress:
 
  packimage -m tar -c pigz rhels7.1-x86_64-netboot-compute
 

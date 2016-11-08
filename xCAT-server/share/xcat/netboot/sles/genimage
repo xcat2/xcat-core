@@ -140,7 +140,7 @@ $updates{'pkgdir'} = $srcdir if ($tempfile);
 #$srcdir = $srcdir . "/1";
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
+#$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
 
 $destdir = "$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($tempfile);
@@ -729,6 +729,7 @@ EOS_UNAME
     $ENV{IMG_NAME}=$imagename if("" ne $imagename);
     $ENV{IMG_ARCH}=$arch if("" ne $arch);
     $ENV{IMG_OSVER}=$osver if("" ne $osver);
+    $ENV{IMG_KERNELVERSION} = $kernelver if("" ne $kernelver);
     $ENV{IMG_PROFILE}=$profile if("" ne $profile);
     $ENV{IMG_PKGLIST}=$pkglist if("" ne $pkglist);
     $ENV{IMG_PKGDIR}=$srcdir if("" ne $srcdir);
@@ -749,7 +750,7 @@ EOS_UNAME
     }
 
     #delete the osimage attributes from environment variable
-    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
+    delete @ENV{qw(IMG_ARCH IMG_NAME IMG_OSVER IMG_KERNELVERSION IMG_PROFILE IMG_PKGLIST IMG_PKGDIR IMG_OTHERPKGLIST IMG_OTHERPKGDIR IMG_ROOTIMGDIR)};
 
     # restore the orig uname
     system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
@@ -1790,7 +1791,7 @@ EOMS
         }
     }
     if ($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "usr/bin/cut", "usr/bin/rm", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
             getlibs($_);
             push @filestoadd, $_;
         }

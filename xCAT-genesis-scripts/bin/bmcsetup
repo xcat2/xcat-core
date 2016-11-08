@@ -132,7 +132,7 @@ done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
 logger -s -t $log_label -p local4.debug "BMC Information obtained from xCAT"
-logger -s -t $log_label -p local4.debug "NUMBMCS=$NUMBMCS ==> BMC IP=$BMCIP/$BMCNM, GW=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW"
+logger -s -t $log_label -p local4.debug "NUMBMCS=$NUMBMCS ==> BMC IP=$BMCIP/$BMCNM, GW=$BMCGW, VLAN=$BMCVLAN"
 
 #
 # Get the BMC Version and Manufacturer ID
@@ -524,7 +524,7 @@ while [ $idev -gt 0 ]; do
         TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
         THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
         ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
-        logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
+        # logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
         NEWACCESS=""
         i=1
         for elem in $ACCESS; do
@@ -539,7 +539,7 @@ while [ $idev -gt 0 ]; do
             i=$((i+1))
         done
 
-        logger -s -t $log_label -p local4.info "ACCESS=$NEWACCESS"
+        # logger -s -t $log_label -p local4.info "ACCESS=$NEWACCESS"
 
         MSG="Set the cipher_privileges for the channel"
         logger -s -t $log_label -p local4.info "$MSG"

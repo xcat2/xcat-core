@@ -8,7 +8,7 @@ Pre-requirement
 
 In order to do switch-based switch discovery, the admin 
 
-1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, please set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:   
+1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:   
 
 ::
 
@@ -57,8 +57,8 @@ In order to do switch-based switch discovery, the admin
 4.  Setup Dynamic IP range in network table for discovered switches to use. ::
 
      # tabdump networks
-      #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,comments,disable
-      "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,
+      #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
+      "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,,
 
 
 dhcp should be restarted after seting up dynamic IP range.

@@ -97,7 +97,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("stdout", "o", "Probe for OS provision process, realtime monitor of OS provision process.");
+    probe_utils->send_msg("stdout", "o", "Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'.");
     exit 0;
 }
 
@@ -140,8 +140,6 @@ if ($rollforward_time_of_replay) {
     } elsif ($rollforward_time_of_replay =~ /^(\d+)m$/) {
         $start_time_of_replay -= $1 * 60;
     }
-
-    #    $start_time_of_replay = 1472437250;    ########################
 
     $rst = do_replay($noderange, $start_time_of_replay, $end_time_of_replay);
     exit $rst;
@@ -255,7 +253,7 @@ sub check_noderange {
     foreach (@cmdoutput) {
         chomp($_);
         $_ =~ s/^\s+|\s+$//g;
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
             $rst = 1;
             push @$error_ref, "Node $1 without node definition";
         } elsif ($_ =~ /(\S+):\s+mac=(.*)/i) {
@@ -508,7 +506,7 @@ sub conclusion_report {
             }
         }
     } else {
-        probe_utils->send_msg("stdout", "o", "All nodes provision successfully");
+        probe_utils->send_msg("stdout", "o", "All nodes provisioned successfully");
     }
     return 0;
 }
@@ -910,23 +908,26 @@ sub handle_cluster_msg {
             }
         }
     } elsif ($log_ref->{msg} =~ /(.+)\s+status:\s+(.+)\s+statustime:/) {
-        my $node   = $1;
+        my $nodes  = $1;
         my $status = $2;
         my $record = "Node status is changed to $status";
+        my @split_node = split(" ", $nodes);
 
-        if (exists $node_state_ref->{$node}) {
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
-            push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
+        foreach my $node (@split_node) {
+            if (exists $node_state_ref->{$node}) {
+                probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+                push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
 
-            if ($status eq "installing") {
-                set_node_state($node_state_ref, $node, $::STATE_INSTALLING);
-            } elsif ($status eq "powering-on") {
-                set_node_state($node_state_ref, $node, $::STATE_POWERINGON);
-            } elsif ($status eq "booting") {
-                set_node_state($node_state_ref, $node, $::STATE_BOOTING);
-            } elsif ($status eq "failed") {
-                $node_state_ref->{$node}{done} = 1;
-            } 
+                if ($status eq "installing") {
+                    set_node_state($node_state_ref, $node, $::STATE_INSTALLING);
+                } elsif ($status eq "powering-on") {
+                    set_node_state($node_state_ref, $node, $::STATE_POWERINGON);
+                } elsif ($status eq "booting") {
+                    set_node_state($node_state_ref, $node, $::STATE_BOOTING);
+                } elsif ($status eq "failed") {
+                    $node_state_ref->{$node}{done} = 1;
+                } 
+            }
         }
     }
 }

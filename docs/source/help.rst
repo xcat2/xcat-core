@@ -9,4 +9,4 @@ For support, we encourage the use of the GitHub issues system.
         * `documentation <https://github.com/xcat2/xcat-core/issues>`_ issues can be opened against xcat-core project  
 
 
-The older email list is still availble: xcat-user@list.sourceforge.net
+The older email list is still available: xcat-user@list.sourceforge.net
