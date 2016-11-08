@@ -9,7 +9,6 @@ cmd:updatenode $$CN -P blah >/tmp/updatenode.blah.out
 check:rc==0
 cmd:grep 'FOO BAR BAZ QUX' /tmp/updatenode.blah.out
 check:rc==0
-check:rc==0
 cmd:rm -f /install/postscripts/blah /tmp/updatenode.blah.out
 check:rc==0
 end 
