@@ -1994,8 +1994,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             copy("/install/postscripts/xcatpostinit1.netboot","$rootimg_dir/opt/xcat/xcatpostinit1");
             chmod(0755,"$rootimg_dir/opt/xcat/xcatpostinit1");
             copy("/install/postscripts/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/xcatpostinit1.service");
-            symlink("$rootimg_dir/etc/systemd/system/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.targ
-et.wants/xcatpostinit1.service") ;
+            symlink("$rootimg_dir/etc/systemd/system/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service") ;
        }else{
             #for traditional sysvinit
             copy("$installroot/postscripts/xcatpostinit1.netboot", "$rootimg_dir/etc/init.d/xcatpostinit");
