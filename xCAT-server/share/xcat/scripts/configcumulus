@@ -1,0 +1,411 @@
+#!/usr/bin/env perl
+
+#---------------------------------------------------------
+# Configure Ethnet BNT switches
+#---------------------------------------------------------
+
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+  $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+
+use strict;
+use Socket;
+use Getopt::Long;
+use Expect;
+use Net::Ping;
+use xCAT::Usage;
+use xCAT::NodeRange;
+use xCAT::NetworkUtils;
+use xCAT::Utils;
+use xCAT::Table;
+use xCAT::MsgUtils;
+
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+#global variables
+my @nodes;
+my @filternodes;
+
+
+#---------------------------------------------------------
+#Main
+
+# parse the options
+if (
+    !GetOptions(
+                'h|help'     => \$::HELP,
+                'switches=s' => \$::SWITCH,  
+                'port=s'     => \$::PORT,  
+                'vlan=s'     => \$::VLAN,
+                'user=s'     => \$::USER,
+                'password=s' => \$::PASSWORD,
+                'snmp'       => \$::SNMP,
+                'ssh'        => \$::SSH,
+                'license=s'  => \$::LICENSE,
+                'ntp'        => \$::NTP,
+                'all'        => \$::ALL,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+    &usage;
+    exit(0);
+}
+
+if ($::SWITCH) {
+    my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
+    if (nodesmissed) {
+        my $nodenotdefined = join(',', nodesmissed);
+        xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT DB: $nodenotdefined");
+    }
+    # check switch type
+    my $switchestab =  xCAT::Table->new('switches');
+    my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
+    foreach my $fsw (@filternodes)  {
+        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /cumulus/) {
+            push @nodes, $fsw;
+        } else {
+            xCAT::MsgUtils->message("E","The $fsw is not cumulus switch, will not config");
+        }
+    }
+    unless (@nodes) {
+        xCAT::MsgUtils->message("E","No Valid Switch to process");
+        exit(1);
+    }
+} else {
+    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --switches");
+    &usage;
+    exit(1);
+}
+
+my $switches = join(",",@nodes);
+my $cmd;
+my $vlan;
+my $port;
+my $sub_req;
+my $rc;
+
+if (($::SSH) || ($::ALL))
+{
+    config_ssh();
+}
+
+if (($::LICENSE) || ($::ALL))
+{
+    install_license();
+}
+
+if (($::SNMP) || ($::ALL))
+{
+    config_snmp();
+}
+if (($::NTP) || ($::ALL))
+{
+    config_ntp();
+}
+if ($::VLAN)
+{
+    #config_vlan();
+}
+sub config_ssh {
+    my $password = "CumulusLinux!";
+    my $userid = "cumulus";
+    my $timeout = 10;
+    my $keyfile = "/root/.ssh/id_rsa.pub";
+    my $rootkey = `cat /root/.ssh/id_rsa.pub`;
+    my $cmd;
+    my @config_switches;
+
+    foreach my $switch (@nodes) {
+        #remove old host key from /root/.ssh/known_hosts
+        $cmd = `ssh-keygen -R $switch`;
+
+        my ($exp, $errstr) = cumulus_connect($switch, $userid, $password, $timeout);
+        if (!defined $exp) {
+            print ("connect failed $errstr\n");
+            next;
+        }
+
+        my $ret;
+        my $err;
+
+        ($ret, $err) = cumulus_exec($exp, "mkdir -p /root/.ssh");
+        ($ret, $err) = cumulus_exec($exp, "chmod 700 /root/.ssh");
+        ($ret, $err) = cumulus_exec($exp, "echo \"$rootkey\" >/root/.ssh/authorized_keys");
+        ($ret, $err) = cumulus_exec($exp, "chmod 644 /root/.ssh/authorized_keys");
+
+        $exp->hard_close();
+        push (@config_switches, $switch);
+    }
+
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=ssh_configed ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        print "ssh configured for $csw\n";
+    }
+}
+
+sub cumulus_connect {
+     my $server   = shift;
+     my $userid   = shift;
+     my $password = shift;
+     my $timeout  = shift;
+
+     my $ssh      = Expect->new;
+     my $command     = 'ssh';
+     my @parameters  = ($userid . "@" . $server);
+
+     $ssh->debug(0);
+     $ssh->log_stdout(0);    # suppress stdout output..
+     $ssh->slave->stty(qw(sane -echo));
+
+     unless ($ssh->spawn($command, @parameters))
+     {
+         my $err = $!;
+         $ssh->soft_close();
+         my $rsp;
+         return(undef, "unable to run command $command $err\n");
+     }
+
+     $ssh->expect($timeout,
+                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
+                   [ "-re", qr/ password:/,        sub {$ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/:~\$/,              sub { $ssh->send("sudo su\n"); exp_continue; } ],
+                   [ "-re", qr/ password for cumulus:/, sub { $ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/.*\/home\/cumulus#/, sub { $ssh->clear_accum(); } ],
+                   [ timeout => sub { die "No login.\n"; } ]
+                  );
+     $ssh->clear_accum();
+     return ($ssh);
+}
+
+sub cumulus_exec {
+     my $exp = shift;
+     my $cmd = shift;
+     my $timeout    = shift;
+     my $prompt =  shift;
+
+     $timeout = 10 unless defined $timeout;
+     $prompt = qr/.*\/home\/cumulus#/ unless defined $prompt;
+
+
+     $exp->clear_accum();
+     $exp->send("$cmd\n");
+     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+
+     if (defined $merr) {
+         return(undef,$merr);
+     }
+     return($mbmatch);
+}
+
+# for cumulus switch, need to set the license file
+sub install_license {
+    my @config_switches;
+    print "install_license\n";
+    my $license_file;
+    my $file_name = "/root/license.txt";
+
+    if ($::LICENSE) {
+        $license_file = $::LICENSE;
+    }
+
+    print "file = $license_file\n";
+    if (!(-e $license_file) ) {
+        print "$license_file is not exist\n";
+    }
+
+    foreach my $switch (@nodes) {
+        my $cmd = "xdcp $switch $license_file $file_name";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to xscp $license_file to $switch");
+            next;
+        }
+
+        $cmd = "xdsh $switch '/usr/cumulus/bin/cl-license -i $file_name' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to $cmd to $switch");
+            next;
+        }
+        push (@config_switches, $switch);
+    }
+    if (@config_switches) {
+        my $csw = join(",",@config_switches);
+        print "license is installed on $csw\n";
+    }
+
+}
+
+
+#setup secure SNMP v3 
+sub config_snmp {
+    my $snmp_user;
+    my $snmp_passwd;
+    my @config_switches;
+    my $cmd;
+
+    print "start to config_snmp\n";
+    if ($::USER) {
+        $snmp_user = $::USER;
+    } else {
+        $snmp_user = "xcatadmin";
+    }
+    if ($::PASSWORD) {
+        $snmp_passwd = $::PASSWORD;
+    } else {
+        $snmp_passwd = "xcatpassw0rd";
+    }
+
+    my $file = "temp.txt";
+    open(FILE , ">$file")
+            or die "cannot open file $file\n";
+    print FILE "#xCAT modify following line\n";
+    print FILE "agentAddress udp:161,udp6:[::1]:161\n";
+    print FILE "rocommunity public default\n";
+    print FILE "rocommunity public  default    -V systemonly\n";
+    print FILE "createUser $snmp_user SHA $snmp_passwd\n";
+    print FILE "rwuser $snmp_user\n";
+
+    foreach my $switch (@nodes) {
+        #check if xdsh works
+        $cmd = "xdsh $switch date";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","xdsh command to $switch failed");
+            next;
+        }
+        my $cmd_line = "sed -i 's/^agentAddress/#agentAddress/g' /etc/snmp/snmpd.conf";
+        $cmd = "xdsh $switch $cmd_line";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        $cmd = "xdcp $switch $file";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "xdsh $switch 'cat $file  >> /etc/snmp/snmpd.conf;rm -fr $file;systemctl restart snmpd;systemctl enable snmpd' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to update snmpd.conf for $switch");
+            next;
+        }
+        push (@config_switches, $switch);
+    }
+    close FILE;
+    $cmd = `rm -rf $file`;
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=snmp_configed snmpversion=3 snmpauth=sha snmpusername=$snmp_user snmppassword=$snmp_passwd";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+
+}
+
+sub config_ntp {
+    my @config_switches;
+    my $cmd;
+
+    my $master = `hostname -i`;
+
+    my $file = "temp.txt";
+    open(FILE , ">$file")
+            or die "cannot open file $file\n";
+    print FILE "#This file is created by xCAT \n";
+    print FILE "driftfile /var/lib/ntp/drift\n";
+    print FILE "disable auth\n";
+    print FILE "restrict 127.0.0.1\n";
+    print FILE "server $master iburst\n";
+    print FILE "interface listen eth0\n";
+
+    foreach my $switch (@nodes) {
+        #check if xdsh works
+        $cmd = "xdsh $switch date";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","xdsh command to $switch failed");
+            next;
+        }
+        my $cmd_line = "echo 'US/Eastern'>/etc/timezone;dpkg-reconfigure --frontend noninteractive tzdata";
+        print "$cmd_line\n";
+        $cmd = "xdsh $switch $cmd_line";
+        if ($::RUNCMD_RC != 0) {
+            print "Failed to update ntp timezone\n";
+            xCAT::MsgUtils->message("E","Failed to update ntp timezone for $switch");
+            next;
+        }
+        print "$cmd\n";
+        $cmd = "xdcp $switch $file";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "xdsh $switch 'cp /etc/ntp.conf /etc/ntp.conf.orig;cp $file /etc/ntp.conf;rm -fr $file;systemctl restart ntp;systemctl enable ntp' ";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E","Failed to update ntp for $switch");
+            next;
+        }
+        push (@config_switches, $switch);
+    }
+    close FILE;
+    $cmd = `rm -rf $file`;
+
+    if (@config_switches) {
+        #update switch status
+        my $csw = join(",",@config_switches);
+        $cmd = "chdef $csw status=ntp_configed";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+    }
+
+    
+}
+
+sub config_vlan {
+    if ($::PORT) {
+        $port = $::PORT;
+    } else {
+        &usage;
+        exit(1);
+    }
+    $vlan = $::VLAN;
+    print "Tagging VLAN=$vlan for $switches port $port\n";
+    #create vlan, tagged vlan
+    #$cmd = `xdsh $switches --devicetype EthSwitch::BNT "enable;configure terminal;vlan $vlan;exit;interface port $port;switchport mode trunk;switchport trunk allowed vlan $vlan;write memory;exit;exit"`;
+
+}
+
+
+#---------------------------------------------------------
+
+=head3    usage
+
+        Displays message for -h option
+
+=cut
+
+#---------------------------------------------------------
+sub usage
+{
+    print "Usage:
+    configBNT [-?│-h│--help] 
+    configBNT [--switches switchnames] [--all] 
+    configBNT [--switches switchnames] [--ssh] 
+    configBNT [--switches switchnames] [--license filename ] 
+    configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configBNT [--switches switchnames] [--ntp] 
+    configBNT [--switches switchnames] [--port port] [--vlan vlan]
+    \n";
+}
+
+
