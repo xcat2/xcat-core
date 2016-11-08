@@ -694,7 +694,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
-            $lstatements = 'if option vendor-class-identifier = \"onie_vendor:arm-accton_as4610_54-r0\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
+            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
@@ -2648,6 +2648,9 @@ sub addnet
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "      option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
+        push @netent,
+"    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
+        push @netent, "      option www-server = \"http://install/onie/onie-installer\";\n";
         push @netent,
 "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "      filename \"/yaboot\";\n";
