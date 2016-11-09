@@ -1342,12 +1342,14 @@ sub handle_cluster_msg {
     my $node_state_ref = shift;
     my $log_msg = $log_ref->{msg};
 
-    if ($log_ref->{msg} =~ /xcat.discovery.$discovery_type: \((.+)\) Found node: (.+)/) {
-        my $mac = $1;
-        my $node = $2;
+    if ($log_ref->{msg} =~ /xcat\.discovery\.(.+): \((.+)\) Found node: (.+)/) {
+        my $type = $1;
+        my $mac = $2;
+        my $node = $3;
         $node_state_ref->{$mac}{id} = $node;
         $node_state_ref->{$node}{id} = $mac;
-        my $record = "Start to update node information";
+        $node_state_ref->{$node}{discoverytype} = $type;
+        my $record = "Start to update node information, discovery type is $type";
         probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
         set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_UPDATE);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
@@ -1524,14 +1526,19 @@ sub conclusion_report {
 
     my %failed_mac;
     my @success_node;
+    my %success_node_other_type;
     my @failed_node;
     foreach my $identify (keys %$node_state_ref) {
         if ($node_state_ref->{$identify}{type}  eq "node") {
             my $mac = $node_state_ref->{$identify}{id};
             if ($mac) {
                 push @success_node, $identify;
+                my $type = $node_state_ref->{$identify}{discoverytype};
+                if ($type and ($type ne $discovery_type)) {
+                    push @{ $success_node_other_type{$type} }, $identify;
+                }
             } else {
-               push @failed_node, $identify;
+                push @failed_node, $identify;
             }
         } elsif ($node_state_ref->{$identify}{type} eq "mac") {
             foreach (@{ $node_state_ref->{$identify}{statehistory} }) {
@@ -1548,6 +1555,12 @@ sub conclusion_report {
         my $failed_node_num = @failed_node;
         my $failed_nodes = join(",", @failed_node);
         probe_utils->send_msg("stdout", "", "Discovered $success_node_num node(s) successfully, $failed_node_num node(s) failed.");
+        
+        foreach my $type (keys %success_node_other_type) {
+            my $other_nodes = join(",", @{ $success_node_other_type{$type} });
+            probe_utils->send_msg("stdout", "", "Discovered [$other_nodes] successfully, but discovery type is $type");
+
+        }
         probe_utils->send_msg("stdout", "", "Unmatched node(s):");
         probe_utils->send_msg("stdout", "", "$failed_nodes");
 
