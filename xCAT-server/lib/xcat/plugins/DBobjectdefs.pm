@@ -21,6 +21,7 @@ use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::NetworkUtils;
 use File::Find;
 use strict;
 
@@ -607,9 +608,9 @@ sub processArgs
     }
 
     # check the new object name specified with -n
-    if ($::command eq "chdef" && $::opt_n && ($::opt_n !~ /^[a-zA-Z0-9-_]+$/)) {
+    if ($::command eq "chdef" && $::opt_n && (!isobjnamevalid($::opt_n))) {
         my $rsp;
-        $rsp->{data}->[0] = "The new object name \'$::opt_n\' is not valid.";
+        $rsp->{data}->[0] = "The new object name \'$::opt_n\' is not valid.Please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\" ";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -1542,11 +1543,23 @@ sub defmk
         &defmk_usage;
         return 1;
     } else {
+        my $invalidobjname = ();
         my $invalidnodename = ();
         foreach my $node (@::allobjnames) {
+            unless(isobjnamevalid($node)){
+               $invalidobjname .= ",$node";
+            }
             if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
                $invalidnodename .= ",$node";
             }
+        }
+        if ($invalidobjname) {
+            $invalidobjname =~ s/,//;
+            my $rsp;
+            $rsp->{data}->[0] = "The object name \'$invalidnodename\' is invalid, please refer to \"man xcatdb\" for the valid \"xCAT Object Name Format\"";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            return 1;
         }
         if ($invalidnodename) {
             $invalidnodename =~ s/,//;
@@ -4523,5 +4536,25 @@ sub initialize_variables
     @::allobjnames  = ();
     @::noderange    = ();
 }
+
+
+#-----------------------
+#isobjnamevalid:
+#description: check whether the object name is valid
+#argument:
+#          $objname: the objname string 
+#return:
+#          1: valid
+#          0: invalid
+#-----------------------
+sub isobjnamevalid{
+    my $objname=shift;
+    #the ip address as a valid object name is a hack for p7IH support   
+    if(($objname !~ /^[a-zA-Z0-9-_]+$/) and !xCAT::NetworkUtils->isIpaddr($objname)){
+        return 0;
+    }
+    return 1;
+}
+
 1;
 
