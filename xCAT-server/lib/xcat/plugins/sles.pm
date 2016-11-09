@@ -329,6 +329,7 @@ sub mknetboot
 
         my $suffix = 'cpio.gz';
         $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
+        $suffix = 'gz' if (-r "$rootimgdir/rootimg.gz");
         $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
         $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
         $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
@@ -383,7 +384,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs" or -r "$rootimgdir/rootimg.gz") {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]

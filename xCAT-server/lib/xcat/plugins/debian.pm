@@ -1171,6 +1171,7 @@ sub mknetboot
 
         $platform = xCAT_plugin::debian::getplatform($osver);
         my $suffix = 'cpio.gz';
+        $suffix = 'gz' if (-r "$rootimgdir/rootimg.gz");
         $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
         $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
         $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
@@ -1223,7 +1224,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs" or -r "$rootimgdir/rootimg.gz") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });
