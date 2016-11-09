@@ -872,6 +872,12 @@ if ($test) {
     exit 0;
 }
 
+if (!$installnic){
+    probe_utils->send_msg("$output", "f", "Option '-i' is required");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
 #Handle the interrupt signal from STDIN
 $SIG{TERM} = $SIG{INT} = sub {
     $terminal = 1;
