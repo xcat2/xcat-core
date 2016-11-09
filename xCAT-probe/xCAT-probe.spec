@@ -16,6 +16,13 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
+%ifos linux
+#Below tools are required by sub-command 'xcatmn' 
+Requires: /usr/bin/nslookup
+Requires: /usr/bin/tftp
+Requires: /usr/bin/wget
+%endif
+
 Provides: xCAT-probe = %{version}
 
 %description
