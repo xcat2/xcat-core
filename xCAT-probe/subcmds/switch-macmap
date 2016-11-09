@@ -94,7 +94,7 @@ if (-f $error_file) {
 my $fd;
 open($fd, "<", "$normal_file");
 my @fails = ();
-
+my @error_nodes = ();
 # There is 2 kinds of error message:
 # 1. Error: The nodetype is not 'switch' for nodes: switch1
 #    Error: No switch configuration info find for switch-10-5-23-1
@@ -104,6 +104,8 @@ foreach (<$fd>) {
     if (/Error:/) {
         if (/^(\S*):\s*Error:\s*(.*)/) {
             push @fails, "$1 - $2";
+        } elsif (/^Error:\s*The nodetype is not 'switch' for nodes: (.+)/) {
+            push @error_nodes, "$1";
         } elsif (/^Error:\s*(.*)/) {
             push @fails, $1;
         } else {
@@ -123,6 +125,10 @@ if (-f $normal_file) {
 }
 if (-f $error_file) {
     unlink($error_file);
+}
+if (@error_nodes) {
+    my $error_node = join(",", @error_nodes);
+    probe_utils->send_msg("$output", "d", "[$error_node] : Error, switch-macmap can only be run against xCAT objects that have 'nodetype=switch'");
 }
 foreach (@fails) {
     probe_utils->send_msg("$output", "f", "$_");

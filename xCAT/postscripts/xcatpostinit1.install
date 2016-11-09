@@ -23,7 +23,7 @@ start)
     REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2`
   fi
   # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
-  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost -a "$RUNBOOTSCRIPT" = "1"]; then
+  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost -a "$RUNBOOTSCRIPT" = "1" ]; then
       /opt/xcat/xcatdsklspost 6
   elif [ "$REBOOT" = "TRUE" -a "NODESTATUS" != "n" ]; then
       /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"  

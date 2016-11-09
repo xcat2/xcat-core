@@ -2013,6 +2013,14 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
             system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
         }
+     
+        if(-e "$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service"){
+            unlink("$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service");
+        }
+        if(-e "$rootimg_dir/etc/rc3.d/S61xcatpostinit"){
+            unlink("$rootimg_dir/etc/rc3.d/S61xcatpostinit");
+        }
+        
 
         if(-e "$rootimg_dir/usr/lib/systemd/"){
             #if systemd is the service management framework for the diskless image
@@ -2020,8 +2028,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             copy("/install/postscripts/xcatpostinit1.netboot","$rootimg_dir/opt/xcat/xcatpostinit1");
             chmod(0755,"$rootimg_dir/opt/xcat/xcatpostinit1");
             copy("/install/postscripts/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/xcatpostinit1.service");
-            symlink("$rootimg_dir/etc/systemd/system/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.targ
-et.wants/xcatpostinit1.service") ;
+            symlink("../xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service");
        }else{
             #for traditional sysvinit
             copy("$installroot/postscripts/xcatpostinit1.netboot", "$rootimg_dir/etc/init.d/xcatpostinit");

@@ -4,11 +4,13 @@ Install and Configure Hypervisor
 Provision Hypervisor
 --------------------
 
-* **[PowerKVM]**
+**[PowerKVM]**
+``````````````
 
    .. include:: pKVMHypervisor.rst
 
-* **[RHEV]**
+**[RHEV]**
+``````````
 
    .. include:: RHEVHypervisor.rst
 
