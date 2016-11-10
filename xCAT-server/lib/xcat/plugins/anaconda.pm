@@ -462,13 +462,9 @@ sub mknetboot
         }
 
         $platform = xCAT_plugin::anaconda::getplatform($osver);
-        my $suffix = 'cpio.gz';
-        $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'gz' if (-r "$rootimgdir/rootimg.gz");
-        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
-        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
-        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
-
+        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+        
+      
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -516,7 +512,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs" or -r "$rootimgdir/rootimg.gz") {
+            unless ( -f -r "$rootimgdir/$compressedrootimg") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });
@@ -757,12 +753,12 @@ sub mknetboot
             $kcmdline .= "NODE=$node ";
         }
         else {
-            if (-r "$rootimgdir/rootimg.$suffix.metainfo") {
+            if (-r "$rootimgdir/$compressedrootimg.metainfo") {
                 $kcmdline =
-"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix.metainfo ";
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
             } else {
                 $kcmdline =
-"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
             }
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
