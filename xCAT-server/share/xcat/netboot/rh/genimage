@@ -2020,7 +2020,10 @@ sub generic_post { #This function is meant to leave the image in a state approxi
         if(-e "$rootimg_dir/etc/rc3.d/S61xcatpostinit"){
             unlink("$rootimg_dir/etc/rc3.d/S61xcatpostinit");
         }
-        
+
+        if (!-d "$rootimg_dir/opt/xcat/") {
+            mkdir "$rootimg_dir/opt/xcat/";
+        }          
 
         if(-e "$rootimg_dir/usr/lib/systemd/"){
             #if systemd is the service management framework for the diskless image
