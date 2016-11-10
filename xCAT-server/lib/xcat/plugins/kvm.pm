@@ -897,6 +897,9 @@ sub build_xmldesc {
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
+    } elsif (defined($hypcpumodel) and $hypcpumodel eq 'ppc64le') {
+        # do nothing for ppc64le, do not support sound at this time
+        ;
     } else {
         $xtree{devices}->{sound}->{model} = 'ac97';
     }
