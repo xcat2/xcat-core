@@ -510,9 +510,14 @@ sub check_disk {
     foreach $mountpoint (keys %mountpointinfo) {
         if ($mountpointinfo{$mountpoint}{need} > $mountpointinfo{$mountpoint}{available}) {
             foreach (@{ $mountpointinfo{$mountpoint}{mount} }) {
-                $msg .= "'$_' needs $dir_expectedspace_list{$_} G, ";
+                $msg .= "'$_' needs $dir_expectedspace_list{$_} GiB disk space. ";
             }
-            $msg .= "These directories are mounted on '$mountpoint', the free space of '$mountpoint' is $mountpointinfo{$mountpoint}{available} G, it isn't enough.";
+            my $mountmun = $#{$mountpointinfo{$mountpoint}{mount}} +1 ;
+            if($mountmun >1){
+                $msg .= "These directories are parts of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+            }else{
+                $msg .= "This directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+            }
             $rst = 1;
         }
     }
