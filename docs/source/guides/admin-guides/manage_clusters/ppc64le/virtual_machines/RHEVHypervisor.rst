@@ -1,7 +1,7 @@
 
    Red Hat Virtualization (formally known as RHEV or Red Hat Enterprise Virtualization) is a virtualization solution provided by Red Hat.  
 
-   At the time of this writing there is no RHEV-H prebuilt hypervisor image on Power LE.  The method for creating a Red Hat Hypervisor on Power LE is to install first install RHEL and apply the KVM support on top with the provided RPMs. 
+   At the time of this writing there is no RHEV-H prebuilt hypervisor image on Power LE.  The method for creating a Red Hat Hypervisor on Power LE is to first install RHEL and apply the KVM support on top with the provided RPMs. 
 
    Obtain and download the RHEV RPM packages from the Red Hat download site.  
 
