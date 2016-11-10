@@ -516,7 +516,7 @@ sub check_disk {
             if($mountmun >1){
                 $msg .= "these directories are parts of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
             }else{
-                $msg .= "This directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+                $msg .= "this directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
             }
             $rst = 1;
         }
