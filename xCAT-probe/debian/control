@@ -12,4 +12,4 @@ Depends: ${perl:Depends}
 #Sub-command 'xcatmn' need tools tftp, nslookup, wget. 
 Suggests: wget, dnsutils, tftp-hpa
 
-Description: Provides a toolkits to help probe all the possible issues in xCAT 
+Description: Provides a toolkit to help probe all the possible issues in xCAT 
