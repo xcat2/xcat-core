@@ -1,3 +1,8 @@
+start:testtest
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcatconfig/change_site_table_values
+check:rc==0
+end
+
 start:xcatconfig_null
 description:xcatconfig with no argument
 os:Linux
@@ -10,8 +15,10 @@ start:xcatconfig_h
 description:xcatconfig -h and --help
 os:Linux
 cmd:xcatconfig -h
+check:rc==0
 check:output=~Usage
 cmd:xcatconfig --help
+check:rc==0
 check:output=~Usage
 end
 
@@ -19,8 +26,10 @@ start:xcatconfig_v
 description:xcatconfig -v and --version
 os:Linux
 cmd:xcatconfig -v
+check:rc==0
 check:output=~version|Version
 cmd:xcatconfig --version
+check:rc==0
 check:output=~version|Version
 end
 
@@ -43,7 +52,9 @@ check:rc==0
 #step4. restore test environment
 cmd:cp -rf /root/sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
 check:rc==0
-cmd:mv -f /root/sshbak/* /root/.ssh;rm -rf /root/sshbak
+cmd:mv -f /root/sshbak/* /root/.ssh
+check:rc==0
+cmd:rm -rf /root/sshbak
 check:rc==0
 end
 
@@ -70,7 +81,9 @@ check:rc==0
 #step4:restore test environment
 cmd:cp -rf /root/sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
 check:rc==0
-cmd:mv -f /root/sshbak/* /root/.ssh;rm -rf /root/sshbak
+cmd:mv -f /root/sshbak/* /root/.ssh
+check:rc==0
+cmd:rm -rf /root/sshbak
 check:rc==0
 end
 
@@ -96,9 +109,13 @@ check:rc!=0
 cmd:diff /install/postscripts/hostkeys/ssh_host_rsa_key.pub /install/postscripts/hostkeysbak/ssh_host_rsa_key.pub
 check:rc!=0
 #step5:restore test environment
-cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys;rm -rf /etc/xcat/hostkeysbak
+cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys
 check:rc==0
-cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys;rm -rf /install/postscripts/hostkeysbak
+cmd:rm -rf /etc/xcat/hostkeysbak
+check:rc==0
+cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys
+check:rc==0
+cmd:rm -rf /install/postscripts/hostkeysbak
 check:rc==0
 end
 
@@ -125,23 +142,15 @@ check:rc!=0
 cmd:diff /install/postscripts/hostkeys/ssh_host_rsa_key.pub /install/postscripts/hostkeysbak/ssh_host_rsa_key.pub
 check:rc!=0
 #step5:restore test environment
-cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys;rm -rf /etc/xcat/hostkeysbak
+cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys
 check:rc==0
-cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys;rm -rf /install/postscripts/hostkeysbak
+cmd:rm -rf /etc/xcat/hostkeysbak
+check:rc==0
+cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys
+check:rc==0
+cmd:rm -rf /install/postscripts/hostkeysbak
 check:rc==0
 end
-
-
-step1:dumpxCATdb -p /tmp/xcatconfigtest
-step2:change existed site.maxssh value:chtab key=maxssh site.value=888
-step3:add a new key with value: chtab key=testxcatconfigoptiond site.value=test
-step4:xcatconfig -d -V
-check:rc==0
-check:output=~Updated cluster site definition
-step5:check the existed key value is inited to be default value: lsdef -t site -i maxssh | grep "=8$"
-step6:check the added key and value is still the same:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
-step7:restorexCATdb -p /tmp/xcatconfigtest
-step8:rm -rf /tmp/xcatconfigtest
 
 start:xcatconfig_d_V
 description:This -d option will reinitialize the basic xCAT database table setup
@@ -187,7 +196,8 @@ check:rc==0
 cmd:cp -rf /root/.ssh /root/sshbak
 check:rc==0
 #prepare data:change existed site.maxssh, and add new key with value
-cmd:chtab key=maxssh site.value=888
+#cmd:chtab key=maxssh site.value=888
+cmd:./install/xcat-core/xCAT-test/autotest/testcase/xcatconfig/change_site_table_values
 check:rc==0
 cmd:chtab key=testxcatconfigoptiond site.value=test
 check:rc==0
@@ -210,14 +220,17 @@ check:rc==0
 cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
 check:rc==0
 #keys in site table are not changed
-cmd:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
+#cmd:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
+cmd:cmd:./install/xcat-core/xCAT-test/autotest/testcase/xcatconfig/verify_site_table_values_is_changed
 check:rc==0
 cmd:lsdef -t site -i maxssh | grep "=888$" 
 check:rc==0
 #step4.restore test environment
 cmd:rm -rf /etc/xcat/hostkeysbak
 check:rc==0
-cmd:restorexCATdb -p /tmp/xcatconfigtest;rm -rf /tmp/xcatconfigtest
+cmd:restorexCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:rm -rf /tmp/xcatconfigtest
 check:rc==0
 end
      
@@ -264,7 +277,9 @@ check:rc==0
 cmd:lsdef -t site -i maxssh | grep "=888$" 
 check:rc==0
 #step4.restore test environment
-cmd:restorexCATdb -p /tmp/xcatconfigtest;rm -rf /tmp/xcatconfigtest
+cmd:restorexCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:rm -rf /tmp/xcatconfigtest
 check:rc==0
 end
 
