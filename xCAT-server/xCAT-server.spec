@@ -308,7 +308,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/snmpmon.pm
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/xcat_traphandler
 %endif
-%if lenovo
+%if %lenovo
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
