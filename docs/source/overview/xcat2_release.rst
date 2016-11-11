@@ -14,6 +14,14 @@ xCAT 2.12.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.12.4                    |- RHEL 7.3 LE  |             |- `noboot` added to dhcpinterface |
+|| 2016/11/11                     |- RHEV 4.0     |             |- new xcatprobe subcommand        |
+||                                |               |             |     xcatmn                       |
+| `2.12.4 Release Notes <https:// |               |             |     deploy                       |
+| github.com/xcat2/xcat-core/wiki |               |             |     discover                     |
+| /XCAT_2.12.4_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.12.3                    |               |             |- GitHub Issues resolved          |
 || 2016/09/30                     |               |             |- rinv options for OpenPower      |
 ||                                |               |             |- switch based switch discovery   |
