@@ -1,7 +1,18 @@
 Edgecore Switch
 ===============
 
-The Edgecore switch from Mellanox is 1Gb top-of-rack switch.  It's coming with ONIE installer.  Open Network Install Environment (ONIE)is an open source initiative that defines an open "install environment" for bare metal network switches. For more information, see http://onie.opencompute.org/.  Mellanox will ship the switch with Cumulus Network OS and along with a license file installed. In some case, user may get whitebox without OS and licenses.  Since edgecore switch has different configuration than other switches that xCAT supports, xCAT handles edgecore switch differently.
+The Edgecore switch from Mellanox is 1Gb top-of-rack switch. Usually, Mellanox ships the switch with Cumulus Network OS(https://cumulusnetworks.com) and along with a license file installed. In some case, user may get whitebox switch hardware without OS and license installed. Since edgecore switch is different from other traditional switches that xCAT supports, xCAT supports edgecore switch in a different way. Currently, the features provided by xCAT includes: ::
+  
+  1) Cumulus Network OS provision
+  2) switch discovery
+  3) switch configuration:
+     (a) enable root-passwordless ssh 
+     (b) install licence file
+     (c) enable snmp
+  4) distribute files with ``xdcp``
+  5) invoke commands or scripts remotely with `xdsh``
+  6) 
+
 
 
 ONIE Mode
