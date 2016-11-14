@@ -32,6 +32,9 @@ my $monitor = 1;
 #used by developer, to debug the detail information about function running
 my $debug = 0;
 
+my @valid_discovery_type = ("mtms", "switch");
+my $valid_discovery_type_str = join(",", @valid_discovery_type);
+
 #---------------------------------------------
 #            Command Usage
 #---------------------------------------------
@@ -72,8 +75,6 @@ my $maxwaittime = 60;    #unit is minute, the max wait time of monitor
 my $rollforward_time_of_replay;    #used by feature replay discovery log
 my $noderange;
 my $discovery_type;
-my @valid_discovery_type = ("mtms", "switch");
-my $valid_discovery_type_str = join(",", @valid_discovery_type);
 my $no_pre_check = 0;
 my $nics;
 if (
