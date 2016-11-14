@@ -46,7 +46,7 @@ $::USAGE = "Usage:
 
 Description:
     Probe the discovery process, including pre-check for required configuration, 'Realtime monitor' and 'Replay history' of discovery process. 
-    If all pre-check items failed, $program_name will exit.  
+    If any pre-check item fails, $program_name will exit.  
     Realtime monitor: This is a default. This tool with monitor discovery state of the node. Trigger 'Realtime monitor' before rebooting target node to do discovery.
     Replay history: Used after discovery is finished to probe the previously completed discovery.
 
