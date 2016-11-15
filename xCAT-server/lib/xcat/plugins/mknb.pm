@@ -73,28 +73,20 @@ sub process_request {
             }
         }
         my $nicips = xCAT::NetworkUtils->get_nic_ip();
+        foreach (keys $nicips) {
+            # To support tagged vlan, create entries in the hash for the 
+            # interface name removing the physical interface ending:
+            # 'enP1p12s0f0.2@enP1p12s0f0' => 'enP1p12s0f0.2'
+            if ($_ =~ "@") {
+                my $newkey = $_;
+                $newkey =~ s/\@.*//g;
+                $$nicips{$newkey} = ${nicips}->{$_};
+            }
+        }
+
         foreach (keys %nobootnics)  {
-            # looping on each nics that has 'noboot' configured 
-            print "DEBUG ==> Interface $_ is set to 'noboot'\n";
-            if (defined($nicips)) {
-                foreach my $nicipkey (keys $nicips) {
-                   if ( $nicipkey =~ "@" ) {
-                       # If VLAN tagging is in use on this management node, the interface name is taken
-                       # from 'ip addr show' command and will contain the physical interface: 
-                       #    enP1p12s0f0.2@enP1p12s0f0 
-                       if ($nicipkey =~ m/$_\@/i ) { 
-                           print "DEBUG ---- FOUND ---- Interface name $_ is part of $nicipkey, IP=$nicips->{$nicipkey}!\n";
-                           if (defined($nicips->{$nicipkey})) {
-                               $nobootnicips{$nicips->{$nicipkey}} = 1;
-                           }
-                       }
-                   } else {
-                       # Non VLAN case
-                       if (defined($nicips->{$_})) {
-                           $nobootnicips{$nicips->{$_}} = 1;
-                       }
-                   }
-                }
+            if (defined($nicips->{$_})) {
+                $nobootnicips{$nicips->{$_}} = 1;
             }
         }
     }
