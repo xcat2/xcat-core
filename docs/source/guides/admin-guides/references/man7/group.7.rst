@@ -1166,7 +1166,7 @@ group Attributes:
 
 \ **vmcfgstore**\  (vm.cfgstore)
  
- Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data
+ Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistent store to place configuration data
  
 
 
