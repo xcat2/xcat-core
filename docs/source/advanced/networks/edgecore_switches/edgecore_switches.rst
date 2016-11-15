@@ -1,7 +1,9 @@
 Edgecore Switch
 ===============
 
-The Edgecore switch from Mellanox is 1Gb top-of-rack switch. Usually, Mellanox ships the switch with Cumulus Network OS(https://cumulusnetworks.com) and along with a license file installed. In some case, user may get whitebox switch hardware without OS and license installed. Since edgecore switch is different from other traditional switches that xCAT supports, xCAT supports edgecore switch in a different way. Currently, the features provided by xCAT includes: ::
+The Edgecore switch from Mellanox is 1Gb top-of-rack switch. Usually, Mellanox ships the switch with Cumulus Network OS(https://cumulusnetworks.com) and along with a license file installed. In some case, user may get whitebox switch hardware without OS and license installed. 
+
+Since edgecore switch is different from other traditional switches that xCAT supports, xCAT supports edgecore switch in a different way. Currently, the features provided by xCAT include: ::
   
   1) Cumulus Network OS provision
   2) switch discovery
@@ -9,11 +11,21 @@ The Edgecore switch from Mellanox is 1Gb top-of-rack switch. Usually, Mellanox s
      (a) enable root-passwordless ssh 
      (b) install licence file
      (c) enable snmp
-  4) distribute files with ``xdcp``
-  5) invoke commands or scripts remotely with `xdsh``
-  6) 
+  4) distribute files to switches with ``xdcp``
+  5) invoke remote commands or scripts on switches with `xdsh``
+  6) configure switches with ``updatenode``
+
+This documentation presents a typical workflow on how to setup a edgecore switch from white box, then configure and manage the switch with xCAT.
 
 
+Create a edgecore switch object
+-------------------------------
+
+If you have the information of the ip and mac information of the switch, the edgecore switch object definition can be created with the "cumulusswitch" template shipped in xCAT : ::
+   
+   mkdef edgecoresw1 --template cumulusswitch arch=armv71 ip=192.168.5.191 mac=8C:EA:1B:12:CA:40
+
+Discover the switch
 
 ONIE Mode
 ---------

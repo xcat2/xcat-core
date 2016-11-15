@@ -4,11 +4,11 @@ cumulusswitch:
     objtype=node
     arch="OPTIONAL: the arch of the switch management service processor, such as armv71"
     groups=switch
-    ip="MANDATORY:the ip address of the management interface"
-    mac="MANDATORY:the mac of the management interface"
+    ip="OPTIONAL:the ip address of the management interface"
+    mac="OPTIONAL:the mac of the management interface"
     mgt=switch
     netboot=onie
     nodetype=switch
-    switchtype="OPTIONAL: the manufacturer of switch"
+    switchtype=edgecore
     provmethod="OPTIONAL: the full path of the cumulus installer"
     usercomment="the template for cumulus switch definition"
