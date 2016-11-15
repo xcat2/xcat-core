@@ -493,7 +493,7 @@ sub process_request {
             # for only the sake of comparison, ensure consistant dot suffix
             unless ($canonical =~ /\.\z/) { $canonical .= '.' }
             foreach my $alias (@aliases) {
-                unless ($alias =~ /$domain/) {
+                unless ($alias =~ /\.$domain\z/) {
                     $alias .= "." . $domain;
                 }
                 unless ($alias =~ /\.\z/) {
@@ -1417,7 +1417,7 @@ sub add_or_delete_records {
         my $domain = $nodedomains{$node};
         if ($domain =~ /^\./) { $domain =~ s/^\.//; } # remove . if it's the first char of domain name
 
-        unless ($name =~ /$domain/) { $name .= "." . $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
+        unless ($name =~ /\.$domain\z/) { $name .= "." . $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
 
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
             @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
