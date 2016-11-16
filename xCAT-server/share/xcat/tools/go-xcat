@@ -1114,7 +1114,7 @@ function update_repo_yum()
 function update_repo_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
-	zypper --gpg-auto-import-keys refresh
+	zypper --gpg-auto-import-keys -n refresh
 }
 
 function update_repo_apt()
