@@ -34,9 +34,11 @@ rm -rf %{buildroot}
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
 mkdir -p $RPM_BUILD_ROOT/install/postscripts/csm/
+mkdir -p $RPM_BUILD_ROOT/install/post/otherpkgs/csm/
 
 cp csm* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/rh/
 cp install/postscripts/* $RPM_BUILD_ROOT/install/postscripts/csm/
+cp install/post/otherpkgs/csm/* $RPM_BUILD_ROOT/install/post/otherpkgs/csm/
 
 %clean
 # This step does not happen until *after* the %files packaging below
@@ -46,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{prefix}
 /install/postscripts
+/install/post
 %doc
 
 

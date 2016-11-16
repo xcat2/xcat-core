@@ -1,0 +1,70 @@
+#In distro.
+pciutils
+lsof
+tcl
+gcc-gfortran
+tcsh
+tk
+expect
+ksh
+numactl
+git
+cmake
+emacs
+python.ppc64le
+python-devel
+perl-XML-LibXML.ppc64le
+perl-XML-Simple-2.20-5.el7.noarch
+bzip2-devel
+gcc
+gcc-c++
+postgresql-libs
+postgresql-devel
+gdb
+openssl-devel
+c-ares-devel
+doxygen
+ctags
+libuuid-devel
+perl-Date-Calc.noarch
+perl-Date-Manip.noarch
+perl-DateTime.ppc64le
+perl-DateTime-Format-DateParse.noarch
+perl-DateTime-Locale.noarch
+perl-DateTime-TimeZone.noarch
+valgrind.ppc64le
+rpm-build
+
+# Needed for build.
+librdmacm
+librdmacm-devel
+librdmacm-utils
+
+# John Cohn request.
+libxlc
+libxlsmp
+
+# epel
+epel/mosquitto-devel
+
+
+# Boost-1.60.0
+boost/boost-1.60.0-4.el7.ppc64le
+boost/boost-devel-1.60.0-4.el7.ppc64le
+
+# libcgroup
+libcgroup-pam
+
+# Python Dependencies
+python-dateutil.noarch
+numpy
+
+libibverbs-utils
+ibutils
+perftest
+
+cuda-repo-rhel7-8-0-local
+
+#csm rpms
+ibm-csm-core
+ibm-csm-api
