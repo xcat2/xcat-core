@@ -10,6 +10,9 @@ XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
 
 rootlimit="$(getarg rootlimit=)"
+xcatdebugmode="$(getarg xcatdebugmode=)"
+
+[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "in dracut, executing xcatroot..."
 
 getarg nonodestatus
 NODESTATUS=$?
@@ -20,13 +23,10 @@ if [ $? -ne 0 ]; then
     XCATIPORT="3002"
 fi
 
-xcatdebugmode="$(getarg xcatdebugmode=)"
-
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "running xcatroot...."
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
+[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "MASTER=$MASTER XCATIPORT=$XCATIPORT NODESTATUS=$NODESTATUS"
 
 if [ "$NODESTATUS" != "0" ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "nodestatus: netbooting,reporting..."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Reporting status=netbooting..."
     /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
@@ -37,10 +37,10 @@ if [ ! -z "$imgurl" ]; then
         NFS=0
         FILENAME=${imgurl##*/}
         while [ ! -r "$FILENAME" ]; do
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "downloading $imgurl...."
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl...."
             echo Getting $imgurl...
             if ! wget -nv $imgurl; then
-                [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "downloading $imgurl failed,retrying...."
+                [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl FAILED, retrying..."
                 rm -f $FILENAME
                 sleep 27
             fi
@@ -55,6 +55,7 @@ if [ ! -z "$imgurl" ]; then
         SERVER=${SERVER%:}
         ROOTDIR=/${ROOTDIR#*/} 
     fi
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Download complete."
 fi
 
 if [ -r /rootimg.sfs ]; then
@@ -70,7 +71,7 @@ if [ -r /rootimg.sfs ]; then
     mount --move /ro $NEWROOT/ro
     mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "rootimg downloaded,setting up RAM-root tmpfs...."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "[rootimg.cpio.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
     if [ -z $rootlimit ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -79,8 +80,8 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     fi
 
     cd $NEWROOT
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting root filesystem:"
-    echo -n "Extracting root filesystem:"
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
+    echo -n "Extracting the root filesystem..."
     if [ -r /rootimg.cpio.gz ]; then
         if [ -x /bin/cpio ]; then
             gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
@@ -95,10 +96,10 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
         fi
     fi
     $NEWROOT/etc/init.d/localdisk
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done...."
-    echo Done
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
+    echo "Done extracting the root filesystem..."
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "rootimg downloaded,setting up RAM-root tmpfs...."
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "[rootimg.tar.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
     if [ -z $rootlimit ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -107,8 +108,8 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     fi
 
     cd $NEWROOT
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting root filesystem:"
-    echo -n "Extracting root filesystem:"
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
+    echo -n "Extracting the root filesystem..."
     if [ -r /rootimg.tar.gz ]; then
         tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz
         if [ $? -ne 0 ]; then
@@ -121,9 +122,10 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
         fi
     fi
     $NEWROOT/etc/init.d/localdisk
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done...."
-    echo Done
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
+    echo "Done extracting the root filesystem..."
 elif [ -r /rootimg-statelite.gz ]; then
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Setting up RAM-root tmpfs for statelite mode."
     echo Setting up RAM-root tmpfs for statelite mode.
  
     if [ -z $rootlimit];then
@@ -133,14 +135,17 @@ elif [ -r /rootimg-statelite.gz ]; then
     fi
 
     cd $NEWROOT
-    echo -n "Extracting root filesystem:"
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
+    echo -n "Extracting root filesystem..."
     if [ -x /bin/cpio ]; then
         gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
     else
         gzip -cd /rootimg-statelite.gz |cpio -idum
     fi
-    echo Done
-    # then, the statelite staffs will be processed
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
+    echo "Done extracting the root filesystem..."
+
+    # then, the statelite stuff will be processed
     echo Setting up Statelite 
     modprobe nfs
     MAXTRIES=7
@@ -246,8 +251,8 @@ elif [ -r /rootimg-statelite.gz ]; then
     mount -n --bind /sys $NEWROOT/sys
 
 else
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Failed to download image, panicing in 5..."
-    echo -n Failed to download image, panicing in 5...
+    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Failed to download image, panic in 5..."
+    echo -n Failed to download image, panic in 5...
     for i in 4 3 2 1 0; do
         /bin/sleep 1
         [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "$i..."
@@ -298,7 +303,7 @@ if [ -z $STATEMNT ]; then
         netif=${lf#*.}
         netif=${netif%.*}
         cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
     done
 
     ifname="$(getarg ifname=)"
@@ -320,10 +325,10 @@ if [ -z $STATEMNT ]; then
 
     if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
         if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
             touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
         fi
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
         echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
         echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
         echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
@@ -331,7 +336,7 @@ if [ -z $STATEMNT ]; then
     fi
 fi
 
-[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "saving $NEWROOT/etc/resolv.conf"
+[ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/etc/resolv.conf"
 cp /etc/resolv.conf "$NEWROOT/etc/"
 
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
