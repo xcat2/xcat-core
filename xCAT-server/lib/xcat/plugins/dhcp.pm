@@ -1591,7 +1591,8 @@ sub process_request
         foreach (@ip6routes) {
 
             #TODO: filter out multicast?  Don't know if multicast groups *can* appear in ip -6 route...
-            if (/^default/ or /^fe80::\/64/ or /^unreachable/ or /^[^ ]+ via/) { #ignore link-local, junk, and routed networks
+            #ignore link-local, global-local, junk, and routed networks
+            if (/^default/ or /^fe80::\/64/ or /^2002::\/64/ or /^unreachable/ or /^[^ ]+ via/) { 
                 next;
             }
             my @parts = split /\s+/;
