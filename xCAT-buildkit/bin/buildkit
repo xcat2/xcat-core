@@ -1390,12 +1390,13 @@ sub validate_bldkitconf
         $full_kitname .= '-' . $::bldkit_config->{kit}{entries}[0]->{osmajorversion};
     }
     if (defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) {
+        my $kitminor = split /<=|>=|==|<|>/, $::bldkit_config->{kit}{entries}[0]->{osminorversion};
         if ((!defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) ||
             (!defined($::bldkit_config->{kit}{entries}[0]->{osmajorversion}))) {
             print "Error:  Kit osminorversion attribute was specified but either Kit osbasename or Kit osmajorversion were not set. \n";
             return 1;
         }
-        $full_kitname .= '-' . $::bldkit_config->{kit}{entries}[0]->{osminorversion};
+        $full_kitname .= '-' . $kitminor;
     }
     if (defined($::bldkit_config->{kit}{entries}[0]->{osarch})) {
         $full_kitname .= '-' . $::bldkit_config->{kit}{entries}[0]->{osarch};
@@ -1500,12 +1501,14 @@ sub validate_bldkitconf
         }
         $reponame .= '-' . $kr->{osmajorversion};
         if (defined($kr->{osminorversion})) {
+            my $krminor = split /<=|>=|==|<|>/, $kr->{osminorversion};
             if ((defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) &&
                 ($::bldkit_config->{kit}{entries}[0]->{osminorversion} ne
                     $kr->{osminorversion})) {
                 print "Warning:  Kit osminorversion is set to \"$::bldkit_config->{kit}{entries}[0]->{osminorversion}\", but this does not match kitrepo $kr->{kitrepoid} osminorversion \"$kr->{osminorversion}\".  Processing will continue, but verify that you do not have an error in your buildkit configuration file. \n";
             }
-            $reponame .= '.' . $kr->{osminorversion};
+            $reponame .= '.' . $krminor;
+            $::bldkit_config->{kit}{entries}[0]->{osminorversion} = $krminor;            
         }
         if ((defined($::bldkit_config->{kit}{entries}[0]->{osarch})) &&
             ($::bldkit_config->{kit}{entries}[0]->{osarch} ne
@@ -1549,7 +1552,8 @@ sub validate_bldkitconf
         $compname .= '-' . $repo{osbasename};
         $compname .= '-' . $repo{osmajorversion};
         if (defined($repo{osminorversion})) {
-            $compname .= '.' . $repo{osminorversion};
+            my $minorversion = split /<=|>=|==|<|>/, $repo{osminorversion};
+            $compname .= '.' . $minorversion;
         }
         $compname .= '-' . $repo{osarch};
         $kc->{kitcompname} = $compname;
@@ -1931,8 +1935,10 @@ sub validate_os
     }
     $osinfo =~ s/\,//;
     my $repo_osinfo = "$repo->{osbasename}$repo->{osmajorversion}";
+    my $minorversion;
     if (defined($repo->{osminorversion})) {
-        $repo_osinfo .= ".$repo->{osminorversion}";
+        $minorversion = split /<=|>=|==|<|>/, $repo->{osminorversion};
+        $repo_osinfo .= ".$minorversion";
     }
     $repo_osinfo .= "-$repo->{osarch} ";
     my $mismatch_msg = "The local host is running $osinfo-$osarch.  This does not match the Kit Repository \"$repo->{kitrepoid}\" data:  $repo_osinfo";
@@ -1968,7 +1974,7 @@ sub validate_os
         return 1;
     }
     if (defined($repo->{osminorversion})) {
-        if (($repo->{osminorversion} ne $osminorversion) &&
+        if (($minorversion ne $osminorversion) &&
             (!$compat_match)) {
             print "$mismatch_msg \n";
             if ($::VERBOSE) {
@@ -3411,6 +3417,7 @@ sub kit_addpkgs
     #  - could be list of pkgdir s
     my @pkgdirlist = split(",", $::PKGDIR);
 
+    print "$tmpdir_base\n";
     # Cleanup - should have been removed when last command ran
     #            - but just in case
     system("rm -Rf $tmpdir_base");
@@ -3425,6 +3432,7 @@ sub kit_addpkgs
     $kittarfile = abs_path($kittarfile);
 
     foreach my $rpmdir (@pkgdirlist) {
+        print "rpmdir = $rmpdir\n";
         if (!(-d $rpmdir)) {
             print "The package directory $rpmdir could not be read. \n";
             return 1;
