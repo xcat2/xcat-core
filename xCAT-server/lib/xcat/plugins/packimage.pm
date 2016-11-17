@@ -488,6 +488,7 @@ sub process_request {
 
     $suffix = $method.".".$suffix;
     unlink("$destdir/rootimg.sfs");
+    unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.cpio.xz");
     unlink("$destdir/rootimg.cpio.gz");
     unlink("$destdir/rootimg.tar.xz");

@@ -327,12 +327,7 @@ sub mknetboot
             $platform = "sles";
         }
 
-        my $suffix = 'cpio.gz';
-        $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'gz' if (-r "$rootimgdir/rootimg.gz");
-        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
-        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
-        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
+        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
 
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -384,7 +379,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs" or -r "$rootimgdir/rootimg.gz") {
+            unless (-r -f $compressedrootimg) {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]
@@ -588,7 +583,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg.$suffix ";
+              "imgurl=$httpmethod://$imgsrv/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
 
