@@ -9,9 +9,9 @@ if [ -x /etc/rc.d/init.d/functions ]; then
   . /etc/rc.d/init.d/functions
 fi
 
-[ -f /opt/xcat/xcatinfo ] && XCATSERVER=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 2>/dev/null`
-[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}' 2>/dev/null`
-[ -f /xcatpost/mypostscript ] && RUNBOOTSCRIPT=`grep 'RUNBOOTSCRIPT=' /xcatpost/mypostscript |awk -F = '{print $2}' 2>/dev/null`
+[ -f /opt/xcat/xcatinfo ] && XCATSERVER=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\" `
+[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -f /xcatpost/mypostscript ] && RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z `
 
 case $1 in
 stop)
@@ -20,12 +20,12 @@ stop)
 start)
   # check for the REBOOT specified in xcatinfo to run post boot scripts on reboot 
   if [ -f /opt/xcat/xcatinfo ]; then
-    REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2`
+    REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\"`
   fi
   # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
-  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost -a "$RUNBOOTSCRIPT" = "1" ]; then
+  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ] && [[ "$RUNBOOTSCRIPTS" =~ ^1|yes|y$ ]]; then
       /opt/xcat/xcatdsklspost 6
-  elif [ "$REBOOT" = "TRUE" -a "NODESTATUS" != "n" ]; then
+  elif [ "$REBOOT" = "TRUE" ] && [[ "$NODESTATUS" =~  ^1|yes|y$ ]]; then
       /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"  
   else
     # run /opt/xcat/xcatinstallpost
