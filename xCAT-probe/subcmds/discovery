@@ -45,23 +45,21 @@ $::USAGE = "Usage:
     $program_name -n <node_range> -m <discovery_type> -r <roll_back_duration> [-V] [--noprecheck]
 
 Description:
-    Probe the discovery process, including pre-check for required configuration, 'Realtime monitor' and 'Replay history' of discovery process. 
-    If all pre-check items failed, $program_name will exit.  
-    Realtime monitor: This is a default. This tool with monitor discovery state of the node. Trigger 'Realtime monitor' before rebooting target node to do discovery.
-    Replay history: Used after discovery is finished to probe the previously completed discovery.
+    Probe the discovery process, including pre-check for required configuration. If any pre-checks fail, '$program_name' will exit.
+    The default behavior of xcatprobe discovery is to monitor the discovery process in real time. Use the -r option for 'replay' mode which probes the discovery based on information stored in various log files.
 
     [NOTE] Currently, hierarchial structure is not supported.
 
 Options:
-    -h : Get usage information of $program_name.
-    -V : Output more information for debug.
-    -m : The method of discovery, the valid values are $valid_discovery_type_str.
-    -n : The range of predefined nodes, must be used with option -m.
-    --noprecheck : skip pre-checking discovery to validate correct configuration. 
-    -t : The maximum time to wait when doing monitor, unit is minutes. default is 60.
-    -r : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
-         Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
-         If unit is not specified, hour will be used by default.
+    -h           : Get usage information of $program_name.
+    -V           : Output more information for debug.
+    -m           : The method of discovery, the valid values are $valid_discovery_type_str.
+    -n           : The range of predefined nodes, must be used with option -m.
+    -t           : The maximum time to wait when doing monitor, unit is minutes. default is 60.
+    -r           : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
+                   Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
+                   If unit is not specified, hour will be used by default.
+    --noprecheck : skip pre-checking discovery to validate correct configuration.
 ";
 
 #----------------------------------------------
