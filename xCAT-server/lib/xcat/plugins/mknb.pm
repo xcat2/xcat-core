@@ -3,6 +3,7 @@ use strict;
 use File::Temp qw(tempdir);
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
 
