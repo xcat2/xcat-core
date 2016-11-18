@@ -1,92 +1,290 @@
+start:testtest
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcatconfig/change_site_table_values
+check:rc==0
+end
+
 start:xcatconfig_null
 description:xcatconfig with no argument
+os:Linux
 cmd:xcatconfig
-check:output=~Usage
-end
-
-start:xcatconfig_f
-description:To force regeneration of keys and credentials and reinitialize the site table
-cmd:xcatconfig -f 
-check:rc==0
-end
-
-
-start:xcatconfig_k
-description:To regenerate root's ssh keys
-cmd:cp -rf /root/.ssh /root/.sshbak
-cmd:xcatconfig -k
-check:rc==0
-check:output=~(Generated /root/.ssh/id_rsa.pub)
-cmd:diff /root/.ssh/id_rsa.pub /root/.sshbak/id_rsa.pub
+check:output=~No parameters were supplied on the xcatconfig command. Run xcatconfig -h
 check:rc!=0
-cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
-check:rc==0
-cmd:cp -rf /root/.sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
-cmd:mv -f /root/.sshbak /root/.ssh
-end
-
-
-start:xcatconfig_d
-description:This option will reinitialize the basic xCAT database table setup
-cmd:dumpxCATdb -p /tmp
-check:rc==0
-cmd:xcatconfig -d
-check:rc==0
-check:output=~(Updated cluster site definition)
-cmd:restorexCATdb -p /tmp
-check:rc==0
-cmd:rm -rf /tmp/*.csv
-end
-
-
-start:xcatconfig_s
-description:To regenerate node host ssh keys
-cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
-check:rc==0
-cmd:xcatconfig -s
-check:rc==0
-check:output=~(Generating new node hostkeys)
-cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
-check:rc!=0
-cmd:rm -rf /etc/xcat/hostkeysbak
-end
-
-start:xcatconfig_s_c
-description:To regenerate node host ssh keys and credentials
-cmd:cp -rf /root/.xcat /root/.xcatbak
-check:rc==0
-cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
-check:rc==0
-cmd:xcatconfig -s -c
-check:rc==0
-check:output=~Created xCAT certificate
-check:output=~Signature ok
-check:output=~OK
-check:output!~Fail
-cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
-check:rc!=0
-cmd:rm -rf /etc/xcat/hostkeysbak
-cmd:rm -rf /root/.xcatbak
 end
 
 start:xcatconfig_h
 description:xcatconfig -h and --help
+os:Linux
 cmd:xcatconfig -h
+check:rc==0
 check:output=~Usage
 cmd:xcatconfig --help
+check:rc==0
 check:output=~Usage
 end
-
 
 start:xcatconfig_v
 description:xcatconfig -v and --version
-cmd:xcatconfig -v 
+os:Linux
+cmd:xcatconfig -v
+check:rc==0
 check:output=~version|Version
 cmd:xcatconfig --version
+check:rc==0
 check:output=~version|Version
 end
 
+start:xcatconfig_k
+description:To regenerate root's ssh keys
+os:Linux
+#step1:backup /root/.ssh
+cmd:cp -rf /root/.ssh /root/sshbak
+check:rc==0
+#step2: run command
+cmd:xcatconfig -k
+check:rc==0
+check:output=~Generated /root/.ssh/id_rsa.pub
+#step3: To make sure /root/.ssh/id_rsa.pub is regenerated
+cmd:diff /root/.ssh/id_rsa.pub /root/sshbak/id_rsa.pub
+check:rc!=0
+#make sure the /install/postscripts/_ssh/authorized_keys is rewrite
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+#step4. restore test environment
+cmd:cp -rf /root/sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+cmd:mv -f /root/sshbak/* /root/.ssh
+check:rc==0
+cmd:rm -rf /root/sshbak
+check:rc==0
+end
+
+
+start:xcatconfig_k_c
+description:To regenerate root's ssh keys and cretials
+os:Linux
+#step1:backup /root/.ssh
+cmd:cp -rf /root/.ssh /root/sshbak
+check:rc==0
+#step2:run command and check the output
+cmd:xcatconfig -k -c
+check:rc==0
+check:output=~Generated /root/.ssh/id_rsa.pub
+check:output=~Created xCAT certificate
+check:output=~Signature ok
+check:output!=(Fail|fail|Error|error)
+#step3:To make sure /root/.ssh/id_rsa.pub is regenerated
+cmd:diff /root/.ssh/id_rsa.pub /root/sshbak/id_rsa.pub
+check:rc!=0
+#make sure the /install/postscripts/_ssh/authorized_keys is rewrite
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+#step4:restore test environment
+cmd:cp -rf /root/sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+cmd:mv -f /root/sshbak/* /root/.ssh
+check:rc==0
+cmd:rm -rf /root/sshbak
+check:rc==0
+end
+
+
+
+start:xcatconfig_s
+description:To regenerate node host ssh keys
+os:Linux
+#step1:backup: /etc/xcat/hostkeys  /install/postscripts/hostkeys
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:cp -rf /install/postscripts/hostkeys /install/postscripts/hostkeysbak
+check:rc==0
+#step2:run command and check messages
+cmd:xcatconfig -s
+check:rc==0
+check:output=~Generating new node hostkeys
+check:output=~Generating SSH2 RSA Key
+#step3:Make sure /etc/xcat/hostkeys/ssh_host_rsa_key.pub is regenerated
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
+check:rc!=0
+#step4:Make sure /install/postscripts/hostkeys/ssh_host_rsa_key.pub is regenerated 
+cmd:diff /install/postscripts/hostkeys/ssh_host_rsa_key.pub /install/postscripts/hostkeysbak/ssh_host_rsa_key.pub
+check:rc!=0
+#step5:restore test environment
+cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys
+check:rc==0
+cmd:rm -rf /etc/xcat/hostkeysbak
+check:rc==0
+cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys
+check:rc==0
+cmd:rm -rf /install/postscripts/hostkeysbak
+check:rc==0
+end
+
+start:xcatconfig_s_c
+description:To regenerate node host ssh keys and credentials
+os:Linux
+#step1:backup: /etc/xcat/hostkeys  /install/postscripts/hostkeys
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:cp -rf /install/postscripts/hostkeys /install/postscripts/hostkeysbak
+check:rc==0
+#step2:run command and check messages
+cmd:xcatconfig -s -c
+check:rc==0
+check:output=~Created xCAT certificate
+check:output=~Generating new node hostkeys
+check:output=~Generating SSH2 RSA Key
+check:output=~Signature ok
+check:output!=(Fail|fail|Error|error)
+#step3:Make sure /etc/xcat/hostkeys/ssh_host_rsa_key.pub is regenerated
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
+check:rc!=0
+#step4:Make sure /install/postscripts/hostkeys/ssh_host_rsa_key.pub is regenerated 
+cmd:diff /install/postscripts/hostkeys/ssh_host_rsa_key.pub /install/postscripts/hostkeysbak/ssh_host_rsa_key.pub
+check:rc!=0
+#step5:restore test environment
+cmd:mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys
+check:rc==0
+cmd:rm -rf /etc/xcat/hostkeysbak
+check:rc==0
+cmd:mv -f /install/postscripts/hostkeysbak/* /install/postscripts/hostkeys
+check:rc==0
+cmd:rm -rf /install/postscripts/hostkeysbak
+check:rc==0
+end
+
+start:xcatconfig_d_V
+description:This -d option will reinitialize the basic xCAT database table setup
+os:Linux
+#step1:backup database and prepare test data
+cmd:dumpxCATdb -p /tmp/xcatconfigtest
+check:rc==0
+#change existed key's value
+cmd:chtab key=maxssh site.value=888
+check:rc==0
+#add new key and value
+cmd:chtab key=testxcatconfigoptiond site.value=test
+check:rc==0
+#step2:run command and check messages
+cmd:xcatconfig -d -V
+check:rc==0
+check:output=~Updated cluster site definition
+#step3:Make sure existed key's value is reinited
+cmd:lsdef -t site -i maxssh | grep "=8$"
+check:rc==0
+#make sure the added key and value are existed and not changed
+cmd:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
+check:rc==0
+#step4:restore test environment
+cmd:restorexCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:rm -rf /tmp/xcatconfigtest
+end
+
+
+
+start:xcatconfig_i
+os:Linux
+description:Initial the xCAT installation in Management Node, only node host key regenerated, xcatd restart; xCAT credentials, database and the ssh key are not changed
+#step1:backup test environment and prepare test data
+#backup test environment, including database, /root/.ssh/, /etc/xcat/hostkey/, install/postscripts/hostkeys
+cmd:dumpxCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:cp -rf /install/postscripts/hostkeys /install/postscripts/hostkeysbak
+check:rc==0
+cmd:cp -rf /root/.ssh /root/sshbak
+check:rc==0
+#prepare data:change existed site.maxssh, and add new key with value
+#cmd:chtab key=maxssh site.value=888
+cmd:./install/xcat-core/xCAT-test/autotest/testcase/xcatconfig/change_site_table_values
+check:rc==0
+cmd:chtab key=testxcatconfigoptiond site.value=test
+check:rc==0
+#step2: run command and check output
+cmd:xcatconfig -i
+check:rc==0
+check:output!=Created xCAT certificate
+check:output!=(Fail|fail|Error|error)
+#step3: check the test result
+#xCATd is running
+cmd:service xcatd status
+check:rc==0
+check:output=~(active \(running\)|service is running)
+#node ssh key are regenerated
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
+check:rc!=0
+#/root/.ssh are still the same, not changed
+cmd:diff /root/.ssh/id_rsa.pub /root/sshbak/id_rsa.pub
+check:rc==0
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+#keys in site table are not changed
+#cmd:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
+cmd:cmd:./install/xcat-core/xCAT-test/autotest/testcase/xcatconfig/verify_site_table_values_is_changed
+check:rc==0
+cmd:lsdef -t site -i maxssh | grep "=888$" 
+check:rc==0
+#step4.restore test environment
+cmd:rm -rf /etc/xcat/hostkeysbak
+check:rc==0
+cmd:restorexCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:rm -rf /tmp/xcatconfigtest
+check:rc==0
+end
+     
+     
+start:xcatconfig_u
+os:Linux
+description:Update xCAT in Management Node, xcatd restart; database, xCAT credentials, node ssh key and root ssh key are not changed
+#step1:backup test environment and prepare test data
+#backup test environment, including database, /root/.ssh/, /etc/xcat/hostkey/, install/postscripts/hostkeys
+cmd:dumpxCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:cp -rf /install/postscripts/hostkeys /install/postscripts/hostkeysbak
+check:rc==0
+cmd:cp -rf /root/.ssh /root/sshbak
+check:rc==0
+#prepare data:change existed site.maxssh, and add new key with value
+cmd:chtab key=maxssh site.value=888
+check:rc==0
+cmd:chtab key=testxcatconfigoptiond site.value=test
+check:rc==0
+#step2: run command and check output
+cmd:xcatconfig -u
+check:rc==0
+check:output!=Created xCAT certificate
+check:output!=(Fail|fail|Error|error)
+#step3: check the test result
+#xCATd is running
+cmd:service xcatd status
+check:rc==0
+check:output=~(active \(running\)|service is running)
+#node ssh key not changed
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
+check:rc==0
+#/root/.ssh are still the same, not changed
+cmd:diff /root/.ssh/id_rsa.pub /root/sshbak/id_rsa.pub
+check:rc==0
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+#keys in site table are not changed
+cmd:lsdef -t site -i testxcatconfigoptiond | grep "=test$"
+check:rc==0
+cmd:lsdef -t site -i maxssh | grep "=888$" 
+check:rc==0
+#step4.restore test environment
+cmd:restorexCATdb -p /tmp/xcatconfigtest
+check:rc==0
+cmd:rm -rf /tmp/xcatconfigtest
+check:rc==0
+end
+
 start:xcatconfig_u_check_xcatsslversion_rhels_sles
+os:rhels,sles
 description:after xcatconfig -u the site.xcatsslversion will not be changed
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
@@ -105,6 +303,7 @@ end
 
 start:xcatconfig_u_check_xcatsslversion_ubuntu
 description:after xcatconfig -u the site.xcatsslversion will not be changed
+os:ubuntu
 cmd:lsdef -t site -i xcatsslversion -c | grep '=TLSv1$'
 check:rc==0
 cmd:chtab key=xcatsslversion site.value=TLSv1_2
