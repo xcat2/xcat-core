@@ -118,7 +118,7 @@ sub config_ip {
     my @config_switches;
     my @discover_switches;
     my $nodetab = xCAT::Table->new('hosts');
-    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces','mac']);
+    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
     # get netmask from network table
     my $nettab = xCAT::Table->new("networks");
     my @nets;
@@ -184,6 +184,7 @@ sub config_ip {
         foreach my $net (@nets) {
             if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $static_ip, $net->{'mask'}, 0)) {
                 $mask=$net->{'mask'};
+                last;
             }
         }
 

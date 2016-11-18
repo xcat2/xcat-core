@@ -721,6 +721,7 @@ sub nmap_scan {
                 my $mac;
                 if (exists($host->{address})) {
                     my $addr_ref = $host->{address};
+                    $found = 0;
                     foreach my $addr ( @$addr_ref ) {
                         my $type = $addr->{addrtype};
                         if ( $type ne "mac" ) {
@@ -767,7 +768,7 @@ sub nmap_scan {
         }
     }
 
-    if (!$osguess_ips) {
+    if ($osguess_ips) {
         my $guess_switches = nmap_osguess($request, $osguess_ips);
         foreach my $guess_mac ( keys %$guess_switches ) {
             $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
@@ -1385,7 +1386,6 @@ sub matchPredefineSwitch {
     my $sub_req = shift;
     my $discoverswitch;
     my $configswitch;
-    my $static_ip;
 
     #print Dumper($outhash);
     my $macmap = xCAT::MacMap->new();
@@ -1411,8 +1411,6 @@ sub matchPredefineSwitch {
             next;
         }
 
-        # get predefine node ip address
-        $static_ip = xCAT::NetworkUtils->getipaddr($node);
         my $stype = get_switchtype($vendor);
 
         send_msg($request, 0, "Switch discovered and matched: $dswitch to $node" );
