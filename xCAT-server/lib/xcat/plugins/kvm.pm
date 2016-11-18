@@ -48,7 +48,7 @@ if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
-#use Data::Dumper;
+use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw store_fd fd_retrieve);
 use IO::Select;
@@ -3765,12 +3765,20 @@ sub process_request {
     $confdata = {};
     unless ($command eq 'lsvm' or $command eq 'rscan') {
         xCAT::VMCommon::grab_table_data($noderange, $confdata, $callback);
+        # Add debug info for issue 1958, the rmvm issue
+        my $test_file_fd;
+        open($test_file_fd, ">> $::XCATROOT//share/xcat/tools/autotest/result/$command.$$.rec");
+        print $test_file_fd "====================start==========================\n";
         my $kvmdatatab = xCAT::Table->new("kvm_nodedata", -create => 0); #grab any pertinent pre-existing xml
         if ($kvmdatatab) {
             $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange, [qw/xml/]);
+            print $test_file_fd Dumper($confdata->{kvmnodedata});
         } else {
             $confdata->{kvmnodedata} = {};
+            print $test_file_fd "***Error: Can not open kvm_nodedata table==\n";
         }
+        print $test_file_fd "====================end==========================\n";
+        close $test_file_fd;
     }
     if ($command eq 'mkvm' or ($command eq 'clonevm' and (grep { "$_" eq '-b' } @exargs)) or ($command eq 'rpower' and (grep { "$_" eq "on" or $_ eq "boot" or $_ eq "reset" } @exargs))) {
         xCAT::VMCommon::requestMacAddresses($confdata, $noderange);
