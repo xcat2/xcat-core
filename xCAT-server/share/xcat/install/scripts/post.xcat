@@ -28,6 +28,7 @@ if [[ $TFTPDIR != /* ]]; then
     TFTPDIR="/"$TFTPDIR
 fi
 
+NODESTATUS=$(echo "$NODESTATUS"| tr -d \'\"| tr A-Z a-z)
 
 (cat  << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
@@ -337,18 +338,18 @@ cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
 if [ -f /xcatpost/mypostscript.post ]; then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
 fi
 
 if [[ $OSVER == ubuntu* ]]; then
-    if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
         update-rc.d -f xcatpostinit1 remove
     fi
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "update-rc.d -f xcatpostinit1 remove" "/var/log/xcat/xcat.log"
     fi
 else
-    if [ "$RUNBOOTSCRIPTS" != "'yes'" ] && [ "$NODESTATUS" = "'n'" ]; then
+    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]] && [[ ! "$NODESTATUS" =~ ^(1|yes|y)$ ]]; then
         chkconfig xcatpostinit1 off
         if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
             msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"

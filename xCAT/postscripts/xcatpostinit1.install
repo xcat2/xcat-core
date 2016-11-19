@@ -23,9 +23,9 @@ start)
     REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\"`
   fi
   # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
-  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ] && [[ "$RUNBOOTSCRIPTS" =~ ^1|yes|y$ ]]; then
+  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ] && [[ "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
       /opt/xcat/xcatdsklspost 6
-  elif [ "$REBOOT" = "TRUE" ] && [[ "$NODESTATUS" =~  ^1|yes|y$ ]]; then
+  elif [ "$REBOOT" = "TRUE" ] && [[ "$NODESTATUS" =~  ^(1|yes|y)$ ]]; then
       /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"  
   else
     # run /opt/xcat/xcatinstallpost

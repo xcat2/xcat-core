@@ -160,12 +160,12 @@ mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 if [ -f /xcatpost/mypostscript.post ]; then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
 fi
-if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
     chkconfig xcatpostinit1 off
 fi
-echo "REBOOT=TRUE" >> /opt/xcat/xcatinf
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
