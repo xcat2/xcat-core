@@ -302,7 +302,6 @@ sub setstate {
             $macstring = $ment->{mac};
             my @macs = split(/\|/, $ment->{mac});
             foreach (@macs) {
-                $nodemac = $_;
                 if (/!(.*)/) {
                     my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
                     if ($ipaddr) {
@@ -317,7 +316,7 @@ sub setstate {
     #  my $hassymlink = eval { symlink("",""); 1 };
     foreach $ip (keys %ipaddrs) {
         my @ipa = split(/\./, $ip);
-        my $pname = "grub.cfg-" . sprintf("%02x%02x%02x%02x", @ipa);
+        my $pname = "grub.cfg-" . sprintf("%02X%02X%02X%02X", @ipa);
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink($tftpdir . "/boot/grub2/" . $pname);
@@ -325,7 +324,18 @@ sub setstate {
             link($tftpdir . "/boot/grub2/" . $node, $tftpdir . "/boot/grub2/" . $pname);
         }
     }
-    if ($macstring) {
+    
+    my $nrent=$nrhash{$node}->[0];
+    if($nrent and $nrent->{installnic}){
+        my $myinstallnic=$nrent->{installnic};
+        if(xCAT::NetworkUtils->isValidMAC($myinstallnic)){
+            $nodemac=$myinstallnic;
+        }
+    }
+        
+
+     
+    if (! $nodemac and $macstring) {
         $nodemac = xCAT::Utils->parseMacTabEntry($macstring, $node);
     }
 
@@ -579,7 +589,7 @@ sub process_request {
     my $mactab = xCAT::Table->new('mac', -create => 1);
     my $machash = $mactab->getNodesAttribs(\@nodes, ['mac']);
     my $nrtab = xCAT::Table->new('noderes', -create => 1);
-    my $nrhash = $nrtab->getNodesAttribs(\@nodes, [ 'servicenode', 'tftpserver', 'xcatmaster', 'netboot' ]);
+    my $nrhash = $nrtab->getNodesAttribs(\@nodes, [ 'servicenode', 'tftpserver', 'xcatmaster', 'netboot' , 'installnic']);
     my $typetab = xCAT::Table->new('nodetype', -create => 1);
     my $typehash = $typetab->getNodesAttribs(\@nodes, [ 'os', 'provmethod', 'arch', 'profile' ]);
     my $linuximgtab = xCAT::Table->new('linuximage', -create => 1);
