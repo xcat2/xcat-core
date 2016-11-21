@@ -89,6 +89,10 @@ if ($::SWITCH) {
     exit(1);
 }
 
+#get mac address for the switches
+my $mactab = xCAT::Table->new("mac");
+my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
+
 my $switches = join(",",@nodes);
 my $cmd;
 my $vlan;
@@ -125,9 +129,6 @@ sub config_ip {
     if ($nettab) {
         @nets = $nettab->getAllAttribs('net','mask');
     }
-    #get mac address for the switches
-    my $mactab = xCAT::Table->new("mac");
-    my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
 
     foreach my $switch (@nodes) {
         print "change $switch to static ip address\n";
@@ -165,7 +166,7 @@ sub config_ip {
 
         # if hostnames are same, created different one for discovery name
         if ($dswitch eq $switch) {
-            $dswitch="";
+            $dswitch="$switch-discovery";
         }
 
         #if not defined, need to create one for xdsh to use
@@ -243,9 +244,6 @@ sub config_hostname {
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','sshpassword']);
 
-    #get mac address for the switches
-    my $mactab = xCAT::Table->new("mac");
-    my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         my $pwd= $switchhash->{$switch}->[0]->{sshpassword};
@@ -299,10 +297,6 @@ sub config_snmp {
     } else {
         $snmp_group = "xcatgroup\r";
     }
-
-    #get mac address for the switches
-    my $mactab = xCAT::Table->new("mac");
-    my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
 
     foreach my $switch (@nodes) {
         my $mysw;

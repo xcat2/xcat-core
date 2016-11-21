@@ -771,7 +771,7 @@ sub nmap_scan {
     if ($osguess_ips) {
         my $guess_switches = nmap_osguess($request, $osguess_ips);
         foreach my $guess_mac ( keys %$guess_switches ) {
-            $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
+            $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};
             $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
         }
     }
