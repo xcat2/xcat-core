@@ -12,6 +12,8 @@ check:output=~Discovering switches using nmap
 check:output=~switch
 end
 start:switchdiscover_range_default_w
+cmd:lsdef -l switch -z >/tmp/switch.standa
+cmd:rmdef switch
 cmd:switchdiscover --range $$range -w
 check:rc==0
 check:output=~Discovering switches using nmap
@@ -20,6 +22,11 @@ check:output=~Writing the data into xCAT DB
 cmd: lsdef |grep switch
 check:rc==0
 check:output=~switch
+cmd:rmdef switch
+check:rc==0
+cmd:cat /tmp/switch.standa |mkdef -z
+cmd:rm -rf /tmp/switch.standa
+check:rc==0
 end
 start:switchdiscover_range_s
 cmd:switchdiscover --range $$range -s nmap
