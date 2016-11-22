@@ -1,6 +1,8 @@
 #!/bin/sh
 #script to update nodelist.nodestatus during provision
 
+XCAT="$(getarg XCAT=)"
+STATEMNT="$(getarg STATEMNT=)"
 MASTER=`echo $XCAT |awk -F: '{print $1}'`
 
 getarg nonodestatus
