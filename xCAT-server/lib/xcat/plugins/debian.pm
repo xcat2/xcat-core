@@ -1220,7 +1220,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-f -r $compressedrootimg) {
+            unless (-f -r "$rootimgdir/$compressedrootimg") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });

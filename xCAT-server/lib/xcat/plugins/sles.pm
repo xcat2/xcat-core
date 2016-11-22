@@ -379,7 +379,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r -f $compressedrootimg) {
+            unless (-r -f "$rootimgdir/$compressedrootimg") {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]
