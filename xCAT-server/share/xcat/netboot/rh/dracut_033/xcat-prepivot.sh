@@ -3,6 +3,8 @@ NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}
 RWDIR=.statelite
+XCAT="$(getarg XCAT=)"
+STATEMNT="$(getarg STATEMNT=)"
 if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
     SNAPSHOTSERVER=${STATEMNT%:*}
     SNAPSHOTROOT=${STATEMNT#*/}
