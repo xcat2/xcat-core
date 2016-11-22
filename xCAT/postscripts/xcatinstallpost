@@ -7,7 +7,7 @@
 
 . /xcatpost/xcatlib.sh
 if [ -f /xcatpost/mypostscript.post ]; then
-    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
@@ -83,8 +83,8 @@ else
 fi
 
 
-CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}'`
-if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
+CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then
 #update the node status during the postbootscript running
 #TMP=`sed "/postbootscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript.post`
 #echo "$TMP"> /xcatpost/mypostscript.post
