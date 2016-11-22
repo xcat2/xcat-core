@@ -37,6 +37,7 @@ use File::Path;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
+use xCAT::PasswordUtils;
 use Digest::MD5 qw(md5_hex);
 
 Getopt::Long::Configure("bundling");
@@ -390,33 +391,26 @@ sub process_request {
     # before packaging the image
     system("umount $rootimg_dir/proc");
     copybootscript($installroot, $rootimg_dir, $osver, $arch, $profile, $callback);
-    my $passtab = xCAT::Table->new('passwd');
-    if ($passtab) {
-        my $pass = 'cluster';
-        (my $pent) = $passtab->getAttribs({ key => 'system', username => 'root' }, 'password');
-        if ($pent and defined($pent->{password})) {
-            $pass = $pent->{password};
-        }
-        my $oldmask = umask(0077);
-        my $shadow;
-        open($shadow, "<", "$rootimg_dir/etc/shadow");
-        my @shadents = <$shadow>;
-        close($shadow);
-        open($shadow, ">", "$rootimg_dir/etc/shadow");
 
-        # 1 - MD5, 5 - SHA256, 6 - SHA512
-        unless (($pass =~ /^\$1\$/) || ($pass =~ /^\$5\$/) || ($pass =~ /^\$6\$/)) {
-            $pass = crypt($pass, '$1$' . xCAT::Utils::genpassword(8));
-        }
-        print $shadow "root:$pass:13880:0:99999:7:::\n";
-        foreach (@shadents) {
-            unless (/^root:/) {
-                print $shadow "$_";
-            }
-        }
-        close($shadow);
-        umask($oldmask);
+    my $pass = xCAT::PasswordUtils::crypt_system_password();
+    if (!defined($pass)) {
+        $pass = 'cluster';
     }
+
+    my $oldmask = umask(0077);
+    my $shadow;
+    open($shadow, "<", "$rootimg_dir/etc/shadow");
+    my @shadents = <$shadow>;
+    close($shadow);
+    open($shadow, ">", "$rootimg_dir/etc/shadow");
+    print $shadow "root:$pass:13880:0:99999:7:::\n";
+    foreach (@shadents) {
+        unless (/^root:/) {
+            print $shadow "$_";
+        }
+    }
+    close($shadow);
+    umask($oldmask);
 
     # sync fils configured in the synclist to the rootimage
     $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);

@@ -1,9 +1,14 @@
 package xCAT::PasswordUtils;
 use xCAT::Table;
+use xCAT::MsgUtils;
+use xCAT::Utils;
+
 my $ipmiuser  = "USERID";      # default username to apply if nothing specified
 my $ipmipass  = "PASSW0RD";    # default password to apply if nothing specified
 my $bladeuser = "USERID";      # default username to apply if nothing specified
 my $bladepass = "PASSW0RD";    # default password to apply if nothing specified
+my %CRYPT_METHOD = ('md5' => '$1$', 'sha256' => '$5$', 'sha512' => '$6$');
+
 
 # Picks the IPMI authentication to use with or deploy to a BMC
 # mandatory arguments:
@@ -112,3 +117,48 @@ sub getIPMIAuth {
     return \%authmap;
 }
 
+# Encrypt system password based on the values in passwd table
+# The values for system root user will be used if query key-pair is not defined
+sub crypt_system_password {
+    # Just leave these arguments here for the compability reasons in Template.pm
+    # which get these values by parsing the template files.
+    my ($table, $kp, $fields) = @_;
+    if  (!defined($table)) {
+        $table = 'passwd';
+    }
+    if (!defined($kp)) {
+        $kp->{'key'} = 'system';
+        $kp->{username} = 'root';
+        $fields->[0] = 'password';
+        $fields->[1] = 'cryptmethod';
+    }
+    my $tabh = xCAT::Table->new($table);
+    unless ($tabh) {
+        return undef;
+    }
+    $data = $tabh->getAttribs($kp, @{$fields});
+    if (!defined($data)) {
+        xCAT::MsgUtils->message("S",
+            "ERROR: Unable to get data from database table $table, key=$key");
+        return undef;
+    }
+    $tabh->close();
+    $password = $data->{'password'};
+    if (!defined($password)) {
+        xCAT::MsgUtils->message("S",
+            "ERROR: Unable to get password from database table $table, key=$key");
+        return undef;
+    }
+    $cryptmethod = $data->{'cryptmethod'};
+    if (!$cryptmethod) {
+        # Use sha256 crypt method by default
+        $result = crypt($password, $CRYPT_METHOD{'sha256'} . xCAT::Utils::genpassword(8));
+    } elsif( defined($CRYPT_METHOD{$cryptmethod})) {
+        $result = crypt($password,
+            $CRYPT_METHOD{$cryptmethod} . xCAT::Utils::genpassword(8));
+    } else {
+        xCAT::MsgUtils->message("S", "Unsupported crypt method $cryptmethod");
+        return undef;
+    }
+    return $result;
+}

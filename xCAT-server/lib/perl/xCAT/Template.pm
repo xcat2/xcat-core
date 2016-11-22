@@ -15,6 +15,7 @@ use xCAT::ADUtils;    #to allow setting of one-time machine passwords
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::PasswordUtils;
 use XML::Simple;
 
 BEGIN
@@ -1573,28 +1574,27 @@ sub envvar
     return ($ENV{$envvar});
 }
 
-sub genpassword {
-
-    #Generate a pseudo-random password of specified length
-    my $length   = shift;
-    my $password = '';
-    my $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
-    srand;    #have to reseed, rand is not rand otherwise
-    while (length($password) < $length) {
-        $password .= substr($characters, int(rand 63), 1);
-    }
-    return $password;
-}
-
 sub crydb
 {
-    my $result = tabdb(@_);
+    my ($table, $key, $field) = @_;
+    my @fields = [$field, 'cryptmethod'];
+    my $kp;
 
-    # 1 - MD5, 5 - SHA256, 6 - SHA512
-    unless (($result =~ /^\$1\$/) || ($result =~ /^\$5\$/) || ($result =~ /^\$6\$/)) {
-        $result = crypt($result, '$1$' . genpassword(8));
-    }
-    return $result;
+    my $get_query_map = sub {
+        my $key = shift;
+        my %kp;
+        foreach (split /,/, $key) {
+            my ($k, $v);
+            ($k, $v) = split /=/, $_;
+            $kp{$k} = $v if defined($k);
+        }
+        return \%kp if %kp;
+        sendmsg([ 1, "Unable to parse password parameters $key" ]);
+        return undef;
+    };
+    $kp = $get_query_map->($key);
+    return undef if (!defined($kp));
+    return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 
 sub tabdb

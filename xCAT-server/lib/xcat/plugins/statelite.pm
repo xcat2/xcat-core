@@ -16,6 +16,7 @@ use File::Temp;
 use xCAT::Utils qw(genpassword);
 use xCAT::TableUtils qw(get_site_attribute);
 use xCAT::SvrUtils;
+use xCAT::PasswordUtils;
 use Data::Dumper;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -182,33 +183,25 @@ sub process_request {
 
 
     #get the root password for the node
-    my $passtab = xCAT::Table->new('passwd');
-    if ($passtab) {
-        my $pass = 'cluster';
-        (my $pent) = $passtab->getAttribs({ key => 'system', username => 'root' }, 'password');
-        if ($pent and defined($pent->{password})) {
-            $pass = $pent->{password};
-        }
-        my $oldmask = umask(0077);
-        my $shadow;
-        open($shadow, "<", "$rootimg_dir/etc/shadow");
-        my @shadents = <$shadow>;
-        close($shadow);
-        open($shadow, ">", "$rootimg_dir/etc/shadow");
-
-        # 1 - MD5, 5 - SHA256, 6 - SHA512
-        unless (($pass =~ /^\$1\$/) || ($pass =~ /^\$5\$/) || ($pass =~ /^\$6\$/)) {
-            $pass = crypt($pass, '$1$' . genpassword(8));
-        }
-        print $shadow "root:$pass:13880:0:99999:7:::\n";
-        foreach (@shadents) {
-            unless (/^root:/) {
-                print $shadow "$_";
-            }
-        }
-        close($shadow);
-        umask($oldmask);
+    my $pass = xCAT::PasswordUtils::crypt_system_password();
+    if (!defined($pass)) {
+        $pass = 'cluster';
     }
+
+    my $oldmask = umask(0077);
+    my $shadow;
+    open($shadow, "<", "$rootimg_dir/etc/shadow");
+    my @shadents = <$shadow>;
+    close($shadow);
+    open($shadow, ">", "$rootimg_dir/etc/shadow");
+    print $shadow "root:$pass:13880:0:99999:7:::\n";
+    foreach (@shadents) {
+        unless (/^root:/) {
+            print $shadow "$_";
+        }
+    }
+    close($shadow);
+    umask($oldmask);
 
     my $distname = $osver;
     unless (-r "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
