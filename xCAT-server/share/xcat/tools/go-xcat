@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.10
+# Version 1.0.12
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -923,8 +923,8 @@ function remove_repo_yum()
 	# This deleting method is not good enough. Since there could be more
 	# than one repostory definitions in a single repo file.
 	# This is a quick and dirty method.
-	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo")
-	yum clean metadata >/dev/null 2>&1
+	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
+	yum clean metadata
 }
 
 #       $1      repo id
@@ -1106,14 +1106,15 @@ function update_repo_yum()
 	# Check if `yum' support `updateinfo' command.
 	yum --help 2>/dev/null | grep -q "^updateinfo" >/dev/null 2>&1
 	warn_if_bad "$?" "Lacking support of \`updateinfo' command for \`yum'."
-	exit_if_bad "$?" "Install the \`yum-plugin-security' package and rerun."
+	warn_if_bad "$?" "Please rerun after install package \`yum-plugin-security'."
+	exit_if_bad "$?" "And please update package \`yum' to at least version 3.2.29-17."
 	yum --nogpgcheck updateinfo
 }
 
 function update_repo_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
-	zypper --gpg-auto-import-keys refresh
+	zypper --gpg-auto-import-keys -n refresh
 }
 
 function update_repo_apt()
