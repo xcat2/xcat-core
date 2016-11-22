@@ -51,7 +51,7 @@ if [ $ARCH = "ppc64le" ]; then
 fi
 
 if [ $ARCH == 'ppc64' ]; then
-
+    waittime=2
     ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
     for tmp in $ALL_NICS; do
         tmp_data=`ip link show $tmp | grep -v "^ " | grep "UP"`
@@ -59,8 +59,10 @@ if [ $ARCH == 'ppc64' ]; then
             ip link set $tmp up
         fi
         tmp_data="UP"
-        sleep 1
+        waittime=$(($waittime+1))
     done
+    # wait 2+number_of_nics seconds for all the LINKed NICs to be UP
+    sleep $waittime
 fi
 
 while :; do screen -L -ln doxcat; done 
