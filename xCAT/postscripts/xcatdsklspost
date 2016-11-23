@@ -853,7 +853,7 @@ run_ps () {
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1 | tee -a \$logfile | tee >(logger -t xcat -p debug)
+        bash -x ./\$@ 2>&1 | tee -a \$logfile | tee '>(logger -t xcat -p debug)'
         ret_local=\${PIPESTATUS[0]}
      else
         ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
