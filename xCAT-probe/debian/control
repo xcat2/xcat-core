@@ -7,9 +7,5 @@ Standards-Version: 3.7.2
 
 Package: xcat-probe
 Architecture: all
-Depends: ${perl:Depends}
-
-#Sub-command 'xcatmn' need tools tftp, nslookup, wget. 
-Suggests: wget, dnsutils, tftp-hpa
-
+Depends: wget, dnsutils, tftp-hpa, ${perl:Depends}
 Description: Provides a toolkit to help probe all the possible issues in xCAT 
