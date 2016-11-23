@@ -671,7 +671,7 @@ sub check_dns_service {
                 }
             }
         }
-    } esle {
+    } else {
         $rst = 2;
     }
 
