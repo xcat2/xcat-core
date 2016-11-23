@@ -1,7 +1,7 @@
 Summary: Install and configuration utilities for IBM HPC products in an xCAT cluster
 Name: xCAT-IBMhpc
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -20,7 +20,7 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-#Requires: 
+#Requires:
 %endif
 
 Requires: perl-xCAT >= %{epoch}:%{version}
@@ -85,7 +85,3 @@ fi
 %post
 
 %preun
-
-
-
-

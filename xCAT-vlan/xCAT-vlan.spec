@@ -1,7 +1,7 @@
 Summary: Executables and data of the xCAT vlan management project
 Name: xCAT-vlan
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: IBM
 Group: Applications/System
@@ -16,11 +16,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-
-Provides: xCAT-vlan = %{epoch}:%{version}
-
-
-Requires: xCAT-client
+Requires: xCAT-client = 4:%{version}-%{release}
 
 %description
 xCAT-vlan provides the xCAT vlan confiuration.
@@ -45,13 +41,11 @@ mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 
-
 set +x
 
 cp xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 cp -R xCAT_plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 cp install/postscripts/* $RPM_BUILD_ROOT/install/postscripts
-
 
 # These were built dynamically in the build phase
 cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
@@ -68,7 +62,6 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rmvlan
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsvlan
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/chvlanports
 
-
 %clean
 # This step does not happen until *after* the %files packaging below
 rm -rf $RPM_BUILD_ROOT
@@ -79,7 +72,6 @@ rm -rf $RPM_BUILD_ROOT
 # Just package everything that has been copied into RPM_BUILD_ROOT
 %{prefix}
 /install/postscripts
-
 
 %changelog
 
@@ -104,5 +96,3 @@ rm -rf $RPM_BUILD_ROOT
 exit 0
 
 %preun
-
-

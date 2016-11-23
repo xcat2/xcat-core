@@ -1,7 +1,7 @@
-Summary: xCAT diagnostic tool 
+Summary: xCAT diagnostic tool
 Name: xCAT-probe
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -17,13 +17,11 @@ BuildArch: noarch
 %endif
 
 %ifos linux
-#Below tools are required by sub-command 'xcatmn' 
+#Below tools are required by sub-command 'xcatmn'
 Requires: /usr/bin/nslookup
 Requires: /usr/bin/tftp
 Requires: /usr/bin/wget
 %endif
-
-Provides: xCAT-probe = %{version}
 
 %description
 xCAT-probe provides a toolkits to probe potential issues with the xCAT cluster.

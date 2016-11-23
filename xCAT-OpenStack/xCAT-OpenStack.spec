@@ -1,7 +1,7 @@
-Summary: Meta-Metapackage for a common, default xCAT management node setup with OpenStack 
+Summary: Meta-Metapackage for a common, default xCAT management node setup with OpenStack
 Name: xCAT-OpenStack
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 License: EPL
 Group: Applications/System
 Vendor: IBM Corp.
@@ -16,8 +16,8 @@ Provides: xCAT-OpenStack = %{version}
 Requires: xCAT
 
 %description
-xCAT-OpenStack is an xCAT management node package intended for at-scale 
-management with OpenStack, including hardware management and software 
+xCAT-OpenStack is an xCAT management node package intended for at-scale
+management with OpenStack, including hardware management and software
 management.
 
 %prep
@@ -27,7 +27,6 @@ management.
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.
 ./db2man
-
 
 %install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
@@ -89,9 +88,8 @@ rm -rf $RPM_BUILD_ROOT
 %ifos linux
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-      /etc/init.d/xcatd restart 
+      /etc/init.d/xcatd restart
     fi
   fi
 %endif
 exit 0
-
