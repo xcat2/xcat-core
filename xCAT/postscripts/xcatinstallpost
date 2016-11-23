@@ -25,25 +25,18 @@ MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed
 INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
 
-#the nics have not been configured when running the PBS sometimes, need to make sure... 
+# the network between the node and MASTER might be not well configured and activated when running the PBS sometimes
+# need to make sure... 
 RETRY=0
-NETUP=0
 while true; do
-    #scan the nics with the specified mac address
-    #there will be multiple nic names for a mac address when the network bridge exists
-    for nic in $INSTALLNIC ;do
-        #check whether the nic is configured and linkup
-        ip -4 --oneline addr show dev $nic |grep inet >/dev/null && NETUP=1 && break
-    done
+    #check whether the network access between MN/CN and the node is ready
+    ping $MASTER_IP -c 1 >/dev/null && break 
     
-    #nic is configured,terminate scan...
-    [ $NETUP -ne 0 ] && break;    
-
     RETRY=$[ $RETRY + 1 ]
 
     if [ $RETRY -eq 90 ];then
        #timeout, complain and exit
-       msgutil_r "$MASTER_IP" "err" "`date`: xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
+       msgutil_r "$MASTER_IP" "err" "`date`: xcatinstallpost: the network between the node and $MASTER_IP is not ready, please check..." "/var/log/xcat/xcat.log"
        exit 1
     fi
     
