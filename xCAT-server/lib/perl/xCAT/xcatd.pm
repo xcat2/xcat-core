@@ -85,6 +85,16 @@ sub validate {
             last;
         }
     }
+
+    my %req_noderange_info;
+    if (defined $request->{noderange}->[0]) {
+        my @tmpn = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+        $req_noderange_info{leftnodenum} = @tmpn;
+        if($req_noderange_info{leftnodenum}){
+            $req_noderange_info{leftnodes} =  \@tmpn;
+        }
+    }
+    
   RULE: foreach $rule (@sortedpolicies) {
         if ($rule->{name} and $rule->{name} ne '*') {
 
@@ -113,10 +123,11 @@ sub validate {
                 }
             }
             if ($found == 0) {    # no command match
-                next;
+                next; 
             }
-        }
-        if ($rule->{parameters} and $rule->{parameters} ne '*') {
+         } 
+
+         if ($rule->{parameters} and $rule->{parameters} ne '*') {
             my $parms;
             if ($request->{arg}) {
                 $parms = join(' ', @{ $request->{arg} });
@@ -129,31 +140,36 @@ sub validate {
             }
         }
         if ($rule->{noderange} and $rule->{noderange} ne '*') {
-            my $matchall = 0;
-            if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i or $rule->{rule} =~ /trusted/i) {
-                $matchall = 1;
+            unless($req_noderange_info{leftnodenum}){
+               next RULE;
             }
 
-            if (defined $request->{noderange}->[0]) {
-                my @tmpn = xCAT::NodeRange::noderange($request->{noderange}->[0]);
-                $request->{node} = \@tmpn;
+            my $allow = 0;
+            if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i or $rule->{rule} =~ /trusted/i) {
+                $allow = 1;
             }
-            unless (defined $request->{node}) {
-                next RULE;
-            }
-            my @reqnodes = @{ $request->{node} };
-            my %matchnodes;
+
+            my %rulenodes;
             foreach (noderange($rule->{noderange})) {
-                $matchnodes{$_} = 1;
+                $rulenodes{$_} = 1;
             }
-          REQN: foreach (@reqnodes) {
-                if (defined($matchnodes{$_})) {
-                    if ($matchall) {
-                        next REQN;
-                    } else {
-                        last REQN;
-                    }
-                } elsif ($matchall) {
+
+            my $hitnum = 0;
+            my @non_hit_nodes;
+            foreach (@{$req_noderange_info{leftnodes}}) {
+                if (defined($rulenodes{$_})) {
+                    ++$hitnum;
+                }else{
+                    push @non_hit_nodes, $_;
+                }
+            }
+   
+            if($hitnum == 0){
+                next RULE;
+            }elsif($hitnum && $hitnum != $req_noderange_info{leftnodenum}){
+                if($allow){
+                    $req_noderange_info{leftnodenum} = @non_hit_nodes;
+                    $req_noderange_info{leftnodes} = \@non_hit_nodes;
                     next RULE;
                 }
             }
@@ -300,7 +316,13 @@ sub validate {
         }
     }    # end RULE
          #Reached end of policy table, reject by default.
-    xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost  " . $request->{command}->[0]);
+
+    if($req_noderange_info{leftnodenum}){
+        my $leftnodes = join(",", @{$req_noderange_info{leftnodes}});
+        xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost $request->{command}->[0] to $leftnodes");  
+    }else{
+        xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost  " . $request->{command}->[0]);
+    }
     return 0;
 }
 
