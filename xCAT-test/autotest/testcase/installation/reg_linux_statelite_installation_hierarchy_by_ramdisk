@@ -20,8 +20,6 @@ check:rc==0
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
-check:rc==0
 cmd:xdsh $$SN df|grep /install;if [ $? -eq 0 ] ;then xdsh $$SN umount /install;fi
 check:rc==0
 cmd:xdsh $$SN 'cat /etc/exports|grep install; if [ "$?" -ne "0" ]; then echo "/install *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi'

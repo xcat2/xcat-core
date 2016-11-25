@@ -1,7 +1,9 @@
 start:lslite_i 
 description:lslite -i
 os:Linux
-cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+cmd:copycds $$ISO
+check:rc==0
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
