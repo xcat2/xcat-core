@@ -50,7 +50,7 @@ OpenPOWER BMC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c | -**\ **-check**\ ]
+\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c | -**\ **-check**\ ] [\ **-V**\ ]
 
 
 
@@ -249,6 +249,14 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
  .. code-block:: perl
  
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
+ 
+ 
+ Print verbose message to rflash log file per node when updading firmware:
+ 
+ 
+ .. code-block:: perl
+ 
+   rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
  
  
 
