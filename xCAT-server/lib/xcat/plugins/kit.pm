@@ -1108,7 +1108,7 @@ sub read_kit_config
                 $key =~ s/\s+//g;
                 $value =~ s/\s+//g;
             } else {
-                ($key, $value) = split /=/, $line;
+                ($key, $value) = split(/=/, $line,2);
             }
         }
 
@@ -1803,6 +1803,24 @@ sub rmkit
 
 }
 
+sub check_minorversion
+{
+    my $kitminor = shift;
+    my $osminor = shift;
+
+    if ($kitminor eq $osminor) {
+        return 0;
+    }
+
+    if (($kitminor =~ />/) || ($kitminor =~ /</) || ($kitminor =~ /==/)) {
+        if (eval ($osminor. $kitminor)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 #-------------------------------------------------------
 
 =head3 validate_os
@@ -1844,12 +1862,11 @@ sub validate_os {
         return 1;
     }
 
-    if ($kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion})) {
-
-        #        my %rsp;
-        #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute minorversion";
-        #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
-        return 1;
+    if ($kitcomp->{osminorversion}) {
+        if (check_minorversion($kitcomp->{osminorversion}, $osimage->{minorversion}))
+        {
+            return 1;
+        }
     }
 
     if ($osimage->{arch} ne $kitcomp->{osarch} && $kitcomp->{osarch} ne 'noarch') {
@@ -2149,11 +2166,14 @@ sub addkitcomp
                 return 1;
             }
 
-            if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
-                my %rsp;
-                push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
-                xCAT::MsgUtils->message("E", \%rsp, $callback);
-                return 1;
+            if ($kitcomps{$kitcomp}{osminorversion}) {
+                if (check_minorversion($kitcomps{$kitcomp}{osminorversion}, $os{$osimage}{minorversion}))
+                {
+                    my %rsp;
+                    push @{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
+                    xCAT::MsgUtils->message("E", \%rsp, $callback);
+                    return 1;
+                }
             }
 
             if ($os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch') {
@@ -3606,11 +3626,14 @@ sub chkkitcomp
             return 1;
         }
 
-        if ($kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion})) {
-            my %rsp;
-            push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
-            xCAT::MsgUtils->message("E", \%rsp, $callback);
-            return 1;
+        if ($kitcomps{$kitcomp}{osminorversion} ) {
+            if (check_minorversion($kitcomps{$kitcomp}{osminorversion}, $os{$osimage}{minorversion}))
+            {
+                my %rsp;
+                push @{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
+                xCAT::MsgUtils->message("E", \%rsp, $callback);
+                return 1;
+            }
         }
 
         if ($os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch') {
@@ -5080,8 +5103,11 @@ sub get_compat_kitreponames {
         if (defined($kitrepo->{osmajorversion}) && $kitrepo->{osmajorversion} ne $osdistro->{majorversion}) {
             next;
         }
-        if (defined($kitrepo->{osminorversion}) && $kitrepo->{osminorversion} ne $osdistro->{minorversion}) {
-            next;
+        if (defined($kitrepo->{osminorversion})) {
+            if (check_minorversion($kitrepo->{osminorversion},$osdistro->{minorversion}))
+            {
+                next;
+            }
         }
         if (defined($kitrepo->{osarch}) && $kitrepo->{osarch} ne $osdistro->{arch} && $kitrepo->{osarch} ne 'noarch') {
             next;
