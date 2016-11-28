@@ -32,9 +32,11 @@ my @nodes;
 my @filternodes;
 
 
-#---------------------------------------------------------
-#Main
+$::SWITCH_TYPE="EthSwitch::BNT";
 
+#---------------------------------------------------------
+# Main
+#---------------------------------------------------------
 # parse the options
 if (
     !GetOptions(
@@ -49,6 +51,8 @@ if (
 		'ip'         => \$::IP,
                 'name'       => \$::NAME,
                 'all'        => \$::ALL,
+                'V'          => \$::VERBOSE,
+                'desc=s'     => \$::DESC,
     )
   )
 {
@@ -67,7 +71,7 @@ if ($::SWITCH) {
     my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
     if (nodesmissed) {
         my $nodenotdefined = join(',', nodesmissed);
-        xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT DB: $nodenotdefined");
+        xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT: $nodenotdefined");
     }
     # check switch type
     my $switchestab =  xCAT::Table->new('switches');
@@ -80,11 +84,11 @@ if ($::SWITCH) {
         }
     }
     unless (@nodes) {
-        xCAT::MsgUtils->message("E","No Valid Switch to process");
+        xCAT::MsgUtils->message("E","No valid switches provided.");
         exit(1);
     }
 } else {
-    xCAT::MsgUtils->message("E","Invalid flag, please provide switches with --switches");
+    xCAT::MsgUtils->message("E","A switch must be provided using the --switches keyword");
     &usage;
     exit(1);
 }
@@ -96,22 +100,20 @@ my $port;
 my $sub_req;
 my $rc;
 
-if (($::IP) || ($::ALL))
-{
+if (($::IP) || ($::ALL)) {
     config_ip();
 }
-
-if (($::NAME) || ($::ALL))
-{
+if (($::NAME) || ($::ALL)) {
     config_hostname();
 }
-if (($::SNMP) || ($::ALL))
-{
+if (($::SNMP) || ($::ALL)) {
     config_snmp();
 }
-if ($::VLAN)
-{
+if ($::VLAN) {
     config_vlan();
+}
+if ($::DESC) {
+    config_desc();
 }
 
 sub config_ip {
@@ -370,6 +372,34 @@ sub config_vlan {
 
 }
 
+sub config_desc {
+    # checking for port number, switches is checked earlier 
+    if ($::PORT) {
+       $port = $::PORT;
+    } else {
+        xCAT::MsgUtils->message("E","Error - When setting description, a port must be provided.");
+        &usage;
+        exit(1);
+    }
+
+    my $cmd_prefix = "xdsh $switches --devicetype $::SWITCH_TYPE";
+    my $cmd;
+
+    # Build up the commands for easier readability 
+    $cmd = $cmd . "enable\;";
+    $cmd = $cmd . "configure terminal\;";
+    $cmd = $cmd . "interface port $port\;";
+    $cmd = $cmd . "description \\\"$::DESC\\\"\;";
+    $cmd = $cmd . "write memory\;";
+    $cmd = $cmd . "exit\;exit\;";
+
+    my $final_cmd = $cmd_prefix . " \"" . $cmd . "\""; 
+    print "Setting description=\"$::DESC\" on port $port of switches=$switches\n";
+    if ($::VERBOSE) { 
+        print "Executing cmd: \n==> $final_cmd\n";
+    }
+   `$final_cmd`
+}
 
 #---------------------------------------------------------
 
@@ -389,6 +419,10 @@ sub usage
     configBNT [--switches switchnames] [--name ] 
     configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
     configBNT [--switches switchnames] [--port port] [--vlan vlan]
+
+    To set the description for a port on the switch: 
+
+        configBNT --switches switchnames --port port --desc \"description\"
     \n";
 }
 
