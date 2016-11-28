@@ -24,7 +24,7 @@ B<rflash> I<noderange> I<http directory>
 
 =head2 OpenPOWER BMC specific:
 
-B<rflash> I<noderange> I<hpm file path> [B<-c>|B<--check>]
+B<rflash> I<noderange> I<hpm file path> [B<-c>|B<--check>] [B<-V>]
 
 =head1 B<Description>
 
@@ -158,6 +158,10 @@ To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP
 To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
 
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
+
+Print verbose message to rflash log file per node when updading firmware:
+
+ rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
 
 =back
 

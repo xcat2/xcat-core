@@ -31,6 +31,8 @@ use xCAT::ServiceNodeUtils;
 use xCAT::SvrUtils;
 use xCAT::NetworkUtils;
 use xCAT::Usage;
+use File::Path;
+
 use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
@@ -44,6 +46,11 @@ my %child_pids;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
+use constant RFLASH_LOG_DIR => "/var/log/xcat/rflash";
+unless (-d RFLASH_LOG_DIR) {
+    mkpath(RFLASH_LOG_DIR);
+}
+
 require xCAT::data::ibmhwtypes;
 
 eval {
@@ -1722,23 +1729,23 @@ sub do_firmware_update {
     my $ret;
     my $ipmitool_ver;
     $ret = get_ipmitool_version(\$ipmitool_ver);
-    return $ret if $ret < 0;
+    exit $ret if $ret < 0;
 
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
         $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
                   "firestone mathines, please setup IPMITool 1.8.15 or above.",
                 errorcode => 1 });
-        return -1;
+        exit -1;
     }
-
     if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
         ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
         ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
         xCAT::SvrUtils::sendmsg([ 1, "The image file doesn't match this machine" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
+
     my $output;
     my $bmc_addr     = $sessdata->{ipmisession}->{bmc};
     my $bmc_userid   = $sessdata->{ipmisession}->{userid};
@@ -1750,6 +1757,7 @@ sub do_firmware_update {
     if ($hpm_file !~ /^\//) {
         $hpm_file = xCAT::Utils->full_path($hpm_file, $::cwd);
     }
+
 
     # NOTE (chenglch) lanplus should be used for the task of hpm update
     # which indicate the bmc support ipmi protocol version 2.0.
@@ -1767,7 +1775,7 @@ sub do_firmware_update {
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
     if ($output =~ /8335-GTB/) {
         $buffer_size = "15000";
@@ -1780,7 +1788,7 @@ sub do_firmware_update {
         if ($::RUNCMD_RC != 0) {
             xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
                 $callback, $sessdata->{node}, %allerrornodes);
-            return -1;
+            exit -1;
         }
         my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
         if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
@@ -1789,7 +1797,7 @@ sub do_firmware_update {
             if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
                 xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
                 $callback, $sessdata->{node}, %allerrornodes);
-            return -1;
+                exit -1;
             }
         }
     }
@@ -1800,7 +1808,7 @@ sub do_firmware_update {
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
 
     # step 2 reset cold
@@ -1809,14 +1817,14 @@ sub do_firmware_update {
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
 
     # check reset status
     unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
         xCAT::SvrUtils::sendmsg([ 1, "Timeout to check the bmc status" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
 
     # step 3 protect network
@@ -1825,25 +1833,24 @@ sub do_firmware_update {
     if ($::RUNCMD_RC != 0) {
         xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
             $callback, $sessdata->{node}, %allerrornodes);
-        return -1;
+        exit -1;
     }
 
     # step 4 upgrade firmware
-    $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force";
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    
-    if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed." ],
-            $callback, $sessdata->{node}, %allerrornodes);
-
-        # NOTE(chenglch) as the output message contains tty control text, just print
-        # the output message for debug.
-        print $output;
-        return -1;
+    $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
+    # check verbose debug option
+    for my $opt (@{$sessdata->{'extraargs'}}) {
+        if ($opt =~ /-V{1,4}/) {
+            $cmd .= lc($opt);
+            last;
+        }
     }
-    xCAT::SvrUtils::sendmsg("rflash completed.", $callback, $sessdata->{node},
-        %allerrornodes);
-    return 0;
+    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
+    $cmd .= " >".$rflash_log_file." 2>&1";
+    xCAT::SvrUtils::sendmsg([ 0,
+            "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
+        $callback, $sessdata->{node});
+    exec($cmd);
 }
 
 sub rflash {
@@ -1855,7 +1862,8 @@ sub rflash {
         foreach my $opt (@{ $sessdata->{extraargs} }) {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
-            } elsif ($opt !~ /.*\.hpm$/i) {
+                # support verbose options for ipmitool command
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/) {
                 $callback->({ error => "The option $opt is not supported",
                         errorcode => 1 });
                 return;
@@ -1916,8 +1924,13 @@ sub do_rflash_process {
 
     # child
     elsif ($pid == 0) {
-        $SIG{CHLD} = $SIG{INT} = $SIG{TERM} = "DEFAULT";
-
+        my $extra = $_[8];
+        my @exargs = @$extra;
+        my $programe = \$0;
+        $$programe = "$node: rflash child process";
+        if (grep(/^(-c|--check)$/i, @exargs)) {
+            $SIG{INT} = $SIG{TERM} = $SIG{HUP} = "DEFAULT";
+        }
         # NOTE (chenglch): Actually if multiple client or rest api works on the same node,
         # the bmc of the node may not be protected while rflash is running. As xcat may not
         # support lock on node level, just require a lock for rflash command for specific node.
@@ -1949,27 +1962,60 @@ sub start_rflash_processes {
     my %namedargs   = @_;
     my $extra       = $namedargs{-args};
     my @exargs      = @$extra;
-
-    $SIG{INT} = $SIG{TERM} = sub {
-        foreach (keys %child_pids) {
-            kill 2, $_;
-        }
-        exit 0;
-    };
-    $SIG{CHLD} = sub {
-        my $cpid;
-        while (($cpid = waitpid(-1, WNOHANG)) > 0) {
-            if ($child_pids{$cpid}) {
-                delete $child_pids{$cpid};
+    # rflash processes can not be terminated from client
+    if (!grep(/^(-c|--check)$/i, @exargs)) {
+        $SIG{INT} = $SIG{TERM} = $SIG{HUP}="IGNORE";
+    } else {
+        $SIG{INT} = $SIG{TERM} = $SIG{HUP} = sub {
+            foreach (keys %child_pids) {
+                kill 2, $_;
             }
-        }
-    };
+            exit 0;
+        };
+    }
+    my $rflash_status;
     foreach (@donargs) {
         do_rflash_process($_->[0], $_->[1], $_->[2], $_->[3], $_->[4],
             $ipmitimeout, $ipmitrys, $command, -args => \@exargs);
+        $rflash_status->{$_->[0]}->{status} = "updating firmware";
     }
-    while ((scalar(keys %child_pids)) > 0) {
-        yield;
+    if (!grep(/^(-c|--check)$/i, @exargs)) {
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodesAttribs($rflash_status);
+            $nodelist_table->close();
+        }
+    }
+
+    # Wait for all processes to end
+    while (keys %child_pids) {
+        my ($node_status, $rc, $cpid);
+        if (($cpid = wait()) > 0) {
+            $rc = $?;
+            if (!grep(/^(-c|--check)$/i, @exargs)) {
+                $node_status->{node} = $child_pids{$cpid};
+                if ($rc == 0) {
+                    $node_status->{status} = "success to update firmware";
+                } else {
+                    $node_status->{status} = "failed to update firmware";
+                }
+                my $nodelist_table = xCAT::Table->new('nodelist');
+                if (!$nodelist_table) {
+                    xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+                } else {
+                    $nodelist_table->setNodeAttribs($node_status->{node},
+                        { status => $node_status->{status} });
+                    $nodelist_table->close();
+                }
+                xCAT::MsgUtils->message("S",
+                    $node_status->{node}.": ". $node_status->{status});
+                xCAT::SvrUtils::sendmsg([ $rc,
+                        $node_status->{status} ], $callback, $node_status->{node});
+            }
+            delete $child_pids{$cpid};
+        }
     }
 }
 
