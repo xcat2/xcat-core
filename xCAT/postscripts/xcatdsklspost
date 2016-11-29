@@ -827,7 +827,7 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
 else
     TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /$xcatpost/mypostscript`
 fi
-echo "
+echo "#!/bin/bash
 . /xcatpost/xcatlib.sh
 
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed

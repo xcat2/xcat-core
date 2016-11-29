@@ -37,7 +37,8 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
-cmd:xdsh $$CN service ntpd status
-check:rc==0
-check:output=~running
+#comment for futher discussion.
+#cmd:xdsh $$CN service ntpd status
+#check:rc==0
+#check:output=~running
 end
