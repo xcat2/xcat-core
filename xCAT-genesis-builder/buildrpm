@@ -31,7 +31,7 @@ if [ $BUILDARCH = 'ppc64' -a $HOSTOS != 'mcp' -a $HOSTOS != '-y' ]; then
     echo "    yum install kernel-headers-`uname -r`"
     echo "    yum install gcc-c++"
     echo "2. Download Mellanox EN Driver for Linux from http://www.mellanox.com/downloads/Drivers/mlnx-en-3.2-1.0.1.1.tgz"
-    echo "   Download Intel EN Driver follow this link and download from webpage https://downloadcenter.intel.com/downloads/eula/24411/Intel-Network-Adapter-Driver-for-PCI-E-40-Gigabit-Ethernet-Network-Connections-under-Linux-?httpDown=https%3A%2F%2Fdownloadmirror.intel.com%2F24411%2Feng%2Fi40e-1.5.16.tar.gz"
+    echo "   Download Intel EN Driver follow this link and download from webpage https://downloadcenter.intel.com/downloads/eula/26370/Intel-Network-Adapter-Driver-for-PCI-E-Intel-40-Gigabit-Ethernet-Network-Connections-under-Linux-?httpDown=https%3A%2F%2Fdownloadmirror.intel.com%2F26370%2Feng%2Fi40e-1.5.16.tar.gz"
     echo "3. To install Mellanox Driver, extract it and run ./install.sh from the extracted directory"
     echo "    tar -xvf mlnx-en-3.2-1.0.1.1.tgz"
     echo "    ./mlnx-en-3.2-1.0.1.1/install.sh"
