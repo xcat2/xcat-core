@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 # chkconfig: 345 84 59
 # description: the hook in systemd service unit to run PB or report node status on  diskless & statelite node
