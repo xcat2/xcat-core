@@ -514,8 +514,8 @@ sub configBMC {
             $ret_text .= "Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n";
         }
     } elsif ($action == 1) {
-        print "XCATBYPASS=Y rspconfig $noderange alert=en community=public\n";
-        my $result = `XCATBYPASS=Y rspconfig $noderange alert=en community=public 2>&1`;
+        print "XCATBYPASS=Y rspconfig $noderange alert=en\n";
+        my $result = `XCATBYPASS=Y rspconfig $noderange alert=en 2>&1`;
         if ($?) {
             $ret_val = 1;
             xCAT::MsgUtils->message('S', "[mon]: Changeing SNMP PEF policy for IPMI nodes $noderange:\n  $result\n");
