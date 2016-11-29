@@ -6,59 +6,31 @@ Overview
 
 This section describes how to use xCAT to deploy diskful nodes with RAID1 setup, and the procedure for RAID1 maintainence activities such as replacing a failed disk.
 
-All the examples in this section are based on three configuration scenarios:
+xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/manage_clusters/common/deployment/cfg_partition>` to specify the customized partition script for diskful provision, and provides some default partition scripts to configure RAID1 on system Power server.
 
-#. RHEL6 on a system p machine with two SCSI disks sda and sdb
-
-#. RHEL6 on a system p machine with two SAS disks and multipath configuration.
-
-#. SLES 11 SP1 on a system p machine with two SCSI disks sda and sdb
-
-If you are not using the configuration scenarios listed above, you may need to modify some of the steps in this documentation to make it work in your environment.
 
 Deploy Diskful Nodes with RAID1 Setup on RedHat
 -----------------------------------------------
 
-xCAT provides two sample kickstart template files with the RAID1 settings, ``/opt/xcat/share/xcat/install/rh/service.raid1.rhel6.ppc64.tmpl`` is for the configuration scenario **1** listed above and ``/opt/xcat/share/xcat/install/rh/service.raid1.multipath.rhel6.ppc64.tmpl`` is for the configuration scenario **2** listed above. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
+xCAT provides a partition script `raid1_rh.partscript <https://github.com/xcat2/xcat-extensions/raid1_rh.partscript>`_ which setup RAID1 on 2 disks on Power8 LE server, "raid1_rh.partscript" is composed of 2 parts:
 
-Here is the RAID1 partitioning section in ``service.raid1.rhel6.ppc64.tmpl``: ::
+1)  the logic to pickup the disks to setup RAID 
+2)  the logic to generate raid/partition scheme file "/tmp/partitionfile". 
 
-     #Full RAID 1 Sample
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk sda --asprimary
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk sdb --asprimary
+In most cases, this partition script "raid1_rh.partscript" is suffice for you to create a basic 2-disk RAID1 on your server. If you have some specific requirements on disks or partition scheme of the RAID, you need to provide your own partition script, "raid1_rh.partscript" is self-explanation and can be a reference for you. To simplify the introduction here, "raid1_rh.partscript" will be used as the partition script, the steps is listed below:  
 
-     part raid.01 --size 200 --fstype ext4 --ondisk sda
-     part raid.02 --size 200 --fstype ext4 --ondisk sdb
-     raid /boot --level 1 --device md0 raid.01 raid.02
+1. obtain the partition script: :: 
 
-     part raid.11 --size 1024 --ondisk sda
-     part raid.12 --size 1024 --ondisk sdb
-     raid swap --level 1 --device md1 raid.11 raid.12
+     wget <url> -O /install/custom/raid1_rh.partscript
 
-     part raid.21 --size 1 --fstype ext4 --grow --ondisk sda
-     part raid.22 --size 1 --fstype ext4 --grow --ondisk sdb
-     raid / --level 1 --device md2 raid.21 raid.22
+2. specify the partition script for osimage: ::
 
-Here is the RAID1 partitioning section in ``service.raid1.multipath.rhel6.ppc64.tmpl``: ::
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/raid1_rh.partscript"
 
-     #Full RAID 1 Sample
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk mpatha --asprimary
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk mpathb --asprimary
+3. provision the node: ::
 
-     part raid.01 --size 200 --fstype ext4 --ondisk mpatha
-     part raid.02 --size 200 --fstype ext4 --ondisk mpathb
-     raid /boot --level 1 --device md0 raid.01 raid.02
-
-     part raid.11 --size 1024 --ondisk mpatha
-     part raid.12 --size 1024 --ondisk mpathb
-     raid swap --level 1 --device md1 raid.11 raid.12
-
-     part raid.21 --size 1 --fstype ext4 --grow --ondisk mpatha
-     part raid.22 --size 1 --fstype ext4 --grow --ondisk mpathb
-     raid / --level 1 --device md2 raid.21 raid.22
-
-The samples above created one PReP partition, one 200MB ``/boot`` partition and one ``/`` partition on ``sda/sdb`` and ``mpatha/mpathb``. If you want to use different partitioning scheme in your cluster, modify this RAID1 section in the kickstart template file accordingly.
-
+     rinstall cn1 osimage=rhels7.3-ppc64le-install-compute
+ 
 After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
 
 Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
