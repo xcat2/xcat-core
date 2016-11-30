@@ -481,13 +481,8 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink("$destdir/rootimg.sfs");
-    unlink("$destdir/rootimg.gz");
-    unlink("$destdir/rootimg.cpio.xz");
-    unlink("$destdir/rootimg.cpio.gz");
-    unlink("$destdir/rootimg.tar.xz");
-    unlink("$destdir/rootimg.tar.gz");
-    
+    unlink glob("$destdir/rootimg.*");   
+ 
     if ($method =~ /cpio/) {
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
