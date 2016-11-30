@@ -1,12 +1,10 @@
-Configure RAID before Deploy OS
-===============================
+Configure RAID before deploying the OS
+======================================
 
 Overview
 --------
 
-This section describes how to use xCAT to deploy diskful nodes with RAID1 setup, and the procedure for RAID1 maintainence activities such as replacing a failed disk.
-
-xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/manage_clusters/common/deployment/cfg_partition>` to specify the customized partition script for diskful provision, and provides some default partition scripts to configure RAID1 on system Power server.
+xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/manage_clusters/common/deployment/cfg_partition>` to specify the customized partition script for diskful provision, and provides some default partition scripts.
 
 
 Deploy Diskful Nodes with RAID1 Setup on RedHat
@@ -14,20 +12,20 @@ Deploy Diskful Nodes with RAID1 Setup on RedHat
 
 xCAT provides a partition script `raid1_rh.partscript <https://github.com/xcat2/xcat-extensions/raid1_rh.partscript>`_ which setup RAID1 on 2 disks on Power8 LE server, "raid1_rh.partscript" is composed of 2 parts:
 
-1)  the logic to pickup the disks to setup RAID 
-2)  the logic to generate raid/partition scheme file "/tmp/partitionfile". 
+#  the logic to select the disks to setup RAID 
+#  the logic to generate the partition scheme and save it to /tmp/partitionfile in the installer. 
 
-In most cases, this partition script "raid1_rh.partscript" is suffice for you to create a basic 2-disk RAID1 on your server. If you have some specific requirements on disks or partition scheme of the RAID, you need to provide your own partition script, "raid1_rh.partscript" is self-explanation and can be a reference for you. To simplify the introduction here, "raid1_rh.partscript" will be used as the partition script, the steps is listed below:  
+In most scenarios, the sample partitioning script is sufficient to create a basic RAID1 across two disks and is provided as a sample to build upon.
 
-1. obtain the partition script: :: 
+1. Obtain the partition script: :: 
 
      wget <url> -O /install/custom/raid1_rh.partscript
 
-2. specify the partition script for osimage: ::
+2. Associate the partition script to the osimage: ::
 
-     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/raid1_rh.partscript"
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/partition/rhels7/raid1.partitionfile"
 
-3. provision the node: ::
+3. Provision the node: ::
 
      rinstall cn1 osimage=rhels7.3-ppc64le-install-compute
  
@@ -36,28 +34,33 @@ After the diskful nodes are up and running, you can check the RAID1 settings wit
 Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
 
      # mount
-     /dev/md2 on / type ext4 (rw)
-     proc on /proc type proc (rw)
-     sysfs on /sys type sysfs (rw)
-     devpts on /dev/pts type devpts (rw,gid=5,mode=620)
-     tmpfs on /dev/shm type tmpfs (rw)
-     /dev/md0 on /boot type ext4 (rw)
-     none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+     ...
+     /dev/md1 on / type xfs (rw,relatime,attr2,inode64,noquota)
+     /dev/md0 on /boot type xfs (rw,relatime,attr2,inode64,noquota)
+     /dev/md2 on /var type xfs (rw,relatime,attr2,inode64,noquota)     
 
 The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat`` in the non-multipath environment: ::
 
      # cat /proc/mdstat
      Personalities : [raid1]
-     md2 : active raid1 sda5[0] sdb5[1]
-           19706812 blocks super 1.1 [2/2] [UU]
+     md2 : active raid1 sdk2[0] sdj2[1]
+           1047552 blocks super 1.2 [2/2] [UU]
+             resync=DELAYED
            bitmap: 1/1 pages [64KB], 65536KB chunk
-
-     md1 : active raid1 sda2[0] sdb2[1]
-           1048568 blocks super 1.1 [2/2] [UU]
-
-     md0 : active raid1 sda3[0] sdb3[1]
-           204788 blocks super 1.0 [2/2] [UU]
-
+     
+     md3 : active raid1 sdk3[0] sdj3[1]
+           1047552 blocks super 1.2 [2/2] [UU]
+             resync=DELAYED
+     
+     md0 : active raid1 sdk5[0] sdj5[1]
+           524224 blocks super 1.0 [2/2] [UU]
+           bitmap: 0/1 pages [0KB], 65536KB chunk
+     
+     md1 : active raid1 sdk6[0] sdj6[1]
+           973998080 blocks super 1.2 [2/2] [UU]
+           [==>..................]  resync = 12.8% (125356224/973998080) finish=138.1min speed=102389K/sec
+           bitmap: 1/1 pages [64KB], 65536KB chunk
+     
      unused devices: <none>
 
 On the system with multipath configuration, the ``/proc/mdstat`` looks like: ::
