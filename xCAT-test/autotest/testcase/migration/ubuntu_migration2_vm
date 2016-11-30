@@ -71,7 +71,7 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
-cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
+cmd:xdsh $$CN "apt-get -y install xcat xcat-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
 check:rc==0
@@ -103,7 +103,7 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
-cmd:xdsh $$CN "apt-get -y upgrade xcat xCAT-test"
+cmd:xdsh $$CN "apt-get -y upgrade xcat xcat-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /newxcat/new_version"
 check:rc==0

@@ -3432,7 +3432,6 @@ sub kit_addpkgs
     $kittarfile = abs_path($kittarfile);
 
     foreach my $rpmdir (@pkgdirlist) {
-        print "rpmdir = $rmpdir\n";
         if (!(-d $rpmdir)) {
             print "The package directory $rpmdir could not be read. \n";
             return 1;

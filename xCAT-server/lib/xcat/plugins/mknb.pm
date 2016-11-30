@@ -74,7 +74,7 @@ sub process_request {
             }
         }
         my $nicips = xCAT::NetworkUtils->get_nic_ip();
-        foreach (keys $nicips) {
+        foreach (keys %$nicips) {
             # To support tagged vlan, create entries in the hash for the 
             # interface name removing the physical interface ending:
             # 'enP1p12s0f0.2@enP1p12s0f0' => 'enP1p12s0f0.2'

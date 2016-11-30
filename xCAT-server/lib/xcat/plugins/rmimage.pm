@@ -197,7 +197,7 @@ sub process_request {
     }
 
     my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
-    my @rootimgtars=glob "$imagedir/rootimg.{tar,cpio}.{xz,gz}"; 
+    my @rootimgtars=glob "$imagedir/rootimg.*"; 
     push @filestoremove,@rootimgtars;
     #unmount all the mount points under rootimg directory 
     #to avoid removing the directory/files on management node by mistake  
