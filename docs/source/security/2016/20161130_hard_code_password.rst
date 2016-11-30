@@ -25,7 +25,7 @@ The following table describes the recommended update path:
 +-------------------------+-----------------------------------------------+---------------------------------------+
 | xCAT Version            | Action                                        | Release Notes                         |
 +=========================+===============================================+=======================================+
-| **2.13**, or higher     | No applicable                                 |                                       |
+| **2.13**, or newer      | No applicable                                 |                                       |
 |                         |                                               |                                       |
 +-------------------------+-----------------------------------------------+---------------------------------------+
 | **2.12.x**              | Update to **2.12.3**, or higher               | `2.12.3 Release Notes <https://       |
@@ -40,24 +40,9 @@ The following table describes the recommended update path:
 |                         |                                               | github.com/xcat2/xcat-core/wiki       |
 |                         |                                               | /XCAT_2.12.3_Release_Notes>`_         |
 +-------------------------+-----------------------------------------------+---------------------------------------+
-| **2.9.x**               | Update to:                                    | `2.9.4 Release Notes <https://        |
+| **2.9.x**, or older     | Update to:                                    | `2.9.4 Release Notes <https://        |
 |                         |                                               | github.com/xcat2/xcat-core/wiki       |
 |                         | - **2.9.4**, or higher for **AIX**            | /XCAT_2.9.4_Release_Notes>`_          |
 |                         | - **2.12.3**, or higher for **LINUX**         |                                       |
-+-------------------------+-----------------------------------------------+---------------------------------------+
-| **2.8.x**               | Update to:                                    | `2.9.4 Release Notes <https://        |
-|                         |                                               | github.com/xcat2/xcat-core/wiki       |
-|                         | - **2.9.4**, or higher for **AIX**            | /XCAT_2.9.4_Release_Notes>`_          |
-|                         | - **2.12.3**, or higher for **LINUX**         |                                       |
-+-------------------------+-----------------------------------------------+---------------------------------------+
-| **2.7.x**               | Update to:                                    | `2.7.10 Release Notes <https://       |
-|                         |                                               | github.com/xcat2/xcat-core/wiki       |
-|                         | - **2.7.10** or higher for **AIX**            | /XCAT_2.7.10_Release_Notes>`_         |
-|                         | - **2.12.3**, or higher for **LINUX**         |                                       |
-+-------------------------+-----------------------------------------------+---------------------------------------+
-| **2.6.x**, or earlier   | Update to **2.7.10**, or higher               | `2.7.10 Release Notes <https://       |
-|                         |                                               | github.com/xcat2/xcat-core/wiki       |
-|                         |                                               | /XCAT_2.7.10_Release_Notes>`_         |
-|                         |                                               |                                       |
 +-------------------------+-----------------------------------------------+---------------------------------------+
 
