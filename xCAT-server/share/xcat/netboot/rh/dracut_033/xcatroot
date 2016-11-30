@@ -6,7 +6,7 @@ RWDIR=.statelite
 . /lib/dracut-lib.sh
 XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
-
+STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
 
 getarg nonodestatus
