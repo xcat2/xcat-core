@@ -4,7 +4,7 @@ Configure RAID before deploying the OS
 Overview
 --------
 
-xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/manage_clusters/common/deployment/cfg_partition>` to specify the customized partition script for diskful provision, and provides some default partition scripts.
+xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/references/man5/linuximage.5>` to specify the customized partition script for diskful provision, and provides some default partition scripts.
 
 
 Deploy Diskful Nodes with RAID1 Setup on RedHat
@@ -12,8 +12,8 @@ Deploy Diskful Nodes with RAID1 Setup on RedHat
 
 xCAT provides a partition script `raid1_rh.partscript <https://github.com/xcat2/xcat-extensions/raid1_rh.partscript>`_ which setup RAID1 on 2 disks on Power8 LE server, "raid1_rh.partscript" is composed of 2 parts:
 
-#  the logic to select the disks to setup RAID 
-#  the logic to generate the partition scheme and save it to /tmp/partitionfile in the installer. 
+*  the logic to select the disks to setup RAID 
+*  the logic to generate the partition scheme and save it to /tmp/partitionfile in the installer. 
 
 In most scenarios, the sample partitioning script is sufficient to create a basic RAID1 across two disks and is provided as a sample to build upon.
 
