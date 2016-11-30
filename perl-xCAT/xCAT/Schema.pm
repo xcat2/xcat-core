@@ -774,7 +774,7 @@ passed as argument rather than by table value',
             otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
             otherpkgdir => 'The base directory where the non-distro packages are stored. Only 1 local directory supported at present.',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
-            postinstall => 'Only supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be seperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
+            postinstall => 'Supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be seperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
 
       IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
       IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
