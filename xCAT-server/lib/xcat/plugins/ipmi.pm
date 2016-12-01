@@ -1924,6 +1924,11 @@ sub do_rflash_process {
 
     # child
     elsif ($pid == 0) {
+        unless (setpgrp()) {
+            xCAT::SvrUtils::sendmsg([ 1, "Faild to run setgprp for $$ process" ],
+                $callback, $node);
+            exit(1);
+        }
         my $extra = $_[8];
         my @exargs = @$extra;
         my $programe = \$0;
