@@ -41,7 +41,7 @@ fi
 
 mount -t tmpfs rw $NEWROOT/$RWDIR
 mkdir -p $NEWROOT/$RWDIR/tmpfs
-ME=`hostname`
+ME=`hostname -s`
 if [ ! -z $NODE ]; then
     ME=$NODE
 fi
