@@ -173,8 +173,8 @@ fi
 
 function setversionvars {
     if [ ! -z "$USEGITVER" ]; then
-        VER=`git describe`
-        VER=${VER/-/.post}
+        VER=`git describe --tags`
+        VER=${VER/-/.Post}
         VER=${VER/-/.}
     else
         VER=`cat Version`
