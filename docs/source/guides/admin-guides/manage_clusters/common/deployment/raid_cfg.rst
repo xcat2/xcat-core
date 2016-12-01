@@ -10,7 +10,7 @@ xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-gu
 Deploy Diskful Nodes with RAID1 Setup on RedHat
 -----------------------------------------------
 
-xCAT provides a partition script `raid1_rh.partscript <https://github.com/xcat2/xcat-extensions/raid1_rh.partscript>`_ which setup RAID1 on 2 disks on Power8 LE server, "raid1_rh.partscript" is composed of 2 parts:
+xCAT provides a partition script `./raid1_rh.sh <https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh>`_ which setup RAID1 on 2 disks on Power8 LE server, ``raid1_rh.sh`` is composed of 2 parts:
 
 *  the logic to select the disks to setup RAID 
 *  the logic to generate the partition scheme and save it to /tmp/partitionfile in the installer. 
@@ -19,11 +19,11 @@ In most scenarios, the sample partitioning script is sufficient to create a basi
 
 1. Obtain the partition script: :: 
 
-     wget <url> -O /install/custom/raid1_rh.partscript
+     wget https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh -O /install/custom/raid1_rh.sh
 
 2. Associate the partition script to the osimage: ::
 
-     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/partition/rhels7/raid1.partitionfile"
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/raid1_rh.sh"
 
 3. Provision the node: ::
 
