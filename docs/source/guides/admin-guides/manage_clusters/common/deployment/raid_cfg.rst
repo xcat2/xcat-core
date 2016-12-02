@@ -10,28 +10,28 @@ xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-gu
 Deploy Diskful Nodes with RAID1 Setup on RedHat
 -----------------------------------------------
 
-xCAT provides a partition script `./raid1_rh.sh <https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh>`_ which setup RAID1 on 2 disks on Power8 LE server, ``raid1_rh.sh`` is composed of 2 parts:
-
-*  the logic to select the disks to setup RAID 
-*  the logic to generate the partition scheme and save it to /tmp/partitionfile in the installer. 
+xCAT provides a partition script `raid1_rh.sh <https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh>`_  which configures RAID1 across 2 disks on RHEL 7.x operating systems.
 
 In most scenarios, the sample partitioning script is sufficient to create a basic RAID1 across two disks and is provided as a sample to build upon.
 
 1. Obtain the partition script: :: 
 
-     wget https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh -O /install/custom/raid1_rh.sh
+     mkdir -p /install/custom/partition/
+     wget https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh \
+          -O /install/custom/partition/raid1_rh.sh
 
 2. Associate the partition script to the osimage: ::
 
-     chdef -t osimage -o rhels7.3-ppc64le-install-compute partitionfile="s:/install/custom/raid1_rh.sh"
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute \ 
+           partitionfile="s:/install/custom/partition/raid1_rh.sh"
 
 3. Provision the node: ::
 
      rinstall cn1 osimage=rhels7.3-ppc64le-install-compute
  
-After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
+After the diskful nodes are up and running, you can check the RAID1 settings with the following process:
 
-Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
+``mount`` command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
 
      # mount
      ...
