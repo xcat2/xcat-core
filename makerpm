@@ -162,9 +162,15 @@ function makeironic {
 # Make the xCAT-genesis rpm
 function makegenesis {
 	DIR="xCAT-genesis-builder"
+	SPEC_FILE="xCAT-genesis-base.spec"
 	RPMNAME="$1"
 	cd `dirname $0`/$DIR
+	GEN_BASE_REL=0
+	sed -i s/%%REPLACE_CURRENT_VERSION%%/${VER}/g ${SPEC_FILE}
+	sed -i s/%%REPLACE_RELEASE%%/${GEN_BASE_REL}/g ${SPEC_FILE}
 	tar --exclude .svn -cjf $RPMROOT/SOURCES/$RPMNAME.tar.bz2 .
+	# undo the changes from the SED command above so it's not tracked by Git
+        git checkout ${SPEC_FILE}
 	cp LICENSE.html $RPMROOT/BUILD
 	cp $RPMNAME.spec $RPMROOT/SOURCES
 	cd - >/dev/null
