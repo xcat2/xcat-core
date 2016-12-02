@@ -29,4 +29,4 @@ Table of Contents
    :maxdepth: 2
 
    guides/admin-guides/index.rst
-
+   security/index.rst
