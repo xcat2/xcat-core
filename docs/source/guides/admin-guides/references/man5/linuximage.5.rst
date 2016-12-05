@@ -173,14 +173,13 @@ linuximage Attributes:
 
 \ **partitionfile**\ 
  
- Only available for diskful osimages and statelite osimages(localdisk enabled). The full path of the partition file or the script to generate the partition file. The valid value includes: 
-
-                 * ``<the absolute path of the parititon file>``: For diskful osimages, the partition file contains the partition definition that will be inserted directly into the template file for os installation. The syntax and format of the partition file should confirm to the corresponding OS installer of the Linux distributions(e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu). For statelite osimages, when the localdisk is enabled, the partition file with specific syntax and format includes the partition scheme of the local disk, please refer to the statelite documentation for details.
-                 * ``s:<the absolute path of the partition script>``: a shell script to generate the partition file "/tmp/partitionfile" inside the installer before the installation start.
-                 * ``d:<the absolute path of the disk name file>``: only available for ubuntu osimages, includes the name(s) of the disks to partition in traditional, non-devfs format(e.g, /dev/sdx, not e.g. /dev/discs/disc0/disc), and be delimited with space. All the disks involved in the partition file should be specified. 
-                 * ``s:d:<the absolute path of the disk script>``: only available for ubuntu osimages, a script to generate the disk name file "/tmp/xcat.install_disk" inside the debian installer. This script is run in the "pressed/early_command" section.
-                 * ``c:<the absolute path of the additional pressed config file>``: only availbe for ubuntu osimages, contains the additional pressed entries in "d-i ..." form. This can be used to specify some additional preseed options to support RAID or LVM in Ubuntu.
-                 * ``s:c:<the absolute path of the additional pressed config script>``: only available for ubuntu osimages, runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
+ Only available for diskful osimages and statelite osimages(localdisk enabled). The full path of the partition file or the script to generate the partition file. The valid value includes:
+                 "<the absolute path of the parititon file>": For diskful osimages, the partition file contains the partition definition that will be inserted directly into the template file for os installation. The syntax and format of the partition file should confirm to the corresponding OS installer of the Linux distributions(e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu). For statelite osimages, when the localdisk is enabled, the partition file with specific syntax and format includes the partition scheme of the local disk, please refer to the statelite documentation for details.
+                 "s:<the absolute path of the partition script>": a shell script to generate the partition file "/tmp/partitionfile" inside the installer before the installation start.
+                 "d:<the absolute path of the disk name file>": only available for ubuntu osimages, includes the name(s) of the disks to partition in traditional, non-devfs format(e.g, /dev/sdx, not e.g. /dev/discs/disc0/disc), and be delimited with space. All the disks involved in the partition file should be specified.
+                 "s:d:<the absolute path of the disk script>": only available for ubuntu osimages, a script to generate the disk name file "/tmp/xcat.install_disk" inside the debian installer. This script is run in the "pressed/early_command" section.
+                 "c:<the absolute path of the additional pressed config file>": only availbe for ubuntu osimages, contains the additional pressed entries in "d-i ..." form. This can be used to specify some additional preseed options to support RAID or LVM in Ubuntu.
+                 "s:c:<the absolute path of the additional pressed config script>": only available for ubuntu osimages, runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
  
 
 
