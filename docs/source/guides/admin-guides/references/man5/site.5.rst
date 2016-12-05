@@ -130,7 +130,7 @@ site Attributes:
    domain:  The DNS domain name used for the cluster.
   
    forwarders:  The DNS servers at your site that can provide names outside of the cluster.
-                The makedns command will configure the DNS on the management node to foward
+                The makedns command will configure the DNS on the management node to forward
                 requests it does not know to these servers. Note that the DNS servers on the
                 service nodes will ignore this value and always be configured to forward 
                 to the management node.
