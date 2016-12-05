@@ -212,7 +212,7 @@ elif [ -r /rootimg-statelite.gz ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -227,7 +227,7 @@ elif [ -r /rootimg-statelite.gz ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
