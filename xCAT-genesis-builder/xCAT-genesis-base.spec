@@ -1,5 +1,4 @@
 %define version     %%REPLACE_CURRENT_VERSION%%
-%define release     %%REPLACE_RELEASE%%
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 %ifarch i386 i586 i686 x86
@@ -18,6 +17,7 @@ BuildArch: noarch
 %define __prelink_undo_cmd %{nil}
 # To fix the issue error: Arch dependent binaries in noarch package, the following line is needed on Fedora 23 ppc64
 %define _binaries_in_noarch_packages_terminate_build   0
+Epoch: 2
 AutoReq: false
 Prefix: /opt/xcat
 AutoProv: false
