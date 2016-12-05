@@ -215,6 +215,8 @@ fi
 OSNAME=$(uname)
 if [ -z "$XCATVER" ] ; then
 	VER=`cat Version`
+        REL="--define"
+        EASE='usedate 1'
 else
 	VER=$XCATVER
         REL="--define"
