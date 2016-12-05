@@ -40,4 +40,10 @@ cd -
 %Files
 %defattr(-,root,root)
 %doc LICENSE.html
-/opt/xcat/share/xcat/netboot/genesis/builder
+%dir %{prefix}
+%dir %{prefix}/share
+%dir %{prefix}/share/xcat
+%dir %{prefix}/share/xcat/netboot
+%dir %{prefix}/share/xcat/netboot/genesis
+%dir %{prefix}/share/xcat/netboot/genesis/builder
+%{prefix}/share/xcat/netboot/genesis/builder/*
