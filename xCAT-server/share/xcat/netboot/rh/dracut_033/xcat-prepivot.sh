@@ -66,7 +66,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -83,7 +83,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -98,7 +98,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
