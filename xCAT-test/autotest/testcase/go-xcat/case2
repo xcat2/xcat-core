@@ -39,7 +39,7 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
@@ -72,7 +72,7 @@ check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
@@ -134,7 +134,7 @@ cmd:xdsh $$CN "cd /; scp -r $$MN:/opt/xcat/share/xcat/tools/go-xcat ./"
 check:rc==0
 cmd:dir="__GETNODEATTR($$CN,os)__"; if grep SUSE /etc/*release;then os=`echo $dir |cut -c 1-6` && xdsh $$CN "cd /xcat-dep/$os/__GETNODEATTR($$CN,arch)__/; ./mklocalrepo.sh" ; elif grep "Red Hat" /etc/*release;then os=`echo $dir |cut -c 1-2` && xdsh $$CN "cd /xcat-dep/$os`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/; ./mklocalrepo.sh"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cd /xcat-dep; ./mklocalrepo.sh"; else echo "Sorry,this is not supported os"; fi
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
@@ -166,7 +166,7 @@ check:rc==0
 cmd:cp /xcat-dep-*.tar.bz2 /install/
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then code=`lsb_release -sc` && xdsh $$CN "scp -r $$MN:/opt/xcat/share/xcat/tools/autotest/testcase/go-xcat/$code-__GETNODEATTR($$CN,arch)__.sources.list /etc/apt/sources.list"; fi
-cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"; fi
+cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "scp -r $$MN:/etc/resolv.conf /etc/resolv.conf" && xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"; fi
 check:rc==0
 cmd:if grep Ubuntu /etc/*release;then xdsh $$CN "apt-get clean && apt-get update"; fi
 check:rc==0
