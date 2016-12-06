@@ -44,7 +44,7 @@ cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
 check:rc==0
-cmd:xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"
+cmd:xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"
 check:rc==0
 cmd:xdsh $$CN "apt-get clean all" 
 check:rc==0
