@@ -1,91 +1,66 @@
-Configure RAID before Deploy OS
-===============================
+Configure RAID before deploying the OS
+======================================
 
 Overview
 --------
 
-This section describes how to use xCAT to deploy diskful nodes with RAID1 setup, and the procedure for RAID1 maintainence activities such as replacing a failed disk.
+xCAT provides an user interface :doc:`linuximage.partitionfile </guides/admin-guides/references/man5/linuximage.5>` to specify the customized partition script for diskful provision, and provides some default partition scripts.
 
-All the examples in this section are based on three configuration scenarios:
-
-#. RHEL6 on a system p machine with two SCSI disks sda and sdb
-
-#. RHEL6 on a system p machine with two SAS disks and multipath configuration.
-
-#. SLES 11 SP1 on a system p machine with two SCSI disks sda and sdb
-
-If you are not using the configuration scenarios listed above, you may need to modify some of the steps in this documentation to make it work in your environment.
 
 Deploy Diskful Nodes with RAID1 Setup on RedHat
 -----------------------------------------------
 
-xCAT provides two sample kickstart template files with the RAID1 settings, ``/opt/xcat/share/xcat/install/rh/service.raid1.rhel6.ppc64.tmpl`` is for the configuration scenario **1** listed above and ``/opt/xcat/share/xcat/install/rh/service.raid1.multipath.rhel6.ppc64.tmpl`` is for the configuration scenario **2** listed above. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
+xCAT provides a partition script `raid1_rh.sh <https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh>`_  which configures RAID1 across 2 disks on RHEL 7.x operating systems.
 
-Here is the RAID1 partitioning section in ``service.raid1.rhel6.ppc64.tmpl``: ::
+In most scenarios, the sample partitioning script is sufficient to create a basic RAID1 across two disks and is provided as a sample to build upon.
 
-     #Full RAID 1 Sample
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk sda --asprimary
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk sdb --asprimary
+1. Obtain the partition script: :: 
 
-     part raid.01 --size 200 --fstype ext4 --ondisk sda
-     part raid.02 --size 200 --fstype ext4 --ondisk sdb
-     raid /boot --level 1 --device md0 raid.01 raid.02
+     mkdir -p /install/custom/partition/
+     wget https://raw.githubusercontent.com/xcat2/xcat-extensions/master/partition/raid1_rh.sh \
+          -O /install/custom/partition/raid1_rh.sh
 
-     part raid.11 --size 1024 --ondisk sda
-     part raid.12 --size 1024 --ondisk sdb
-     raid swap --level 1 --device md1 raid.11 raid.12
+2. Associate the partition script to the osimage: ::
 
-     part raid.21 --size 1 --fstype ext4 --grow --ondisk sda
-     part raid.22 --size 1 --fstype ext4 --grow --ondisk sdb
-     raid / --level 1 --device md2 raid.21 raid.22
+     chdef -t osimage -o rhels7.3-ppc64le-install-compute \ 
+           partitionfile="s:/install/custom/partition/raid1_rh.sh"
 
-Here is the RAID1 partitioning section in ``service.raid1.multipath.rhel6.ppc64.tmpl``: ::
+3. Provision the node: ::
 
-     #Full RAID 1 Sample
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk mpatha --asprimary
-     part None --fstype "PPC PReP Boot" --size 8 --ondisk mpathb --asprimary
+     rinstall cn1 osimage=rhels7.3-ppc64le-install-compute
+ 
+After the diskful nodes are up and running, you can check the RAID1 settings with the following process:
 
-     part raid.01 --size 200 --fstype ext4 --ondisk mpatha
-     part raid.02 --size 200 --fstype ext4 --ondisk mpathb
-     raid /boot --level 1 --device md0 raid.01 raid.02
-
-     part raid.11 --size 1024 --ondisk mpatha
-     part raid.12 --size 1024 --ondisk mpathb
-     raid swap --level 1 --device md1 raid.11 raid.12
-
-     part raid.21 --size 1 --fstype ext4 --grow --ondisk mpatha
-     part raid.22 --size 1 --fstype ext4 --grow --ondisk mpathb
-     raid / --level 1 --device md2 raid.21 raid.22
-
-The samples above created one PReP partition, one 200MB ``/boot`` partition and one ``/`` partition on ``sda/sdb`` and ``mpatha/mpathb``. If you want to use different partitioning scheme in your cluster, modify this RAID1 section in the kickstart template file accordingly.
-
-After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
-
-Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
+``mount`` command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
 
      # mount
-     /dev/md2 on / type ext4 (rw)
-     proc on /proc type proc (rw)
-     sysfs on /sys type sysfs (rw)
-     devpts on /dev/pts type devpts (rw,gid=5,mode=620)
-     tmpfs on /dev/shm type tmpfs (rw)
-     /dev/md0 on /boot type ext4 (rw)
-     none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+     ...
+     /dev/md1 on / type xfs (rw,relatime,attr2,inode64,noquota)
+     /dev/md0 on /boot type xfs (rw,relatime,attr2,inode64,noquota)
+     /dev/md2 on /var type xfs (rw,relatime,attr2,inode64,noquota)     
 
 The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat`` in the non-multipath environment: ::
 
      # cat /proc/mdstat
      Personalities : [raid1]
-     md2 : active raid1 sda5[0] sdb5[1]
-           19706812 blocks super 1.1 [2/2] [UU]
+     md2 : active raid1 sdk2[0] sdj2[1]
+           1047552 blocks super 1.2 [2/2] [UU]
+             resync=DELAYED
            bitmap: 1/1 pages [64KB], 65536KB chunk
-
-     md1 : active raid1 sda2[0] sdb2[1]
-           1048568 blocks super 1.1 [2/2] [UU]
-
-     md0 : active raid1 sda3[0] sdb3[1]
-           204788 blocks super 1.0 [2/2] [UU]
-
+     
+     md3 : active raid1 sdk3[0] sdj3[1]
+           1047552 blocks super 1.2 [2/2] [UU]
+             resync=DELAYED
+     
+     md0 : active raid1 sdk5[0] sdj5[1]
+           524224 blocks super 1.0 [2/2] [UU]
+           bitmap: 0/1 pages [0KB], 65536KB chunk
+     
+     md1 : active raid1 sdk6[0] sdj6[1]
+           973998080 blocks super 1.2 [2/2] [UU]
+           [==>..................]  resync = 12.8% (125356224/973998080) finish=138.1min speed=102389K/sec
+           bitmap: 1/1 pages [64KB], 65536KB chunk
+     
      unused devices: <none>
 
 On the system with multipath configuration, the ``/proc/mdstat`` looks like: ::

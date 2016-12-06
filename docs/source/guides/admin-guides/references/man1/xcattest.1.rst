@@ -33,9 +33,9 @@ SYNOPSIS
 
 \ **xcattest**\  [\ **-c**\  \ *cmd list*\ ] [\ **-l**\ ]
 
-\ **xcattest**\  [\ **-s**\  \ *command*\ ]
+\ **xcattest**\  [\ **-s**\  \ **command**\ ]
 
-\ **xcattest**\  [\ **-s**\  \ *bundle*\ ]
+\ **xcattest**\  [\ **-s**\  \ **bundle**\ ]
 
 
 ***********
@@ -62,13 +62,13 @@ OPTIONS
 
 \ **-f**\  \ *configure file*\ 
  
-Specifies the configuration file with full-path. xCAT supports an example config file: /opt/xcat/share/xcat/tools/autotest/linux.conf.template
+ Specifies the configuration file with full-path. xCAT supports an example config file: /opt/xcat/share/xcat/tools/autotest/linux.conf.template
  
 
 
 \ **-b**\  \ *case bundle list*\ 
  
- Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name.
+ Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name. The bundle files should be listed in: /opt/xcat/share/xcat/tools/autotest/bundle.
  
 
 
@@ -89,9 +89,13 @@ Specifies the configuration file with full-path. xCAT supports an example config
  Display the test cases names specified by the flag -b, -t or -c.
  
 
-\ **-s**\
 
+\ **-s**\ 
+ 
  Display the bundle files and command with value: bundle or command.
+ 
+
+
 
 ************
 RETURN VALUE
@@ -160,7 +164,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-    xcattest -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
+    xcattest -c lsdef -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
     Modify custom.bundle
     xcattest -f /tmp/config -b custom.bundle
  
@@ -169,7 +173,7 @@ EXAMPLES
 
 3.
  
- To run specified test cases with /tmp/config:
+ To run specified test cases with /tmp/config file:
  
  
  .. code-block:: perl

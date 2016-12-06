@@ -13,6 +13,7 @@
 "ALL","/etc/resolv.conf.predhclient","tmpfs",,
 "ALL","/etc/sysconfig/","tmpfs",,
 "ALL","/etc/ssh/","tmpfs",,
+"ALL","/etc/systemd/system/multi-user.target.wants/","tmpfs",,
 "ALL","/tmp/","tmpfs",,
 "ALL","/var/","tmpfs",,
 "ALL","/opt/xcat/","tmpfs",,

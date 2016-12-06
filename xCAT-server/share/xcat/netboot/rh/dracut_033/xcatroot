@@ -6,7 +6,7 @@ RWDIR=.statelite
 . /lib/dracut-lib.sh
 XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
-
+STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
 
 getarg nonodestatus
@@ -160,7 +160,7 @@ elif [ -r /rootimg-statelite.gz ]; then
 
   mount -t tmpfs rw $NEWROOT/$RWDIR
   mkdir -p $NEWROOT/$RWDIR/tmpfs
-  ME=`hostname`
+  ME=`hostname -s`
   if [ ! -z $NODE ]; then
       ME=$NODE
   fi
@@ -212,7 +212,7 @@ elif [ -r /rootimg-statelite.gz ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -227,7 +227,7 @@ elif [ -r /rootimg-statelite.gz ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
