@@ -102,5 +102,5 @@ check:output=~/tftpboot on /tftpboot
 
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
-
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end
