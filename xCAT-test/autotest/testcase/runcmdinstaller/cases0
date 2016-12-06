@@ -14,9 +14,9 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[
 check:rc==0
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
-cmd:runcmdinstaller $$CN "ls -al /tmp"
+cmd:runcmdinstaller $$CN "ls /"
 check:rc==0
-check:output=~yum
+check:output=~tmp
 cmd:chtab key=xcatdebugmode site.value="0"
 end
 start:get_xcat_postscripts_loginfo
