@@ -65,4 +65,5 @@ cmd:sleep 120
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

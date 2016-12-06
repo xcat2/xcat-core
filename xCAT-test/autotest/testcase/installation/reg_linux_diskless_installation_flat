@@ -77,4 +77,5 @@ check:output=~64 bytes from $$CN
 
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

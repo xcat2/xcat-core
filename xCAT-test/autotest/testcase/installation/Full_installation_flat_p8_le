@@ -41,4 +41,5 @@ check:output=~\d\d:\d\d:\d\d
 #cmd:xdsh $$CN service ntpd status
 #check:rc==0
 #check:output=~running
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

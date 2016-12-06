@@ -56,4 +56,5 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

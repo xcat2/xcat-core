@@ -82,7 +82,7 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
-
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
 
@@ -121,7 +121,7 @@ cmd:sleep 120
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
-
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz
