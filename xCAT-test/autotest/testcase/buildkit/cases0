@@ -103,7 +103,6 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create pro
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
 check:rc==0
-check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
 check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
@@ -154,7 +153,6 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create pro
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit buildrepo $reponame
 check:rc==0
-check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
 check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*

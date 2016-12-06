@@ -16,6 +16,9 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
+cmd:makedhcp -q $$CN
+check:rc==0
+check:output=~$$CN
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf $$CN
@@ -41,4 +44,5 @@ check:output=~\d\d:\d\d:\d\d
 #cmd:xdsh $$CN service ntpd status
 #check:rc==0
 #check:output=~running
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

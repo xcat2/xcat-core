@@ -10,6 +10,9 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
+cmd:makedhcp -q $$CN
+check:rc==0
+check:output=~$$CN
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
@@ -27,4 +30,5 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

@@ -5,7 +5,8 @@ cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+#cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
 check:rc=0
 cmd:makedns -n
 check:rc==0
@@ -27,7 +28,8 @@ check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
+cmd:makedhcp -q $$CN
+check:rc==0
 check:output=~$$CN
 cmd:copycds $$ISO 
 check:rc==0
@@ -65,4 +67,5 @@ cmd:sleep 120
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

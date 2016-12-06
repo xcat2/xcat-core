@@ -5,8 +5,8 @@ cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$SN kvm_nodedata; fi
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f -p  && mkvm $$SN -s 40G; fi
-
+#cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f -p  && mkvm $$SN -s 40G; fi
+cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$SN,vmstorage)__" =~ "phy" ]]; then rmvm $$SN -f -p; mkvm $$SN; else rmvm $$SN -f -p;mkvm $$SN;rmvm $$SN -f -p;mkvm $$SN -s 40G; fi;fi
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -20,9 +20,9 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+cmd:makedhcp -q $$SN
+check:rc==0
 check:output=~$$SN
-
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
@@ -102,5 +102,5 @@ check:output=~/tftpboot on /tftpboot
 
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
-
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end
