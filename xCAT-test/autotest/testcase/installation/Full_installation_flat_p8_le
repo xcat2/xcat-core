@@ -16,10 +16,11 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
+cmd:makedhcp -q $$CN
+check:rc==0
+check:output=~$$CN
 cmd:makedns -n
 check:rc==0
-cmd:makedhcp -q $$CN
-check:output=~$$CN
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN

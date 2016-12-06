@@ -21,8 +21,8 @@ cmd:makedhcp -a
 check:rc==0
 cmd:service dhcpd restart
 check:rc==0
-#cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi   
 cmd:makedhcp -q $$CN
+check:rc==0
 check:output=~$$CN
 
 cmd:copycds $$ISO
