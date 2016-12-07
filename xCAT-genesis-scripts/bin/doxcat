@@ -5,24 +5,37 @@
 #
 log_label="xcat.genesis.doxcat"
 
-# Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
-# Later, once xCAT MN is known, dhclient-script will change 
-# rsyslog.conf file to send log entries to xCAT MN
-logger -s -t $log_label -p local4.info "Starting syslog..."
-ls /var/run/
-RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+function restart_syslog {
+    #
+    # if syslog is running and there's a pid file, kill it before restarting syslogd
+    #
+    if [ -f /var/run/syslogd.pid ]; then 
+        RSYSLOG_PID=`cat /var/run/syslogd.pid`
+        kill -TERM "$RSYSLOG_PID"
 
-# if syslog is running and there's a pid file, kill it before restarting syslogd
-if [ -f /var/run/syslogd.pid ]; then 
-    kill -TERM `cat /var/run/syslogd.pid`
-fi 
+        while kill -0 "$RSYSLOG_PID" 2>/dev/null
+        do
+            echo "Waiting for syslog process to end... pid=$RSYSLOG_PID"
+            sleep 0.5
+        done
+    fi 
 
-if [ $RSYSLOGD_VERSION -ge 8 ]; then
-    /sbin/rsyslogd
-    # Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
-else
-    /sbin/rsyslogd -c4
-fi
+    # Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
+    # Later, once xCAT MN is known, dhclient-script will change rsyslog.conf to
+    # send logger entries to the xCAT MN.
+    RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+    if [ $RSYSLOGD_VERSION -ge 8 ]; then
+        # rsyslogd version 8 and higher does not support the -c flag anymore
+        /sbin/rsyslogd
+    else
+        /sbin/rsyslogd -c4
+    fi
+}
+
+# before syslog starts, the /dev/log device is not present in the genesis kernel
+# and causes logger commands to result in an error message. Just echo to console
+echo "Starting syslog..."
+restart_syslog
 
 logger -s -t $log_label -p local4.info "Beginning doxcat process..."
 
@@ -259,35 +272,27 @@ fi
 
 openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
-logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
+IPADDRESS=`ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'`yy
+logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic: $IPADDRESS"
 
-ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
+logger -s -t $log_label -p local4.info "Starting ntpd..."
 ntpd -g -x
 
 if [ -e "/dev/rtc" ]; then
+    logger -s -t $log_label -p local4.info "Attempting to sync hardware clock..."
     ( sleep 8 ; hwclock --systohc ) </dev/null >/dev/null 2>&1 &
     disown
 fi
 
 # rv 0 state does not work with the new ntp versions
+logger -s -t $log_label -p local4.info "Checking ntpq for the offset values..."
 while [ "`ntpq -c 'rv 0 offset' | awk -F '=' '/offset=/ { print $2 }' | awk -F '.' '{ print $1 }' | sed s/-//`" -ge 1000 ]; do 
     sleep 1
 done
+logger -s -t $log_label -p local4.info "Checking ntpq for the offset values... Done"
 
-read -r RSYSLOG_PID </var/run/syslogd.pid 2>/dev/null
-kill "$RSYSLOG_PID" 2>/dev/null
-while kill -0 "$RSYSLOG_PID" 2>/dev/null
-do
-    sleep 0.5
-done
-unset RSYSLOG_PID
-
-RSYSLOGD_VERSION=`rsyslogd -v | awk '/rsyslogd/ { split($2, a, "."); print a[1]; }'`
-if [ "$RSYSLOGD_VERSION" -ge 8 ]; then
-    /sbin/rsyslogd
-else
-    /sbin/rsyslogd -c4
-fi
+logger -s -t $log_label -p local4.info "Restarting syslog..." 
+restart_syslog
 
 HOST_ARCH=`uname -m`
 if echo $HOST_ARCH | grep "ppc64"; then
