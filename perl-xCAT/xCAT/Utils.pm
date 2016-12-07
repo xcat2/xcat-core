@@ -4817,7 +4817,7 @@ sub acquire_lock_imageop {
     my $lock = xCAT::Utils->acquire_lock("$mylockfile", $NON_BLOCK);
     unless ($lock){
         my $pidfd;
-        open($pidfd,"<","/var/run/lock/xcat/$mylockfile");
+        open($pidfd,"<","/var/lock/xcat/$mylockfile");
         my $pid=<$pidfd>;
         close($pidfd);
         return (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process $pid running on root image dir \"$rootimg_dir\"");
