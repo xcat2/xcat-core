@@ -7,7 +7,7 @@ Standards-Version: 3.9.2
 
 Package: xcat-genesis-scripts-ppc64
 Architecture: all
-Depends: xcat-genesis-base-ppc64
+Depends: xcat-genesis-base-ppc64 (>=2.13.0)
 Conflicts: xcat-genesis-scripts
 Replaces: xcat-genesis-scripts
 Description: xCAT genesis 
