@@ -1390,7 +1390,10 @@ sub validate_bldkitconf
         $full_kitname .= '-' . $::bldkit_config->{kit}{entries}[0]->{osmajorversion};
     }
     if (defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) {
-        my $kitminor = split /<=|>=|==|<|>/, $::bldkit_config->{kit}{entries}[0]->{osminorversion};
+        my $kitminor = $::bldkit_config->{kit}{entries}[0]->{osminorversion};
+        unless ($kitminor =~ /^\d/) {
+            $kitminor = split /<=|>=|==|<|>|=/, $::bldkit_config->{kit}{entries}[0]->{osminorversion};
+        }
         if ((!defined($::bldkit_config->{kit}{entries}[0]->{osbasename})) ||
             (!defined($::bldkit_config->{kit}{entries}[0]->{osmajorversion}))) {
             print "Error:  Kit osminorversion attribute was specified but either Kit osbasename or Kit osmajorversion were not set. \n";
@@ -1501,7 +1504,10 @@ sub validate_bldkitconf
         }
         $reponame .= '-' . $kr->{osmajorversion};
         if (defined($kr->{osminorversion})) {
-            my $krminor = split /<=|>=|==|<|>/, $kr->{osminorversion};
+            my $krminor = $kr->{osminorversion};
+            unless ($krminor =~ /^\d/) {
+                $krminor = split /<=|>=|==|<|>|=/, $kr->{osminorversion};
+            }
             if ((defined($::bldkit_config->{kit}{entries}[0]->{osminorversion})) &&
                 ($::bldkit_config->{kit}{entries}[0]->{osminorversion} ne
                     $kr->{osminorversion})) {
@@ -1552,7 +1558,10 @@ sub validate_bldkitconf
         $compname .= '-' . $repo{osbasename};
         $compname .= '-' . $repo{osmajorversion};
         if (defined($repo{osminorversion})) {
-            my $minorversion = split /<=|>=|==|<|>/, $repo{osminorversion};
+            my $minorversion = $repo{osminorversion};
+            unless ($minorversion =~ /^\d/) {
+                $minorversion = split /<=|>=|==|<|>|=/, $repo{osminorversion};
+            }
             $compname .= '.' . $minorversion;
         }
         $compname .= '-' . $repo{osarch};
@@ -1937,7 +1946,10 @@ sub validate_os
     my $repo_osinfo = "$repo->{osbasename}$repo->{osmajorversion}";
     my $minorversion;
     if (defined($repo->{osminorversion})) {
-        $minorversion = split /<=|>=|==|<|>/, $repo->{osminorversion};
+        $minorversion = $repo->{osminorversion};
+        unless ($minorversion =~ /^\d/) {
+            $minorversion = split /<=|>=|==|<|>|=/, $repo->{osminorversion};
+        }
         $repo_osinfo .= ".$minorversion";
     }
     $repo_osinfo .= "-$repo->{osarch} ";

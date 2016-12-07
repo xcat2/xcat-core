@@ -454,11 +454,12 @@ sub process_request {
                 },
                 $sub_req, -1, 1
               );
+            my $retcode=$::RUNCMD_RC;
             my $msg;
             foreach my $line (@$ret) {
                 $msg .= "$line\n";
             }
-            send_msg(\%request, 1, "$msg");
+            send_msg(\%request, $retcode, "$msg");
         }
     }
 
