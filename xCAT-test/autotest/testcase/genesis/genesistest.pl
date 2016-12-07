@@ -266,7 +266,7 @@ sub testxdsh {
         $checkstring = "testimg";
         $checkfile   = "/tmp/testresult";
     } elsif ($value == 3) {
-        $checkstring = "xcatd=$master:3001";
+        $checkstring = "destiny=shell";
         $checkfile   = "/proc/cmdline";
     }
     if (($value == 1) || ($value == 2) || ($value == 3)) {
