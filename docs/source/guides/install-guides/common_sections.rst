@@ -64,7 +64,7 @@ The following sections describe the different methods for installing xCAT.
 
 #. Download the ``go-xcat`` tool using ``wget``: ::
 
-        wget http://xcat.org/files/go-xcat -O - >/tmp/go-xcat
+        wget https://raw.githubusercontent.com/xcat2/xcat-core/master/xCAT-server/share/xcat/tools/go-xcat -O - >/tmp/go-xcat
         chmod +x /tmp/go-xcat
 
 #. Run the ``go-xcat`` tool: ::
