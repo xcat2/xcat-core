@@ -156,6 +156,7 @@ sub do_main_job {
         $rc |= $rst;
     }
 
+    cleanup();
     return $rc;
 }
 
