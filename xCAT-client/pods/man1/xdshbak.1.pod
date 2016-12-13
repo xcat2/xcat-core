@@ -4,7 +4,7 @@ B<xdshbak> - Formats the output of the B<xdsh> command.
 
 =head1 B<SYNOPSIS>
 
-B<xdshbak> [B<-c> | B<-x> | B<-h> | B<-q>]
+B<xdshbak> [B<-c> | B<-x> [ B<-b> ] | B<-h> | B<-q>]
 
 =head1 DESCRIPTION
 
@@ -62,6 +62,9 @@ the output by hostname for easier viewing:
  .
  .
 
+If the B<-b> flag is specified in addition to B<-x>, the hostname at the beginning
+of each line is stripped.
+
 =head2 Standard Error
 
 When the B<xdshbak> filter is used and standard error messages are generated,
@@ -71,6 +74,11 @@ output messages. This is true with and without the B<-c> flag.
 =head1 OPTIONS
 
 =over 6
+
+=item B<-b>
+
+Strip the host prefix from the beginning of the lines. This only
+works with the B<-x> option.
 
 =item B<-c>
 
