@@ -263,7 +263,7 @@ logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 
 logger -s -t $log_label -p local4.info "Attempting to sync the date with $XCATMASTER..."
-ntpdate $XCATMASTER
+ntpdate -b $XCATMASTER
 
 if [ -e "/dev/rtc" ]; then
     logger -s -t $log_label -p local4.info "Attempting to sync hardware clock..."
