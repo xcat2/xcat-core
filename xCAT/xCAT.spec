@@ -49,22 +49,11 @@ Requires: perl-IO-Stty
 %endif
 %endif
 
-# The aix rpm cmd forces us to do this outside of ifos type stmts
-%if %notpcm
-%ifos linux
-%ifnarch s390x
-# PCM does not use or ship conserver
-Requires: conserver-xcat
-%endif
-%endif
-%endif
-
 #support mixed cluster
 Requires: elilo-xcat xnba-undi
 
 %ifarch i386 i586 i686 x86 x86_64
 Requires: syslinux
-Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 
 %ifos linux
