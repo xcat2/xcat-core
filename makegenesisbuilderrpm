@@ -1,6 +1,6 @@
 #!/bin/sh
-VER=`git describe`
-VER=${VER/-/.post}
+VER=`git describe --tags`
+VER=${VER/-/.POST}
 VER=${VER/-/.}
 rpmbuild --version > /dev/null
 if [ $? -gt 0 ]
