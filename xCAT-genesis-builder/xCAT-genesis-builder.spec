@@ -34,7 +34,8 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 tar jxf %{SOURCE0}
-sed -i s/%%REPLACE_CURRENT_VERSION%%/${Version}/g xCAT-genesis-base.spec
+echo %{version}
+sed -i s/%%%%REPLACE_CURRENT_VERSION%%%%/%{version}/g xCAT-genesis-base.spec
 
 chmod +x $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/buildrpm
 cd -
