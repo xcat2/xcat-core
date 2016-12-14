@@ -249,7 +249,7 @@ sub obtain_one_second_logs {
                 while (<$fd>) {
                     chomp;
                     $self->debuglogger("[$loglabel]read: $_");
-                    my $log_content_ref = $self->obtain_log_content($self->{log_open_info}->{$loglabel}{filetype}, $_);
+                    my $log_content_ref = $self->obtain_log_content($self->{log_open_info}->{$loglabel}{filetype}, $_, 0);
 
                     #if read the log whoes time bigger than target time, stop to read
                     $self->debuglogger("\t$log_content_ref->{time}   $the_time_to_load");
@@ -472,13 +472,15 @@ sub obtain_log_content {
     my $self         = shift;
     my $log_type     = shift;
     my $original_log = shift;
+    my $is_monitor      = shift;
 
     my %log_content = ();
     my @split_line = split(/\s+/, $original_log);
 
     if ($log_type == $::LOGTYPE_RSYSLOG) {
         if ($split_line[0] =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(.+)-(.+)/) {
-            $log_content{time} = $self->convert_to_epoch_seconds($split_line[0]);
+            $log_content{time_record} = "$4:$5:$6";
+            $log_content{time} = $self->convert_to_epoch_seconds($split_line[0], $is_monitor);
             if (!xCAT::NetworkUtils->isIpaddr($split_line[1])) {
                 my @sender_tmp = split(/\./, $split_line[1]);
                 $log_content{sender} = $sender_tmp[0];
@@ -505,7 +507,8 @@ sub obtain_log_content {
             }
         } else {
             my $timestamp = join(" ", @split_line[ 0 .. 2 ]);
-            $log_content{time}   = $self->convert_to_epoch_seconds($timestamp);
+            $log_content{time_record} = $split_line[2]; 
+            $log_content{time} = $self->convert_to_epoch_seconds($timestamp, $is_monitor);
             if (!xCAT::NetworkUtils->isIpaddr($split_line[3])) {
                 my @sender_tmp = split(/\./, $split_line[3]);
                 $log_content{sender} = $sender_tmp[0];
@@ -533,7 +536,10 @@ sub obtain_log_content {
         }
     } elsif ($log_type == $::LOGTYPE_HTTP) {
         $split_line[3] =~ s/^\[(.+)/$1/g;
-        $log_content{time}   = $self->convert_to_epoch_seconds($split_line[3]);
+        if ($split_line[3] =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/) {
+            $log_content{time_record} = "$4:$5:$6";
+        }
+        $log_content{time}   = $self->convert_to_epoch_seconds($split_line[3], $is_monitor);
         if (!xCAT::NetworkUtils->isIpaddr($split_line[0])) {
             my @sender_tmp = split(/\./, $split_line[0]);
             $log_content{sender} = $sender_tmp[0];
@@ -561,6 +567,7 @@ sub obtain_log_content {
 sub convert_to_epoch_seconds {
     my $self    = shift;
     my $timestr = shift;
+    my $is_monitor = shift;
 
     my $yday;
     my $mday;
@@ -581,15 +588,23 @@ sub convert_to_epoch_seconds {
         ($mday, $dday, $h, $m, $s) = ($1, $2, $3, $4, $5);
         $yday = $self->{current_ref_year};
         $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
-        if ($epoch_seconds > $self->{current_ref_time}) {
-            --$yday;
-            $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
+        if ($is_monitor) {
+            if ($epoch_seconds < $self->{current_ref_time}) {
+                ++$yday;
+                $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
+            }
+        } else {
+            if ($epoch_seconds > $self->{current_ref_time}) {
+                --$yday;
+                $epoch_seconds = timelocal($s, $m, $h, $dday, $monthsmap{$mday}, $yday);
+            }
         }
 
         # The time format looks like "15/Aug/2016:01:10:24"
     } elsif ($timestr =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/) {
         $epoch_seconds = timelocal($6, $5, $4, $1, $monthsmap{$2}, $3);
     }
+
     return $epoch_seconds;
 }
 
