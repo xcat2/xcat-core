@@ -15,6 +15,7 @@ then
 	exit 1
 fi
 echo "The location for rpm building is ${RPMROOT}"
+echo $VER
 cd `dirname $0`/xCAT-genesis-builder
 tar --exclude .svn --exclude .*.sw* -cjvf $RPMROOT/SOURCES/xCAT-genesis-builder.tar.bz2 .
 #mv -f *.gz $RPMROOT/SOURCES

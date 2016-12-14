@@ -4,7 +4,7 @@ Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 Epoch: 1
 AutoReq: false
-Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33 mstflint xfsprogs nc reiserfs-utils
+Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33 mstflint xfsprogs nc 
 Prefix: /opt/xcat
 AutoProv: false
 
@@ -33,7 +33,9 @@ Genesis (Genesis Enhanced Netboot Environment for System Information and Servici
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder
-tar jxvf %{SOURCE0}
+tar jxf %{SOURCE0}
+sed -i s/%%REPLACE_CURRENT_VERSION%%/${Version}/g xCAT-genesis-base.spec
+
 chmod +x $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/genesis/builder/buildrpm
 cd -
 
