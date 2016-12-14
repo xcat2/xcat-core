@@ -42,8 +42,6 @@ while :; do screen -ln < /dev/tty2 > /dev/tty2 2>&1; done &
 
 # The section below is just for System P LE hardware discovery
 
-# Need to wait for NIC initialization
-sleep 20
 ARCH=`uname -m`
 #For Openpower
 if [ $ARCH = "ppc64le" ]; then
@@ -51,6 +49,8 @@ if [ $ARCH = "ppc64le" ]; then
 fi
 
 if [ $ARCH == 'ppc64' ]; then
+    # Need to wait for NIC initialization
+    sleep 20
     waittime=2
     ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
     for tmp in $ALL_NICS; do
