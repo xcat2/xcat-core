@@ -176,11 +176,12 @@ function setversionvars {
         VER=`git describe --tags`
         VER=${VER/-/.POST}
         VER=${VER/-/.}
+        export XCATVER
+        XCATVER=$VER
     else
         VER=`cat Version`
+        XCATVER=`cat Version`
     fi
-    XCATVER=$VER
-    #export XCATVER
     SHORTVER=`echo $VER|cut -d. -f 1,2`
     SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
