@@ -23,8 +23,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:makedhcp -q $$CN
-check:output=~$$CN
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
