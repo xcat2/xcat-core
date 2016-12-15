@@ -158,7 +158,7 @@ sub config_ip {
         # don't need to set if ip addresses are same
         if ($dip eq $static_ip) {
             print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
-            $cmd = "chdef $csw otherinterfaces=";
+            $cmd = "chdef $switch otherinterfaces=";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             next;
         }
