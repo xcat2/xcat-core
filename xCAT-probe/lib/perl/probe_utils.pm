@@ -257,6 +257,7 @@ sub is_firewall_open {
         Test if http service is ready to use in current operating system
     Arguments:
         ip:  http server's ip 
+        errormsg_ref: (output attribute) if there is something wrong for HTTP service, this attribute save the possible reason.
     Returns:
         1 : yes
         0 : no
@@ -266,20 +267,56 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $errormsg_ref = shift;
 
-    my $http = "http://$mnip/install/postscripts/syslog";
+    my $http      = "http://$mnip/install/postscripts/syslog";
+    my %httperror = (
+    "400" => "The request $http could not be understood by the server due to malformed syntax",
+    "401" => "The request requires user authentication.",
+    "403" => "The server understood the request, but is refusing to fulfill it.",
+    "404" => "The server has not found anything matching the test Request-URI $http.",
+    "405" => "The method specified in the Request-Line $http is not allowe.",
+    "406" => "The method specified in the Request-Line $http is not acceptable.",
+    "408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
+    "409" => "The request could not be completed due to a conflict with the current state of the resource.",
+    "410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
+    "411" => "The server refuses to accept the request without a defined Content- Length.",
+    "412" => "The precondition given in one or more of the request-header fields evaluated to false when it was tested on the server.",
+    "413" => "The server is refusing to process a request because the request entity is larger than the server is willing or able to process.",
+    "414" => "The server is refusing to service the request because the Request-URI is longer than the server is willing to interpret.",
+    "415" => "The server is refusing to service the request because the entity of the request is in a format not supported by the requested resource for the requested method.",
+    "416" => "Requested Range Not Satisfiable",
+    "417" => "The expectation given in an Expect request-header field could not be met by this server",
+    "500" => "The server encountered an unexpected condition which prevented it from fulfilling the request.",
+    "501" => "The server does not recognize the request method and is not capable of supporting it for any resource.",
+    "502" => "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the reques.",
+    "503" => "The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.",
+    "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
+    "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
+
     rename("./syslog", "./syslog.org") if (-e "./syslog");
-
-    my $outputtmp = `wget $http 2>&1`;
+    my @outputtmp = `wget $http 2>&1`;
     my $rst       = $?;
-    if (($outputtmp =~ /200 OK/) && (!$rst) && (-e "./syslog")) {
+    $rst = $rst >> 8;
+
+    if ((!$rst) && (-e "./syslog")) {
         unlink("./syslog");
         rename("./syslog.org", "./syslog") if (-e "./syslog.org");
         return 1;
-    } else {
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
-        return 0;
+    } elsif ($rst == 4) {
+        $$errormsg_ref = "Network failure, the server refuse connection. Please check if httpd service is running first.";
+    } elsif ($rst == 5) {
+        $$errormsg_ref = "SSL verification failure, the server refuse connection";
+    } elsif ($rst == 6) {
+        $$errormsg_ref = "Username/password authentication failure, the server refuse connection";
+    } elsif ($rst == 8) {
+        my $returncode = $outputtmp[2];
+        chomp($returncode);
+        $returncode =~ s/.+(\d\d\d).+/$1/g;
+        $$errormsg_ref = $httperror{$returncode};
     }
+    rename("./syslog.org", "./syslog") if (-e "./syslog.org");
+    return 0;
 }
 
 #------------------------------------------
