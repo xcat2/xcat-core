@@ -375,7 +375,7 @@ sub do_replay {
         print Dumper \%node_state;
     }
 
-    my $log_parse = LogParse->new($verbose);
+    my $log_parse = LogParse->new($verbose, $::REPLAY);
     my @candidate_mn_hostname_in_log = $log_parse->obtain_candidate_mn_hostname_in_log();
 
     while ($start_time_of_replay < $end_time_of_replay) {
@@ -455,7 +455,6 @@ sub conclusion_report {
         my $stop_stage = 0;
 
         my $start_rpower   = 0;
-        my $power_on       = 0;
         my $isntalling     = 0;
         my $postbootscript = 0;
 
@@ -468,12 +467,10 @@ sub conclusion_report {
             $postbootscript = 1  if ($_ == $::STATE_POSTBOOTSCRIPT);
         }
 
-        # Cover limited non-privision error
-        # 1 if xcatd receive reboot command to do provision (such like rpower, rnetboot, rinstall...) but the node status didn't change to "powering-on"
-        #   that means reboot target node failed.
-        # 2 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
+        # Cover limited non-privision error 
+        # 1 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
         #   It is very possible to just do reboot process
-        # 3 There isn't reboot operation for target node during the rollback time window 
+        # 2 When replay, if there isn't reboot operation for target node during the rollback time window 
         #   That means there isn't provision process happened 
 
         if ($monitor) {
@@ -491,11 +488,8 @@ sub conclusion_report {
             }
         }
 
-        if ($stop_stage != $::STATE_COMPLETED) {
-            $failed_node{$node}{provision_stop_point} = $stop_stage;
-        }
-
-        if (@{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }) {
+        # if not completed or completed but with postscript error, add node to failed_node hash
+        if ($stop_stage != $::STATE_COMPLETED or @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }) {
             $failed_node{$node}{provision_stop_point} = $stop_stage;
         }
     }
@@ -512,15 +506,19 @@ sub conclusion_report {
             if ($failed_node{$node}{non_provision_prediction}) {
                 probe_utils->send_msg("stdout", "f", "$node : $failed_node{$node}{non_provision_prediction}");
             } else {
+                my $node_length = length($node);
+                my $space_str = " " x ($length_node + 2);
+                # if stop at stage before postscript, means there is error at current stage, print error message
                 probe_utils->send_msg("stdout", "f", "$node : stop at stage '$::STATE_DESC{$failed_node{$node}{provision_stop_point}}'");
                 if ($failed_node{$node}{provision_stop_point} < $::STATE_POSTSCRIPT) {
                     foreach my $node_error (@{ $node_state_ref->{$node}{errors}{$failed_node{$node}{provision_stop_point}} }) {
-                        probe_utils->send_msg("stdout", "d", "$node_error");
+                        probe_utils->send_msg("stdout", "d", "$space_str $node_error");
                     }
                 } else {
+                    # if stop at postscript or after postscript, check whether has error from postscript, if has print
                     for (my $stage = $::STATE_POSTSCRIPT; $stage <= $::STATE_COMPLETED; $stage++) {
                         foreach my $node_error (@{ $node_state_ref->{$node}{errors}{$stage} }) {
-                             probe_utils->send_msg("stdout", "d", "$node_error");
+                             probe_utils->send_msg("stdout", "d", "$space_str $node_error");
                         }
                     }
                 }
@@ -569,7 +567,7 @@ Start capturing every message during OS provision process....
     my %fd_filetype_map;
 
     {    #a very important brace to hold a code block
-        my $log_parse         = LogParse->new($verbose);
+        my $log_parse         = LogParse->new($verbose, $::MONITOR);
         my $candidate_log_ref = $log_parse->obtain_log_file_list();
 
         #open candidate log file to obtain realtime log
@@ -611,7 +609,7 @@ Start capturing every message during OS provision process....
                 foreach my $hdl (@hdls) {
                     my $line = "";
                     chomp($line = <$hdl>);
-                    my $log_content_ref = $log_parse->obtain_log_content($fd_filetype_map{$hdl}, $line, $monitor);
+                    my $log_content_ref = $log_parse->obtain_log_content($fd_filetype_map{$hdl}, $line);
                     dispatch_log_to_handler($log_content_ref, \@candidate_mn_hostname_in_log, \%node_state);
                 }
             }
@@ -986,6 +984,7 @@ sub handle_compute_msg {
             my $return_code = $2;
             if ($return_code != 0) {
                 my $error_str = "postscript $script_name return with $return_code";
+                # when monitor, will show 2 same messages, so filter to show only one
                 unless (grep {$_ eq $error_str} @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }) {
                     push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }, $error_str;
                 }
@@ -997,6 +996,7 @@ sub handle_compute_msg {
             my $return_code = $2;
             if ($return_code != 0) {
                 my $error_str = "postbootscript $script_name return with $return_code";
+                # when monitor, will show 2 same messages, so filter to show only one
                 unless (grep {$_ eq $error_str} @{ $node_state_ref->{$node}{errors}{$::STATE_POSTBOOTSCRIPT} }) {
                     push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTBOOTSCRIPT} }, $error_str;
                 }

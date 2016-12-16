@@ -914,7 +914,7 @@ sub do_monitor {
     my %fd_filetype_map;
 
     {   #a very important brace to hold a code block
-        my $log_parse         = LogParse->new($verbose);
+        my $log_parse         = LogParse->new($verbose, $::MONITOR);
         my $candidate_log_ref = $log_parse->obtain_log_file_list();
 
         #open candidate log file to obtain realtime log
@@ -1071,7 +1071,7 @@ sub do_replay {
         print Dumper \%node_state;
     }
 
-    my $log_parse = LogParse->new($verbose);
+    my $log_parse = LogParse->new($verbose, $::REPLAY);
     my @candidate_mn_hostname_in_log = $log_parse->obtain_candidate_mn_hostname_in_log();
 
     while ($start_time_of_replay < $end_time_of_replay) {
