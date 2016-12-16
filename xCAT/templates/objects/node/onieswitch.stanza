@@ -1,6 +1,6 @@
-# <the template for PowerLE NV node definition>
+# <the template for ONIE switch definition>
 
-cumulusswitch:
+onieswitch:
     objtype=node
     arch="OPTIONAL: the arch of the switch management service processor, such as armv71"
     groups=switch
@@ -9,6 +9,6 @@ cumulusswitch:
     mgt=switch
     netboot=onie
     nodetype=switch
-    switchtype=edgecore
+    switchtype=onie
     provmethod="OPTIONAL: the full path of the cumulus installer"
     usercomment="the template for cumulus switch definition"
