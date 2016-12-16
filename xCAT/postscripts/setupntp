@@ -148,17 +148,17 @@ if [ $OS_TYPE = Linux ]; then
         if [ $? -eq 0 ];then
             sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
         else
-            echo "HWCLOCK=\"-u\"" >> /etc/sysconfig/clock
+            echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock
         fi
     elif [ -f "/etc/debian_version" ];then
-        sed -i 's/.*UTC.*/UTC=yes/' /etc/default/rcS
+        sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS
     else
         if [ -f "/etc/sysconfig/clock" ];then
            grep -i "utc" /etc/sysconfig/clock
            if [ $? -eq 0 ];then
-              sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock
+              sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock
            else
-              echo "UTC=yes" >> /etc/sysconfig/clock
+              echo UTC=\"yes\" >> /etc/sysconfig/clock
            fi
         elif type -P timedatectl >/dev/null 2>&1 ;then
            timedatectl set-local-rtc 0
@@ -176,11 +176,11 @@ if [ $OS_TYPE = Linux ]; then
     elif [ -f /etc/sysconfig/ntp ];then
         grep -i "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP="no"/NTPD_FORCE_SYNC_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
         grep -i "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="no"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
     else
         cron_file="/etc/cron.daily/xcatsethwclock"

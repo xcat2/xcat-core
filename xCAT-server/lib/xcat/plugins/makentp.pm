@@ -309,6 +309,8 @@ sub process_request {
         }
     }
 
+    my $os          = xCAT::Utils->osver("all");
+
     #for sles, /var/lib/ntp/drift is a dir
     if (xCAT::Utils->isAIX()) {
         print CFGFILE "driftfile /etc/ntp.drift\n";
@@ -329,7 +331,6 @@ sub process_request {
 
     close CFGFILE;
 
-    my $os          = xCAT::Utils->osver("all");
     my $ntp_service = "ntpserver";
 
     #stop ntpd
@@ -396,15 +397,15 @@ sub process_request {
             `echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock`;
         }
     } elsif (-f "/etc/debian_version") {
-        `sed -i "s/.*UTC.*/UTC=yes/" /etc/default/rcS`;
+        `sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS`;
     } else {
         if (-f "/etc/sysconfig/clock") {
             $grep_cmd = "grep -i utc /etc/sysconfig/clock";
             $rc = xCAT::Utils->runcmd($grep_cmd, 0);
             if ($::RUNCMD_RC == 0) {
-                `sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock`;
+                `sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock`;
             } else {
-                `echo "UTC=yes" >> /etc/sysconfig/clock`;
+                `echo UTC=\"yes\" >> /etc/sysconfig/clock`;
             }
         } else {
             `type -P timedatectl >/dev/null 2>&1`;
@@ -422,9 +423,9 @@ sub process_request {
             `echo SYNC_HWCLOCK=\"yes\" >> /etc/sysconfig/ntpd`;
         }
     } elsif (-f "/etc/sysconfig/ntp") {
-        `sed -i "s/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=yes/" /etc/sysconfig/ntp`;
-        `sed -i "s/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=yes/" /etc/sysconfig/ntp`;
-        `sed -i "s/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=yes/" /etc/sysconfig/ntp`;
+        `sed -i 's/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+        `sed -i 's/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+        `sed -i 's/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=\"yes\"/' /etc/sysconfig/ntp`;
     } else {
         my $cron_file = "/etc/cron.daily/xcatsethwclock";
         if (!-f "$cron_file") {
