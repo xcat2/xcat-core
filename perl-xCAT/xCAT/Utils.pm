@@ -4825,4 +4825,33 @@ sub acquire_lock_imageop {
     return (0,$lock);
 }
 
+
+############################################
+# like shell command "touch"
+# arguments: the list of file names
+# return:    0 on success; -1 on fail            
+############################################
+sub touch {
+    my @filelist=@_;
+    my $now=time;
+    if ($filelist[0] =~ /xCAT::Utils/){
+        shift @filelist;
+    }
+   
+    my $FH; 
+    foreach my $file (@filelist){
+        unless(utime $now,$now,$file){
+            open($FH,">>$file"); 
+            if($FH){
+                close($FH);
+                $FH=undef;
+            }else{
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
 1;
