@@ -1514,9 +1514,6 @@ until ($quit) {
 
         $$progname = "xcatd SSL: Instance for " . ($peername ? $peername . "@" . $peerhost : $peerhost) if $peerhost;
         service_connection($connection, $peername, $peerhost, $peerfqdn, $peerhostorg);
-
-        $debugmsg = "xcatd: close connection with " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
-        xCAT::MsgUtils->trace(0, "D", "$debugmsg");
         xexit(0);
     }
     if ($sslfudgefactor) { $sslfudgefactor -= 1; }
@@ -2636,7 +2633,6 @@ sub service_connection {
     my $peerfqdn    = shift;
     my $peerhostorg = shift;
     my $peerport    = $sock->peerport;
-    my %tables      = ();
 
     # some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
     # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
@@ -2873,12 +2869,10 @@ sub service_connection {
     cmdlog_submitlog();
 
     # ----used for command log end---------
-
+    my $debugmsg = "xcatd: close connection with " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
+    xCAT::MsgUtils->trace(0, "D", "$debugmsg");
     $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "$$ failed shutting down"); die; };
     alarm(10);
-    foreach (keys %tables) {
-        $tables{$_}->commit;
-    }
     $sock->close(SSL_fast_shutdown => 1);
     if ($timedout == 1) {
         printf("Client timeout");
