@@ -309,11 +309,15 @@ sub process_request {
         }
     }
 
+    #for sles, /var/lib/ntp/drift is a dir
     if (xCAT::Utils->isAIX()) {
         print CFGFILE "driftfile /etc/ntp.drift\n";
         print CFGFILE "tracefile /etc/ntp.trace\n";
         print CFGFILE "disable auth\n";
         print CFGFILE "broadcastclient\n";
+    } elsif ($os =~ /sles/) {
+        print CFGFILE "driftfile /etc/ntp.drift\n";
+        print CFGFILE "disable auth\n";
     } else {
         print CFGFILE "driftfile /var/lib/ntp/drift\n";
         print CFGFILE "disable auth\n";
@@ -384,14 +388,20 @@ sub process_request {
 
     #setup the RTC is UTC format, which will be used by os
     if ($os =~ /sles/) {
-        `sed -i 's/.*HWCLOCK.*/HWCLOCK="-u"/' /etc/sysconfig/clock`;
+        $grep_cmd = "grep -i HWCLOCK /etc/sysconfig/clock";
+        $rc = xCAT::Utils->runcmd($grep_cmd, 0);
+        if ($::RUNCMD_RC == 0) {
+            `sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock`;
+        } else {
+            `echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock`;
+        }
     } elsif (-f "/etc/debian_version") {
         `sed -i "s/.*UTC.*/UTC=yes/" /etc/default/rcS`;
     } else {
         if (-f "/etc/sysconfig/clock") {
             $grep_cmd = "grep -i utc /etc/sysconfig/clock";
             $rc = xCAT::Utils->runcmd($grep_cmd, 0);
-            if ($::RUNCMD_RC != 0) {
+            if ($::RUNCMD_RC == 0) {
                 `sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock`;
             } else {
                 `echo "UTC=yes" >> /etc/sysconfig/clock`;
@@ -406,11 +416,15 @@ sub process_request {
     if (-f "/etc/sysconfig/ntpd") {
         $grep_cmd = "grep -i SYNC_HWCLOCK /etc/sysconfig/ntpd";
         $rc = xCAT::Utils->runcmd($grep_cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            `sed -i "s/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=yes/" /etc/sysconfig/ntpd`;
+        if ($::RUNCMD_RC == 0) {
+            `sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd`;
         } else {
-            `echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd`;
+            `echo SYNC_HWCLOCK=\"yes\" >> /etc/sysconfig/ntpd`;
         }
+    } elsif (-f "/etc/sysconfig/ntp") {
+        `sed -i "s/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=yes/" /etc/sysconfig/ntp`;
+        `sed -i "s/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=yes/" /etc/sysconfig/ntp`;
+        `sed -i "s/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=yes/" /etc/sysconfig/ntp`;
     } else {
         my $cron_file = "/etc/cron.daily/xcatsethwclock";
         if (!-f "$cron_file") {
