@@ -104,7 +104,7 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
-cmd:xdsh $$CN "apt-get -y --only-upgrade install .*xcat*."
+cmd:xdsh $$CN "apt-get -y --only-upgrade install .*xcat.*"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /newxcat/new_version"
 check:rc==0
