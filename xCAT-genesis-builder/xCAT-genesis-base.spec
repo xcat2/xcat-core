@@ -31,6 +31,7 @@ URL:	 http://xcat.org
 Source1: xCAT-genesis-base-%{tarch}.tar.bz2
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
+BuildRequires: /usr/sbin/ntp-wait
 Packager: IBM Corp.
 
 %Description
