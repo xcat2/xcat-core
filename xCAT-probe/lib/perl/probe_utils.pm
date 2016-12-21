@@ -277,6 +277,7 @@ sub is_http_ready {
     "404" => "The server has not found anything matching the test Request-URI $http.",
     "405" => "The method specified in the Request-Line $http is not allowe.",
     "406" => "The method specified in the Request-Line $http is not acceptable.",
+    "407" => "The wget client must first authenticate itself with the proxy.",
     "408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
     "409" => "The request could not be completed due to a conflict with the current state of the resource.",
     "410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
@@ -294,14 +295,16 @@ sub is_http_ready {
     "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
     "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
 
-    rename("./syslog", "./syslog.org") if (-e "./syslog");
-    my @outputtmp = `wget $http 2>&1`;
+    my $suffix = time();
+    my $tmpdir = "/tmp/xcatprobe$suffix/";
+    mkpath("$tmpdir");
+    my @outputtmp = `cd $tmpdir && wget $http 2>&1`;
     my $rst       = $?;
     $rst = $rst >> 8;
 
-    if ((!$rst) && (-e "./syslog")) {
-        unlink("./syslog");
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
+    if ((!$rst) && (-e "$tmpdir/syslog")) {
+        unlink("$tmpdir/syslog");
+        rmdir ("$tmpdir");
         return 1;
     } elsif ($rst == 4) {
         $$errormsg_ref = "Network failure, the server refuse connection. Please check if httpd service is running first.";
@@ -313,9 +316,14 @@ sub is_http_ready {
         my $returncode = $outputtmp[2];
         chomp($returncode);
         $returncode =~ s/.+(\d\d\d).+/$1/g;
-        $$errormsg_ref = $httperror{$returncode};
+        if(exists($httperror{$returncode})){
+            $$errormsg_ref = $httperror{$returncode};
+        }else{
+            #should not hit this block normally
+            $$errormsg_ref = "Unexpected return code of wget <$returncode>.";
+        }
     }
-    rename("./syslog.org", "./syslog") if (-e "./syslog.org");
+    rmdir ("$tmpdir");
     return 0;
 }
 
@@ -473,4 +481,66 @@ sub parse_node_range {
     chomp @nodeslist;
     return @nodeslist;
 }
+
+#------------------------------------------
+
+=head3
+    Description:
+        Test if ntp service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: (output attribute) if there is something wrong for ntp service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_ntp_ready{
+    my $errormsg_ref = shift;
+    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $cmd = 'ntpq -c "rv 0"';
+    $| = 1;
+
+    #wait 5 seconds for ntpd synchronize at most
+    for (my $i = 0; $i < 5; ++$i) {
+        if(!open(NTP, $cmd." 2>&1 |")){
+            $$errormsg_ref = "Can't start ntpq: $!";
+            return 0;
+        }else{
+            while(<NTP>) {
+                chomp;
+                if (/^associd=0 status=(\S{4}) (\S+),/) {
+                    my $leap=$2;
+
+                    last if ($leap =~ /(sync|leap)_alarm/);
+
+                    if ($leap =~ /leap_(none|((add|del)_sec))/){
+                        close(NTP);
+                        return 1;
+                    }
+
+                    #should not hit below 3 lines normally
+                    $$errormsg_ref = "Unexpected ntpq output ('leap' status <$leap>), please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }elsif(/Connection refused/) {
+                    $$errormsg_ref = "ntpd service is not running! Please setup ntp in current node";
+                    close(NTP);
+                    return 0;
+                }else{
+                    #should not hit this block normally
+                    $$errormsg_ref = "Unexpected ntpq output <$_>, please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }
+            }
+        }
+        close(NTP);
+        sleep 1;
+    }
+    $$errormsg_ref = "ntpd did not synchronize.";
+    return 0;
+}
+
 1;
