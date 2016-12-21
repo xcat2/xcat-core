@@ -295,10 +295,12 @@ sub is_http_ready {
     "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
     "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
 
-    my $suffix = time();
-    my $tmpdir = "/tmp/xcatprobe$suffix/";
-    mkpath("$tmpdir");
-    my @outputtmp = `cd $tmpdir && wget $http 2>&1`;
+    my $tmpdir = "/tmp/xcatprobe$$/";
+    if(! mkpath("$tmpdir")){
+        $$errormsg_ref = "Prepare test environment error: $!";
+        return 0;
+    }
+    my @outputtmp = `wget -O $tmpdir/syslog $http 2>&1`;
     my $rst       = $?;
     $rst = $rst >> 8;
 
@@ -320,10 +322,13 @@ sub is_http_ready {
             $$errormsg_ref = $httperror{$returncode};
         }else{
             #should not hit this block normally
-            $$errormsg_ref = "Unexpected return code of wget <$returncode>.";
+            $$errormsg_ref = "Unknown return code of wget <$returncode>.";
         }
     }
-    rmdir ("$tmpdir");
+    unlink("$tmpdir/syslog");
+    if(! rmdir ("$tmpdir")){
+        $$errormsg_ref .= " Clean test environment error(rmdir $tmpdir): $!";
+    }
     return 0;
 }
 
