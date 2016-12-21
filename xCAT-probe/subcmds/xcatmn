@@ -125,6 +125,12 @@ sub do_main_job {
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
+    #check NTP service
+    $checkpoint = "NTP service works well";
+    $rst = check_ntp_service(\@error);
+    print_check_result($checkpoint, "f", $rst, \@error);
+    $rc |= $rst;
+
     #Below are the 'warning` level check points
 
     #check if firewall is close
@@ -566,8 +572,9 @@ sub check_http_service {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
         $rst = 1;
     } else {
-        if (!probe_utils->is_http_ready("$serverip")) {
-            push @$error_ref, "HTTP service isn't ready on $serverip";
+        my $errormsg;
+        if (!probe_utils->is_http_ready("$serverip", \$errormsg)) {
+            push @$error_ref, "$errormsg";
             $rst = 1;
         }
     }
@@ -609,6 +616,26 @@ sub check_tftp_service {
     }
 
     return $rst;
+}
+
+sub check_ntp_service{
+    my $error_ref = shift;
+    my $rst       = 0;
+    @$error_ref = ();
+  
+    `which ntpq > /dev/null 2>&1`;
+    if($?){
+        push @$error_ref, "ntp service check need 'ntpq' tool, please install 'ntpq' toll and try again";
+        $rst = 1;
+    }else{
+        my $error;
+        if(!probe_utils->is_ntp_ready(\$error)){
+            push @$error_ref, "$error";
+            $rst = 1;
+        }
+    }
+ 
+    return $rst; 
 }
 
 sub check_dns_service {
