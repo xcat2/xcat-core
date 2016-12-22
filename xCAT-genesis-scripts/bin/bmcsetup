@@ -13,7 +13,7 @@
 #     0x08 0x00 0x49 0x4e 0x54 0x45 0x4c
 #     0x08 0x04
 #
-log_label="xcat.genesis.bmcsetup"
+log_label="bmcsetup"
 
 TIMEOUT=15
 
@@ -29,6 +29,7 @@ TIMEOUT=15
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        rm -f /tmp/ipmicfg.xml
         exit 1
     fi
     if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
@@ -87,6 +88,7 @@ function cold_reset_bmc() {
 function snooze() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        rm -f /tmp/ipmicfg.xml
         exit 1
     fi
     if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
@@ -100,7 +102,15 @@ function snooze() {
         logger -s -t $log_label -p local4.debug "snooze for 1 second..."
         sleep 1
     fi
-}
+} 
+
+if which ipmitool 2>&1 | grep no; then 
+    echo "No ipmitool find, please install it first"; 
+    exit 1;
+fi
+
+# Add ipmi_devintf module to allow the ipmitool operation in-band
+modprobe ipmi_devintf
 
 allowcred.awk &
 CREDPID=$!
@@ -605,3 +615,5 @@ while [ $idev -gt 0 ]; do
     fi
 done
 
+# remove the bmc configuration information before exit
+rm -f /tmp/ipmicfg.xml

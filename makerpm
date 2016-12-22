@@ -107,7 +107,10 @@ function makexcat {
 		TARGET="--target $ARCH"
 
 		if [ "$RPMNAME" = "xCAT" ]; then
-			cd `dirname $0`/$RPMNAME
+			cd `dirname $0`/
+			cp xCAT-genesis-scripts/bin/bmcsetup $RPMNAME/postscripts
+			cp xCAT-genesis-scripts/bin/getipmi $RPMNAME/postscripts
+			cd $RPMNAME
 			tar --exclude .svn --exclude upflag -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
 			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
@@ -139,6 +142,10 @@ function makexcat {
 		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
 		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
 		RC=$?
+		if [ "$RPMNAME" = "xCAT" ]; then
+			rm -f `dirname $0`/$RPMNAME/postscripts/bmcsetup
+			rm -f `dirname $0`/$RPMNAME/postscripts/getipmi
+		fi
 	fi
 }
 
