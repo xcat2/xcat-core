@@ -3,6 +3,7 @@ os:Linux
 description:check fresh install disk, usded for x86 multi disk only, and not check RH7.2 for RH os wwn isue.
 
 cmd:xdsh $$CN "dd if=/dev/zero of=/dev/sdb bs=1048576 count=100"
+cmd:xdsh $$CN "dd if=/dev/zero of=/dev/sdb bs=1048576 count=300 seek=60858"
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
