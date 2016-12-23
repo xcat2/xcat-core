@@ -29,7 +29,8 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
-cmd:chdef -t node -o $$CN postscripts=setupntp
+cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
+cmd:lsdef -l $$CN
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
