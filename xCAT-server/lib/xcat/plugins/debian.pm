@@ -445,6 +445,7 @@ sub mkinstall {
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{ $request->{node} };
+    my $bootparams = ${$request->{bootparams}};
     my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
@@ -490,7 +491,6 @@ sub mkinstall {
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
@@ -502,8 +502,6 @@ sub mkinstall {
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
     my %macents = %{ $mactab->getNodesAttribs(\@nodes, ['mac']) };
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     require xCAT::Template;
 
     # Warning message for nodeset <noderange> install/netboot/statelite
@@ -923,10 +921,9 @@ sub mkinstall {
             }
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
-
-            $bptab->setNodeAttribs($node, { kernel => "$rtftppath/vmlinuz",
-                    initrd   => "$rtftppath/initrd.img",
-                    kcmdline => $kcmdline });
+            $bootparams->{$node}->[0]->{kernel} = "$rtftppath/vmlinuz";
+            $bootparams->{$node}->[0]->{initrd} = "$rtftppath/initrd.img";
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else {
             $callback->({ error => ["Install image not found in $installroot/$os/$arch"],
@@ -945,6 +942,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
+    my $bootparams = ${$request->{bootparams}};
     my $tftpdir = "/tftpboot";
     my $nodes   = @{ $req->{node} };
     my @args    = @{ $req->{arg} };
@@ -991,7 +989,6 @@ sub mknetboot
     my %donetftp = ();
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
 
@@ -1008,9 +1005,6 @@ sub mknetboot
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
-    # Warning message for nodeset <noderange> install/netboot/statelite
     foreach my $knode (keys %oents)
     {
         my $ent = $oents{$knode}->[0];
@@ -1589,15 +1583,9 @@ sub mknetboot
                 $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
-
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => "$kernstr",
-                initrd   => "$initrdstr",
-                kcmdline => $kcmdline
-            }
-        );
+        $bootparams->{$node}->[0]->{kernel} = $kernstr;
+        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 
     #my $rc = xCAT::TableUtils->create_postscripts_tar();
