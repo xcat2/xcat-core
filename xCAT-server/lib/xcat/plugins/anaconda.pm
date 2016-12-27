@@ -2266,6 +2266,20 @@ sub copycd
             }
             close($dinfo);
         }
+        elsif ($desc =~ /^[\d\.]+$/)
+        {
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /family\s*=\s*CentOS/i) {
+                    $distname = "centos" . $desc;
+                    last;
+                }
+            }
+            close($dinfo);
+        }
         else
         {
             print "INFO - Could not auto-detect operating system.\n";
