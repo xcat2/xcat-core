@@ -100,3 +100,25 @@ check:rc==0
 cmd:rm -rf /tmp/postscript
 end
 
+
+start:makentp_initialize
+descriptiop:start ntp service on management node and synchronize time with external ntp server
+cmd:chtab key=extntpservers site.value="$$extntpserversip"
+check:rc==0
+cmd:makentp -V
+check:rc==0
+check:output=~configuring management node: $$MN
+check:output=~checking if nptd is installed
+check:output=~backing up the ntp configuration file /etc/ntp.conf
+check:output=~ntp servers are: $$extntpserversip
+check:output=~stopping ntpserver
+check:output=~starting ntpserver
+check:output=~enabling ntpserver
+cmd:if [ -f "/usr/sbin/ntp-wait" ];then ntp-wait; else sleep 1200; fi
+check:rc==0
+cmd:ntpq -p
+check:output=~*$$extntpserversip
+cmd:grep $$extntpserversip /etc/ntpd.conf
+check:rc==0
+end
+
