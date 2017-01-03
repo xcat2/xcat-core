@@ -100,7 +100,7 @@ if [ $OS_TYPE = Linux ]; then
     mkdir -p /var/lib/ntp
     chown ntp /var/lib/ntp
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-        echo "driftfile /etc/ntp.drift" >>$conf_file
+        echo "driftfile /var/lib/ntp/drift/ntp.drift" >>$conf_file
     else 
         echo "driftfile /var/lib/ntp/drift" >>$conf_file
     fi 

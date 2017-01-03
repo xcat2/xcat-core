@@ -318,7 +318,7 @@ sub process_request {
         print CFGFILE "disable auth\n";
         print CFGFILE "broadcastclient\n";
     } elsif ($os =~ /sles/) {
-        print CFGFILE "driftfile /etc/ntp.drift\n";
+        print CFGFILE "driftfile /var/lib/ntp/drift/ntp.drift\n";
         print CFGFILE "disable auth\n";
     } else {
         print CFGFILE "driftfile /var/lib/ntp/drift\n";
