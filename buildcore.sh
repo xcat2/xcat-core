@@ -492,7 +492,7 @@ EOF
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xCAT-*.repo`
-if [ $REPOFILE = "xCAT-*.repo" ]; then
+if [[ $REPOFILE == "xCAT-*.repo" ]]; then
     echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
     exit 1
 fi
