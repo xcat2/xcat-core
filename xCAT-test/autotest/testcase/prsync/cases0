@@ -1,16 +1,22 @@
 start:prsync_h
+description: prsync -h
+os:Linux
 cmd:prsync -h
 check:rc==0
 check:output=~Usage
 end
 
 start:prsync_v
+description: prsync -v
+os:Linux
 cmd:prsync -v
 check:rc==0
 check:output=~Version
 end
 
 start:prsync_dir_node
+description: run prsync -o to copy files in dir from MN to CN
+os:Linux
 cmd: mkdir -p /tmp/pscp
 check:rc==0
 cmd:echo "test" > /tmp/pscp/pscp.tmp
@@ -34,6 +40,8 @@ check:rc==0
 end
 
 start:prsync_file_node
+description: run prsync -o to copy file from MN to CN
+os:Linux
 cmd: echo "prsync-test" > prsync.test
 check:rc==0
 cmd:prsync prsync.test $$CN:/tmp/
