@@ -315,10 +315,20 @@ sub check_pre_defined_node {
         my $keystring;
         foreach my $node (keys %nodecheckrst) {
             {
+                last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
+
+                my @error_attribute = ();
                 $keystring = "";
-                if (!(exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"}))) {
-                    last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
-                    $keystring = "Atrribute 'switch' or 'switchport' isn't defined for '$discovery_type' type discovery";
+
+                if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
+                    push @error_attribute, "switch";
+                }
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/) {
+                    push @error_attribute, "switchport";
+                }
+
+                if (@error_attribute) {
+                    $keystring = "Attribute " . join(", ", @error_attribute) . " Invalid";
                     last;
                 } else {
                     my $switchport = "$nodecheckrst{$node}{\"switch\"}*$nodecheckrst{$node}{\"switchport\"}";
