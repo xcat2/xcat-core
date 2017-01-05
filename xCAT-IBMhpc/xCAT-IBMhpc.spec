@@ -20,7 +20,6 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-#Requires:
 %endif
 
 Requires: perl-xCAT >= %{epoch}:%{version}

@@ -10,7 +10,6 @@ Packager: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-#BuildArch: noarch
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
@@ -48,8 +47,6 @@ Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 Requires: xCAT-buildkit
-# yaboot-xcat is pulled in so any MN can manage ppc nodes
-#Requires: yaboot-xcat
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty
 %endif
