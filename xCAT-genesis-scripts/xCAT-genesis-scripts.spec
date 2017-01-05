@@ -25,7 +25,7 @@ Provides: xCAT-genesis-%{tarch}
 Name:	 %{name}
 Group: System/Utilities
 License: EPL
-Vendor: IBM Corp
+Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image - Core content
 URL:	 https://xcat.org/
 Source1: xCAT-genesis-scripts.tar.bz2
