@@ -1,7 +1,7 @@
-Edgecore Switches
-=================
+ONIE Compatible Bare Metal Switches
+===================================
 
 .. toctree::
    :maxdepth: 2
 
-   edgecore_switches.rst
+   onie_switches.rst
