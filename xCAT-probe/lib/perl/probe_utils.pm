@@ -348,20 +348,21 @@ sub is_http_ready {
 sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
-
-    rename("/tftpboot/tftptestt.tmp", "/tftpboot/tftptestt.tmp.old") if (-e "/tftpboot/tftptestt.tmp");
+    my $tftpdir = shift;
+    
+    rename("/$tftpdir/tftptestt.tmp", "/$tftpdir/tftptestt.tmp.old") if (-e "/$tftpdir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
-    system("touch /tftpboot/tftptestt.tmp");
+    system("touch /$tftpdir/tftptestt.tmp");
     my $output = `tftp -4 -v $mnip  -c get tftptestt.tmp`;
     if ((!$?) && (-e "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 1;
     } else {
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 0;
     }
 }
