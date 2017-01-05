@@ -227,6 +227,7 @@ sub install_license {
     print "file = $license_file\n";
     if (!(-e $license_file) ) {
         print "$license_file is not exist\n";
+        return;
     }
 
     foreach my $switch (@nodes) {
@@ -371,21 +372,6 @@ sub config_ntp {
     
 }
 
-sub config_vlan {
-    if ($::PORT) {
-        $port = $::PORT;
-    } else {
-        &usage;
-        exit(1);
-    }
-    $vlan = $::VLAN;
-    print "Tagging VLAN=$vlan for $switches port $port\n";
-    #create vlan, tagged vlan
-    #$cmd = `xdsh $switches --devicetype EthSwitch::BNT "enable;configure terminal;vlan $vlan;exit;interface port $port;switchport mode trunk;switchport trunk allowed vlan $vlan;write memory;exit;exit"`;
-
-}
-
-
 #---------------------------------------------------------
 
 =head3    usage
@@ -398,13 +384,14 @@ sub config_vlan {
 sub usage
 {
     print "Usage:
-    configBNT [-?│-h│--help] 
-    configBNT [--switches switchnames] [--all] 
-    configBNT [--switches switchnames] [--ssh] 
-    configBNT [--switches switchnames] [--license filename ] 
-    configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
-    configBNT [--switches switchnames] [--ntp] 
-    configBNT [--switches switchnames] [--port port] [--vlan vlan]
+    configcumulus -h│--help 
+    configcumulus --switches switchnames --ssh 
+    configcumulus --switches switchnames --license filename  
+    configcumulus --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configcumulus --switches switchnames --ntp 
+
+    To set ssh, install license(license file: /root/license.txt), config snmp and ntp:
+        configcumulus --switches switchnames --all 
     \n";
 }
 
