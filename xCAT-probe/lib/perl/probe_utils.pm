@@ -267,9 +267,10 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $installdir = shift;
     my $errormsg_ref = shift;
 
-    my $http      = "http://$mnip/install/postscripts/syslog";
+    my $http      = "http://$mnip/$installdir/postscripts/syslog";
     my %httperror = (
     "400" => "The request $http could not be understood by the server due to malformed syntax",
     "401" => "The request requires user authentication.",
