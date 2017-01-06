@@ -73,7 +73,7 @@ if ($::SWITCH) {
     my $switchestab =  xCAT::Table->new('switches');
     my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
     foreach my $fsw (@filternodes)  {
-        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /cumulus/) {
+        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /onie/) {
             push @nodes, $fsw;
         } else {
             xCAT::MsgUtils->message("E","The $fsw is not cumulus switch, will not config");
