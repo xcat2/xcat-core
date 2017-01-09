@@ -1,6 +1,6 @@
 start:redhat_migration1
 os:Linux
-description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -103,14 +103,13 @@ cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
 check:rc==0
-cmd:xdsh $$CN "lsxcatd -v"
+cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-check:output=~$$LATEST_VERSION
 end
 
 start:redhat_migration2
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$MIGRATION2_VERSION to latest version, these two global parameter defined in config file
 stop:yes
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
@@ -214,8 +213,7 @@ cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
 check:rc==0
-cmd:xdsh $$CN "lsxcatd -v"
+cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-check:output=~$$LATEST_VERSION
 end
 
