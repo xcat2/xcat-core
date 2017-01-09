@@ -190,6 +190,31 @@ function setversionvars {
     echo "$XCAT_RELEASE" >Release
 }
 
+RELEASE_FILE="Release"
+RELEASE_FILE_SAVE="${RELEASE_FILE}.save.998"
+
+function internal_backup()
+{
+    # Create a backup for file `Release'
+    if [ ! -f "${RELEASE_FILE_SAVE}" ]
+    then
+        mv "${RELEASE_FILE}" "${RELEASE_FILE_SAVE}"
+        cp "${RELEASE_FILE_SAVE}" "${RELEASE_FILE}"
+    fi
+}
+
+function internal_cleanup()
+{
+    # Restore file `Release'
+    if [ -f "${RELEASE_FILE_SAVE}" ]
+    then
+        mv "${RELEASE_FILE_SAVE}" "${RELEASE_FILE}"
+    fi
+}
+
+internal_backup
+trap internal_cleanup 0
+
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting  ### @LINE460 ###
 # we are doing a snap build
 CORE="core-snap"
