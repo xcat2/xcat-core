@@ -148,6 +148,9 @@ config_rsyslog_V8()
   conf_file="/etc/rsyslog.conf"
   remoteconf="/etc/rsyslog.d/remote.conf"
 
+  #for Cumulus OS inside ONIE switches
+  cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 && remoteconf="/etc/rsyslog.d/99-syslog.conf"
+
   # If this is a Management Node or Service Node, then it will be receiving syslog entries from the
   # compute nodes. Management Node is receiving from Service Nodes and possibly compute nodes.
   # They will all be put in /var/log/messages
