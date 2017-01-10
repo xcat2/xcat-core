@@ -1748,39 +1748,12 @@ END
 
     #if "nonodestatus" specified,do not update the nodestatus
     system("mkdir -p /tmp/xcatinitrd.$$/tmp/");
-    open($inifile, ">", "/tmp/xcatinitrd.$$/tmp/updateflag");
+    cp("$installroot/postscripts/updateflag.awk","/tmp/xcatinitrd.$$/tmp/updateflag");
+    $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
+    chmod($perm & 07777, "/tmp/xcatinitrd.$$/tmp/updateflag");
 
-    print $inifile <<EOMS;
-#!/usr/bin/awk -f
-BEGIN {
-
-        xcatdhost = ARGV[1]
-        xcatiport = ARGV[2]
-
-
-        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
-        print "xCAT_xcatd" |& ns
-
-        while(1) {
-                ns |& getline
-
-                if(\$0 == "ready")
-                        print ARGV[3] |& ns
-                if(\$0 == "done")
-                        break
-        }
-
-        close(ns)
-
-        exit 0
-}
-
-EOMS
-
-    close($inifile);
     chmod(0755, "/tmp/xcatinitrd.$$/init");
     chmod(0755, "/tmp/xcatinitrd.$$/bin/netstart");
-    chmod(0755, "/tmp/xcatinitrd.$$/tmp/updateflag");
 
     @filestoadd = ();
     foreach (@ndrivers) {

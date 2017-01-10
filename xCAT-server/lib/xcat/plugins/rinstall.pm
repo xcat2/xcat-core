@@ -351,7 +351,7 @@ sub rinstall {
             }
             if ($line =~ /dhcp server is not running/) {
                 my $rsp = {};
-                $rsp->{error}->[0]     = "Fatal error";
+                $rsp->{error}->[0]     = "Fatal error: dhcp server is not running";
                 $rsp->{errorcode}->[0] = 1;
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;

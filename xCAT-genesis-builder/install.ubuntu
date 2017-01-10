@@ -10,7 +10,7 @@ dracut_install efibootmgr
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad
 dracut_install lldptool 
-dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
+dracut_install poweroff ntpq ntp-wait ntpd hwclock date /usr/share/terminfo/x/xterms /etc/nsswitch.conf /etc/services
 dracut_install /usr/sbin/rsyslogd /etc/protocols umount /usr/bin/dpkg /usr/bin/rpm /usr/lib/rpm/rpmrc
 if [ -n $version12 ];then
     dracut_install /lib/x86_64-linux-gnu/libnss_dns-2.15.so /lib/x86_64-linux-gnu/libnss_dns.so.2

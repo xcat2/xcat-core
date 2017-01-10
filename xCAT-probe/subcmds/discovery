@@ -242,7 +242,7 @@ sub check_pre_defined_node {
                     foreach my $mtmsnode (@{$mtms_node{$mtms}}) {
                         next if ($mtmsnode eq $node);      
                         if (exists($nodecheckrst{$mtmsnode})) {
-                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"mp"} eq $nodecheckrst{$node}{"hwtype"})) {
+                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"hwtype"} eq $nodecheckrst{$node}{"hwtype"})) {
                                 push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
                             }
                         } else {
@@ -315,10 +315,20 @@ sub check_pre_defined_node {
         my $keystring;
         foreach my $node (keys %nodecheckrst) {
             {
+                last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
+
+                my @error_attribute = ();
                 $keystring = "";
-                if (!(exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"}))) {
-                    last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
-                    $keystring = "Atrribute 'switch' or 'switchport' isn't defined for '$discovery_type' type discovery";
+
+                if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
+                    push @error_attribute, "switch";
+                }
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/) {
+                    push @error_attribute, "switchport";
+                }
+
+                if (@error_attribute) {
+                    $keystring = "Attribute " . join(", ", @error_attribute) . " Invalid";
                     last;
                 } else {
                     my $switchport = "$nodecheckrst{$node}{\"switch\"}*$nodecheckrst{$node}{\"switchport\"}";

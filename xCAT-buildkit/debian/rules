@@ -9,9 +9,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-export DH_COMPAT=5
-
-
 build:
 	pwd
 	mkdir -p share/man/man1
@@ -39,7 +36,6 @@ install:
 	chmod -R 755 debian/xcat-buildkit/opt/xcat/bin/*
 	find debian/xcat-buildkit/opt/xcat/share/doc/packages/xCAT-buildkit -type f -exec chmod 644 {} \;
 	dh_link
-
 
 # Build architecture-independent files here.
 binary-indep: build install

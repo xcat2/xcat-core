@@ -2,11 +2,15 @@ Source: xcat-server
 Section: admin
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
+Homepage: https://xcat.org/
 
 Package: xcat-server
 Architecture: all
-Depends: ${perl:Depends}, grub2-xcat, perl-xcat (>= 2.5.0-1), xcat-client (>= 2.5.0-1), libsys-syslog-perl, libio-socket-ssl-perl, libxml-simple-perl, make, libdbd-sqlite3-perl, libexpect-perl, libnet-dns-perl, libsoap-lite-perl, libxml-libxml-perl, libsnmp-perl, debootstrap, libdigest-sha-perl,libcrypt-rijndael-perl,libcrypt-cbc-perl,libjson-perl, libnet-https-nb-perl, libhttp-async-perl
-Description: Server and configuration utilities of the xCAT management project
- xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
+Depends: ${perl:Depends}, grub2-xcat, perl-xcat (>= 2.13-snap000000000000), xcat-client (>= 2.13-snap000000000000), libsys-syslog-perl, libio-socket-ssl-perl, libxml-simple-perl, make, libdbd-sqlite3-perl, libexpect-perl, libnet-dns-perl, libsoap-lite-perl, libxml-libxml-perl, libsnmp-perl, debootstrap, libdigest-sha-perl,libcrypt-rijndael-perl,libcrypt-cbc-perl,libjson-perl, libnet-https-nb-perl, libhttp-async-perl
+Description: Server and configuration utilities of xCAT
+ xCAT-server provides the core server and configuration management components
+ of xCAT.
+ .
+ This package should be installed on the xCAT management node.

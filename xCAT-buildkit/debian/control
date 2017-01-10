@@ -1,11 +1,11 @@
 Source: xcat-buildkit
 Section: admin
 Priority: extra
-Maintainer: xu qing <qxuqxu@cn.ibm.com>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Maintainer: Xu Qing <qxuqxu@cn.ibm.com>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
 
 Package: xcat-buildkit
 Architecture: all
 Depends: dpkg-dev, devscripts, debhelper
-Description: xCAT-buildkit provides the buildkit tool and sample kit files to build an xCAT kit.
+Description: Provides build tools and sample files to build an xCAT kit
