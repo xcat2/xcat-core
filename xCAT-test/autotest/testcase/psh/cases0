@@ -35,3 +35,20 @@ check:output=~$$CN
 check:output=~/root
 end
 
+start:psh_l
+description: psh -l user CN 'uptime' in linux
+os:Linux
+cmd:psh -l root $$CN 'uptime'
+check:rc==0
+check:output=~$$CN
+end
+
+
+start:psh_i
+description: psh -i interface CN 'uptime' in linux
+os:Linux
+cmd:interface=`xdsh $$CN  'ifconfig' | sed -n 1p | awk -F : '{print $2}' | awk -F ' ' '{print $1}'`;sed -i "s/com $$CN/com $$CN $$CN-$interface/g" '/etc/hosts';psh -i $interface $$CN 'uptime'
+check:output=~$$CN
+check:rc==0
+end
+
