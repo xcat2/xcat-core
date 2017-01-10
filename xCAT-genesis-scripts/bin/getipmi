@@ -1,5 +1,7 @@
 #!/bin/bash
 
+log_label="xcat.genesis.getipmi"
+
 allowcred.awk &
 CREDPID=$!
 if [ -z "$XCATDEST" ]; then
