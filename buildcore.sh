@@ -255,20 +255,15 @@ if [ "$GIT" = "1" ]; then
     # To enable local sandbox build, GITPULL is disabled by default.
     #
     if [ "$GITPULL" = "1" ] || [ ${PWD} == *"autobuild"* ]; then
-        # TODO: This is really not necessary since the autobuild scripts
-        #       are building the xcat code in a new directory each time
+        # Do some checking for modified files
         MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
         if [ $MODIFIED_FILES ]; then
-                echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
-                echo "Not a clean build, aborting..."
-                exit 3
+            echo "WARNING: The following files have been modified in the local repository: $MODIFIED_FILES..."
         fi
-        # check if there's any modifications to git current repo
+        # Do some checking for untracked files
         UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
         if [ -n "$UNTRACKED_FILES" ]; then
-            echo "The following files are not tracked in git: $UNTRACKED_FILES..."
-            echo "Not a clean build, aborting..."
-            exit 3
+            echo "WARNING: The following files are not tracked in git: $UNTRACKED_FILES..."
         fi
         if [ -z "$GITUP" ]; then
             if [ ! -z "$COMMITID" ]; then
