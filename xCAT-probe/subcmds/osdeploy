@@ -293,6 +293,17 @@ sub check_noderange {
                     $mac =~ s/\!\*NOIP\*//g;
                     $macmap{$mac}{"ip"}   = "NOIP";
                     $macmap{$mac}{"node"} = $node;
+                } elsif ($mac =~ /(\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2})\!(.+)/) {
+                    $mac = $1;
+                    my $tmp_node = $2;
+                    $macmap{$mac}{"node"} = $node;
+                    my $tmp_ip = xCAT::NetworkUtils->getipaddr($tmp_node);
+                    if ($tmp_ip) {
+                        $macmap{$mac}{"ip"}  = $tmp_ip;
+                        $ipnodemap{ $nodecheckrst{$node}{"ip"} } = $node;
+                    } else {
+                        $macmap{$mac}{"ip"} = "NOIP";
+                    }
                 } else {
                     $macmap{$mac}{"node"} = $node;
                     $macmap{$mac}{"ip"}   = $nodecheckrst{$node}{"ip"};

@@ -460,15 +460,11 @@ ProcessType () {
             CHAREND=`echo ${STRPATH} | /usr/bin/cut -c${STRLEN}`            
 
             if [ "${CHAREND}" = "/" ]; then # it is one directory
-                if [ ! -d ${STRPATH} ]; then
                     /bin/rm -rf ${STRPATH}
                     /bin/mkdir ${STRPATH}
-                fi
             else
-                if [ ! -f ${STRPATH} ]; then
                     /bin/rm -rf ${STRPATH}
                     /bin/touch ${STRPATH}
-                fi
             fi
 
             echo "mout --bind -o ro ${1} ${MNTDIR}${2}" >>$LOG 2>&1

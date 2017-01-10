@@ -4,7 +4,7 @@
 # Author: Leonardo Tonetto (tonetto@linux.vnet.ibm.com)
 # Revisor: Arif Ali (aali@ocf.co.uk)
 #
-# 
+#
 # Getting Started:
 #  - Clone the xcat-core git repository int a directory called <rel>/src/xcat-core, where <rel>
 #    is the same name as the release dir it is uploaded to xcat.org (e.g devel, 2.9, 2.10)
@@ -15,21 +15,21 @@
 #               PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
 #                           actually build xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
 #                           If not specified, a snap build is assumed, which uploads to https://xcat.org/files/xcat/
-#               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this 
-#                           build is a GA candidate build, not to be released yet.  This will result in the tarball 
+#               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this
+#                           build is a GA candidate build, not to be released yet.  This will result in the tarball
 #                           being uploaded to http://xcat.org/files/xcat/repos/apt
-#                           (but the tarball file name will be like a released tarball, not a snap build).  
+#                           (but the tarball file name will be like a released tarball, not a snap build).
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
-#               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in 
+#               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in
 #                            prep for a release.
 #               UP=0 or UP=1 - override the default upload behavior
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
-# For the dependency packages 1. All the xcat dependency deb packages should be uploaded to 
+# For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
 #                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
 #
-#                             3. the built xcat-dep deb packages tarball can be found in "../../xcat-dep" 
+#                             3. the built xcat-dep deb packages tarball can be found in "../../xcat-dep"
 #                                related to the path of this script
 ############################
 printusage()
@@ -39,10 +39,10 @@ printusage()
     echo "    -d : Create the xcat-dep repo."
 }
 # For the purpose of getting the distribution name
-if [[ ! -f /etc/lsb-release ]]; then 
+if [[ ! -f /etc/lsb-release ]]; then
     echo "ERROR: Could not find /etc/lsb-release, is this script executed on a Ubuntu machine?"
     exit 1
-fi 
+fi
 . /etc/lsb-release
 
 # Check the necessary packages before starting the build
@@ -84,7 +84,7 @@ do
         r)    r_flag=1
                 genesis_rpm_path="$OPTARG"
                 ;;
-	?)  printusage 
+	?)  printusage
 	    exit 2
 	    ;;
     esac
@@ -129,7 +129,7 @@ fi
 export HOME=/root
 
 WGET_CMD="wget"
-if [ ! -z ${LOG} ]; then 
+if [ ! -z ${LOG} ]; then
     WGET_CMD="wget -o ${LOG}"
 fi
 
@@ -211,13 +211,13 @@ then
         build_string="Snap_Build"
         cur_date=`date +%Y%m%d%H%M`
         pkg_version="${ver}-${pkg_type}${cur_date}"
-    
+
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
         fi
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit xCAT-vlan xCAT-confluent xCAT-probe"
         target_archs=(amd64 ppc64el)
-        for file in `echo $packages`
+        for file in $packages
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
             if [ "$file" = "xCAT" -o "$file" = "xCAT-genesis-scripts" ]; then
@@ -225,7 +225,7 @@ then
             else
                 target_archs="all"
             fi
-            for target_arch in `echo $target_archs`
+            for target_arch in $target_archs
             do
                 if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
                     rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
@@ -245,7 +245,12 @@ then
                             cp -f ${CURDIR}/../perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/lib/perl/xCAT/
                             cp -f ${CURDIR}/../perl-xCAT/xCAT/ServiceNodeUtils.pm ${CURDIR}/lib/perl/xCAT/
                         fi
-                        dpkg-buildpackage -uc -us
+                        CURDIR=$(pwd)
+                        cp ${CURDIR}/debian/control ${CURDIR}/debian/control.save.998
+                        # Magic string used here
+                        sed -i -e "s#>= 2.13-snap000000000000#= ${pkg_version}#g" ${CURDIR}/debian/control
+                        dpkg-buildpackage -rfakeroot -uc -us
+                        mv ${CURDIR}/debian/control.save.998 ${CURDIR}/debian/control
                     else
                         if [ "$file" = "xCAT-genesis-scripts" ]; then
                             echo "Rename control file to build pkg: mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control"
@@ -258,7 +263,12 @@ then
                                  sed -i "s/xcat.genesis.$f/$f/g" ${CURDIR}/postscripts/$f
                             done
                         fi
-                        dpkg-buildpackage -uc -us -a$target_arch
+                        CURDIR=$(pwd)
+                        cp ${CURDIR}/debian/control ${CURDIR}/debian/control.save.998
+                        # Magic string used here
+                        sed -i -e "s#>= 2.13-snap000000000000#= ${pkg_version}#g" ${CURDIR}/debian/control
+                        dpkg-buildpackage -rfakeroot -uc -us -a$target_arch
+                        mv ${CURDIR}/debian/control.save.998 ${CURDIR}/debian/control
                         if [ "$file" = "xCAT-genesis-scripts" ]; then
                             echo "Move control file back: mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}"
                             rm ${CURDIR}/debian/control
@@ -327,7 +337,7 @@ Label: xcat-core bazaar repository
 Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
-Description: Repository automatically genereted conf 
+Description: Repository automatically genereted conf
 SignWith: yes
 
 __EOF__
@@ -367,12 +377,12 @@ __EOF__
 
     chmod 775 mklocalrepo.sh
 
-    #create the xcat-core.list file 
+    #create the xcat-core.list file
 
     cd ../
     if ! grep xcat /etc/group ; then
         groupadd xcat
-    fi     
+    fi
 
     chgrp -R root xcat-core
     chmod -R g+w xcat-core
@@ -398,7 +408,7 @@ then
 
     #the path of ubuntu xcat-dep deb packages on GSA
     GSA="/gsa/pokgsa/projects/x/xcat/build/ubuntu/xcat-dep"
- 
+
     if [ ! -d $GSA ]; then
        echo "build-ubunturepo:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
        exit 1;
@@ -410,10 +420,10 @@ then
 
     echo "Syncing RPMs from $GSA/ to $local_dep_repo_path/../ ..."
     rsync -ilrtpu --delete $GSA/ $local_dep_repo_path/../
-    if [ $? -ne 0 ]; then 
+    if [ $? -ne 0 ]; then
         echo "Error from rsync, cannot continue!"
         exit 1
-    fi 
+    fi
 
     #clean all old files
     if [ -e $local_dep_repo_path ];then
@@ -437,7 +447,7 @@ Label: xcat-dep bazaar repository
 Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
-Description: Repository automatically genereted conf 
+Description: Repository automatically genereted conf
 SignWith: yes
 
 __EOF__
@@ -492,7 +502,7 @@ __EOF__
     chmod g+w $dep_tar_name
 
     # Decide whether to upload or not (default NOT to upload)
-    if [ "$UP" != "1" ]; then 
+    if [ "$UP" != "1" ]; then
         echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd
         exit 0

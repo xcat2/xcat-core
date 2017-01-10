@@ -35,7 +35,7 @@ The \ **copycds**\  command copies all contents of Distribution DVDs/ISOs or Ser
 
 You can specify \ **-i**\  or \ **-**\ **-inspection**\  option to check whether the DVDs/ISOs can be recognized by xCAT. If recognized, the distribution name, architecture and the disc no (the disc sequence number of DVDs/ISOs in multi-disk distribution) of the DVD/ISO is displayed. If xCAT doesn't recognize the DVD/ISO, you must manually specify the distro name and architecture using the \ **-n**\  and \ **-a**\  options. This is sometimes the case for distros that have very recently been released, and the xCAT code hasn't been updated for it yet.
 
-You can get xCAT to recognize new DVDs/ISOs by adding them to /opt/xcat/lib/perl/xCAT/data/discinfo.pm and reloading xcatd (\ **service xcatd reload**\ ).
+You can get xCAT to recognize new DVDs/ISOs by adding them to /opt/xcat/lib/perl/xCAT/data/discinfo.pm (the key of the hash is the first line of .discinfo) and reloading xcatd (\ **service xcatd reload**\ ).
 
 
 *******

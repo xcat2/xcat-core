@@ -2,12 +2,14 @@ Source: xcat-client
 Section: admin
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
 
 Package: xcat-client
 Architecture: all
-Depends: ${perl:Depends}, nmap, perl-xcat
-Recommends: libsort-versions-perl
+Depends: ${perl:Depends}, perl-xcat (>= 2.13-snap000000000000)
+Recommends: libsort-versions-perl, nmap
 Description: Core executables and data of the xCAT management project
- xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.
+ xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower,
+ etc) helpful in administrating systems at scale, with particular attention
+ paid to large HPC clusters.

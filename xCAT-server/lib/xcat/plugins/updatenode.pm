@@ -2252,6 +2252,9 @@ s/Running of postscripts has completed/Redeliver security files has completed/;
             }
         }
     }
+    if($response->{errorcode}) {
+        $rsp->{errorcode} = $response->{errorcode};
+    }
     $CALLBACK->($rsp);
 }
 

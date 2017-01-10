@@ -7,12 +7,6 @@ check:rc==0
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
-#cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$SN,vmstorage)__" =~ "phy" ]]; then rmvm $$SN -f -p  &&  mkvm $$SN; else rmvm $$SN -f -p  &&  mkvm $$SN -s 20G; fi;fi
-#Add for debug rmvm issue
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$SN kvm_nodedata; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$SN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$SN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$SN,vmstorage)__" =~ "phy" ]]; then rmvm $$SN -f -p ;mkvm $$SN; else rmvm $$SN -f -p;mkvm $$SN;rmvm $$SN -f -p;mkvm $$SN -s 20G; fi;fi
-check:rc==0
 
 cmd:makedns -n
 check:rc==0
