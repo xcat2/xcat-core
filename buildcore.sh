@@ -35,6 +35,9 @@
 # The following environment variables can be modified if you need
 #
 
+SCRIPT=$(readlink -f $0)
+SCRIPTPATH=`dirname $SCRIPT`
+
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
@@ -190,7 +193,7 @@ function setversionvars {
     echo "$XCAT_RELEASE" >Release
 }
 
-RELEASE_FILE="Release"
+RELEASE_FILE="${SCRIPTPATH}/Release"
 RELEASE_FILE_SAVE="${RELEASE_FILE}.save.998"
 
 function internal_backup()
@@ -240,7 +243,6 @@ else
         echo "Error: Could not determine rpmbuild's root directory."
         exit 2
     fi
-    #echo "source=$source"
 fi
 
 #
@@ -253,20 +255,15 @@ if [ "$GIT" = "1" ]; then
     # To enable local sandbox build, GITPULL is disabled by default.
     #
     if [ "$GITPULL" = "1" ] || [ ${PWD} == *"autobuild"* ]; then
-        # TODO: This is really not necessary since the autobuild scripts
-        #       are building the xcat code in a new directory each time
+        # Do some checking for modified files
         MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
         if [ $MODIFIED_FILES ]; then
-                echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
-                echo "Not a clean build, aborting..."
-                exit 3
+            echo "WARNING: The following files have been modified in the local repository: $MODIFIED_FILES..."
         fi
-        # check if there's any modifications to git current repo
+        # Do some checking for untracked files
         UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
         if [ -n "$UNTRACKED_FILES" ]; then
-            echo "The following files are not tracked in git: $UNTRACKED_FILES..."
-            echo "Not a clean build, aborting..."
-            exit 3
+            echo "WARNING: The following files are not tracked in git: $UNTRACKED_FILES..."
         fi
         if [ -z "$GITUP" ]; then
             if [ ! -z "$COMMITID" ]; then
