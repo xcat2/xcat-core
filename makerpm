@@ -107,6 +107,13 @@ function makexcat {
 		TARGET="--target $ARCH"
 
 		if [ "$RPMNAME" = "xCAT" ]; then
+			cd `dirname $0`/
+			# shipping bmcsetup and getipmi scripts as part of postscripts
+			files=("bmcsetup" "getipmi")
+			for f in "${files[@]}"; do
+				cp "xCAT-genesis-scripts/bin/"$f ${RPMNAME}/postscripts/$f
+				sed -i  "s/xcat.genesis.$f/$f/g" ${RPMNAME}/postscripts/$f
+			done
 			cd `dirname $0`/$RPMNAME
 			tar --exclude .svn --exclude upflag -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
@@ -139,6 +146,12 @@ function makexcat {
 		echo "Building $RPMROOT/RPMS/$ARCH/$RPMNAME-$VER-snap*.$ARCH.rpm $EMBEDTXT..."
 		rpmbuild $QUIET -ba $RPMNAME/$RPMNAME.spec $TARGET --define "version $VER" $REL "$EASE"
 		RC=$?
+		if [ "$RPMNAME" = "xCAT" ]; then
+			files=("bmcsetup" "getipmi")
+			for f in "${files[@]}"; do
+				rm -f `dirname $0`/${RPMNAME}/postscripts/$f
+			done
+		fi
 	fi
 }
 

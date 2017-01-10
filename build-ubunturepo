@@ -232,6 +232,7 @@ then
                     #genesis scripts package, don't remove genesis amd64 files
                     #rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
                     cd $file
+                    CURDIR=$(pwd)
                     dch -v $pkg_version -b -c debian/changelog $build_string
                     if [ "$target_arch" = "all" ]; then
                         #xcat probe use some functions shipped by xCAT, for below reasons we need to copy files to xCAT-probe directory
@@ -239,7 +240,6 @@ then
                         #2 don't maintain two files for each script
                         #3 symbolic link can't work during package
                         if [ $file_low = "xcat-probe" ]; then
-                            CURDIR=$(pwd)
                             mkdir -p ${CURDIR}/lib/perl/xCAT/
                             cp -f ${CURDIR}/../perl-xCAT/xCAT/NetworkUtils.pm ${CURDIR}/lib/perl/xCAT/
                             cp -f ${CURDIR}/../perl-xCAT/xCAT/GlobalDef.pm ${CURDIR}/lib/perl/xCAT/
@@ -253,9 +253,15 @@ then
                         mv ${CURDIR}/debian/control.save.998 ${CURDIR}/debian/control
                     else
                         if [ "$file" = "xCAT-genesis-scripts" ]; then
-                            CURDIR=$(pwd)
-                            echo "Rename control file to build pkg: cp ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control"
+                            echo "Rename control file to build pkg: mv ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control"
                             cp ${CURDIR}/debian/control-${target_arch} ${CURDIR}/debian/control
+                        elif [ "$file" = "xCAT" ]; then
+                            # shipping bmcsetup and getipmi scripts as part of postscripts
+                            files=("bmcsetup" "getipmi")
+                            for f in "${files[@]}"; do
+                                 cp ${CURDIR}/../xCAT-genesis-scripts/bin/$f ${CURDIR}/postscripts/$f
+                                 sed -i "s/xcat.genesis.$f/$f/g" ${CURDIR}/postscripts/$f
+                            done
                         fi
                         CURDIR=$(pwd)
                         cp ${CURDIR}/debian/control ${CURDIR}/debian/control.save.998
@@ -264,9 +270,13 @@ then
                         dpkg-buildpackage -rfakeroot -uc -us -a$target_arch
                         mv ${CURDIR}/debian/control.save.998 ${CURDIR}/debian/control
                         if [ "$file" = "xCAT-genesis-scripts" ]; then
-                            CURDIR=$(pwd)
                             echo "Move control file back: mv ${CURDIR}/debian/control ${CURDIR}/debian/control-${target_arch}"
                             rm ${CURDIR}/debian/control
+                        elif [ "$file" = "xCAT" ]; then
+                            files=("bmcsetup" "getipmi")
+                            for f in "${files[@]}"; do
+                                rm -f ${CURDIR}/postscripts/$f
+                            done
                         fi
                     fi
                     rc=$?
