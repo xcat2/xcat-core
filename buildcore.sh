@@ -35,6 +35,9 @@
 # The following environment variables can be modified if you need
 #
 
+SCRIPT=$(readlink -f $0)
+SCRIPTPATH=`dirname $SCRIPT`
+
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
@@ -190,7 +193,7 @@ function setversionvars {
     echo "$XCAT_RELEASE" >Release
 }
 
-RELEASE_FILE="Release"
+RELEASE_FILE="${SCRIPTPATH}/Release"
 RELEASE_FILE_SAVE="${RELEASE_FILE}.save.998"
 
 function internal_backup()
@@ -240,7 +243,6 @@ else
         echo "Error: Could not determine rpmbuild's root directory."
         exit 2
     fi
-    #echo "source=$source"
 fi
 
 #
