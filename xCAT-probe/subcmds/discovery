@@ -242,7 +242,7 @@ sub check_pre_defined_node {
                     foreach my $mtmsnode (@{$mtms_node{$mtms}}) {
                         next if ($mtmsnode eq $node);      
                         if (exists($nodecheckrst{$mtmsnode})) {
-                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"mp"} eq $nodecheckrst{$node}{"hwtype"})) {
+                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"hwtype"} eq $nodecheckrst{$node}{"hwtype"})) {
                                 push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
                             }
                         } else {
