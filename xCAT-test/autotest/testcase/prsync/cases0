@@ -23,7 +23,7 @@ cmd:echo "test" > /tmp/pscp/pscp.tmp
 check:rc==0
 cmd:prsync -o "crz" /tmp/pscp $$CN:/tmp/
 check:rc==0
-check:$$CN: done
+check:output=~$$CN: done
 cmd:xdsh $$CN "ls -l /tmp |grep pscp"
 check:rc==0
 check:output=~pscp
@@ -46,7 +46,7 @@ cmd: echo "prsync-test" > prsync.test
 check:rc==0
 cmd:prsync prsync.test $$CN:/tmp/
 check:rc==0
-check:$$CN: done
+check:output=~$$CN: done
 cmd:xdsh $$CN "ls -l /tmp |grep prsync.test"
 check:rc==0
 check:output=~prsync.test
