@@ -13,8 +13,8 @@ BuildArch: noarch
 %define __spec_install_post :
 %define debug_package %{nil}
 %define __prelink_undo_cmd %{nil}
-Version: %{?version:%{version}}%{!?version:%{version}}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Version: %{?version:%{version}}%{!?version:%(cat Version)}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 AutoReq: false
 Prefix: /opt/xcat
@@ -22,14 +22,12 @@ AutoProv: false
 Obsoletes: xCAT-genesis-%{tarch}
 Provides: xCAT-genesis-%{tarch}
 
-
-
 Name:	 %{name}
 Group: System/Utilities
 License: EPL
-Vendor: IBM Corp
+Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image - Core content
-URL:	 http://xcat.org
+URL:	 https://xcat.org/
 Source1: xCAT-genesis-scripts.tar.bz2
 Requires: xCAT-genesis-base-%{tarch} >= 2:2.13.0
 
@@ -40,7 +38,6 @@ Packager: IBM Corp.
 xCAT genesis (Genesis Enhanced Netboot Environment for System Information and Servicing) is a small, embedded-like environment for xCAT's use in discovery and management actions when interaction with an OS is infeasible.
 This package reperesents the EPL content that is more tightly bound to specific xcat-core versions
 %Prep
-
 
 %Build
 
@@ -54,7 +51,6 @@ mv xCAT-genesis-scripts opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
 rm opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/*.spec
 rm opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/LICENSE.html
 cd -
-
 
 # Since this rpm is being installed/updated, we need to run mknb to combine it with
 # xCAT-genesis-base-x86_64, but mknb will not work during an initial install of xcat
@@ -71,7 +67,6 @@ cd -
 echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch>' manually"
 mkdir -p /etc/xcat
 touch /etc/xcat/genesis-scripts-updated
-
 
 %Files
 %defattr(-,root,root)
@@ -103,5 +98,5 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
 %{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/sbin/setupimmnic
-%{rpminstallroot}/sbin/loadmlxeth 
+%{rpminstallroot}/sbin/loadmlxeth
 %exclude %{rpminstallroot}/debian/*

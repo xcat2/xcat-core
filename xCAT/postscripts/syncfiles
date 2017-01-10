@@ -7,6 +7,13 @@
 #
 #####################################################
 
+if cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
+   #TODO
+   echo "Cumulus OS is not supported yet, nothing to do..."
+   logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."
+   exit 0
+fi
+
 # do nothing when UPDATENODE=1 because it is done from the top down
 if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    #echo "  Did not sync any files. Use updatenode -F to sync the files."

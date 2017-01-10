@@ -1,7 +1,7 @@
 Summary: Metapackage for a common, default xCAT service node setup
 Name: xCATsn
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -13,11 +13,15 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
 Source1: xcat.conf
 Source2: license.tar.gz
-Source3: xCATSN 
+Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
-Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-probe >= 2.12.2 
+Requires: perl-DBD-SQLite
+Requires: xCAT-client = 4:%{version}-%{release}
+Requires: xCAT-server = 4:%{version}-%{release}
+Requires: xCAT-probe  = 4:%{version}-%{release}
+Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
+Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
 
 Conflicts: xCAT
 
@@ -37,8 +41,6 @@ Requires: /usr/sbin/dhcpd
 Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
-# yaboot-xcat is pulled in so any MN can manage ppc nodes
-#Requires: yaboot-xcat 
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty
 %endif
@@ -74,7 +76,7 @@ Requires: syslinux-xcat
 
 %description
 xCATsn is a service node management package intended for at-scale management,
-including hardware management and software management. 
+including hardware management and software management.
 
 
 %prep
@@ -181,9 +183,9 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 
 # setup sqlite if no other database
 
-%ifos linux 
-if [ -f "/proc/cmdline" ]; then   #check to make sure this is not image install 
- if [ ! -s /etc/xcat/cfgloc ]; then  # database is sqlite 
+%ifos linux
+if [ -f "/proc/cmdline" ]; then   #check to make sure this is not image install
+ if [ ! -s /etc/xcat/cfgloc ]; then  # database is sqlite
    $RPM_INSTALL_PREFIX0/sbin/xcatconfig -d
  fi
 fi
@@ -207,16 +209,16 @@ else # SuSE
 fi
 # start xcatd on linux
 [ -e "/etc/init.d/$apachedaemon" ] && chkconfig $apachedaemon on
-[ -e "/usr/lib/systemd/system/$apacheserviceunit"  ] && systemctl enable $apacheserviceunit 
+[ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl enable $apacheserviceunit
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
           XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
-          [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload 
-          [ -e "/usr/lib/systemd/system/$apacheserviceunit"  ] && systemctl reload $apacheserviceunit 
+          [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload
+          [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl reload $apacheserviceunit
 fi
     echo "xCATsn is now installed"
 %else
 # start xcatd on  AIX
-  XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd 
+  XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd
     echo "xCATsn is now installed"
 
 %endif
@@ -236,7 +238,6 @@ if [ -f "/proc/cmdline" -a -f "/etc/xcat/genesis-scripts-updated" ]; then
     fi
 fi
 %endif
-
 
 %clean
 

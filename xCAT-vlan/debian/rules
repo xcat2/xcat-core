@@ -11,10 +11,12 @@
 
 build:
 	./xpod2man
+
 clean:
 	dh_testdir
 	dh_testroot
 	dh_clean -d
+
 install:
 	pwd
 	dh_installdirs

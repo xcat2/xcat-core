@@ -262,18 +262,24 @@ openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
 
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
+
+logger -s -t $log_label -p local4.info "Starting ntpd..." 
 ntpd -g -x
 
+logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
+ntp-wait -n 1999 -s 1 -v
+if [ $? -ne 0 ]
+then
+    logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
+fi
+
 if [ -e "/dev/rtc" ]; then
-    ( sleep 8 ; hwclock --systohc ) </dev/null >/dev/null 2>&1 &
+    logger -s -t $log_label -p local4.info "Attempting to sync hardware clock..."
+    ( hwclock --systohc ) </dev/null >/dev/null 2>&1 &
     disown
 fi
 
-# rv 0 state does not work with the new ntp versions
-while [ "`ntpq -c 'rv 0 offset' | awk -F '=' '/offset=/ { print $2 }' | awk -F '.' '{ print $1 }' | sed s/-//`" -ge 1000 ]; do 
-    sleep 1
-done
-
+logger -s -t $log_label -p local4.info "Restarting syslog..."
 read -r RSYSLOG_PID </var/run/syslogd.pid 2>/dev/null
 kill "$RSYSLOG_PID" 2>/dev/null
 while kill -0 "$RSYSLOG_PID" 2>/dev/null

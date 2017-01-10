@@ -1,7 +1,7 @@
 Summary: xCAT perl libraries
 Name: perl-xCAT
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: System Environment/Libraries
@@ -16,8 +16,6 @@ BuildArch: noarch
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
 %endif
-
-Provides: perl-xCAT = %{epoch}:%{version}
 
 %description
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.

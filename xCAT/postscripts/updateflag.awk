@@ -8,7 +8,7 @@ BEGIN {
     
     if (!flag) flag = "next"
 
-    ns = "/inet/tcp/0/" ARGV[1] "/" xcatdport
+    ns = "/inet/tcp/0/" xcatdhost "/" xcatdport
 
     loop = 0
     while(1) {

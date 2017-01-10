@@ -1,6 +1,6 @@
 %define version     %%REPLACE_CURRENT_VERSION%%
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
@@ -27,10 +27,11 @@ Group: System/Utilities
 License: Various (see individual packages for details)
 Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image
-URL:	 http://xcat.org
+URL:	 https://xcat.org/
 Source1: xCAT-genesis-base-%{tarch}.tar.bz2
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
+BuildRequires: /usr/sbin/ntp-wait
 Packager: IBM Corp.
 
 %Description

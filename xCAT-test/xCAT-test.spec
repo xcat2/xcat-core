@@ -1,7 +1,7 @@
 Summary: xCAT automated test tool
 Name: xCAT-test
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -16,8 +16,6 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
 %endif
-
-Provides: xCAT-test = %{version}
 
 %description
 Provides automated test tool and buckets to help test xCAT commands automatically.

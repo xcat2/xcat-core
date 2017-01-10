@@ -158,7 +158,7 @@ sub config_ip {
         # don't need to set if ip addresses are same
         if ($dip eq $static_ip) {
             print "static ip $static_ip and discovery ip $dip is same, will not process command for $switch\n";
-            $cmd = "chdef $csw otherinterfaces=";
+            $cmd = "chdef $switch otherinterfaces=";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             next;
         }
@@ -545,15 +545,16 @@ sub config_desc {
 sub usage
 {
     print "Usage:
-    configBNT [-?│-h│--help] 
-    configBNT [--switches switchnames] [--all] 
-    configBNT [--switches switchnames] [--ip] 
-    configBNT [--switches switchnames] [--name ] 
-    configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
-    configBNT [--switches switchnames] [--port port] [--vlan vlan]
+    configBNT -h│--help 
+    configBNT --switches switchnames --ip 
+    configBNT --switches switchnames --name  
+    configBNT --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configBNT --switches switchnames --port port --vlan vlan
+
+    To set the ip address, hostname and config snmp:
+        configBNT --switches switchnames --all 
 
     To set the description for a port on the switch: 
-
         configBNT --switches switchnames --port port --desc \"description\"
     \n";
 }

@@ -5,9 +5,6 @@ description:update xCAT from $$MIGRATION1_VERSION to latest version, these two g
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$CN kvm_nodedata; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -117,9 +114,6 @@ description:update xCAT from $$MIGRATION22VERSION to latest version, these two g
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$CN kvm_nodedata; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n

@@ -59,83 +59,75 @@ sub do_main_job {
     my $installnicip;
 
     #check if all xcat deamons are running
-    $checkpoint = "All xCAT deamons are running";
-    $rst        = check_all_xcat_deamons(\@error);
+    $rst        = check_all_xcat_deamons(\$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     return $rst if ($rst);
 
     #check if xcatd can receive request
-    $checkpoint = "xcatd can receive command request";
-    $rst        = check_xcatd_receive_request(\@error);
+    $rst        = check_xcatd_receive_request(\$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     return $rst if ($rst);
 
     #check 'site' table configuratiions
     my %sitetable;
-    $checkpoint = "'site' table is configured correctly";
-    $rst = check_site_table(\%sitetable, \@error);
+    $rst = check_site_table(\%sitetable, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     return $rst if ($rst);
 
     #check network configuratiions
-    $checkpoint = "Provision network is configured correctly";
-    $rst = check_network(\%sitetable, \$installnicip, \@error);
+    $rst = check_network(\%sitetable, \$installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     return $rst if ($rst);
 
     #check 'passwd' table configuratiions
-    $checkpoint = "'passwd' table is configured correctly";
-    $rst        = check_passwd_table(\@error);
+    $rst        = check_passwd_table(\$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check important directory
-    $checkpoint = "Important directory is configured correctly";
-    $rst = check_directory(\%sitetable, \@error);
+    $rst = check_directory(\%sitetable, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check if SElinux is disabled
-    $checkpoint = "SELinux is disabled on current server";
-    $rst        = check_selinux(\@error);
+    $rst        = check_selinux(\$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check http service
-    $checkpoint = "HTTP service works well";
-    $rst = check_http_service($installnicip, \@error);
+    $rst = check_http_service($installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check tftp service
-    $checkpoint = "TFTP service works well";
-    $rst = check_tftp_service($installnicip, \@error);
+    $rst = check_tftp_service($installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check DNS service
-    $checkpoint = "DNS service works well";
-    $rst = check_dns_service(\%sitetable, $installnicip, \@error);
+    $rst = check_dns_service(\%sitetable, $installnicip, \$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #check DHCP service
-    $checkpoint = "DHCP service works well";
-    $rst = check_dhcp_service($installnicip, \@error);
+    $rst = check_dhcp_service($installnicip, \$checkpoint, \@error);
+    print_check_result($checkpoint, "f", $rst, \@error);
+    $rc |= $rst;
+
+    #check NTP service
+    $rst = check_ntp_service(\$checkpoint, \@error);
     print_check_result($checkpoint, "f", $rst, \@error);
     $rc |= $rst;
 
     #Below are the 'warning` level check points
 
     #check if firewall is close
-    $checkpoint = "Firewall is closed on current server";
-    $rst        = check_firewall(\@error);
+    $rst        = check_firewall(\$checkpoint, \@error);
     print_check_result($checkpoint, "w", $rst, \@error);
     $rc |= $rst;
 
     #check disk space
-    $checkpoint = "The disk space is enough for xCAT to work";
-    $rst        = check_disk(\@error);
+    $rst        = check_disk(\$checkpoint, \@error);
     print_check_result($checkpoint, "w", $rst, \@error);
     $rc |= $rst;
 
@@ -144,18 +136,17 @@ sub do_main_job {
     if (!$is_sn) {
 
         #check if server ip is a static ip in MN
-        $checkpoint = "The IP of master is a static IP address";
-        $rst = check_server_ip_static($installnicip, \@error);
+        $rst = check_server_ip_static($installnicip,\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
         $rc |= $rst;
 
         #check if dhcpd.leases is less than 100M
-        $checkpoint = "The dhcpd.leases file is less than 100M";
-        $rst        = check_dhcp_leases(\@error);
+        $rst        = check_dhcp_leases(\$checkpoint, \@error);
         print_check_result($checkpoint, "w", $rst, \@error);
         $rc |= $rst;
     }
 
+    cleanup();
     return $rc;
 }
 
@@ -167,18 +158,18 @@ sub summary_all_jobs_output {
     }
 
     #DO SUMMARY DEPENDING ON YOUR SUB_COMMAND NEED
-    probe_utils->send_msg("$output", "d", "======================do summary=====================");
+    probe_utils->send_msg("$output", "d", "=================================== SUMMARY ====================================");
 
     #print "summaryoutput:\n";
     #print Dumper \%summaryoutput;
 
     my @summary;
-    push @summary, "[ok]:[MN]: Check on MN PASS.";
+    push @summary, "[ok]:[MN]: Checking on MN...";
     my $ok_section = 0;
     foreach my $line (@{ $summaryoutput{mn} }) {
         if ($line =~ /(\[failed\]\s*):\s*(.*)/) {
             push @summary, "$1:    $2";
-            $summary[0] = "[failed]:[MN]: Check on MN FAILED.";
+            $summary[0] = "[failed]:[MN]: Checking on MN...";
             $ok_section = 0;
         } elsif ($line =~ /(\[warning\]\s*):\s*(.*)/) {
             push @summary, "$1:    $2";
@@ -195,13 +186,13 @@ sub summary_all_jobs_output {
     foreach my $node (keys %summaryoutput) {
         next if ($node eq "mn");
         ${ $summary_sn{$node}{"rst"} } = 1;
-        push @{ $summary_sn{$node}{"details"} }, "[ok]:[SN:$node]:  Check on SN $node PASS.";
+        push @{ $summary_sn{$node}{"details"} }, "[ok]:[SN:$node]:  Checking on SN $node...";
         $ok_section = 0;
         foreach my $log (@{ $summaryoutput{$node} }) {
             if ($log =~ /(\[failed\]\s*):\s*(.*)/) {
                 push @{ $summary_sn{$node}{"details"} }, "$1:    $2";
                 ${ $summary_sn{$node}{"rst"} } = 0;
-                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Check on SN $node FAILED.";
+                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Checking on SN $node...";
                 $ok_section = 0;
             } elsif ($log =~ /(\[warning\]\s*):\s*(.*)/) {
                 push @{ $summary_sn{$node}{"details"} }, "$1:    $2";
@@ -213,7 +204,7 @@ sub summary_all_jobs_output {
             } elsif ($log !~ /^(\[\w+\]\s*):\s*(.*)/) {
                 push @{ $summary_sn{$node}{"details"} }, "[failed]:    $log";
                 ${ $summary_sn{$node}{"rst"} } = 0;
-                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Check on SN $node FAILED.";
+                $summary_sn{$node}{"details"}[0] = "[failed]:[SN:$node]: Checking on SN $node...";
                 $ok_section = 0;
             }
         }
@@ -267,10 +258,13 @@ sub print_check_result {
 }
 
 sub check_all_xcat_deamons {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-
     my $rst = 0;
+
+    $$checkpoint_ref = "Checking all xCAT deamons are running...";
     @$error_ref = ();
+
     my @deamon_list = ("SSL listener",
         "DB Access",
         "UDP listener",
@@ -290,8 +284,11 @@ sub check_all_xcat_deamons {
 }
 
 sub check_xcatd_receive_request {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+
+    $$checkpoint_ref = "Checking xcatd can receive command request...";
     @$error_ref = ();
 
     #check important port
@@ -325,10 +322,13 @@ sub check_xcatd_receive_request {
 
 sub check_site_table {
     my $sitetable_ref = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref     = shift;
-
     my $rst = 0;
+
+    $$checkpoint_ref = "Checking 'site' table is configured...";
     @$error_ref = ();
+
     my @attr_list = ("master", "domain", "installdir", "tftpdir");
     foreach my $attr (@attr_list) {
         my $value;
@@ -350,9 +350,12 @@ sub check_site_table {
 }
 
 sub check_passwd_table {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+
     @$error_ref = ();
+    $$checkpoint_ref = "Checking 'passwd' table is configured...";
 
     my $passwd = `tabdump passwd |awk -F',' '/system/ { gsub(/"/, "", \$2); gsub(/"/, "", \$3); print \$2,\$3 }'`;
     chomp($passwd);
@@ -368,10 +371,12 @@ sub check_passwd_table {
 sub check_network {
     my $sitetable_ref = shift;
     my $serverip_ref  = shift;    #output arguments
+    my $checkpoint_ref =  shift;  #output arguments
     my $error_ref     = shift;    #output arguments
-
     my $rst = 0;
+
     @$error_ref = ();
+    $$checkpoint_ref = "Checking provision network is configured...";
 
     if ($is_sn) {
 
@@ -433,9 +438,11 @@ sub check_network {
 
 sub check_server_ip_static {
     my $serverip  = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-
     my $rst = 0;
+
+    $$checkpoint_ref = "Checking xCAT management node IP: <$serverip> is configured to static...";
     @$error_ref = ();
 
     if (!probe_utils->is_static_ip("$serverip", "$installnic")) {
@@ -448,18 +455,22 @@ sub check_server_ip_static {
 
 sub check_directory {
     my $sitetable_ref = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref     = shift;
     my $rst           = 0;
-    @$error_ref = ();
 
     my @dir_list = ("installdir", "tftpdir");
+    my $dir_list_str = join(",",@dir_list);
+    $$checkpoint_ref = "Checking important directories($dir_list_str) are configured...";
+    @$error_ref = ();
+
     foreach my $dir (@dir_list) {
         if ($sitetable_ref->{$dir} eq "") {
             push @$error_ref, "There isn't '$dir' definition in 'site' table";
             $rst = 1;
         } else {
             if (!-e "$sitetable_ref->{$dir}") {
-                push @$error_ref, "There isn't '$sitetable_ref->{$dir}' directory on current server";
+                push @$error_ref, "There isn't '$sitetable_ref->{$dir}' directory on current server, there is something wrong during xCAT installation";
                 $rst = 1;
             } else {
                 if ($is_sn) {
@@ -477,7 +488,7 @@ sub check_directory {
                     }
 
                     if ($mountip ne $sitetable_ref->{master}) {
-                        push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node";
+                        push @$error_ref, "$dir '$sitetable_ref->{$dir}' isn't mounted from the management node,please check SN's configuration";
                         $rst = 1;
                     }
                 }
@@ -490,35 +501,51 @@ sub check_directory {
 
 
 sub check_disk {
+    my $checkpoint_ref = shift;
     my $error_ref = shift;
-
     my $rst = 0;
     @$error_ref = ();
 
-    my %dir_expectedspace_list = ("/var" => 1, "/tmp" => 1, "/install" => 10);
+    my $installdir = `lsdef -t site -i installdir -c | awk -F'=' '{print \$2}'`;
+    chomp($installdir);
+    my %dir_expectedspace_list = ("/var" => 1, "/tmp" => 1, "$installdir" => 10);
+    my $disk_str="[";
+    foreach (keys %dir_expectedspace_list){
+        $disk_str.="'$_' needs $dir_expectedspace_list{$_}GB;";
+    }
+    $disk_str=~s/;$/]/g;
+    $$checkpoint_ref = "Checking minimum disk space for xCAT $disk_str...";
+ 
+    my $msg = "";
     my %mountpointinfo;
     foreach my $dir (keys %dir_expectedspace_list) {
-        my $output = `df --block-size=1G $dir|tail -n 1`;
-        chomp($output);
-        my @splitoutput = split(" ", $output);
-        $mountpointinfo{ $splitoutput[5] }{available} = $splitoutput[3];
-        $mountpointinfo{ $splitoutput[5] }{need} += $dir_expectedspace_list{$dir};
-        push @{ $mountpointinfo{ $splitoutput[5] }{mount} }, $dir;
+        if(! -d "$dir"){
+            $msg.="There isn't '$dir' in current server.";
+            $rst = 1;
+        }else{
+            my $output = `df --block-size=1G $dir|tail -n 1`;
+            chomp($output);
+            my @splitoutput = split(" ", $output);
+            $mountpointinfo{ $splitoutput[5] }{available} = $splitoutput[3];
+            $mountpointinfo{ $splitoutput[5] }{need} += $dir_expectedspace_list{$dir};
+            push @{ $mountpointinfo{ $splitoutput[5] }{mount} }, $dir;
+        }
     }
 
-    my $msg = "";
-    foreach $mountpoint (keys %mountpointinfo) {
-        if ($mountpointinfo{$mountpoint}{need} > $mountpointinfo{$mountpoint}{available}) {
-            foreach (@{ $mountpointinfo{$mountpoint}{mount} }) {
-                $msg .= "'$_' needs $dir_expectedspace_list{$_} GiB disk space. ";
+    unless($rst){
+        foreach $mountpoint (keys %mountpointinfo) {
+            if ($mountpointinfo{$mountpoint}{need} > $mountpointinfo{$mountpoint}{available}) {
+                foreach (@{ $mountpointinfo{$mountpoint}{mount} }) {
+                    $msg .= "'$_',";
+                }
+                my $mountmun = $#{$mountpointinfo{$mountpoint}{mount}} +1 ;
+                if($mountmun >1){
+                    $msg .= "these directories are parts of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+                }else{
+                    $msg .= "this directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
+                }
+                $rst = 1;
             }
-            my $mountmun = $#{$mountpointinfo{$mountpoint}{mount}} +1 ;
-            if($mountmun >1){
-                $msg .= "These directories are parts of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
-            }else{
-                $msg .= "This directory is a part of file system '$mountpoint'. The free space available in directory '$mountpoint' is $mountpointinfo{$mountpoint}{available} GiB, it is not enough.";
-            }
-            $rst = 1;
         }
     }
     if ($rst) {
@@ -529,8 +556,11 @@ sub check_disk {
 }
 
 sub check_selinux {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+
+    $$checkpoint_ref = "Checking SELinux is disabled...";
     @$error_ref = ();
 
     if (probe_utils->is_selinux_enable()) {
@@ -542,8 +572,11 @@ sub check_selinux {
 }
 
 sub check_firewall {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
     my $rst       = 0;
+   
+    $$checkpoint_ref = "Checking firewall is disabled...";
     @$error_ref = ();
 
     if (probe_utils->is_firewall_open()) {
@@ -556,18 +589,37 @@ sub check_firewall {
 
 sub check_http_service {
     my $serverip  = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-    my $rst       = 0;
+    my $rst       = 1;
+
+    $$checkpoint_ref = "Checking HTTP service is configured...";
     @$error_ref = ();
 
     `which wget > /dev/null 2>&1`;
     if ($?) {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
-        $rst = 1;
     } else {
-        if (!probe_utils->is_http_ready("$serverip")) {
-            push @$error_ref, "HTTP service isn't ready on $serverip";
-            $rst = 1;
+        {
+            my $installdir = `lsdef -t site -i installdir -c | awk -F'=' '{print \$2}'`; 
+            chomp($installdir);
+            unless($installdir){
+                push @$error_ref, "HTTP work path(installdir) isn't configured in 'sit' table";
+                last;
+            }
+            
+            unless(-d "$installdir"){
+                push @$error_ref, "There isn't '$installdir' directory on current server";
+                last;
+            }
+
+            my $errormsg;
+            unless(probe_utils->is_http_ready("$serverip", $installdir, \$errormsg)) {
+                push @$error_ref, "$errormsg";
+                last;
+            }
+            
+            $rst = 0;
         }
     }
 
@@ -577,8 +629,11 @@ sub check_http_service {
 
 sub check_tftp_service {
     my $serverip  = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-    my $rst       = 0;
+    my $rst       = 1;
+
+    $$checkpoint_ref = "Checking TFTP service is configured...";
     @$error_ref = ();
 
     my $nodename = `hostname -s`;
@@ -595,12 +650,23 @@ sub check_tftp_service {
         `which tftp > /dev/null 2>&1`;
         if ($?) {
             push @$error_ref, "TFTP check need 'tftp' tool, please install 'tftp' tool and try again";
-            $rst = 1;
         } else {
-            $msg = "TFTP service is ready on $serverip";
-            if (!probe_utils->is_tftp_ready("$serverip")) {
-                push @$error_ref, "TFTP service isn't ready on $serverip";
-                $rst = 1;
+            {
+                my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F'=' '{print \$2}'`;
+                chomp($tftpdir);
+                unless($tftpdir){
+                    push @$error_ref, "TFTP work path isn't configured in 'sit' table";
+                    last;
+                }
+                unless(-d "$tftpdir"){
+                    push @$error_ref, "There isn't '$tftpdir' directory on current server";
+                    last;
+                }
+                unless(probe_utils->is_tftp_ready("$serverip", $tftpdir)) {
+                    push @$error_ref, "TFTP service isn't ready on $serverip";
+                    last;
+                }
+                $rst = 0;
             }
         }
     } else {
@@ -610,11 +676,37 @@ sub check_tftp_service {
     return $rst;
 }
 
+sub check_ntp_service{
+    my $checkpoint_ref =  shift;
+    my $error_ref = shift;
+    my $rst       = 0;
+
+    $$checkpoint_ref = "Checking NTP service is configured...";
+    @$error_ref = ();
+  
+    `which ntpq > /dev/null 2>&1`;
+    if($?){
+        push @$error_ref, "ntp service check need 'ntpq' tool, please install 'ntpq' toll and try again";
+        $rst = 1;
+    }else{
+        my $error;
+        if(!probe_utils->is_ntp_ready(\$error)){
+            push @$error_ref, "$error";
+            $rst = 1;
+        }
+    }
+ 
+    return $rst; 
+}
+
 sub check_dns_service {
     my $sitetable_ref = shift;
     my $serverip      = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref     = shift;
     my $rst           = 0;
+
+    $$checkpoint_ref = "Checking DNS service is configured...";
     @$error_ref = ();
 
     my $nodename = `hostname -s`;
@@ -681,9 +773,11 @@ sub check_dns_service {
 
 sub check_dhcp_service {
     my $serverip  = shift;
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-
     my $rst = 0;
+    
+    $$checkpoint_ref = "Checking DHCP service is configured...";
     @$error_ref = ();
 
 
@@ -798,9 +892,11 @@ sub check_dhcp_service {
 }
 
 sub check_dhcp_leases {
+    my $checkpoint_ref =  shift;
     my $error_ref = shift;
-
     my $rst = 0;
+
+    $$checkpoint_ref = "Checking dhcpd.leases file is less than 100M...";
     @$error_ref = ();
 
     my $leasefile = "";
@@ -923,7 +1019,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
                 if ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2: $3";
-                        $msg    = "$2:<$server>: $3";
+                        $msg    = "$2:[$server]: $3";
                     }
 
                     #For cases like below:
@@ -931,7 +1027,7 @@ while ($hierarchy_instance->read_reply(\%reply_cache)) {
                 } elsif ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(.*)/) {
                     if ("$1" eq "$server") {
                         $logmsg = "$2";
-                        $msg    = "<$server>: $2";
+                        $msg    = "[$server]: $2";
                     }
 
                     #For cases like below:

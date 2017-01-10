@@ -2,12 +2,13 @@ Source: perl-xcat
 Section: libs
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5), libsoap-lite-perl, libdbi-perl
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9), libsoap-lite-perl, libdbi-perl
+Standards-Version: 3.9.4
+Homepage: https://xcat.org/
 
 Package: perl-xcat
 Architecture: all
-Depends: ${perl:Depends} 
+Depends: ${perl:Depends}
 Description: xCAT perl libraries
  Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
  Includes xCAT::Table, xCAT::NodeRange, among others.

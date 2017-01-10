@@ -5,9 +5,6 @@ cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-#cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
-check:rc=0
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -28,9 +25,8 @@ check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:makedhcp -q $$CN
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
-check:output=~$$CN
 cmd:copycds $$ISO 
 check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
