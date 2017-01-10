@@ -1,19 +1,19 @@
 Summary: Meta-package for a common, default xCAT setup
 Name: xCAT
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 License: EPL
 Group: Applications/System
+URL: https://xcat.org/
 Vendor: IBM Corp.
 Packager: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-#BuildArch: noarch
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
-Source5: xCATMN 
+Source5: xCATMN
 
 %ifos linux
 Source4: prescripts.tar.gz
@@ -25,7 +25,12 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64
+Requires: perl-DBD-SQLite
+Requires: xCAT-client = 4:%{version}-%{release}
+Requires: xCAT-server = 4:%{version}-%{release}
+Requires: xCAT-probe  = 4:%{version}-%{release}
+Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
+Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
@@ -34,7 +39,7 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-gene
 Requires: httpd nfs-utils nmap bind perl(CGI)
 # on RHEL7, need to specify it explicitly
 Requires: net-tools
-Requires: /usr/bin/killall 
+Requires: /usr/bin/killall
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
@@ -42,8 +47,6 @@ Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
 Requires: xCAT-buildkit
-# yaboot-xcat is pulled in so any MN can manage ppc nodes
-#Requires: yaboot-xcat
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty
 %endif
@@ -101,7 +104,7 @@ tar -xf postscripts.tar
 # this is now handled by requiring /usr/sbin/dhcpd
 #if [ -e "/etc/SuSE-release" ]; then
     # In SuSE, dhcp-server provides the dhcp server, which is different from the RedHat.
-    # When building the package, we cannot add "dhcp-server" into the "Requires", because RedHat doesn't 
+    # When building the package, we cannot add "dhcp-server" into the "Requires", because RedHat doesn't
     # have such one package.
     # so there's only one solution, Yes, it looks ugly.
     #rpm -q dhcp-server >/dev/null
@@ -190,13 +193,13 @@ then
 fi
 
 if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then 
+then
    rm -rf /etc/apache2/conf.d/xcat.conf
    cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
 if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then 
+then
    rm -rf /etc/apache2/conf.d/xcat.conf
    cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
@@ -237,7 +240,6 @@ exit 0
 
 %clean
 
-
 %files
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
@@ -259,9 +261,7 @@ exit 0
 
 %postun
 
-
 if [ "$1" = "0" ]; then
-
 
 %ifnos linux
 if grep "^xcatd" /etc/inittab >/dev/null
@@ -271,4 +271,3 @@ fi
 %endif
 true    # so on aix we do not end up with an empty if stmt
 fi
-

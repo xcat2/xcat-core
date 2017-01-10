@@ -1,7 +1,7 @@
 Summary: xCAT buildkit tools and sample kit
 Name: xCAT-buildkit
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -20,14 +20,11 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-#Requires: 
 %endif
 
 # No dependencies on any other xCAT rpms
 # so that this rpm can be installed in a separate build server
 Requires: /usr/bin/rpmbuild
-
-Provides: xCAT-buildkit = %{epoch}:%{version}
 
 %description
 xCAT-buildkit provides the buildkit tool and sample kit files to build an xCAT kit.
@@ -40,8 +37,6 @@ mkdir -p share/man/man1
 mkdir -p share/doc/man1
 pod2man pods/man1/buildkit.1.pod > share/man/man1/buildkit.1
 pod2html pods/man1/buildkit.1.pod > share/doc/man1/buildkit.1.html
-
-
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -56,7 +51,6 @@ cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
 cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
-
 
 %ifos linux
 cp -aR share/xcat/kits/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/kits/
@@ -110,7 +104,3 @@ fi
 %post
 
 %preun
-
-
-
-
