@@ -16,7 +16,7 @@ function xcat_probe_copy {
     #     3. symbolic link can't work during packaging
     RPMNAME=${1}
     if [ $RPMNAME = "xCAT-probe" ]; then
-        mkdir -p xCAT-probe/lib/perl/xCAT/
+        mkdir -p ${RPMNAME}/lib/perl/xCAT/
         files=("NetworkUtils.pm" "GlobalDef.pm" "ServiceNodeUtils.pm")
         for f in "${files[@]}"; do
             cp perl-xCAT/xCAT/$f ${RPMNAME}/lib/perl/xCAT/
@@ -27,7 +27,7 @@ function xcat_probe_copy {
 function xcat_probe_cleanup { 
    RPMNAME=${1}
    if [ $RPMNAME = "xCAT-probe" ]; then
-       rm -rf xCAT-probe/lib/perl/xCAT/
+       rm -rf ${RPMNAME}/lib/perl/xCAT/
    fi
 }
 
