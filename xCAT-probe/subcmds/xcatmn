@@ -514,7 +514,7 @@ sub check_disk {
         $disk_str.="'$_' needs $dir_expectedspace_list{$_}GB;";
     }
     $disk_str=~s/;$/]/g;
-    $$checkpoint_ref = "Checking minimum disk space for xCAT $disk_str";
+    $$checkpoint_ref = "Checking minimum disk space for xCAT $disk_str...";
  
     my $msg = "";
     my %mountpointinfo;
@@ -576,7 +576,7 @@ sub check_firewall {
     my $error_ref = shift;
     my $rst       = 0;
    
-    $$checkpoint_ref = "Checking firewall is disabled";
+    $$checkpoint_ref = "Checking firewall is disabled...";
     @$error_ref = ();
 
     if (probe_utils->is_firewall_open()) {
