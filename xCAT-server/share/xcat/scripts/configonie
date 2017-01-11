@@ -384,14 +384,14 @@ sub config_ntp {
 sub usage
 {
     print "Usage:
-    configcumulus -h│--help 
-    configcumulus --switches switchnames --ssh 
-    configcumulus --switches switchnames --license filename  
-    configcumulus --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
-    configcumulus --switches switchnames --ntp 
+    configonie -h│--help 
+    configonie --switches switchnames --ssh 
+    configonie --switches switchnames --license filename  
+    configonie --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configonie --switches switchnames --ntp 
 
     To set ssh, install license(license file: /root/license.txt), config snmp and ntp:
-        configcumulus --switches switchnames --all 
+        configonie --switches switchnames --all 
     \n";
 }
 

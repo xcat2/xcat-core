@@ -49,9 +49,9 @@ Enable the passwordless ssh for "root"
 
 In a newly installed Cumulus OS, a default user ``cumulus`` will be created, the switch can be accessed via ssh with the default password ``CumulusLinux!``. 
 
-The passwordless ssh access of "root" should be enabled with the script ``/opt/xcat/share/xcat/scripts/configcumulus`` ::
+The passwordless ssh access of "root" should be enabled with the script ``/opt/xcat/share/xcat/scripts/configonie`` ::
 
-    /opt/xcat/share/xcat/scripts/configcumulus --switches edgecoresw1 --ssh
+    /opt/xcat/share/xcat/scripts/configonie --switches edgecoresw1 --ssh
 
 After the passwordless access for "root" is setup successfully, the switch can be managed with the node management commands such as ``xdsh``, ``xdcp`` and ``updatenode``, etc.
  
