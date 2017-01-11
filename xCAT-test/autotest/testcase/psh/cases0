@@ -47,8 +47,13 @@ end
 start:psh_i
 description: psh -i interface CN 'uptime' in linux
 os:Linux
+cmd:cp /etc/hosts /etc/hostsBK
+check:rc==0
 cmd:interface=`xdsh $$CN  'ifconfig' | sed -n 1p | awk -F : '{print $2}' | awk -F ' ' '{print $1}'`;sed -i "s/com $$CN/com $$CN $$CN-$interface/g" '/etc/hosts';psh -i $interface $$CN 'uptime'
 check:output=~$$CN
+check:rc==0
+cmd:rm -rf /etc/hosts
+cmd:cp /etc/hostsBK /etc/hosts
 check:rc==0
 end
 
