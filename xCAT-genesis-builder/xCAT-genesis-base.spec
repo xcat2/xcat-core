@@ -1,6 +1,6 @@
 %define version     %%REPLACE_CURRENT_VERSION%%
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:%(cat Release)}
+Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
 %ifarch i386 i586 i686 x86
 %define tarch x86
 %endif
