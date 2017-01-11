@@ -4645,7 +4645,7 @@ sub splitkcmdline {
 
     my %cmdhash;
 
-    my @cmdlist = split(/[, ]/, $kcmdline);
+    my @cmdlist = split(/[ ]/, $kcmdline);
     foreach my $cmd (@cmdlist) {
         if ($cmd =~ /^R::(.*)$/) {
             $cmdhash{persistent} .= "$1 ";
