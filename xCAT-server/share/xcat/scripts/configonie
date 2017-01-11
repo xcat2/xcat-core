@@ -217,7 +217,7 @@ sub cumulus_exec {
 sub install_license {
     my @config_switches;
     print "install_license\n";
-    my $license_file;
+    my $license_file = "/root/license.txt";
     my $file_name = "/root/license.txt";
 
     if ($::LICENSE) {
@@ -226,7 +226,7 @@ sub install_license {
 
     print "file = $license_file\n";
     if (!(-e $license_file) ) {
-        print "$license_file is not exist\n";
+        print "license file $license_file is not exist\n";
         return;
     }
 
