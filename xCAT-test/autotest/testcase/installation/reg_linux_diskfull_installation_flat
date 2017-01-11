@@ -32,15 +32,9 @@ check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
 cmd:lsdef -l $$CN
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done

@@ -34,12 +34,9 @@ cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:chdef $$CN status=
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:rpower $$CN boot
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 200 
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 100 ];then break;fi done
 cmd:lsdef -l $$CN | grep status
@@ -48,9 +45,7 @@ cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
-cmd:nodeset $$CN osimage
-check:rc==0
-cmd:rpower $$CN reset
+cmd:rinstall $$CN osimage
 check:rc==0
 cmd:sleep 200
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 100 ];then break;fi done

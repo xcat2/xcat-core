@@ -56,10 +56,9 @@ check:rc==0
 #cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
 #check:rc==0
 
-cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" = "ppc64" ]]; then rnetboot $$SN;else rpower $$SN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$SN
 
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
 

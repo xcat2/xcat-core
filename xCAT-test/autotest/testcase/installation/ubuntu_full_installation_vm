@@ -16,10 +16,9 @@ cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rpower $$CN boot
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:ping $$CN -c 3
