@@ -1,11 +1,12 @@
-Configure Statelite
-===================
+Configuration
+=============
 
-Getting started with statelite provisioning requires that you have xCAT set up and running. Before continuing with the rest of this document, the xCAT management node must be set up, and the nodes' hardware control, resource, and type attributes must be defined correctly.
-
-The operating system image files and the statelite files can be put on the service nodes or the management node, or any external NFS server.
-
-Statelite uses the following tables in xCAT: 
+Statelite configuration is done using the following tables in xCAT:
+    * litefile 
+    * litetree 
+    * statelite 
+    * policy 
+    * noderes 
 
 litefile table
 --------------
@@ -16,7 +17,7 @@ The litefile table specifies the directories and files on the statelite nodes th
 
 #. The second column in the litefile table is the full path of the directory or file on the node that you are setting options for.
 
-#. The third column in the litefile table specifies options for the directory or file: ::
+#. The third column in the litefile table specifies options for the directory or file: 
 
     1. tmpfs - It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories.
     2. rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Do not confuse it with the "rw" permission in the file system.
@@ -26,44 +27,16 @@ The litefile table specifies the directories and files on the statelite nodes th
     5. tmpfs,rw - Only for compatibility it is used as the default option if you leave the options column blank. It has the same semantics with the link option, so when adding new items into the _litefile table, the link option is recommended.
     6. link - It provides one file/directory for the node to use when booting, it is copied from the server, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to one file/directory in tmpfs. And the permission of the symbolic link is "lrwxrwxrwx", which is not the real permission of the file/directory on the node. So for some application sensitive to file permissions, it will be one issue to use "link" as its option, for example, "/root/.ssh/", which is used for SSH, should NOT use "link" as its option. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option can be performed on files and directories.
     7. link,ro - The file is readonly, and will be placed in tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the tmpfs. It is non-persistent, when the node is rebooted, all changes to the file/directory will be lost. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. The option can be performed on files and directories.
-    8. link,con - It works similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files.
-
+    8. link,con - Similar to the "con" option. All the files found in the litetree hierarchy will be concatenated to the file when found. The final file will be put to the tmpfs on the booted node. In the local file system of the booted node, it is one symbolic link to the file/directory in tmpfs. It is non-persistent, when the node is rebooted, all changes to the file will be lost. The option can only be performed on files.
     9. link,persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted to the tmpfs on the booted node, and finally the symbolic link in the local file system will be linked to the over-mounted tmpfs file/directory on the booted node. The file/directory will be persistent across reboots. The permission of the file/directory where the symbolic link points to will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. The option can be performed on files and directories.
-
     10. localdisk - The file or directory will be stored in the local disk of the statelite node. Refer to the section To enable the localdisk option to enable the 'localdisk' support.
 
-Currently, we don't handle the relative links very well. The relative links are commonly used by the system libraries, for example, under ``/lib/`` directory, there will be one relative link matching one ``.so`` file. So, when you add one relative link to the litefile table (We don't recommend ), make sure the real file also be included, or you can put its directory name into the litefile table. However, most of the users will not put the relative links in the litefile table.
+Currently, xCAT does not handle the relative links very well. The relative links are commonly used by the system libraries, for example, under ``/lib/`` directory, there will be one relative link matching one ``.so`` file. So, when you add one relative link to the litefile table (Not recommend), make sure the real file also be included, or put its directory name into the litefile table. 
 
-``Note``: It is recommended that you specify at least the entries listed below in the litefile table, because most of these files need to be writeable for the node to boot up successfully. When any changes are made to their options, make sure they won't affect the whole system.
+**Note**: It is recommended that you specify at least the entries listed below in the litefile table, because most of these files need to be writeable for the node to boot up successfully. When any changes are made to their options, make sure they won't affect the whole system.
 
-Sample Data for a RedHat statelite setup
-````````````````````````````````````````
-
-This is the minimal list of files needed, you can add additional files to the litefile table.
-
-Notice that all files are in tmpfs, the default for the options field. This gives you an NFS root solution with no persistent storage. ::
-
-    #image,file,options,comments,disable
-    "ALL","/etc/adjtime","tmpfs",,
-    "ALL","/etc/fstab","tmpfs",,
-    "ALL","/etc/lvm/","tmpfs",,
-    "ALL","/etc/syslog.conf","tmpfs",,
-    "ALL","/etc/syslog.conf.XCATORIG","tmpfs",,
-    "ALL","/etc/ntp.conf","tmpfs",,
-    "ALL","/etc/ntp.conf.predhclient","tmpfs",,
-    "ALL","/etc/resolv.conf","tmpfs",,
-    "ALL","/etc/resolv.conf.predhclient","tmpfs",,
-    "ALL","/etc/ssh/","tmpfs",,
-    "ALL","/etc/sysconfig/","tmpfs",,
-    "ALL","/etc/inittab","tmpfs",,
-    "ALL","/tmp/","tmpfs",,
-    "ALL","/var/","tmpfs",,
-    "ALL","/opt/xcat/","tmpfs",,
-    "ALL","/xcatpost/","tmpfs",,
-    "ALL","/root/.ssh/","tmpfs",,
-
-Sample Data for Redhat6/7 statelite setup
-`````````````````````````````````````````
+Sample Data for Red hat statelite setup
+```````````````````````````````````````
 
 This is the minimal list of files needed, you can add additional files to the litefile table. ::
 
@@ -117,33 +90,27 @@ This is the minimal list of files needed, you can add additional files to the li
     "ALL","/xcatpost/","tmpfs",,
     "ALL","/root/.ssh/","tmpfs",,
 
-``Note``: Sample Data for Fedora13/14 statelite setup refer to the setup of Redhat6.
-
 litetree table
 --------------
 
-The litetree table controls where the initial content of the files in the litefile table come from, and the long term content of the ``ro`` files. When a node boots up in statelite mode, it will by default copy all of its tmpfs files from the ``/.default`` directory of the root image, so there is not required to set up a litetree table. If you decide that you want some of the files pulled from different locations that are different per node, you can use this table. See Advanced Statelite features.
+The litetree table controls where the initial content of the files in the litefile table come from, and the long term content of the ``ro`` files. When a node boots up in statelite mode, it will by default copy all of its tmpfs files from the ``.default`` directory of the root image, for example ``/install/netboot/rhels7.3/x86_64/compute/rootimg/.default``, so there is not required to set up a litetree table. If you decide that you want some of the files pulled from different locations that are different per node, you can use this table.
 
 You can choose to use the defaults and not set up a litetree table.
 
 statelite table
 ---------------
 
-You may want some files in the image to be stored permanently, to survive reboots. This is done by entering the information into the statelite table.
+The statelite table specifies location on an NFS server where a nodes persistent files are stored. This is done by entering the information into the statelite table.
 
-See the statelite man page for description of the attributes.
-
-``Note``: In the statelite table, the node or nodegroups in the table must be unique; that is a node or group should appear only once in the first column table. This makes sure that only one statelite image can be assigned to a node.
-
-An example would be: ::
+In the statelite table, the node or nodegroups in the table must be unique; that is a node or group should appear only once in the first column table. This makes sure that only one statelite image can be assigned to a node. An example would be: ::
 
     "compute",,"<nfssvr_ip>:/gpfs/state",,
 
-Any nodes in the compute node group will have their state stored in the ``/gpfs/state`` directory on the machine with ``<nfssvr_ip>`` as its IP address. The image attribute should be left blank - currently it is not used.
+Any nodes in the compute node group will have their state stored in the ``/gpfs/state`` directory on the machine with ``<nfssvr_ip>`` as its IP address. 
 
-When the node boots up, then the value of the statemnt attribute will be mounted to ``/.statelite/persistent``. The code will then create the following subdirectory ``/.statelite/persistent/<nodename>`` if there are persistent files that have been added in the litefile table. This directory will be the root of the image for this node's persistent files. By default, xCAT will do a hard NFS mount of the directory. You can change the mount options by setting the mntopts attribute in the statelite table.
+When the node boots up, then the value of the ``statemnt`` attribute will be mounted to ``/.statelite/persistent``. The code will then create the following subdirectory ``/.statelite/persistent/<nodename>``, if there are persistent files that have been added in the litefile table. This directory will be the root of the image for this node's persistent files. By default, xCAT will do a hard NFS mount of the directory. You can change the mount options by setting the mntopts attribute in the statelite table.
 
-Also, to set the statemnt attribute, you can use variables from xCAT database. It follows the same grammar as the litetree table. For example: ::
+Also, to set the ``statemnt`` attribute, you can use variables from xCAT database. It follows the same grammar as the litetree table. For example: ::
 
     #node,image,statemnt,mntopts,comments,disable
     "cn1",,"$noderes.nfsserver:/lite/state/$nodetype.profile","soft,timeo=30",,
@@ -157,4 +124,11 @@ Ensure policies are set up correctly in the Policy Table. When a node boots up, 
 
     chdef -t policy -o 4.7 commands=litefile rule=allow
     chdef -t policy -o 4.8 commands=litetree rule=allow
+
+noderes 
+-------
+
+``noderes.nfsserver`` attribute can be set for the NFSroot server. If this is not set, then the default is the Management Node.
+
+``noderes.nfsdir`` can be set. If this is not set, the the default is ``/install``
 

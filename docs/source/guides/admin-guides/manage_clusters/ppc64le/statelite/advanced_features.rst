@@ -1,5 +1,5 @@
-Advanced Statelite features
-===========================
+Advanced features
+=================
 
 Both directory and its child items coexist in litefile table
 ------------------------------------------------------------
@@ -68,8 +68,8 @@ In order to describe the hierarchy scenarios we can use , ``P`` to denote parent
 |              |                                                     | the parent is created in the local file system. |
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P: link C:   | "ALL","/root/testlinkpers/","link",,                | Both parent and child are created in tmpfs      |
-| link,        | "ALL","/root/testlink/testlinkchild",               | on the booted node following their respective   |
-| persistent   |                ,"link,persistent"                   | options; there's only one symbolic link of      |
+| link,        | "ALL","/root/testlink/testlinkchild",,              | on the booted node following their respective   |
+| persistent   |                "link,persistent"                    | options; there's only one symbolic link of      |
 |              |                                                     | the parent is created in the local file system. |
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:link,      | "ALL","/root/testlinkpers/","link,persistent",,     | NOT permitted                                   |
@@ -251,7 +251,7 @@ Add an entry in policy table to permit the running of the ``getpartitioin`` comm
 If Using the RAMdisk-based Image
 ````````````````````````````````
 
-If you want to use the local disk option with a RAMdisk-based image, remember to follow the instructions in :ref:`Switch to the RAMdisk based solution`.
+If you want to use the local disk option with a RAMdisk-based image, remember to follow the instructions in :doc:`Switch to the RAMdisk based solution <./provision_statelite>`.
 
 If your reason for using a RAMdisk image is to avoid compute node runtime dependencies on the service node or management node, then the only entries you should have in the litefile table should be files/dirs that use the localdisk option.
 

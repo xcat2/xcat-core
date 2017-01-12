@@ -13,7 +13,7 @@ Setup the diskfull service node
 Generate the statelite image
 ````````````````````````````
 
-To generate the statelite image for your own profile follow instructions in `Customize your statelite osimage`_. 
+To generate the statelite image for your own profile follow instructions in :doc:`Customize your statelite osimage <./provision_statelite>`. 
 
 ``NOTE``: if the NFS directories defined in the litetree table are on the service node, it is better to setup the NFS directories in the service node following the chapter.
 
