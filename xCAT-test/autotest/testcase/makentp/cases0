@@ -116,6 +116,6 @@ check:output=~starting ntpserver
 check:output=~enabling ntpserver
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] || [[ "__GETNODEATTR($$CN,os)__" = "sles11.4" ]];then service ntp status;else service ntpd status; fi
 check:rc==0
-cmd:a=0;while ! `ntpq -n -c peers | awk '{print \$1}'|grep "*" >/dev/null`; do sleep 30;((a++));if [ $a -gt 30 ];then exit 1;fi done
+cmd:a=0;until ntpq -n -c peers | tail -n +2 | grep -q '^*'; do sleep 30;((a++));if [ $a -gt 30 ];then exit 1;fi done 
 check:rc==0
 end
