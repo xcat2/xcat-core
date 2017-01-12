@@ -272,7 +272,7 @@ sub check_all_xcat_deamons {
         "Discovery worker",
         "Command log writer");
 
-    my $output = `ps aux|grep -v grep|grep xcatd`;
+    my $output = `ps aux 2>&1|grep -v grep|grep xcatd`;
     foreach my $deamon (@deamon_list) {
         if ($output !~ /$deamon/) {
             push @$error_ref, "Deamon '$deamon' isn't running";
@@ -291,13 +291,27 @@ sub check_xcatd_receive_request {
     $$checkpoint_ref = "Checking xcatd can receive command request...";
     @$error_ref = ();
 
+    #send one command to test if xcatd can receive request
+    my $cmdoutput = `lsxcatd -a 2>&1`;
+    my $tmprst = $?;
+    chomp($cmdoutput);
+    if ($tmprst) {
+        my @lines = split("[\n\r]", $cmdoutput);
+        push @$error_ref, $_ foreach (@lines);
+        $rst = 1;
+    }elsif($cmdoutput =~ /Permission denied for request/){
+        push @$error_ref, "Permission denied for request, please checking xcatd";
+        $rst = 1;
+    }
+    return $rst if ($rst);
+
     #check important port
     my @port_list = ("xcatdport", "xcatiport");
     foreach my $port_attr (@port_list) {
-        my $port = `lsdef -t site -i $port_attr -c| awk -F'=' '{print \$2}'`;
+        my $port = `lsdef -t site -i $port_attr -c 2>&1| awk -F'=' '{print \$2}'`;
         chomp($port);
         if ($port) {
-            my $cmdoutput = `netstat -ant|grep LISTEN|grep $port`;
+            my $cmdoutput = `netstat -ant 2>&1|grep LISTEN|grep $port`;
             if ($?) {
                 push @$error_ref, "Attribute '$port_attr' in site table is set to $port, but xcatd isn't listening on $port";
                 $rst = 1;
@@ -306,15 +320,6 @@ sub check_xcatd_receive_request {
             push @$error_ref, "Attribute '$port_attr' isn't set in 'site' table";
             $rst = 1;
         }
-    }
-    return $rst if ($rst);
-
-    #send one command to test if xcatd can receive request
-    my $cmdoutput = `lsxcatd -a 2>&1`;
-    if ($?) {
-        my @lines = split("[\n\r]", $cmdoutput);
-        push @$error_ref, $_ foreach (@lines);
-        $rst = 1;
     }
 
     return $rst;
@@ -332,7 +337,7 @@ sub check_site_table {
     my @attr_list = ("master", "domain", "installdir", "tftpdir");
     foreach my $attr (@attr_list) {
         my $value;
-        $value = `lsdef -t site -i $attr -c | awk -F'=' '{print \$2}'`;
+        $value = `lsdef -t site -i $attr -c 2>&1 | awk -F'=' '{print \$2}'`;
         chomp($value);
         if ($value eq "") {
             push @$error_ref, "There isn't '$attr' definition in 'site' table";
@@ -357,7 +362,7 @@ sub check_passwd_table {
     @$error_ref = ();
     $$checkpoint_ref = "Checking 'passwd' table is configured...";
 
-    my $passwd = `tabdump passwd |awk -F',' '/system/ { gsub(/"/, "", \$2); gsub(/"/, "", \$3); print \$2,\$3 }'`;
+    my $passwd = `tabdump passwd  2>&1|awk -F',' '/system/ { gsub(/"/, "", \$2); gsub(/"/, "", \$3); print \$2,\$3 }'`;
     chomp($passwd);
     my ($username, $pw) = split(" ", $passwd);
     if ($username eq "" || $pw eq "") {
@@ -382,7 +387,7 @@ sub check_network {
 
         # on SN, get ip address by compare 'master' attribute in 'site' table
         # choose the one in the same network with 'master'
-        my @ipoutput = `ip addr show | grep inet | grep -v inet6 2>&1`;
+        my @ipoutput = `ip addr show 2>&1| grep inet | grep -v inet6`;
         foreach (@ipoutput) {
             if ($_ =~ /inet\s+(.+)\/(.+)\s+brd\s+(.+)\s+scope global/i) {
                 if (xCAT::NetworkUtils::isInSameSubnet($sitetable_ref->{master}, $1, $2, 1)) {
@@ -400,7 +405,7 @@ sub check_network {
             push @$error_ref, "There isn't NIC '$installnic' in current server";
             $rst = 1;
         } else {
-            $$serverip_ref = `ip addr show $installnic | awk -F" " '/inet / {print \$2}'|awk -F"/" '{print \$1}'`;
+            $$serverip_ref = `ip addr show $installnic 2>&1| awk -F" " '/inet / {print \$2}'|awk -F"/" '{print \$1}'`;
             chomp($$serverip_ref);
             if (!defined($$serverip_ref) || ($$serverip_ref eq "")) {
                 push @$error_ref, "There isn't IP address assigned to NIC $installnic";
@@ -414,7 +419,7 @@ sub check_network {
         }
     }
 
-    my $networks = `tabdump networks|grep -v "^#"`;
+    my $networks = `tabdump networks 2>&1|grep -v "^#"`;
     $networks =~ s/\"//g;
     my $netcnt = `echo "$networks"|wc -l`;
     my $hit    = 0;
@@ -474,7 +479,7 @@ sub check_directory {
                 $rst = 1;
             } else {
                 if ($is_sn) {
-                    my $mountoutput = `mount | grep '$sitetable_ref->{$dir}'`;
+                    my $mountoutput = `mount  2>&1| grep '$sitetable_ref->{$dir}'`;
                     chomp($mountoutput);
 
                     my $mountip;
@@ -506,7 +511,7 @@ sub check_disk {
     my $rst = 0;
     @$error_ref = ();
 
-    my $installdir = `lsdef -t site -i installdir -c | awk -F'=' '{print \$2}'`;
+    my $installdir = `lsdef -t site -i installdir -c 2>&1| awk -F'=' '{print \$2}'`;
     chomp($installdir);
     my %dir_expectedspace_list = ("/var" => 1, "/tmp" => 1, "$installdir" => 10);
     my $disk_str="[";
@@ -601,7 +606,7 @@ sub check_http_service {
         push @$error_ref, "HTTP check need 'wget' tool, please install 'wget' tool and try again";
     } else {
         {
-            my $installdir = `lsdef -t site -i installdir -c | awk -F'=' '{print \$2}'`; 
+            my $installdir = `lsdef -t site -i installdir -c 2>&1 | awk -F'=' '{print \$2}'`; 
             chomp($installdir);
             unless($installdir){
                 push @$error_ref, "HTTP work path(installdir) isn't configured in 'sit' table";
@@ -636,14 +641,14 @@ sub check_tftp_service {
     $$checkpoint_ref = "Checking TFTP service is configured...";
     @$error_ref = ();
 
-    my $nodename = `hostname -s`;
+    my $nodename = `hostname -s 2>&1`;
     chomp($nodename);
 
     # For sn, 'setuptftp' attribute could be set to '0' or '1'.
     # if '0', sn does not need to provie TFTP service, will not check it
     my $checktftp = 1;
     if ($is_sn) {
-        $checktftp = `lsdef $nodename -i setuptftp -c | awk -F'=' '{print \$2}' `;
+        $checktftp = `lsdef $nodename -i setuptftp -c  2>&1 | awk -F'=' '{print \$2}' `;
         chomp($checktftp);
     }
     if ($checktftp) {
@@ -652,7 +657,7 @@ sub check_tftp_service {
             push @$error_ref, "TFTP check need 'tftp' tool, please install 'tftp' tool and try again";
         } else {
             {
-                my $tftpdir = `lsdef -t site -i tftpdir -c | awk -F'=' '{print \$2}'`;
+                my $tftpdir = `lsdef -t site -i tftpdir -c 2>&1| awk -F'=' '{print \$2}'`;
                 chomp($tftpdir);
                 unless($tftpdir){
                     push @$error_ref, "TFTP work path isn't configured in 'sit' table";
@@ -709,14 +714,14 @@ sub check_dns_service {
     $$checkpoint_ref = "Checking DNS service is configured...";
     @$error_ref = ();
 
-    my $nodename = `hostname -s`;
+    my $nodename = `hostname -s 2>&1`;
     chomp($nodename);
 
     # For sn, 'setupdns' attribute could be set to '0' or '1'.
     # if '0', sn does not need to provie DNS service, will not check it
     my $checkdns = 1;
     if ($is_sn) {
-        $checkdns = `lsdef $nodename -i setupnameserver -c | awk -F'=' '{print \$2}'`;
+        $checkdns = `lsdef $nodename -i setupnameserver -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdns);
     }
 
@@ -740,7 +745,7 @@ sub check_dns_service {
                 my @snlist = xCAT::ServiceNodeUtils->getAllSN();
                 my $sntmp  = shift(@snlist);
                 if ($sntmp) {
-                    my $sninfo = `cat /etc/hosts | grep $sntmp`;
+                    my $sninfo = `cat /etc/hosts 2>&1| grep $sntmp`;
                     if ($sninfo =~ /(\d+).(\d+).(\d+).(\d+)/) {
                         my $snip = "$1.$2.$3.$4";
                         if (!probe_utils->is_dns_ready("$snip", "$serverip", "$sntmp", "$sitetable_ref->{domain}")) {
@@ -784,14 +789,14 @@ sub check_dhcp_service {
     # For sn, 'setupdhcp' attribute could be set to '0' or '1'.
     # if '0', sn does not need to provie DHCP service, will not check it
     if ($is_sn) {
-        my $nodename = `hostname -s`;
+        my $nodename = `hostname -s 2>&1`;
         chomp($nodename);
-        my $checkdhcp = `lsdef $nodename -i setupdhcp -c | awk -F'=' '{print \$2}'`;
+        my $checkdhcp = `lsdef $nodename -i setupdhcp -c  2>&1| awk -F'=' '{print \$2}'`;
         chomp($checkdhcp);
         if ($checkdhcp) {
 
             # on sn, just check dhcpd service whether running
-            my $dhcpoutput = `ps aux | grep dhcpd |grep -v grep`;
+            my $dhcpoutput = `ps aux 2>&1| grep dhcpd |grep -v grep`;
             if (!$dhcpoutput) {
                 push @$error_ref, "There isn't 'dhcpd' deamon in current server";
                 $rst = 1;
@@ -805,7 +810,7 @@ sub check_dhcp_service {
             my @snlist = xCAT::ServiceNodeUtils->getAllSN();
             my $sntmp  = shift(@snlist);
             if ($sntmp) {
-                my $tmp = `makedhcp -q $sntmp`;
+                my $tmp = `makedhcp -q $sntmp 2>&1`;
                 if ($?) {
                     push @$error_ref, "makedhcp -q $sntmp failed";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
@@ -814,7 +819,7 @@ sub check_dhcp_service {
                 }
                 chomp($tmp);
                 my $snip  = xCAT::NetworkUtils->getipaddr($sntmp);
-                my $snmac = `lsdef $sntmp -i mac -c | awk -F'=' '{print \$2}'`;
+                my $snmac = `lsdef $sntmp -i mac -c 2>&1| awk -F'=' '{print \$2}'`;
                 chomp($snmac);
                 my $tmpmac;
                 if ($tmp =~ /$sntmp: ip-address = $snip, hardware-address = (.+)/) {
@@ -831,7 +836,7 @@ sub check_dhcp_service {
                 }
             } else {
 
-                my $tmp = `chdef xcatmntest groups=all ip=$serverip  mac=aa:aa:aa:aa:aa:aa`;
+                my $tmp = `chdef xcatmntest groups=all ip=$serverip  mac=aa:aa:aa:aa:aa:aa 2>&1`;
                 if ($?) {
                     push @$error_ref, "Node simulation by 'chdef' has failed";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
@@ -853,16 +858,16 @@ sub check_dhcp_service {
                     push @$error_ref, "makedhcp xcatmntest failed";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
                     $rc = 1;
-                    `rmdef xcatmntest`;
+                    `rmdef xcatmntest 2>&1`;
                     last;
                 }
 
-                $tmp = `makedhcp -q  xcatmntest`;
+                $tmp = `makedhcp -q  xcatmntest 2>&1`;
                 if ($?) {
                     push @$error_ref, "makedhcp -q xcatmntest failed";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
                     $rc = 1;
-                    `makedhcp -d xcatmntest && rmdef xcatmntest`;
+                    `makedhcp -d xcatmntest 2>&1 && rmdef xcatmntest 2>&1`;
                     last;
                 }
                 chomp($tmp);
@@ -870,12 +875,12 @@ sub check_dhcp_service {
                     push @$error_ref, "DHCP server reply is wrong";
                     returncmdoutput($tmp, $error_ref) if ($verbose);
                     $rc = 1;
-                    `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+                    `makedhcp -d xcatmntest 2>&1 &&  rmdef xcatmntest 2>&1`;
                     last;
                 }
 
                 push @$error_ref, "Start clearing simulation information for dhcp test" if ($verbose);
-                $tmp = `makedhcp -d xcatmntest &&  rmdef xcatmntest`;
+                $tmp = `makedhcp -d xcatmntest 2>&1 &&  rmdef xcatmntest 2>&1`;
                 returncmdoutput($tmp, $error_ref) if ($verbose);
 
                 unlink "/etc/hosts";
