@@ -154,7 +154,7 @@ use xCAT::ExtTab;
             file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
             options => "Options for the file:\n\n" .
 qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n} .
-qq{ rw - Same as Above.Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Do not confuse it with the "rw" permission in the file system. \n\n} .
+qq{ rw - Same as above. Its name "rw" does NOT mean it always be read-write, even in most cases it is read-write. Do not confuse it with the "rw" permission in the file system. \n\n} .
 qq{ persistent - It provides a mounted file or directory that is copied to the xCAT persistent location and then over-mounted on the local file or directory. Anything written to that file or directory is preserved. It means, if the file/directory does not exist at first, it will be copied to the persistent location. Next time the file/directory in the persistent location will be used. The file/directory will be persistent across reboots. Its permission will be the same as the original one in the statelite location. It requires the statelite table to be filled out with a spot for persistent statelite. This option can be performed on files and directories. \n\n} .
 qq{ con - The contents of the pathname are concatenated to the contents of the existing file. For this directive the searching in the litetree hierarchy does not stop when the first match is found. All files found in the hierarchy will be concatenated to the file when found. The permission of the file will be "-rw-r--r--", which means it is read-write for the root user, but readonly for the others. It is non-persistent, when the node reboots, all changes to the file will be lost. It can only be performed on files. Do not use it for one directory.\n\n} .
 qq{ ro - The file/directory will be overmounted read-only on the local file/directory. It will be located in the directory hierarchy specified in the litetree table. Changes made to this file or directory on the server will be immediately seen in this file/directory on the node. This option requires that the file/directory to be mounted must be available in one of the entries in the litetree table. This option can be performed on files and directories.\n\n} .
@@ -169,7 +169,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 
     vmmaster => {
 
-        #will add columns as approriate, for now:
+        #will add columns as appropriate, for now:
         #os arch profile to populate the corresponding nodetype fields of a cloned vm
         #storage to indicate where the master data is actually stored (i.e. virtual disk images)
         #storagemodel to allow chvm on a clone to be consistent with the master by default
@@ -205,7 +205,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'migrationdest' => 'A noderange representing candidate destinations for migration (i.e. similar systems, same SAN, or other criteria that xCAT can use',
 'storage' => 'A list of storage files or devices to be used.  i.e. dir:///cluster/vm/<nodename> or nfs://<server>/path/to/folder/',
             'storagemodel' => 'Model of storage devices to provide to guest',
-'cfgstore' => 'Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
+'cfgstore' => 'Optional location for persistent storage separate of emulated hard drives for virtualization solutions that require persistent store to place configuration data',
 'memory' => 'Megabytes of memory the VM currently should be set to.',
 'master' => 'The name of a master image, if any, this virtual machine is linked to.  This is generally set by clonevm and indicates the deletion of a master that would invalidate the storage of this virtual machine',
             'cpus' => 'Number of CPUs the node should see.',
@@ -472,7 +472,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The node name or group name.',
             interface => 'The adapter interface name that will be used to install and manage the node. E.g. eth0 (for linux) or en0 (for AIX).)',
-            mac => 'The mac address or addresses for which xCAT will manage static bindings for this node.  This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").',
+            mac => 'The mac address or addresses for which xCAT will manage static bindings for this node.  This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:04:05:0F!node6-eth1"). If there are multiple nics connected to Management Network(usually for bond), in order to make sure the OS deployment finished successfully, the macs of those nics must be able to resolve to same IP address. First, users have to create alias of the node for each mac in the Management Network through either: 1. adding the alias into /etc/hosts for the node directly or: 2. setting the alias to the "hostnames" attribute and then run "makehost" against the node. Then, configure the "mac" attribute of the node like "mac1!node|mac2!node-alias". For the first mac address (mac1 in the example) set in "mac" attribute, do not need to set a "node name" string for it since the nodename of the node will be used for it by default.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -774,7 +774,8 @@ passed as argument rather than by table value',
             otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
             otherpkgdir => 'The base directory where the non-distro packages are stored. Only 1 local directory supported at present.',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
-            postinstall => 'Only supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be speperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
+            postinstall => 'Supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be seperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
+
       IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
       IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
       IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
@@ -795,8 +796,15 @@ passed as argument rather than by table value',
             permission => 'The mount permission of /.statelite directory is used, its default value is 755',
             dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
             crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
-            partitionfile => 'The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/xcat.install_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma "," ',
-            driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_srouce_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
+            partitionfile => 'Only available for diskful osimages and statelite osimages(localdisk enabled). The full path of the partition file or the script to generate the partition file. The valid value includes:
+                "<the absolute path of the parititon file>": For diskful osimages, the partition file contains the partition definition that will be inserted directly into the template file for os installation. The syntax and format of the partition file should confirm to the corresponding OS installer of the Linux distributions(e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu). For statelite osimages, when the localdisk is enabled, the partition file with specific syntax and format includes the partition scheme of the local disk, please refer to the statelite documentation for details.
+                "s:<the absolute path of the partition script>": a shell script to generate the partition file "/tmp/partitionfile" inside the installer before the installation start.
+                "d:<the absolute path of the disk name file>": only available for ubuntu osimages, includes the name(s) of the disks to partition in traditional, non-devfs format(e.g, /dev/sdx, not e.g. /dev/discs/disc0/disc), and be delimited with space. All the disks involved in the partition file should be specified.
+                "s:d:<the absolute path of the disk script>": only available for ubuntu osimages, a script to generate the disk name file "/tmp/xcat.install_disk" inside the debian installer. This script is run in the "pressed/early_command" section.
+                "c:<the absolute path of the additional pressed config file>": only availbe for ubuntu osimages, contains the additional pressed entries in "d-i ..." form. This can be used to specify some additional preseed options to support RAID or LVM in Ubuntu.
+                "s:c:<the absolute path of the additional pressed config script>": only available for ubuntu osimages, runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
+',
+            driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_source_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -824,7 +832,7 @@ passed as argument rather than by table value',
             key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame, switch.',
             username => 'The default userid for this type of component',
             password => 'The default password for this type of component',
-            cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod is not supported however the code attempts to auto-discover MD5 encrypted passwords.',
+            cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod can be set to md5, sha256 or sha512. If not set, sha256 will be used as default.',
             authdomain => 'The domain in which this entry has meaning, e.g. specifying different domain administrators per active directory domain',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -937,18 +945,18 @@ passed as argument rather than by table value',
 
             # Do not put description text past column 88, so it displays well in a 100 char wide window.
             # ----------------------------------------------------------------------------------|----------
-            key => "Attribute Name:  Description\n\n" .
-              " ------------\n" .
-              "AIX ATTRIBUTES\n" .
-              " ------------\n" .
-" nimprime :   The name of NIM server, if not set default is the AIX MN.
-              If Linux MN, then must be set for support of mixed cluster (TBD).\n\n" .
+        key => "Attribute Name:  Description\n\n" .
+" ------------\n" .
+"AIX ATTRIBUTES\n" .
+" ------------\n" .
+" nimprime :   The name of NIM server, if not set default is the AIX MN.\n" .
+"              If Linux MN, then must be set for support of mixed cluster (TBD).\n\n" .
 " useSSHonAIX:  (yes/1 or no/0). Default is yes.  The support for rsh/rcp is deprecated.\n" .
 " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n" .
-              "               NFSv3 will be used with NIM. Default is no.\n\n" .
-              " -----------------\n" .
-              "DATABASE ATTRIBUTES\n" .
-              " -----------------\n" .
+"               NFSv3 will be used with NIM. Default is no.\n\n" .
+" -----------------\n" .
+"DATABASE ATTRIBUTES\n" .
+" -----------------\n" .
 " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n" .
 "                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n" .
 "                Default is to write to both the auditlog table and syslog.\n" .
@@ -967,21 +975,26 @@ passed as argument rather than by table value',
 " excludenodes:  A set of comma separated nodes and/or groups that would automatically\n" .
 "                be subtracted from any noderange, it can be used for excluding some\n" .
 "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n" .
-              "                details on supported formats.\n\n" .
+"                details on supported formats.\n\n" .
 " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n" .
-"              the node deployment, node discovery and power operations. The default is to update.\n\n" .
+"              the node deployment, node discovery and power operations. The default\n" .
+"              is to update.\n\n" .
 " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n\n" .
-" skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not be logged in syslog.\n\n" .
-              " -------------\n" .
-              "DHCP ATTRIBUTES\n" .
-              " -------------\n" .
-" dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same\n" .
-"                  for all nodes, use a simple comma-separated list of NICs.  To\n" .
-"                  specify different NICs for different nodes:\n" .
-              "                       xcatmn|eth1,eth2;service|bond0.\n" .
-"                  In this example xcatmn is the name of the xCAT MN, and DHCP there\n" .
-"                  should listen on eth1 and eth2.  On all of the nodes in group\n" .
-"                  'service' DHCP should listen on the bond0 nic.\n\n" .
+" skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not \n" .
+"                   be logged in syslog.\n\n" .
+" -------------\n" .
+"DHCP ATTRIBUTES\n" .
+" -------------\n" .
+" dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same for all\n" .
+"                  nodes, use a comma-separated list of the NICs.  To specify different NICs\n" .
+"                  for different nodes, use the format: \"xcatmn|eth1,eth2;service|bond0\", \n" .
+"                  where xcatmn is the name of the management node, DHCP should listen on \n" .
+"                  the eth1 and eth2 interfaces.  All the nodes in group 'service' should \n" .
+"                  listen on the 'bond0' interface.\n\n" .
+"                  To disable the genesis kernel from being sent to specific interfaces, a\n" .
+"                  ':noboot' option can be appended to the interface name.  For example,\n" .
+"                  if the management node has two interfaces, eth1 and eth2, disable\n" .
+"                  genesis from being sent to eth1 using: \"eth1:noboot,eth2\".\n\n" .
 " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n" .
 " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n" .
 " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n" .
@@ -993,78 +1006,77 @@ passed as argument rather than by table value',
 "                     If set to 'static', the network configuration will be configured \n" .
 "                     in static mode based on the node and network definition on MN.\n" .
 "                     If set to 'dhcp', the network will be configured with dhcp protocol.\n" .
-              "                     The default is 'dhcp'.\n\n" .
-              " ------------\n" .
-              "DNS ATTRIBUTES\n" .
-              " ------------\n" .
-" dnshandler:  Name of plugin that handles DNS setup for makedns.\n" .
-              " domain:  The DNS domain name used for the cluster.\n\n" .
-" forwarders:  The DNS servers at your site that can provide names outside of the\n" .
-"              cluster. The makedns command will configure the DNS on the management\n" .
-"              node to forward requests it does not know to these servers.\n" .
-"              Note that the DNS servers on the service nodes will ignore this value\n" .
-"              and always be configured to forward requests to the management node.\n\n" .
+"                     The default is 'dhcp'.\n\n" .
+" ------------\n" .
+"DNS ATTRIBUTES\n" .
+" ------------\n" .
+" dnshandler:  Name of plugin that handles DNS setup for makedns.\n\n" .
+" domain:  The DNS domain name used for the cluster.\n\n" .
+" forwarders:  The DNS servers at your site that can provide names outside of the cluster.\n" .
+"              The makedns command will configure the DNS on the management node to forward\n" .
+"              requests it does not know to these servers. Note that the DNS servers on the\n" .
+"              service nodes will ignore this value and always be configured to forward \n" .
+"              to the management node.\n\n" .
 " master:  The hostname of the xCAT management node, as known by the nodes.\n\n" .
-" nameservers:  A comma delimited list of DNS servers that each node in the cluster\n" .
-"               should use. This value will end up in the nameserver settings of the\n" .
+" nameservers:  A comma delimited list of DNS servers that each node in the cluster should\n" .
+"               use. This value will end up in the nameserver settings of the\n" .
 "               /etc/resolv.conf on each node. It is common (but not required) to set\n" .
 "               this attribute value to the IP addr of the xCAT management node, if\n" .
 "               you have set up the DNS on the management node by running makedns.\n" .
 "               In a hierarchical cluster, you can also set this attribute to\n" .
 "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n" .
 "               node that is managing it (either its service node or the management\n" .
-              "               node).\n\n" .
+"               node).\n\n" .
 " externaldns:  To specify that external dns is used. If externaldns is set to any value\n" .
 "               then, makedns command will not start the local nameserver on xCAT MN. \n" .
-              "               Default is to start the local nameserver.\n\n" .
+"               Default is to start the local nameserver.\n\n" .
 " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n" .
 "               section. This is an interface for user to add configuration entries to\n" .
-              "               the zone sections in named.conf.\n\n" .
-" dnsinterfaces:  The network interfaces DNS server should listen on.  If it is the same\n" .
-"                  for all nodes, use a simple comma-separated list of NICs.  To\n" .
-"                  specify different NICs for different nodes:\n" .
-              "                       xcatmn|eth1,eth2;service|bond0.\n" .
-"                  In this example xcatmn is the name of the xCAT MN, and DNS there\n" .
-"                  should listen on eth1 and eth2.  On all of the nodes in group\n" .
-"                  'service' DNS should listen on the bond0 nic.\n" .
-"                  NOTE: if using this attribute to block certain interfaces, make sure\n" .
-"                  the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to\n" .
-"                  use this ip to communicate with the local NDS server on MN.\n\n" .
-              " -------------------------\n" .
-              "HARDWARE CONTROL ATTRIBUTES\n" .
-              " -------------------------\n" .
+"               the zone sections in named.conf.\n\n" .
+" dnsinterfaces:  The network interfaces DNS should listen on.  If it is the same for all\n" .
+"                 nodes, use a simple comma-separated list of NICs.  To specify different \n" .
+"                 NICs for different nodes, use the format: \"xcatmn|eth1,eth2;service|bond0\", \n" .
+"                 where xcatmn is the name of the management node, and DNS should listen on\n" .
+"                 the eth1 and eth2 interfaces.  All the nods in group 'service' should \n" . 
+"                 listen on the 'bond0' interface.\n\n" .
+"                 NOTE: If using this attribute to block certain interfaces, make sure\n" .
+"                 the IP maps to your hostname of xCAT MN is not blocked since xCAT needs\n" .
+"                 to use this IP to communicate with the local NDS server on MN.\n\n" .
+" -------------------------\n" .
+"HARDWARE CONTROL ATTRIBUTES\n" .
+" -------------------------\n" .
 " blademaxp:  The maximum number of concurrent processes for blade hardware control.\n\n" .
 " ea_primary_hmc:  The hostname of the HMC that the Integrated Switch Network\n" .
 "                  Management Event Analysis should send hardware serviceable\n" .
 "                  events to for processing and potentially sending to IBM.\n\n" .
 " ea_backup_hmc:  The hostname of the HMC that the Integrated Switch Network\n" .
 "                  Management Event Analysis should send hardware serviceable\n" .
-              "                  events to if the primary HMC is down.\n\n" .
+"                  events to if the primary HMC is down.\n\n" .
 " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n" .
 "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n" .
 " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n" .
 " hwctrldispatch:  Whether or not to send hw control operations to the service\n" .
 "                  node of the target nodes. Default is 'y'.(At present, this attribute\n" .
-              "                  is only used for IBM Flex System)\n\n" .
+"                  is only used for IBM Flex System)\n\n" .
 " ipmidispatch:  Whether or not to send ipmi hw control operations to the service\n" .
 "                node of the target compute nodes. Default is 'y'.\n\n" .
 " ipmimaxp:  The max # of processes for ipmi hw ctrl. The default is 64. Currently,\n" .
-              "            this is only used for HP hw control.\n\n" .
+"            this is only used for HP hw control.\n\n" .
 " ipmiretries:  The # of retries to use when communicating with BMCs. Default is 3.\n\n" .
 " ipmisdrcache:  If set to 'no', then the xCAT IPMI support will not cache locally\n" .
 "                the target node's SDR cache to improve performance.\n\n" .
 " ipmitimeout:  The timeout to use when communicating with BMCs. Default is 2.\n" .
-              "               This attribute is currently not used.\n\n" .
+"               This attribute is currently not used.\n\n" .
 " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n" .
 "          This parameter doesn't take effect on the rpower command.\n" .
 "          It takes effects on other PPC hardware control command\n" .
 "          getmacs/rnetboot/rbootseq and so on. Default is 8.\n\n" .
-" syspowerinterval:  For system p CECs, this is the number of seconds the rpower\n" .
-"                 command will wait between performing the action for each CEC.\n" .
-"                 For system x IPMI servers, this is the number of seconds the\n" .
-"                 rpower command will wait between powering on <syspowermaxnodes>\n" .
-"                 nodes at a time.  This value is used to control the power on speed\n" .
-              "                 in large clusters. Default is 0.\n\n" .
+" syspowerinterval:  For SystemP CECs, this is the number of seconds the rpower command\n" .
+"                    will wait between performing the action for each CEC.  For SystemX\n" .
+"                    IPMI servers, this is the number of seconds the rpower command will\n" .
+"                    wait between powering on <syspowermaxnodes> nodes at a time.  This\n" .
+"                    value is used to control the power on speed in large clusters. \n" .
+"                    Default is 0.\n\n" .
 " syspowermaxnodes:  The number of servers to power on at one time before waiting\n" .
 "                    'syspowerinterval' seconds to continue on to the next set of\n" .
 "                    nodes.  If the noderange given to rpower includes nodes served\n" .
@@ -1081,18 +1093,18 @@ passed as argument rather than by table value',
 "           processes for PPC hardware control commands. Default is 64.\n\n" .
 " ppcretry:  The max # of PPC hw connection attempts to HMC before failing.\n" .
 "           It only takes effect on the hardware control commands through HMC. \n" .
-              "           Default is 3.\n\n" .
+"           Default is 3.\n\n" .
 " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw\n" .
 "              through HMC. It only takes effect on the hardware control commands\n" .
-              "              through HMC. Default is 0.\n\n" .
+"              through HMC. Default is 0.\n\n" .
 " snmpc:  The snmp community string that xcat should use when communicating with the\n" .
-              "         switches.\n\n" .
-              " ---------------------------\n" .
-              "INSTALL/DEPLOYMENT ATTRIBUTES\n" .
-              " ---------------------------\n" .
+"         switches.\n\n" .
+" ---------------------------\n" .
+"INSTALL/DEPLOYMENT ATTRIBUTES\n" .
+" ---------------------------\n" .
 " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
 "                   directory on the stateless and statelite nodes after the\n" .
-              "                   postscripts are run. Default is no.\n\n" .
+"                   postscripts are run. Default is no.\n\n" .
 " db2installloc:  The location which the service nodes should mount for\n" .
 "                 the db2 code to install. Format is hostname:/path.  If hostname is\n" .
 "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n" .
@@ -1100,18 +1112,18 @@ passed as argument rather than by table value',
 " defserialport:  The default serial port - currently only used by mknb.\n\n" .
 " defserialspeed:  The default serial speed - currently only used by mknb.\n\n" .
 " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n" .
-              "                prefix (e.g. 00:11:aa)\n\n" .
+"                prefix (e.g. 00:11:aa)\n\n" .
 " genpasswords:  Automatically generate random passwords for BMCs when configuring\n" .
-              "                them.\n\n" .
+"                them.\n\n" .
 " installdir:  The local directory name used to hold the node deployment packages.\n\n" .
 " installloc:  The location from which the service nodes should mount the \n" .
 "              deployment packages in the format hostname:/path.  If hostname is\n" .
 "              omitted, it defaults to the management node. The path must\n" .
-              "              match the path in the installdir attribute.\n\n" .
+"              match the path in the installdir attribute.\n\n" .
 " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n" .
 " mnroutenames:  The name of the routes to be setup on the management node.\n" .
 "                It is a comma separated list of route names that are defined in the\n" .
-              "                routes table.\n\n" .
+"                routes table.\n\n" .
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
@@ -1127,44 +1139,43 @@ passed as argument rather than by table value',
 " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n" .
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
 "              If value is set to a hostname, the directory in tftpdir\n" .
-              "              will be mounted from that hostname on the SN\n\n" .
-" sharedinstall: Indicates if a shared file system will be used for installation\n" .
-"               resources. Possible values are: 'no', 'sns', or 'all'.  'no' \n" .
-"               means a shared file system is not being used.  'sns' means a\n" .
-"               shared filesystem is being used across all service nodes.\n" .
-"               'all' means that the management as well as the service nodes\n" .
-"               are all using a common shared filesystem. The default is 'no'.\n" .
+"              will be mounted from that hostname on the SN\n\n" .
+" sharedinstall:  Indicates if a shared file system will be used for installation\n" .
+"                 resources. Possible values are: 'no', 'sns', or 'all'.  'no' \n" .
+"                 means a shared file system is not being used.  'sns' means a\n" .
+"                 shared filesystem is being used across all service nodes.\n" .
+"                 'all' means that the management as well as the service nodes\n" .
+"                 are all using a common shared filesystem. The default is 'no'.\n\n" .
 " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n" .
 " xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques\n" .
 "                 to help user debug problems while using xCAT, especially on OS provision,\n" .
 "                 such as collecting logs of the whole installation process and accessing\n" .
 "                 the installing system via ssh, etc. These techniques will be enabled\n" .
 "                 according to different xCAT debug levels specified by 'xcatdebugmode',\n" .
-              "                 currently supported values:\n" .
-              "                   '0':  disable debug mode\n" .
-              "                   '1':  enable basic debug mode\n" .
-              "                   '2':  enable expert debug mode\n" .
+"                 currently supported values:\n" .
+"                   '0':  disable debug mode\n" .
+"                   '1':  enable basic debug mode\n" .
+"                   '2':  enable expert debug mode\n" .
 "                 For the details on 'basic debug mode' and 'expert debug mode',\n" .
-              "                 refer to xCAT documentation.\n\n" .
-              " --------------------\n" .
-              "REMOTESHELL ATTRIBUTES\n" .
-              " --------------------\n" .
-" nodesyncfiledir:  The directory on the node, where xdcp will rsync the files\n" .
+"                 refer to xCAT documentation.\n\n" .
+" --------------------\n" .
+"REMOTESHELL ATTRIBUTES\n" .
+" --------------------\n" .
+" nodesyncfiledir:  The directory on the node, where xdcp will rsync the files\n\n" .
 " SNsyncfiledir:  The directory on the Service Node, where xdcp will rsync the files\n" .
 "                 from the MN that will eventually be rsync'd to the compute nodes.\n\n" .
-" sshbetweennodes:  Comma separated list of groups of compute nodes to enable passwordless root \n" .
-"                   ssh during install, or xdsh -K. Default is ALLGROUPS.\n" .
-"                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n" .
-"                   Service Nodes are not affected by this attribute\n" .
-              "                   they are always setup with\n" .
-"                   passwordless root access to nodes and other SN.\n" .
+" sshbetweennodes:  Comma separated list of groups of compute nodes to enable passwordless\n" .
+"                   root ssh to the nodes during install or running 'xdsh -K'. The default\n" .
+"                   is ALLGROUPS.  Set to NOGROUPS to disable.\n\n" .
+"                   Service Nodes are not affected by this attribute as they are always\n" .
+"                   configured with passwordless root access.\n" .
 "                   If using the zone table, this attribute in not used.\n\n" .
-              " -----------------\n" .
-              "SERVICES ATTRIBUTES\n" .
-              " -----------------\n" .
+" -----------------\n" .
+"SERVICES ATTRIBUTES\n" .
+" -----------------\n" .
 " consoleondemand:  When set to 'yes', conserver connects and creates the console\n" .
-"                   output only when the user opens the console. Default is no on\n" .
-              "                   Linux, yes on AIX.\n\n" .
+"                   output only when the user opens the console. Default is 'no' on\n" .
+"                   Linux, 'yes' on AIX.\n\n" .
 " httpport:    The port number that the booting/installing nodes should contact the\n" .
 "              http server on the MN/SN on. It is your responsibility to configure\n" .
 "              the http server to listen on that port - xCAT will not do that.\n\n" .
@@ -1174,7 +1185,7 @@ passed as argument rather than by table value',
 "              For example, if the network response time is too slow, nmap may not\n" .
 "              give stable output. You can increase the timeout value by specifying \n" .
 "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n" .
-              "              the nmap command.\n\n" .
+"              the nmap command.\n\n" .
 " ntpservers:  A comma delimited list of NTP servers for the service node and\n" .
 "              the compute node to sync with. The keyword <xcatmaster> means that\n" .
 "              the node's NTP server is the node that is managing it\n" .
@@ -1182,45 +1193,43 @@ passed as argument rather than by table value',
 " extntpservers:  A comma delimited list of external NTP servers for the xCAT\n" .
 "                 management node to sync with. If it is empty, the NTP server\n" .
 "                 will use the management node's own hardware clock to calculate\n" .
-              "                 the system date and time\n\n" .
-" svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n" .
-              "              mgmt node.\n\n" .
-              " timezone:  (e.g. America/New_York)\n\n" .
-              " tftpdir:  tftp directory path. Default is /tftpboot\n\n" .
+"                 the system date and time\n\n" .
+" svloglocal:  If set to 1, syslog on the service node will not get forwarded to the\n" .
+"              management node.\n\n" .
+" timezone:  (e.g. America/New_York)\n\n" .
+" tftpdir:  The tftp directory path. Default is /tftpboot\n\n" .
 " tftpflags:  The flags that used to start tftpd. Default is \'-v -l -s /tftpboot \n" .
 "               -m /etc/tftpmapfile4xcat.conf\' if tftplfags is not set\n\n" .
 " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n" .
 "                 using nmap (if available) from the management node instead of the\n" .
 "                 service node. This will improve the performance in a flat network.\n\n" .
-" vsftp:       Default is 'n'. If set to 'y', the xcatd on the mn will automatically\n" .
-"              bring up vsftpd.  (You must manually install vsftpd before this.\n" .
-"              This setting does not apply to the service node. For sn\n" .
-"              you need to set servicenode.ftpserver=1 if you want xcatd to\n" .
-              "              bring up vsftpd.\n\n" .
-"FQDNfirst: Fully Qualified Domain Name first. If set to 1/yes/enable, the /etc/hosts \n" .
-"           entries generated by 'makehosts' will put the FQDN before the PQDN(Partially \n" .
-"           Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
-"hierarchicalattrs: Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
-"                   included hierarchically. Attribute values for all the node's groups\n" .
-"                   will be applied to the node in the groups' order except the repeat one.\n\n" .
-              " -----------------------\n" .
-              "VIRTUALIZATION ATTRIBUTES\n" .
-              " -----------------------\n" .
-" usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the\n" .
-              "           virtual network bridge up correctly.\n" .
+" vsftp:  Default is 'n'. If set to 'y', xcatd on the management node will automatically\n" .
+"         start vsftpd.  (vsftpd must be installed by the admin).  This setting does not\n" .
+"         apply to service nodes.  For service nodes, set servicenode.ftpserver=1.\n\n" .
+" FQDNfirst:  Fully Qualified Domain Name first. If set to 1/yes/enable, the /etc/hosts \n" .
+"             entries generated by 'makehosts' will put the FQDN before the PQDN(Partially \n" .
+"             Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
+" hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
+"                     included hierarchically. Attribute values for all the node's groups\n" .
+"                     will be applied to the node in the groups' order except the repeat one.\n\n" .
+" -----------------------\n" .
+"VIRTUALIZATION ATTRIBUTES\n" .
+" -----------------------\n" .
+" usexhrm:  Have xCAT execute the xHRM script when booting up KVM guests to configure\n" .
+"           the virtual network bridge.\n\n" .
 " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n" .
 "                   and add hypervisors while trying to perform operations.  If users\n" .
 "                   or tasks outside of xCAT perform the joining this assures xCAT\n" .
-              "                   will not interfere.\n\n" .
+"                   will not interfere.\n\n" .
 " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n" .
 "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n" .
 " persistkvmguests:  Keep the kvm definition on the kvm hypervisor when you power off\n" .
 "                    the kvm guest node. This is useful for you to manually change the \n" .
 "                    kvm xml definition file in virsh for debugging. Set anything means\n" .
-              "                    enable.\n\n" .
-              " --------------------\n" .
-              "XCAT DAEMON ATTRIBUTES\n" .
-              " --------------------\n" .
+"                    enable.\n\n" .
+" --------------------\n" .
+"XCAT DAEMON ATTRIBUTES\n" .
+" --------------------\n" .
 " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n" .
 "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n" .
 "               until xcatd is ready to handle the requests associated with\n" .
@@ -1228,9 +1237,9 @@ passed as argument rather than by table value',
 "               locking out admin interactive use. This value works with the\n" .
 "               xcatmaxconnections and xcatmaxbatch attributes. Is not supported on AIX.\n" .
 "               If the value is no, nodes sleep for a random time before contacting\n" .
-              "               xcatd, and retry. The default is no.\n" .
-              "               See the following document for details:\n" .
-              "               Hints_and_Tips_for_Large_Scale_Clusters\n\n" .
+"               xcatd, and retry. The default is no.\n" .
+"               See the following document for details:\n" .
+"               Hints_and_Tips_for_Large_Scale_Clusters\n\n" .
 " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n" .
 "                      begin queueing. This applies to both client command requests\n" .
 "                      and node requests, e.g. to get postscripts. Default is 64.\n\n" .
@@ -1240,7 +1249,7 @@ passed as argument rather than by table value',
 " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n" .
 " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n" .
 " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n" .
-              " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
+" xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
             value => 'The value of the attribute specified in the "key" column.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",

@@ -989,7 +989,8 @@ sub genSSHNodeHostKey
     }
 
     # see if this system supports the ecdsa
-    if (-e "/etc/ssh/ssh_host_ecdsa_key") {
+    xCAT::Utils->runcmd('rm -rf /tmp/ecdsa_key >/dev/null 2>&1 ; /usr/bin/ssh-keygen -t ecdsa -f /tmp/ecdsa_key  -P "" &>/dev/null', 0);
+    if ($::RUNCMD_RC == 0) {
         xCAT::MsgUtils->message('I', "Generating SSH2 ECDSA Key...");
         $cmd =
 "/usr/bin/ssh-keygen -t ecdsa -f /etc/xcat/hostkeys/ssh_host_ecdsa_key -C '' -N ''";

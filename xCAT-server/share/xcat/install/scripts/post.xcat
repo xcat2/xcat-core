@@ -28,11 +28,14 @@ if [[ $TFTPDIR != /* ]]; then
     TFTPDIR="/"$TFTPDIR
 fi
 
+NODESTATUS=$(echo "$NODESTATUS"| tr -d \'\"| tr A-Z a-z)
 
 (cat  << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/updateflag.awk#
 EOF
 ) >/tmp/updateflag
+
+chmod 0755 /tmp/updateflag
 
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
@@ -266,49 +269,68 @@ else
 fi
 
 
-#create the post init
-cat >/etc/init.d/xcatpostinit1 << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
-EOF
-chmod 755 /etc/init.d/xcatpostinit1
-
-if [ ! -x /etc/init.d/xcatpostinit1 ]; then
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "failed to generate /etc/init.d/xcatpostinit1" "/var/log/xcat/xcat.log"
-    fi
-else
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "/etc/init.d/xcatpostinit1 generated" "/var/log/xcat/xcat.log"
-    fi
-fi
-
 export OSVER=#TABLE:nodetype:THISNODE:os#
-
-if [[ $OSVER == ubuntu* ]]; then
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
-else
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
-    ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
+#create the post init service as a hook to run PS and PBS, as well as status updating
+hassystemd=0
+systemctl --version 2>/dev/null
+if [ $? -eq 0 ]; then
+    hassystemd=1
 fi
 
-if [[ $OSVER == ubuntu* ]]; then
-    update-rc.d xcatpostinit1 defaults
+if [ $hassystemd -eq 1 ] ; then
+    cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.service#
+EOF
+    msgutil_r "$MASTER_IP" "debug" "/etc/systemd/system/xcatpostinit1.service generated" "/var/log/xcat/xcat.log"
+
+    ln -s /etc/systemd/system/xcatpostinit1.service /etc/systemd/system/multi-user.target.wants/xcatpostinit1.service    
+    msgutil_r "$MASTER_IP" "debug" "xcatpostinit1.service enabled" "/var/log/xcat/xcat.log"
+
+    cat >/opt/xcat/xcatpostinit1 << 'EOF'
+#INCLUDE:/install/postscripts/xcatpostinit1.install#
+EOF
+    chmod 755 /opt/xcat/xcatpostinit1
 else
-    if [[ $OSVER == sles* ]]; then
-        if [[ $OSVER == sles10* ]]; then
-            /sbin/insserv xcatpostinit1
-        else
-            /sbin/insserv -p /etc/init.d xcatpostinit1
+    cat >/etc/init.d/xcatpostinit1 << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.install#
+EOF
+    chmod 755 /etc/init.d/xcatpostinit1
+
+    if [ ! -x /etc/init.d/xcatpostinit1 ]; then
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "failed to generate /etc/init.d/xcatpostinit1" "/var/log/xcat/xcat.log"
+        fi
+    else
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "/etc/init.d/xcatpostinit1 generated" "/var/log/xcat/xcat.log"
         fi
     fi
-    #chkconfig --add xcatpostinit1
-    chkconfig xcatpostinit1 on
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
+    
+    if [[ $OSVER == ubuntu* ]]; then
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
+    else
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
+        ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
+    fi
+    
+    if [[ $OSVER == ubuntu* ]]; then
+        update-rc.d xcatpostinit1 defaults
+    else
+        if [[ $OSVER == sles* ]]; then
+            if [[ $OSVER == sles10* ]]; then
+                /sbin/insserv xcatpostinit1
+            else
+                /sbin/insserv -p /etc/init.d xcatpostinit1
+            fi
+        fi
+        #chkconfig --add xcatpostinit1
+        chkconfig xcatpostinit1 on
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
+        fi
     fi
 fi
-
 
 #create the xcatinstallpost
 mkdir -p /opt/xcat
@@ -316,23 +338,24 @@ cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
 if [ -f /xcatpost/mypostscript.post ]; then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
 fi
 
 if [[ $OSVER == ubuntu* ]]; then
-    if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
         update-rc.d -f xcatpostinit1 remove
     fi
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "update-rc.d -f xcatpostinit1 remove" "/var/log/xcat/xcat.log"
     fi
 else
-    if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]] && [[ ! "$NODESTATUS" =~ ^(1|yes|y)$ ]]; then
         chkconfig xcatpostinit1 off
+        if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+            msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
+        fi
     fi
-    if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
-        msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
-    fi
+
 fi
 
 EOF
@@ -373,9 +396,11 @@ chmod 755 /xcatpost/mypostscript
 
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#
-if [[ $OSVER != ubuntu* ]]; then
-    addsiteyum
-fi
+
+#for redhat:
+##place-holder for the code to save the repo info on compute node,pointing to the "pkgdir" of the osimage
+##so that the provisioned node
+##WRITEREPO#
 
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "info" "running mypostscript" "/var/log/xcat/xcat.log"

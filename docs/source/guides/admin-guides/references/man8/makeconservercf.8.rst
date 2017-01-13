@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] \ *noderange*\ 
+\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] [\ *noderange*\ ]
 
 \ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-l|-**\ **-local**\ ] [\ *noderange*\ ]
 
@@ -36,14 +36,16 @@ DESCRIPTION
 
 
 The \ **makeconservercf**\  command will write out the /etc/conserver.cf, using information from the nodehm table
-and related tables (e.g. mp, ipmi, ppc).  Normally, \ **makeconservercf**\  will write all nodes to the conserver.cf
-file.  If a noderange is specified, it will write on those nodes to the file.  In either case, if a node
+and related tables (e.g. mp, ipmi, ppc).  Normally, \ **makeconservercf**\  will write all nodes to the /etc/conserver.cf
+file.  If a \ *noderange*\  is specified, it will write only those nodes to the file.  In either case, if a node
 does not have nodehm.cons set, it will not be written to the file.
+
+If \ **-d**\  is specified, \ **makeconservercf**\  will remove specified nodes from /etc/conserver.cf file. If \ *noderange*\  is not specified, all xCAT nodes will be removed from /etc/conserver.cf file.
 
 In the case of a hierarchical cluster (i.e. one with service nodes) \ **makeconservercf**\  will determine
 which nodes will have their consoles accessed from the management node and which from a service node
 (based on the nodehm.conserver attribute).  The /etc/conserver.cf file will be created accordingly on
-all relevant management/service nodes.  If -l is specified, it will only create the local file.
+all relevant management/service nodes.  If \ **-l**\  is specified, it will only create the local file.
 
 
 *******

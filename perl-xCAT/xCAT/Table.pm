@@ -1722,6 +1722,19 @@ sub setAttribs
         @bind   = ();
         $cols   = "";
         my %newpairs;
+        # NOTE(chenglch): Just work around, set the default value to '' due to
+        # null value can not be allowed in composite primary keys in standard
+        # SQL rules. As auto increment key is uesd by 'eventlog' and 'auditlog'
+        # table, just skip these tables.
+        if ($self->{tabname} ne "eventlog" && $self->{tabname} ne "auditlog") {
+            my $descr = $xCAT::Schema::tabspec{ $self->{tabname} };
+            my @pkeys = @{$descr->{keys}};
+            for my $p (@pkeys) {
+                if(!defined($elems->{$p}) && !defined($pKeypairs->{$p})) {
+                    $elems->{$p}= '';
+                }
+            }
+        }
 
         #first, merge the two structures to a single hash
         foreach (keys %keypairs)

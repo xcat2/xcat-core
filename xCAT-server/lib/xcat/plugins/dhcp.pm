@@ -526,7 +526,7 @@ sub addnode
         {
             $guess_next_server = 1;
         }
-        if ($nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
+        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' )) {
             if ($guess_next_server) {
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
@@ -693,6 +693,8 @@ sub addnode
             $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
+            $lstatements = 'if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { option www-server = \"http://' . $nxtsrv . $ntent->{provmethod} . '\";}' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
             $lstatements = 'supersede server.filename=\"/vios/nodes/' . $node . '\";' . $lstatements;
         }
@@ -1589,7 +1591,8 @@ sub process_request
         foreach (@ip6routes) {
 
             #TODO: filter out multicast?  Don't know if multicast groups *can* appear in ip -6 route...
-            if (/^default/ or /^fe80::\/64/ or /^unreachable/ or /^[^ ]+ via/) { #ignore link-local, junk, and routed networks
+            #ignore link-local, global-local, junk, and routed networks
+            if (/^default/ or /^fe80::\/64/ or /^2002::\/64/ or /^unreachable/ or /^[^ ]+ via/) { 
                 next;
             }
             my @parts = split /\s+/;
@@ -1965,7 +1968,7 @@ sub process_request
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {
-            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os)]);
+            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod)]);
         }
         my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
         if ($iscsitab) {
@@ -2647,6 +2650,9 @@ sub addnet
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
         push @netent, "      option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
+"    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
+        push @netent, "      option www-server = \"http://$tftp/install/onie/onie-installer\";\n";
+        push @netent,
 "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "      filename \"/yaboot\";\n";
         push @netent, "    }\n";
@@ -2921,6 +2927,7 @@ sub newconfig
         push @dhcpconf, "option tcode \"" . $::XCATSITEVALS{timezone} . "\";\n";
     }
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
+    push @dhcpconf, "option www-server code 114 = string;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";

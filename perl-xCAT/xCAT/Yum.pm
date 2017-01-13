@@ -11,29 +11,23 @@ my $installpfx;
 
 sub localize_yumrepo {
     my $self        = shift;
-    my $installroot = shift;
-    $distname = shift;
-    $arch     = shift;
-
-    $installpfx = "$installroot/$distname/$arch";
-    mkpath("$installroot/postscripts/repos/$distname/$arch/");
-    open($yumrepofile, ">", "$installroot/postscripts/repos/$distname/$arch/local-repository.tmpl");
+    my $pkgdir = shift;
+    $distname=shift;
+    $arch=shift;
+    open($yumrepofile, ">", "$pkgdir/local-repository.tmpl");
     my %options = (
         wanted      => \&check_tofix,
         follow_fast => 1
     );
-    find(\%options, $installpfx);
+    find(\%options, $pkgdir);
     close($yumrepofile);
 }
 
 
 sub remove_yumrepo {
     my $self        = shift;
-    my $installroot = shift;
-    $distname = shift;
-    $arch     = shift;
-
-    rmtree("$installroot/postscripts/repos/$distname/$arch/");
+    my $pkgdir = shift;
+    rmtree("$pkgdir/local-repository.tmpl");
 }
 
 sub check_tofix {
@@ -57,14 +51,13 @@ sub generate_repo
     my @dircomps    = File::Spec->splitdir($dirlocation);
     pop(@dircomps);
     my $yumurl = File::Spec->catdir(@dircomps);
-    $yumurl =~ s!$installpfx!http://#INSTSERVER#/install/$distname/$arch/!;
     my $reponame = $dircomps[$#dircomps];
     print $yumrepofile "[local-$distname-$arch-$reponame]\n";
-    print $yumrepofile "name=xCAT configured yum repository for $distname/$arch/$reponame\n";
+    print $yumrepofile "name=xCAT configured yum repository for $yumurl\n";
     print $yumrepofile "baseurl=$yumurl\n";
     print $yumrepofile "enabled=1\n";
     print $yumrepofile "gpgcheck=0\n\n";
-}
+}	
 
 sub fix_directory {
 

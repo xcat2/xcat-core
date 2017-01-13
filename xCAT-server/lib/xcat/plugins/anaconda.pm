@@ -462,12 +462,9 @@ sub mknetboot
         }
 
         $platform = xCAT_plugin::anaconda::getplatform($osver);
-        my $suffix = 'cpio.gz';
-        $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
-        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
-        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
-
+        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+        
+      
         # statelite images are not packed.
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -515,7 +512,7 @@ sub mknetboot
                     copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
+            unless ( -f -r "$rootimgdir/$compressedrootimg") {
                 $callback->({
                         error => ["No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                         errorcode => [1] });
@@ -756,12 +753,12 @@ sub mknetboot
             $kcmdline .= "NODE=$node ";
         }
         else {
-            if (-r "$rootimgdir/rootimg.$suffix.metainfo") {
+            if (-r "$rootimgdir/$compressedrootimg.metainfo") {
                 $kcmdline =
-"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix.metainfo ";
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
             } else {
                 $kcmdline =
-"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
+"imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
             }
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
@@ -2257,6 +2254,31 @@ sub copycd
             #
             my @rhel_version = split / /, $desc;
             $distname = "rhels" . $rhel_version[4];
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /variant = ComputeNode/) {
+                    $distname = "rhelhpc" . $rhel_version[4];
+                    last;
+                }
+            }
+            close($dinfo);
+        }
+        elsif ($desc =~ /^[\d\.]+$/)
+        {
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /family\s*=\s*CentOS/i) {
+                    $distname = "centos" . $desc;
+                    last;
+                }
+            }
+            close($dinfo);
         }
         else
         {
@@ -2453,30 +2475,8 @@ sub copycd
     }
 
 
-    unless ($path =~ /^($defaultpath)/)
-    {
-        mkpath($defaultpath);
-        if (-d $defaultpath)
-        {
-            rmtree($defaultpath);
-        }
-        else
-        {
-            unlink($defaultpath);
-        }
-
-        my $hassymlink = eval { symlink("", ""); 1 };
-        if ($hassymlink) {
-            symlink($path, $defaultpath);
-        } else
-        {
-            link($path, $defaultpath);
-        }
-
-    }
-
     require xCAT::Yum;
-    xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    xCAT::Yum->localize_yumrepo($path, $distname, $arch);
 
     if ($rc != 0)
     {
@@ -2505,7 +2505,7 @@ sub copycd
             #if ($ret[0] != 0) {
             #$callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
             #}
-
+            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
         }
     }
 }

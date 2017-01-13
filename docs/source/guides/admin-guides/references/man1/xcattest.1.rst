@@ -21,11 +21,21 @@ SYNOPSIS
 
 \ **xcattest**\  [\ **-?|-h**\ ]
 
-\ **xcattest**\  [\ **-f**\  \ *configure file*\ ] [\ **-b**\  \ *case bundle list*\ ] [\ **-l**\ ]
+\ **xcattest**\  [\ **-f**\  \ *configure file*\ ] [\ **-b**\  \ *case bundle list*\ ]
 
 \ **xcattest**\  [\ **-f**\  \ *configure file*\ ] [\ **-t**\  \ *case list*\ ]
 
-\ **xcattest**\  [\ **-f**\  \ *configure file*\ ] [\ **-c**\  \ *cmd list*\ ] [\ **-l**\ ]
+\ **xcattest**\  [\ **-f**\  \ *configure file*\ ] [\ **-c**\  \ *cmd list*\ ]
+
+\ **xcattest**\  [\ **-b**\  \ *case bundle list*\ ] [\ **-l**\ ]
+
+\ **xcattest**\  [\ **-t**\  \ *case list*\ ] [\ **-l**\ ]
+
+\ **xcattest**\  [\ **-c**\  \ *cmd list*\ ] [\ **-l**\ ]
+
+\ **xcattest**\  [\ **-s**\  \ **command**\ ]
+
+\ **xcattest**\  [\ **-s**\  \ **bundle**\ ]
 
 
 ***********
@@ -52,13 +62,13 @@ OPTIONS
 
 \ **-f**\  \ *configure file*\ 
  
- Specifies the configuration file, if not specified, the default configure file is /opt/xcat/share/xcat/tools/autotest/default.conf.
+ Specifies the configuration file with full-path. xCAT supports an example config file: /opt/xcat/share/xcat/tools/autotest/linux.conf.template
  
 
 
 \ **-b**\  \ *case bundle list*\ 
  
- Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name.
+ Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name. The bundle files should be listed in: /opt/xcat/share/xcat/tools/autotest/bundle.
  
 
 
@@ -77,6 +87,12 @@ OPTIONS
 \ **-l**\ 
  
  Display the test cases names specified by the flag -b, -t or -c.
+ 
+
+
+\ **-s**\ 
+ 
+ Display the bundle files and command with value: bundle or command.
  
 
 
@@ -136,33 +152,33 @@ EXAMPLES
  
  .. code-block:: perl
  
-    xcattest -c /tmp/config -c rpower
+    xcattest -f /tmp/config -c rpower
  
  
 
 
 2.
  
- To run customized bundle:
+ To run customized bundle with /tmp/config file:
  
  
  .. code-block:: perl
  
-    xcattest -l  > /tmp/custom.bundle
+    xcattest -c lsdef -l  > /opt/xcat/share/xcat/tools/autotest/bundle/custom.bundle
     Modify custom.bundle
-    xcattest -b custom.bundle
+    xcattest -f /tmp/config -b custom.bundle
  
  
 
 
 3.
  
- To run specified test cases.
+ To run specified test cases with /tmp/config file:
  
  
  .. code-block:: perl
  
-    xcattest -t lsdef_t_o_l_z
+    xcattest -f /tmp/config -t lsdef_t_o_l_z
  
  
 

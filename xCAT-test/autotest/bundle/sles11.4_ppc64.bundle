@@ -257,10 +257,8 @@ switchdiscover_range_z
 switchdiscover_range_z_V
 makentp_v
 makentp_h
-makentp_V
-makentp
-makentp_a
 nodeset_check_warninginfo
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 packimage_m_cpio_c_gzip
 packimage_m_cpio_c_xz

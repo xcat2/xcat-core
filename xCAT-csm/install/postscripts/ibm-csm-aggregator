@@ -1,0 +1,15 @@
+#!/bin/bash
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+# Sample Aggregator postscript.
+
+
+# Configuration locations.
+target_file_location="/etc/ibm/csm/csm_aggregator.cfg"
+daemon="csmd-aggregator"
+
+# Copy the configuration file.
+scp ${MASTER_IP}:${target_file_location} ${target_file_location}
+
+# Start the csm daemon.
+systemctl start ${daemon}

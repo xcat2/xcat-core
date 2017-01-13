@@ -1,3 +1,4 @@
+setup_vm
 Diskless_installation_flat_p8_le
 Full_installation_flat_p8_le
 go_xcat_local_repo_case7
@@ -206,6 +207,7 @@ nodeset_cmdline
 nodeset_runimg
 redhat_migration1
 redhat_migration2
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy

@@ -24,13 +24,13 @@
 
 
 if [ -f /xcatpost/mypostscript.post ]; then
-    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 else
     for param in `cat /proc/cmdline`; do
             key=`echo $param|awk -F= '{print $1}'`
             if [ "$key" = "xcatdebugmode" ]; then
-                    XCATDEBUGMODE=`echo $param|awk -F= '{print $2}'`
+                    XCATDEBUGMODE=`echo $param|awk -F= '{print $2}'| tr -d \'\" | tr A-Z a-z`
             fi
 
             if [ "$key" = "LOGSERVER" ]; then
@@ -654,7 +654,7 @@ fi
 #save the USEFLOWCONTROL into the xcatinfo file  
 #for updatenode case, passwd in with the -f flag 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
-    useflowcontrol=`grep '^USEFLOWCONTROL' /$xcatpost/mypostscript |cut -d= -f2`
+    useflowcontrol=`grep '^USEFLOWCONTROL' /$xcatpost/mypostscript |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
 fi
 if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
@@ -662,7 +662,7 @@ if [ ! -f /opt/xcat/xcatinfo ]; then
 fi
 if [ -n "$useflowcontrol" ]; then
     # lets just put YES or NO in xcatinfo
-    if [ "$useflowcontrol" = "1" ] || [ "$useflowcontrol" = "yes" ] || [ "$useflowcontrol" = "YES" ]; then
+    if [[ "$useflowcontrol" =~ ^(1|yes|y)$ ]]; then
        new_fc="YES"
     else 
        new_fc="NO"
@@ -711,11 +711,11 @@ if [ "$MODE" = "6" ]; then
   echo "$TMP" > /$xcatpost/mypostscript
   # get the RUNBOOTSCRIPTS site variable
   if [ -f /$xcatpost/mypostscript ]; then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /$xcatpost/mypostscript |cut -d= -f2`
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /$xcatpost/mypostscript |cut -d= -f2 | tr -d \'\" | tr A-Z a-z `
   fi
 
   # if admin did not requested running of post boot scripts - then remove PBS
-  if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+  if [[ !  "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
   #remove all the postscripts
   TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
   echo "$TMP" > /$xcatpost/mypostscript
@@ -827,7 +827,7 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
 else
     TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps postscript \1/;s/run_ps postscript\s*#/#/;s/run_ps postscript\s*$//" /$xcatpost/mypostscript`
 fi
-echo "
+echo "#!/bin/bash
 . /xcatpost/xcatlib.sh
 
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
@@ -890,8 +890,8 @@ echo "$TMP" > /$xcatpost/mypostscript
 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
   #notify the server that we are done with netbooting
-  CNS=`grep NODESTATUS= /$xcatpost/mypostscript |awk -F = '{print $2}'`
-  if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
+  CNS=`grep NODESTATUS= /$xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
+  if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$  ]]; then
 # TMP=`sed "/postscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /$xcatpost/mypostscript`
 #       echo "$TMP"> /$xcatpost/mypostscript
     if [ "$MODE" = "6" ]; then
@@ -922,8 +922,8 @@ fi
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /$xcatpost/mypostscript`
 echo "$DHCP_TMP" > /$xcatpost/mypostscript
 
-CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /$xcatpost/mypostscript |awk -F = '{print $2}'` 
-if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /$xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z` 
+if [[ "$CLEANUPXCATPOST" =~ ^(1|yes|y)$ ]]; then
   echo "cd /" >> /$xcatpost/mypostscript
   # /xcatpost might be read-only for statelite nodes
   echo "rm -rf /$xcatpost/*" >> /$xcatpost/mypostscript

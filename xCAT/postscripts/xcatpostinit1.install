@@ -1,0 +1,50 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# chkconfig: 345 84 59
+# description: the hook for systemd service unit to run PB and report node status on diskful node 
+# processname: xcatpostinit1
+
+### BEGIN INIT INFO
+# Provides:             xcatpostinit1
+# Required-Start:       $network $syslog
+# Should-Start:
+# Required-Stop:        $network $syslog
+# Should-Stop:
+# Default-Start:        3 4 5
+# Default-Stop:         0 1 2 6
+# Short-Description:    hook to run xcat PBS and report node status
+# Description:
+### END INIT INFO
+
+# Source function library.
+if [ -x /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+fi
+
+[ -f /opt/xcat/xcatinfo ] && XCATSERVER=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\" `
+[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript |awk -F = '{print $2}'|tr -d \'\" | tr A-Z a-z `
+[ -f /xcatpost/mypostscript ] && RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z `
+
+case $1 in
+stop)
+  [ "$NODESTATUS" != "n" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off"  
+  ;;
+start)
+  # check for the REBOOT specified in xcatinfo to run post boot scripts on reboot 
+  if [ -f /opt/xcat/xcatinfo ]; then
+    REBOOT=`grep 'REBOOT' /opt/xcat/xcatinfo |cut -d= -f2 | tr -d \'\"`
+  fi
+  # if the xcatdsklspost file exists and this is a reboot - run xcatdsklspost with a mode of 6
+  if [ "$REBOOT" = "TRUE" -a -r /opt/xcat/xcatdsklspost ] && [[ "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]]; then
+      /opt/xcat/xcatdsklspost 6
+  elif [ "$REBOOT" = "TRUE" ] && [[ "$NODESTATUS" =~  ^(1|yes|y)$ ]]; then
+      /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus booted"  
+  else
+    # run /opt/xcat/xcatinstallpost
+    if [ -r /opt/xcat/xcatinstallpost ]; then
+      /opt/xcat/xcatinstallpost
+    fi
+  fi
+
+  ;;
+esac

@@ -1,6 +1,6 @@
-start:ubuntux_migration2_vm
+start:ubuntu_migration2_vm
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$UBUNTU_MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 
 cmd:copycds $$ISO
 check:rc==0
@@ -44,7 +44,7 @@ cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
 check:rc==0
 cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
 check:rc==0
-cmd:xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"
+cmd:xdsh $$CN "wget -O - http://xcat.org/files/xcat/repos/apt/apt.key | apt-key add -"
 check:rc==0
 cmd:xdsh $$CN "apt-get clean all" 
 check:rc==0
@@ -71,11 +71,11 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
-cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
+cmd:xdsh $$CN "apt-get -y install xcat xcat-test"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
 check:rc==0
-cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$MIGRATION2_VERSION"
+cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$UBUNTU_MIGRATION2_VERSION"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -103,7 +103,7 @@ cmd:xdsh $$CN "apt-get clean all"
 check:rc==0
 cmd:xdsh $$CN "apt-get update"
 check:rc==0
-cmd:xdsh $$CN "apt-get -y upgrade xcat xCAT-test"
+cmd:xdsh $$CN "apt-get -y --only-upgrade install .*xcat.*"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /newxcat/new_version"
 check:rc==0

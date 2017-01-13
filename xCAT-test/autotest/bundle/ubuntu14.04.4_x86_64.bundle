@@ -1,3 +1,4 @@
+setup_vm
 Ubuntu_diskless_installation_flat_x86_vm
 Ubuntu_full_installation_flat_x86_vm
 go_xcat_local_repo_case7
@@ -269,3 +270,6 @@ rmdocker_command
 rmdocker_f_command
 lsdocker_h_command
 lsdocker_l_command
+xcatconfig_u_check_xcatsslversion_ubuntu
+ubuntu_migration1_vm
+ubuntu_migration2_vm

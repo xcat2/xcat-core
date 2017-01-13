@@ -2,14 +2,15 @@
 # IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #--------------------------------------------------------
-#This is a template for developing a probe sub_command.
-#This template mainly implement the sub_comamd dispatch in hierarchical structure
-#Developer only need to focus on main probe job (by implement do_main_job function) and friendly output (by implement summary_all_jobs_output function) for user
+#This is a template for developing a new probe sub_command. Especially in hierarchical environment.
+#This template mainly implement the sub_comamd dispatch in hierarchical structure and basic framework of a new sub_comamd.
+#Developer only need to focus on main probe job (by implement do_main_job function) and friendly output (by implement summary_all_jobs_output function) for user.
 #This template can also be used in flat structure. but if developer think it's too heavy in flat, it's fine to develop sub command directly.
 #But in hierarchical structure, we strongly recommand using this template.
+#
 #The main dispatch policy are:
-#1. if there isn't noderange input from commmand line. if there are service nodes defined in current MN,
-#   we dispatch exact same command input from STDIN to all SNs and current MN. if there isn't service nodes defined,
+#1. if there isn't noderange input from commmand line and  there are service nodes defined in current MN,
+#   dispatch exact same command input from STDIN to all SNs and current MN. if there isn't service nodes defined,
 #   just hanld command input from STDIN in current MN
 #2. If there is noderange input from command line by opion "-n", we will dispatch the command input from STDIN to SN which can hanle these ndoes
 #   For example, if we got command from STDIN like "probecommand -n test[1-15] -V" and test[1-5] 's SN is SN1, test[6-10]'s SN is SN2
@@ -17,25 +18,24 @@
 #   For MN run:  probecommand -n test[11-15] -V
 #   For SN1 run: probecommand -n test[1-5] -V
 #   For SN2 run: probecommand -n test[6-10] -V
-#3. All the return message from SNs and MN will be saved in hash %summaryoutput, develper can use it while implement summary_all_jobs_output function
+#3. All the return message from SNs and MN will be saved in hash %summaryoutput, develper can use it when implement summary_all_jobs_output function
 #--------------------------------------------------------
-
 
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
 
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_utils;
-use xCAT::ServiceNodeUtils;
+use hierarchy;
 use File::Basename;
-use Getopt::Long qw(:config no_ignore_case);
-use IO::Select;
 use Data::Dumper;
+use Getopt::Long qw(:config no_ignore_case);
 
-my $program_name = basename("$0");    #current sub_command name
-my $help    = 0;    #command line attribute '-h', get usage information
-my $test    = 0;    #command line attribute '-T'
-my $verbose = 0;    #command line attribute '-V'
-my $noderange;      #command line attribute '-n'
+
+my $help      = 0;    #command line attribute '-h', get usage information
+my $test      = 0;    #command line attribute '-T'
+my $hierarchy = 0;
+my $verbose   = 0;    #command line attribute '-V'
+my $noderange;        #command line attribute '-n'
 my $output = "stdout"; #used by probe_utils->send_msg("$output", "o", "xxxxxxxxxx"); print output to STDOUT
 my $is_sn  = 0;        #flag current server is SN
 my $rst    = 0;        #the exit code of current command
@@ -47,22 +47,19 @@ my $terminal = 0;      #means get INT signal from STDIN
 # $summaryoutput{SN1} = @SN1_output_history
 my %summaryoutput;
 
-#a map of SNs and command which will be dispatched to current SN
-# one example:
-# $dispatchcmd{SN1} = "probecommand -n test[1-5] -V"
-# $dispatchcmd{SN2} = "probecommand -n test[6-10] -V"
-my %dispatchcmd;
+my $is_sn;
+$is_sn = 1 if (-e "/etc/xCATSN");
 
-#save command line attributes from STDIN
-my @tmpargv;
-
-#--------------------------------
+#-------------------------------------
+#            Usage
+#-------------------------------------
 # below are some options rules used by default
 #     -h : Get usage information of current sub command
 #     -V : Output more information for debug
 #     -T : To verify if $program_name can work, reserve option for probe framework, dosen't use by customer
 #     -n : In xCAT probe, -n is uesd to specify node range uniformly
-#--------------------------------
+#-------------------------------------
+my $program_name = basename("$0");    #current sub_command name
 $::USAGE = "Usage:
     $program_name -h
     $program_name [-V]
@@ -77,24 +74,20 @@ Options:
 ";
 
 #------------------------------------
-# Please implement the main checking job of current command in do_main_job function
-# If $outputtarget has input value, that means do_main_job is running on MN, so every message needed to print on STDOUT should be written into pipe $outputtarget.
-# If $outputtarget has no value, that means do_main_job is running on SN, all message just need to print on STDOUT
-# Recommand to use probe_utils->send_msg() to handle message you plan to print out
+# Please implement the main job of current command in do_main_job function
+# Recommand to use probe_utils->send_msg() to handle message you plan to print out to STDOUT
 # A simple example has been written in funciton.
 #------------------------------------
 sub do_main_job {
-    my $outputtarget = shift;
-    $outputtarget = "stdout" if (!$outputtarget);
     my $rst = 0;
 
-    probe_utils->send_msg($outputtarget, "o", "I reveive node range is $noderange");
+    probe_utils->send_msg("$output", "o", "Received node range:  $noderange");
 
-    #<#DO YOUR OWN CHECKING JOB1#>
-    probe_utils->send_msg($outputtarget, "o", "first checking point");
+    #<#DO YOUR OWN JOB1#>
+    probe_utils->send_msg("$output", "o", "Do the first job");
 
-    #<#DO YOUR OWN CHECKING JOB2#>
-    probe_utils->send_msg($outputtarget, "f", "second checking point");
+    #<#DO YOUR OWN JOB2#>
+    probe_utils->send_msg("$output", "f", "Do the second job");
 
     return $rst;
 }
@@ -112,94 +105,27 @@ sub summary_all_jobs_output {
 
     #DO SUMMARY DEPENDING ON YOUR SUB_COMMAND NEED
     probe_utils->send_msg("$output", "d", "======================do summary=====================");
+
+    #print "summaryoutput:\n";
+    #print Dumper \%summaryoutput;
+
     foreach my $sn (keys %summaryoutput) {
         probe_utils->send_msg("$output", "d", "[$sn]");
         foreach my $log (@{ $summaryoutput{$sn} }) {
-            probe_utils->send_msg("$output", "d", "$log");
+            probe_utils->send_msg("$output", "d", "\t$log");
         }
     }
     return $rst;
 }
 
 #-------------------------------------
-# Each probe sub command is supposed to support hierarchical.
-# This funtion is used to calclulate which SN should be dispatched which command
+#            main process
 #-------------------------------------
-sub calculate_dispatch_cmd {
-    my @snlist = xCAT::ServiceNodeUtils->getAllSN();
-    if ($noderange) {
-        my @nodes = `nodels $noderange 2>&1`;
-
-        #if there is error in noderange
-        if ($?) {
-            my $error = join(" ", @nodes);
-            if ($error =~ /Error: Invalid nodes and\/or groups in noderange: (.+)/) {
-                probe_utils->send_msg("$output", "f", "There are invaild nodes ($1) in command line attribute node range");
-            } else {
-                probe_utils->send_msg("$output", "f", "There is error in command line attribute node range, please using nodels to check");
-            }
-            return 1;
-        } else {
-
-            #calculate the mapping between SN and the nodes which belong to it.
-            chomp foreach (@nodes);
-            my $snnodemap = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
-
-            #print Dumper $snnodemap;
-            my %newsnnodemap;
-            foreach my $sn (keys %$snnodemap) {
-                if (grep(/^$sn$/, @snlist)) {   # the node just belong to one SN
-                    push(@{ $newsnnodemap{$sn} }, @{ $snnodemap->{$sn} });
-                } elsif ($sn =~ /(\w+),.+/) { # the node belong to more than one SN, count it into first SN
-                    if(grep(/^$1$/, @snlist)){
-                        push(@{ $newsnnodemap{$1} }, @{ $snnodemap->{$sn} });
-                    }else{
-                        probe_utils->send_msg("$output", "f", "The value $1  of 'servicenode' isn't a service node"); 
-                    }
-                } else { # the nodes don't belong to any SN will be handled by MN
-                    push(@{ $newsnnodemap{mn} }, @{ $snnodemap->{$sn} });
-                }
-            }
-
-            #print Dumper \%newsnnodemap;
-            #generate new command for each SN, replace noderange
-            foreach my $sn (keys %newsnnodemap) {
-                my $nodes = join(",", @{ $newsnnodemap{$sn} });
-                if ($sn eq "mn") {
-                    $noderange = $nodes;
-                } else {
-                    for (my $i = 0 ; $i <= $#tmpargv ; $i++) {
-                        if ($tmpargv[$i] eq "-n") {
-                            $tmpargv[ $i + 1 ] = $nodes;
-                            last;
-                        }
-                    }
-                    my $args = join(" ", @tmpargv);
-                    $dispatchcmd{$sn} = "$::XCATROOT/probe/subcmds/$program_name $args 2>&1";
-                }
-            }
-        }
-    } else {
-
-        #there isn't noderange input from STDIN, dispatch command to all SN if there are SN defined in MN
-        if (@snlist) {
-            my $args = join(" ", @tmpargv);
-            my $sns  = join(",", @snlist);
-            $dispatchcmd{$sns} = "$::XCATROOT/probe/subcmds/$program_name $args 2>&1" if (!$?);
-        }
-    }
-    return 0;
-}
-
-
-
-#-------------------------------------
-# main process start
-#-------------------------------------
-@tmpargv = @ARGV;
+my @tmpargv = @ARGV;
 if (
     !GetOptions("--help|h" => \$help,
         "T"   => \$test,
+        "H"   => \$hierarchy,
         "n=s" => \$noderange,
         "V"   => \$verbose))
 {
@@ -227,175 +153,75 @@ $SIG{TERM} = $SIG{INT} = sub {
     $terminal = 1;
 };
 
-#--------------------------------------------
-#  To confirm what current node is, MN or SN
-#--------------------------------------------
-$is_sn = 1 if (-e "/etc/xCATSN");
-
-#if this node is SN, just run job, not to do dispatch
-if ($is_sn) {
+#if it is called by hierarchy template, just run job, not to do dispatch
+if ($hierarchy || $is_sn) {
     $rst = do_main_job();
     exit $rst;
 }
 
-#--------------------------------------------
-# calculate which command should be dispatched to which SN
-#--------------------------------------------
-$rst = calculate_dispatch_cmd();
+my $hierarchy_instance = hierarchy->new();
 
-#print Dumper \%dispatchcmd;
-#print "nodes left to mn : $noderange\n";
-#print "========================\n";
-exit $rst if ($rst);
-
-#--------------------------------------------
-# dispatch job to MN and SN
-#--------------------------------------------
-my $mnjobpid   = 0;
-my @snsjobpids = ();
-my @snsjobfds  = ();
-my $pipe_parent_read;
-my $pipe_child_write;
-pipe $pipe_parent_read, $pipe_child_write;
-{
-    #handle job in MN
-    $mnjobpid = fork();
-    if (!defined($mnjobpid)) {
-        probe_utils->send_msg("$output", "f", "fork process to handle MN job failed: $!");
-        $rst = 1;
-        last;
-    } elsif ($mnjobpid == 0) {
-        $SIG{TERM} = $SIG{INT} = sub {
-            exit 1;
-        };
-
-        close $pipe_parent_read;
-        $rst = do_main_job($pipe_child_write);
-        exit $rst;
+#-------starting to dispatch_cmd--------
+my @error;
+$rst = $hierarchy_instance->dispatch_cmd($noderange, \@tmpargv, \@error);
+if ($rst) {
+    probe_utils->send_msg("$output", "f", "Calculate dispatch command failed");
+    foreach (@error) {
+        probe_utils->send_msg("$output", "", "$_");
     }
-    $SIG{CHLD} = sub { waitpid($mnjobpid, WNOHANG) };
-    close $pipe_child_write;
-
-    #handle job dispatch to SN
-    foreach my $sn (keys %dispatchcmd) {
-        my $snjobcmd = "xdsh $sn -s \"$dispatchcmd{$sn}\" 2>&1";
-
-        #print "$sn = $snjobcmd\n";
-        my $snjobfd;
-        my $snjobpid;
-        if (!($snjobpid = open($snjobfd, "$snjobcmd |"))) {
-            probe_utils->send_msg("$output", "f", "fork process to dispatch cmd $snjobcmd to $sn failed: $!");
-            next;
-        }
-        push(@snsjobpids, $snjobpid);
-        push(@snsjobfds,  $snjobfd);
+    if ($hierarchy_instance->destory(\@error)) {
+        probe_utils->send_msg("$output", "", "$_") foreach (@error);
     }
+    exit $rst;
+}
 
-    my $select = new IO::Select;
-    $select->add(\*$pipe_parent_read) if ($pipe_parent_read);
-    $select->add(\*$_) foreach (@snsjobfds);
-    $| = 1;
+#----------start to read reply-------
+my %reply_cache;
+while ($hierarchy_instance->read_reply(\%reply_cache)) {
+    foreach my $servers (keys %reply_cache) { #Dispatch_cmd may use SN range to dispatch cms to SNs at one time
+        my @server_array = split(",", $servers);
+        foreach my $server (@server_array) {
+            foreach (@{ $reply_cache{$servers} }) {
+                my $msg    = "";
+                my $logmsg = "";
 
-    my $line;
-    my %pipeisnonull;
-    $pipeisnonull{mn} = 1;
-    $pipeisnonull{$_} = 1 foreach (@snsjobfds);
-    my $onepipeisnonull = 1;
-    while ($onepipeisnonull) {
-        if (@hdls = $select->can_read(0)) {
-            foreach $hdl (@hdls) {
-                if ($pipeisnonull{mn} && $hdl == \*$pipe_parent_read) {
-                    if (eof($pipe_parent_read)) {
-                        $pipeisnonull{mn} = 0;
-                    } else {
-                        chomp($line = <$pipe_parent_read>);
-                        print "$line\n";
-                        push @{ $summaryoutput{mn} }, $line;
+                #For cases like below:
+                #c910f02c04p04: [ok]     :All xCAT deamons are running
+                if ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/) {
+                    if ("$1" eq "$server") {
+                        $logmsg = "$2: $3";
+                        $msg    = "$2:<$server>: $3";
                     }
+
+                    #For cases like below:
+                    #c910f02c04p05: IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+                } elsif ($reply_cache{$servers}->[$_] =~ /^(\w+)\s*:\s*(.*)/) {
+                    if ("$1" eq "$server") {
+                        $logmsg = "$2";
+                        $msg    = "<$server>: $2";
+                    }
+
+                    #For cases like below:
+                    #Unable to open socket connection to xcatd daemon on localhost:3001.
                 } else {
-                    foreach my $fd (@snsjobfds) {
-                        if ($pipeisnonull{$fd} && $hdl == \*$fd) {
-                            if (eof($fd)) {
-                                $pipeisnonull{$fd} = 0;
-                            } else {
-                                chomp($line = <$fd>);
-                                if ($line =~ /(Error:)\s+(\w+)\s+(.+)/i) {
-                                    push @{ $summaryoutput{$2} }, $line;
-                                    #if need to print to STDIN in real time, can make below line available
-                                    #print "[failed] :$2: $line\n";
-                                } elsif ($line =~ /^(\w+)\s*:\s(.*)/) {
-                                    push @{ $summaryoutput{$1} }, $2;
-                                    #if need to print to STDIN in real time, can make below lines available
-                                    #$line = "$2:$1: $3" if ($line =~ /^(\w+)\s*:\s*(\[\w+\]\s*):\s*(.*)/);
-                                    #print "$line\n";
-                                }
-                            }
-                        }
+                    if (length($reply_cache{$servers}->[$_])) {
+                        $logmsg = $reply_cache{$servers}->[$_];
+                        $msg = "[failed] :[$server]: $reply_cache{$servers}->[$_]";
                     }
                 }
+                probe_utils->send_msg("$output", "", "$msg") if (length($msg));
+                push @{ $summaryoutput{$server} }, $logmsg if (length($logmsg));
             }
-            $onepipeisnonull = 0;
-            $onepipeisnonull |= $pipeisnonull{$_} foreach (keys %pipeisnonull);
-        }
-        last if ($terminal);
-        sleep 1;
-    }
-}
-close($pipe_child_write) if ($pipe_child_write);
-close($pipe_parent_read) if ($pipe_parent_read);
-close($_) foreach (@snsjobfds);
-
-#start to clear up all sub processes
-my %runningpid;
-$runningpid{$mnjobpid} = 1 if ($mnjobpid);
-$runningpid{$_} = 1 foreach (@snsjobpids);
-my $existrunningpid = 0;
-$existrunningpid = 1 if (%runningpid);
-
-my $trytime = 0;
-while ($existrunningpid) {
-
-    #send terminal signal to all running process at same time
-    #try INT 5 up to 5 times
-    if ($try < 5) {
-        foreach my $pid (keys %runningpid) {
-            kill 'INT', $pid if ($runningpid{$pid});
-        }
-
-        #try TERM 5 up to 5 times
-    } elsif ($try < 10) {
-        foreach my $pid (keys %runningpid) {
-            kill 'TERM', $pid if ($runningpid{$pid});
-        }
-
-        #try KILL 1 time
-    } else {
-        foreach my $pid (keys %runningpid) {
-            kill 'KILL', $pid if ($runningpid{$pid});
         }
     }
-    ++$try;
-
-    sleep 1;
-
-    #To check how many process exit, set the flag of exited process to 0
-    foreach my $pid (keys %runningpid) {
-        $runningpid{$pid} = 0 if (waitpid($pid, WNOHANG));
-    }
-
-    #To check if there are processes still running, if there are, try kill again in next loop
-    $existrunningpid = 0;
-    $existrunningpid |= $runningpid{$_} foreach (keys %runningpid);
-
-    #just try 10 times, if still can't kill some process, give up
-    if ($try > 10) {
-        my $leftpid;
-        foreach my $pid (keys %runningpid) {
-            $leftpid .= "$pid " if ($runningpid{$pid});
-        }
-        print "Can't stop process $leftpid, please handle manually.\n";
+    if ($terminal) {
         last;
     }
+}
+
+#----------hierarchy_instance->destory-----------
+if ($hierarchy_instance->destory(\@error)) {
+    probe_utils->send_msg("$output", "", "$_") foreach (@error);
 }
 
 #-------------------------------------
@@ -404,6 +230,8 @@ while ($existrunningpid) {
 $rst = summary_all_jobs_output();
 
 exit $rst;
+
+
 
 
 

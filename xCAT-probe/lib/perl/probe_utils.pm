@@ -257,6 +257,7 @@ sub is_firewall_open {
         Test if http service is ready to use in current operating system
     Arguments:
         ip:  http server's ip 
+        errormsg_ref: (output attribute) if there is something wrong for HTTP service, this attribute save the possible reason.
     Returns:
         1 : yes
         0 : no
@@ -266,20 +267,70 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $installdir = shift;
+    my $errormsg_ref = shift;
 
-    my $http = "http://$mnip/install/postscripts/syslog";
-    rename("./syslog", "./syslog.org") if (-e "./syslog");
+    my $http      = "http://$mnip/$installdir/postscripts/syslog";
+    my %httperror = (
+    "400" => "The request $http could not be understood by the server due to malformed syntax",
+    "401" => "The request requires user authentication.",
+    "403" => "The server understood the request, but is refusing to fulfill it.",
+    "404" => "The server has not found anything matching the test Request-URI $http.",
+    "405" => "The method specified in the Request-Line $http is not allowe.",
+    "406" => "The method specified in the Request-Line $http is not acceptable.",
+    "407" => "The wget client must first authenticate itself with the proxy.",
+    "408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
+    "409" => "The request could not be completed due to a conflict with the current state of the resource.",
+    "410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
+    "411" => "The server refuses to accept the request without a defined Content- Length.",
+    "412" => "The precondition given in one or more of the request-header fields evaluated to false when it was tested on the server.",
+    "413" => "The server is refusing to process a request because the request entity is larger than the server is willing or able to process.",
+    "414" => "The server is refusing to service the request because the Request-URI is longer than the server is willing to interpret.",
+    "415" => "The server is refusing to service the request because the entity of the request is in a format not supported by the requested resource for the requested method.",
+    "416" => "Requested Range Not Satisfiable",
+    "417" => "The expectation given in an Expect request-header field could not be met by this server",
+    "500" => "The server encountered an unexpected condition which prevented it from fulfilling the request.",
+    "501" => "The server does not recognize the request method and is not capable of supporting it for any resource.",
+    "502" => "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the reques.",
+    "503" => "The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.",
+    "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
+    "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
 
-    my $outputtmp = `wget $http 2>&1`;
-    my $rst       = $?;
-    if (($outputtmp =~ /200 OK/) && (!$rst) && (-e "./syslog")) {
-        unlink("./syslog");
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
-        return 1;
-    } else {
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
+    my $tmpdir = "/tmp/xcatprobe$$/";
+    if(! mkpath("$tmpdir")){
+        $$errormsg_ref = "Prepare test environment error: $!";
         return 0;
     }
+    my @outputtmp = `wget -O $tmpdir/syslog $http 2>&1`;
+    my $rst       = $?;
+    $rst = $rst >> 8;
+
+    if ((!$rst) && (-e "$tmpdir/syslog")) {
+        unlink("$tmpdir/syslog");
+        rmdir ("$tmpdir");
+        return 1;
+    } elsif ($rst == 4) {
+        $$errormsg_ref = "Network failure, the server refuse connection. Please check if httpd service is running first.";
+    } elsif ($rst == 5) {
+        $$errormsg_ref = "SSL verification failure, the server refuse connection";
+    } elsif ($rst == 6) {
+        $$errormsg_ref = "Username/password authentication failure, the server refuse connection";
+    } elsif ($rst == 8) {
+        my $returncode = $outputtmp[2];
+        chomp($returncode);
+        $returncode =~ s/.+(\d\d\d).+/$1/g;
+        if(exists($httperror{$returncode})){
+            $$errormsg_ref = $httperror{$returncode};
+        }else{
+            #should not hit this block normally
+            $$errormsg_ref = "Unknown return code of wget <$returncode>.";
+        }
+    }
+    unlink("$tmpdir/syslog");
+    if(! rmdir ("$tmpdir")){
+        $$errormsg_ref .= " Clean test environment error(rmdir $tmpdir): $!";
+    }
+    return 0;
 }
 
 #------------------------------------------
@@ -298,20 +349,21 @@ sub is_http_ready {
 sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
-
-    rename("/tftpboot/tftptestt.tmp", "/tftpboot/tftptestt.tmp.old") if (-e "/tftpboot/tftptestt.tmp");
+    my $tftpdir = shift;
+    
+    rename("/$tftpdir/tftptestt.tmp", "/$tftpdir/tftptestt.tmp.old") if (-e "/$tftpdir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
-    system("touch /tftpboot/tftptestt.tmp");
+    system("touch /$tftpdir/tftptestt.tmp");
     my $output = `tftp -4 -v $mnip  -c get tftptestt.tmp`;
     if ((!$?) && (-e "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 1;
     } else {
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 0;
     }
 }
@@ -356,32 +408,6 @@ sub is_dns_ready {
 
 =head3
     Description:
-        Convert host name to ip address 
-    Arguments:
-        hostname: The hostname need to convert 
-    Returns:
-        ip: The ip address 
-=cut
-
-#------------------------------------------
-sub get_ip_from_hostname {
-    my $hostname = shift;
-    $hostname = shift if (($hostname) && ($hostname =~ /probe_utils/));
-    my $ip = "";
-
-    my @output = `ping -c 1 $hostname 2>&1`;
-    if (!$?) {
-        if ($output[0] =~ /^PING.+\s+\((\d+\.\d+\.\d+\.\d+)\).+/) {
-            $ip = $1;
-        }
-    }
-    return $ip;
-}
-
-#------------------------------------------
-
-=head3
-    Description:
         Calculate network address from ip and netmask 
     Arguments:
         ip: ip address
@@ -405,45 +431,6 @@ sub get_network {
     my $net_int32 = $bin_mask & $bin_ip;
     $net = ($net_int32 >> 24) . "." . (($net_int32 >> 16) & 0xff) . "." . (($net_int32 >> 8) & 0xff) . "." . ($net_int32 & 0xff);
     return "$net/$mask";
-}
-
-#------------------------------------------
-
-=head3
-    Description:
-        Convert ip to hostname 
-    Arguments:
-        ip: The ip need to convert
-    Returns:
-        hostname: hostname or "" 
-=cut
-
-#------------------------------------------
-sub get_hostname_from_ip {
-    my $ip = shift;
-    $ip = shift if (($ip) && ($ip =~ /probe_utils/));
-    my $dns_server = shift;
-    my $hostname   = "";
-    my $output     = "";
-
-    `which nslookup > /dev/null 2>&1`;
-    if (!$?) {
-        $output = `nslookup $ip  $dns_server 2>&1`;
-        if (!$?) {
-            chomp($output);
-            my $rc = $hostname = `echo "$output"|awk -F" " '/name =/ {print \$4}'|awk -F"." '{print \$1}'`;
-            chomp($hostname);
-            return $hostname if (!$rc);
-        }
-    }
-    if (($hostname eq "") && (-e "/etc/hosts")) {
-        $output = `cat /etc/hosts 2>&1 |grep $ip`;
-        if (!$?) {
-            my @splitoutput = split(" ", $output);
-            $hostname = $splitoutput[1];
-        }
-    }
-    return $hostname;
 }
 
 #------------------------------------------
@@ -486,48 +473,6 @@ sub is_dir_has_enough_space{
 
 =head3
     Description:
-        Convert input time format to the number of non-leap seconds since whatever time the system considers to be the epoch
-        the format of input time  are two kinds
-        one like "Aug 15 02:43:31", another likes "15/Aug/2016:01:10:24" 
-    Arguments:
-        timestr: the time format need to be converted
-        yday: the year of current time.
-    Returns:
-        the number of non-leap seconds since whatever time the system considers to be the epoch
-=cut
-
-#------------------------------------------
-sub convert_to_epoch_seconds {
-    my $timestr=shift;
-    $timestr = shift if (($timestr) && ($timestr =~ /probe_utils/));
-    my $yday=shift;
-    my $ref_seconds=shift;
-    my $mday;
-    my $dday;
-    my $h;
-    my $m;
-    my $s;
-    my $epoch_seconds=-1;
-    my %monthsmap = ("Jan"=>0,"Feb"=>1,"Mar"=>2,"Apr"=>3,"May"=>4,"Jun"=>5,"Jul"=>6,"Aug"=>7,"Sep"=>8,"Oct"=>9,"Nov"=>10,"Dec"=>11);
-
-    if($timestr =~/(\w+)\s+(\d+)\s+(\d+):(\d+):(\d+)/){
-        ($mday,$dday,$h,$m,$s)=($1,$2,$3,$4,$5);
-        $epoch_seconds = timelocal($s,$m,$h,$dday,$monthsmap{$mday},$yday);
-        if($epoch_seconds>$ref_seconds){
-            $yday-=1;
-            $epoch_seconds = timelocal($s,$m,$h,$dday,$monthsmap{$mday},$yday);
-        }
-    }elsif($timestr =~ /(\d+)\/(\w+)\/(\d+):(\d+):(\d+):(\d+)/){
-        $epoch_seconds = timelocal($6,$5,$4,$1,$monthsmap{$2},($3-1900));
-    }
-    return $epoch_seconds;
-}
-
-
-#------------------------------------------
-
-=head3
-    Description:
         Convert node range in Regular Expression to a node name array
     Arguments:
         noderange : the range of node
@@ -543,4 +488,66 @@ sub parse_node_range {
     chomp @nodeslist;
     return @nodeslist;
 }
+
+#------------------------------------------
+
+=head3
+    Description:
+        Test if ntp service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: (output attribute) if there is something wrong for ntp service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_ntp_ready{
+    my $errormsg_ref = shift;
+    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $cmd = 'ntpq -c "rv 0"';
+    $| = 1;
+
+    #wait 5 seconds for ntpd synchronize at most
+    for (my $i = 0; $i < 5; ++$i) {
+        if(!open(NTP, $cmd." 2>&1 |")){
+            $$errormsg_ref = "Can't start ntpq: $!";
+            return 0;
+        }else{
+            while(<NTP>) {
+                chomp;
+                if (/^associd=0 status=(\S{4}) (\S+),/) {
+                    my $leap=$2;
+
+                    last if ($leap =~ /(sync|leap)_alarm/);
+
+                    if ($leap =~ /leap_(none|((add|del)_sec))/){
+                        close(NTP);
+                        return 1;
+                    }
+
+                    #should not hit below 3 lines normally
+                    $$errormsg_ref = "Unexpected ntpq output ('leap' status <$leap>), please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }elsif(/Connection refused/) {
+                    $$errormsg_ref = "ntpd service is not running! Please setup ntp in current node";
+                    close(NTP);
+                    return 0;
+                }else{
+                    #should not hit this block normally
+                    $$errormsg_ref = "Unexpected ntpq output <$_>, please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }
+            }
+        }
+        close(NTP);
+        sleep 1;
+    }
+    $$errormsg_ref = "ntpd did not synchronize.";
+    return 0;
+}
+
 1;

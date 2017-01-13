@@ -3,6 +3,8 @@ NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}
 RWDIR=.statelite
+XCAT="$(getarg XCAT=)"
+STATEMNT="$(getarg STATEMNT=)"
 if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
     SNAPSHOTSERVER=${STATEMNT%:*}
     SNAPSHOTROOT=${STATEMNT#*/}
@@ -39,7 +41,7 @@ fi
 
 mount -t tmpfs rw $NEWROOT/$RWDIR
 mkdir -p $NEWROOT/$RWDIR/tmpfs
-ME=`hostname`
+ME=`hostname -s`
 if [ ! -z $NODE ]; then
     ME=$NODE
 fi
@@ -64,7 +66,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -81,7 +83,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done
@@ -96,7 +98,7 @@ if [ ! -z $SNAPSHOTSERVER ]; then
             /bin/sh
             exit
         fi
-        RS= $(( $RANDOM % 20 ))
+        RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds..."
         sleep $RS
     done

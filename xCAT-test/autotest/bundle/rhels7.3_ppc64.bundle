@@ -275,9 +275,6 @@ switchdiscover_range_z
 switchdiscover_range_z_V
 makentp_v
 makentp_h
-makentp_V
-makentp
-makentp_a
 nodeset_check_warninginfo
 runcmdinstaller_h
 runcmdinstaller_command
@@ -297,6 +294,7 @@ xcatd_restart
 run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 packimage_m_cpio_c_gzip
 packimage_m_cpio_c_xz

@@ -17,7 +17,7 @@ use lib "$::XCATROOT/lib/perl";
 my $rootdir         = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp        = 0;
 my $configinfo      = undef;
-my $configfile      = "$rootdir/default.conf";
+my $configfile      = undef;
 my $casedir         = "$rootdir/testcase";
 my $bundledir       = "$rootdir/bundle";
 my $resultdir       = "$rootdir/result";
@@ -768,7 +768,6 @@ sub loadcase
     
     if ($needshow) {
         if (@cases) {
-            log_this("Test cases:");            
             foreach my $case (@cases) {
                 log_this("$case->{name}");
             }
@@ -1063,9 +1062,10 @@ sub usage
     log_this("  xcattest [-f configure file] [-t cases list]");
     log_this("  xcattest [-f configure file] [-c cmds list]");
     log_this("Show xcat test cases, bundle files, commands lists:");
-    log_this("  xcattest [-f configure file] [-b case bundle files] [-l]");
-    log_this("  xcattest [-f configure file] [-t cases list] [-l]");
-    log_this("  xcattest [-f configure file] [-c cmds list] [-l]");
+    log_this("  xcattest [-b case bundle files] [-l]");
+    log_this("  xcattest [-t cases list] [-l]");
+    log_this("  xcattest [-c cmds list] [-l]");
+    log_this("Show all bundle files, all commands:");
     log_this("  xcattest [-s command|bundle]");
     log_this("");
     return;
@@ -1111,7 +1111,7 @@ sub listbundlefiles
          }
          close(FILE);
          if (!$skip){
-             $bundlefilesinfo{$bundlefile} = "No description, add \"description: details\" in this bundle file";
+             $bundlefilesinfo{$bundlefile} = "No description, add with \"description: details\" in bundle file";
          }
      }
      &listformatbundleinfo(%bundlefilesinfo);
@@ -1132,8 +1132,8 @@ sub listformatbundleinfo
     my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 
     print "bundle files and descriptions:\n";
-
-    foreach my $filename (keys %bundlefilesinfo) {
+    
+    foreach my $filename (sort { $a cmp $b } keys %bundlefilesinfo ) { 
         my @desc       = split(" ", $bundlefilesinfo{$filename});
         my $str        = "";
         my @formatdesc = ();
@@ -1242,8 +1242,13 @@ sub checkoptions
     if (!defined($bundlelist) && !defined($caselist) && !defined($cmdlist) && !defined($showbundlesorcommands)) {
         log_this("Error: please define options correctly, see below usage information:");
         return 1;
+    }elsif ((defined($bundlelist) || defined($caselist) || defined($cmdlist)) && (! $needshow) && !defined($configinfo)) {
+        #config file must be defined if the using -c,-b,-t to run test cases
+        log_this("Error: To run test cases, please define the config file with -f option");
+        log_this("       To show test cases, please use the -l option");
+        return 1;
     }elsif (defined($showbundlesorcommands) && (defined($bundlelist) || defined($caselist) || defined($cmdlist))) {
-    # -s can't be used together with -c,-b,-t 
+        #-s can't be used together with -c,-b,-t 
         log_this("Error: -b,-c or -t can't be used together with -s");
         return 1;
     }elsif (defined($showbundlesorcommands) && $needshow) {
@@ -1251,7 +1256,7 @@ sub checkoptions
 	return 1;
     } 
     
-    #check the L option, it only should be bundle or command
+    #check the -s option, the value should be bundle or command
     if (defined($showbundlesorcommands)) {
        if (($showbundlesorcommands ne "bundle") && ($showbundlesorcommands ne "command")) {
            log_this("Error: please use \"bundle\" or \"command\" as the \-s value");
@@ -1262,10 +1267,11 @@ sub checkoptions
        }          
            $showcommandslist= 1;
     }
+
     #get and check config file and System label
     #this System label means only the [System] variable will be loaded
-    if ($configinfo) {   
-          if ($configinfo =~ /(.*):(.*)/) {
+    if (defined($configinfo)) {   
+        if ($configinfo =~ /(.*):(.*)/) {
             $configfile  = $1;
             $initallabel = $2;
             if ($initallabel ne $loadsysteminfo) {
@@ -1275,11 +1281,10 @@ sub checkoptions
         }else {
             $configfile = $configinfo;
         }
-    }
-    
-    if (!(-e $configfile)) {
-        log_this("Error: Can't open config file: $configfile");
-        return 1;
+        if (!(-e $configfile)) {
+            log_this("Error: Can't open config file: $configfile");
+            return 1;
+        }        
     }
     
     #check bundle files
@@ -1288,12 +1293,12 @@ sub checkoptions
         foreach my $bundle (@bundles){
             if ("$bundledir/$bundle" !~ /\.bundle$/) {
                 log_this("Error: please input the .bundle file");
-                log_this("Use 'xcattest -s bundle' to list out available bundles");
+                log_this("Use 'xcattest -s bundle' to list all bundle files");
                 return 1;
             }
             if (!(-e "$bundledir/$bundle")) {
                 log_this("Error: Can't open bundle file: $bundle");
-                log_this("Use 'xcattest -b bundle' to list out available bundles");
+                log_this("Use 'xcattest -s bundle' to list all bundle files");
                 return 1;
             }
         }

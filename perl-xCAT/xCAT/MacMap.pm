@@ -345,7 +345,7 @@ sub dump_mac_info {
                 $ret{$switch}->{ErrorStr} = $self->{macinfo}->{$switch}->{ErrorStr};
 
                 # To show the error message that the username/password related error is for SNMP only
-                if ($ret{$switch}->{ErrorStr} =~ /username|password/i) {
+                if ($ret{$switch}->{ErrorStr} =~ /user\s*name|password/i) {
                     $ret{$switch}->{ErrorStr} .= " through SNMP";
                 }
             } else {

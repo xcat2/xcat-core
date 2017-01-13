@@ -25,6 +25,13 @@
 #enable debug
 #set -x
 
+if cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
+   #TODO
+   echo "Cumulus OS is not supported yet, nothing to do..."
+   logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."   
+   exit 0
+fi
+
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -715,7 +722,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    fi
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
-		    result=`yum list $fn 2>&1`
+		    result=`yum --showduplicates list $fn 2>&1`
 		    if [ $? -eq 0 ]; then  
 		        rc=0
 		        array_set_element repo_path $index $path

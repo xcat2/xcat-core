@@ -19,9 +19,9 @@ DESCRIPTION
 ***********
 
 
-\ **copycds-cdrom**\  is a wrapper scripts for copycds to copy from physical CD/DVD-ROM drives located on the management server.
+\ **copycds-cdrom**\  is a wrapper scripts for \ **copycds**\  to copy from physical CD/DVD-ROM drives located on the management server.
 
-\ *[copycds options]*\  are passed unmolested to copycds.
+\ *[copycds options]*\  are passed unchanged to copycds.
 
 If \ *[drive]*\  is not specified, /dev/cdrom is assumed.
 

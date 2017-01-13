@@ -1,3 +1,4 @@
+setup_vm
 reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
@@ -209,6 +210,7 @@ nodeset_check_warninginfo
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case

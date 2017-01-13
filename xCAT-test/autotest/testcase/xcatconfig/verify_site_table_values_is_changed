@@ -1,0 +1,130 @@
+#!/usr/bin/env perl
+
+$ENV{TERM} = "xterm-256color";
+
+my $os   = $ARGV[0];
+my $arch = $ARGV[1];
+my $log  = "/tmp/verify_site_table_values_is_changed";
+
+sub runcmd {
+    my $cmd = shift;
+    `$cmd >> $log 2>&1`;
+    if ($?) {
+        print "run $cmd ....[error]\n";
+        exit 1;
+    }
+}
+
+my $blademaxp_value=6400;
+my $domain_value="testdomain";
+my $fsptimeout_value=100;
+my $installdir_value="installdirtest";
+my $ipmimaxp_value=6400;
+my $ipmiretries_value=300;
+my $ipmitimeout_value=200;    
+my $consoleondemand_value="notest";
+my $master_value="mastertest";
+my $forwarders_value="forwarderstest";
+my $nameservers_value="mastertest";
+my $maxssh_value=800;
+my $ppcmaxp_value=6400;
+my $ppcretry_value=300;
+my $ppctimeout_value=100;
+my $powerinterval_value=100;
+my $syspowerinterval_value=100;
+my $sharedtftp_value=100;
+my $SNsyncfiledir_value="syncdirtest";       
+my $nodesyncfiledir_value="nodesyncdirtest";
+my $tftpdir_value="tftpdirtest";     
+my $xcatdport_value="xcatporttest";
+my $xcatiport_value="xcatiporttest";     
+my $xcatconfdir_value="confdirtest";
+my $timezone_value="test";
+my $useNmapfromMN_value="notest";
+my $enableASMI_value="notest";
+my $db2installloc_value="\/mntdb2test";
+my $databaseloc_value="\/var\/libtest";
+my $sshbetweennodes_value="ALLGROUPStest";
+my $dnshandler_value="ddnstest";
+my $vsftp_value="ntest";
+my $cleanupxcatpost_value="notest";
+my $dhcplease_value=43200;
+my $auditnosyslog_value=100;
+my $xcatsslversion_value="tLSv1test";
+my $auditskipcmds_value="ALLtest";
+
+$cmd = "lsdef -t site -i blademaxp | grep \"\=$blademaxp_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i domain | grep \"\=$domain_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i fsptimeout | grep \"\=$fsptimeout_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i installdir | grep \"\=$installdir_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ipmimaxp | grep \"\=$ipmimaxp_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ipmiretries | grep \"\=$ipmiretries_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ipmitimeout | grep \"\=$ipmitimeout_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i consoleondemand | grep \"\=$consoleondemand_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i master | grep \"\=$master_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i forwarders | grep \"\=$forwarders_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i nameservers | grep \"\=$nameservers_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i maxssh | grep \"\=$maxssh_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ppcmaxp | grep \"\=$ppcmaxp_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ppcretry | grep \"\=$ppcretry_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i ppctimeout | grep \"\=$ppctimeout_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i powerinterval | grep \"\=$powerinterval_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i syspowerinterval | grep \"\=$syspowerinterval_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i sharedtftp | grep \"\=$sharedtftp_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i SNsyncfiledir | grep \"\=$SNsyncfiledir_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i nodesyncfiledir | grep \"\=$nodesyncfiledir_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i tftpdir | grep \"\=$tftpdir_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i xcatdport | grep \"\=$xcatdport_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i xcatiport | grep \"\=$xcatiport_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i xcatconfdir | grep \"\=$xcatconfdir_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i timezone | grep \"\=$timezone_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i useNmapfromMN | grep \"\=$useNmapfromMN_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i enableASMI | grep \"\=$enableASMI_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i db2installloc | grep \"\=$db2installloc_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i databaseloc | grep \"\=$databaseloc_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i sshbetweennodes | grep \"\=$sshbetweennodes_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i dnshandler | grep \"\=$dnshandler_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i vsftp | grep \"\=$vsftp_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i cleanupxcatpost | grep \"\=$cleanupxcatpost_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i dhcplease | grep \"\=$dhcplease_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i auditnosyslog | grep \"\=$auditnosyslog_value\$\"";
+runcmd("$cmd");
+$cmd = "lsdef -t site -i auditskipcmds | grep \"\=$auditskipcmds_value\$\"";
+runcmd("$cmd");
+
+
+exit 0;

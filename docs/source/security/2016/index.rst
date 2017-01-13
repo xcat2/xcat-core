@@ -4,6 +4,7 @@
 .. toctree::
    :maxdepth: 1
 
+   20161130_hard_code_password.rst
    20160824_openssl.rst
    20160815_openssl.rst
    20160503_openssl.rst

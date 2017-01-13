@@ -2,10 +2,11 @@ Source: xcat-probe
 Section: admin
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
 
 Package: xcat-probe
 Architecture: all
 Depends: ${perl:Depends}
-Description: Provides a toolkits to help probe all the possible issues in xCAT 
+Recommends: wget, dnsutils, tftp-hpa
+Description: Provides a toolkit to probe possible issues in xCAT

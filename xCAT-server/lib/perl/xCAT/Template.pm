@@ -15,6 +15,7 @@ use xCAT::ADUtils;    #to allow setting of one-time machine passwords
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::PasswordUtils;
 use XML::Simple;
 
 BEGIN
@@ -288,11 +289,11 @@ sub subvars {
             @pkgdirs = split(",", $media_dir);
             my $source;
             my $source_in_pre;
+            my $writerepo;
             my $c = 0;
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|fedora)$/) {
                     if ($c == 0) {
-
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
                         $source_in_pre .= "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
@@ -300,6 +301,18 @@ sub subvars {
                     } else {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #for rhels5.9
+                    }
+                    if( -f "$pkgdir/local-repository.tmpl"){
+                        my $repofd;
+                        my $repo_in_post;
+                        local $/=undef;
+                        open($repofd,"<","$pkgdir/local-repository.tmpl");
+                        $repo_in_post = <$repofd>;
+                        close($repofd);
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master/#g;
+                        $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
+                        $writerepo .="$repo_in_post\n";
+                        $writerepo .="EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse)/) {
                     my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
@@ -320,6 +333,7 @@ sub subvars {
             if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
                 $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
             }
+            $inc =~ s/#WRITEREPO#/$writerepo/g;
         }
 
         #ok, now do everything else..
@@ -1560,28 +1574,27 @@ sub envvar
     return ($ENV{$envvar});
 }
 
-sub genpassword {
-
-    #Generate a pseudo-random password of specified length
-    my $length   = shift;
-    my $password = '';
-    my $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
-    srand;    #have to reseed, rand is not rand otherwise
-    while (length($password) < $length) {
-        $password .= substr($characters, int(rand 63), 1);
-    }
-    return $password;
-}
-
 sub crydb
 {
-    my $result = tabdb(@_);
+    my ($table, $key, $field) = @_;
+    my @fields = [$field, 'cryptmethod'];
+    my $kp;
 
-    # 1 - MD5, 5 - SHA256, 6 - SHA512
-    unless (($result =~ /^\$1\$/) || ($result =~ /^\$5\$/) || ($result =~ /^\$6\$/)) {
-        $result = crypt($result, '$1$' . genpassword(8));
-    }
-    return $result;
+    my $get_query_map = sub {
+        my $key = shift;
+        my %kp;
+        foreach (split /,/, $key) {
+            my ($k, $v);
+            ($k, $v) = split /=/, $_;
+            $kp{$k} = $v if defined($k);
+        }
+        return \%kp if %kp;
+        sendmsg([ 1, "Unable to parse password parameters $key" ]);
+        return undef;
+    };
+    $kp = $get_query_map->($key);
+    return undef if (!defined($kp));
+    return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 
 sub tabdb

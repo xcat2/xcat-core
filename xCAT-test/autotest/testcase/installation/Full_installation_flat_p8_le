@@ -6,9 +6,17 @@ cmd:copycds $$ISO
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
+cmd:chtab key=extntpservers site.value=""
+check:rc==0
+cmd:chtab key=ntpservers site.value="<xcatmaster>"
+check:rc==0
+cmd:makentp
+check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
 cmd:makedns -n
 check:rc==0
@@ -16,6 +24,9 @@ cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
+cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
+cmd:lsdef -l $$CN
+check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:rpower $$CN boot
@@ -29,4 +40,9 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
+#comment for futher discussion.
+#cmd:xdsh $$CN service ntpd status
+#check:rc==0
+#check:output=~running
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

@@ -19,6 +19,8 @@ use File::Temp qw/mkdtemp/;
 use FindBin;
 use lib "$FindBin::Bin/../imgutils";
 use imgutils;
+use xCAT::Utils;
+use Digest::MD5 qw(md5_hex);
 
 #use strict;
 Getopt::Long::Configure("bundling");
@@ -66,6 +68,8 @@ my $tempfile;
 my $prompt;
 my $ignorekernelchk;
 my $noupdate;
+my $lock;
+
 
 
 sub xdie {
@@ -112,17 +116,30 @@ sub mount_chroot {
 
 sub umount_chroot {
     my $rootimage_dir = shift;
-    if ($rootimage_dir eq "") {
+
+    $rootimage_dir=realpath($rootimage_dir);
+    if ($rootimage_dir eq "/") {
         print "\n\n\n\nWARNING: /proc and /sys may still be mounted in the rootimgdir\n\n\n\n";
         return 1;
     }
-
+    
+    #unmount all the mount points under rootimg directory
+    #to avoid removing the direcoty/files on managemment node by mistake
+    my @mntptlist;
+    my $FILEHD=undef;
+    open($FILEHD,"<","/proc/mounts");
+    while(<$FILEHD>){
+	my @arr=split / /;
+        push @mntptlist,$arr[1] if(substr($arr[1],0,length($rootimage_dir)) eq $rootimage_dir);
+    }
+    close($FILEHD);
+    foreach my $mntpt (@mntptlist){
+        system("umount -l $mntpt >/dev/null 2>&1")
+    }
+    
     if (majversion($osver) > 6) {
-        system("umount -l $rootimage_dir/proc");
-        system("umount -l $rootimage_dir/sys");
-
-        #system("umount -l $rootimage_dir/dev");
-        system("rm -rf $rootimage_dir/dev/*");
+        #only remove the /dev in rootimg directory if it is not a mount point
+        system("findmnt $rootimage_dir/dev/ >/dev/null 2>&1 || rm -rf $rootimage_dir/dev/*");
     }
 }
 
@@ -193,6 +210,7 @@ $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_o
 
 $destdir = "$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($tempfile);
+
 
 $rootimg_dir = "$destdir/rootimg";
 
@@ -347,6 +365,14 @@ unless ($onlyinitrd) {
         print "Unable to find package list for $profile!";
         exit 1;
     }
+
+    my $retcode;
+    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if($retcode){
+        print "$lock";
+        exit 1;
+    } 
+
 
     mount_chroot($rootimg_dir);
 
@@ -1987,10 +2013,32 @@ sub generic_post { #This function is meant to leave the image in a state approxi
             chmod(0755, "$rootimg_dir/etc/init.d/gettyset");
             system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
         }
+     
+        if(-e "$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service"){
+            unlink("$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service");
+        }
+        if(-e "$rootimg_dir/etc/rc3.d/S61xcatpostinit"){
+            unlink("$rootimg_dir/etc/rc3.d/S61xcatpostinit");
+        }
 
-        copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
-        chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-        system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+        if (!-d "$rootimg_dir/opt/xcat/") {
+            mkdir "$rootimg_dir/opt/xcat/";
+        }          
+
+        if(-e "$rootimg_dir/usr/lib/systemd/"){
+            #if systemd is the service management framework for the diskless image
+            #enable the xcatpostinit1.service
+            copy("/install/postscripts/xcatpostinit1.netboot","$rootimg_dir/opt/xcat/xcatpostinit1");
+            chmod(0755,"$rootimg_dir/opt/xcat/xcatpostinit1");
+            copy("/install/postscripts/xcatpostinit1.service","$rootimg_dir/etc/systemd/system/xcatpostinit1.service");
+            symlink("../xcatpostinit1.service","$rootimg_dir/etc/systemd/system/multi-user.target.wants/xcatpostinit1.service");
+       }else{
+            #for traditional sysvinit
+            copy("$installroot/postscripts/xcatpostinit1.netboot", "$rootimg_dir/etc/init.d/xcatpostinit");
+            chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+            system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+       }
+
     }
 }
 

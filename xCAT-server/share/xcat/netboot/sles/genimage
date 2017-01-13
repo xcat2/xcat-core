@@ -1748,39 +1748,12 @@ END
 
     #if "nonodestatus" specified,do not update the nodestatus
     system("mkdir -p /tmp/xcatinitrd.$$/tmp/");
-    open($inifile, ">", "/tmp/xcatinitrd.$$/tmp/updateflag");
+    cp("$installroot/postscripts/updateflag.awk","/tmp/xcatinitrd.$$/tmp/updateflag");
+    $perm = (stat("$installroot/postscripts/updateflag.awk"))[2];
+    chmod($perm & 07777, "/tmp/xcatinitrd.$$/tmp/updateflag");
 
-    print $inifile <<EOMS;
-#!/usr/bin/awk -f
-BEGIN {
-
-        xcatdhost = ARGV[1]
-        xcatiport = ARGV[2]
-
-
-        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
-        print "xCAT_xcatd" |& ns
-
-        while(1) {
-                ns |& getline
-
-                if(\$0 == "ready")
-                        print ARGV[3] |& ns
-                if(\$0 == "done")
-                        break
-        }
-
-        close(ns)
-
-        exit 0
-}
-
-EOMS
-
-    close($inifile);
     chmod(0755, "/tmp/xcatinitrd.$$/init");
     chmod(0755, "/tmp/xcatinitrd.$$/bin/netstart");
-    chmod(0755, "/tmp/xcatinitrd.$$/tmp/updateflag");
 
     @filestoadd = ();
     foreach (@ndrivers) {
@@ -1791,7 +1764,7 @@ EOMS
         }
     }
     if ($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "usr/bin/touch", "usr/bin/cut", "usr/bin/rm", "bin/hostname", "usr/bin/egrep", "bin/ln", "bin/ls", "usr/bin/dirname", "usr/bin/expr", "usr/bin/chroot", "usr/bin/grep", "bin/cpio", "bin/sleep", "bin/mount", "bin/umount", "sbin/dhcpcd", "bin/bash", "sbin/insmod", "bin/mkdir", "bin/mknod", "sbin/ip", "bin/cat", "usr/bin/awk", "usr/bin/wget", "bin/cp", "usr/bin/cpio", "usr/bin/zcat", "usr/bin/gzip", "lib/mkinitrd/bin/run-init", "usr/bin/uniq", "usr/bin/sed", "usr/bin/wc", "bin/sed", "sbin/udevd", "usr/bin/readlink", "usr/sbin/parted", "sbin/mke2fs", "sbin/mkswap", "sbin/swapon", "bin/chmod", "usr/bin/bc", "usr/bin/xz", "usr/bin/gzip", "bin/tar") {
             getlibs($_);
             push @filestoadd, $_;
         }

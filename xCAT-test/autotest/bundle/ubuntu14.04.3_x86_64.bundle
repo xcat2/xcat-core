@@ -1,3 +1,4 @@
+setup_vm
 Ubuntu_diskless_installation_flat_x86_vm
 Ubuntu_full_installation_flat_x86_vm
 makehosts_h
@@ -257,5 +258,5 @@ rmdocker_command
 rmdocker_f_command
 lsdocker_h_command
 lsdocker_l_command
-ubuntux_migration1_vm
-ubuntux_migration2_vm
+ubuntu_migration1_vm
+ubuntu_migration2_vm

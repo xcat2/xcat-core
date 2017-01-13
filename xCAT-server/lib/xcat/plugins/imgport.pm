@@ -32,6 +32,7 @@ use File::Path qw/rmtree/;
 use File::Basename;
 use xCAT::NodeRange;
 use xCAT::Schema;
+use xCAT::SvrUtils;
 use Cwd;
 my $requestcommand;
 $::VERBOSE = 0;
@@ -607,17 +608,9 @@ sub get_files {
                     if (-f "$rootimgdir/kernel") {
                         $kernel = "$rootimgdir/kernel";
                     }
-                    if (-f "$rootimgdir/rootimg.cpio.xz") {
-                        $rootimg = "$rootimgdir/rootimg.cpio.xz";
-                    } elsif (-f "$rootimgdir/rootimg.cpio.gz") {
-                        $rootimg = "$rootimgdir/rootimg.cpio.gz";
-                    } elsif (-f "$rootimgdir/rootimg.tar.xz") {
-                        $rootimg = "$rootimgdir/rootimg.tar.xz";
-                    } elsif (-f "$rootimgdir/rootimg.tar.gz") {
-                        $rootimg = "$rootimgdir/rootimg.tar.gz";
-                    } elsif (-f "$rootimgdir/rootimg.gz") {
-                        $rootimg = "$rootimgdir/rootimg.gz";
-                    }
+                    
+                    my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
+                    $rootimg = "$rootimgdir/$compressedrootimg";
 
                 } else {
                     $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);

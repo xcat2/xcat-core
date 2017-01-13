@@ -82,22 +82,28 @@ site Attributes:
                   details on supported formats.
   
    nodestatus:  If set to 'n', the nodelist.status column will not be updated during
-                the node deployment, node discovery and power operations. The default is to update.
+                the node deployment, node discovery and power operations. The default
+                is to update.
   
    skiptables:  Comma separated list of tables to be skipped by dumpxCATdb
   
-   skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not be logged in syslog.
+   skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not 
+                     be logged in syslog.
   
    -------------
   DHCP ATTRIBUTES
    -------------
-   dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same
-                    for all nodes, use a simple comma-separated list of NICs.  To
-                    specify different NICs for different nodes:
-                         xcatmn|eth1,eth2;service|bond0.
-                    In this example xcatmn is the name of the xCAT MN, and DHCP there
-                    should listen on eth1 and eth2.  On all of the nodes in group
-                    'service' DHCP should listen on the bond0 nic.
+   dhcpinterfaces:  The network interfaces DHCP should listen on.  If it is the same for all
+                    nodes, use a comma-separated list of the NICs.  To specify different NICs
+                    for different nodes, use the format: "xcatmn|eth1,eth2;service|bond0", 
+                    where xcatmn is the name of the management node, DHCP should listen on 
+                    the eth1 and eth2 interfaces.  All the nodes in group 'service' should 
+                    listen on the 'bond0' interface.
+  
+                    To disable the genesis kernel from being sent to specific interfaces, a
+                    ':noboot' option can be appended to the interface name.  For example,
+                    if the management node has two interfaces, eth1 and eth2, disable
+                    genesis from being sent to eth1 using: "eth1:noboot,eth2".
   
    dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.
   
@@ -120,18 +126,19 @@ site Attributes:
   DNS ATTRIBUTES
    ------------
    dnshandler:  Name of plugin that handles DNS setup for makedns.
+  
    domain:  The DNS domain name used for the cluster.
   
-   forwarders:  The DNS servers at your site that can provide names outside of the
-                cluster. The makedns command will configure the DNS on the management
-                node to forward requests it does not know to these servers.
-                Note that the DNS servers on the service nodes will ignore this value
-                and always be configured to forward requests to the management node.
+   forwarders:  The DNS servers at your site that can provide names outside of the cluster.
+                The makedns command will configure the DNS on the management node to forward
+                requests it does not know to these servers. Note that the DNS servers on the
+                service nodes will ignore this value and always be configured to forward 
+                to the management node.
   
    master:  The hostname of the xCAT management node, as known by the nodes.
   
-   nameservers:  A comma delimited list of DNS servers that each node in the cluster
-                 should use. This value will end up in the nameserver settings of the
+   nameservers:  A comma delimited list of DNS servers that each node in the cluster should
+                 use. This value will end up in the nameserver settings of the
                  /etc/resolv.conf on each node. It is common (but not required) to set
                  this attribute value to the IP addr of the xCAT management node, if
                  you have set up the DNS on the management node by running makedns.
@@ -148,16 +155,16 @@ site Attributes:
                  section. This is an interface for user to add configuration entries to
                  the zone sections in named.conf.
   
-   dnsinterfaces:  The network interfaces DNS server should listen on.  If it is the same
-                    for all nodes, use a simple comma-separated list of NICs.  To
-                    specify different NICs for different nodes:
-                         xcatmn|eth1,eth2;service|bond0.
-                    In this example xcatmn is the name of the xCAT MN, and DNS there
-                    should listen on eth1 and eth2.  On all of the nodes in group
-                    'service' DNS should listen on the bond0 nic.
-                    NOTE: if using this attribute to block certain interfaces, make sure
-                    the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to
-                    use this ip to communicate with the local NDS server on MN.
+   dnsinterfaces:  The network interfaces DNS should listen on.  If it is the same for all
+                   nodes, use a simple comma-separated list of NICs.  To specify different 
+                   NICs for different nodes, use the format: "xcatmn|eth1,eth2;service|bond0", 
+                   where xcatmn is the name of the management node, and DNS should listen on
+                   the eth1 and eth2 interfaces.  All the nods in group 'service' should 
+                   listen on the 'bond0' interface.
+  
+                   NOTE: If using this attribute to block certain interfaces, make sure
+                   the IP maps to your hostname of xCAT MN is not blocked since xCAT needs
+                   to use this IP to communicate with the local NDS server on MN.
   
    -------------------------
   HARDWARE CONTROL ATTRIBUTES
@@ -200,12 +207,12 @@ site Attributes:
             It takes effects on other PPC hardware control command
             getmacs/rnetboot/rbootseq and so on. Default is 8.
   
-   syspowerinterval:  For system p CECs, this is the number of seconds the rpower
-                   command will wait between performing the action for each CEC.
-                   For system x IPMI servers, this is the number of seconds the
-                   rpower command will wait between powering on <syspowermaxnodes>
-                   nodes at a time.  This value is used to control the power on speed
-                   in large clusters. Default is 0.
+   syspowerinterval:  For SystemP CECs, this is the number of seconds the rpower command
+                      will wait between performing the action for each CEC.  For SystemX
+                      IPMI servers, this is the number of seconds the rpower command will
+                      wait between powering on <syspowermaxnodes> nodes at a time.  This
+                      value is used to control the power on speed in large clusters. 
+                      Default is 0.
   
    syspowermaxnodes:  The number of servers to power on at one time before waiting
                       'syspowerinterval' seconds to continue on to the next set of
@@ -291,12 +298,13 @@ site Attributes:
                 If value is set to a hostname, the directory in tftpdir
                 will be mounted from that hostname on the SN
   
-   sharedinstall: Indicates if a shared file system will be used for installation
-                 resources. Possible values are: 'no', 'sns', or 'all'.  'no' 
-                 means a shared file system is not being used.  'sns' means a
-                 shared filesystem is being used across all service nodes.
-                 'all' means that the management as well as the service nodes
-                 are all using a common shared filesystem. The default is 'no'.
+   sharedinstall:  Indicates if a shared file system will be used for installation
+                   resources. Possible values are: 'no', 'sns', or 'all'.  'no' 
+                   means a shared file system is not being used.  'sns' means a
+                   shared filesystem is being used across all service nodes.
+                   'all' means that the management as well as the service nodes
+                   are all using a common shared filesystem. The default is 'no'.
+  
    xcatconfdir:  Where xCAT config data is (default /etc/xcat).
   
    xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques
@@ -315,23 +323,24 @@ site Attributes:
   REMOTESHELL ATTRIBUTES
    --------------------
    nodesyncfiledir:  The directory on the node, where xdcp will rsync the files
+  
    SNsyncfiledir:  The directory on the Service Node, where xdcp will rsync the files
                    from the MN that will eventually be rsync'd to the compute nodes.
   
-   sshbetweennodes:  Comma separated list of groups of compute nodes to enable passwordless root 
-                     ssh during install, or xdsh -K. Default is ALLGROUPS.
-                     Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.
-                     Service Nodes are not affected by this attribute
-                     they are always setup with
-                     passwordless root access to nodes and other SN.
+   sshbetweennodes:  Comma separated list of groups of compute nodes to enable passwordless
+                     root ssh to the nodes during install or running 'xdsh -K'. The default
+                     is ALLGROUPS.  Set to NOGROUPS to disable.
+  
+                     Service Nodes are not affected by this attribute as they are always
+                     configured with passwordless root access.
                      If using the zone table, this attribute in not used.
   
    -----------------
   SERVICES ATTRIBUTES
    -----------------
    consoleondemand:  When set to 'yes', conserver connects and creates the console
-                     output only when the user opens the console. Default is no on
-                     Linux, yes on AIX.
+                     output only when the user opens the console. Default is 'no' on
+                     Linux, 'yes' on AIX.
   
    httpport:    The port number that the booting/installing nodes should contact the
                 http server on the MN/SN on. It is your responsibility to configure
@@ -355,12 +364,12 @@ site Attributes:
                    will use the management node's own hardware clock to calculate
                    the system date and time
   
-   svloglocal:  if set to 1, syslog on the service node will not get forwarded to the
-                mgmt node.
+   svloglocal:  If set to 1, syslog on the service node will not get forwarded to the
+                management node.
   
    timezone:  (e.g. America/New_York)
   
-   tftpdir:  tftp directory path. Default is /tftpboot
+   tftpdir:  The tftp directory path. Default is /tftpboot
   
    tftpflags:  The flags that used to start tftpd. Default is '-v -l -s /tftpboot 
                  -m /etc/tftpmapfile4xcat.conf' if tftplfags is not set
@@ -369,29 +378,24 @@ site Attributes:
                    using nmap (if available) from the management node instead of the
                    service node. This will improve the performance in a flat network.
   
-   vsftp:       Default is 'n'. If set to 'y', the xcatd on the mn will automatically
-                bring up vsftpd.  (You must manually install vsftpd before this.
-                This setting does not apply to the service node. For sn
-                you need to set servicenode.ftpserver=1 if you want xcatd to
-                bring up vsftpd.
- 
- 
- FQDNfirst: Fully Qualified Domain Name first. If set to 1/yes/enable, the /etc/hosts 
-            entries generated by 'makehosts' will put the FQDN before the PQDN(Partially 
-            Qualified Domain Name). Otherwise, the original behavior will be performed.
- 
- hierarchicalattrs: Table attributes(e.g. postscripts, postbootscripts) that will be
-                    included hierarchically. Attribute values for all the node's groups
-                    will be applied to the node in the groups' order except the repeat one.
- 
- 
- .. code-block:: perl
- 
+   vsftp:  Default is 'n'. If set to 'y', xcatd on the management node will automatically
+           start vsftpd.  (vsftpd must be installed by the admin).  This setting does not
+           apply to service nodes.  For service nodes, set servicenode.ftpserver=1.
+  
+   FQDNfirst:  Fully Qualified Domain Name first. If set to 1/yes/enable, the /etc/hosts 
+               entries generated by 'makehosts' will put the FQDN before the PQDN(Partially 
+               Qualified Domain Name). Otherwise, the original behavior will be performed.
+  
+   hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be
+                       included hierarchically. Attribute values for all the node's groups
+                       will be applied to the node in the groups' order except the repeat one.
+  
    -----------------------
   VIRTUALIZATION ATTRIBUTES
    -----------------------
-   usexhrm:  Have xCAT run its xHRM script when booting up KVM guests to set the
-             virtual network bridge up correctly.
+   usexhrm:  Have xCAT execute the xHRM script when booting up KVM guests to configure
+             the virtual network bridge.
+  
    vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove
                      and add hypervisors while trying to perform operations.  If users
                      or tasks outside of xCAT perform the joining this assures xCAT

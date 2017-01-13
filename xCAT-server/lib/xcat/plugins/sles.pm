@@ -327,11 +327,7 @@ sub mknetboot
             $platform = "sles";
         }
 
-        my $suffix = 'cpio.gz';
-        $suffix = 'sfs' if (-r "$rootimgdir/rootimg.sfs");
-        $suffix = 'cpio.xz' if (-r "$rootimgdir/rootimg.cpio.xz");
-        $suffix = 'tar.gz' if (-r "$rootimgdir/rootimg.tar.gz");
-        $suffix = 'tar.xz' if (-r "$rootimgdir/rootimg.tar.xz");
+        my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
 
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
@@ -383,7 +379,7 @@ sub mknetboot
                 }
             }
 
-            unless (-r "$rootimgdir/rootimg.cpio.gz" or -r "$rootimgdir/rootimg.cpio.xz" or -r "$rootimgdir/rootimg.tar.gz" or -r "$rootimgdir/rootimg.tar.xz" or -r "$rootimgdir/rootimg.sfs") {
+            unless (-r -f "$rootimgdir/$compressedrootimg") {
                 $callback->({
                         error => [qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
                         errorcode => [1]
@@ -587,7 +583,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv/$rootimgdir/rootimg.$suffix ";
+              "imgurl=$httpmethod://$imgsrv/$rootimgdir/$compressedrootimg ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport quiet ";
 
@@ -2218,6 +2214,10 @@ sub copycd
             my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
+            }
+            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            if ($ret[0] != 0) {
+              $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
             }
 
         }

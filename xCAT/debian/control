@@ -2,11 +2,29 @@ Source: xcat
 Section: admin
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
+Vcs-browser: https://github.com/xcat2/xcat-core.git
+Homepage: https://xcat.org/
 
 Package: xcat
 Architecture: amd64 ppc64el
-Depends: ${perl:Depends}, xcat-server, xcat-client, libdbd-sqlite3-perl, isc-dhcp-server, apache2, nfs-kernel-server, nmap, bind9, libxml-parser-perl, xinetd, tftpd-hpa, tftp-hpa, conserver-xcat, libnet-telnet-perl, ipmitool-xcat (>=1.8.15-2), syslinux[any-amd64], libsys-virt-perl, syslinux-xcat, xnba-undi, xcat-genesis-scripts-ppc64, xcat-genesis-scripts-amd64, elilo-xcat, xcat-buildkit, xcat-probe (>=2.12)
-Description: Server and configuration utilities of the xCAT management project
- xcat-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
+Depends: ${perl:Depends}, xcat-server (>= 2.13-snap000000000000), xcat-client (>= 2.13-snap000000000000), libdbd-sqlite3-perl, isc-dhcp-server, apache2, nfs-kernel-server, libxml-parser-perl, xinetd, tftpd-hpa, conserver-xcat, libnet-telnet-perl, xcat-genesis-scripts-ppc64 (>= 2.13-snap000000000000), xcat-genesis-scripts-amd64 (>= 2.13-snap000000000000)
+Recommends: bind9, nmap, tftp-hpa, ipmitool-xcat (>= 1.8.17-1), syslinux[any-amd64], libsys-virt-perl, syslinux-xcat, xnba-undi, elilo-xcat, xcat-buildkit (>= 2.13-snap000000000000), xcat-probe (>= 2.13-snap000000000000)
+Suggests: yaboot-xcat
+Description: Metapackage for a common, default xCAT setup
+ xCAT is Extreme Cluster/Cloud Administration Toolkit. xCAT offers complete
+ management for HPC clusters, RenderFarms, Grids, WebFarms, Online Gaming
+ Infrastructure, Clouds, Datacenters, and whatever tomorrow's buzzwords may
+ be. It is agile, extensible, and based on years of system administration best
+ practices and experience.
+ .
+ It enables you to:
+ .
+  * Provision Operating Systems on physical or virtual machines: RHEL, CentOS,
+    Fedora, SLES, Ubuntu, AIX, Windows, VMWare, KVM, PowerVM, PowerKVM, zVM.
+  * Provision using scripted install, stateless, statelite, iSCSI, or cloning
+  * Remotely manage systems: lights-out management, remote console, and
+    distributed shell support
+  * Quickly configure and control management node services: DNS, HTTP, DHCP,
+    TFTP, NFS

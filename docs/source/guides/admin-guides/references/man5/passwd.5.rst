@@ -56,7 +56,7 @@ passwd Attributes:
 
 \ **cryptmethod**\ 
  
- Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod is not supported however the code attempts to auto-discover MD5 encrypted passwords.
+ Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod can be set to md5, sha256 or sha512. If not set, sha256 will be used as default.
  
 
 

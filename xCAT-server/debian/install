@@ -19,7 +19,6 @@ share/xcat/devicetype/* opt/xcat/share/xcat/devicetype
 share/xcat/ib/netboot/sles/* opt/xcat/share/xcat/ib/netboot/sles
 share/xcat/ib/netboot/rh/* opt/xcat/share/xcat/ib/netboot/rh
 
-
 lib/perl/xCAT/* opt/xcat/lib/perl/xCAT/
 lib/xcat/plugins/* opt/xcat/lib/perl/xCAT_plugin/
 lib/xcat/schema/* opt/xcat/lib/perl/xCAT_schema/

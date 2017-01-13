@@ -37,6 +37,9 @@ use File::Path;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::SvrUtils;
+use xCAT::PasswordUtils;
+use Digest::MD5 qw(md5_hex);
+
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -97,7 +100,8 @@ sub process_request {
     my $provmethod;
     my $help;
     my $version;
-
+    my $lock;  
+ 
     GetOptions(
         "profile|p=s" => \$profile,
         "arch|a=s"    => \$arch,
@@ -198,6 +202,14 @@ sub process_request {
         $destdir = "$installroot/netboot/$osver/$arch/$profile";
     }
     $rootimg_dir = "$destdir/rootimg";
+
+    
+    my $retcode;
+    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if($retcode){
+        $callback->({ error => ["$lock"], errorcode => [1]});
+        return 1;
+    }
 
     my $distname = $osver;
     until (-r "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
@@ -379,33 +391,26 @@ sub process_request {
     # before packaging the image
     system("umount $rootimg_dir/proc");
     copybootscript($installroot, $rootimg_dir, $osver, $arch, $profile, $callback);
-    my $passtab = xCAT::Table->new('passwd');
-    if ($passtab) {
-        my $pass = 'cluster';
-        (my $pent) = $passtab->getAttribs({ key => 'system', username => 'root' }, 'password');
-        if ($pent and defined($pent->{password})) {
-            $pass = $pent->{password};
-        }
-        my $oldmask = umask(0077);
-        my $shadow;
-        open($shadow, "<", "$rootimg_dir/etc/shadow");
-        my @shadents = <$shadow>;
-        close($shadow);
-        open($shadow, ">", "$rootimg_dir/etc/shadow");
 
-        # 1 - MD5, 5 - SHA256, 6 - SHA512
-        unless (($pass =~ /^\$1\$/) || ($pass =~ /^\$5\$/) || ($pass =~ /^\$6\$/)) {
-            $pass = crypt($pass, '$1$' . xCAT::Utils::genpassword(8));
-        }
-        print $shadow "root:$pass:13880:0:99999:7:::\n";
-        foreach (@shadents) {
-            unless (/^root:/) {
-                print $shadow "$_";
-            }
-        }
-        close($shadow);
-        umask($oldmask);
+    my $pass = xCAT::PasswordUtils::crypt_system_password();
+    if (!defined($pass)) {
+        $pass = 'cluster';
     }
+
+    my $oldmask = umask(0077);
+    my $shadow;
+    open($shadow, "<", "$rootimg_dir/etc/shadow");
+    my @shadents = <$shadow>;
+    close($shadow);
+    open($shadow, ">", "$rootimg_dir/etc/shadow");
+    print $shadow "root:$pass:13880:0:99999:7:::\n";
+    foreach (@shadents) {
+        unless (/^root:/) {
+            print $shadow "$_";
+        }
+    }
+    close($shadow);
+    umask($oldmask);
 
     # sync fils configured in the synclist to the rootimage
     $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot", $imagename);
@@ -476,12 +481,8 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink("$destdir/rootimg.sfs");
-    unlink("$destdir/rootimg.cpio.xz");
-    unlink("$destdir/rootimg.cpio.gz");
-    unlink("$destdir/rootimg.tar.xz");
-    unlink("$destdir/rootimg.tar.gz");
-    
+    unlink glob("$destdir/rootimg.*");   
+ 
     if ($method =~ /cpio/) {
         if (!$exlistloc) {
             $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";

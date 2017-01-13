@@ -56,7 +56,7 @@ The ``buildkit.conf`` file is a sample file that contains a description of all t
       kitlicense=ILAN           <== the default kit license string is "EPL"
       kitdeployparams=pe.env    <== pe.env has to define in the other_files dir.
 
-**kitrepo** --- This stanza defines a Kit Package Repository. There must be at least one kitrepo stanza in a kit build file.  If this kit need to support multiple OSes, user should create a separate repository for each OS.  Also, no two repositories can be defined with the same OS name, major/minor version, and arch.  ::
+**kitrepo** --- This stanza defines a Kit Package Repository. There must be at least one kitrepo stanza in a kit build file.  If this kit need to support multiple OSes, user should create a separate repository for each OS.  Also, no two repositories can be defined with the same OS name, major version, and arch.  ::
 
   kitrepo:
       kitrepoid=rhels6_x86_64
@@ -69,6 +69,14 @@ The ``buildkit.conf`` file is a sample file that contains a description of all t
       osbasename=sles
       osmajorversion=11
       osarch=x86_64
+
+minor version can be support following format: ::
+    
+    osminorversion=2  <<-- minor version has to be exactly matched to 2
+    osminorversion=>=2  <<-- minor version can be 2 or greater than 2
+    osminorversion=<=2  <<-- minor version can be 2 or less than 2 
+    osminorversion=>2  <<-- minor version has to be greater than 2
+    osminorversion=<2  <<-- minor version has to be less than 2 
 
 **kitcomponent** --- This stanza defines one Kit Component. A kitcomponent definition is a way of specifying a subset of the product Kit that may be installed into an xCAT osimage.  A kitcomponent may or may not be dependent on other kitcomponents.If user want to build a component which supports multiple OSes, need to create one kitcomponent stanza for each OS.  ::
 

@@ -32,6 +32,14 @@ my %global_scan_type = (
     snmp => "snmp_scan"
 );
 
+my %global_mac_identity = (
+    "a8:97:dc" => "BNT G8052 switch",
+    "6c:ae:8b" => "BNT G8264-T switch",
+    "fc:cf:62" => "BNT G8124 switch",
+    "7c:fe:90" => "Mellanox IB switch",
+    "8c:ea:1b" => "Edgecore Networks Switch"
+);
+
 my %global_switch_type = (
     Juniper => "Juniper",
     juniper => "Juniper",
@@ -44,7 +52,8 @@ my %global_switch_type = (
     Mellanox => "Mellanox",
     mellanox => "Mellanox",
     MLNX => "Mellanox",
-    MELLAN => "Mellanox"
+    MELLAN => "Mellanox",
+    Edgecore => "onie"
 );
 
 
@@ -317,7 +326,7 @@ sub process_request {
     my $req      = shift;
     my $callback = shift;
     my $sub_req  = shift;
-  
+
     ###########################################
     # Build hash to pass around
     ###########################################
@@ -463,19 +472,20 @@ sub process_request {
             my $msg = sprintf $format, $ip, $name, $vendor, $mac;
             send_msg(\%request, 0, $msg);
         }
+        send_msg(\%request, 0,"\n");        
     }
 
+    my ($discoverswitch, $predefineswitch) = matchPredefineSwitch($result, \%request, $sub_req);
 
     # writes the data into xCAT db
     if (exists($globalopt{w})) {
         send_msg(\%request, 0, "Writing the data into xCAT DB....");
-        xCATdB($result, \%request, $sub_req);
+        xCATdB($discoverswitch, \%request, $sub_req);
     }
 
     if (exists($globalopt{setup})) {
-        switchsetup($result, \%request, $sub_req);
+        switchsetup($predefineswitch, \%request, $sub_req);
     }
-
 
     return;
 }
@@ -711,6 +721,7 @@ sub nmap_scan {
                 my $mac;
                 if (exists($host->{address})) {
                     my $addr_ref = $host->{address};
+                    $found = 0;
                     foreach my $addr ( @$addr_ref ) {
                         my $type = $addr->{addrtype};
                         if ( $type ne "mac" ) {
@@ -727,28 +738,42 @@ sub nmap_scan {
                         if ($vendor) {
                             my $search_string = join '|', keys(%global_switch_type);
                             if ($vendor =~ /($search_string)/) {
-                                $switches->{$mac}->{ip} = $ip;
-                                $switches->{$mac}->{vendor} = $vendor;
-                                $switches->{$mac}->{name} = $host->{hostname};
                                 $found = 1;
-                                if (exists($globalopt{verbose}))    {
-                                    send_msg($request, 0, "FOUND Switch: ip=$ip, mac=$mac, vendor=$vendor\n");
-                                }
                             }
                         } 
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            push(@$osguess_ips, $ip);
-                        } # end nmap osscan command
+                            my $search_string = join '|', keys(%global_mac_identity);
+                            if ($mac =~ /($search_string)/i) {
+                                my $key = $1;
+                                $vendor = $global_mac_identity{lc $key};
+                                $found = 1;
+                            }
+
+                            # still not found, used nmap osscan command
+                            if ( $found == 0) {
+                                push(@$osguess_ips, $ip);
+                            }
+                        } 
+                        if ($found == 1) {
+                            $switches->{$mac}->{ip} = $ip;
+                            $switches->{$mac}->{vendor} = $vendor;
+                            $switches->{$mac}->{name} = $host->{hostname};
+                            if (exists($globalopt{verbose}))    {
+                                send_msg($request, 0, "FOUND Switch: found = $found, ip=$ip, mac=$mac, vendor=$vendor\n");
+                            }
+                        }
                     } #end for each address
                 }
             } #end for each host
         }
     }
 
-    my $guess_switches = nmap_osguess($request, $osguess_ips);
-    foreach my $guess_mac ( keys %$guess_switches ) {
-        $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
-        $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
+    if ($osguess_ips) {
+        my $guess_switches = nmap_osguess($request, $osguess_ips);
+        foreach my $guess_mac ( keys %$guess_switches ) {
+            $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};
+            $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
+        }
     }
 
     return $switches;
@@ -1176,7 +1201,6 @@ sub xCATdB {
             $mac=" ";
         }
 
-
         #################################################
         # use lsdef command to check if this switch is
         # already in the switch table
@@ -1346,13 +1370,9 @@ sub format_xml {
 }
 
 #--------------------------------------------------------------------------------
-=head3  switchsetup
+=head3 matchPredefineSwitch 
       find discovered switches with predefine switches
       for each discovered switches:
-      1) matching mac to a predefined node
-      2) if get predefined node, config the discovered switch, if failed, update
-         'otherinterface' attribute of predefined node
-      3) remove hosts record and node definition for the discovered switch
     Arguments:
       outhash: a hash containing the switches discovered
     Returns:
@@ -1360,14 +1380,12 @@ sub format_xml {
 =cut
 #--------------------------------------------------------------------------------
 
-sub switchsetup {
+sub matchPredefineSwitch {
     my $outhash = shift;
     my $request = shift;
     my $sub_req = shift;
-    my @switchnode = ();
-    my $static_ip;
-    my $discover_switch;
-    my $nodes_to_config;
+    my $discoverswitch;
+    my $configswitch;
 
     #print Dumper($outhash);
     my $macmap = xCAT::MacMap->new();
@@ -1386,29 +1404,49 @@ sub switchsetup {
 
         my $node = $macmap->find_mac($mac,0,1);
         if (!$node) {
-            send_msg($request, 0, "NO predefined switch matched this switch $dswitch with ip address $ip and mac address $mac");
+            send_msg($request, 0, "Switch discovered: $dswitch ");
+            $discoverswitch->{$mac}->{ip} = $ip;
+            $discoverswitch->{$mac}->{vendor} = $vendor;
+            $discoverswitch->{$mac}->{name} = $dswitch;
             next;
         }
 
-        # get predefine node ip address
-        $static_ip = xCAT::NetworkUtils->getipaddr($node);
         my $stype = get_switchtype($vendor);
 
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "Found Discovery switch $dswitch, $ip, $mac with predefine switch $node, $static_ip $stype switch\n" );
-        }
+        send_msg($request, 0, "Switch discovered and matched: $dswitch to $node" );
+
         xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
 
-        push (@{$nodes_to_config->{$stype}}, $node);
+        push (@{$configswitch->{$stype}}, $node);
     }
 
+    return ($discoverswitch, $configswitch);
+}
+
+#--------------------------------------------------------------------------------
+=head3 switchsetup 
+      configure the switch 
+    Arguments:
+      outhash: a hash containing the switches need to configure
+    Returns:
+      result:
+=cut
+#--------------------------------------------------------------------------------
+sub switchsetup {
+    my $nodes_to_config = shift;
+    my $request = shift;
+    my $sub_req = shift;
     foreach my $mytype (keys %$nodes_to_config) {
         my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
-            send_msg($request, 0, "call to config $mytype switches $switches\n");
-            my $out = `$config_script --switches $switches --all`;
-            send_msg($request, 0, "output = $out\n");
+            if ($mytype eq "onie") {
+                send_msg($request, 0, "onie switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configonie after Cumulus OS installed on switch\n");
+            } else {
+                send_msg($request, 0, "call to config $mytype switches $switches\n");
+                my $out = `$config_script --switches $switches --all`;
+                send_msg($request, 0, "output = $out\n");
+            }
         } else {
             send_msg($request, 0, "the switch type $mytype is not support yet\n");
         }

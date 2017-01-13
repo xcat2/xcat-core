@@ -3,8 +3,6 @@ os:Linux
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f -p  && mkvm $$SN -s 40G; fi
-
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -18,9 +16,8 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
-check:output=~$$SN
-
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$SN);[ $? -ne 0 ] && exit 1;echo $output|grep $$SN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
@@ -100,5 +97,5 @@ check:output=~/tftpboot on /tftpboot
 
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
-
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

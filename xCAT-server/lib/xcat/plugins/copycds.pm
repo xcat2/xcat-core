@@ -145,6 +145,10 @@ sub process_request {
 
             if ($path)
             {
+                $path=Cwd::realpath($path);
+                unless(substr($path,0,length("/install")) eq "/install"){
+                    $callback->({ warning => "copycds: the specified path \"$path\" is not a subdirectory under /install. Make sure this path is configured for httpd/apache, otherwise, the provisioning with this iso will fail!" }); 
+                }
                 push @{ $newreq->{arg} }, ("-p", $path);
             }
             if ($specific)

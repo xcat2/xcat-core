@@ -4,66 +4,118 @@ cmd:makentp -v
 check:rc==0
 check:output=~Version
 end
+
 start:makentp_h
 descriptiop:makentp -h
 cmd:makentp -h
 check:rc==0
 check:output=~Usage: makentp
 end
-start:makentp_V
-descriptiop:makentp -V
+
+start:makentp_extntpserver_null
+descriptiop:test makentp with default value. extntpserver is set to blank
+cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver 
+check:rc==0
+cmd:chtab key=extntpservers site.value=""
+check:rc==0
+cmd:makentp
+check:rc==0
+check:output=~configuring management node: $$MN 
 cmd:makentp -V
 check:rc==0
+check:output=~configuring management node: $$MN
 check:output=~checking if nptd is installed
+check:output=~backing up the ntp configuration file /etc/ntp.conf
+check:output=~stopping ntpserver
+check:output=~starting ntpserver
+check:output=~enabling ntpserver
+cmd:extntpserver=`cat /tmp/ntpserver | awk -F = '{print \$2}'`;chtab key=extntpservers site.value=$extntpserver
+check:rc==0
+cmd:rm -rf /tmp/extntpserver
+cmd:makentp
+check:rc==0 
 end
-start:makentp
-descriptiop:makentp 
+
+start:makentp_extntpserver_value
+descriptiop:test makentp with extntpserver is set to a specific value
+cmd:lsdef -t site -o clustersite -i extntpservers -c >/tmp/extntpserver
+check:rc==0
+cmd:chtab key=extntpservers site.value="$$extntpserversip"
+check:rc==0
 cmd:date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w ; fi
-cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
-cmd:makentp 
+cmd:makentp
 check:rc==0
-check:output=~configuring management node
+check:output=~configuring management node: $$MN
+cmd:makentp -V
+check:rc==0
+check:output=~configuring management node: $$MN
+check:output=~checking if nptd is installed
+check:output=~backing up the ntp configuration file /etc/ntp.conf
+check:output=~ntp servers are: $$extntpserversip 
+check:output=~stopping ntpserver
+check:output=~starting ntpserver
+check:output=~enabling ntpserver
 cmd:date
 check:output=~$$DATE
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-check:output=~$$DATE
-end
-start:makentp_a
-descriptiop:makentp -a
-cmd:date -s 20000101
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w ; fi
-cmd:chtab key=extntpservers site.value="$$extntpserversip"
-check:rc==0
-cmd:makentp -a
-check:rc==0
-check:output=~configuring management node
-cmd:date
 check:output=~$$DATE
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-check:output=~$$DATE
+cmd:extntpserver=`cat /tmp/extntpserver | awk -F = '{print \$2}'`;chtab key=extntpservers site.value=$extntpserver
+check:rc==0
+cmd:rm -rf /tmp/extntpserver
 end
 
 start:updatenode_computenode_P_setupntp
-descriptiop:using updatenode -p synch
+descriptiop:using updatenode -P to setup ntp on compute node
 cmd:xdsh $$CN date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock -w;else xdsh $$CN hwclock -w ; fi
-cmd:chdef $$CN -p  postscripts=setupntp
-cmd:chtab key=extntpservers site.value=""
+cmd:lsdef -t node -o $$CN -i postscripts -c > /tmp/postscripts
 check:rc==0
+cmd:chdef $$CN postscripts=setupntp
+cmd:lsdef -t site -o clustersite -i ntpservers -c >/tmp/ntpservers
+cmd:chtab key=ntpservers site.value=""
+cmd:makentp
+check:rc==0
+check:output=~configuring management node: $$MN
 cmd:updatenode $$CN -P setupntp
 check:rc==0
 check:output=~Running of postscripts has completed
 check:output=~Running postscript: setupntp
+check:output=~setupntp exited with code 0
 cmd:sleep 120
 cmd:xdsh $$CN date
 check:output=~$$DATE
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock ;else xdsh $$CN hwclock  ; fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
+check:rc==0
 check:output=~$$DATE
-cmd:chdef $$CN -m postscripts=setupntp
+cmd:ntpserver=`cat /tmp/ntpserver | awk -F = '{print \$2}'`;chtab key=ntpservers site.value=$ntpserver
+check:rc==0
+cmd:rm -rf /tmp/ntpserve
+cmd:postscript=`cat /tmp/postscript | awk -F = '{print \$2}'`;chdef -t node -o $$CN postscripts=$postscript
+check:rc==0
+cmd:rm -rf /tmp/postscript
 end
 
+
+start:makentp_initialize
+descriptiop:start ntp service on management node and synchronize time with external ntp server
+cmd:chtab key=extntpservers site.value="$$extntpserversip"
+check:rc==0
+cmd:makentp -V
+check:rc==0
+check:output=~configuring management node: $$MN
+check:output=~checking if nptd is installed
+check:output=~backing up the ntp configuration file /etc/ntp.conf
+check:output=~ntp servers are: $$extntpserversip
+check:output=~stopping ntpserver
+check:output=~starting ntpserver
+check:output=~enabling ntpserver
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] || [[ "__GETNODEATTR($$CN,os)__" = "sles11.4" ]];then service ntp status;else service ntpd status; fi
+check:rc==0
+cmd:a=0;until ntpq -n -c peers | tail -n +2 | grep -q '^*'; do sleep 30;((a++));if [ $a -gt 30 ];then exit 1;fi done 
+check:rc==0
+end

@@ -110,6 +110,7 @@ sub parse_args {
     # Responds with usage statement
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
+        send_msg($request, 0, " $usage_string");
         return ([ $_[0], $usage_string ]);
     };
 
@@ -124,6 +125,7 @@ sub parse_args {
     @ARGV                     = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("bundling");
+    Getopt::Long::Configure("no_pass_through");
 
     # Process command-line flags
     if (!GetOptions(\%opt,
@@ -288,7 +290,7 @@ sub process_request {
     }
 
     if ($verbose) {
-        send_msg(\%request, 0, " ...changing the ntpp configuration file /etc/ntp.conf.\n    ntp servers are: $ntp_servers");
+        send_msg(\%request, 0, " ...changing the ntp configuration file /etc/ntp.conf.\n    ntp servers are: $ntp_servers");
     }
 
     # create ntp server config file
@@ -307,11 +309,17 @@ sub process_request {
         }
     }
 
+    my $os          = xCAT::Utils->osver("all");
+
+    #for sles, /var/lib/ntp/drift is a dir
     if (xCAT::Utils->isAIX()) {
         print CFGFILE "driftfile /etc/ntp.drift\n";
         print CFGFILE "tracefile /etc/ntp.trace\n";
         print CFGFILE "disable auth\n";
         print CFGFILE "broadcastclient\n";
+    } elsif ($os =~ /sles/) {
+        print CFGFILE "driftfile /var/lib/ntp/drift/ntp.drift\n";
+        print CFGFILE "disable auth\n";
     } else {
         print CFGFILE "driftfile /var/lib/ntp/drift\n";
         print CFGFILE "disable auth\n";
@@ -323,7 +331,6 @@ sub process_request {
 
     close CFGFILE;
 
-    my $os          = xCAT::Utils->osver("all");
     my $ntp_service = "ntpserver";
 
     #stop ntpd
@@ -382,17 +389,23 @@ sub process_request {
 
     #setup the RTC is UTC format, which will be used by os
     if ($os =~ /sles/) {
-        `sed -i 's/.*HWCLOCK.*/HWCLOCK="-u"/' /etc/sysconfig/clock`;
+        $grep_cmd = "grep -i HWCLOCK /etc/sysconfig/clock";
+        $rc = xCAT::Utils->runcmd($grep_cmd, 0);
+        if ($::RUNCMD_RC == 0) {
+            `sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock`;
+        } else {
+            `echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock`;
+        }
     } elsif (-f "/etc/debian_version") {
-        `sed -i "s/.*UTC.*/UTC=yes/" /etc/default/rcS`;
+        `sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS`;
     } else {
         if (-f "/etc/sysconfig/clock") {
             $grep_cmd = "grep -i utc /etc/sysconfig/clock";
             $rc = xCAT::Utils->runcmd($grep_cmd, 0);
-            if ($::RUNCMD_RC != 0) {
-                `sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock`;
+            if ($::RUNCMD_RC == 0) {
+                `sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock`;
             } else {
-                `echo "UTC=yes" >> /etc/sysconfig/clock`;
+                `echo UTC=\"yes\" >> /etc/sysconfig/clock`;
             }
         } else {
             `type -P timedatectl >/dev/null 2>&1`;
@@ -404,11 +417,15 @@ sub process_request {
     if (-f "/etc/sysconfig/ntpd") {
         $grep_cmd = "grep -i SYNC_HWCLOCK /etc/sysconfig/ntpd";
         $rc = xCAT::Utils->runcmd($grep_cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            `sed -i "s/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=yes/" /etc/sysconfig/ntpd`;
+        if ($::RUNCMD_RC == 0) {
+            `sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd`;
         } else {
-            `echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd`;
+            `echo SYNC_HWCLOCK=\"yes\" >> /etc/sysconfig/ntpd`;
         }
+    } elsif (-f "/etc/sysconfig/ntp") {
+        `sed -i 's/.*SYNC_HWCLOCK.*/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+        `sed -i 's/^NTPD_FORCE_SYNC_ON.*/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp`;
+        `sed -i 's/.*RUN_CHROOTED.*/NTPD_RUN_CHROOTED=\"yes\"/' /etc/sysconfig/ntp`;
     } else {
         my $cron_file = "/etc/cron.daily/xcatsethwclock";
         if (!-f "$cron_file") {
@@ -452,11 +469,12 @@ sub process_request {
                 },
                 $sub_req, -1, 1
               );
+            my $retcode=$::RUNCMD_RC;
             my $msg;
             foreach my $line (@$ret) {
                 $msg .= "$line\n";
             }
-            send_msg(\%request, 1, "$msg");
+            send_msg(\%request, $retcode, "$msg");
         }
     }
 

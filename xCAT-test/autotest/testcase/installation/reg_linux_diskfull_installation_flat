@@ -5,8 +5,6 @@ cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
-check:rc=0
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -16,14 +14,23 @@ check:output=~$$CN
 cmd:sleep 20
 cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
 check:rc==0
+cmd:chtab key=extntpservers site.value=""
+check:rc==0
+cmd:chtab key=ntpservers site.value="<xcatmaster>"
+check:rc==0
+cmd:makentp
+check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
-check:output=~$$CN
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
 cmd:copycds $$ISO 
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
+cmd:lsdef -l $$CN
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
@@ -50,7 +57,12 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 cmd:sleep 120
+#comment for further discussion
+#cmd:xdsh $$CN service ntpd status
+#check:rc==0
+#check:output=~running
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
+cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 end

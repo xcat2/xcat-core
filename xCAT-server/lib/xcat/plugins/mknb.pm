@@ -3,6 +3,7 @@ use strict;
 use File::Temp qw(tempdir);
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::NodeRange;
 use File::Path;
 use File::Copy;
 
@@ -73,6 +74,17 @@ sub process_request {
             }
         }
         my $nicips = xCAT::NetworkUtils->get_nic_ip();
+        foreach (keys %$nicips) {
+            # To support tagged vlan, create entries in the hash for the 
+            # interface name removing the physical interface ending:
+            # 'enP1p12s0f0.2@enP1p12s0f0' => 'enP1p12s0f0.2'
+            if ($_ =~ "@") {
+                my $newkey = $_;
+                $newkey =~ s/\@.*//g;
+                $$nicips{$newkey} = ${nicips}->{$_};
+            }
+        }
+
         foreach (keys %nobootnics)  {
             if (defined($nicips->{$_})) {
                 $nobootnicips{$nicips->{$_}} = 1;

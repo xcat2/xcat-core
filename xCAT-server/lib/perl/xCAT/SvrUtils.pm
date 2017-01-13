@@ -2099,4 +2099,41 @@ sub getplatform {
 
     return $platform;
 }
+
+#--------------------------------------------------------------------------------------------------------
+#searchcompressedrootimg:
+#description: search the compressed rootimage for diskless or statelite osimage under specified directory
+#argument:
+#        $rootimgdir: the directory in which the compressed rootimage exist
+#return:
+#        on success: the basename of the compressed rootimage
+#        on fail:    undef
+#--------------------------------------------------------------------------------------------------------
+sub searchcompressedrootimg{
+    my $rootimgdir = shift;   
+    if (($rootimgdir) && ($rootimgdir =~ /xCAT::SvrUtils/)) {
+        $rootimgdir = shift;
+    }
+
+    my $cpsdrootimg=undef;
+    if (-f -r "$rootimgdir/rootimg.sfs"){
+        $cpsdrootimg="rootimg.sfs";
+    }elsif(-f -r "$rootimgdir/rootimg.gz"){
+        $cpsdrootimg="rootimg.gz";
+    }
+
+    if(-f -r "$rootimgdir/rootimg.cpio.gz"){
+        $cpsdrootimg = 'rootimg.cpio.gz';
+    }elsif(-f -r "$rootimgdir/rootimg.cpio.xz"){
+        $cpsdrootimg = 'rootimg.cpio.xz';
+    }elsif(-f -r "$rootimgdir/rootimg.tar.gz"){
+        $cpsdrootimg = 'rootimg.tar.gz';
+    }elsif(-f -r "$rootimgdir/rootimg.tar.xz"){
+        $cpsdrootimg = 'rootimg.tar.xz';
+    }
+
+    return $cpsdrootimg;
+}
+
+
 1;

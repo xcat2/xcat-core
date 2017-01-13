@@ -10,9 +10,11 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use File::Path;
+use Cwd qw(realpath);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::DBobjUtils;
+use Digest::MD5 qw(md5_hex);
 
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -41,7 +43,8 @@ sub process_request {
     my $xcatdef;
     my $imagename;
     my $imagedir;
-
+    my $lock;
+    
     if (!xCAT::Utils->isLinux()) {
         $callback->({ error => ["The rmimage command is only supported on Linux."], errorcode => [1] });
         return;
@@ -175,8 +178,17 @@ sub process_request {
         $callback->({ error => ["Image directory $imagedir does not exist"], errorcode => [1] });
         return;
     }
+    
 
-    # Doing this extra check now because we now have a method and arch from either the node or the image name.
+    my $retcode;
+    ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop("$imagedir/rootimg");
+    if($retcode){
+        $callback->({ error => ["$lock"], errorcode => [1]});
+        return 1;
+    }
+
+
+    # Doing this extra check now because we now have a method and arch from either the node or the image namee
     if (($method eq "sysclone") && ($arch ne "s390x")) {
 
         # Only supporting removing sysclone images for s390x at this time.
@@ -184,17 +196,28 @@ sub process_request {
         return;
     }
 
-    my @filestoremove = ("$imagedir/rootimg.gz", "$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
+    my @filestoremove = ("$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
+    my @rootimgtars=glob "$imagedir/rootimg.*"; 
+    push @filestoremove,@rootimgtars;
+    #unmount all the mount points under rootimg directory 
+    #to avoid removing the directory/files on management node by mistake  
+    $realimagedir=realpath("$imagedir/rootimg");
+    my @mntptlist;
+    my $FILEHD=undef;
+    open($FILEHD,"<","/proc/mounts");
+    while(<$FILEHD>){
+        my @arr=split / /;
+        push @mntptlist,$arr[1] if(substr($arr[1],0,length($realimagedir)) eq $realimagedir);
+    }
+    close($FILEHD);
+    foreach my $mntpt (@mntptlist){
+        system("umount -l $mntpt >/dev/null 2>&1")
+    }
 
-    #some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk
-    `umount -l $imagedir/rootimg/proc 2>&1 1>/dev/null`;
-
-    # also umount the rootimg/sys
-    `umount -l $imagedir/rootimg/sys 2>&1 1>/dev/null`;
 
     # umount the rootimg/dev
-    my $devmount = `cat /proc/mounts |grep  "$imagedir/rootimg/dev"`;
-    if ($devmount) {
+    my $devmount = system("findmnt $imagedir/rootimg/dev/ >/dev/null 2>&1");
+    if (!$devmount) {
         xCAT::Utils->runcmd("umount -l  $imagedir/rootimg/dev");
         if ($?) {
             $callback->({ error => ["$imagedir/rootimg/dev mount on /dev, and can't umount. remove $imagename will lead to unpredictable result, please umount manualy before try again"], errorcode => [1] });

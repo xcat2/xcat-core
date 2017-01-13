@@ -1,0 +1,67 @@
+#!/bin/bash
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+# Sample Master postscript, designed to be run with or without arguments.
+
+usage()
+{
+   cat << EOF 
+   Usage ibm-csm-master options:
+   
+   Modifies the csm configuration files (if /etc/ibm/csm/ is empty), then executes the local
+   post scripts to reflect the change.
+
+   OPTIONS
+     -h            Displays this message 
+     -c <group>    Sets the xCAT group for the compute nodes (default: compute)
+     -a <group>    Sets the xCAT group for the aggregator nodes (default: aggregator)
+     -u <group>    Sets the xCAT group for the utility nodes (default: utility)
+   
+EOF
+}
+
+# Determine the master ip address.
+master=$(lsdef -t site clustersite -i master  | awk -F "=" '/master/{print $2}')
+
+# Daemon names.
+master_daemon="csmd-master"
+aggregator_daemon="csmd-aggregator"
+
+# The node groups for utility, compute, and aggregator.
+utility_nodes="utility"
+compute_nodes="compute"
+aggregator_nodes="aggregator"
+
+# Parse the option strings.
+optstring="u:c:a:h"
+while getopts $optstring OPTION
+do
+   case $OPTION in
+      u)
+	 utility_nodes=$OPTARG;;
+      c)
+         compute_nodes=$OPTARG;;
+      a)
+	 aggregator_nodes=$OPTARG;;
+      h)		
+	 usage; exit 1;;
+   esac
+done
+
+# Replace the master tags in the configuation files.
+if [[ $(ls -l /etc/ibm/csm/ | wc -l) == 0 ]]
+then
+   echo "here"
+   mkdir -p /etc/ibm/csm/
+   cp /opt/ibm/csm/share/etc/*  /etc/ibm/csm/
+   sed -i "s/__MASTER__/$master/g" /etc/ibm/csm/*
+fi
+
+# Start the daemons.
+systemctl restart ${master_daemon}
+systemctl restart ${aggregator_daemon}
+
+# Run the post scripts on the other nodes.
+updatenode ${utility_nodes} -P ibm-csm-utility
+#updatenode ${aggregator_nodes} -P ibm-csm-aggregator
+updatenode  ${compute_nodes} -P ibm-csm-compute 

@@ -1,7 +1,7 @@
 BuildArch: noarch
 %define name	xCAT-genesis-builder
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 AutoReq: false
 Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33 mstflint xfsprogs nc reiserfs-utils
@@ -15,7 +15,7 @@ Group: System/Utilities
 License: EPL
 Vendor: IBM Corp.
 Summary: Tooling to create xCAT's discovery/maintenance/debugging environment
-URL:	 http://xcat.org
+URL:	 https://xcat.org/
 Source1: xCAT-genesis-builder.tar.bz2
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis-builder
@@ -40,4 +40,10 @@ cd -
 %Files
 %defattr(-,root,root)
 %doc LICENSE.html
-/opt/xcat/share/xcat/netboot/genesis/builder
+%dir %{prefix}
+%dir %{prefix}/share
+%dir %{prefix}/share/xcat
+%dir %{prefix}/share/xcat/netboot
+%dir %{prefix}/share/xcat/netboot/genesis
+%dir %{prefix}/share/xcat/netboot/genesis/builder
+%{prefix}/share/xcat/netboot/genesis/builder/*

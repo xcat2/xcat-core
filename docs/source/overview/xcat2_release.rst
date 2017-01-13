@@ -7,6 +7,30 @@ The following table is a summary of the new operating system (OS), hardware, and
 * **SLES** - Suse Linux Enterprise Server
 * **UBT** - Ubuntu
 
+xCAT 2.13.x
+-----------
+
++---------------------------------+---------------+-------------+----------------------------------+
+|xCAT                             |New OS         |New          |New Feature                       |
+|Version                          |               |Hardware     |                                  |
++=================================+===============+=============+==================================+
+|| xCAT 2.13.1                    |               |             |- ONIE switch support             |
+|| 2017/1/13                      |               |             |- refine xcatprobe subcommand:    |
+||                                |               |             |  xcatmn, osdeploy                |
+| `2.13.1 Release Notes <https:// |               |             |- add utp-wait for genesis-base   |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.1_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13                      |- SLES 12.2    |             |- update drivers for genesis-base |
+|| 2016/12/09                     |               |             |  mlx4-en 3.2-1.0.1.1             |
+||                                |               |             |  i40e 1.5.16                     |
+| `2.13 Release Notes <https://   |               |             |- rflash saving flashing progress |
+| github.com/xcat2/xcat-core/wiki |               |             |- Update configureRAID document   |
+| /XCAT_2.13_Release_Notes>`_     |               |             |- statelite image create by copyds|
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+
 xCAT 2.12.x
 -----------
 
@@ -14,6 +38,14 @@ xCAT 2.12.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.12.4                    |- RHEL 7.3 LE  |             |- `noboot` added to dhcpinterface |
+|| 2016/11/11                     |- RHEV 4.0     |             |- new xcatprobe subcommand:       |
+||                                |               |             |  xcatmn, deploy and discover     |
+| `2.12.4 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.12.4_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.12.3                    |               |             |- GitHub Issues resolved          |
 || 2016/09/30                     |               |             |- rinv options for OpenPower      |
 ||                                |               |             |- switch based switch discovery   |

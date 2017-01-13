@@ -1,0 +1,71 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# chkconfig: 345 84 59
+# description: the hook in systemd service unit to run PB or report node status on  diskless & statelite node
+# processname: xcatpostinit1
+
+### BEGIN INIT INFO
+# Provides: xcatpostinit
+# Default-Start: 3 4 5
+# Default-stop: 0 1 2 6
+# Required-Start: gettyset
+# Required-Stop:
+# Short-Description: xCATpost
+# Description: xCAT post boot script
+### END INIT INFO
+
+# Source function library.
+if [ -x /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+fi
+
+XCATSERVER=$(grep --only-matching "\<XCAT=[^ ]*\>" /proc/cmdline |cut -d= -f2 |cut -d: -f1 2>/dev/null)
+
+logger -t xcat -p local4.info "$0: action is $1"
+case $1 in
+restart)
+  $0 stop
+  $0 start
+  ;;
+status)
+  echo -n "xcatpostinit runs only at boot, runs additional post scripts"
+  logger -t xcat -p local4.info "xcatpostinit runs only at boot, runs additional post scripts"
+  ;;
+stop)
+  echo -n "nothing to stop "
+  logger -t xcat -p local4.info "nothing to stop"
+  grep nonodestatus /proc/cmdline 2>/dev/null || [ -n "$XCATSERVER" ] &&  /xcatpost/updateflag.awk $XCATSERVER 3002 "installstatus powering-off" 
+  ;;
+start)
+        # Node is stateless by default
+        STATELITE=0
+
+        # Node is statelite if /proc/cmdline have flag `STATEMNT='
+        STATELITE_FLAG="STATEMNT="
+
+        # Script to direct further actions
+        SCRIPT="/opt/xcat/xcatdsklspost"
+
+        # Usefull information passed as kernel arguments
+        if [ -f "/proc/cmdline" ]; then
+            if grep --quiet --no-messages "$STATELITE_FLAG" "/proc/cmdline"; then
+                STATELITE=1
+            fi
+        fi
+
+        # Test for script existance
+        if ! [ -x "$SCRIPT" ]; then
+            msg "can't locate executable $SCRIPT"
+            exit -1
+        fi
+
+        # Run $SCRIPT according to node type
+        if [ $STATELITE -ne 0 ]; then
+            logger -t xcat -p local4.info "Call $SCRIPT for statelite mode"
+            "$SCRIPT" 4
+        else
+            logger -t xcat -p local4.info  "Call $SCRIPT for stateless mode"
+            "$SCRIPT"
+        fi
+  ;;
+esac

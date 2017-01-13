@@ -253,7 +253,7 @@ sub check_noderange {
     foreach (@cmdoutput) {
         chomp($_);
         $_ =~ s/^\s+|\s+$//g;
-        if ($_ =~ /^Error: Could not find an object named '(\w+)' .+/i) {
+        if ($_ =~ /^Error: Could not find an object named '(.+)' of type .+/i) {
             $rst = 1;
             push @$error_ref, "Node $1 without node definition";
         } elsif ($_ =~ /(\S+):\s+mac=(.*)/i) {
@@ -293,6 +293,17 @@ sub check_noderange {
                     $mac =~ s/\!\*NOIP\*//g;
                     $macmap{$mac}{"ip"}   = "NOIP";
                     $macmap{$mac}{"node"} = $node;
+                } elsif ($mac =~ /(\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2})\!(.+)/) {
+                    $mac = $1;
+                    my $tmp_node = $2;
+                    $macmap{$mac}{"node"} = $node;
+                    my $tmp_ip = xCAT::NetworkUtils->getipaddr($tmp_node);
+                    if ($tmp_ip) {
+                        $macmap{$mac}{"ip"}  = $tmp_ip;
+                        $ipnodemap{ $nodecheckrst{$node}{"ip"} } = $node;
+                    } else {
+                        $macmap{$mac}{"ip"} = "NOIP";
+                    }
                 } else {
                     $macmap{$mac}{"node"} = $node;
                     $macmap{$mac}{"ip"}   = $nodecheckrst{$node}{"ip"};
@@ -330,6 +341,7 @@ sub init_node_state {
     my @nodes = probe_utils->parse_node_range($noderange);
     foreach my $node (@nodes) {
         @{ $node_state_ref->{$node}{statehistory} } = ();
+        %{ $node_state_ref->{$node}{errors} } = ();
         $node_state_ref->{$node}{done} = 0;
     }
 }
@@ -374,7 +386,7 @@ sub do_replay {
         print Dumper \%node_state;
     }
 
-    my $log_parse = LogParse->new($verbose);
+    my $log_parse = LogParse->new($verbose, $::REPLAY);
     my @candidate_mn_hostname_in_log = $log_parse->obtain_candidate_mn_hostname_in_log();
 
     while ($start_time_of_replay < $end_time_of_replay) {
@@ -454,7 +466,6 @@ sub conclusion_report {
         my $stop_stage = 0;
 
         my $start_rpower   = 0;
-        my $power_on       = 0;
         my $isntalling     = 0;
         my $postbootscript = 0;
 
@@ -463,32 +474,36 @@ sub conclusion_report {
         foreach (@{ $node_state_ref->{$node}{statehistory} }) {
             $stop_stage     = $_ if ($stop_stage < $_);
             $start_rpower   = 1  if ($_ == $::STATE_POWER_ON);
-            $power_on       = 1  if ($_ == $::STATE_POWERINGON);
             $isntalling     = 1  if ($_ == $::STATE_INSTALLING);
             $postbootscript = 1  if ($_ == $::STATE_POSTBOOTSCRIPT);
         }
 
-        # Cover limited non-privision error
-        # 1 if xcatd receive reboot command to do provision (such like rpower, rnetboot, rinstall...) but the node status didn't change to "powering-on"
-        #   that means reboot target node failed.
-        # 2 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
+        # Cover limited non-privision error 
+        # 1 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
         #   It is very possible to just do reboot process
-        # 3 There isn't reboot operation for target node during the rollback time window 
+        # 2 When replay, if there isn't reboot operation for target node during the rollback time window 
         #   That means there isn't provision process happened 
 
-        if ($start_rpower && !$power_on) {
-            $failed_node{$node}{non_provision_prediction} = "Trigger target node reboot failed";
-        } elsif ($start_rpower && $power_on && !$isntalling && $postbootscript) {
-            $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
-        } elsif (! $start_rpower){
-            $failed_node{$node}{non_provision_prediction} = "Without provision process during rollback time window"; 
+        if ($monitor) {
+            if (!$isntalling && $postbootscript) {
+                $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
+                next;
+            }
         } else {
-            if ($stop_stage != $::STATE_COMPLETED) {
-                $failed_node{$node}{provision_stop_point} = $stop_stage;
+            if (! $start_rpower) {
+                $failed_node{$node}{non_provision_prediction} = "Without provision process during rollback time window";
+                next;
+            } elsif (!$isntalling && $postbootscript) {
+                $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
+                next;
             }
         }
-    }
 
+        # if not completed or completed but with postscript error, add node to failed_node hash
+        if ($stop_stage != $::STATE_COMPLETED or @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }) {
+            $failed_node{$node}{provision_stop_point} = $stop_stage;
+        }
+    }
 
     if (%failed_node) {
         my $failed_node_num = keys %failed_node;
@@ -502,7 +517,22 @@ sub conclusion_report {
             if ($failed_node{$node}{non_provision_prediction}) {
                 probe_utils->send_msg("stdout", "f", "$node : $failed_node{$node}{non_provision_prediction}");
             } else {
+                my $node_length = length($node);
+                my $space_str = " " x ($length_node + 2);
+                # if stop at stage before postscript, means there is error at current stage, print error message
                 probe_utils->send_msg("stdout", "f", "$node : stop at stage '$::STATE_DESC{$failed_node{$node}{provision_stop_point}}'");
+                if ($failed_node{$node}{provision_stop_point} < $::STATE_POSTSCRIPT) {
+                    foreach my $node_error (@{ $node_state_ref->{$node}{errors}{$failed_node{$node}{provision_stop_point}} }) {
+                        probe_utils->send_msg("stdout", "d", "$space_str $node_error");
+                    }
+                } else {
+                    # if stop at postscript or after postscript, check whether has error from postscript, if has print
+                    for (my $stage = $::STATE_POSTSCRIPT; $stage <= $::STATE_COMPLETED; $stage++) {
+                        foreach my $node_error (@{ $node_state_ref->{$node}{errors}{$stage} }) {
+                             probe_utils->send_msg("stdout", "d", "$space_str $node_error");
+                        }
+                    }
+                }
             }
         }
     } else {
@@ -548,7 +578,7 @@ Start capturing every message during OS provision process....
     my %fd_filetype_map;
 
     {    #a very important brace to hold a code block
-        my $log_parse         = LogParse->new($verbose);
+        my $log_parse         = LogParse->new($verbose, $::MONITOR);
         my $candidate_log_ref = $log_parse->obtain_log_file_list();
 
         #open candidate log file to obtain realtime log
@@ -718,7 +748,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = "Receive DHCPDISCOVER via $nic";
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         }
     } elsif ($log_ref->{msg} =~ /DHCPOFFER\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/i) {
@@ -729,7 +759,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = "Send DHCPOFFER on $ip back to $mac via $nic";
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         }
     } elsif ($log_ref->{msg} =~ /DHCPREQUEST\s+for\s+(.+)\s+[\(\)0-9\.]*\s*from\s+(.+)\s+via\s+(.+)/) {
@@ -740,7 +770,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = $log_ref->{msg};
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         }
     } elsif ($log_ref->{msg} =~ /DHCPACK\s+on\s+(.+)\s+to\s+(.+)\s+via\s+(.+)/) {
@@ -751,7 +781,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = "Send DHCPACK on $ip back to $mac via $nic";
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
@@ -770,7 +800,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = "Receive BOOTREQUEST from $mac via $nic";
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         }
     } elsif ($log_ref->{msg} =~ /BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
@@ -781,7 +811,7 @@ sub handle_dhcp_msg {
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = "Send BOOTREPLY on $ip back to $mac via $nic";
-            probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
 
             if ($macmap{$mac}{"ip"} != "NOIP" and $macmap{$mac}{"ip"} != $ip) {
@@ -817,7 +847,7 @@ sub handle_tftp_msg {
         my $file   = $2;
         my $record = "Via TFTP download $file";
         if (exists($node_state_ref->{ $ipnodemap{$ip} })) {
-            probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{ $ipnodemap{$ip} }{log} }, $log_ref->{msg}) if ($debug);
 
             if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/powerpc-ieee1275\//i or $file =~ /\/yb\/node\/yaboot\-/i) {
@@ -852,21 +882,26 @@ sub handle_http_msg {
 
     if (exists($node_state_ref->{ $ipnodemap{$ip} })) {
 
-        if ($log_ref->{msg} =~ /GET\s+(.+)\s+HTTP.+/ or $log_ref->{msg} =~ /HEAD\s+(.+)\s+HTTP.+/) {
+        if ($log_ref->{msg} =~ /"GET\s+(.+)\s+HTTP.+" (\d+)/ or $log_ref->{msg} =~ /"HEAD\s+(.+)\s+HTTP.+" (\d+)/) {
             my $file   = $1;
+            my $http_code = $2;
             my $record = "Via HTTP get $file";
 
-            probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{ $ipnodemap{$ip} }{log} }, $log_ref->{msg}) if ($debug);
 
             if ($file =~ /vmlinuz|inst64/i or ($file =~ /linux/i and $file =~ /osimage/i)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);
+                push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_KERNEL} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif ($file =~ /initrd/i and $file =~ /osimage/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INITRD);
+                push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_INITRD} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif (($file =~ /^\/install\/autoinst\//i) and ($file !~ /getinstdisk$/i) and ($file !~ /\.pre$/i) and ($file !~ /\.post$/i)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KICKSTART);
+                push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_KICKSTART} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif ($file =~ /\.deb$/i or $file =~ /\/Packages\/.+\.rpm$/ or $file =~ /\/suse\/noarch\/.+\.rpm$/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INSTALLRPM);
+                push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_INSTALLRPM} }, "$record failed with $http_code") if ($http_code >= 400);
             }
         }
     }
@@ -897,11 +932,11 @@ sub handle_cluster_msg {
         my $nodes_str   = $split_log[4];
         my $sub_command = $split_log[5];
 
-        if ($command eq "rinstall" or $command eq "rnetboot" or ($command eq "rpower" and $sub_command =~ /on|boot|reset/)) {
+        if ($command eq "rinstall" or $command eq "rnetboot" or ($command eq "rpower" and $sub_command =~ /on|boot|reset/) or ($command eq "xdsh" and $log_msg =~ /reboot|shutdown -r/)) {
             my @nodes = probe_utils->parse_node_range($nodes_str);
             foreach my $node (@nodes) {
                 if (exists $node_state_ref->{$node}) {
-                    probe_utils->send_msg("stdout", "d", "[$node] Use command $command to reboot node $node") if ($monitor);
+                    probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} Use command $command to reboot node $node") if ($monitor);
                     push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
                     set_node_state($node_state_ref, $node, $::STATE_POWER_ON);
                 }
@@ -915,7 +950,7 @@ sub handle_cluster_msg {
 
         foreach my $node (@split_node) {
             if (exists $node_state_ref->{$node}) {
-                probe_utils->send_msg("stdout", "d", "[$node] $record") if ($monitor);
+                probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
                 push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
 
                 if ($status eq "installing") {
@@ -951,16 +986,36 @@ sub handle_compute_msg {
     my $node           = $log_ref->{sender};
 
     if (exists $node_state_ref->{$node}) {
-        probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{msg}") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $log_ref->{msg}") if ($monitor);
         push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         if ($log_ref->{msg} =~ /Running postscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTSCRIPT);
+        } elsif ($log_ref->{msg} =~ /postscript (.+) return with (\d+)/) {
+            my $script_name = $1;
+            my $return_code = $2;
+            if ($return_code != 0) {
+                my $error_str = "postscript $script_name return with $return_code";
+                # when monitor, will show 2 same messages, so filter to show only one
+                unless (grep {$_ eq $error_str} @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }) {
+                    push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }, $error_str;
+                }
+            }
         } elsif ($log_ref->{msg} =~ /Running postbootscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTBOOTSCRIPT);
+        } elsif ($log_ref->{msg} =~ /postbootscript (.+) return with (\d+)/) {
+            my $script_name = $1;
+            my $return_code = $2;
+            if ($return_code != 0) {
+                my $error_str = "postbootscript $script_name return with $return_code";
+                # when monitor, will show 2 same messages, so filter to show only one
+                unless (grep {$_ eq $error_str} @{ $node_state_ref->{$node}{errors}{$::STATE_POSTBOOTSCRIPT} }) {
+                    push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTBOOTSCRIPT} }, $error_str;
+                }
+            }
         } elsif ($log_ref->{msg} =~ /provision completed/) {
             set_node_state($node_state_ref, $node, $::STATE_COMPLETED);
             $node_state_ref->{$node}{done} = 1;
-            probe_utils->send_msg("stdout", "o", "[$node] provision completed") if ($monitor);
+            probe_utils->send_msg("stdout", "o", "[$node] $log_ref->{time_record} provision completed") if ($monitor);
         }
     }
 }
@@ -1021,6 +1076,7 @@ sub set_node_state {
     if ($newstate == $::STATE_POWER_ON) {
         push @{ $node_state_ref->{$node}{allstatehistory} }, @{ $node_state_ref->{$node}{statehistory} };
         @{ $node_state_ref->{$node}{statehistory} } = ();
+        %{ $node_state_ref->{$node}{errors} } = ();
         push @{ $node_state_ref->{$node}{statehistory} }, $newstate;
     } else {
         my $index = @{ $node_state_ref->{$node}{statehistory} } - 1;
