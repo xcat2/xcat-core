@@ -29,7 +29,6 @@ use xCAT::Usage;
 use xCAT::CIMUtils;
 use xCAT::MsgUtils;
 use xCAT::Table;
-use xCAT::FSPUtils;
 use xCAT::NetworkUtils;
 
 sub handled_commands {

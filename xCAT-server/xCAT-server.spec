@@ -21,6 +21,9 @@ AutoReqProv: no
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
+%define lenovo 1
+%define notlenovo 0
+
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
 %ifos linux
@@ -31,10 +34,12 @@ Obsoletes: atftp-xcat
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
+%if %notlenovo
 %ifos linux
 # PCM does not use or ship grub2-xcat
 Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
 #%endif
+%endif
 %endif
 %endif
 
@@ -199,31 +204,35 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples/*
 
-# Don't ship these on zVM, to reduce dependencies
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
+rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/hmc
+rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/ivm
+rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/multiple
+rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/fsp
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 %if %zvm
 rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/aixinstall.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/remoteimmsetup.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IMMUtils.pm
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bmcconfig.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bpa.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/esx.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/FIP.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/lsslp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/pxe.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/toolscenter.pm
@@ -234,7 +243,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xnba.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IPMI.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/SSHInteract.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/MellanoxIB.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 # Can not remove this, because it is needed by Templates.pm
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/ADUtils.pm
 rm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/hmc

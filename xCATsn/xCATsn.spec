@@ -17,7 +17,7 @@ Source3: xCATSN
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-probe >= 2.12.2 
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-genesis-scripts-x86_64 xCAT-probe >= 2.12.2 
 
 Conflicts: xCAT
 
@@ -40,7 +40,6 @@ Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 #Requires: yaboot-xcat 
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
-Requires: perl-IO-Stty
 %endif
 %endif
 

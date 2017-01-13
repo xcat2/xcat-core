@@ -50,7 +50,6 @@ use Time::HiRes qw(gettimeofday sleep);
 use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
-use xCAT::FSPUtils;
 my $indiscover  = 0;
 my $CALLBACK    = undef;
 my $verbose_cmd = undef;
@@ -5164,28 +5163,6 @@ sub get_blades_for_mpa {
             }
         }
         $nodesattrs = $ppctab->getNodesAttribs(\@blades, \@attribs);
-    }
-    foreach my $node (@blades) {
-        my @values = ();
-        my $att    = $nodesattrs->{$node}->[0];
-        if (!defined($att)) {
-            next;
-        } elsif (!defined($att->{parent}) or ($att->{parent} ne $mpa) or !defined($att->{nodetype}) or ($att->{nodetype} ne "blade")) {
-            next;
-        }
-        my $request;
-        my $hcp_ip = xCAT::FSPUtils::getIPaddress($request, $att->{nodetype}, $att->{hcp});
-        if (!defined($hcp_ip) or ($hcp_ip == -3)) {
-            next;
-        }
-        push @values, $att->{id};
-        push @values, '0';
-        push @values, '0';
-        push @values, $hcp_ip;
-        push @values, "blade";
-        push @values, $mpa;
-        $blades_hash{$node} = \@values;
-        verbose_message("values for node:$node, value:@values.");
     }
     return (\%blades_hash);
 }

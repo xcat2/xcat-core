@@ -202,6 +202,8 @@ function makegenesisscripts {
 function exportEmbed {
 	if [ -n "$1" ]; then
 		export "$1=1"
+		echo export "$1=1"
+                echo $lenovo
 		EMBEDTXT="for $1 "
 	else
 		EMBEDTXT=""

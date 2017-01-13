@@ -68,6 +68,7 @@ fi
 
 # These are the rpms that should be built for each kind of xcat build
 ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent xCAT-probe xCAT-csm"
+LENOVOBUILD="perl-xCAT xCAT-client xCAT-server xCAT xCATsn xCAT-genesis-scripts xCAT-vlan xCAT-probe"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
@@ -141,6 +142,8 @@ if [ -n "$EMBED" ]; then
     elif [ "$EMBED" = "fsm" ]; then
         EMBEDBUILD=$FSMBUILD
         EMBEDLINK=$FSMLINK
+    elif [ "$EMBED" = "lenovo" ]; then
+        EMBEDBUILD=$LENOVOBUILD
     else
         echo "Error: EMBED setting $EMBED not recognized."
         exit 2

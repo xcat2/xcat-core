@@ -25,7 +25,7 @@ Source7: xcat.conf.apach24
 
 Provides: xCAT = %{version}
 Conflicts: xCATsn
-Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64
+Requires: xCAT-server xCAT-client perl-DBD-SQLite xCAT-probe >= 2.12.1 xCAT-genesis-scripts-x86_64
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
@@ -41,11 +41,6 @@ Requires: /usr/sbin/dhcpd
 Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
-Requires: xCAT-buildkit
-# yaboot-xcat is pulled in so any MN can manage ppc nodes
-#Requires: yaboot-xcat
-# Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
-Requires: perl-IO-Stty
 %endif
 %endif
 
