@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.12
+# Version 1.0.13
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -606,14 +606,20 @@ function get_package_list_apt()
 	[[ -d /var/lib/apt/lists ]] || return 255
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
+	local -i rc=0
 	awk '/^Package: / { print $2 }' \
 		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
 		2>/dev/null
 	# This is a dirty hack, and use recursion.
 	# For the `devel' branch of the online repo for apt, it has the
 	# subdirectory name of `core-snap' instead of `xcat-core'.
-	[[ "$?" -ne "0" && "${repo_id}" = "xcat-core" ]] &&
+	rc="$?"
+	if [[ "${rc}" -ne "0" && "${repo_id}" = "xcat-core" ]]
+	then
 		"${FUNCNAME}" "core-snap"
+		rc="$?"
+	fi
+	return "${rc}"
 }
 
 #       $1      repo id
