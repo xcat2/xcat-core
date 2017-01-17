@@ -5552,7 +5552,7 @@ sub execute_iem_commands {
 sub executed_iem_command {
     my $rsp      = $_[0];
     my $sessdata = $_[1];
-    if ($rsp->{code} == 0xcb) {
+    if ($rsp->{code} == 0xcb or $rsp->{code} == 0xc1) {
         $sessdata->{abortediem}       = 1;
         $sessdata->{abortediemreason} = "Not Present";
         $sessdata->{iemcallback}->($sessdata);
