@@ -24,6 +24,7 @@ Provides perl xCAT libraries for core functionality.  Required for all xCAT inst
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %define gitinfo %(git log -n 1 | head -n 1 | cut -f 2 -d ' ')
+%define gitinfo 06d7097f42eca03db70c9eb93b8abeaf8ca1c2be
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
