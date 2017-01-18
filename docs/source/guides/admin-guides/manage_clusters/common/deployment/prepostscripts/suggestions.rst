@@ -1,3 +1,5 @@
+.. _Suggestions-for-write-scripts-label:
+
 Suggestions
 ------------
 
