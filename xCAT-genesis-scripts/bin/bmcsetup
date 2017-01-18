@@ -430,7 +430,7 @@ for user in $BMCUS; do
     TRIES=0
     if [ "$CURRENTUSER" != "$user" ]; then
         # Change the user name, if necessary
-        while ! ipmitool -d $idev user set name $USERSLOT $user; do
+        while ! ipmitool -d $idev user set name $USERSLOT "$user"; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -445,7 +445,7 @@ for bmcp in $BMCPW; do
 
     TRIES=0
     # Set the password for the specified user 
-    while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
