@@ -445,7 +445,7 @@ for bmcp in $BMCPW; do
 
     TRIES=0
     # Set the password for the specified user 
-    while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
