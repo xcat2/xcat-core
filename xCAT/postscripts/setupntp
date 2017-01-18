@@ -126,8 +126,11 @@ if [ $OS_TYPE = Linux ]; then
         output=`eval $cmd 2>&1`
         rc=$?
         if [ "$rc" != "0" ] || (pmatch "$output" "*Time could not*");then
-            echo "$cmd failed, NTP may not be synchronized on server node"
-            echo "please wait for NTP synchronized, may take at least 15 mins"
+            echo "WARNING: "
+            echo "    $cmd failed, NTP may not be synchronized on NTP server "
+            echo "    please wait for NTP synchronized, may take at least 15 mins"
+            echo "    use 'ntpq -p' command (output has "*" or "+" sign)  to validate the NTP server"
+            echo "    run 'updatenode nodename -P setupntp' if NTP is synced on NTP server but nodename is not synced"
             logger -t xcat "$cmd failed"
         fi
     else
@@ -144,7 +147,7 @@ if [ $OS_TYPE = Linux ]; then
 
     #setup the RTC is UTC format, which will be used by os
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-        grep -i "HWCLOCK" /etc/sysconfig/clock
+        grep -i -q "HWCLOCK" /etc/sysconfig/clock
         if [ $? -eq 0 ];then
             sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
         else
@@ -154,7 +157,7 @@ if [ $OS_TYPE = Linux ]; then
         sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS
     else
         if [ -f "/etc/sysconfig/clock" ];then
-           grep -i "utc" /etc/sysconfig/clock
+           grep -i -q "utc" /etc/sysconfig/clock
            if [ $? -eq 0 ];then
               sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock
            else
@@ -167,18 +170,18 @@ if [ $OS_TYPE = Linux ]; then
 
     #update the hardware clock automaticly
     if [ -f "/etc/sysconfig/ntpd" ];then
-        grep -i "SYNC_HWCLOCK" /etc/sysconfig/ntpd
+        grep -i -q "SYNC_HWCLOCK" /etc/sysconfig/ntpd
         if [ $? -eq 0 ];then
             sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd
         else
             echo "SYNC_HWCLOCK=\"yes\"" >> /etc/sysconfig/ntpd
         fi
     elif [ -f /etc/sysconfig/ntp ];then
-        grep -i "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
+        grep -i -q "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
 	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
-        grep -i "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
+        grep -i -q "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
 	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
