@@ -2566,6 +2566,9 @@ sub inv {
         $sessdata->{skipfru} = 1;    #full fru read is expensive, skip it
         @types = qw(guid);
     }
+    elsif ($subcommand eq "hw" or $subcommand eq "dimm" or $subcommand eq "misc") {
+        @types = ($subcommand);
+    }
     else {
         my $usage_string = xCAT::Usage->getUsage($command);
         $callback->({ error => ["$usage_string"], errorcode => [1] });
