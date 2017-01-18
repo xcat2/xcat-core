@@ -54,6 +54,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
+    my $bootparams = ${$req->{bootparams}};
 
     my $globaltftpdir   = "/tftpboot";
     my $nodes           = @{ $req->{node} };
@@ -445,7 +446,6 @@ sub mknetboot
         }
 
         # TODO: move the table operations out of the foreach loop
-        my $bptab = xCAT::Table->new('bootparams', -create => 1);
         my $hmtab = xCAT::Table->new('nodehm');
         my $sent =
           $hmtab->getNodeAttribs($node,
@@ -720,13 +720,9 @@ sub mknetboot
                 $kcmdline .= "MNTOPTS=\'$mntoptions\'";
             }
         }
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => "$rtftppath/kernel",
-                initrd   => $initrdstr,
-                kcmdline => $kcmdline
-            });
+        $bootparams->{$node}->[0]->{kernel} = "$rtftppath/kernel";
+        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 }
 
@@ -770,6 +766,7 @@ sub mkinstall
 
     my $noupdateinitrd  = $request->{'noupdateinitrd'};
     my $ignorekernelchk = $request->{'ignorekernelchk'};
+    my $bootparams = ${$request->{bootparams}};
     my @nodes           = @{ $request->{node} };
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
@@ -799,7 +796,6 @@ sub mkinstall
     my $installroot;
     $installroot = "/install";
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $resents =
       $restab->getNodesAttribs(
@@ -1365,14 +1361,9 @@ sub mkinstall
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
-                $bptab->setNodeAttribs(
-                    $node,
-                    {
-                        kernel   => $kernelpath,
-                        initrd   => $initrdpath,
-                        kcmdline => $kcmdline
-                    }
-                );
+                $bootparams->{$node}->[0]->{kernel} = $kernelpath;
+                $bootparams->{$node}->[0]->{initrd} = $initrdpath;
+                $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
             }
             elsif ($arch eq "ppc64")
             {
@@ -1384,14 +1375,9 @@ sub mkinstall
                     $kernelpath = "$rtftppath/linux64";
                     $initrdpath = "$rtftppath/initrd64";
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
-                    $bptab->setNodeAttribs(
-                        $node,
-                        {
-                            kernel   => $kernelpath,
-                            initrd   => $initrdpath,
-                            kcmdline => $kcmdline
-                        }
-                    );
+                    $bootparams->{$node}->[0]->{kernel} = $kernelpath;
+                    $bootparams->{$node}->[0]->{initrd} = $initrdpath;
+                    $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
                 }
                 elsif (-r "$tftppath/inst64") {
 
@@ -1399,14 +1385,9 @@ sub mkinstall
                     #suseboot/inst64 can not be run on Power8 BE
                     $kernelpath = "$rtftppath/inst64";
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=");
-                    $bptab->setNodeAttribs(
-                        $node,
-                        {
-                            kernel   => $kernelpath,
-                            initrd   => "",
-                            kcmdline => $kcmdline
-                        }
-                    );
+                    $bootparams->{$node}->[0]->{kernel} = $kernelpath;
+                    $bootparams->{$node}->[0]->{initrd} = "";
+                    $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
                 }
             }
         }
@@ -1436,6 +1417,7 @@ sub mksysclone
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{ $request->{node} };
+    my $bootparams = ${$request->{bootparams}};
     my $osimagetab;
     my %img_hash = ();
 
@@ -1460,7 +1442,6 @@ sub mksysclone
     my $node;
     my $ostab  = xCAT::Table->new('nodetype');
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'os', 'arch', 'provmethod' ]) };
     my %rents =
@@ -1645,14 +1626,9 @@ sub mksysclone
             if (-r "$tftpdir/xcat/genesis.fs.$arch.lzma") {
                 $i = "xcat/genesis.fs.$arch.lzma";
             }
-            $bptab->setNodeAttribs(
-                $node,
-                {
-                    kernel   => "xcat/genesis.kernel.$arch",
-                    initrd   => $i,
-                    kcmdline => $kcmdline
-                }
-            );
+            $bootparams->{$node}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
+            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
         {

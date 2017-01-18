@@ -26,7 +26,6 @@ my $errored = 0;
 #DESTINY SCOPED GLOBALS
 my $chaintab;
 my $iscsitab;
-my $bptab;
 my $typetab;
 my $restab;
 
@@ -94,6 +93,7 @@ sub setdestiny {
     my $noupdate = shift;
     $chaintab = xCAT::Table->new('chain', -create => 1);
     my @nodes = @{ $req->{node} };
+    my $bphash = $req->{bootparams};
 
     @ARGV = @{ $req->{arg} };
     my $noupdateinitrd;
@@ -157,7 +157,6 @@ sub setdestiny {
         unless ($iscsitab) {
             $callback->({ error => "Unable to open iscsi table to get iscsiboot parameters", errorcode => [1] });
         }
-        my $bptab = xCAT::Table->new('bootparams', -create => 1);
         my $nodetype = xCAT::Table->new('nodetype');
         my $ntents = $nodetype->getNodesAttribs($req->{node}, [qw(os arch profile)]);
         my $ients = $iscsitab->getNodesAttribs($req->{node}, [qw(kernel kcmdline initrd)]);
@@ -168,11 +167,9 @@ sub setdestiny {
                 unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) { $callback->({ error => "$_: No iscsi boot data available", errorcode => [1] }); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
                 next;
             }
-            my $hash;
-            $hash->{kernel} = $ient->{kernel};
-            if ($ient->{initrd})   { $hash->{initrd}   = $ient->{initrd} }
-            if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
-            $bptab->setNodeAttribs($_, $hash);
+            $bphash->{kernel} = $ient->{kernel};
+            if ($ient->{initrd})   { $bphash->{initrd}   = $ient->{initrd} }
+            if ($ient->{kcmdline}) { $bphash->{kcmdline} = $ient->{kcmdline} }
         }
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
         my %state_hash;
@@ -389,7 +386,8 @@ sub setdestiny {
             $subreq->({ command => ["mk$tempstate"],
                     node            => $samestatenodes,
                     noupdateinitrd  => $noupdateinitrd,
-                    ignorekernelchk => $ignorekernelchk, }, \&relay_response);
+                    ignorekernelchk => $ignorekernelchk,
+                    bootparams => \$bphash}, \&relay_response);
             if ($errored) {
                 my @myself = xCAT::NetworkUtils->determinehostname();
                 my $myname = $myself[ (scalar @myself) - 1 ];
@@ -746,7 +744,7 @@ sub getdestiny {
     my $chaintab = xCAT::Table->new('chain');
     my $chainents = $chaintab->getNodesAttribs(\@nodes, [qw(currstate chain)]);
     my $nrents = $restab->getNodesAttribs(\@nodes, [qw(tftpserver xcatmaster)]);
-    $bptab = xCAT::Table->new('bootparams', -create => 1);
+    my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my $bpents = $bptab->getNodesAttribs(\@nodes, [qw(kernel initrd kcmdline xcatmaster)]);
 
     #my $sitetab= xCAT::Table->new('site');
