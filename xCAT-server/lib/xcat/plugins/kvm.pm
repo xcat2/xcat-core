@@ -588,11 +588,11 @@ sub build_diskstruct {
     }
     my $cdprefix = 'hd';
 
-    # device name vd* doesn't work for CDROM, so delete it.
-    #if ($storagemodel eq 'virtio') {
-    #    $cdprefix='vd';
-    #} els
-    if ($storagemodel eq 'scsi') {
+    # Normally for vmstoragemodel=virtio, we would set prefix of "vd", but device name vd*
+    # doesn't work for CDROM, so for now use the same prefix "sd" as for vmstoragemodel=scsi.
+    if ($storagemodel eq 'virtio') {
+        $cdprefix='sd';
+    } elsif ($storagemodel eq 'scsi') {
         $cdprefix = 'sd';
     }
     $suffidx += 1;
@@ -4045,7 +4045,8 @@ sub dohyp {
     my %newnodestatus;
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
-        if ($confdata->{$hyp}->{cpumodel} and $confdata->{$hyp}->{cpumodel} =~ /ppc64/i) {
+        unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
+            # Storage model is not set, default to  scsi for all architectures
             $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
         }
         if ($confdata->{$hyp}->{cpu_thread}) {
