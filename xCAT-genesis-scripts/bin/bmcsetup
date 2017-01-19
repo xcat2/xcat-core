@@ -96,6 +96,9 @@ function snooze() {
         # For OpenPower Machines 
         logger -s -t $log_label -p local4.debug "OpenPower, snooze for 30 seconds..."
         sleep 30
+    elif [ "$IPMIMFG" = "19046" -a "$XPROD" = 502 ]; then
+        logger -s -t $log_label -p local4.debug "RD350, snooze for 30 seconds..."
+        sleep 30
     else
         logger -s -t $log_label -p local4.debug "snooze for 1 second..."
         sleep 1
@@ -203,7 +206,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 19046 -a "$XPROD" == 13616 ] ; then
    LOCKEDUSERS=1
-elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
+elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 -a "$XPROD" != 502 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
     if [ $IBMVPDV -eq 2 ]; then
@@ -273,8 +276,10 @@ if [ $IPCFGMETHOD="static" ]; then
         let idev=idev-1
         TRIES=0
         # Set the channel to use STATIC IP address 
-        while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+        CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
+        while [ "$CURRMETH" != "Static Address" ] && ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
             snooze
+            CURRMETH=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address Source'|awk -F': ' '{print $2}')
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -285,8 +290,10 @@ if [ $IPCFGMETHOD="static" ]; then
     for b in $BMCIP; do
         TRIES=0
         # Set the IP for the current channel
-        while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+        CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRIP" != $b ]  && ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
             snooze
+            CURRIP=$(ipmitool -d $idev lan print $LANCHAN | grep '^IP Address'|grep -v Source|awk -F': ' '{print $2}')
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -298,8 +305,10 @@ if [ $IPCFGMETHOD="static" ]; then
     for m in $BMCNM; do
         TRIES=0
         # Set the NETMASK for the current channel 
-        while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+        CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
+        while [ "$CURRMASK" != $m ] && ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
             snooze
+            CURRMASK=$(ipmitool -d $idev lan print $LANCHAN | grep '^Subnet Mask'|grep -v Source|awk -F': ' '{print $2}')
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -313,8 +322,10 @@ if [ $IPCFGMETHOD="static" ]; then
         for g in $BMCGW; do
             TRIES=0
             # Set the GATEWAY for the current channel 
-            while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+            CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
+            while [ "$CURRGW" != $g ] && ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
                 snooze
+                CURRGW=$(ipmitool -d $idev lan print $LANCHAN | grep '^Default Gateway IP'|grep -v Source|awk -F': ' '{print $2}')
                 let TRIES=TRIES+1
                 if [ $TRIES -gt $TIMEOUT ]; then
                     break;
@@ -343,8 +354,14 @@ let idev=0
 for b in $BMCVLAN; do
     TRIES=0
     # Set VLAN for the current channel 
-    while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+    CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
+    EXPECTEDVID=$b
+    if [ "$EXPECTEDVID" = "off" ]; then
+        EXPECTEDVID="Disabled"
+    fi
+    while [ "$CURRVID" != "$EXPECTEDVID" ] && ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
         snooze
+        CURRVID=$(ipmitool -d $idev lan print $LANCHAN | grep '802.1q VLAN ID'|awk -F': ' '{print $2}')
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then 
             break;
@@ -367,6 +384,7 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
+    if [ "$USERSLOT" == 0 ]; then USERSLOT=2; fi
     if [ "$USERSLOT" == 0 ]; then USERSLOT=2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
