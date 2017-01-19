@@ -104,7 +104,7 @@ function snooze() {
     fi
 } 
 
-if which ipmitool 2>&1 | grep no; then 
+if ! ipmitool -V 2>/dev/null| grep "version"; then
     echo "No ipmitool find, please install it first"; 
     exit 1;
 fi
