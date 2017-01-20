@@ -26,7 +26,7 @@ AutoReqProv: no
 
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
-Requires: perl-Crypt-CBC perl-Crypt-Rijndael perl-Sys-Virt perl-JSON
+Requires: perl-Crypt-CBC perl-Crypt-Rijndael perl-Sys-Virt perl-JSON perl-Net-Telnet
 %ifos linux
 BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https)
