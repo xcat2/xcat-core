@@ -114,7 +114,11 @@ sub preprocess_request {
         my $hmcache = $hmtab->getNodesAttribs($noderange, [ 'node', 'serialport', 'cons', 'conserver' ]);
         foreach my $node (@$noderange) {
             my $ent = $hmcache->{$node}->[0]; #$hmtab->getNodeAttribs($node,['node', 'serialport','cons', 'conserver']);
-            push @items, $ent;
+	    if ($ent) {
+                push @items, $ent;
+	    } else {
+                push @items, {node => $node};
+	    }
         }
     } else {
         $allnodes = 1;
@@ -123,7 +127,7 @@ sub preprocess_request {
 
     my @nodes = ();
     foreach (@items) {
-        if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next; } #skip if 'cons' is not defined for this node, unless serialport suggests otherwise
+        #if (((!defined($_->{cons})) || ($_->{cons} eq "")) and !defined($_->{serialport})) { next; } #skip if 'cons' is not defined for this node, unless serialport suggests otherwise
         if (defined($_->{conserver})) { push @{ $cons_hash{ $_->{conserver} }{nodes} }, $_->{node}; }
         else { push @{ $cons_hash{$master}{nodes} }, $_->{node}; }
         push @nodes, $_->{node};
@@ -443,6 +447,7 @@ sub donodeent {
 
     # Go thru all nodes specified to add them to the file
     foreach my $node (sort keys %$cfgenthash) {
+        unless ($node) { next; }  # we may have spurious empty nodes
         my $cfgent = $cfgenthash->{$node};
         my $cmeth  = $cfgent->{cons};
         if ($cmeth and $cmeth ne 'ipmi') {
