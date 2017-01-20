@@ -1937,7 +1937,7 @@ sub mknb
         }
     }
     if ($run_mknb) {
-        foreach (qw(ppc64 x86_64)) {
+        foreach (qw(x86_64)) {
             system("$cmd $_");
             if ($? != 0) {
                 my $rc = $? >> 8;
