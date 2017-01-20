@@ -217,6 +217,7 @@ if ($tmp) {
     $cmdlog_port = $tmp->{value};
 }
 my $cmdlog_alllog = "====================================================\n";
+my $cmdlog_starttime=undef;
 
 # ----used for command log end---------
 
@@ -2103,12 +2104,11 @@ sub dispatch_request {
 
     # ----used for trace start---------
     my $str_cmd = $req->{command}->[0] . " ";
-    if (exists($req->{noderange})) {
-        foreach my $n (@{ $req->{noderange} }) {
-            $str_cmd .= $n . ",";
-        }
-        $str_cmd =~ s/(.+),$/$1 /g;
+    if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+        my $tmpstr = join(",", @{$req->{noderange}});
+        $str_cmd .= "$tmpstr ";
     }
+
     if (exists($req->{arg})) {
         foreach my $arg (@{ $req->{arg} }) {
             $str_cmd .= $arg . " ";
@@ -2666,7 +2666,8 @@ sub service_connection {
             unless ($req) { last; }
 
             # ----used for command log start----------
-            my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time());
+            $cmdlog_starttime = time();
+            my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);
             $year += 1900;
             $mon  += 1;
             my $strmon  = ($mon > 9  ? $mon  : "0" . $mon);
@@ -2676,16 +2677,11 @@ sub service_connection {
             my $strsec  = ($sec > 9  ? $sec  : "0" . $sec);
             $cmdlog_alllog .= "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n";
 
-            #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
-            #print Dumper $req;
-
             $cmdlog_alllog .= "[ClientType] " . $req->{clienttype}->[0] . " \n";
             $cmdlog_alllog .= "[Request]    " . $req->{command}->[0] . " ";
-            if (exists($req->{noderange})) {
-                foreach my $node (@{ $req->{noderange} }) {
-                    $cmdlog_alllog .= $node . ",";
-                }
-                $cmdlog_alllog =~ s/(.+),$/$1 /g;
+            if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+                my $tmpstr = join(",", @{$req->{noderange}});
+                $cmdlog_alllog .= "$tmpstr ";
             }
 
             if (exists($req->{arg})) {
@@ -2866,6 +2862,8 @@ sub service_connection {
     }
 
     # ----used for command log start-------
+    my $reqhandletime = time()-$cmdlog_starttime;
+    $cmdlog_alllog .= "[TimeConsuming] $reqhandletime S\n";
     cmdlog_submitlog();
 
     # ----used for command log end---------
@@ -2935,6 +2933,8 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
 
             # ----used for command log start-------
             $cmdlog_alllog .= "Client abort requested\n";
+            my $reqhandletime = time()-$cmdlog_starttime;
+            $cmdlog_alllog .= "[TimeConsuming] $reqhandletime S\n";
             cmdlog_submitlog();
 
             # ----used for command log end---------
