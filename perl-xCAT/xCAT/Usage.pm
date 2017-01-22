@@ -81,7 +81,7 @@ my %usage = (
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
     BMC specific:
-       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|all]
+       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
     OpenPOWER server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
     MPA specific:
