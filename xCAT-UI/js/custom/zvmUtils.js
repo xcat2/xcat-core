@@ -124,7 +124,7 @@ function loadHcpInfo(data) {
     if (userEntry[0].indexOf('Failed') < 0) {
         if (hcp) {
             // If there is no cookie for the disk pool names
-            if (!$.cookie(hcp + 'diskpools') || $.cookie(hcp + 'diskpools') === null) {
+            if (!$.cookie('xcat_' + hcp + 'diskpools') || $.cookie('xcat_' + hcp + 'diskpools') === null) {
                 if (nodeInfoBar !== null) {
                     nodeInfoBar.append("<BR>Finding pools and networks...");
                     findingPools = 1;
@@ -152,7 +152,7 @@ function loadHcpInfo(data) {
             }
 
             // If there is no cookie for the zFCP pool names
-            if (!$.cookie(hcp + 'zfcppools') || $.cookie(hcp + 'zfcppools') === null) {
+            if (!$.cookie('xcat_' + hcp + 'zfcppools') || $.cookie('xcat_' + hcp + 'zfcppools') === null) {
 
                 if (nodeInfoBar !== null) {
                     if (findingPools = 0) {
@@ -183,7 +183,7 @@ function loadHcpInfo(data) {
             }
 
             // If there is no cookie for the network names
-            if (!$.cookie(hcp + 'networks') || $.cookie(hcp + 'networks') === null) {
+            if (!$.cookie('xcat_' + hcp + 'networks') || $.cookie('xcat_' + hcp + 'networks') === null) {
 
                 if (nodeInfoBar !== null) {
                     if (findingPools = 0) {
@@ -374,13 +374,13 @@ function loadUserEntry(data) {
  */
 function incrementNodeProcess(node) {
     // Get current processes
-    var procs = $.cookie(node + 'processes');
+    var procs = $.cookie('xcat_' + node + 'processes');
     if (procs) {
         // One more process
         procs = parseInt(procs) + 1;
-        $.cookie(node + 'processes', procs);
+        $.cookie('xcat_' + node + 'processes', procs);
     } else {
-        $.cookie(node + 'processes', 1);
+        $.cookie('xcat_' + node + 'processes', 1);
     }
 }
 
@@ -517,7 +517,7 @@ function updateZProvisionNewStatus(data) {
 
             // Set cookie for number of disks
             var diskRows = $('#' + tabId + ' table:eq(0):visible tbody tr');
-            $.cookie('disks2add' + out2Id, diskRows.length);
+            $.cookie('xcat_disks2add' + out2Id, diskRows.length, {path: '/xcat', secure:true });
             if (diskRows.length > 0) {
                 for (var i = 0; i < diskRows.length; i++) {
                     var diskArgs = diskRows.eq(i).find('td');
@@ -558,7 +558,7 @@ function updateZProvisionNewStatus(data) {
 
             // Set cookie for number of zFCP devices
             var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
-            $.cookie('zfcp2add' + out2Id, zfcpRows.length);
+            $.cookie('xcat_zfcp2add' + out2Id, zfcpRows.length, {path: '/xcat', secure:true });
             if (zfcpRows.length > 0) {
                 for ( var i = 0; i < zfcpRows.length; i++) {
                     var diskArgs = zfcpRows.eq(i).find('td');
@@ -581,10 +581,16 @@ function updateZProvisionNewStatus(data) {
                     var args = '--addzfcp;' + pool + ';' + address + ';' + loaddev + ';' + size;
                     if (tag && tag != "null") {
                         args += ';' + tag;
+                    } else {
+                        args += ';';
                     } if (portName && tag != "null") {
                         args += ';' + portName;
+                    } else {
+                        args += ';';
                     } if (unitNo && tag != "null") {
                         args += ';' + unitNo;
+                    } else {
+                        args += ';';
                     }
 
                     // Attach zFCP device to node
@@ -625,19 +631,19 @@ function updateZProvisionNewStatus(data) {
         } else {
             // Set cookie for number of disks
             // One less disk to add
-            var disks2add = $.cookie('disks2add' + out2Id);
+            var disks2add = $.cookie('xcat_disks2add' + out2Id);
             if (lastCmd == 'chvm-disk') {
                 if (disks2add > 0) {
                     disks2add--;
-                    $.cookie('disks2add' + out2Id, disks2add);
+                    $.cookie('xcat_disks2add' + out2Id, disks2add, {path: '/xcat', secure:true });
                 }
             }
 
-            var zfcp2add = $.cookie('zfcp2add' + out2Id);
+            var zfcp2add = $.cookie('xcat_zfcp2add' + out2Id);
             if (lastCmd == 'chvm-zfcp') {
                 if (zfcp2add > 0) {
                     zfcp2add--;
-                    $.cookie('zfcp2add' + out2Id, zfcp2add);
+                    $.cookie('xcat_zfcp2add' + out2Id, zfcp2add, {path: '/xcat', secure:true });
                 }
             }
 
@@ -887,10 +893,10 @@ function updateZNodeStatus(data) {
     var rsp = data.rsp;
 
     // Get cookie for number processes performed against this node
-    var actions = $.cookie(node + 'processes');
+    var actions = $.cookie('xcat_' + node + 'processes');
     // One less process
     actions = actions - 1;
-    $.cookie(node + 'processes', actions);
+    $.cookie('xcat_' + node + 'processes', actions, {path: '/xcat', secure:true });
 
     if (actions < 1) {
         // Hide loader when there are no more processes
@@ -1116,7 +1122,7 @@ function getZResources(data) {
         }
 
         // Set hardware control point cookie
-        $.cookie('hcp', hcps);
+        $.cookie('xcat_hcp', hcps, {path: '/xcat', secure:true });
 
         // Delete loader
         $('#' + tabId).find('img[src="images/loader.gif"]').remove();
@@ -1137,10 +1143,10 @@ function getZResources(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1) {
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1) {
+                hcps = $.cookie('xcat_hcp').split(',');
             } else {
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
             }
 
             // Query the disk pools for each hcp
@@ -1185,10 +1191,10 @@ function getZResources(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1) {
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1) {
+                hcps = $.cookie('xcat_hcp').split(',');
             } else {
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
 
             }
 
@@ -1235,10 +1241,10 @@ function getZResources(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1) {
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1) {
+                hcps = $.cookie('xcat_hcp').split(',');
             } else {
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
 
             }
             // Query the networks for each
@@ -1442,7 +1448,7 @@ function openAddProcDialog(node) {
  */
 function openAddDiskDialog(node, hcp) {
     // Get list of disk pools
-    var cookie = $.cookie(hcp + 'diskpools');
+    var cookie = $.cookie('xcat_' + hcp + 'diskpools');
     var pools = new Array();
     if (cookie) {
         pools = cookie.split(',');
@@ -1605,7 +1611,7 @@ function openAddDiskDialog(node, hcp) {
  */
 function openAddZfcpDialog(node, hcp, zvm) {
     // Get list of disk pools
-    var cookie = $.cookie(hcp + 'zfcppools');
+    var cookie = $.cookie('xcat_' + hcp + 'zfcppools');
     var pools = new Array();
     if (cookie) {
         pools = cookie.split(',');
@@ -2492,8 +2498,8 @@ function openAddScsi2SystemDialog(hcp) {
     var fcpWwpn = $('<td><input type="text" style="width: 100px;" name="fcpWwpn" maxlength="16" title="The FCP world wide port number"/></td>');
     devPathRow.append(fcpWwpn);
 
-    if ($.cookie('zvms')) {
-        zvms = $.cookie('zvms').split(',');
+    if ($.cookie('xcat_zvms')) {
+        zvms = $.cookie('xcat_zvms').split(',');
         var zvm;
         for (var i in zvms) {
             if( !zvms[i] || 0 === zvms[i].length) continue;
@@ -2807,7 +2813,7 @@ function openAddNicDialog(node, hcp) {
 
     // Get the hcp node name for the node
     // Should be in a cookie, else just take first part of hostname
-    var hcpNode = $.cookie(node+'_hcpnodename');
+    var hcpNode = $.cookie('xcat_' + node+'_hcpnodename');
     if (!hcpNode) {
         if (typeof console == "object"){
               console.log("openAddNicDialog did not find cookie for <"+node+"_hcpnodename> Using first token in hostname");
@@ -2819,7 +2825,7 @@ function openAddNicDialog(node, hcp) {
     }
 
     // Get network names
-    var cookie = $.cookie(hcpNode + 'networks');
+    var cookie = $.cookie('xcat_' + hcpNode + 'networks');
     var networks = new Array();
     if (cookie) {
         networks = cookie.split(',');
@@ -3772,14 +3778,14 @@ function removeNic(node, nic) {
  * @param data Data from HTTP request
  */
 function setNetworkCookies(data) {
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var node = data.msg;
         var networks = data.rsp[0].split(node + ': ');
 
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie(node + 'networks', networks, { expires: exDate });
+        $.cookie('xcat_' + node + 'networks', networks, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -3789,7 +3795,7 @@ function setNetworkCookies(data) {
  * @param data HTTP request data
  */
 function getDiskPool(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
 
@@ -3854,9 +3860,10 @@ function getZfcpPool(data) {
     if (typeof console == "object"){
         console.log("Entering getZfcpPool.");
     }
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
+        zhcpQueryCountForZfcps = 0;
         // Get contents of each disk pool
         for (var i in pools) {
             pools[i] = jQuery.trim(pools[i]);
@@ -3900,7 +3907,7 @@ function getZfcpPool(data) {
  * @param data HTTP request data
  */
 function getNetwork(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var hcp = data.msg;
         var networks = data.rsp[0].split(hcp + ': ');
         if (typeof console == "object"){
@@ -3962,7 +3969,7 @@ function loadDiskPoolTable(data) {
     var args, hcp, pool, stat, tmp;
     if (data && typeof data.rsp != "undefined") {
         // Do not continue if the call failed
-        if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+        if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0 && data.rsp[0].indexOf("Error") > 0) {
             return;
         }
 
@@ -4065,10 +4072,10 @@ function loadDiskPoolTable(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1)
+                hcps = $.cookie('xcat_hcp').split(',');
             else
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
 
             zhcpQueryCountForDisks = hcps.length;
             // Query the disk pools for each
@@ -4179,15 +4186,45 @@ function loadZfcpPoolTable(data) {
     }
     // Delete loader if last one
     var panelId = 'zfcpResource';
-    if (!zhcpQueryCountForZfcps) {
+    if (zhcpQueryCountForZfcps <= 0) {
         $('#' + panelId).find('img[src="images/loader.gif"]').remove();
     }
 
     var hcp2zvm = new Object();
     var args, hcp, pool, tmp;
+
+    // Resource tab ID
+    var info = $('#' + panelId).find('.ui-state-highlight');
+
+    // Is there any data passed? Process if some
     if (typeof data.rsp != "undefined") {
-        // Do not continue if the call failed
-        if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+        // Do not continue if no data to add
+        if (!data.rsp.length) {
+            if (typeof console == "object"){
+                console.log("data.rsp.length is 0.");
+            }
+            // If there is no info bar, create info bar
+            var msgError = '<br>Unexpected, no data returned on the lsvm --zfcppool call.';
+            if (!info.length) {
+                info = createInfoBar(msgError);
+                $('#' + panelId).append(info);
+            } else {
+                info.append(msgError);
+            }
+            return;
+        }
+        if (data.rsp[0].indexOf("Failed") > 0 || data.rsp[0].indexOf("Error") > 0) {
+            if (typeof console == "object"){
+                console.log("Failed on lsvm call for --zfcppool");
+            }
+            var msgError = '<br>Error: Error on call to check zfcp pools: '+ data.rsp[0];
+            // If there is no info bar, create info bar
+            if (!info.length) {
+                info = createInfoBar(msgError);
+                $('#' + panelId).append(info);
+            } else {
+                info.append(msgError);
+            }
             return;
         }
 
@@ -4200,13 +4237,14 @@ function loadZfcpPoolTable(data) {
         tmp = data.rsp[0].split(hcp + ': ');
     } else {
         // Provide empty values so the table will be generated
+        if (typeof console == "object"){
+            console.log("Creating empty zfcp pool table.");
+        }
         hcp = '';
         pool = ''
         tmp = new Array();
     }
 
-    // Resource tab ID
-    var info = $('#' + panelId).find('.ui-state-highlight');
     // If there is no info bar, create info bar
     if (!info.length) {
         info = createInfoBar('Below are devices that are defined internally in the zFCP pools.');
@@ -4248,7 +4286,8 @@ function loadZfcpPoolTable(data) {
             tmp[i] = jQuery.trim(tmp[i]);
             var diskAttrs = tmp[i].split(',');
             diskAttrs[0] = diskAttrs[0].toLowerCase();
-            var key = hcp2zvm[hcp] + '-' + pool + '-' + diskAttrs[2];
+            // Key contains row data to be returned when the checkbox is selected
+            var key = hcp2zvm[hcp] + '-' + pool + '-' + diskAttrs[2] + '-' + diskAttrs[1];
             dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
         }
     }
@@ -4266,6 +4305,9 @@ function loadZfcpPoolTable(data) {
         // Delete disk from pool
         var removeLnk = $('<a>Remove</a>');
         removeLnk.bind('click', function(event){
+            if (typeof console == "object"){
+                  console.log("Remove button clicked for tableId:"+tableId);
+            }
             var disks = getNodesChecked(tableId);
             openRemoveZfcpFromPoolDialog(disks);
         });
@@ -4278,10 +4320,10 @@ function loadZfcpPoolTable(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1)
+                hcps = $.cookie('xcat_hcp').split(',');
             else
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
 
             // Query the disk pools for each
             zhcpQueryCountForZfcps = hcps.length;
@@ -4643,7 +4685,11 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
 
     // Verify disks are in the same zFCP pool
     var devices = devices2remove.split(',');
+    if (typeof console == "object"){
+          console.log("Entering openRemoveZfcpFromPoolDialog. Device to remove:<"+devices2remove+">");
+    }
     var tmp, tgtPool, tgtHcp;
+    var tgtPort = "";
     var tgtUnitNo = "";
     for (var i in devices) {
         if( !devices[i] || 0 === devices[i].length) continue;
@@ -4658,6 +4704,7 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
 
         tgtHcp = tmp[0];  // Assume it is just one zHCP. Otherwise, this cannot be done on multiple zHCPs.
         tgtUnitNo += tmp[2] + ",";
+        tgtPort = tmp[3];
     }
 
     // Strip out last comma
@@ -4673,7 +4720,7 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
 
     var pool = $('<div><label>zFCP pool:</label><input type="text" name="zfcpPool" value="' + tgtPool + '" title="The pool where the disk resides"/></div>');
     var unitNo = $('<div><label>Unit number:</label><input type="text" name="zfcpUnitNo" value="' + tgtUnitNo + '" title="The hexadecimal digits representing the 8-byte logical unit number of the FCP-I/O device"/></div>');
-    var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName" title="Optional. The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
+    var portName = $('<div><label>Port name:</label><input type="text" name="zfcpPortName" value="'+ tgtPort + '"title="The hexadecimal digits designating the 8-byte fibre channel port name of the FCP-I/O device"/></div>');
     deleteDiskForm.append(system, pool, unitNo, portName);
 
     // Append options for hardware control points
@@ -4760,7 +4807,9 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                         updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -4984,7 +5033,7 @@ function loadNetworkTable(data) {
     }
 
     // Get zVM host names
-    if (!$.cookie('zvms')) {
+    if (!$.cookie('xcat_zvms')) {
         $.ajax({
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -5002,7 +5051,7 @@ function loadNetworkTable(data) {
         });
     }
 
-    var zvms = $.cookie('zvms').split(',');
+    var zvms = $.cookie('xcat_zvms').split(',');
     var hcp2zvm = new Object();
     var args, zvm, iHcp, tmp;
     for (var i in zvms) {
@@ -5132,10 +5181,10 @@ function loadNetworkTable(data) {
 
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
-                hcps = $.cookie('hcp').split(',');
+            if ($.cookie('xcat_hcp').indexOf(',') > -1)
+                hcps = $.cookie('xcat_hcp').split(',');
             else
-                hcps.push($.cookie('hcp'));
+                hcps.push($.cookie('xcat_hcp'));
 
             // Query networks
             zhcpQueryCountForNetworks = hcps.length;
@@ -5206,7 +5255,7 @@ function connect2GuestLan(data) {
     $('#' + node + 'StatusBar').find('div').append(prg);
 
     // Continue if no errors found
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         // Connect NIC to Guest LAN
         $.ajax( {
             url : 'lib/cmd.php',
@@ -5261,7 +5310,7 @@ function connect2VSwitch(data) {
     $('#' + node + 'StatusBar').find('div').append(prg);
 
     // Continue if no errors found
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         // Connect NIC to VSwitch
         $.ajax( {
             url : 'lib/cmd.php',
@@ -5317,7 +5366,7 @@ function createZProvisionExisting(inst) {
     group.append(groupLabel);
 
     // Turn on auto complete for group
-    var groupNames = $.cookie('groups');
+    var groupNames = $.cookie('xcat_groups');
     if (groupNames) {
         // Split group names into an array
         var tmp = groupNames.split(',');
@@ -5363,7 +5412,7 @@ function createZProvisionExisting(inst) {
     var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
 
-    var imageNames = $.cookie('imagenames').split(',');
+    var imageNames = $.cookie('xcat_imagenames').split(',');
     if (imageNames) {
         imageNames.sort();
         for (var i in imageNames) {
@@ -5542,7 +5591,7 @@ function createZProvisionNew(inst) {
     var groupInput = $('<input type="text" name="group" title="You must give the group name that the node(s) will be placed under"/>');
     // Get groups on-focus
     groupInput.one('focus', function(){
-        var groupNames = $.cookie('groups');
+        var groupNames = $.cookie('xcat_groups');
         if (groupNames) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -5603,7 +5652,7 @@ function createZProvisionNew(inst) {
                 },
 
                 success: function(data) {
-                    if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || data.rsp[0].indexOf("Invalid") > -1) ) {
+                    if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || data.rsp[0].indexOf("Invalid") > -1 || data.rsp[0].indexOf("Error") > -1) ) {
                         // Remove the progress gif, since bailing out
                         removeProvisionLoadingGif(provisionStatusBar);
 
@@ -5711,7 +5760,7 @@ function createZProvisionNew(inst) {
                             console.log("Looking for cookies from <" + zhcpToCheck + ">");
                         }
 
-                        if (!$.cookie(zhcpToCheck + 'diskpools')) {
+                        if (!$.cookie('xcat_' + zhcpToCheck + 'diskpools')) {
                             // Get disk pools
                             $.ajax({
                                 url : 'lib/cmd.php',
@@ -5732,7 +5781,7 @@ function createZProvisionNew(inst) {
                             checkProvisionCallsDone(provisionStatusBar, ajaxCalls, "diskpoolnames");
                         }
 
-                        if (!$.cookie(zhcpToCheck + 'zfcppools')) {
+                        if (!$.cookie('xcat_' + zhcpToCheck + 'zfcppools')) {
                             // Get zFCP pools
                             $.ajax({
                                 url : 'lib/cmd.php',
@@ -5753,7 +5802,7 @@ function createZProvisionNew(inst) {
                             checkProvisionCallsDone(provisionStatusBar, ajaxCalls, "zfcppoolnames");
                         }
 
-                        if (!$.cookie(zhcpToCheck + 'userprofiles')) {
+                        if (!$.cookie('xcat_' + zhcpToCheck + 'userprofiles')) {
                             // Get zFCP pools
                             $.ajax( {
                                 url : 'lib/cmd.php',
@@ -5780,7 +5829,7 @@ function createZProvisionNew(inst) {
                         var thisUserProfile = $('#' + thisTabId + ' select[name=userProfile]');
                         thisUserProfile.children().remove();
 
-                        var definedUserProfiles = $.cookie(zhcpToCheck + 'userprofiles').split(',');
+                        var definedUserProfiles = $.cookie('xcat_' + zhcpToCheck + 'userprofiles').split(',');
                         for (var i in definedUserProfiles) {
                             if( !definedUserProfiles[i] || 0 === definedUserProfiles[i].length) continue;
                             thisUserProfile.append('<option value="' + definedUserProfiles[i] + '">' + definedUserProfiles[i] + '</option>');
@@ -5789,7 +5838,7 @@ function createZProvisionNew(inst) {
                         var thisNetwork = $('#' + thisTabId + ' select[name=network]');
                         thisNetwork.children().remove();
                         thisNetwork.append('<option value=""></option>');  // No profile option
-                        var definedNetworks = $.cookie(zhcpToCheck + 'networks').split(',');
+                        var definedNetworks = $.cookie('xcat_' + zhcpToCheck + 'networks').split(',');
                         for (var i in definedNetworks) {
                             if( !definedNetworks[i] || 0 === definedNetworks[i].length) continue;
                             if (!jQuery.trim(definedNetworks[i]))
@@ -5854,7 +5903,7 @@ function createZProvisionNew(inst) {
     var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
 
-    var imageNames = $.cookie('imagenames').split(',');
+    var imageNames = $.cookie('xcat_imagenames').split(',');
     if (imageNames) {
         imageNames.sort();
         for (var i in imageNames) {
@@ -5939,7 +5988,6 @@ function createZProvisionNew(inst) {
             '<option value="">Select a hardware control point</option>' +
         '</select></div>');
     var cpuSelect = $('<select name="cpuCount" title="The number of CPUs assigned to the virtual machine">' +
-            '<option value=""></option>' +
             '<option value="1">1</option>' +
             '<option value="2">2</option>' +
             '<option value="3">3</option>' +
@@ -6036,7 +6084,7 @@ function createZProvisionNew(inst) {
         if (thisHcp) {
             // Get node without domain name
             var temp = thisHcp.split('.');
-            definedPools = $.cookie(temp[0] + 'diskpools').split(',');
+            definedPools = $.cookie('xcat_' + temp[0] + 'diskpools').split(',');
         } else {
             var warning = createWarnBar('You must fill in a hardware control point before adding a disk.');
             var warnDialog = $('<div></div>').append(warning);
@@ -6176,7 +6224,7 @@ function createZProvisionNew(inst) {
         if (thisHcp) {
             // Get node without domain name
             var temp = thisHcp.split('.');
-            definedPools = $.cookie(temp[0] + 'zfcppools').split(',');
+            definedPools = $.cookie('xcat_' + temp[0] + 'zfcppools').split(',');
         } else {
             var warning = createWarnBar('You must fill in a hardware control point before adding a zFCP.');
             var warnDialog = $('<div></div>').append(warning);
@@ -6227,7 +6275,7 @@ function createZProvisionNew(inst) {
         zfcpRow.append(zfcpPool);
 
         // Create disk tag
-        var zfcpTag = $('<td><input type="text" name="zfcpTag" title="Optional. You can give a tag for the device. The tag determines how this device will be used."/></td>');
+        var zfcpTag = $('<td><input type="text" name="zfcpTag" title="Optional. You can enter a tag for the device ex: replace_root_device. This device address will be substituted in the autoyast/kickstart template"/></td>');
         zfcpRow.append(zfcpTag);
 
         // Create device port name
@@ -6397,6 +6445,35 @@ function createZProvisionNew(inst) {
         if (os.val() && (diskRows.length < 1)) {
             errMsg = errMsg + 'You need to add at some disks.<br/>';
             ready = false;
+        }
+
+        // If this is basic mode, check for a disk with IPL radio button and zFCP with LOADDEV button
+        // Cannot have both. (In advanced mode they create the directory entries.)
+        if (hwTabIndex == 0) {
+            // Find a device to be IPLed?
+            var ECKD_FBA_diskRows = $('#' + thisTabId + ' table:eq(0):visible tbody tr');
+            var iplSet = 0;
+            for (var i = 0; i < ECKD_FBA_diskRows.length; i++) {
+                var diskArgs = ECKD_FBA_diskRows.eq(i).find('td');
+                if (diskArgs.eq(7).find('input').attr("checked") === true) {
+                    iplSet = 1;
+                    break;
+                }
+            }
+
+            // Check if zFCP loaddev checked
+            var zfcpRows = $('#' + thisTabId + ' table:eq(1):visible tbody tr');
+            if (zfcpRows.length > 0) {
+                for ( var i = 0; i < zfcpRows.length; i++) {
+                    var diskArgs = zfcpRows.eq(i).find('td');
+                    // This is either true or false
+                    var loaddev = diskArgs.eq(7).find('input').attr('checked');
+                    if (loaddev && iplSet) {
+                        errMsg = errMsg + 'You cannot have both disk IPL and zFCP LOADDEV, can only IPL one device.<br/>';
+            ready = false;
+                    }
+                }
+            }
         }
 
         // If inputs are valid, ready to provision
@@ -6641,13 +6718,13 @@ function checkProvisionCallsDone(provisionStatBar, table, finishedKey) {
  */
 function loadzVMs(col) {
     // Get group names and description and append to group column
-    if (!$.cookie('zvms')) {
+    if (!$.cookie('xcat_zvms')) {
         var infoBar = createInfoBar('No selectable z/VM available');
         col.append(infoBar);
         return;
     }
 
-    var zNames = $.cookie('zvms').split(',');
+    var zNames = $.cookie('xcat_zvms').split(',');
 
     var radio, zBlock, args, zvm, hcp;
     for (var i in zNames) {
@@ -6689,13 +6766,13 @@ function loadzVMs(col) {
  */
 function loadSrvGroups(col) {
     // Get group names and description and append to group column
-    if (!$.cookie('srv_groups')) {
+    if (!$.cookie('xcat_srv_groups')) {
         var infoBar = createInfoBar('No selectable group available');
         col.append(infoBar);
         return;
     }
 
-    var groupNames = $.cookie('srv_groups').split(',');
+    var groupNames = $.cookie('xcat_srv_groups').split(',');
 
     var groupBlock, radio, args, name, ip, hostname, desc;
     for (var i in groupNames) {
@@ -6739,13 +6816,13 @@ function loadSrvGroups(col) {
  */
 function loadOSImages(col) {
     // Get group names and description and append to group column
-    if (!$.cookie('srv_imagenames')) {
+    if (!$.cookie('xcat_srv_imagenames')) {
         var infoBar = createInfoBar('No selectable image available');
         col.append(infoBar);
         return;
     }
 
-    var imgNames = $.cookie('srv_imagenames').split(',');
+    var imgNames = $.cookie('xcat_srv_imagenames').split(',');
 
     var imgBlock, radio, args, name, desc;
     for (var i in imgNames) {
@@ -6790,13 +6867,13 @@ function loadOSImages(col) {
  */
 function loadGoldenImages(col) {
     // Get group names and description and append to group column
-    if (!$.cookie('srv_goldenimages')) {
+    if (!$.cookie('xcat_srv_goldenimages')) {
         var infoBar = createInfoBar('No selectable master copies available');
         col.append(infoBar);
         return;
     }
 
-    var imgNames = $.cookie('srv_goldenimages').split(',');
+    var imgNames = $.cookie('xcat_srv_goldenimages').split(',');
 
     var imgBlock, radio, args, name, desc;
     for (var i in imgNames) {
@@ -6844,7 +6921,7 @@ function loadGoldenImages(col) {
  * @param data Data from HTTP request
  */
 function setzVMCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var zvms = new Array();
         var hosts = data.rsp[0].split("\n");
         for ( var i = 0; i < hosts.length; i++) {
@@ -6859,7 +6936,7 @@ function setzVMCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie('zvms', zvms, { expires: exDate });
+        $.cookie('xcat_zvms', zvms, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -6869,7 +6946,7 @@ function setzVMCookies(data) {
  * @param data Data from HTTP request
  */
 function setGoldenImagesCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var copies = new Array();
         var tmp = data.rsp[0].split(",");
         for ( var i = 0; i < tmp.length; i++) {
@@ -6881,7 +6958,7 @@ function setGoldenImagesCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie('srv_goldenimages', copies, { expires: exDate });
+        $.cookie('xcat_srv_goldenimages', copies, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -6891,7 +6968,7 @@ function setGoldenImagesCookies(data) {
  * @param data Data from HTTP request
  */
 function setDiskPoolCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ": ");
         var pools2 = [];
@@ -6904,7 +6981,7 @@ function setDiskPoolCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie(node + 'diskpools', pools2, { expires: exDate });
+        $.cookie('xcat_' + node + 'diskpools', pools2, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -6914,7 +6991,7 @@ function setDiskPoolCookies(data) {
  * @param data Data from HTTP request
  */
 function setZfcpPoolCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         var pools2 = [];
@@ -6927,7 +7004,7 @@ function setZfcpPoolCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie(node + 'zfcppools', pools2, { expires: exDate });
+        $.cookie('xcat_' + node + 'zfcppools', pools2, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -6941,7 +7018,7 @@ function setzHcpCookies(zhcps) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie('zhcps', zhcps, { expires: exDate });
+        $.cookie('xcat_zhcps', zhcps, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -6951,7 +7028,7 @@ function setzHcpCookies(zhcps) {
  * @param data Data from HTTP request
  */
 function setUserProfilesCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var node = data.msg;
         var profiles = data.rsp[0].split(node + ': ');
         var profiles2 = [];
@@ -6964,7 +7041,7 @@ function setUserProfilesCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-        $.cookie(node + 'userprofiles', profiles2, { expires: exDate });
+        $.cookie('xcat_' + node + 'userprofiles', profiles2, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -7025,7 +7102,7 @@ function configProfilePanel(panelId) {
     table.init(['<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'Profile', 'Disk pool', 'Disk size', 'Directory entry']);
 
     // Insert profiles into table
-    var profiles = $.cookie('profiles').split(',');
+    var profiles = $.cookie('xcat_profiles').split(',');
     profiles.push('default'); // Add default profile
     for (var i in profiles) {
         if (profiles[i]) {
@@ -7245,7 +7322,7 @@ function profileDialog() {
 
     // Insert profiles into select
     var profileSelect = $('<select name="profile" title="The image profile to set defaults for"></select>');
-    var profiles = $.cookie('profiles').split(',');
+    var profiles = $.cookie('xcat_profiles').split(',');
     profiles.push('default'); // Add default profile
     for (var i in profiles) {
         if (profiles[i]) {
@@ -7420,7 +7497,7 @@ function editProfileDialog(profile, pool, size, entry) {
 
     // Insert profiles into select
     var profileSelect = $('<select name="profile" title="The image profile to set defaults for"></select>');
-    var profiles = $.cookie('profiles').split(',');
+    var profiles = $.cookie('xcat_profiles').split(',');
     profiles.push('default'); // Add default profile
     for (var i in profiles) {
         if (profiles[i]) {
@@ -7541,7 +7618,7 @@ function editProfileDialog(profile, pool, size, entry) {
  */
 function getHcpZvmHash() {
     // Get zVM host names
-    if (!$.cookie('zvms')) {
+    if (!$.cookie('xcat_zvms')) {
         $.ajax({
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -7559,7 +7636,7 @@ function getHcpZvmHash() {
         });
     }
 
-    var zvms = $.cookie('zvms').split(',');
+    var zvms = $.cookie('xcat_zvms').split(',');
     var hcp2zvm = new Object();
     var args, zvm, iHcp, tmp;
     for (var i in zvms) {
@@ -7656,6 +7733,20 @@ function updateUserEntry(tabId) {
                     }
                 }
 
+                // Check if zFCP loaddev checked, if so ipl the fcp card
+                var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
+                if (zfcpRows.length > 0) {
+                    for ( var i = 0; i < zfcpRows.length; i++) {
+                        var diskArgs = zfcpRows.eq(i).find('td');
+                        var address = diskArgs.eq(1).find('input').val();
+                        // This is either true or false
+                        var loaddev = diskArgs.eq(7).find('input').attr('checked');
+                        if (loaddev) {
+                            ipl = address;
+                        }
+                    }
+                }
+
                 // Only update directory entry if the basic tab is selected
                 var inst = tabId.replace('zvmProvisionTab', '');
                 var hwTabIndex = $("#hwConfig" + inst).tabs('option', 'selected');
@@ -7696,6 +7787,20 @@ function updateUserEntry(tabId) {
                 if (diskArgs.eq(7).find('input').attr("checked") === true) {
                     ipl = address;
                     break;
+                }
+            }
+
+            // Check if zFCP loaddev checked, if so ipl the fcp card
+            var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
+            if (zfcpRows.length > 0) {
+                for ( var i = 0; i < zfcpRows.length; i++) {
+                    var diskArgs = zfcpRows.eq(i).find('td');
+                    var address = diskArgs.eq(1).find('input').val();
+                    // This is either true or false
+                    var loaddev = diskArgs.eq(7).find('input').attr('checked');
+                    if (loaddev) {
+                        ipl = address;
+                    }
                 }
             }
 
@@ -7740,6 +7845,20 @@ function updateUserEntry(tabId) {
                 ipl = address;
                 break;
             }
+        }
+
+        // Check if zFCP loaddev checked, if so ipl the fcp card
+        var zfcpRows = $('#' + tabId + ' table:eq(1):visible tbody tr');
+        if (zfcpRows.length > 0) {
+            for ( var i = 0; i < zfcpRows.length; i++) {
+                var diskArgs = zfcpRows.eq(i).find('td');
+                var address = diskArgs.eq(1).find('input').val();
+                // This is either true or false
+                var loaddev = diskArgs.eq(7).find('input').attr('checked');
+                if (loaddev) {
+                    ipl = address;
+                }
+        }
         }
 
         // Only update directory entry if the basic tab is selected
@@ -7835,6 +7954,10 @@ function generateUserEntry(userId, password, memory, privilege, profile, cpuCoun
     userDirectoryEntry += "SPOOL 000C 2540 READER *\n";
     userDirectoryEntry += "SPOOL 000D 2540 PUNCH A\n";
     userDirectoryEntry += "SPOOL 000E 1403 A\n";
+
+    if (typeof console == "object"){
+        console.log("Exiting generateUserEntry. Directory created:"+userDirectoryEntry);
+    }
 
     return userDirectoryEntry;
 }
@@ -7936,7 +8059,7 @@ function getNetworkDetails(hcpNode, vswitchname, hashId, tabId) {
                     console.log("getNetworkDetails. creating new hash[[]] table!!" + "hashindex<" + hashindex + ">" );
                 }
             }
-            if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || (foundInvalid == 1) ) ) {
+            if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || (foundInvalid == 1) || data.rsp[0].indexOf("Error") > -1  ) ) {
                 if (typeof console == "object") {
                               console.log("getNetworkDetails. failure getting the network data for " + hcpNode + " network "+ vswitchname);
                 }
@@ -7993,7 +8116,7 @@ function getNetworkDetails(hcpNode, vswitchname, hashId, tabId) {
  * @param data Data from HTTP request
  */
 function setNodeZhcpNodename(data) {
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
         var savedTokens = data.msg.split(';');
         var node = savedTokens[0];
         var hcphostname = savedTokens[1];
@@ -8010,7 +8133,7 @@ function setNodeZhcpNodename(data) {
                 // Set cookie to expire in 60 minutes
                 var exDate = new Date();
                 exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
-                $.cookie(node+'_hcpnodename', nodename, { expires: exDate });
+                $.cookie('xcat_' +  node+'_hcpnodename', nodename, { expires: exDate, path: '/xcat', secure:true });
             }
         }
     }

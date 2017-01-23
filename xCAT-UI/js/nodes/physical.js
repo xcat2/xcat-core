@@ -9,7 +9,7 @@ var selectNode;
 
 /**
  * Get all nodes useful attributes from remote server
- * 
+ *
  * @param dataTypeIndex The index in the array which contains attributes we need.
  * @param attrNullNode The target node list for this attribute
  */
@@ -36,7 +36,7 @@ function initGraphicalData() {
 
 /**
  * Extract all nodes userful data into a hash, which will be used for creating graphical
- * 
+ *
  * @param data The response from xCAT command 'nodels all nodetype.nodetype ppc.parent ...'
  * @return nodes list for next time query
  */
@@ -115,7 +115,7 @@ function createPhysicalLayout(nodeList) {
 }
 
 function getNodesAndDraw() {
-    var groupName = $.cookie('selectgrouponnodes');
+    var groupName = $.cookie('xcat_selectgrouponnodes');
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -183,64 +183,64 @@ function fillList(nodeName, defaultnodetype) {
     }
 
     switch (nodeType) {
-        case 'frame': 
+        case 'frame':
             if (undefined == bpaList[nodeName]) {
                 bpaList[nodeName] = new Array();
             }
-        
+
             break;
         case 'lpar,osi':
         case 'lpar':
-        case 'osi': 
+        case 'osi':
             if ('' == parentName) {
                 break;
             }
-    
+
             if (undefined == fspList[parentName]) {
                 fillList(parentName, 'cec');
             }
-    
+
             fspList[parentName]['children'].push(nodeName);
             lparList[nodeName] = status;
-        
+
             break;
-        case 'cec': 
+        case 'cec':
             if (undefined != fspList[nodeName]) {
                 break;
             }
-    
+
             fspList[nodeName] = new Object();
             fspList[nodeName]['children'] = new Array();
             fspList[nodeName]['mtm'] = mtm;
-    
+
             if ('' == parentName) {
                 break;
             }
-    
+
             if (undefined == bpaList[parentName]) {
                 fillList(parentName, 'frame');
             }
-    
+
             bpaList[parentName].push(nodeName);
             break;
-        case 'blade': 
+        case 'blade':
             if (undefined == bladeList[mpa]) {
                 bladeList[mpa] = new Array();
             }
             bladeList[mpa].push(nodeName + ',' + unit);
-        
+
             break;
-        case 'systemx': 
+        case 'systemx':
             if (!rack) {
                 rack = '_notsupply_';
             }
-            
+
             if (undefined == rackList[rack]) {
                 rackList[rack] = new Array();
             }
-            
+
             rackList[rack].push(nodeName + ',' + unit);
-        
+
             break;
         default:
             unknownList.push(nodeName);
@@ -276,8 +276,8 @@ function createGraphical() {
 
 /**
  * Create the physical/graphical layout for System p machines
- * 
- * @param bpa All BPA and their related FSPs 
+ *
+ * @param bpa All BPA and their related FSPs
  * @param fsp All FSP and their related LPARs
  * @param area The element to append graphical layout
  */
@@ -310,7 +310,7 @@ function createSystempGraphical(bpa, fsp, area) {
                 + '"><input type="checkbox" class="fspCheckbox" name="check_'
                 + bpaName + '"></div>');
 
-        // For P7-IH, all the CECs are insert into the frame from bottom to up, 
+        // For P7-IH, all the CECs are insert into the frame from bottom to up,
         // so we have to show the CECs same as the physical layout
         var tempBlankDiv = $('<div></div>');
         var tempHeight = 0;
@@ -322,7 +322,7 @@ function createSystempGraphical(bpa, fsp, area) {
             if ((0 == fspIndex) && ('9125-F2C' == fsp[fspName]['mtm'])) {
                 frameDiv.append(tempBlankDiv);
             }
-            
+
             frameDiv.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));
             frameDiv.append(createFspTip(fspName, fsp[fspName]['mtm'], fsp));
 
@@ -430,7 +430,7 @@ function createSystempGraphical(bpa, fsp, area) {
                 changeNode(lparName, 'unselect');
             }
         }
-        
+
         // No selected LPARs on the cec, so add all LPARs into selectNode hash
         else {
             for (var lparIndex in fspList[fspName]['children']) {
@@ -458,8 +458,8 @@ function createSystempGraphical(bpa, fsp, area) {
 
 /**
  * Create the physical/graphical layout for blades
- * 
- * @param blades The blade list in global 
+ *
+ * @param blades The blade list in global
  * @param area The element to append the graphical layout
  */
 function createBladeGraphical(blades, area) {
@@ -529,8 +529,8 @@ function createBladeGraphical(blades, area) {
 
 /**
  * Create the physical/graphical layout for System x machines
- * 
- * @param xnodes The system x node list in global 
+ *
+ * @param xnodes The system x node list in global
  * @param area The element to append graphical layout
  */
 function createSystemxGraphical(xnodes, area) {
@@ -765,7 +765,7 @@ function createFspDiv(fspName, mtm, fsp) {
         if (lparIndex >= 8) {
             break;
         }
-        
+
         var lparName = fsp[fspName]['children'][lparIndex];
         var color = statusMap(lparList[lparName]);
         lparStatusRow += '<td class="lparStatus" style="background-image:url(images/nodes/' + color + '.gif);padding: 0px;" id="' + lparName + 'status"></td>';
@@ -778,11 +778,11 @@ function createFspDiv(fspName, mtm, fsp) {
     } else {
         temp = mtm;
     }
-    
+
     if (!hardwareInfo[temp]){
     	hardwareInfo[temp] = ['unkown', 2];
     }
-    
+
     if (hardwareInfo[temp][1]) {
         divClass += 'fspDiv' + hardwareInfo[temp][1];
     } else {
@@ -830,7 +830,7 @@ function createFspTip(fspName, mtm, fsp) {
 }
 /**
  * Map the LPAR status into a color
- * 
+ *
  * @param status LPAR status in nodelist table
  * @return Corresponding color name
  */
@@ -844,7 +844,7 @@ function statusMap(status) {
     case 'sshd':
     case 'booting':
     case 'booted':
-    case 'ping': 
+    case 'ping':
         color = 'green';
         break;
     case 'noping':
@@ -869,7 +869,7 @@ function selectAllLpars(checkbox) {
 
 /**
  * Export all LPAR names from selectNode
- * 
+ *
  * @return lpars' string
  */
 function getSelectNodes() {
@@ -904,7 +904,7 @@ function changeNode(lparName, status) {
 
 /**
  * The P7-IH's CECs are insert from bottom to up, so we had to calculate the blank height
- * 
+ *
  * @return Height for the CEC
  */
 function calculateBlank(mtm) {
@@ -917,13 +917,13 @@ function calculateBlank(mtm) {
     }
 
     switch (hardwareInfo[mtm][1]) {
-        case 1: 
+        case 1:
             return 13;
             break;
-        case 2: 
+        case 2:
             return 24;
             break;
-        case 4: 
+        case 4:
             return 47;
             break;
         default:
