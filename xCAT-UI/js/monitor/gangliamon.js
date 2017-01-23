@@ -8,8 +8,8 @@ var gridData;
 // Save nodes path, used for getting detail from rrd file
 var nodePath = new Object();
 
-// Save nodes current status, 
-// unknown = -2, error = -1, warning = 0, normal = 1 are used for sorting 
+// Save nodes current status,
+// unknown = -2, error = -1, warning = 0, normal = 1 are used for sorting
 var nodeStatus = new Object();
 
 // Update timer
@@ -28,14 +28,14 @@ var otherhash;
 
 /**
  * Load Ganglia monitoring tool
- * 
+ *
  * @return Nothing
  */
 function loadGangliaMon() {
     $('#gangliamon').append(createInfoBar('Checking RPMs'));
-    
+
     // Get groups and set cookie
-    if (!$.cookie('groups')) {
+    if (!$.cookie('xcat_groups')) {
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -49,7 +49,7 @@ function loadGangliaMon() {
             success : setGroupsCookies
         });
     }
-    
+
     // Check whether Ganglia RPMs are installed on the xCAT MN
     $.ajax({
         url : 'lib/systemcmd.php',
@@ -65,13 +65,13 @@ function loadGangliaMon() {
 
 /**
  * Check whether Ganglia RPMs are installed
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function checkGangliaRPMs(data) {
     var gangliaTab = $('#gangliamon');
     gangliaTab.empty();
-    
+
     // Get the list of Ganglia RPMs installed
     var status = data.rsp.split(/\n/);
     var gangliaRPMs = ["rrdtool", "ganglia-gmetad", "ganglia-gmond"];
@@ -91,7 +91,7 @@ function checkGangliaRPMs(data) {
         warningBar.prependTo(gangliaTab);
     } else {
         gangliaTab.append(createInfoBar('Checking running status'));
-        
+
         // Check if ganglia is running on the xCAT MN
         $.ajax( {
             url : 'lib/cmd.php',
@@ -106,19 +106,19 @@ function checkGangliaRPMs(data) {
             success : checkGangliaRunning
         });
     }
-    
+
     return;
 }
 
 /**
  * Check whether Ganglia is running
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function checkGangliaRunning(data) {
     var gangliaTab = $('#gangliamon');
     gangliaTab.empty();
-    
+
     // If Ganglia is not started
     if (data.rsp[0].indexOf("not-monitored") > -1) {
         // Create link to start Ganglia
@@ -151,13 +151,13 @@ function checkGangliaRunning(data) {
 
         // If there are any warning messages, append this warning after it
         var curWarnings = $('#gangliamon').find('.ui-state-error');
-        
+
         if (curWarnings.length) {
             curWarnings.after(warningBar);
         } else {
             warningBar.prependTo(gangliaTab);
         }
-        
+
         return;
     }
 
@@ -168,7 +168,7 @@ function checkGangliaRunning(data) {
                           '<td style="background:#FF3030;width:16px;padding:0px;"> </td><td style="padding:0px;">Error</td>' +
                           '<td style="background:#8B8B7A;width:16px;padding:0px;"> </td><td style="padding:0px;">Unknown</td>' +
                       '</tr></table>';
-    
+
     // Gganglia grid overview
     var showStr = '<div><h3 style="display:inline;">Grid Overview</h3>' +
                   '<sup id="hidesup" style="cursor: pointer;color:blue;float:right">[Hide]</sup></div><hr>' +
@@ -181,11 +181,11 @@ function checkGangliaRunning(data) {
     // Get summary data and draw on page
     $('#gangliaGridSummary').append('Getting grid summary data <img src="images/loader.gif"></img>');
     sendGridSummaryAjax();
-    
+
     // Get all nodes location data which can support the zoom monitor
     $('#gangliaNodes').append('Getting all nodes status <img src="images/loader.gif"></img>');
     sendLocationAjax();
-    
+
     // Bind the hide/show button event
     $('#gangliamon #hidesup').bind('click', function(){
         if ('[Hide]' == $(this).text()) {
@@ -193,7 +193,7 @@ function checkGangliaRunning(data) {
         } else {
             $(this).html('[Hide]');
         }
-        
+
         $('#gangliaGridSummary').toggle();
     });
 }
@@ -211,16 +211,16 @@ function sendLocationAjax() {
             args : 'graph',
             msg : ''
         },
-        
+
         success: function(data){
             if (!data.rsp[0]) {
                 return;
             }
-            
+
             extractLocationlData(data.rsp[0]);
             // Get nodes current status and draw on the page
             sendNodeCurrentAjax();
-            
+
             // Start the timer to update page per minute
             gangliaTimer = window.setTimeout('updateGangliaPage()', 60000);
         }
@@ -235,14 +235,14 @@ function extractLocationlData(locationData) {
     cechash = new Object();
     bladehash = new Object();
     rackhash = new Object();
-    
+
     // Linux nodes which has no parent
     linuxArray = new Array();
-    
+
     // Other unknown nodes only have one parent, use number 1 as there parent
     otherhash = new Object();
     otherhash[1] = new Array();
-    
+
     var allnodearray = locationData.split(';');
     var temparray;
     var parent = '';
@@ -250,7 +250,7 @@ function extractLocationlData(locationData) {
     for (var i in allnodearray) {
         temparray = allnodearray[i].split(':');
         name = temparray[0];
-        
+
         // If there is not parent (or mpa, or rack) information
         parent = temparray[2];
         if (!parent) {
@@ -258,26 +258,26 @@ function extractLocationlData(locationData) {
             otherhash[1].push(name);
             continue;
         }
-        
+
         switch (temparray[1].toLowerCase()) {
             case 'blade': {
                 if (!bladehash[parent]) {
                     bladehash[parent] = new Array();
                 }
-                
+
                 bladehash[parent].push(name);
             }
             break;
-            
+
             case 'systemx': {
                 if (!rackhash[parent]) {
                     rackhash[parent] = new Array();
                 }
-                
+
                 rackhash[parent].push(name);
             }
             break;
-            
+
             case 'frame': {
                 if (!framehash[name]) {
                     framehash[name] = new Array();
@@ -289,21 +289,21 @@ function extractLocationlData(locationData) {
                 if (!framehash[parent]) {
                     framehash[parent] = new Array();
                 }
-                
+
                 framehash[parent].push(name);
             }
             break;
-            
+
             case 'lpar':
             case 'lpar,osi':
             case 'osi,lpar': {
                 if (!cechash[parent]) {
                     cechash[parent] = new Array();
                 }
-                
+
                 cechash[parent].push(name);
             }
-            
+
             break;
             default: {
                 otherhash[1].push(name);
@@ -327,7 +327,7 @@ function sendGridSummaryAjax() {
             args : 'gangliashow;_grid_;hour;_summary_',
             msg : ''
         },
-        
+
         success: function(data) {
             createGridSummaryData(data.rsp[0]);
             drawGridSummary();
@@ -339,7 +339,7 @@ function sendGridSummaryAjax() {
  * Send AJAX request to get nodes current load information
  */
 function sendNodeCurrentAjax() {
-    
+
     // Get all nodes current status
     $.ajax({
         url : 'lib/cmd.php',
@@ -350,7 +350,7 @@ function sendNodeCurrentAjax() {
             args : 'gangliacurrent;node;',
             msg : ''
         },
-        
+
         success: function(data){
             createNodeStatusData(data.rsp[0]);
             drawGangliaNodesArea($('#gangliaorder').val());
@@ -372,7 +372,7 @@ function sendGridCurrentAjax(){
             args : 'gangliacurrent;grid',
             msg : ''
         },
-        
+
         success: function(data){
             updateGridSummaryData(data.rsp[0]);
             drawGridSummary();
@@ -381,13 +381,13 @@ function sendGridCurrentAjax(){
 }
 
 /**
- * Save the grid summary data to local global variable           
+ * Save the grid summary data to local global variable
  */
 function createGridSummaryData(summaryString){
     // Empty the global data
     // The data structure looks like: metric1:time11,val11,time12,val12,...;metric2:time21,val21,time22,val22,...;....
     gridData = new Object();
-    
+
     var metricArray = summaryString.split(';');
     var metricname = '';
     var valueArray = '';
@@ -395,13 +395,13 @@ function createGridSummaryData(summaryString){
     var tempLength = 0;
     for (var index = 0; index < metricArray.length; index++) {
         position = metricArray[index].indexOf(':');
-        
+
         // Get the metric name and init its global array to save timestamp and value pair
         metricname = metricArray[index].substr(0, position);
         gridData[metricname] = new Array();
         valueArray = metricArray[index].substr(position + 1).split(',');
         tempLength = valueArray.length;
-        
+
         // Save timestamp and value into global array
         for (var i = 0; i < tempLength; i++) {
             gridData[metricname].push(Number(valueArray[i]));
@@ -420,7 +420,7 @@ function updateGridSummaryData(currentString){
     var tempLength = 0;
     var index = 0;
     var tempArray;
-    
+
     tempLength = metricArray.length;
     for (index = 0; index < tempLength; index++) {
         position = metricArray[index].indexOf(':');
@@ -442,19 +442,19 @@ function drawGridSummary() {
     var gridDrawArea = $('#gangliaGridSummary');
     var showStr = '';
     var tempStr = $('#gangliamon').attr('class');
-    
+
     // jqflot only draws on the visible area
     // If the tab is hide, return directly
     if (tempStr.indexOf('hide') != -1) {
         return;
     }
-    
+
     if ($('#gangliamon #hidesup').text() == '[Show]') {
         return;
     }
-    
+
     gridDrawArea.empty();
-    showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitor-sum-div"></div></td>' + 
+    showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitor-sum-div"></div></td>' +
               '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitor-sum-div"></div></td>' +
               '<td style="padding:0;border-style:none;"><div id="gangliasummarymem" class="monitor-sum-div"></div></td></tr>' +
               '<tr><td style="padding:0;border-style:none;"><div id="gangliasummarydisk" class="monitor-sum-div"></div></td>' +
@@ -470,7 +470,7 @@ function drawGridSummary() {
 
 /**
  * Draw the load flot by data (summary data or one node data)
- * 
+ *
  * @param areaid Which DIV draw this flot
  * @param loadpair The load timestamp and value pair
  * @param cpupair The CPU number and value pair
@@ -481,7 +481,7 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair) {
     var index = 0;
     var yaxismax = 0;
     var interval = 1;
-    
+
     $('#' + areaid).empty();
     // Parse load pair, the timestamp must mutiply 1000, javascript time stamp is millisecond
     for (index = 0; index < loadpair.length; index += 2) {
@@ -490,7 +490,7 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair) {
             yaxismax = loadpair[index + 1];
         }
     }
-    
+
     // Parse cpu pair
     for (index = 0; index < cpupair.length; index += 2) {
         cpunum.push([cpupair[index] * 1000, cpupair[index + 1]]);
@@ -498,12 +498,12 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair) {
             yaxismax = cpupair[index + 1];
         }
     }
-    
+
     interval = parseInt(yaxismax / 3);
     if (interval < 1) {
         interval = 1;
     }
-    
+
     $.jqplot(areaid, [load, cpunum], {
         title: titleprefix + ' Loads/Procs Last Hour',
         axes:{
@@ -531,7 +531,7 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair) {
 
 /**
  * Draw the CPU usage flot by data (maybe summary data or one node data)
- * 
+ *
  * @param areaid Which DIV draw this flot
  * @param titleprefix Title used name
  * @param cpupair The CPU timestamp and value pair
@@ -539,15 +539,15 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair) {
 function drawCpuFlot(areaid, titleprefix, cpupair) {
     var cpu = new Array();
     var index = 0;
-    
+
     $('#' + areaid).empty();
-    
+
     // Time stamp should be mutiplied by 1000
     // We get the CPU idle from server
     for (index = 0; index < cpupair.length; index +=2) {
         cpu.push([(cpupair[index] * 1000), (100 - cpupair[index + 1])]);
     }
-    
+
     $.jqplot(areaid, [cpu],{
         title: titleprefix + ' Cpu Use Last Hour',
         axes:{
@@ -571,7 +571,7 @@ function drawCpuFlot(areaid, titleprefix, cpupair) {
 
 /**
  * Draw the memory usage flot by data (summary data or one node data)
- * 
+ *
  * @param areaid Which DIV draw this flot
  * @param titleprefix Title used name
  * @param cpupair The CPU timestamp and value pair
@@ -581,14 +581,14 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
     var total = new Array();
     var tempsize = 0;
     var index = 0;
-    
+
     $('#' + areaid).empty();
     if (freepair.length < totalpair.length) {
         tempsize = freepair.length;
     } else {
         tempsize = freepair.length;
     }
-    
+
     for (index = 0; index < tempsize; index += 2) {
         var temptotal = totalpair[index + 1];
         var tempuse = temptotal - freepair[index + 1];
@@ -597,7 +597,7 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
         total.push([totalpair[index] * 1000, temptotal]);
         use.push([freepair[index] * 1000, tempuse]);
     }
-    
+
     $.jqplot(areaid, [use, total], {
         title: titleprefix + ' Memory Use Last Hour',
         axes:{
@@ -625,7 +625,7 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
 
 /**
  * Draw the disk usage flot by data (summary data or one node's data)
- * 
+ *
  * @param areaid Which div draw this flot
  * @param titleprefix Title used name
  * @param freepair The free disk number, Ganglia only logs the free data
@@ -636,21 +636,21 @@ function drawDiskFlot(areaid, titleprefix, freepair, totalpair) {
     var total = new Array();
     var tempsize = 0;
     var index = 0;
-    
+
     $('#' + areaid).empty();
     if (freepair.length < totalpair.length) {
         tempsize = freepair.length;
     } else{
         tempsize = freepair.length;
     }
-    
+
     for (index = 0; index < tempsize; index += 2) {
         var temptotal = totalpair[index + 1];
         var tempuse = temptotal - freepair[index + 1];
         total.push([totalpair[index] * 1000, temptotal]);
         use.push([freepair[index] * 1000, tempuse]);
     }
-    
+
     $.jqplot(areaid, [use, total], {
         title: titleprefix + ' Disk Use Last Hour',
         axes:{
@@ -678,7 +678,7 @@ function drawDiskFlot(areaid, titleprefix, freepair, totalpair) {
 
 /**
  * Draw the network load flot by data (summary data or one node data)
- * 
+ *
  * @param areaid Which div draw this flot
  * @param titleprefix Title used name
  * @param inpair The timestamp and value pair for download
@@ -691,19 +691,19 @@ function drawNetworkFlot(areaid, titleprefix, inpair, outpair) {
     var maxvalue = 0;
     var unitname = 'B';
     var divisor = 1;
-    
+
     for (index = 0; index < inpair.length; index += 2) {
         if (inpair[index + 1] > maxvalue) {
             maxvalue = inpair[index + 1];
         }
     }
-    
+
     for (index = 0; index < outpair.length; index += 2) {
         if (outpair[index + 1] > maxvalue) {
             maxvalue = outpair[index + 1];
         }
     }
-    
+
     if (maxvalue > 3000000) {
         divisor = 1000000;
         unitname = 'GB';
@@ -713,15 +713,15 @@ function drawNetworkFlot(areaid, titleprefix, inpair, outpair) {
     } else {
         // Do nothing
     }
-    
+
     for (index = 0; index < inpair.length; index += 2) {
         inArray.push([(inpair[index] * 1000), (inpair[index + 1] / divisor)]);
     }
-    
+
     for (index = 0; index < outpair.length; index += 2) {
         outArray.push([(outpair[index] * 1000), (outpair[index + 1] / divisor)]);
     }
-    
+
     $.jqplot(areaid, [inArray, outArray], {
         title: titleprefix + ' Network Last Hour',
         axes:{
@@ -749,7 +749,7 @@ function drawNetworkFlot(areaid, titleprefix, inpair, outpair) {
 
 /**
  * Create node status data
- * 
+ *
  * @param nodesStatus Node status
  */
 function createNodeStatusData(nodesStatus) {
@@ -759,15 +759,15 @@ function createNodeStatusData(nodesStatus) {
     var index = 0;
     var tempArray;
     var tempStr = '';
-    
+
     for (index in nodePath) {
         delete(nodePath[index]);
     }
-    
+
     for (index in nodeStatus) {
         delete(nodeStatus[index]);
     }
-    
+
     for (index = 0; index < nodesArray.length; index++) {
         tempStr = nodesArray[index];
         position = tempStr.indexOf(':');
@@ -785,18 +785,18 @@ function createNodeStatusData(nodesStatus) {
  */
 function drawGangliaNodesArea() {
     var position = 0;
-    
+
     // Find out the last child's type and name
     var currentobj = $('#zoomDiv span:last');
     var type = currentobj.attr('name').toLowerCase();
     var name = currentobj.text();
     position = name.indexOf('(');
-    
+
     if (position > -1) {
         name = name.substr(3, position - 3);
     }
     $('#gangliaNodes').empty();
-    
+
     switch (type) {
         // Draw the node current status
         case 'blade':
@@ -806,7 +806,7 @@ function drawGangliaNodesArea() {
             drawGangliaNodesAreaPic(type, name);
         }
         break;
-        
+
         // Draw a summary table
         case 'all':
         case 'frame': {
@@ -825,7 +825,7 @@ function drawGangliaNodesAreaPic(type, name) {
     var showStr = '';
     var nodename = '';
     var temparray;
-    
+
     switch(type) {
         case 'blade': {
             arraypoint = bladehash[name];
@@ -846,10 +846,10 @@ function drawGangliaNodesAreaPic(type, name) {
             break;
     }
     $('#gangliaNodes').html('<ul style="margin:0px;padding:0px;"></ul>');
-    
+
     temparray = arraypoint.sort();
     templength = arraypoint.length;
-    
+
     for (index = 0; index < templength; index++) {
         nodename = temparray[index];
         switch (nodeStatus[nodename]) {
@@ -868,7 +868,7 @@ function drawGangliaNodesAreaPic(type, name) {
         }
         $('#gangliaNodes ul').append(showStr);
     }
-    
+
     // Bind all normal and warning nodes click event
     $('.monitor-normal,.monitorwarning').bind('click', function() {
         var nodename = $(this).attr('title');
@@ -881,45 +881,45 @@ function drawGangliaNodesAreaTable(type, name) {
     var table = $('<table></table>');
     var row = '';
     var usedCec = new Object();
-    
+
     var header = $('<thead class="ui-widget-header"> <th>Name</th><th>Type</th><th>Normal</th><th>Heavy Load</th><th>Error</th><th>Unknown</th> </thead>');
     table.append(header);
-    
+
     if (type == 'all') {
         for (var i in framehash) {
             var framename = i;
-            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="frame">' + framename + '</a></td><td>Frame</td>' + 
+            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="frame">' + framename + '</a></td><td>Frame</td>' +
                      monitorStatAgg('frame', framehash[i]) + '</tr>';
             table.append(row);
             for(var j in framehash[i]){
                 usedCec[framehash[i][j]] = 1;
             }
         }
-        
+
         for (var i in cechash) {
             if (usedCec[i]) {
                 continue;
             }
             var cecname = i;
-            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="cec">' + cecname + '</a></td><td>CEC</td>' + 
+            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="cec">' + cecname + '</a></td><td>CEC</td>' +
                      monitorStatAgg('cec', cechash[i]) + '</tr>';
             table.append(row);
         }
-        
+
         for (var i in bladehash) {
             var bladename = i;
-            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="blade">' + bladename + '</a></td><td>Blade</td>' + 
+            row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="blade">' + bladename + '</a></td><td>Blade</td>' +
                      monitorStatAgg('blade', bladehash[i]) + '</tr>';
             table.append(row);
         }
-        
+
         for (var i in rackhash) {
             var rackname = i;
             row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="rack">' + rackname + '</a></td><td>Rack</td>' +
                      monitorStatAgg('rack', rackhash[i]) + '</tr>';
             table.append(row);
         }
-        
+
         if (otherhash[1].length > 0) {
             row = '<tr><td><a href="#" onclick="addZoomDiv(this)" name="other">Other</a></td><td>Other</td>' +
                      monitorStatAgg('other', otherhash[1]) + '</tr>';
@@ -933,7 +933,7 @@ function drawGangliaNodesAreaTable(type, name) {
             table.append(row);
         }
     }
-    
+
     $('#gangliaNodes').append(table);
 }
 
@@ -947,7 +947,7 @@ function monitorStatAgg(type, inputarray) {
     var nuknownnum = 0;
     var tempArray;
     var tempname;
-    
+
     switch (type) {
         case 'blade':
         case 'cec':
@@ -970,7 +970,7 @@ function monitorStatAgg(type, inputarray) {
             return;
         break;
     }
-    
+
     for (var i in tempArray) {
         tempname = tempArray[i];
         switch(nodeStatus[tempname]) {
@@ -988,12 +988,12 @@ function monitorStatAgg(type, inputarray) {
             break;
         }
     }
-    
+
     normalnum = normalnum?normalnum:'-';
     warningnum = warningnum?warningnum:'-';
     errornum = errornum?errornum:'-';
     nuknownnum = nuknownnum?nuknownnum:'-';
-    
+
     return ('<td>' + normalnum + '</td><td>' + warningnum + '</td><td>' + errornum + '</td><td>' + nuknownnum + '</td>');
 }
 
@@ -1004,10 +1004,10 @@ function updateGangliaPage() {
     if ($('#gangliaNodes').size() < 1) {
         return;
     }
-    
+
     sendGridCurrentAjax();
     sendNodeCurrentAjax();
-    
+
     gangliaTimer = window.setTimeout('updateGangliaPage()', 60000);
 }
 
@@ -1021,7 +1021,7 @@ function updateZoom(obj) {
     }
     $(obj).removeClass('monitor-zoom-link');
     $(obj).unbind('click');
-    
+
     drawGangliaNodesArea();
 }
 
@@ -1031,16 +1031,16 @@ function updateZoom(obj) {
 function addZoomDiv(obj) {
     var name = $(obj).text();
     var type = $(obj).attr('name');
-    
+
     var lastzoomobj = $('#zoomDiv span:last');
     lastzoomobj.addClass('monitor-zoom-link');
     lastzoomobj.bind('click', function() {
         updateZoom(this);
     });
-    
+
     var newcontent = ' > ' + name + '(' + type.toUpperCase() + ')';
     var newli = '<span name="' + type + '">' + newcontent + '</span>';
     $('#zoomDiv').append(newli);
-    
+
     drawGangliaNodesArea();
 }

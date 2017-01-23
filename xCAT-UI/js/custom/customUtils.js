@@ -1,6 +1,6 @@
 /**
  * Create nodes datatable for a given group
- * 
+ *
  * @param group Group name
  * @param outId Division ID to append datatable
  * @return Nodes datatable
@@ -19,26 +19,26 @@ function createNodesDatatable(group, outId) {
 
         /**
          * Create nodes datatable
-         * 
+         *
          * @param data Data returned from HTTP request
          */
         success : function(data) {
             // Data returned
             var rsp = data.rsp;
-    
+
             // Get output ID
             var outId = data.msg;
             // Get datatable ID
             var dTableId = outId.replace('DIV', '');
-    
+
             // Node attributes hash
             var attrs = new Object();
             // Node attributes
             var headers = new Object();
-    
+
             // Clear nodes datatable division
             $('#' + outId).empty();
-    
+
             // Create nodes datatable
             var node = null;
             var args;
@@ -48,22 +48,22 @@ function createNodesDatatable(group, outId) {
                 if (pos > -1) {
                     var temp = rsp[i].split(': ');
                     node = jQuery.trim(temp[1]);
-    
+
                     // Create a hash for the node attributes
                     attrs[node] = new Object();
                     i++;
                 }
-    
+
                 // Get key and value
                 args = rsp[i].split('=');
                 var key = jQuery.trim(args[0]);
                 var val = jQuery.trim(args[1]);
-    
+
                 // Create hash table
                 attrs[node][key] = val;
                 headers[key] = 1;
             }
-    
+
             // Sort headers
             var sorted = new Array();
             for ( var key in headers) {
@@ -73,14 +73,14 @@ function createNodesDatatable(group, outId) {
             	}
             }
             sorted.sort();
-    
+
             // Add column for check box and node
             sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node');
-    
+
             // Create nodes datatable
             var dTable = new DataTable(dTableId);
             dTable.init(sorted);
-    
+
             // Go through each node
             for ( var node in attrs) {
                 // Create a row
@@ -88,7 +88,7 @@ function createNodesDatatable(group, outId) {
                 // Create a check box
                 var checkBx = '<input type="checkbox" name="' + node + '"/>';
                 row.push(checkBx, node);
-    
+
                 // Go through each header
                 for ( var i = 2; i < sorted.length; i++) {
                     // Add node attributes to the row
@@ -100,11 +100,11 @@ function createNodesDatatable(group, outId) {
                         row.push('');
                     }
                 }
-    
+
                 // Add row to table
                 dTable.add(row);
             }
-    
+
             $('#' + outId).append(dTable.object());
             $('#' + dTableId).dataTable({
             	'iDisplayLength': 50,
@@ -120,7 +120,7 @@ function createNodesDatatable(group, outId) {
                     }
                 }
             });
-            
+
             // Fix table styling
             $('#' + dTableId + '_wrapper .dataTables_filter label').css('width', '250px');
         } // End of function(data)
@@ -129,7 +129,7 @@ function createNodesDatatable(group, outId) {
 
 /**
  * Create provision existing node division
- * 
+ *
  * @param plugin Plugin name to create division for
  * @param inst Provision tab instance
  * @return Provision existing node division
@@ -145,7 +145,7 @@ function createProvisionExisting(plugin, inst) {
 
     // Turn on auto complete for group
     var dTableDivId = plugin + 'NodesDatatableDIV' + inst;    // Division ID where nodes datatable will be appended
-    var groupNames = $.cookie('groups');
+    var groupNames = $.cookie('xcat_groups');
     if (groupNames) {
         // Split group names into an array
         var tmp = groupNames.split(',');
@@ -215,7 +215,7 @@ function createProvisionExisting(plugin, inst) {
     var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
-        var tmp = $.cookie('osvers');        
+        var tmp = $.cookie('xcat_osvers');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -232,7 +232,7 @@ function createProvisionExisting(plugin, inst) {
     var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
-        var tmp = $.cookie('osarchs');
+        var tmp = $.cookie('xcat_osarchs');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -249,7 +249,7 @@ function createProvisionExisting(plugin, inst) {
     var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
-        var tmp = $.cookie('profiles');
+        var tmp = $.cookie('xcat_profiles');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -276,7 +276,7 @@ function createProvisionExisting(plugin, inst) {
 
 /**
  * Create provision new node division
- * 
+ *
  * @param inst Provision tab instance
  * @return Provision new node division
  */
@@ -293,7 +293,7 @@ function createProvisionNew(plugin, inst) {
     var groupLabel = $('<label>Group:</label>');
     var groupInput = $('<input type="text" name="group"/>');
     groupInput.one('focus', function() {
-        var groupNames = $.cookie('groups');
+        var groupNames = $.cookie('xcat_groups');
         if (groupNames) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -336,7 +336,7 @@ function createProvisionNew(plugin, inst) {
     var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
-        var tmp = $.cookie('osvers');
+        var tmp = $.cookie('xcat_osvers');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -353,7 +353,7 @@ function createProvisionNew(plugin, inst) {
     var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
-        var tmp = $.cookie('osarchs');
+        var tmp = $.cookie('xcat_osarchs');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -370,7 +370,7 @@ function createProvisionNew(plugin, inst) {
     var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
-        var tmp = $.cookie('profiles');
+        var tmp = $.cookie('xcat_profiles');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -397,31 +397,31 @@ function createProvisionNew(plugin, inst) {
 
 /**
  * Create section to provision node
- * 
+ *
  * @param plugin Plugin name
  * @param container Container to hold provision section
  */
 function appendProvisionSection(plugin, container) {
     // Get provision tab ID
     var tabId = container.parents('.tab').attr('id');
-    
-    if (plugin == 'quick')        
+
+    if (plugin == 'quick')
         appendProvision4Url(container); // For provisioning based on argmunents found in URL
     else
         appendProvision4NoUrl(plugin, container);
-        
+
     // Add provision button
     var provisionBtn = createButton('Provision');
     provisionBtn.bind('click', function(){
         provisionNode(tabId);
     });
     container.append(provisionBtn);
-    
+
     // Bind image select to change event
     container.find('select[name=image]').bind('change', function() {
         createAdvancedOptions($(this).val(), tabId);
     });
-    
+
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -441,15 +441,15 @@ function appendProvisionSection(plugin, container) {
                 $('#' + tabId).prepend(createWarnBar('Please run copycds and genimage in provision page before continuing!'));
                 return;
             }
-            
+
             for (i in data.rsp) {
                 imageName = data.rsp[i];
                 position = imageName.indexOf(' ');
                 imageName = imageName.substr(0, position);
-                
+
                 $('#' + tabId + ' select[name=image]').append($('<option value="' + imageName + '">' + imageName + '</option>'));
             }
-            
+
             // Trigger select change event
             $('#' + tabId + ' select[name=image]').trigger('change');
             // Show provision button
@@ -460,102 +460,102 @@ function appendProvisionSection(plugin, container) {
 
 /**
  * Create provision node section using URL
- * 
+ *
  * @param container Container to hold provision section
  * @returns Nothing
  */
-function appendProvision4Url(container){    
+function appendProvision4Url(container){
     // Create node fieldset
     var nodeFS = $('<fieldset></fieldset>');
     var nodeLegend = $('<legend>Node</legend>');
     nodeFS.append(nodeLegend);
     container.append(nodeFS);
-    
+
     var nodeAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
     nodeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     nodeFS.append(nodeAttr);
-    
+
     // Create image fieldset
     var imgFS = $('<fieldset></fieldset>');
     var imgLegend = $('<legend>Image</legend>');
     imgFS.append(imgLegend);
     container.append(imgFS);
-    
+
     var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
     imgFS.append(imgAttr);
-    
+
     var query = window.location.search;
     var args = query.substr(1).split('&');
     var parms = new Object();
     var tmp;
-    
+
     // Turn URL arguments into hash array
     for (var i = 0; i < args.length; i++) {
         tmp = args[i].split('=');
         parms[tmp[0]] = tmp[1];
     }
-    
+
     var master = '';
     if (parms['master'])
         master = parms['master'];
-    
+
     var nfsserver = '';
     if (parms['nfsserver'])
         nfsserver = parms['nfsserver'];
-    
+
     var tftpserver = '';
     if (parms['tftpserver'])
         tftpserver = parms['tftpserver'];
-    
+
     nodeAttr.append('<div><label>Node:</label><input type="text" disabled="disabled" name="node" value="' + parms['nodes'] + '"></div>');
-    
+
     imgAttr.append('<div><label>Architecture:</label><input type="text" disabled="disabled" name="arch" value="' + parms['arch'] + '"></div>');
     imgAttr.append('<div><label>Image name:</label><select name="image"></select></div>');
     imgAttr.append( '<div><label>Install NIC:</label><input type="text" name="installNic"/></div>');
-    imgAttr.append('<div><label>Primary NIC:</label><input type="text" name="primaryNic"/></div>');   
+    imgAttr.append('<div><label>Primary NIC:</label><input type="text" name="primaryNic"/></div>');
     imgAttr.append('<div><label>xCAT master:</label><input type="text" name="xcatMaster" value="' + master + '"></div>');
     imgAttr.append('<div><label>TFTP server:</label><input type="text" name="tftpServer" value="' + tftpserver + '"></div>');
     imgAttr.append('<div><label>NFS server:</label><input type="text" name="nfsServer" value="' + nfsserver + '"></div>');
-    
+
     return;
 }
 
 /**
  * Create section to provision node using no URL
- * 
+ *
  * @param plugin Create provision section for given plugin
  * @param container Container to hold provision section
  */
 function appendProvision4NoUrl(plugin, container){
     // Get provision tab ID
     var tabId = container.parents('.tab').attr('id');
-    
+
     // Create node fieldset
     var nodeFS = $('<fieldset></fieldset>');
     var nodeLegend = $('<legend>Node</legend>');
     nodeFS.append(nodeLegend);
     container.append(nodeFS);
-    
+
     var nodeAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
     nodeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     nodeFS.append(nodeAttr);
-    
+
     // Create image fieldset
     var imgFS = $('<fieldset></fieldset>');
     var imgLegend = $('<legend>Image</legend>');
     imgFS.append(imgLegend);
     container.append(imgFS);
-    
+
     var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
     imgFS.append(imgAttr);
-    
+
     // Select group name
     var group = $('<div></div>').append('<label>Group:</label>');
     var groupSelect = $('<select name="group"></select>');
     group.append(groupSelect);
-    var groupNames = $.cookie('groups');
+    var groupNames = $.cookie('xcat_groups');
     if (groupNames) {
         var tmp = groupNames.split(',');
         groupSelect.append('<option value=""></option>'); // Append empty group name
@@ -569,14 +569,14 @@ function appendProvision4NoUrl(plugin, container){
     var nodesTable = $('<div id="nodesTable" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
     nodes.append(nodesTable);
     nodeAttr.append(nodes);
-    
+
     // Select architecture
-    var arch = $('<div></div>').append('<label>Architecture:</label>');    
-    var archName = $.cookie('osarchs');
+    var arch = $('<div></div>').append('<label>Architecture:</label>');
+    var archName = $.cookie('xcat_osarchs');
     if (archName) {
         var archSelect = $('<select name="arch"></select>');
         arch.append(archSelect);
-        
+
         var tmp = archName.split(',');
         for (var i in tmp)
             archSelect.append('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
@@ -591,30 +591,30 @@ function appendProvision4NoUrl(plugin, container){
     imgAttr.append('<div><label>xCAT master:</label><input type="text" name="xcatMaster"/></div>');
     imgAttr.append('<div><label>TFTP server:</label><input type="text" name="tftpServer"/></div>');
     imgAttr.append('<div><label>NFS server:</label><input type="text" name=nfsServer"/></div>');
-    
+
     // When a group is selected, show the nodes belonging to that group
     groupSelect.bind('change', function() {
         var nodesTableId = '#' + tabId + ' #nodesTable';
         $(nodesTableId).append(createLoader());
         createNodesTable($(this).val(), nodesTableId);
     });
-    
+
     return;
 }
 
 /**
  * Provision node
- * 
+ *
  * @param tabId Provision tab ID
  */
 function provisionNode(tabId) {
     var errorMessage = "";
     var args = new Array();
     var node = "";
-    
+
     // Delete any existing warnings
     $('#' + tabId + ' .ui-state-error').remove();
-    
+
     // Go through each input
     $('#' + tabId + ' input[type!="checkbox"]').each(function() {
         if (!$(this).val()) {
@@ -624,13 +624,13 @@ function provisionNode(tabId) {
             args.push($(this).val());
         }
     });
-    
+
     // Do not continue if error was found
     if (errorMessage) {
         $('#' + tabId).prepend(createWarnBar(errorMessage));
         return;
     }
-    
+
     // If jumped from nodes page, get node name
     if (tabId == 'quick') {
         node = args.shift();
@@ -639,25 +639,25 @@ function provisionNode(tabId) {
         args.unshift($('#' + tabId + ' input[name=arch]').val());
         node = getCheckedByObj($('#' + tabId + ' #nodesTable'));
     }
-    
+
     // Do not continue if a node is not given
     if (!node) {
         $('#' + tabId).prepend(createWarnBar('Please select a node!'));
         return;
     }
-    
+
     var software = getCheckedByObj($('#' + tabId + ' #advanced'));
     var imageName = $('#' + tabId + ' select[name=image]').val();
     var provision = args.join(',');
-    
-    var url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + 
+
+    var url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' +
         node + ';' + imageName + ';' + provision + ';' + software + '&msg=&opts=flush';
     $('#' + tabId).prepend(createIFrame(url));
 }
 
 /**
  * Create advance option
- * 
+ *
  * @param image Image name
  * @param outId Output area ID
  */
@@ -678,29 +678,29 @@ function createAdvancedOptions(image, outId) {
             var provMethod = '';
             var tmpStr = '';
             var position = 0;
-            
+
             for (var i = 0; i < data.rsp.length; i++) {
                 tmpStr = data.rsp[i];
                 if (tmpStr.indexOf('osname') != -1) {
                     position = tmpStr.indexOf('=');
                     osName = tmpStr.substr(position + 1);
                 }
-                
+
                 if (tmpStr.indexOf('provmethod') != -1) {
                     position = tmpStr.indexOf('=');
                     provMethod = tmpStr.substr(position + 1);
                 }
             }
-            
+
             $('#' + outId + ' #advanced').remove();
             if (osName.toLowerCase() == 'aix')
                 return;
-            
+
             if (provMethod == 'install') {
                 // Create advanced fieldset
                 var advancedFS = $('<fieldset id="advanced"></fieldset>').append($('<legend>Advanced</legend>'));
                 $('#' + outId + ' div.form fieldset:eq(1)').after(advancedFS);
-                 
+
                 advancedFS.append('<div><input type="checkbox" checked="checked" name="ganglia">Install Ganglia monitoring</div>');
             }
         }
@@ -709,11 +709,11 @@ function createAdvancedOptions(image, outId) {
 
 /**
  * Create nodes table
- * 
+ *
  * @param group Group name
  * @param outId Output section ID
  */
-function createNodesTable(group, outId) {    
+function createNodesTable(group, outId) {
     // Get group nodes
     $.ajax({
         url : 'lib/cmd.php',
@@ -728,26 +728,26 @@ function createNodesTable(group, outId) {
         success : function(data) {
             var outId = $(data.msg);
             var nodes = data.rsp;
-            
+
             // Create table to hold nodes
             var nTable = $('<table></table>');
             var tHead = $('<thead class="ui-widget-header"> <th><input type="checkbox" onclick="selectAll4Table(event, $(this))"></th> <th>Node</th> </thead>');
             nTable.append(tHead);
             var tBody = $('<tbody></tbody>');
             nTable.append(tBody);
-            
+
             for (var i in nodes) {
                 var node = nodes[i][0];
-                
+
                 // Go to next node if there is nothing here
                 if (!node)
                     continue;
                 // Insert node into table
                 tBody.append('<tr><td><input type="checkbox" name="' + node + '"/></td><td>' + node + '</td></tr>');
             }
-            
+
             outId.empty().append(nTable);
-            
+
             if (nodes.length > 10)
                 outId.css('height', '300px');
             else
@@ -758,13 +758,13 @@ function createNodesTable(group, outId) {
 
 /**
  * Get select element names
- * 
+ *
  * @param obj Object to get selected element names
  * @return Nodes name seperate by a comma
  */
 function getCheckedByObj(obj) {
     var str = '';
-    
+
     // Get nodes that were checked
     obj.find('input:checked').each(function() {
         if ($(this).attr('name')) {
@@ -781,7 +781,7 @@ function getCheckedByObj(obj) {
 
 /**
  * Select all checkboxes in the table
- * 
+ *
  * @param event Event on element
  * @param obj Object triggering event
  */

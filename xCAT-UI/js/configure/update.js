@@ -39,7 +39,7 @@ function loadUpdatePage() {
 
 /**
  * Show the RPM repository (it can use the user's last choice and input)
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function showRepository(data) {
@@ -61,7 +61,7 @@ function showRepository(data) {
 
     // Display the Devel Repository, remember user's last selection
     show = show + "<li><input type='radio' ";
-    if ($.cookie('xcatrepository') == 1) {
+    if ($.cookie('xcat_repository') == 1) {
         show = show + "checked='true'";
     }
     show = show + "name='reporadio' value='" + develRepository + "'>";
@@ -70,7 +70,7 @@ function showRepository(data) {
 
     // Display the Stable Repository, remember user's last selection
     show = "<li><input type='radio' ";
-    if ($.cookie('xcatrepository') == 2) {
+    if ($.cookie('xcat_repository') == 2) {
         show = show + "checked='true'";
     }
     show = show + "name='reporadio' value='" + stableRepository + "' checked='true'>";
@@ -78,23 +78,23 @@ function showRepository(data) {
     repoList.append(show);
 
     // Display the Input Repository, remember user's last selection
-    if (($.cookie('xcatrepository')) && ($.cookie('xcatrepository') != 1)
-            && ($.cookie('xcatrepository') != 2)) {
+    if (($.cookie('xcat_repository')) && ($.cookie('xcat_repository') != 1)
+            && ($.cookie('xcat_repository') != 2)) {
         show = "<li><input type='radio' checked='true' name='reporadio' value=''>Other: ";
         show += "<input style='width: 500px' id='repositoryaddr' value='"
-                + $.cookie('xcatrepository') + "'</li>";
+                + $.cookie('xcat_repository') + "'</li>";
     } else {
         show = "<li><input type='radio' name='reporadio' value=''>Other: ";
         show += "<input style='width: 500px' id='repositoryaddr' value=''</li>";
     }
     repoList.append(show);
-    
+
     $('#repository fieldset').append(repoList);
 }
 
 /**
  * Show all xCAT RPMs
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function showRpmInfo(data) {
@@ -109,7 +109,7 @@ function showRpmInfo(data) {
     }
 
     rpms = data.rsp.split(/\n/);
-    
+
     // No rpm installed, return
     if (1 > rpms.length) {
         $('#rpm fieldset').append("No RPMs installed!");
@@ -201,7 +201,7 @@ function updateRpm() {
         if (pattern.test(rpms)) {
             return true;
         }
-        
+
         rpms = rpms + temp + ",";
     });
 
@@ -227,8 +227,9 @@ function updateRpm() {
     }
 
     // Remember users' choice and input
-    $.cookie('xcatrepository', rpmPathType, {
+    $.cookie('xcat_repository', rpmPathType, {
         path : '/xcat',
+        secure : true,
         expires : 10
     });
 
@@ -255,7 +256,7 @@ function updateRpm() {
 
 /**
  * Show the results of the RPM update
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function showUpdateResult(data) {
