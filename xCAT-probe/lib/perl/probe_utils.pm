@@ -550,4 +550,52 @@ sub is_ntp_ready{
     return 0;
 }
 
+#------------------------------------------
+
+=head3
+    Description:
+        Convert second to time
+    Arguments:
+        second_in : the time in seconds
+    Returns:
+        xx:xx:xx xx hours xx minutes xx seconds
+=cut
+
+#------------------------------------------
+sub convert_second_to_time {
+    my $second_in = shift;
+    $second_in = shift if (($second_in) && ($second_in =~ /probe_utils/));
+    my @time = ();
+    my $result;
+
+    if ($second_in == 0) {
+        return "00:00:00";
+    }
+
+    my $count = 0;
+    while ($count < 3) {
+        my $tmp_second;
+        if ($count == 2) {
+            $tmp_second = $second_in % 100;
+        } else {
+            $tmp_second = $second_in % 60;
+        }
+        if ($tmp_second == 0) {
+            push @time, "00";
+        } elsif ($tmp_second < 10) {
+            push @time,  "0" . "$tmp_second";
+        } else {
+            push @time, "$tmp_second";
+        }
+
+        $second_in = ($second_in - $tmp_second) / 60;
+        $count++;
+    }
+
+    my @time_result = reverse @time;
+    $result = join(":", @time_result);
+
+    return $result;
+}
+
 1;
