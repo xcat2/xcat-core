@@ -87,7 +87,7 @@ function loadNodesetPage(tgtNodes) {
     var osSelect = $('<select name="os" title="The operating system image to be installed on this node"></select>');
     osSelect.append($('<option value=""></option>'));
 
-    var imageNames = $.cookie('imagenames').split(',');
+    var imageNames = $.cookie('xcat_imagenames').split(',');
     if (imageNames) {
         imageNames.sort();
         for (var i in imageNames) {

@@ -166,7 +166,7 @@ zvmPlugin.prototype.loadServiceProvisionPage = function(tabId) {
     loadGoldenImages(imgCol);
 
     // Get zVM host names
-    if (!$.cookie('zvms')){
+    if (!$.cookie('xcat_zvms')){
         $.ajax( {
             url : 'lib/srv_cmd.php',
             dataType : 'json',
@@ -669,7 +669,7 @@ zvmPlugin.prototype.loadClonePage = function(node, nodeOS, nodeArch) {
         var groupLabel = $('<label>Group:</label>');
         var groupInput = $('<input type="text" id="newGroup" name="newGroup" title="You must give the group where the new node(s) will be placed under."/>');
         groupInput.one('focus', function(){
-            var groupNames = $.cookie('groups');
+            var groupNames = $.cookie('xcat_groups');
             if (groupNames) {
                 // Turn on auto complete
                 $(this).autocomplete({
@@ -704,7 +704,7 @@ zvmPlugin.prototype.loadClonePage = function(node, nodeOS, nodeArch) {
         }
         // Get list of disk pools
         var temp = hcp.split('.');
-        var diskPools = $.cookie(temp[0] + 'diskpools');
+        var diskPools = $.cookie('xcat_' + temp[0] + 'diskpools');
 
         // Create disk pool input
         var poolDiv = $('<div></div>');
@@ -992,7 +992,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Get node
     var node = args[1].replace('node=', '');
     // Clear any existing cookie
-    $.cookie(node + 'processes', null);
+    $.cookie('xcat_' + node + 'processes', null, {path: '/xcat', secure:true });
 
     // Remove loader
     $('#' + tabId).find('img').remove();
@@ -1127,7 +1127,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     // Start off an ajax request to save the zhcp node name
     // in a cookie for possible later use by addNic dialog
     var hcpHostname = attrs['hcp'];
-    if (!$.cookie(node+'_hcpnodename')){
+    if (!$.cookie('xcat_' + node+'_hcpnodename')){
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -2310,7 +2310,7 @@ zvmPlugin.prototype.addNode = function() {
  * @param tgtNode  Targets to migrate
  */
 zvmPlugin.prototype.loadMigratePage = function(tgtNode, fromhcp) {
-    var hosts = $.cookie('zvms').split(',');
+    var hosts = $.cookie('xcat_zvms').split(',');
     var radio, zvmBlock, args;
     var zvms = new Array();
     var hcp = new Object();

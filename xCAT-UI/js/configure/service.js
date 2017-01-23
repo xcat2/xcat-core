@@ -60,7 +60,7 @@ function loadServicePage(tabId) {
                 title = 'z/VM';
 
                 // Get zVM host names
-                if (!$.cookie('zvms')){
+                if (!$.cookie('xcat_zvms')){
                     $.ajax( {
                         url : 'lib/cmd.php',
                         dataType : 'json',
