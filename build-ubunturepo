@@ -183,6 +183,9 @@ then
         ver=`cat Version`
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
+        build_time=`date`
+        build_machine=`hostname`
+        commit_id=`git rev-parse --short HEAD`
 
         package_dir_name=debs$REL
         #TODO: define the core path and tarball name
@@ -199,10 +202,9 @@ then
 
         #the package type:  local | snap | alpha
         #the build introduce stirng
-        pkg_type="snap"
         build_string="Snap_Build"
-        cur_date=`date +%Y%m%d%H%M`
-        pkg_version="${ver}-${pkg_type}${cur_date}"
+        xcat_release="snap$(date '+%Y%m%d%H%M')"
+        pkg_version="${ver}-${xcat_release}"
 
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
@@ -368,6 +370,16 @@ echo deb [arch=$host_arch] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sour
 __EOF__
 
     chmod 775 mklocalrepo.sh
+
+    #
+    # Add a buildinfo file under xcat-core to track information about the build
+    #
+    buildinfo=$local_core_repo_path/buildinfo
+    echo "VERSION=$ver" > $buildinfo
+    echo "RELEASE=$xcat_release" >> $buildinfo
+    echo "BUILD_TIME=$build_time" >> $buildinfo
+    echo "BUILD_MACHINE=$build_machine" >> $buildinfo
+    echo "COMMIT_ID=$commit_id" >> $buildinfo
 
     #create the xcat-core.list file
 
