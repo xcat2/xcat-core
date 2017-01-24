@@ -980,8 +980,8 @@ sub fork_fanout_dsh
       = @_;
 
     #get username and passeword for switches 
-    if (($$options{'devicetype'} =~ /EthSwitch/) {
-        ($$options{'devicetype'} =~ /IBSwitch/) ){
+    if (($$options{'devicetype'} =~ /EthSwitch/) || 
+        (($$options{'devicetype'} =~ /IBSwitch/) && !($$options{'user'})) ){
         if (@$targets_waiting > 0) {
             if ($ENV{'DSH_REMOTE_PASSWORD'}) {
                 foreach my $t (keys(%$resolved_targets)) {
