@@ -22,7 +22,6 @@
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in
 #                            prep for a release.
-#               UP=0 or UP=1 - override the default upload behavior
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
 # For the dependency packages 1. All the xcat dependency deb packages should be uploaded to
@@ -96,13 +95,6 @@ if [ -z "$c_flag" -a -z "$d_flag" ];then
     exit 2
 fi
 
-USER="xcat"
-SERVER="xcat.org"
-FILES_PATH="files"
-FRS="/var/www/${SERVER}/${FILES_PATH}"
-APT_DIR="${FRS}/xcat"
-APT_REPO_DIR="${APT_DIR}/repos/apt"
-
 if [ "$c_flag" -a "$d_flag" ];then
     printusage
     exit 2
@@ -118,7 +110,7 @@ curdir=`pwd`
 local_core_repo_path="$curdir/../../xcat-core"
 local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
 
-#use flock to only one person build at the same time
+# Use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
 exec 8>/var/lock/xcatbld.lock
 if ! flock -n 8; then
@@ -201,7 +193,7 @@ then
         echo "###############################"
 
         #the package type:  local | snap | alpha
-        #the build introduce stirng
+        #the build introduce string
         build_string="Snap_Build"
         xcat_release="snap$(date '+%Y%m%d%H%M')"
         pkg_version="${ver}-${xcat_release}"
@@ -223,8 +215,6 @@ then
             do
                 if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
                     rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
-                    #genesis scripts package, don't remove genesis amd64 files
-                    #rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
                     cd $file
                     CURDIR=$(pwd)
                     dch -v $pkg_version -b -c debian/changelog $build_string
@@ -505,33 +495,5 @@ __EOF__
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
-    # Decide whether to upload or not (default NOT to upload)
-    if [ "$UP" != "1" ]; then
-        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
-        cd $old_pwd
-        exit 0
-    fi
-
-    #upload the dep packages
-    i=0
-    echo "Uploading debs from xcat-dep to ${APT_REPO_DIR}/xcat-dep/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep $USER@${SERVER}:${APT_REPO_DIR}/
-    do : ; done
-
-    #upload the tarball
-    i=0
-    echo "Uploading $dep_tar_name to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
-    do : ; done
-
-    #upload the README file
-    cd debs
-    i=0
-    echo "Uploading README to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
-    do : ; done
-
-    cd $old_pwd
-    exit 0
 fi
 exit 0
