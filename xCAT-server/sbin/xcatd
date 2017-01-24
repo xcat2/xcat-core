@@ -29,7 +29,7 @@ my $sslctl;
 my $udpctl;
 my $pid_UDP;
 my $pid_MON;
-
+my $pid_queueworker;
 # ----used for command log start---------
 my $cmdlog_svrpid;
 
@@ -60,6 +60,8 @@ use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
 use Fcntl qw/:DEFAULT :flock/;
+use IPC::SysV qw(IPC_PRIVATE S_IRWXU S_IRWXG S_IRWXO IPC_CREAT IPC_NOWAIT);
+use IPC::Msg;
 use xCAT::Client qw(submit_request);
 my $clientselect  = new IO::Select;
 my $sslclients    = 0;                # THROTTLE
@@ -140,6 +142,9 @@ use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
 my $foreground;
+#the file which identifies message queue
+my $mqfile="/var/run/xcat/xcatd.mq";
+
 GetOptions(
     'pidfile|p=s'  => \$pidfile,
     'foreground|f' => \$foreground
@@ -314,12 +319,34 @@ sub do_installm_service {
     my $socket;
     my $installpidfile;
     my $retry = 1;
+
+    my $mqkey = IPC::SysV::ftok($mqfile,'1');
+    my $mq = new IPC::Msg($mqkey,0666);
+    unless($mq){
+        xCAT::MsgUtils->message("S","failed to open message queue $mqkey: $!");
+        xexit(1);
+    }
+    my $mqid=$mq->id();
+    xCAT::MsgUtils->message("S","message queue $mqid opened!");
+
     $SIG{USR2} = sub {
+        if ($pid_queueworker) {
+            kill 'INT', $pid_queueworker;
+        }        
+        if ($mq)    { $mq->remove();unlink $mqfile; }
         if ($socket) { # do not mess with pid file except when we still have the socket.
             unlink("/var/run/xcat/installservice.pid"); close($socket); $quit = 1;
             $udpctl = 0;
             xCAT::MsgUtils->message("S", "xcatd install monitor $$ quiescing");
         }
+    };
+
+
+    $SIG{INT} = $SIG{TERM} = sub {
+        if ($pid_queueworker) {
+            kill 'INT', $pid_queueworker;
+        }
+        if ($mq)    { $mq->remove(); unlink $mqfile; }
     };
     if ($inet6support) {
         $socket = IO::Socket::INET6->new(LocalPort => $sport,
@@ -371,7 +398,9 @@ sub do_installm_service {
         $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "XCATTIMEOUT"); die; };
         my $conn;
         next unless $conn = $socket->accept;
-
+        my $myaddr = inet_ntoa($conn->peeraddr);
+        xCAT::MsgUtils->message("S", "xcatd received a connection request from $myaddr");
+        print "xcatd received a connection request from $myaddr\n";
         # check if a rescanplugins request has come in
         my @rescans;
         if (@rescans = $rescanrselect->can_read(0)) {
@@ -395,7 +424,6 @@ sub do_installm_service {
             ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
         unless ($client_name) {
-            my $myaddr = inet_ntoa($conn->peeraddr);
             xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
         }
@@ -462,22 +490,16 @@ sub do_installm_service {
                     close($conn);
                 } elsif ($text =~ /installstatus/) {
                     my @tmpa = split(' ', $text);
+                    my $newstat;
                     for (my $i = 1 ; $i <= @tmpa - 1 ; $i++) {
-                        my $newstat = $tmpa[$i];
-                        my %request = (
-                            command => ['updatenodestat'],
-                            node    => [$node],
-                            arg     => ["$newstat"],
-                        );
-
-                        # node should be blocked, race condition may occur otherwise
-                        #my $pid=xCAT::Utils->xfork();
-                        #unless ($pid) { # fork off the nodeset and potential slowness
-                        plugin_command(\%request, undef, \&build_response);
-
-                        #exit(0);
-                        #}
+                        $newstat = $tmpa[$i];
                     }
+                    my $message="updatenodestat $node $newstat";
+                    #send request message to the message queue
+                    #queue worker process will take care of it
+                    print "do_installm_service $$: send message $message to message queue $mqid\n";
+                    xCAT::MsgUtils->message("S","do_installm_service $$: send message $message to message queue $mqid");
+                    $mq->snd(1, $message, IPC_NOWAIT) or xCAT::MsgUtils->message("S","fail to send message $message to message queue $mqid: $!");      
                     close($conn);
                 } elsif ($text =~ /^unlocktftpdir/) { # TODO: only nodes in install state should be allowed
                     mkpath("$tftpdir/xcat/$node");
@@ -568,6 +590,45 @@ sub do_installm_service {
     }
 }
 
+#get message from the message queue
+#process the command according to the message
+sub do_queue_worker{
+    my $mqkey = IPC::SysV::ftok($mqfile,'1');
+    my $mq = new IPC::Msg($mqkey,0666);
+    unless($mq){
+        xCAT::MsgUtils->message("S","failed to open message queue $mqkey: $!");
+        xexit(1);
+    }
+    my $mqid=$mq->id();
+
+    xCAT::MsgUtils->message("S","message queue $mqid opened!");
+
+    $SIG{TERM} = $SIG{INT} = $SIG{USR2} = sub {
+        xCAT::MsgUtils->message("S", "INFO xcatd: 'Queue worker' process $$ is terminated by TERM or INT or USR2 signal");
+        xexit(0);
+    };
+
+    my $msgbuf;
+    while(1){
+        $msgbuf="";
+        $mq->rcv($msgbuf, 128);
+        if(-z "$msgbuf"){ next; }
+        print "queue worker: got message $msgbuf from mesage queue $mqid\n";
+        xCAT::MsgUtils->message("S","queue worker: got message $msgbuf from message queue $mqid\n");
+        my($cmd,$node,$msg)=split(/ /,$msgbuf);
+        #update the node status with "updatenodestat" request
+        if($cmd eq "updatenodestat"){
+            my %request = (
+                command => ['updatenodestat'],
+                node    => [$node],
+                arg     => ["$msg"],
+            );
+            plugin_command(\%request, undef, \&build_response);
+        }
+    }
+    $mq->remove();
+    unlink $mqfile;
+}
 
 sub grant_tcrequests {
     my $requestors     = shift;
@@ -683,9 +744,7 @@ sub do_udp_service {    # This function opens up a UDP port
     my $socket;
     my $discopid = $args{discopid};
     $SIG{USR2} = sub {
-
         if ($socket) {
-
             # only clear out pid file when we still have socket.
             unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit = 1; $socket = 0;
             $udpctl = 0;
@@ -1018,6 +1077,7 @@ $SIG{TERM} = $SIG{INT} = sub {
     }
     xCAT::Table::shut_dbworker;
 
+
     # ----used for command log start---------
     if ($cmdlog_svrpid) {
         kill 'INT', $cmdlog_svrpid;
@@ -1080,6 +1140,7 @@ if (!(socketpair($rescanreadpipe, $rescanwritepipe, AF_UNIX, SOCK_STREAM, PF_UNS
 }
 $rescanrselect = new IO::Select;
 $rescanrselect->add($rescanreadpipe);
+
 $pid_MON = xCAT::Utils->xfork;
 if (!defined $pid_MON) {
     xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
@@ -1088,9 +1149,40 @@ if (!defined $pid_MON) {
 unless ($pid_MON) {
     $$progname = "xcatd: install monitor";
     close($udpctl); $udpctl = 0;
+
+    #create the message queue 
+    #the queueworker process will fetch message from it and  update node status in DB
+    xCAT::Utils->touch($mqfile);
+    my $mqkey = IPC::SysV::ftok($mqfile,'1');
+    my $mq = new IPC::Msg($mqkey, 0666);
+    defined($mq) && $mq->remove();
+    $mq = new IPC::Msg($mqkey, 0666 | IPC_CREAT);
+    unless($mq) {
+        xCAT::MsgUtils->message("S","failed to create message queue: $!");
+        xexit 1;
+    }
+    my $mqid = $mq->id();
+    print "message queue $mqid created! \n";
+    xCAT::MsgUtils->message("S","message queue $mqid created!");
+
+    #worker process to process the request msg from the message queue
+    $pid_queueworker=xCAT::Utils->xfork;
+    if (!defined $pid_queueworker) {
+        print "unable to fork queue worker, abort to start install monitor\n";
+        xCAT::MsgUtils->message("S", "Unable to fork queue worker, abort to start install monitor");
+        die; 
+    }
+    
+    unless($pid_queueworker){
+       $$progname="xcatd: queue worker";
+       do_queue_worker;
+       xexit(0);
+    }
+
     do_installm_service;
     xexit(0);
 }
+
 
 # ----used for command log start---------
 $cmdlog_svrpid = xCAT::Utils->xfork;
@@ -1530,7 +1622,7 @@ if (open($mainpidfile, "<", "/var/run/xcat/mainservice.pid")) {
 }
 if ($listener) { $listener->close; }
 my $lastpid;
-while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON) {
+while (keys %immediatechildren || $pid_UDP || $cmdlog_svrpid || $pid_MON  ) {
     $lastpid = wait();
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
@@ -2698,7 +2790,6 @@ sub service_connection {
             $cmdlog_alllog .= "\n[Response]\n";
 
             # ----used for command log end----------
-
             {    # TODO: find closing brace..
                  # first change peername on 'becomeuser' tag if present and valid
                 if (defined $req->{becomeuser}) {
