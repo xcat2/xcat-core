@@ -6,10 +6,10 @@
 #
 #
 # Getting Started:
-#  - Clone the xcat-core git repository int a directory called <rel>/src/xcat-core, where <rel>
-#    is the same name as the release dir it is uploaded to xcat.org (e.g devel, 2.9, 2.10)
+#  - Clone the xcat-core git repository under a directory named "xcat-core/src"
 #  - make sure reprepro is installed on the build machine
-#  - Run this script from the local git repository you just created.  It will create the other directories that are needed.
+#  - Run this script from the local git repository you just created.  
+#       ./build-ubunturepo -c BUILDALL=1
 
 # Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
 #               PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
@@ -146,47 +146,39 @@ done
 
 if [ "$c_flag" ]
 then
-    # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
+    # 
+    # The format of the directory for Ubuntu builds needs to be "xcat-core/src/xcat-core" so 
+    # that the output build files are created under "xcat-core". 
+    # TODO: This should be fixed in the future....
+    #
     if [ -z "$REL" ]; then
         t=${curdir%/src/xcat-core}
         REL=`basename $t`
     fi
+    if [ "$REL" != "xcat-core" ]; then
+        echo "ERROR: REL='$REL'needs to be 'xcat-core'.  Ensure the path is 'xcat-core/src/xcat-core'"
+        exit 1
+    fi
 
-    ver=`cat Version`
     if [ "$PROMOTE" != 1 ]; then
         code_change=0
         update_log=''
-        #get the version
-        if [ "$REL" = "xcat-core" ];then
-            git_flag=1
-            REL=`git rev-parse --abbrev-ref HEAD`
-            if [ "$REL" = "master" ]; then
-                REL="devel"
-            fi
-            if [ -z "$GITUP" ];then
-                update_log=../coregitup
-                echo "git pull > $update_log"
-                git pull > $update_log
-            else
-                update_log=$GITUP
-            fi
-
-            if ! grep -q  'Already up-to-date' $update_log; then
-                code_change=1
-            fi
+        # get the version
+        git_flag=1
+        REL=`git rev-parse --abbrev-ref HEAD`
+        if [ "$REL" = "master" ]; then
+            REL="devel"
+        fi
+        if [ -z "$GITUP" ];then
+            update_log=../coregitup
+            echo "git pull > $update_log"
+            git pull > $update_log
         else
-            git_flag=0
-            if [ -z "$SVNUP" ];	then
-                update_log=../coresvnup
-                echo "svn up > $update_log"
-                svn up > $update_log
-            else
-                update_log=$SVNUP
-            fi
+            update_log=$GITUP
+        fi
 
-            if ! grep -q 'At revision' $update_log;then
-                code_change=1
-            fi
+        if ! grep -q  'Already up-to-date' $update_log; then
+            code_change=1
         fi
         ver=`cat Version`
         short_ver=`cat Version|cut -d. -f 1,2`
