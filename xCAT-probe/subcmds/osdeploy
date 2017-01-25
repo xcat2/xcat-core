@@ -65,9 +65,10 @@ Options:
     -r : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
          Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
          If unit is not specified, hour will be used by default.
-    -p : Performance of provision for each node and all. 
-         Supported level: 1 (show how much time spent for provision), 
-         2 (show how much time spent for DHCP, Download RPM packages, Run Postscripts, Run Postbootscripts).
+    -p Show elapsed time of each stage during provision for each node
+         Support 2 output format:
+         1 Elapsed time of each stage during provision
+         2 Elapsed time from power on node to each stage starting
 ";
 
 

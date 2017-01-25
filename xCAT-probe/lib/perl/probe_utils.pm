@@ -580,10 +580,9 @@ sub convert_second_to_time {
         } else {
             $tmp_second = $second_in % 60;
         }
-        if ($tmp_second == 0) {
-            push @time, "00";
-        } elsif ($tmp_second < 10) {
-            push @time,  "0" . "$tmp_second";
+
+        if ($tmp_second < 10) {
+            push @time,  "0$tmp_second";
         } else {
             push @time, "$tmp_second";
         }
