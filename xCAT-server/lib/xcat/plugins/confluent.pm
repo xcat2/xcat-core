@@ -342,7 +342,7 @@ sub makeconfluentcfg {
                     die "confluent does not currently support termserver";
                     $termservers{ $_->{termserver} } = 1; # dont add this one again
                 }
-                if ($type{ $_->{node} } =~ /fsp|bpa|hmc|ivm/) {
+                if ($type{$_->{node}} and $type{ $_->{node} } =~ /fsp|bpa|hmc|ivm/) {
                     $keepdoing = 0;    # these types dont have consoles
                 }
             }
@@ -450,14 +450,16 @@ sub donodeent {
         }
         my %parameters;
         if ($cmeth) { $parameters{'console.method'} = $cmeth; }
-        if ($cmeth eq 'ipmi' or not $cmeth) {
+        if (not $cmeth or $cmeth eq 'ipmi') {
             $parameters{'secret.hardwaremanagementuser'} =
               $ipmiauthdata->{$node}->{username};
             $parameters{'secret.hardwaremanagementpassword'} =
               $ipmiauthdata->{$node}->{password};
             my $bmc = $ipmientries->{$node}->[0]->{bmc};
-            $bmc =~ s/,.*//;
-            $parameters{'hardwaremanagement.manager'} = $bmc;
+            if ($bmc) {
+		 $bmc =~ s/,.*//;
+            	$parameters{'hardwaremanagement.manager'} = $bmc;
+             }
         }
         if (defined($cfgent->{consoleondemand})) {
             if ($cfgent->{consoleondemand}) {
