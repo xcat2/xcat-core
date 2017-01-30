@@ -3846,10 +3846,10 @@ sub usage_dsh
     my $usagemsg1  = " xdsh -h \n xdsh -q \n xdsh -V \n";
     my $usagemsg1a = "xdsh  <noderange> [-K] [-l logonuserid]\n";
     my $usagemsg2  = "      [-B | --bypass ] [-c] [-e] [-E environment_file]
-      [--devicetype type_of_device] [-f fanout]\n";
+      [--devicetype type_of_device] [-f fanout] [--ip ip_addr]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
-      [-i image] [-s] [-S ksh | csh] [-t timeout]\n";
+      [-i image] [-s] [-S ksh | csh] [--show key|script] [-t timeout]\n";
     my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z] [--sudo]\n";
     my $usagemsg6 = "      <command_list>";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
@@ -3953,8 +3953,10 @@ sub parse_and_run_dsh
             'c|cleanup'                => \$options{'cleanup'},
             'E|environment=s'          => \$options{'environment'},
             'I|ignore-sig|ignoresig=s' => \$options{'ignore-signal'},
+            'ip=s'                     => \$options{'ip'},
             'K|keysetup'               => \$options{'ssh-setup'},
             'L|no-locale'              => \$options{'no-locale'},
+            'show=s'                   => \$options{'show'},
             'Q|silent'                 => \$options{'silent'},
             'S|syntax=s'               => \$options{'syntax'},
             'T|trace'                  => \$options{'trace'},
@@ -4122,7 +4124,7 @@ sub parse_and_run_dsh
         # with error, if the Management Node is in the Database and in the
         # noderange
         my @mname = xCAT::Utils->noderangecontainsMn(@nodelist);
-        if (@mname) {    # MN in the nodelist
+        if ( @mname and !$options{'ip'} ) {    # MN in the nodelist and --ip not specified
             my $nodes = join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4156,7 +4158,7 @@ sub parse_and_run_dsh
         #  password for the key update.  This was setup in xdsh client
         #  frontend.
 
-        if (!($ENV{'DSH_REMOTE_PASSWORD'}))
+        if (!($ENV{'DSH_REMOTE_PASSWORD'}) && !(defined $options{'show'}))
         {
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4230,7 +4232,22 @@ sub parse_and_run_dsh
         #
         # setup ssh keys on the nodes or ib switch
         #
-        my $rc = xCAT::TableUtils->setupSSH($options{'nodes'}, $options{'timeout'});
+        my $rc;
+
+        # If 'show' was specified then pass the value in an environment variable.
+        if ( $options{'show'} ) {
+            $ENV{'DSH_SHOW'} = $options{'show'};
+        }
+
+        # Go perform the setup of the SSH keys.
+        if ( $options{'ip'} ) {
+            # If IPs were passed then use them as the target of the unlock.
+            $rc = xCAT::TableUtils->setupSSH($options{'ip'} );
+        } else {
+            # Unlock the nodes
+            $rc = xCAT::TableUtils->setupSSH($options{'nodes'}, $options{'timeout'});
+        }
+
         my @results = "return code = $rc";
         return (@results);
     }
