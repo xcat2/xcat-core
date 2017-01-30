@@ -83,7 +83,7 @@ my %usage = (
     BMC specific:
        rinv <noderange> [mprom|deviceid|uuid|guid|vpd|all]
     OpenPOWER server specific:
-       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all]
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
@@ -230,13 +230,16 @@ my %usage = (
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
        lsvm <noderange> [-l|--long] --p775
-       lsvm <noderange> 
+       lsvm <noderange>
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
        lsvm noderange --getnetwork network_name
        lsvm noderange --diskpoolnames
-       lsvm noderange --diskpool pool_name",
+       lsvm noderange --diskpool pool_name
+       lsvm noderange --queryalldisks
+       lsvm noderange --querypagevolumes
+       lsvm noderange --queryspoolvolumes",
     "chvm" =>
       "Usage:
    Common:
@@ -250,7 +253,7 @@ my %usage = (
        chvm <noderange> [lparname=<*|name>]
        chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
                         [vmothersetting=hugepage:N,bsr:N]
-                        [add_physlots=drc_index1,drc_index2...] 
+                        [add_physlots=drc_index1,drc_index2...]
                         [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
@@ -420,7 +423,7 @@ Options:
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
 
-    [-g|--genmypost] Will generate a new mypostscript file for the  
+    [-g|--genmypost] Will generate a new mypostscript file for the
         the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
     [-l|--user] User name to run the updatenode command.  It overrides the

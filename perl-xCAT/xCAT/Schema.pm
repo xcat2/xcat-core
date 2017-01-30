@@ -276,7 +276,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
         table_descr  => 'Node storage resources',
         descriptions => {
             node       => 'The node name',
-            controller => 'The management address to attach/detach new volumes. 
+            controller => 'The management address to attach/detach new volumes.
 In the scenario involving multiple controllers, this data must be
 passed as argument rather than by table value',
             osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
@@ -649,13 +649,13 @@ passed as argument rather than by table value',
             servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
             netboot => 'The type of network booting to use for this node.  Valid values:
 
-                       Arch                    OS                           valid netboot options 
-                       x86, x86_64             ALL                          pxe, xnba 
+                       Arch                    OS                           valid netboot options
+                       x86, x86_64             ALL                          pxe, xnba
                        ppc64                   <=rhel6, <=sles11.3          yaboot
                        ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                        ppc64le NonVirtualize   ALL                          petitboot
                        ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
-                       
+
 ',
             tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
             tftpdir => 'The directory that roots this nodes contents from a tftp and related perspective.  Used for NAS offload by using different mountpoints.',
@@ -776,16 +776,16 @@ passed as argument rather than by table value',
             exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
             postinstall => 'Supported in diskless image only. The fully qualified name of the scripts running in non-chroot mode after the package installation but before initrd generation during genimage. If multiple scripts are specified, they should be seperated with comma ",". A set of osimage attributes are exported as the environment variables to be used in the postinstall scripts:
 
-      IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"), 
-      IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"), 
-      IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"), 
+      IMG_ARCH(The architecture of the osimage, such as "ppc64le","x86_64"),
+      IMG_NAME(The name of the osimage, such as "rhels7.3-ppc64le-netboot-compute"),
+      IMG_OSVER(The os release of the osimage, such as "rhels7.3","sles11.4"),
       IMG_KERNELVERSION(the "kernelver" attribute of the osimage),
-      IMG_PROFILE(the profile of the osimage, such as "service","compute"), 
-      IMG_PKGLIST(the "pkglist" attribute of the osimage), 
-      IMG_PKGDIR(the "pkgdir" attribute of the osimage), 
-      IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage), 
-      IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage), 
-      IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)', 
+      IMG_PROFILE(the profile of the osimage, such as "service","compute"),
+      IMG_PKGLIST(the "pkglist" attribute of the osimage),
+      IMG_PKGDIR(the "pkgdir" attribute of the osimage),
+      IMG_OTHERPKGLIST(the "otherpkglist" attribute of the osimage),
+      IMG_OTHERPKGDIR(the "otherpkgdir" attribute of the osimage),
+      IMG_ROOTIMGDIR(the "rootimgdir" attribute of the osimage)',
             rootimgdir => 'The directory name where the image is stored.  It is generally used for diskless image. it also can be used in sysclone environment to specify where the image captured from golden client is stored. in sysclone environment, rootimgdir is generally assigned to some default value by xcat, but you can specify your own store directory. just one thing need to be noticed, wherever you save the image, the name of last level directory must be the name of image. for example, if your image name is testimage and you want to save this image under home directoy, rootimgdir should be assigned to value /home/testimage/',
             kerneldir => 'The directory name where the 3rd-party kernel is stored. It is used for diskless image only.',
             nodebootif => 'The network interface the stateless/statelite node will boot over (e.g. eth0)',
@@ -1037,7 +1037,7 @@ passed as argument rather than by table value',
 "                 nodes, use a simple comma-separated list of NICs.  To specify different \n" .
 "                 NICs for different nodes, use the format: \"xcatmn|eth1,eth2;service|bond0\", \n" .
 "                 where xcatmn is the name of the management node, and DNS should listen on\n" .
-"                 the eth1 and eth2 interfaces.  All the nods in group 'service' should \n" . 
+"                 the eth1 and eth2 interfaces.  All the nods in group 'service' should \n" .
 "                 listen on the 'bond0' interface.\n\n" .
 "                 NOTE: If using this attribute to block certain interfaces, make sure\n" .
 "                 the IP maps to your hostname of xCAT MN is not blocked since xCAT needs\n" .
@@ -1449,8 +1449,30 @@ passed as argument rather than by table value',
         },
     },
 
+zvmivp => {
+    cols => [qw(id ip schedule last_run type_of_run access_user orch_parms prep_parms main_ivp_parms comments disable)],
+    keys => [qw(id)],
+    table_desc => 'List of z/VM Installation Verification Procedures (IVPs) to be periodically run.',
+    descriptions => {
+        id               => 'Unique identifier associated with the IVP run, e.g. 1.',
+        ip               => 'IP address of the target system, either the IP of the OpenStack compute node or the xCAT management node.',
+        schedule         => 'The hours (0-24) that the IVP should be run.  Multiple hours are separated by a blank.',
+        last_run         => 'The last time the IVP was run specified as a set of 3 blank delimeted words: year, Julian date, and hour (in 24 hour format).',
+        type_of_run      => 'The type of run requested, \'fullivp\' or \'basicivp\'.',
+        access_user      => 'User on the OpenStack node that is used to: push the IVP preparation script to the OpenStack system, '.
+                            'drive the preparation script to validate the OpenStack configuration files, and return the created '.
+                            'driver script to the xCAT MN system for the next part of the IVP.  This user should be '.
+                            'able to access the OpenStack configuration files that are scanned by the IVP.',
+        orch_parms       => 'Parameters to pass to the IVP orchestrator script, verifynode.',
+        prep_parms       => 'Parameters to pass to the phase 1 IVP preparation script.',
+        main_ivp_parms   => 'Parameters to pass to the main IVP script.',
+        comments         => 'Any user provided notes or description of the run.',
+        disable          => "Set to 'yes' or '1' to disable this IVP run.",
+        },
+    },
+
     zvm => {
-        cols         => [qw(node hcp userid nodetype parent comments disable)],
+        cols         => [qw(node hcp userid nodetype parent comments disable discovered status)],
         keys         => [qw(node)],
         table_desc   => 'List of z/VM virtual servers.',
         descriptions => {
@@ -1461,6 +1483,8 @@ passed as argument rather than by table value',
             parent => 'The parent node. For LPAR, this specifies the CEC. For z/VM, this specifies the LPAR. For VM, this specifies the z/VM host operating system.',
             comments => 'Any user provided notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
+        discovered => "Set to '1' to indicate this node was discovered.",
+        status => "The processing status.  Key value pairs (key=value) indicating status of the node.  Multiple pairs are separated by semi-colons.  Keys include: CLONING, CLONE_ONLY.",
         },
     },
 
@@ -1497,12 +1521,12 @@ passed as argument rather than by table value',
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
-            nichostnameprefixes => 'Comma-separated list of hostname prefixes per NIC. 
+            nichostnameprefixes => 'Comma-separated list of hostname prefixes per NIC.
                         If only one ip address is associated with each NIC:
                             <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
                         If multiple ip addresses are associated with each NIC:
-                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
-                        The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
+                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-.
+                        The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes.
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband. The xCAT object definition commands support to use nictypes.<nicname> as the sub attributes.',
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
@@ -1813,7 +1837,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
     rack           => { attrs => [], attrhash => {}, objkey => 'rackname' },
     osdistro       => { attrs => [], attrhash => {}, objkey => 'osdistroname' },
     osdistroupdate => { attrs => [], attrhash => {}, objkey => 'osupdatename' },
-    zone           => { attrs => [], attrhash => {}, objkey => 'zonename' },
+  zvmivp => { attrs => [], attrhash => {}, objkey => 'id' },
     firmware       => { attrs => [], attrhash => {}, objkey => 'cfgfile' },
     taskstate      => { attrs => [], attrhash => {}, objkey => 'node' },
 

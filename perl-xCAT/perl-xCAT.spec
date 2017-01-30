@@ -26,6 +26,8 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
+%define xcatver %(cat /root/xcat-build/xcat-core/Version)
+%define builddate %(date)
 %prep
 %setup -q -n perl-xCAT
 %build
@@ -96,6 +98,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT/*
 
 cp README $RPM_BUILD_ROOT/%{prefix}
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/README
+
+echo "xCAT version: "%{xcatver} "Built on: "%{builddate} > $RPM_BUILD_ROOT/opt/xcat/version
 
 %if %fsm
 %else
