@@ -979,8 +979,9 @@ sub fork_fanout_dsh
       )
       = @_;
 
-    #get username and passeword for ether net switches (EthSwitch type)
-    if ($$options{'devicetype'} =~ /EthSwitch/) {
+    #get username and passeword for switches 
+    if (($$options{'devicetype'} =~ /EthSwitch/) || 
+        (($$options{'devicetype'} =~ /IBSwitch/) && !($$options{'user'})) ){
         if (@$targets_waiting > 0) {
             if ($ENV{'DSH_REMOTE_PASSWORD'}) {
                 foreach my $t (keys(%$resolved_targets)) {
@@ -1010,13 +1011,15 @@ sub fork_fanout_dsh
                     if (defined($entry->[0]->{protocol})) {
                         $protocol = $entry->[0]->{protocol};
                     }
-                    if ((!$username) && (!$password) && (!$protocol)) { #use passwd table as default
+                    if ((!$username) && (!$password)) { #use passwd table as default
                         if (defined($passwd_ent[0]->{username})) {
                             $username = $passwd_ent[0]->{username};
                         }
                         if (defined($passwd_ent[0]->{password})) {
                             $password = $passwd_ent[0]->{password};
                         }
+                    }
+                    if (!$protocol){
                         if (defined($passwd_ent[0]->{comments}) && ($passwd_ent[0]->{comments} eq "telnet")) {
                             $protocol = $passwd_ent[0]->{comments};
                         }
