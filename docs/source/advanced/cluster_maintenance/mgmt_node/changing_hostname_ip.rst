@@ -52,7 +52,7 @@ Change the Management Hostname
 
     hostname <new_MN_name>
 
-* Edit hostname configuration file
+* Update the hostname configuration files:
 
   |  Add hostname in ``/etc/hostname``
   |  Add HOSTNAME attribute in ``/etc/sysconfig/network`` (only for [RHEL])
@@ -60,29 +60,29 @@ Change the Management Hostname
 Update Database Files
 ---------------------
 
-You need to update the new MN hostname or IP address in several database
-configuration files.
+You need to update the new MN hostname or IP address in several database configuration files.
 
 SQLite
 ^^^^^^
 
 Nothing to do.
 
-Postgresql
+PostgreSQL
 ^^^^^^^^^^
 
-- Edit ``/etc/xcat/cfgloc`` file, replace ``Pg:dbname=xcatdb;host=<old_MN_ip>|xcatadm|xcat20``
-  with ``Pg:dbname=xcatdb;host=<new_MN_ip>|xcatadm|xcat20``.
+- Edit ``/etc/xcat/cfgloc`` file... 
 
-- Edit config database config file ``/var/lib/pgsql/data/pg_hba.conf``,
-  replace ``host    all          all        <old_MN_ip>/32      md5``
-  with ``host    all          all        <new_MN_ip>/32      md5``.
+   Replace ``Pg:dbname=xcatdb;host=<old_MN_ip>|xcatadm|xcat20`` with ``Pg:dbname=xcatdb;host=<new_MN_ip>|xcatadm|xcat20``.
 
-Mysql
+- Edit config database config file ``/var/lib/pgsql/data/pg_hba.conf``...
+
+  Replace ``host    all          all        <old_MN_ip>/32      md5`` with ``host    all          all        <new_MN_ip>/32      md5``
+
+MySQL
 ^^^^^
 
-Edit ``/etc/xcat/cfglooc``, replace ``mysql:dbname=xcatdb;host=<old_MN_ip>|xcatadmin|xcat20``
-with ``mysql:dbname=xcatdb;host=<new_MN_ip>|xcatadmin|xcat20``.
+- Edit ``/etc/xcat/cfglooc``... 
+    Replace ``mysql:dbname=xcatdb;host=<old_MN_ip>|xcatadmin|xcat20`` with ``mysql:dbname=xcatdb;host=<new_MN_ip>|xcatadmin|xcat20``
 
 Start the database
 ------------------
@@ -116,12 +116,12 @@ Change the site table master attribute
 Change all IP address attribute relevant to the MN IP address
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For example, old address was "10.6.0.1"
+For example, the old IP address was "10.6.0.1"
 
-* Query the attributes with old address ::
+* Query all the attributes with old address ::
 
     lsdef -t node -l | grep "10.6.0.1"
-    # the output may looks like
+      ...
       conserver=10.6.0.1
       conserver=10.6.0.1
       conserver=10.6.0.1
@@ -138,26 +138,23 @@ For example, old address was "10.6.0.1"
       servicenode=10.6.0.1
       xcatmaster=10.6.0.1
 
-* As the attribute with the old IP address is list above, take conserver as
-  a example, query the nodes with ``conserver=10.6.0.1``.
-
-  ::
+* Looking at the list above, taking ``conserver`` as an example, query the nodes with ``conserver=10.6.0.1``: ::
 
     lsdef -t node -w conserver="10.6.0.1"
-    # the output looks like
+      ...
       cn1  (node)
       cn2  (node)
       cn3  (node)
       cn4  (node)
 
-* Change the conserver address for cn1,cn2,cn3,cn4 ::
+* Change the conserver address for nodes ``cn1,cn2,cn3,cn4`` ::
 
     chdef -t node cn1-cn4 conserver=<new_ip_address>
 
-Repeat the same process for the other attributes.
+* Repeat the same process for the other attributes containing the old IP address. 
 
 Change networks table
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 Check your networks table to see if the network definitions are still correct,
 if not edit accordingly ::
@@ -166,7 +163,7 @@ if not edit accordingly ::
   chdef -t network <key=value>
 
 Check Result
-^^^^^^^^^^^^^
+^^^^^^^^^^^^
 
 You can check whether all the old address has been changed using ::
 
@@ -174,25 +171,24 @@ You can check whether all the old address has been changed using ::
   cd <new database backup path>
   fgrep "10.6.0.1" *.csv
 
-If the old address still exists in the ``*.csv` file, you can edit this file,
-then use the following command to restore the records ::
+If the old address still exists in the ``*.csv`` file, you can edit this file, then use the following command to restore the records ::
 
   tabrestore <xxx.csv>
 
 Generate SSL credentials(optional)
 ----------------------------------
 
-If you do not generate new credentials, skip this section.
-If you decide generate new credentials, then you will use the following
-command.
+Use the following command to generate new SSL credentials: ``xcatconfig -c``. 
 
-* Generate new credentials ::
+Then update the following in xCAT:
 
-    xcatconfig -c
+* Update the policy table with new management node name and replace: ::
 
-* Update the policy table with new MN name,
-  replace ``"1.4","old_MN_name",,,,,,"trusted",,`` with
-  ``"1.4","new_MN_name",,,,,,"trusted",,``
+     "1.4","old_MN_name",,,,,,"trusted",,
+
+  with: ::
+
+     "1.4","new_MN_name",,,,,,"trusted",,``
 
 * Setup up conserver with new credentials ::
 

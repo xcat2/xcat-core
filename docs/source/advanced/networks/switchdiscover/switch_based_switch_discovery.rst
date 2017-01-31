@@ -8,34 +8,28 @@ Pre-requirement
 
 In order to do switch-based switch discovery, the admin 
 
-1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:   
+1.  Needs to manually setup and configure core-switch, SNMP v3 needs to be enabled in order for xCAT access to it. **username** and **userpassword** attributes are for the remote login. It can be for **ssh** or **telnet**. If it is for **telnet**, set protocol to “telnet”. If the **username** is blank, the **username** and **password** will be retrieved from the passwd table with “switch” as the key. SNMP attributes will used for SNMPv3 communication.  **nodetype** has to be set to "switch" to differentiate between switch-based node discovery or switch-based switch discovery. Refer to switches table attributes.  Example of core-switch definition:  ::
 
-::
+      lsdef switch-10-5-23-1
+        Object name: switch-10-5-23-1
+        groups=switch
+        ip=10.5.23.1
+        mac=ab:cd:ef:gh:dc
+        mgt=switch
+        nodetype=switch
+        password=admin
+        postbootscripts=otherpkgs
+        postscripts=syslog,remoteshell,syncfiles
+        protocol=telnet
+        snmpauth=sha
+        snmppassword=userpassword
+        snmpusername=snmpadmin
+        snmpversion=3
+        switchtype=BNT
+        usercomment=IBM
+        username=root
 
-    lsdef switch-10-5-23-1
-      Object name: switch-10-5-23-1
-      groups=switch
-      ip=10.5.23.1
-      mac=ab:cd:ef:gh:dc
-      mgt=switch
-      nodetype=switch
-      password=admin
-      postbootscripts=otherpkgs
-      postscripts=syslog,remoteshell,syncfiles
-      protocol=telnet
-      snmpauth=sha
-      snmppassword=userpassword
-      snmpusername=snmpadmin
-      snmpversion=3
-      switchtype=BNT
-      usercomment=IBM
-      username=root
-
-
-
-2. Predefine all top-rack switches which connect to core-switch.  The attribute **ip** is static ip address for the switch.  When ``switchdiscover --setup`` command is issued, this ip address will replace dhcp IP address on the switch. **nodetype=switch** needs to be set to differentiate between switch-based node discovery or switch-based switch discovery during discovery process.  the attribute **switch** is hostname of core-switch and **switchport** is the port number in the core-switch that top-rack switch is connected to.    
-
-::
+2. Predefine all top-rack switches which connect to core-switch.  The attribute **ip** is static IP address for the switch.  When ``switchdiscover --setup`` command is issued, this IP address will replace dhcp IP address on the switch. **nodetype=switch** needs to be set to differentiate between switch-based node discovery or switch-based switch discovery during discovery process.  the attribute **switch** is hostname of core-switch and **switchport** is the port number in the core-switch that top-rack switch is connected to.  ::
 
     lsdef switch-192-168-5-22
       objtype=node
@@ -50,13 +44,13 @@ In order to do switch-based switch discovery, the admin
 
 3.  Add switches to /etc/hosts for hostname lookup and xdsh command.  ::
 
-    makehosts switch-192-168-5-23
-    makehosts switch-192-168-5-22
+       makehosts switch-192-168-5-23
+       makehosts switch-192-168-5-22
 
 
 4.  Setup Dynamic IP range in network table for discovered switches to use. ::
 
-     # tabdump networks
+      # tabdump networks
       #netname,net,mask,mgtifname,gateway,dhcpserver,tftpserver,nameservers,ntpservers,logservers,dynamicrange,staticrange,staticrangeincrement,nodehostname,ddnsdomain,vlanid,domain,mtu,comments,disable
       "192_168_0_0-255_255_0_0","192.168.0.0","255.255.0.0","enP4p1s0f2","<xcatmaster>",,"192.168.3.29",,,,"192.168.5.150-192.168.5.170",,,,,,,,,
 
@@ -67,7 +61,7 @@ dhcp should be restarted after seting up dynamic IP range.
 Discover Switches
 ~~~~~~~~~~~~~~~~~
 
-xCAT supports **switchdiscover** command to discover the switches that are attached to the subnets on xCAT management node.  Refer to http://xcat-docs.readthedocs.io/en/latest/advanced/networks/switchdiscover/switches_discovery.html for more info.  
+xCAT supports **switchdiscover** command to discover the switches that are attached to the subnets on xCAT management node.  Refer to :doc:`/advanced/networks/switchdiscover/switches_discovery` for more info.
 
 For the switch-based switch discovery, we add **–setup** flag:  ::
 
@@ -125,13 +119,11 @@ if **--setup** flag is specified, the command will perform following steps:
 Configure switches
 ~~~~~~~~~~~~~~~~~~
 
-The **switchdiscover** command with ``--setup`` flag will set up switches with static ip address, change the hostname from predefine switches and enable snmpv3 configuration.  For other switches configuration, Refer to http://xcat-docs.readthedocs.io/en/latest/advanced/networks/ethernet_switches/ethernet_switches.html and http://xcat-docs.readthedocs.io/en/latest/advanced/networks/infiniband/switch_configuration.html
+The **switchdiscover** command with ``--setup`` flag will set up switches with static IP address, change the hostname from predefine switches and enable snmpv3 configuration.  For other switches configuration, refer to :doc:`/advanced/networks/ethernet_switches/ethernet_switches` and :doc:`/advanced/networks/infiniband/switch_configuration`. 
 
-These two config files are located in the **/opt/xcat/share/xcat/scripts**.  The **switchdiscover** process will call the config files with ``--all`` option.  User can call these scripts to setup one of options manually. 
+These two config files are located in the **/opt/xcat/share/xcat/scripts** directory.  The **switchdiscover** process will call the config files with ``--all`` option.  User can call these scripts to setup one of options manually. 
 
-1.  **configBNT** is for configure BNT switches. 
-
-::
+1.  **configBNT** is for configure BNT switches.  ::
 
      ./configBNT --help
      Usage:
@@ -142,21 +134,22 @@ These two config files are located in the **/opt/xcat/share/xcat/scripts**.  The
        configBNT [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--group snmp_group]
        configBNT [--switches switchnames] [--port port] [--vlan vlan]
 
-2.   **configMellanox** is for configuring Mellanox switch.   The script will configure ntp service on the switch with xCAT MN  and will use rspconfig command to
-    * enable ssh
-    * enable snmp function on the switch
-    * enable the snmp trap
-    * set logging destination to xCAT MN
+2.   **configMellanox** is for configuring Mellanox switch.  The script will configure ntp service on the switch with xCAT MN  and will use rspconfig command to
 
-::
+       * enable ssh
+       * enable snmp function on the switch
+       * enable the snmp trap
+       * set logging destination to xCAT MN
 
-    ./configMellanox --help
-    Usage:
-        configMellonax [-?│-h│--help]
-        configMellonax [--switches switchnames] [--all]
-        configMellonax [--switches switchnames] [--ip]
-        configMellonax [--switches switchnames] [--name]
-        configMellonax [--switches switchnames] [--config]
+    ::
+ 
+      ./configMellanox --help
+      Usage:
+          configMellonax [-?│-h│--help]
+          configMellonax [--switches switchnames] [--all]
+          configMellonax [--switches switchnames] [--ip]
+          configMellonax [--switches switchnames] [--name]
+          configMellonax [--switches switchnames] [--config]
 
 
 Switch Status
@@ -166,7 +159,7 @@ During the switch-based switch discovery process, there are four states displaye
 
 **Matched** --- Discovered switch is matched to predefine switch, **otherinterfaces** attribute is updated to dhcp IP address, and mac address, **switch type** and **usercomment** also updated with vendor information for the predefined switch.
 
-**ip_configed** --- switch is set up to static ip address based on predefine switch IP address.  If failure to set up IP address, the status will stay as **Matched**.
+**ip_configed** --- switch is set up to static IP address based on predefine switch IP address.  If failure to set up IP address, the status will stay as **Matched**.
 
 **hostname_configed** -- switch host name is changed based on predefine switch hostname. If failure to change hostname on the switch, the status will stay as **ip_configed**.
 

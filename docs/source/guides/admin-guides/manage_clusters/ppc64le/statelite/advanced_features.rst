@@ -69,7 +69,7 @@ In order to describe the hierarchy scenarios we can use , ``P`` to denote parent
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P: link C:   | "ALL","/root/testlinkpers/","link",,                | Both parent and child are created in tmpfs      |
 | link,        | "ALL","/root/testlink/testlinkchild",,              | on the booted node following their respective   |
-| persistent   |                "link,persistent"                    | options; there's only one symbolic link of      |
+| persistent   | "link,persistent"                                   | options; there's only one symbolic link of      |
 |              |                                                     | the parent is created in the local file system. |
 +--------------+-----------------------------------------------------+-------------------------------------------------+
 | P:link,      | "ALL","/root/testlinkpers/","link,persistent",,     | NOT permitted                                   |
