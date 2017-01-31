@@ -35,6 +35,12 @@ Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
+%define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
+%define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
+
+# Define a different location for various httpd configs in s390x mode
+%define httpconfigdir %(if [ "$s390x" = "1" ];then echo "xcathttpdsave"; else echo "xcat"; fi)
+
 %ifos linux
 Requires: httpd nfs-utils nmap bind perl(CGI)
 # on RHEL7, need to specify it explicitly
@@ -127,7 +133,7 @@ fi
 
 
 %install
-mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
+mkdir -p $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/logrotate.d
@@ -175,8 +181,8 @@ mkdir -p postscripts/hostkeys
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
-cp %{SOURCE7} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
-cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -189,19 +195,19 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
 fi
 
 if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
 if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+   cp /etc/%httpconfigdir/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
 # Let rsyslogd perform close of any open files
@@ -243,8 +249,8 @@ exit 0
 %files
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
-/etc/xcat/conf.orig/xcat.conf.apach24
-/etc/xcat/conf.orig/xcat.conf.apach22
+/etc/%httpconfigdir/conf.orig/xcat.conf.apach24
+/etc/%httpconfigdir/conf.orig/xcat.conf.apach22
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 /etc/xCATMN
