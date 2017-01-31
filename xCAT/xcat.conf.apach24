@@ -8,19 +8,19 @@ AliasMatch ^/install/(.*)$ "/install/$1"
 AliasMatch ^/tftpboot/(.*)$ "/tftpboot/$1"
 
 <Directory "/tftpboot">
-    Options Indexes FollowSymLinks Includes MultiViews
+    Options +Indexes +FollowSymLinks +Includes +MultiViews
     AllowOverride None
     Require all granted
 </Directory>
 <Directory "/install">
-    Options Indexes FollowSymLinks Includes MultiViews
+    Options +Indexes +FollowSymLinks +Includes +MultiViews
     AllowOverride None
     Require all granted
 </Directory>
 
 Alias /xcat-doc "/opt/xcat/share/doc"
 <Directory "/opt/xcat/share/doc">
- Options Indexes
+ Options +Indexes
  AllowOverride None
  Require all granted
 </Directory>
