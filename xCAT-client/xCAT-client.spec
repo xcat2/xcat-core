@@ -16,6 +16,9 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
+%define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
+%define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
+
 # AIX will build with an arch of "ppc"
 %ifos linux
 BuildArch: noarch
@@ -69,6 +72,10 @@ cp share/xcat/rvid/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/rvid/*
 %endif
 
+%if %s390x
+cp openstack.versions $RPM_BUILD_ROOT/%{prefix}
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/openstack.versions
+%endif
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
