@@ -1,0 +1,579 @@
+#!/bin/bash
+# IBM(c) 2013, 2015 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+###############################################################################
+# This script is used to handle xCAT disk initialization and configuration(eg.
+# attach/detach a SCSI volume, add an additional ephemeral disk when vm is in
+# inactive status). It will be invoked and executed when vm start up.
+###############################################################################
+version=3.0
+
+function getOsVersion {
+  # @Description:
+  #   Returns the Linux distro version in an easy to parse format.
+  # @Input:
+  #   None
+  # @Output:
+  #   os - Variable set with OS and version information.  For example:
+  #        "rhel62" or "sles11sp2"
+  # @Code:
+  if [[ -e "/etc/os-release" ]]; then
+    os=`cat /etc/os-release | grep "^ID=" | sed \
+      -e 's/ID=//' \
+      -e 's/"//g'`
+    version=`cat /etc/os-release | grep "^VERSION_ID=" | sed \
+      -e 's/VERSION_ID=//' \
+      -e 's/"//g' \
+      -e 's/\.//'`
+    os=$os$version
+
+  #The /etc/SuSE-release file will be deprecated in sles11.4 and later release
+  elif [[ -e "/etc/SuSE-release" ]]; then
+    os='sles'
+    version=`cat /etc/SuSE-release | grep "VERSION =" | sed \
+      -e 's/^.*VERSION =//' \
+      -e 's/\s*$//' \
+      -e 's/.//' \
+      -e 's/[^0-9]*([0-9]+).*/$1/'`
+    os=$os$version
+
+    # Append service level
+    level=`echo "/etc/SuSE-release" | grep "LEVEL =" | sed \
+      -e 's/^.*LEVEL =//' \
+      -e 's/\s*$//' \
+      -e 's/.//' \
+      -e 's/[^0-9]*([0-9]+).*/$1/'`
+    os=$os'sp'$level
+
+  #The /etc/redhat-release file will be deprecated in rhel7 and later release
+  elif [[ -e "/etc/redhat-release" ]]; then
+    os='rhel'
+    version=`cat /etc/redhat-release | grep -i "Red Hat Enterprise Linux Server" | sed \
+      -e 's/[A-Za-z\/\.\(\)]//g' \
+      -e 's/^ *//g' \
+      -e 's/ *$//g' \
+      -e 's/\s.*$//'`
+    os=$os$version
+  fi
+  return
+}
+
+function onlineDevice {
+  # @Description:
+  #   Brings a Linux device online.
+  # @Input:
+  #   Device number, e.g. "0.0.000c"
+  # @Output:
+  #   Return code indicates success or failure
+  # @Code:
+  device=$1
+  local funcName="onlineDevice"
+  rc=$(/sbin/chccwdev -e $device > /dev/null; echo $?)
+  if (( rc != 0 )); then
+    if [[ -e /sbin/cio_ignore ]]; then
+      rc=$(/sbin/cio_ignore -r 0.0.$device > /dev/null; echo $?)
+      which udevadm &> /dev/null && udevadm settle || udevsettle
+    fi
+    rc=$(/sbin/chccwdev -e $device > /dev/null; echo $?)
+    if (( rc != 0 )); then
+      echo "$funcName (Error) Could not activate the virtual device $device"
+      return 1
+    fi
+  fi
+  which udevadm &> /dev/null && udevadm settle || udevsettle
+  return 0
+}
+
+function setupDisk {
+  # @Description:
+  #   Processes a disk file for the following functions:
+  #     Create a file system node
+  #     Remove a file system node
+  #     Setup a SCSI volume
+  #     Removes a SCSI volume
+  #     Add a mdisk based ephemeral disk
+  # @Input:
+  #   Disk handling parameters
+  # @Output:
+  #   None
+  # @Code:
+  local funcName="setupDisk"
+
+  # Parse the parameter from parameter list
+  for parameter in $@; do
+    keyName=${parameter%\=*}
+    value=${parameter#*\=}
+    value=$(echo ${value} | sed -e 's/^ *//g')
+    newKey='xcat_'$keyName
+    eval $newKey=$value
+  done
+
+  # Remove the invokeScript.sh file after we have read it
+  rm -f invokeScript.sh
+
+  ##########################################################################
+  # Handle creating a file system node
+  # Disk handler input parameters:
+  #   action - "createfilesysnode"
+  #   srcFile - location/name of the source file for the mknod command
+  #   xcat_tgtFile - location/name of the target file for the mknod command
+  ##########################################################################
+  if [[ $xcat_action == "createfilesysnode" ]]; then
+    echo "Creating a file system node, source: $xcat_srcFile, target: $xcat_tgtFile"
+
+    if [[ ! -n $xcat_srcFile ]]; then
+      echo "$funcName (Error) Source file for creating a file system node was not specified"
+      return
+    fi
+
+    if [[ ! -n $xcat_tgtFile ]]; then
+      echo "$funcName (Error) Target file for creating a file system node was not specified"
+      return
+    fi
+    if [[ -e $xcat_tgtFile ]]; then
+      echo "$funcName (Error) Target file for creating a file system node already exists"
+      return
+    fi
+
+    configFile='/etc/udev/rules.d/56-zfcp.rules'
+    # Create udev config file if not exist
+    if [[ ! -e $configFile ]]; then
+      touch $configFile
+      if [[ $os == rhel* ]]; then
+        echo "KERNEL==\"zfcp\", RUN+=\"/sbin/zfcpconf.sh\"" >> ${configFile}
+        echo "KERNEL==\"zfcp\", RUN+=\"/sbin/multipath -r\"" >> ${configFile}
+      fi
+    fi
+
+    tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
+    if [[ $os == sles* || $os == rhel* ]]; then
+      wwpn_lun=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*-zfcp-//')
+      wwpn=$(echo ${wwpn_lun} | sed -e 's/:0x.*//')
+      lun=$(echo ${wwpn_lun} | sed -e 's/^0x.*://')
+    else
+      wwpn_lun=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*-fc-//')
+      wwpn=$(echo ${wwpn_lun} | sed -e 's/-lun-.*//')
+      lun=$(echo ${wwpn_lun} | sed -e 's/^0x.*-lun-//')
+    fi
+
+
+    multipath=0
+    out=`echo $wwpn | grep ","`
+    if [[ -n "$out" ]]; then
+      multipath=1
+    fi
+
+    if [[ $os == sles* || $os == rhel* ]]; then
+      fcp=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*ccw-0.0.//' | sed -e 's/-zfcp-.*$//')
+    else
+      fcp=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*ccw-0.0.//' | sed -e 's/-fc-.*$//')
+    fi
+    oldIFS=$IFS
+    IFS=","
+    fcpList=($fcp)
+    for fcp in ${fcpList[@]}
+    do
+      if [[ $multipath == 1 ]]; then
+        # Find the name of the multipath device by arbitrary one path in the set
+        wwpnList=($wwpn)
+        for wwpn in ${wwpnList[@]}
+        do
+          if [[ ${wwpn:0:2} -ne "0x" ]]; then
+            wwpn="0x$wwpn"
+          fi
+          if [[ $os == sles* || $os == rhel* ]]; then
+            cur_wwpn_lun=${wwpn}:${lun}
+            srcFile=$(echo ${xcat_srcFile} | sed -e 's/-zfcp-.*//')"-zfcp-"$cur_wwpn_lun
+            srcFile=$(echo ${srcFile} | sed -e 's/ccw-.*-zfcp/ccw-0.0.'$fcp'-zfcp/')
+          else
+            cur_wwpn_lun=${wwpn}-lun-${lun}
+            srcFile=$(echo ${xcat_srcFile} | sed -e 's/-fc-.*//')"-fc-"$cur_wwpn_lun
+            srcFile=$(echo ${srcFile} | sed -e 's/ccw-.*-fc/ccw-0.0.'$fcp'-fc/')
+          fi
+
+          out=`/usr/bin/stat --printf=%n ${srcFile}`
+          if (( $? != 0 )); then
+            echo "$funcName (Error) Unable to stat the source file: $srcFile"
+            continue
+          fi
+
+          out=`/sbin/udevadm info --query=all --name=$srcFile | grep ID_SERIAL=`
+          devName=$(echo ${out} | sed -e 's/^E:\s//')
+          multipathUuid=$(echo $devName | sed -e 's/ID_SERIAL=//')
+          if [[ -n "$multipathUuid" ]]; then
+            break
+          fi
+        done
+
+        if [[ -z "$multipathUuid" ]]; then
+            echo "$funcName (Error) Building up multipath failed!"
+            return
+        fi
+      else
+        if [[ $os == sles* || $os == rhel* ]]; then
+          srcFile=$(echo ${xcat_srcFile} | sed -e 's/ccw-.*-zfcp/ccw-0.0.'$fcp'-zfcp/')
+        else
+          srcFile=$(echo ${xcat_srcFile} | sed -e 's/ccw-.*-zfcp/ccw-0.0.'$fcp'-fc/')
+        fi
+        out=`/usr/bin/stat --printf=%n ${srcFile}`
+        if (( $? != 0 )); then
+          echo "$funcName (Error) Unable to stat the source file: $xcat_srcFile"
+          return
+        fi
+      fi
+    done
+    IFS=$oldIFS
+
+    # Add the entry into udev config file
+    if [[ $multipath == 1 ]]; then
+      echo "KERNEL==\"dm*\", ENV{DM_UUID}==\"mpath-${multipathUuid}\", SYMLINK+=\"${tgtNode}\"" >> ${configFile}
+      udevadm control --reload
+      udevadm trigger --sysname-match=dm-*
+    else
+      echo "KERNEL==\"sd*\", ATTRS{wwpn}==\"${wwpn}\", ATTRS{fcp_lun}==\"${lun}\", SYMLINK+=\"${tgtNode}%n\"" >> ${configFile}
+      udevadm control --reload
+      udevadm trigger --sysname-match=sd*
+    fi
+
+  echo "$funcName successfully create the file system node ${xcat_tgtFile}"
+
+  ##########################################################################
+  # Handle removing a file system node
+  # Disk file input parameters:
+  #   action - "removefilesysnode"
+  #   tgtFile - location/name of the target file for the mknod command
+  ##########################################################################
+  elif [[ $xcat_action == "removefilesysnode" ]]; then
+    echo "Removing a file system node, target: $xcat_tgtFile"
+    if [[ ! -n $xcat_tgtFile ]]; then
+      echo "$funcName (Error) Target file for creating a file system node was not specified"
+      return
+    fi
+
+    configFile='/etc/udev/rules.d/56-zfcp.rules'
+    tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
+
+    sed -i -e /SYMLINK+=\"${tgtNode}%n\"/d ${configFile}
+    sed -i -e /SYMLINK+=\"${tgtNode}\"/d ${configFile}
+    udevadm control --reload
+    udevadm trigger --sysname-match=sd*
+    udevadm trigger --sysname-match=dm-*
+    echo "$funcName successfully remove the file system node ${xcat_tgtFile}"
+
+  ##########################################################################
+  # Handle adding a SCSI volume
+  # Disk file input parameters:
+  #   action - "addScsiVolume"
+  #   fcpAddr - FCP device address
+  #   wwpn - WWPN number
+  #   lun - LUN number
+  ##########################################################################
+  elif [[ $xcat_action == "addScsiVolume" ]]; then
+    echo "Adding a SCSI Volume, FCP addr: $xcat_fcpAddr, WWPN: $xcat_wwpn, LUN: $xcat_lun"
+
+    # Validate the input
+    if [[ ! -n $xcat_fcpAddr ]]; then
+      echo "$funcName (Error) FCP address was not specified"
+      return
+    fi
+    xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
+
+    if [[ ! -n $xcat_wwpn ]]; then
+      echo "$funcName (Error) WWPN was not specified"
+      return
+    fi
+    xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
+
+    if [[ ! -n $xcat_lun ]]; then
+      echo "$funcName (Error) LUN was not specified"
+      return
+    fi
+    xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
+    decimal_lun=$((16#${xcat_lun:0:4}))
+
+    # Online the device
+    oldIFS=$IFS
+    IFS=","
+    fcp_list=($xcat_fcpAddr)
+    for fcp in ${fcp_list[@]}
+    do
+      rc= onlineDevice $fcp
+      if (( rc != 0 )); then
+        return
+      fi
+      if [[ $os == sles12* ]]; then
+        out=`cat /boot/zipl/active_devices.txt | grep -i "0.0.$fcp"`
+        if [[ -z $out ]]; then
+          /sbin/zfcp_host_configure 0.0.$fcp 1
+        fi
+      elif [[ $os == sles11* ]]; then
+        /sbin/zfcp_host_configure 0.0.$fcp 1
+      elif [[ $os == ubuntu* ]]; then
+        /sbin/chzdev zfcp-host $fcp -e
+      fi
+    done
+
+    multipath=0
+    out=`echo $xcat_wwpn | grep ","`
+    if [[ -n "$out" ]]; then
+      multipath=1
+    fi
+
+    # Start multipathd service
+    if [[ $multipath == 1 ]]; then
+        if [[ $os == sles* ]]; then
+            insserv multipathd
+        elif [[ $os == rhel6* ]]; then
+            chkconfig multipathd on
+        else
+            systemctl enable multipathd
+        fi
+        modprobe dm-multipath
+    fi
+
+    for fcp in ${fcp_list[@]}
+    do
+      wwpn_list=($xcat_wwpn)
+      for wwpn in ${wwpn_list[@]}
+      do
+        # Set WWPN and LUN in sysfs
+        echo 0x$xcat_lun > /sys/bus/ccw/drivers/zfcp/0.0.$fcp/0x$wwpn/unit_add
+
+        # Set WWPN and LUN in configuration files
+        if [[ $os == sles* ]]; then
+          #   SLES: /etc/udev/rules.d/51-zfcp*
+          /sbin/zfcp_disk_configure 0.0.$fcp $wwpn $xcat_lun 1
+
+          # Configure zFCP device to be persistent
+          touch /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+
+          # Check if the file already contains the zFCP channel
+          out=`cat "/etc/udev/rules.d/51-zfcp-0.0.$fcp.rules" | egrep -i "ccw/0.0.$fcp]online"`
+          if [[ ! $out ]]; then
+            echo "ACTION==\"add\", SUBSYSTEM==\"ccw\", KERNEL==\"0.0.$fcp\", IMPORT{program}=\"collect 0.0.$fcp %k 0.0.$fcp zfcp\"" \
+              | tee -a /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+            echo "ACTION==\"add\", SUBSYSTEM==\"drivers\", KERNEL==\"zfcp\", IMPORT{program}=\"collect 0.0.$fcp %k 0.0.$fcp zfcp\"" \
+              | tee -a /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+            echo "ACTION==\"add\", ENV{COLLECT_0.0.$fcp}==\"0\", ATTR{[ccw/0.0.$fcp]online}=\"1\"" \
+              | tee -a /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+          fi
+
+          echo "ACTION==\"add\", KERNEL==\"rport-*\", ATTR{port_name}==\"0x$wwpn\", SUBSYSTEMS==\"ccw\", KERNELS==\"0.0.$fcp\", ATTR{[ccw/0.0.$fcp]0x$wwpn/unit_add}=\"0x$xcat_lun\"" \
+            | tee -a /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+        elif [[ $os == rhel* ]]; then
+          #   RHEL: /etc/zfcp.conf
+          echo "0.0.$fcp 0x$wwpn 0x$xcat_lun" >> /etc/zfcp.conf
+          echo "add" > /sys/bus/ccw/devices/0.0.$fcp/uevent
+        elif [[ $os == ubuntu* ]]; then
+          #   Ubuntu: chzdev zfcp-lun 0.0.$device:0x$wwpn:0x$lun -e
+          /sbin/chzdev zfcp-lun 0.0.$fcp:0x$wwpn:0x$xcat_lun -e
+        fi
+
+        # Settle the file system so when we are done the device is fully available
+        if [[ $(which udevadm 2> /dev/null) != '' ]]; then
+          udevadm settle
+        else
+          udevsettle
+        fi
+        if [[ $os == rhel* || $os == sles* ]]; then
+          if [[ ! -e "/dev/disk/by-path/ccw-0.0.${fcp}-zfcp-0x${wwpn}:0x${xcat_lun}" ]]; then
+            # Sometimes the file takes longer to appear.  We will wait up to 3 minutes.
+            maxTime=0
+            for time in 1 2 2 5 10 10 30 60 60
+            do
+              if [[ -e "/dev/disk/by-path/ccw-0.0.${fcp}-zfcp-0x${wwpn}:0x${xcat_lun}" ]]; then
+                # Leave the loop now that the file exists
+                break
+              fi
+              maxTime=$maxTime+$time
+              echo "Sleeping for $time seconds to allow /dev/disk/by-path/ccw-0.0.${fcp}-zfcp-0x${wwpn}:0x${xcat_lun} to be created"
+              sleep $time
+            done
+          fi
+          if [[ ! -e "/dev/disk/by-path/ccw-0.0.${fcp}-zfcp-0x${wwpn}:0x${xcat_lun}" ]]; then
+            echo "/dev/disk/by-path/ccw-0.0.${fcp}-zfcp-0x${wwpn}:0x${xcat_lun} did not appear in $maxTime seconds, continuing."
+          fi
+        elif [[ $os == ubuntu* ]]; then
+          if [[ ! -e "/dev/disk/by-path/ccw-0.0.${fcp}-fc-0x${wwpn}-lun-${decimal_lun}" ]]; then
+            # Sometimes the file takes longer to appear.  We will wait up to 3 minutes.
+            maxTime=0
+            for time in 1 2 2 5 10 10 30 60 60
+            do
+              if [[ -e "/dev/disk/by-path/ccw-0.0.${fcp}-fc-0x${wwpn}-lun-${decimal_lun}" ]]; then
+                # Leave the loop now that the file exists
+                break
+              fi
+              maxTime=$maxTime+$time
+              echo "Sleeping for $time seconds to allow /dev/disk/by-path/ccw-0.0.${fcp}-fc-0x${wwpn}-lun-${decimal_lun} to be created"
+              sleep $time
+            done
+          fi
+          if [[ ! -e "/dev/disk/by-path/ccw-0.0.${fcp}-fc-0x${wwpn}-lun-${decimal_lun}" ]]; then
+            echo "/dev/disk/by-path/ccw-0.0.${fcp}-fc-0x${wwpn}-lun-${decimal_lun} did not appear in $maxTime seconds, continuing."
+          fi
+        fi
+      done
+    done
+    IFS=$oldIFS
+
+    /sbin/multipath -r
+
+  echo "$funcName successfully create the SCSI volume"
+
+
+  ##########################################################################
+  # Handle removing a SCSI volume
+  # Disk file input parameters:
+  #   action - "removeScsiVolume"
+  #   fcpAddr - FCP device address
+  #   wwpn - WWPN number
+  #   lun - LUN number
+  ##########################################################################
+  elif [[ $xcat_action == "removeScsiVolume" ]]; then
+    echo "Removing a SCSI Volume, FCP addr: $xcat_fcpAddr, WWPN: $xcat_wwpn, LUN: $xcat_lun"
+
+    # Validate the input
+    if [[ ! -n $xcat_fcpAddr ]]; then
+      echo "$funcName (Error) FCP address was not specified"
+      return
+    fi
+    xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
+
+    if [[ ! -n $xcat_wwpn ]]; then
+      echo "$funcName (Error) WWPN was not specified"
+      return
+    fi
+    xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
+
+    if [[ ! -n $xcat_lun ]]; then
+      echo "$funcName (Error) LUN was not specified"
+      return
+    fi
+    xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
+
+    oldIFS=$IFS
+    IFS=","
+    fcp_list=($xcat_fcpAddr)
+    for fcp in ${fcp_list[@]}
+    do
+      wwpn_list=($xcat_wwpn)
+      for wwpn in ${wwpn_list[@]}
+      do
+        # Delete the SCSI device
+        scsiDevice=`lszfcp -l 0x$xcat_lun | grep 0x$wwpn | cut -d " " -f2`
+        if [[ -n $scsiDevice ]]; then
+          echo 1 > "/sys/bus/scsi/devices/$scsiDevice/delete"
+        fi
+
+        # Delete WWPN and LUN from sysfs
+        if [[ -e /sys/bus/ccw/drivers/zfcp/0.0.$fcp/0x$wwpn/unit_remove ]]; then
+          if [[ $(which udevadm 2> /dev/null) != '' ]]; then
+            udevadm settle
+          else
+            udevsettle
+          fi
+          echo 0x$xcat_lun > /sys/bus/ccw/drivers/zfcp/0.0.$fcp/0x$wwpn/unit_remove
+        fi
+
+        # Delete WWPN and LUN from configuration files
+        if [[ $os == sles11* || $os == sles12* ]]; then
+          #   SLES: /etc/udev/rules.d/51-zfcp*
+          expression="/$xcat_lun/d"
+          sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$fcp.rules
+        elif [[ $os == rhel* ]]; then
+          #   RHEL: /etc/zfcp.conf
+          expression="/$xcat_lun/d"
+          sed --in-place -e $expression /etc/zfcp.conf
+        elif [[ $os == ubuntu* ]]; then
+          #   Ubuntu: chzdev zfcp-lun 0.0.$device:0x$wwpn:0x$lun -d
+          /sbin/chzdev zfcp-lun 0.0.$fcp:0x$wwpn:0x$xcat_lun -d
+        fi
+      done
+    done
+    IFS=$oldIFS
+    /sbin/multipath -W
+    /sbin/multipath -r
+    echo "$funcName successfully remove the SCSI volume"
+
+  ###########################################################################
+  # Handle adding a mdisk based ephemeral disk.
+  # Disk file input parameters:
+  #   action  - "addMdisk"
+  #   vaddr   - virtual address of the minidisk
+  #   filesys - Filesystem type
+  #   mntdir - The directory that mount the mdisk to
+  ##########################################################################
+  elif [[ $xcat_action == "addMdisk" ]]; then
+    echo "Adding a minidisk based ephemeral disk, Vaddr: $xcat_vaddr, Filesystem: $xcat_filesys mountpoint:$xcat_mntdir"
+
+    # Validate the input
+    if [[ ! -n $xcat_vaddr ]]; then
+      echo "$funcName (Error) Virtual address was not specified"
+      return
+    fi
+    xcat_vaddr=`echo $xcat_vaddr | tr '[A-Z]' '[a-z]'`
+
+    # Online the device
+    rc= onlineDevice $xcat_vaddr
+    if (( rc != 0 )); then
+      echo "$funcName (Error) fail to online the disk $xcat_vaddr"
+      return
+    fi
+
+    # Configure the added dasd to be persistent
+    echo "Permanently online the ephemeral disk"
+    if [[ $os == rhel* ]]; then
+      out=`cat "/etc/dasd.conf" | egrep -i $xcat_vaddr`
+      if [[ ! $out ]]; then
+        echo "0.0.$xcat_vaddr" >> /etc/dasd.conf
+      fi
+    elif [[ $os == sles* ]]; then
+      /sbin/dasd_configure 0.0.$xcat_vaddr 1
+    elif [[ $os == ubuntu16* ]]; then
+      touch /etc/sysconfig/hardware/config-ccw-0.0.$xcat_vaddr
+    else
+      echo "$funcName (Error) failed to permanently online the disk:$xcat_vaddr on os: $os, please check if $os is in the supported distribution list"
+      return
+    fi
+
+
+    # Mount the mdisk to the specified mount point
+    echo "Mounting the ephemeral disk $xcat_vaddr to directory $xcat_mntdir"
+    if [[ -d $xcat_mntdir ]]; then
+      rm -rf $xcat_mntdir
+    fi
+    mkdir -p $xcat_mntdir
+
+    cp /etc/fstab /etc/fstab.bak
+    out=`cat "/etc/fstab" | egrep -i "ccw-0.0.$xcat_vaddr"`
+    if [[  $out ]]; then
+      sed -i '/ccw-0.0.'"$xcat_vaddr"'/d' /etc/fstab
+    fi
+
+    if [[ $os == sles12* ]]; then
+      echo "/dev/disk/by-path/ccw-0.0.${xcat_vaddr}-part1 $xcat_mntdir $xcat_filesys defaults,nofail 0 0" >> /etc/fstab
+    else
+      echo "/dev/disk/by-path/ccw-0.0.${xcat_vaddr}-part1 $xcat_mntdir $xcat_filesys defaults 0 0" >> /etc/fstab
+    fi
+
+    out=`mount -a 2>&1`
+    if [[ "$out" ]]; then
+      echo "Fail to mount the disk $xcat_vaddr with reason $out"
+      mv /etc/fstab.bak /etc/fstab
+      mount -a
+    else
+      echo "The disk $xcat_vaddr has been mounted to $xcat_mntdir in format $xcat_filesys successfully"
+    fi
+
+  fi
+
+  return
+}
+
+############################################################################
+# Main Code Section
+############################################################################
+# Get Linux version
+getOsVersion
+setupDisk $@
+rm -f setupDisk

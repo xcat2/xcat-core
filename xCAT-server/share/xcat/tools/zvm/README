@@ -1,0 +1,13 @@
+z/VM Toolkit
+
+The list of resources related:
+Files:
+    prep_zxcatIVP_*.pl
+
+
+The prep_zxcatIVP_*.pl files are provided for each supported OpenStack release
+that interacts with xCAT.  These scripts end contain the name of the OpenStack
+release that they support.  The scripts scan the OpenStack configuration files
+and produce a driver script which is used to validate the installation of the
+OpenStack code with xCAT.  For more information on the scripts, invoke the
+help function for the individual script (operand --help).

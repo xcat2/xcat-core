@@ -55,6 +55,7 @@ sub findme {
 
     my @SEQdiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMdiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
+    my @ZVMDiscover = xCAT::TableUtils->get_site_attribute("__ZVMDiscover");
 
     if (defined($request->{discoverymethod}) and defined($request->{discoverymethod}->[0]) and ($request->{discoverymethod}->[0] ne 'undef')) {
 
@@ -62,6 +63,14 @@ sub findme {
         return;
     }
     unless ($SEQdiscover[0]) {
+        if ( $PCMdiscover[0] or $ZVMDiscover[0] ) {
+
+        # profile or z/VM discovery is running, then just return to make the other discovery handle it
+            return;
+    }
+        # update the discoverydata table to have an undefined node
+        $request->{discoverymethod}->[0] = 'undef';
+        xCAT::DiscoveryUtils->update_discovery_data($request);
         return;
     }
 
@@ -436,7 +445,7 @@ sub nodediscoverstart {
             xCAT::MsgUtils->message("E", $rsp, $cb, 1);
         }
 
-        my $usageinfo = "nodediscoverstart: Start a discovery process: Sequential or Profile.
+        my $usageinfo = "nodediscoverstart: Start a discovery process: Sequential, Profile or z/VM.
 Usage: 
     Common:
         nodediscoverstart [-h|--help|-v|--version|-V|--verbose] 
@@ -444,12 +453,16 @@ Usage:
         nodediscoverstart noderange=<noderange> [hostiprange=<hostiprange>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [-V|--verbose]
     Profile Discovery:
         nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank-num]";
+    z/VM Discovery:
+        nodediscoverstart zvmhost=<noderange> [defineto=both] [groups=<groups>] [ipfilter=<filter>] [openstackoperands=<operands>] [useridfilter=<filter>]
+        nodediscoverstart zvmhost=<noderange> defineto=xcatonly [groups=<groups>] [ipfilter=<filter>] [nodenameformat=<nodenameformat>] [useridfilter=<filter>]
+        nodediscoverstart zvmhost=<noderange> defineto=openstackonly [openstackoperands=<operands>]";
         $rsp = ();
         push @{ $rsp->{data} }, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
     };
 
-    # valid attributes for deqdiscovery
+    # valid attributes for seqdiscovery
     my %validargs = (
         'noderange'   => 1,
         'hostiprange' => 1,
@@ -492,7 +505,13 @@ Usage:
         $orgargs{$name} = $value;
     }
 
-    # Check the noderage=has been specified which is the flag that this is for sequential discovery
+    # Check the zvmhost= has been specified which is the flag that this is for z/VM discovery.
+    # Otherwise, fall thru to handle either sequential or profile discovery.
+    if ( defined( $orgargs{zvmhost} ) ) {
+        return;
+    }
+
+    # Check the noderange= has been specified which is the flag that this is for sequential discovery
     # Otherwise try to check the whether the networkprofile || hardwareprofile || imageprofile
     # has been passed, if yes, return to profile discovery
     unless (defined($orgargs{noderange})) {
@@ -502,6 +521,7 @@ Usage:
             return;
         } else {
             $usage->($callback, "For sequential discovery, the \'noderange\' option must be specified.");
+            $usage->($callback, "For z/VM discovery, the \'zvmhost\' option must be specified.");
             return;
         }
     }
@@ -567,7 +587,7 @@ Usage:
     $sitetab->setAttribs({ "key" => "__SEQDiscover" }, { "value" => "$textparam" });
     $sitetab->close();
 
-    # Clean the entries which discovery method is 'sequential' from the discoverdata table
+    # Clean the entries which discovery method is 'sequential' from the discoverydata table
     my $distab = xCAT::Table->new("discoverydata");
     $distab->delEntries({ method => 'sequential' });
     $distab->commit();
@@ -689,9 +709,12 @@ sub nodediscoverstop {
             xCAT::MsgUtils->message("E", $rsp, $cb, 1);
         }
 
-        my $usageinfo = "nodediscoverstop: Stop the running discovery: Sequential and Profile.
+        my $usageinfo = "nodediscoverstop: Stop the running discovery: Profile, Sequential and z/VM.
 Usage: 
-  nodediscoverstop [-h|--help|-v|--version]    ";
+    Common:
+        nodediscoverstop [-h|--help|-v|--version]
+    z/VM discovery:
+        nodediscoverstop [-z|--zvmhost <noderange>]";
         $rsp = ();
         push @{ $rsp->{data} }, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -721,9 +744,10 @@ Usage:
     # Check the running of sequential discovery
     my @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMDiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-    if ($PCMDiscover[0]) {
+    my @ZVMDiscover = xCAT::TableUtils->get_site_attribute("__ZVMDiscover");
+    if ($PCMDiscover[0] or $ZVMDiscover[0]) {
 
-        # return directly that profile discover will cover it
+        # return directly that the other discovery will handle the stop function.
         return;
     } elsif (!$SEQDiscover[0]) {
 
@@ -731,12 +755,13 @@ Usage:
         my $rsp;
         push @{ $rsp->{data} }, "Sequential Discovery is stopped.";
         push @{ $rsp->{data} }, "Profile Discovery is stopped.";
+        push @{$rsp->{data}}, "z/VM Discovery is stopped.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return;
     }
 
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
-      # Go thought discoverydata table and display the sequential disocvery entries
+    # Go through discoverydata table and display the sequential discovery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
         my $rsp;
@@ -779,7 +804,7 @@ Usage:
 }
 
 =head3 nodediscoverls 
- Display the discovered nodes
+ Display the discovered nodes.  This supports sequential and z/VM and partially Profile discovery.
 =cut
 
 sub nodediscoverls {
@@ -797,12 +822,14 @@ sub nodediscoverls {
         }
 
         my $usageinfo = "nodediscoverls: list the discovered nodes.
-Usage: 
+Usage:
+    Common: 
     nodediscoverls
     nodediscoverls [-h|--help|-v|--version] 
-    nodediscoverls [-t seq|profile|switch|blade|manual|undef|all] [-l] 
+    nodediscoverls [-t seq|profile|switch|blade|manual|undef|zvm|all] [-l] 
     nodediscoverls [-u uuid] [-l]
-    ";
+    z/VM:
+        nodediscoverls [-t zvm][-z|--zvmhost <noderange>] [-l]";
         $rsp = ();
         push @{ $rsp->{data} }, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -811,14 +838,15 @@ Usage:
     if ($args) {
         @ARGV = @$args;
     }
-    my ($type, $uuid, $long, $help, $ver);
+    my ($type, $uuid, $long, $help, $ver, $zvmHost );
     if (!GetOptions(
             't=s'       => \$type,
             'u=s'       => \$uuid,
             'l'         => \$long,
             'h|help'    => \$help,
             'V|verbose' => \$::VERBOSE,
-            'v|version' => \$ver)) {
+            'v|version' => \$ver,
+        'z|zvmhost=s' => \$zvmHost )) {
         $usage->($callback);
         return;
     }
@@ -833,9 +861,9 @@ Usage:
     }
 
     # If the type is specified, display the corresponding type of nodes
-    my @SEQDiscover;
+    my ( @SEQDiscover, @ZVMDiscover );
     if ($type) {
-        if ($type !~ /^(seq|profile|switch|blade|manual|undef|all)$/) {
+        if ($type !~ /^(seq|profile|switch|blade|manual|undef|zvm|all)$/) {
             $usage->($callback, "The discovery type \'$type\' is not supported.");
             return;
         }
@@ -844,24 +872,31 @@ Usage:
 
         # Check the running of sequential discovery
         @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
+        @ZVMDiscover = xCAT::TableUtils->get_site_attribute("__ZVMDiscover");
         if ($SEQDiscover[0]) {
             $type = "seq";
-        } else {
-            my @PCMDiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
-            if ($PCMDiscover[0]) {
+        } elsif ($PCMDiscover[0]) {
 
-                #return directly if my type of discover is not running.
+                #return directly if profile discovery is running.
+            return;
+        } elsif ( $ZVMDiscover[0] ) {
+            # zvmdiscovery handles requests for a running z/VM discovery.
                 return;
             } else {
 
-                # no type, no seq and no profile, then just diaplay all
+                # no type, no seq and no profile, then just display all
                 $type = "all";
             }
         }
-    }
 
-    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
-         # Go thought discoverydata table and display the disocvery entries
+    # If a zvmHost was specified then let zvmdiscovery handle it.
+    # Specifying '-u' will keep processing within seqdiscovery.
+    if ( !$uuid && ( $zvmHost || ( $type && $type eq 'zvm' )) ) {
+        # zvmdiscovery handles request specific to z/VM.
+        return;
+    }
+    
+    # Go through discoverydata table and display the discovery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
         my $rsp;
@@ -914,7 +949,8 @@ Usage:
     }
 
     my $rsp;
-    if ($SEQDiscover[0] && $type eq "sequential") {
+    if (($SEQDiscover[0] && $type eq "sequential" ) or
+        ( $type && $type eq "all" )) {
         push @{ $rsp->{data} }, "Discovered $discoverednum node.";
     }
     if (@discoverednodes) {
@@ -949,8 +985,11 @@ sub nodediscoverstatus {
         }
 
         my $usageinfo = "nodediscoverstatus: Display the discovery process status.
-Usage: 
-    nodediscoverstatus [-h|--help|-v|--version]     ";
+Usage:
+    Common:
+        nodediscoverstatus [-h|--help|-v|--version]
+    z/VM
+        nodediscoverstatus [-z|--zvmhost <noderange>]";
         $rsp = ();
         push @{ $rsp->{data} }, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -980,6 +1019,7 @@ Usage:
     # Check the running of sequential discovery
     my @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
     my @PCMDiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
+    my @ZVMDiscover = xCAT::TableUtils->get_site_attribute("__ZVMDiscover");
     if ($SEQDiscover[0]) {
         my $rsp;
         push @{ $rsp->{data} }, "Sequential discovery is running.";
@@ -989,10 +1029,13 @@ Usage:
         my $rsp;
         push @{ $rsp->{data} }, "Node discovery for all nodes using profiles is running";
         xCAT::MsgUtils->message("I", $rsp, $callback);
+    } elsif ( $ZVMDiscover[0] ) {
+        # z/VM discovery is a more complex response so we let its handler return the response.
     } else {
         my $rsp;
         push @{ $rsp->{data} }, "Sequential Discovery is stopped.";
         push @{ $rsp->{data} }, "Profile Discovery is stopped.";
+        push @{$rsp->{data}}, "z/VM Discovery is stopped.";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
@@ -1008,6 +1051,9 @@ sub nodediscoverdef {
     my $subreq   = shift;
     my $args     = shift;
 
+    my @inputZvmHosts;       # Input list of z/VM host nodes to stop
+    my $zvmHost;             # Small scope variable to temporarily hold a z/VM host node value
+
     # The subroutine used to display the usage message
     my $usage = sub {
         my $cb  = shift;
@@ -1021,10 +1067,13 @@ sub nodediscoverdef {
 
         my $usageinfo = "nodediscoverdef: Define the undefined discovery request, or clean the discovery entries in the discoverydata table (Which can be displayed by nodediscoverls command).
 Usage: 
+    Common:
     nodediscoverdef -u uuid -n node
     nodediscoverdef -r -u uuid
-    nodediscoverdef -r -t {seq|profile|switch|blade|manual|undef|all}
-    nodediscoverdef [-h|--help|-v|--version]";
+    nodediscoverdef -r -t {seq|profile|switch|blade|manual|undef|zvm|all}
+    nodediscoverdef [-h|--help|-v|--version]
+    z/VM:
+        nodediscoverdef -r -t zvm [-z|--zvmhost noderange]";
         $rsp = ();
         push @{ $rsp->{data} }, $usageinfo;
         xCAT::MsgUtils->message("I", $rsp, $cb);
@@ -1042,7 +1091,8 @@ Usage:
             'r'         => \$remove,
             'h|help'    => \$help,
             'V|verbose' => \$::VERBOSE,
-            'v|version' => \$ver)) {
+            'v|version' => \$ver,
+        'z|zvmhost=s' => \$zvmHost )) {
         $usage->($callback);
         return;
     }
@@ -1057,6 +1107,29 @@ Usage:
     }
 
     my $DBname = xCAT::Utils->get_DBName;    # support for DB2
+    # Put any specified zvmhosts into an array for later use.
+    if ( $zvmHost ) {
+        $type = 'zvm' if ( !$type );
+        if ( $type ne 'zvm' ) {
+            xCAT::MsgUtils->message("E", {data=>["Discovery Error: Type must be 'zvm' when '-z' or '--zvmhost' is specified."]}, $callback);
+            return;
+        }
+        if ( index( $zvmHost, ',' ) != -1 ) {
+            # Must have specified multiple host node names
+            my @hosts = split( /,/, $zvmHost );
+            foreach $zvmHost ( @hosts ) {
+                if ( !$zvmHost ) {
+                    # Tolerate zvmhost value beginning with a comma.  
+                    # It is wrong but not worth an error message.
+                    next;
+                }
+                push( @inputZvmHosts, $zvmHost );
+            }
+        } else {
+            push( @inputZvmHosts, $zvmHost );
+        }
+    } 
+
          # open the discoverydata table for the subsequent using
     my $distab = xCAT::Table->new("discoverydata");
     unless ($distab) {
@@ -1095,7 +1168,7 @@ Usage:
         } elsif ($type) {
 
             # handle the -r -t <...>
-            if ($type !~ /^(seq|profile|switch|blade|manual|undef|all)$/) {
+            if ($type !~ /^(seq|profile|switch|blade|manual|undef|zvm|all)$/) {
                 $usage->($callback, "The discovery type \'$type\' is not supported.");
                 return;
             }
@@ -1131,8 +1204,23 @@ Usage:
                 if ($type =~ /^seq/) {
                     $type = "sequential";
                 }
+                # If a noderange of z/VM hosts was specified then delete
+                # all z/VM discovered systems for those hosts.  'zvm' type
+                # must be used when z/VM hosts are specified.
+                if ( @inputZvmHosts ) {
+                    my %keyhash;
+                    $keyhash{'method'} = 'zvm';
+                    foreach $zvmHost ( @inputZvmHosts ) {
+                        $keyhash{'otherdata'} = "zvmhost." . $zvmHost;
+                        $distab->delEntries( \%keyhash );
+                    }
+                    $distab->commit();
+                } else {
+                    # Otherwise, Delete all systems discovered using the specified method.
                 $distab->delEntries({ method => $type });
                 $distab->commit();
+            }
+
             }
         }
         xCAT::MsgUtils->message("I", { data => ["Removing discovery entries finished."] }, $callback);

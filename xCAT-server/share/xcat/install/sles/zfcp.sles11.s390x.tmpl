@@ -238,7 +238,7 @@
       <dhclient_hostname_option>AUTO</dhclient_hostname_option>
     </dhcp_options>
     <dns>
-      <dhcp_hostname config:type="boolean">true</dhcp_hostname>
+      <dhcp_hostname config:type="boolean">false</dhcp_hostname>
       <dhcp_resolv config:type="boolean">true</dhcp_resolv>
       <domain>replace_domain</domain>
       <hostname>replace_hostname</hostname>
@@ -248,11 +248,14 @@
     </dns>
     <interfaces config:type="list">
       <interface>
-        <bootproto>dhcp</bootproto>
+        <bootproto>static</bootproto>
+        <broadcast>replace_broadcast</broadcast>
         <device>replace_device</device>
+        <ipaddr>replace_ipaddr</ipaddr>
         <lladdr>replace_lladdr</lladdr>
+        <netmask>replace_netmask</netmask>
+        <network>replace_network</network>
         <startmode>auto</startmode>
-        <usercontrol>no</usercontrol>
       </interface>
     </interfaces>
     <managed config:type="boolean">false</managed>
