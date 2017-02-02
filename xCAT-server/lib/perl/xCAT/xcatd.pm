@@ -31,7 +31,7 @@ This program module file, is a set of utilities used by xCAT daemon.
   Here is where we check if  $peername is allowed to do $request in policy tbl.
    $peername, if set signifies client has a cert that the xCAT CA accepted.
    Logs to syslog and auditlog table all user commands, see site.auditskipcmds
-   attribute and auditnosyslog attribute. 
+   attribute and auditnosyslog attribute.
     
     Arguments:
         
@@ -94,7 +94,7 @@ sub validate {
             $req_noderange_info{leftnodes} =  \@tmpn;
         }
     }
-    
+
   RULE: foreach $rule (@sortedpolicies) {
         if ($rule->{name} and $rule->{name} ne '*') {
 
@@ -163,7 +163,7 @@ sub validate {
                     push @non_hit_nodes, $_;
                 }
             }
-   
+
             if($hitnum == 0){
                 next RULE;
             }elsif($hitnum && $hitnum != $req_noderange_info{leftnodenum}){
@@ -227,7 +227,32 @@ sub validate {
 
                     $arglist .= " " . $argument;
                 }
-                if ($arglist)  { $logst .= $arglist; }
+      my $saveArglist = $arglist;
+
+      # If this is mkvm check for --password or -w
+      if ($request->{command}->[0] eq "mkvm") {
+
+          my $first;
+          my $restcommand;
+          my $passw = index ($saveArglist, '--password');
+          if ($passw > -1) {
+             $passw = $passw + 11;
+             my $first = substr($saveArglist,0,$passw). "******** ";
+             my $restcommand = substr($saveArglist,$passw);
+             $restcommand =~ s/^\S+\s*//;
+             $saveArglist = "$first$restcommand";
+          }
+          # now check for -w with password
+          $passw = index ($saveArglist, '-w');
+          if ($passw > -1) {
+             $passw = $passw + 3;
+             $first = substr($saveArglist,0,$passw). "******** ";
+             $restcommand = substr($saveArglist,$passw);
+             $restcommand =~ s/^\S+\s*//;
+             $saveArglist = "$first$restcommand";
+          }
+      }
+                if ($arglist)  { $logst .= $saveArglist; }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
 
@@ -319,7 +344,7 @@ sub validate {
 
     if($req_noderange_info{leftnodenum}){
         my $leftnodes = join(",", @{$req_noderange_info{leftnodes}});
-        xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost $request->{command}->[0] to $leftnodes");  
+        xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost $request->{command}->[0] to $leftnodes");
     }else{
         xCAT::MsgUtils->message("S", "Request matched no policy rule: peername=$peername, peerhost=$peerhost  " . $request->{command}->[0]);
     }

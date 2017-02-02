@@ -303,6 +303,8 @@ sub parse_xdcp_cmd
             'F|File=s'              => \$options{'File'},
             'h|help'                => \$options{'help'},
             'i|rootimg=s'           => \$options{'rootimg'},
+                   'ip=s'             => \$options{'ip'},
+                   'show=s'           => \$options{'show'},
             'l|user=s'              => \$options{'user'},
             'n|nodes=s'             => \$options{'nodes'},
             'o|node-options=s'      => \$options{'node-options'},
@@ -459,6 +461,8 @@ sub parse_xdsh_cmd
             'q|show-config'            => \$options{'show-config'},
             'r|node-rsh=s'             => \$options{'node-rsh'},
             'i|rootimg=s'              => \$options{'rootimg'},
+            'ip=s'                     => \$options{'ip'},
+            'show=s'                   => \$options{'show'},
             's|stream'                 => \$options{'streaming'},
             't|timeout=i'              => \$options{'timeout'},
             'v|verify'                 => \$options{'verify'},
@@ -1070,11 +1074,11 @@ sub process_nodes
 #-------------------------------------------------------
 
 =head3 syncSNZoneKeys
-  Build the xdcp command to send the zone keys to the service nodes 
-  Return an array of servicenodes that do not have errors 
+  Build the xdcp command to send the zone keys to the service nodes
+  Return an array of servicenodes that do not have errors
   Returns error code:
   if  = 0,  good return continue to process the
-	  nodes.
+          nodes.
   if  = 1,  global error need to quit
 
 =cut

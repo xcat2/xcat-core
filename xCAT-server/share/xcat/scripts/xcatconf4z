@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# IBM(c) 2013, 2015 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 ### BEGIN INIT INFO
 # Provides: xcatconf4z
@@ -7,10 +8,11 @@
 # Required-Start: $syslog
 # Should-Start: 
 # Required-Stop:
-# Short-Description: xCAT disk initialization and configuration
+# Short-Description: A basic active engine used to initialize and configure vm.
 # Description: Reads class x files from the reader and acts based on the type of file.
-#              Files of filetype "disk" cause SCSI disks be configured.
-#              Other files are used to generate an ISO9660 disk for transporting xCAT configurations.
+#              Generate an ISO9660 disk for cloud-init to handle openstack configurations.
+#              Files of filetype "disk" cause disks be configured. (deprecated)
+#              Other files are used to configure vm when it start up.
 ### END INIT INFO
 
 ###############################################################################
@@ -20,6 +22,7 @@
 # If nothing is specified then this function will not process any
 # configuration files in the reader.
 ###############################################################################
+version=3.0
 authorizedSenders=''
 
 function getOsVersion {
@@ -80,7 +83,7 @@ function onlineDevice {
     fi
     rc=$(/sbin/chccwdev -e $device > /dev/null; echo $?)
     if (( rc != 0 )); then
-      echo "xcatconf4z $funcName (Error) Could not activate the virtual reader"
+      echo "xcatconf4z $funcName (Error) Could not activate the virtual device $device"
       return 1
     fi
   fi
@@ -94,7 +97,8 @@ function pullReader {
   #   Drives special processing functions for files of a specific type.
   #   Files with a filetype of:
   #     tgz are unpacked into the transport directory
-  #     disk files are read and cause the setupDisk function to be driven
+  #     disk files are read and cause the setupDisk function to be driven (deprecated)
+  #     doscript that contains a invokeScript.sh which will call the other script in it to do the speicial work
   #     all other files are unpacked into the transport directory
   # @Input:
   #   None
@@ -145,14 +149,26 @@ function pullReader {
     # Receive the spool file
     echo "Downloading record $spoolid: $file"
     
-    if [[ $type == "txt" ]] || [[ $type == "sh" ]]; then
+    if [[ $type == "txt" ]]; then
       # Receiving text
-      rc=$(/usr/sbin/vmur re -t $spoolid $file)
+      rc=$(/usr/sbin/vmur re -f $spoolid $file)
+    elif [[ $type == "sh" ]]; then
+      # Receiving shell
+      rc=$(/usr/sbin/vmur re -f $spoolid $file)
+      /bin/bash $file
+      rm $file
     elif [[ $type == "tgz" ]]; then
       rc=$(/usr/sbin/vmur re $spoolid $file)
       /bin/tar xzf $file -C $transportdir
       rm $file
+      injectFiles
+    elif [[ $type == "doscript" ]]; then
+      rc=$(/usr/sbin/vmur re $spoolid $file)
+      /bin/tar xf $file -C $transportdir
+      rm $file
+      /bin/bash invokeScript.sh
     elif [[ $type == "disk" ]]; then
+      echo 'disk file encountered and will be handled by the deprecated setupDisk function'
       rc=$(/usr/sbin/vmur re $spoolid $file)
       if (( rc == 0 )); then
         setupDisk $transportdir'/'$file
@@ -180,11 +196,15 @@ function setupIso {
   # @Output:
   #   None
   # @Code:
+  local funcName="setupIso"
   iso="/var/opt/xcat/transport.iso"
   
   # If there are files in the transport directory then create an ISO system.
   if [ "$(ls -A .)" ]; then
-    /usr/bin/mkisofs -l -o $iso $transportdir
+    /usr/bin/mkisofs -l -V 'config-2' -o $iso $transportdir
+    if [ -e /tmp/znetconfig.sh ]; then
+      /bin/bash /tmp/znetconfig.sh
+    fi
   fi
   
   # If the ISO filesystem exists then create loop back device pointing 
@@ -350,7 +370,7 @@ function setupDisk {
       /sbin/zfcp_host_configure 0.0.$xcat_fcpAddr 1
       /sbin/zfcp_disk_configure 0.0.$xcat_fcpAddr $xcat_wwpn $xcat_lun 1
       echo "0x$xcat_wwpn:0x$xcat_lun" >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$xcat_fcpAddr
-    elif [[ $os == sles* ]]; then
+    elif [[ $os == sles11* ]]; then
       /sbin/zfcp_host_configure 0.0.$xcat_fcpAddr 1
       /sbin/zfcp_disk_configure 0.0.$xcat_fcpAddr $xcat_wwpn $xcat_lun 1
       
@@ -455,15 +475,112 @@ function setupDisk {
     if [[ $os == sles10* ]]; then
       expression="/$xcat_lun/d"
       sed --in-place -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$xcat_fcpAddr
-    elif [[ $os == sles* ]]; then
+    elif [[ $os == sles11* ]]; then
       expression="/$xcat_lun/d"
       sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$xcat_fcpAddr.rules
     elif [[ $os == rhel* ]]; then
       expression="/$xcat_lun/d"
       sed --in-place -e $expression /etc/zfcp.conf
     fi
-  fi
+
+  ###########################################################################
+  # Handle adding a mdisk based ephemeral disk.
+  # Disk file input parameters:
+  #   action  - "addMdisk"
+  #   vaddr   - virtual address of the minidisk
+  #   filesys - Filesystem type
+  #   mntdir - The directory that mount the mdisk to
+  ##########################################################################
+  elif [[ $xcat_action == "addMdisk" ]]; then
+    echo "Adding a minidisk based ephemeral disk, Vaddr: $xcat_vaddr, Filesystem: $xcat_filesys mountpoint:$xcat_mntdir"
+
+    # Validate the input
+    if [[ ! -n $xcat_vaddr ]]; then
+      echo "xcatconf4z $funcName (Error) Virtual address was not specified"
+      return
+    fi
+    xcat_vaddr=`echo $xcat_vaddr | tr '[A-Z]' '[a-z]'`
+
+    # Online the device
+    rc= onlineDevice $xcat_vaddr
+    if (( rc != 0 )); then
+      echo "xcatconf4z $funcName (Error) fail to online the disk $xcat_vaddr"
+      return
+    fi
+
+    # Configure the added dasd to be persistent
+    echo "Permenently online the ephemeral disk"
+    if [[ $os == rhel* ]]; then
+      out=`cat "/etc/dasd.conf" | egrep -i $xcat_vaddr`
+      if [[ ! $out ]]; then
+        echo "0.0.$xcat_vaddr" >> /etc/dasd.conf
+      fi
+    else
+      /sbin/dasd_configure 0.0.$xcat_vaddr 1
+    fi
+
+    # Mount the mdisk to the specified mount point
+    echo "Mounting the ephemeral disk $xcat_vaddr to directory $xcat_mntdir"
+    if [[ -d $xcat_mntdir ]]; then
+      rm -rf $xcat_mntdir
+    fi
+    mkdir -p $xcat_mntdir
+    
+    cp /etc/fstab /etc/fstab.bak
+    out=`cat "/etc/fstab" | egrep -i "ccw-0.0.$xcat_vaddr"`
+    if [[  $out ]]; then
+      sed -i '/ccw-0.0.'"$xcat_vaddr"'/d' /etc/fstab
+    fi
+    echo "/dev/disk/by-path/ccw-0.0.${xcat_vaddr}-part1 $xcat_mntdir $xcat_filesys defaults 0 0" >> /etc/fstab
+
+    out=`mount -a 2>&1`
+    if [[ "$out" ]]; then
+      echo "Fail to mount the disk $xcat_vaddr with reason $out"
+      mv /etc/fstab.bak /etc/fstab
+      mount -a
+    else
+      echo "The disk $xcat_vaddr has been mounted to $xcat_mntdir in format $xcat_filesys successfully"
+    fi
+ 
+    fi
   
+  return
+}
+
+function injectFiles {
+  # @Description:
+  #   Inject network files and scripts
+  # @Input:
+  #   None
+  # @Output:
+  #   None
+  # @Code:
+  local funcName="injectFiles"
+
+  if [[ ! -e $transportdir/openstack/latest/meta_data.json ]]; then
+    echo "Can not inject files, because no meta_data.json"
+    return
+  fi
+
+  echo "File injecting ...."
+  awk '{
+    #get inject files info
+    split($0 ,res1,/"files": \[/)
+    split(res1[2], res2, /\]/)
+    n=split(res2[1], res, /}, /)
+
+    for(m=1;m<=n;m++)
+    {
+      split(res[m], temp1, /{"path": "/)
+      k=split(temp1[2], temp2, /", "content_path": "/)
+      sub(/"}*$/, "", temp2[2])
+      #print temp2[1] " : " temp2[2]
+      des = dir "/openstack" temp2[2]
+      cmd = "cp " des " " temp2[1]
+      #print cmd
+      system(cmd)
+    }
+  }' dir=$transportdir <$transportdir/openstack/latest/meta_data.json
   return
 }
 
@@ -483,13 +600,27 @@ case "$1" in
     
     if [[ -n "$authorizedSenders" ]]; then
       pullReader
+      echo "xcatconf4z has successfully processed the reader files."
     else
       echo "xcatconf4z is disabled from accepting configuration reader files."
     fi
       
     setupIso
-  ;;  
-  stop|status|restart|reload|force-reload)  
+  ;;
+
+  status)
+    if [[ -n "$authorizedSenders" ]]; then
+      echo "xcatconf4z is enabled to accept configuration reader files from: $authorizedSenders"
+    else
+      echo "xcatconf4z is disabled from accepting configuration reader files."
+    fi
+  ;;
+  
+  version)
+    echo "xcatconf4z version:" $version
+  ;;
+  
+  stop|restart|reload|force-reload)  
     # Do nothing  
   ;;  
 esac  

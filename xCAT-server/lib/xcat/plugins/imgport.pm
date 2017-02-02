@@ -99,13 +99,14 @@ sub ximport {
     my $nodes;
     my $new_profile;
     my $remoteHost;
+    my $nozip = 0;
 
     my $xusage = sub {
         my $ec = shift;
         push @{ $rsp{data} }, "imgimport: Takes in an xCAT image bundle and defines it to xCAT so you can use it";
         push @{ $rsp{data} }, "Usage: ";
         push @{ $rsp{data} }, "\timgimport [-h|--help]";
-        push @{ $rsp{data} }, "\timgimport <bundle_file_name> [-p|--postscripts <nodelist>] [-f|--profile <new_profile>] [-R|--remotehost <userid\@host>] [-v]";
+        push@{ $rsp{data} }, "\timgimport <bundle_file_name> [-p|--postscripts <nodelist>] [-f|--profile <new_profile>] [-R|--remotehost <userid\@host>] [-n|--nozip] [-v]";
         if ($ec) { $rsp{errorcode} = $ec; }
         $callback->(\%rsp);
     };
@@ -122,6 +123,7 @@ sub ximport {
         'R|remotehost=s'  => \$remoteHost,
         'p|postscripts=s' => \$nodes,
         'f|profile=s'     => \$new_profile,
+        'n|nozip' => \$nozip
     );
 
     if ($help) {
@@ -130,7 +132,7 @@ sub ximport {
     }
 
     # first extract the bundle
-    extract_bundle($request, $callback, $nodes, $new_profile, $remoteHost);
+    extract_bundle($request, $callback, $nodes, $new_profile, $remoteHost, $nozip );
 
 }
 
@@ -608,7 +610,7 @@ sub get_files {
                     if (-f "$rootimgdir/kernel") {
                         $kernel = "$rootimgdir/kernel";
                     }
-                    
+
                     my $compressedrootimg=xCAT::SvrUtils->searchcompressedrootimg("$rootimgdir");
                     $rootimg = "$rootimgdir/$compressedrootimg";
 
@@ -1115,6 +1117,7 @@ sub extract_bundle {
     my $nodes       = shift;
     my $new_profile = shift;
     my $remoteHost  = shift;
+    my $nozip = shift;
 
     @ARGV = @{ $request->{arg} };
     my $xml;
@@ -1188,11 +1191,20 @@ sub extract_bundle {
 
     $callback->({ data => ["Unbundling image..."] });
     my $rc;
+    if ($nozip) {
     if ($::VERBOSE) {
+            $callback->({data=>["tar xvf $bundle -C $tpath"]});
+            $rc = system("tar xvf $bundle -C $tpath");
+        } else {
+            $rc = system("tar xf $bundle -C $tpath");
+        }
+    } else {
+        if ($::VERBOSE) {
         $callback->({ data => ["tar zxvf $bundle -C $tpath"] });
         $rc = system("tar zxvf $bundle -C $tpath");
     } else {
         $rc = system("tar zxf $bundle -C $tpath");
+    }
     }
 
     if ($rc) {

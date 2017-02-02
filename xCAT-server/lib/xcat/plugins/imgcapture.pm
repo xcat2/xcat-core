@@ -46,10 +46,16 @@ sub process_request {
     @ARGV = @{ $request->{arg} } if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage:\n imgcapture <node> -t|--type {diskless|sysclone} -o|--osimage <osimage> [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
+    my $usage = "Usage: imgcapture <node> -t|--type diskless [-p | --profile <profile>] " .
+                "[-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] " .
+                "[-d | --device <devicesToCapture>] [-c | --compress <compressionLevel>] [-V | --verbose] \n\n" .
+                "imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n" .
+                "imgcapture [-h|--help] \n" .
+                "imgcapture [-v|--version]";
 
     my $os;
     my $arch;
+    my $compression;                     # Supported by the s390x architecture
     my $device;
     my $profile;
     my $bootif;
@@ -65,6 +71,7 @@ sub process_request {
         'n=s'         => \$netdriver,
         'osimage|o=s' => \$osimg,
         "device|d=s"  => \$device,
+        "compress|c=s" => \$compression,
         "help|h"      => \$help,
         "version|v"   => \$version,
         "verbose|V"   => \$verbose,
@@ -123,7 +130,7 @@ sub process_request {
         # Handle image capture separately for s390x
         if ($arch eq 's390x') {
             eval { require xCAT_plugin::zvm; };   # Load z/VM plugin dynamically
-            xCAT_plugin::zvm->imageCapture($callback, $node, $os, $arch, $profile, $osimg, $device);
+            xCAT_plugin::zvm->imageCapture($callback, $node, $os, $arch, $type, $profile, $osimg, $device, $compression);
             return;
         }
 
