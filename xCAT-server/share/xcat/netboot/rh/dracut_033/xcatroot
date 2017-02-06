@@ -80,7 +80,7 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
-    echo -n "Extracting the root filesystem..."
+    echo "Extracting the root filesystem..."
     if [ -r /rootimg.cpio.gz ]; then
         if [ -x /bin/cpio ]; then
             gzip -cd /rootimg.cpio.gz |/bin/cpio -idum
@@ -108,7 +108,7 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
-    echo -n "Extracting the root filesystem..."
+    echo "Extracting the root filesystem..."
     if [ -r /rootimg.tar.gz ]; then
         tar --selinux --xattrs-include='*' -zxf /rootimg.tar.gz
         if [ $? -ne 0 ]; then
@@ -135,7 +135,7 @@ elif [ -r /rootimg-statelite.gz ]; then
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
-    echo -n "Extracting root filesystem..."
+    echo "Extracting root filesystem..."
     if [ -x /bin/cpio ]; then
         gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
     else
