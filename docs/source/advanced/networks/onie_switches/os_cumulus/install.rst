@@ -4,22 +4,23 @@ Installation and Configuration
 Cumulus OS Installtion
 ----------------------
 
-The following assumes that the physical switches have power and have obtained a DHCP IP address from the xCAT open range.  
+**Note:** *The following assumes that the physical switches have power and have obtained a DHCP IP address from the xCAT open range.*
 
-xCAT provides support for detecting and installing the Cumulus Linux OS into ONIE enabled switches by utilizing DHCP to detect "**onie_vendor**" from the ``vendor-class-identifier`` string and then sends it the Cumulus Linux OS.  
+xCAT provides support for detecting and installing the Cumulus Linux OS into ONIE enabled switches by utilizing DHCP to detect "**onie_vendor**" from the ``vendor-class-identifier`` string and then send it the Cumulus Linux OS installer.
 
 #. Create a pre-defined switch definition for the ONIE switch using the ``onieswitch`` template.
 
    The mac address of the switch management port is required for xCAT to configure the DHCP information and send over the OS to install on the switch. 
 
-   For smaller clusters, if you know the mac address of the management port on the switch, simply create the pre-defined switch defintion providing the mac address: ::
+   **[small clusters]** If you know the mac address of the management port on the switch, create the pre-defined switch defintion providing the mac address. ::
 
        mkdef switch01 --template onieswitch arch=armv71 \
            ip=192.168.1.1 mac="aa:bb:cc:dd:ee:ff"
 
-    For large clusters, xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
+   **[large clusters]** xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
 
-    #. Define the switch objects ::
+
+    #. Define all the switch objects providing the switch/switchport mapping: ::
 
          mkdef switch01 --template onieswitch arch=armv71 \
              ip=192.168.1.1 switch=coresw1 switchport=1
@@ -31,7 +32,7 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
              ip=192.168.4.1 switch=coresw1 switchport=4
          ... 
   
-    #. Leverage ``switchdiscover`` over the DHCP range to detect the MAC addrees and write them into the predefined swtiches above. ::
+    #. Leverage ``switchdiscover`` over the DHCP range to automatically detect the MAC address and write them into the predefined swtiches above. ::
 
          switchdiscover --range <IP range>
 
@@ -44,14 +45,14 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
     makedhcp -a <switch> 
 
-At this point, the DHCPREQUEST from the switch should get the Cumulus Linux OS as a response and begin the installation.  
 
-Normal Installation time is around 1 hour. 
+At this point, the DHCPREQUEST from the switch should now get a response with the Cumulus Linux OS and begin the network installation.  *(Normal  installation time for Cumulus Linux is 1 hour)*
+
 
 Configure xCAT Remote Commands
 ------------------------------
 
-After Cumulus Linux OS is installed, a default user ``cumulus`` will be created.  The default password is: ``CumulusLinux!``.
+After Cumulus Linux OS is installed, a default user ``cumulus`` will be created with default password: ``CumulusLinux!``.
 
 To ease in the management of the switch, xCAT provides a script to help configure password-less ssh as the ``root`` user.  This script sends over the xCAT ssh keys so that the xCAT remote commands (``xdsh``, ``xdcp``, etc) can be run against the ONIE switches.  
 
@@ -67,26 +68,28 @@ After Cumulus Linux OS is installed onto the ONIE switch, only the serial port c
 
 #. Copy the license file to the switch: ::
 
-    xdcp <switch> /install/custom/sw_os/cumulus/licensefile.txt /root/
+      xdcp <switch> /install/custom/sw_os/cumulus/licensefile.txt /root/
 
 #. Activate the license: ::
 
-    xdsh <switch> "/usr/cumulus/bin/cl-license -i /root/licensefile.txt"
+      xdsh <switch> "/usr/cumulus/bin/cl-license -i /root/licensefile.txt"
 
 #. Verify that the license file is successfully installed: ::
 
-    xdsh <switch> /usr/cumulus/bin/cl-license
+      xdsh <switch> /usr/cumulus/bin/cl-license
 
-  Output should be similar to: ``<switch> xxx@xx.com|xxxxxxxxxxxxxxx``
+   Output should be similar to: ``<switch> xxx@xx.com|xxxxxxxxxxxxxxx``
 
 #. Reboot the switch to apply the license file: ::
 
-    xdsh <switch> reboot
+      xdsh <switch> reboot
 
 
 Enable SNMP (optional)
 ----------------------
 
-To enable ``snmpd``, execute the ``enablesnmp`` postscript on the switch: ``updatenode <switch> -P enablesnmp``.  
+To enable ``snmpd``, execute the ``enablesnmp`` postscript on the switch: ::
+
+    updatenode <switch> -P enablesnmp
 
 

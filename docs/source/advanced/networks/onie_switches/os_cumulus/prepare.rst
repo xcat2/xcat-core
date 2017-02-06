@@ -7,6 +7,7 @@ Prepare the Cumulus Linux files on the xCAT Management Node.
 
 #. Copy the above files into a location under the xCAT ``/install`` directory. ::
 
+    # Create a directory to hold the cumulus linux files
     mkdir -p /install/custom/sw_os/cumulus/
 
     # copy the license file 
