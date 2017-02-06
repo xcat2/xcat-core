@@ -395,9 +395,12 @@ sub do_installm_service {
             ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
         unless ($client_name) {
-            my $myaddr = inet_ntoa($conn->peeraddr);
+	    my $addrfamily=sockaddr_family(getpeername($conn));
+	    my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
             xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
+            close($conn);
+            next;
         }
 
         $clients[0] = $client_name;
