@@ -67,8 +67,8 @@ Options:
          If unit is not specified, hour will be used by default.
     -p Show elapsed time of each stage during provision for each node
          Support 2 output format:
-         1 Elapsed time of each stage during provision
-         2 Elapsed time from power on node to each stage starting
+         'compact': Elapsed time of provision for each node.
+         'details': Elapsed time for DHCP, RPM, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
 ";
 
 
@@ -112,15 +112,18 @@ unless ($noderange) {
     exit 1;
 }
 
-my $command_input = "xcatprobe -w $program_name";
-$command_input .= " -n $noderange" if ($noderange);
-$command_input .= " -p $performance" if ($performance);
-$command_input .= " -V" if ($verbose);
-
 if ($rollforward_time_of_replay) {
     if (($rollforward_time_of_replay !~ /(\d+)h(\d+)m/i) && ($rollforward_time_of_replay !~ /^(\d+)h*$/i) && ($rollforward_time_of_replay !~ /^(\d+)m$/i)) {
         probe_utils->send_msg("stdout", "f", "Unsupported time format for option '-r'");
         probe_utils->send_msg("stdout", "", "$::USAGE");
+        exit 1;
+    }
+}
+
+if ($performance) {
+    if ($performance ne "compact" and $performance ne "details") {
+        probe_utils->send_msg("stdout", "f", "Unsupported parameter for option '-p'");
+        probe_utils->send_msg("stdout", "",  "$::USAGE");
         exit 1;
     }
 }
@@ -447,7 +450,7 @@ sub do_replay {
 sub conclusion_report {
     my $node_state_ref = shift;
 
-    probe_utils->send_msg("stdout", "", "==================osdeploy_probe_report=================");
+    probe_utils->send_msg("stdout", "", "======================  Summary  =====================");
 
     if ($debug) {
         print "---->the result of %node_state<------\n";
@@ -494,10 +497,10 @@ sub conclusion_report {
             $completed      = 1  if ($_ == $::STATE_COMPLETED)
         }
 
-        # Cover limited non-privision error 
+        # Cover limited non-privision error when replay
         # 1 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
         #   It is very possible to just do reboot process
-        # 2 When replay, if there isn't reboot operation for target node during the rollback time window 
+        # 2 if there isn't reboot operation for target node during the rollback time window 
         #   That means there isn't provision process happened 
 
         unless ($monitor) {
@@ -563,16 +566,16 @@ sub conclusion_report {
     Description:
         Calculate the performance of provision (for each node)
     Arguments:
-        performance: 1: calculate how much time spent for provision
-                     2: calculate how much time spent for each status (DHCP, RPM, POSTSCRIPTS, POSTBOOTSCRIPTS)
-                     3: reserve for diskless and diskful's other status
+        performance: compact: calculate how much time spent for provision
+                     details: calculate how much time spent for each status (DHCP, RPM, POSTSCRIPTS, POSTBOOTSCRIPTS)
+                     reserve: reserve for diskless
     Returns:
 =cut
 
 #------------------------------------------
 sub performance_calculation {
     my $is_success = shift;
-    #print Dumper(%node_status_time);
+    print Dumper(%node_status_time);
 
     return if ((keys %node_status_time == 1 and $node_status_time{all}) or !%node_status_time);
 
@@ -588,16 +591,16 @@ sub performance_calculation {
 
     # print table's first line
     # @status_for_time: the status that needed to calculate time
-    if ($provision_type == $::DISKFUL and $performance == 3) {
+    if ($provision_type == $::DISKFUL and $performance eq "reserve") {
         print "NODE $space DHCP       BOOTLOADER KERNEL     INITRD     KICKSTART  RPM        POST       POSTBOOT   COMPLETED\n";
         @status_for_time = ($::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_KICKSTART, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
-    } elsif ($provision_type == $::DISKFUL and $performance == 2) {
+    } elsif ($provision_type == $::DISKFUL and $performance eq "details") {
         print "NODE $space DHCP       RPM        POST       POSTBOOT   COMPLETED\n";
         @status_for_time = ($::STATE_DHCP, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
-    } elsif ($provision_type == $::DISKLESS and $performance == 3) {
+    } elsif ($provision_type == $::DISKLESS and $performance eq "reserve") {
         print "NODE $space DHCP       BOOTLOADER KERNEL     INITRD     NETBOOTING ROOTIMG    POSTBOOT   COMPLETED\n";
         @status_for_time = ($::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_NETBOOTING, $::STATE_ROOTIMG, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
-    } elsif ($performance == 1) {
+    } elsif ($performance eq "compact") {
         print "NODE $space COMPLETED\n";
         @status_for_time = ($::STATE_COMPLETED);
     }
@@ -612,30 +615,34 @@ sub performance_calculation {
             $warninfo = "Did not get start time from log during running, use xcatprobe start time";
         }
 
+        # get the start time of the first node
         if ($all_spend_time{start_time}) {
-            $all_spend_time{start_time} = ($all_spend_time{start_time} <= $node_status_time{$node}{$::STATE_POWER_ON}{start_time}) ?  $all_spend_time{start_time} : $node_status_time{$node}{$::STATE_POWER_ON}{start_time};
+            $all_spend_time{start_time} = $node_status_time{$node}{$::STATE_POWER_ON}{start_time} if ($all_spend_time{start_time} > $node_status_time{$node}{$::STATE_POWER_ON}{start_time});
         } else {
             $all_spend_time{start_time} = $node_status_time{$node}{$::STATE_POWER_ON}{start_time};
         }
 
+        # get the end time of the last node
         if ($node_status_time{$node}{$::STATE_COMPLETED}{start_time}) {
-            $all_spend_time{end_time} = ($all_spend_time{end_time} >= $node_status_time{$node}{$::STATE_COMPLETED}{start_time}) ? $all_spend_time{end_time} : $node_status_time{$node}{$::STATE_COMPLETED}{start_time};
+            $all_spend_time{end_time} = $node_status_time{$node}{$::STATE_COMPLETED}{start_time} if ($all_spend_time{end_time} < $node_status_time{$node}{$::STATE_COMPLETED}{start_time});
         }
 
+        # get the start time and end time for each step
         @timeinfo = ();
         foreach my $status (@status_for_time) {
             my $tmp_status;
             my $tmp_detail_status;
-            if ($performance == 2 and $provision_type == $::DISKFUL) {
+            if ($performance eq "details" and $provision_type == $::DISKFUL) {
+                # when details, if the status is DHCP, use power on time as it's start time
                 $tmp_detail_status = $::STATE_DHCP;
             } else {
+                # if not details, power on time is the start time for each steps
                 $tmp_detail_status = $::STATE_COMPLETED;
             }
 
-            # for some status, use time of power on as status's start time
             if ($status <= $tmp_detail_status or $status == $::STATE_COMPLETED) {
                 $tmp_status = $::STATE_POWER_ON;
-                if ($warninfo) {
+                if ($warninfo and $status == $::STATE_DHCP) {
                     push @timeinfo, "NULL*   ";
                     $isnull = 1;
                     $all_spend_time{$status}{rst} = "NULL*   ";
@@ -651,11 +658,11 @@ sub performance_calculation {
 
             if ($node_status_time{$node}{$tmp_status}{start_time} && $tmp_end_time) {
                 if ($all_spend_time{$status}{start_time}) {
-                    $all_spend_time{$status}{start_time} = ($all_spend_time{$status}{start_time} <= $node_status_time{$node}{$tmp_status}{start_time}) ? $all_spend_time{$status}{start_time} : $node_status_time{$node}{$tmp_status}{start_time};
+                    $all_spend_time{$status}{start_time} = $node_status_time{$node}{$tmp_status}{start_time} if ($all_spend_time{$status}{start_time} > $node_status_time{$node}{$tmp_status}{start_time});
                 } else {
                     $all_spend_time{$status}{start_time} = $node_status_time{$node}{$tmp_status}{start_time};
                 }
-                $all_spend_time{$status}{end_time} = ($all_spend_time{$status}{end_time} >= $tmp_end_time) ? $all_spend_time{$status}{end_time} : $tmp_end_time;
+                $all_spend_time{$status}{end_time} = $tmp_end_time if ($all_spend_time{$status}{end_time} < $tmp_end_time);
                 push @timeinfo, probe_utils->convert_second_to_time($tmp_end_time - $node_status_time{$node}{$tmp_status}{start_time});
             } else {
                 push @timeinfo, "NULL*   ";
@@ -669,6 +676,7 @@ sub performance_calculation {
         print "$node $space $time_str\n";
     }
 
+    # @time_rst is used to record time of ALL
     my @time_rst = ();
     foreach my $status (@status_for_time) {
         if ($all_spend_time{$status}{rst} eq "NULL*   ") {
@@ -684,7 +692,15 @@ sub performance_calculation {
     print "ALL $space $time_str\n";
     probe_utils->send_msg("stdout", "", "------------------------------------------------");
     probe_utils->send_msg("stdout", "", "$warninfo") if ($warninfo);
-    probe_utils->send_msg("stdout", "", "* : Did not get correct time, please run '$command_input -r xxhxxm' to get correct time") if ($isnull and $is_success);
+
+    if ($isnull and $is_success) {
+        my $command_input = "xcatprobe -w $program_name";
+        $command_input .= " -n $noderange" if ($noderange);
+        $command_input .= " -p $performance";
+        $command_input .= " -V" if ($verbose);
+        $command_input .= " -r xxhxxm";
+        probe_utils->send_msg("stdout", "", "Did not get correct time, please run '$command_input' to get correct time");
+    }
 }
 
 #------------------------------------------
@@ -951,7 +967,6 @@ sub handle_dhcp_msg {
             my $record = "Receive BOOTREQUEST from $mac via $nic";
             probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
-            $node_status_time{$node}{$::STATE_DHCP}{start_time} = $log_ref->{time} if ($performance);
         }
     } elsif ($log_ref->{msg} =~ /BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip  = $1;
@@ -971,7 +986,7 @@ sub handle_dhcp_msg {
 
             $ipnodemap{$ip} = $node;
             set_node_state($node_state_ref, $node, $::STATE_DHCP);
-            $node_status_time{$node}{$::STATE_DHCP}{end_time} = $log_ref->{time} if ($performance);
+            $node_status_time{$node}{$::STATE_DHCP}{end_time} = $log_ref->{time} if ($performance and !$node_status_time{$node}{$::STATE_DHCP}{end_time});
         }
     }
 }
@@ -1059,11 +1074,8 @@ sub handle_http_msg {
             } elsif ($file =~ /\.deb$/i or $file =~ /\/Packages\/.+\.rpm$/ or $file =~ /\/suse\/noarch\/.+\.rpm$/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INSTALLRPM);
                 if ($performance) {
-                    if ($node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time}) {
-                        $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{end_time} = $log_ref->{time};
-                    } else {
-                        $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time} = $log_ref->{time};
-                    }
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{end_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time} =  $log_ref->{time}  unless ( $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time} );
                 }
                 push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_INSTALLRPM} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif ($file =~ /rootimg/) {
@@ -1165,9 +1177,7 @@ sub handle_compute_msg {
         if ($log_ref->{msg} =~ /Running postscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTSCRIPT);
             if ($performance) {
-                if (!$node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time}) {
-                    $node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time} = $log_ref->{time};
-                }
+                $node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time} = $log_ref->{time} unless ($node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time});
             }
         } elsif ($log_ref->{msg} =~ /postscript (.+) return with (\d+)/) {
             my $script_name = $1;
@@ -1183,9 +1193,7 @@ sub handle_compute_msg {
         } elsif ($log_ref->{msg} =~ /Running postbootscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTBOOTSCRIPT);
             if ($performance) {
-                if (!$node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time}) {
-                    $node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time} = $log_ref->{time};
-                }
+                $node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time} = $log_ref->{time} unless ($node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time});
             }
         } elsif ($log_ref->{msg} =~ /postbootscript (.+) return with (\d+)/) {
             my $script_name = $1;
