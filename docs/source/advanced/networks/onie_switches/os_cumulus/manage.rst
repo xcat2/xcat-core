@@ -4,6 +4,10 @@ Switch Management
 VLAN Configuration
 ------------------
 
+xCAT ships a simple configuration script that will set all the ports on the switch to be part of VLAN 1.  See the Cumulus Networks documentation for more information regarding advanced networking configuration. ::
+
+    updatenode <switch> -P configinterface
+
 
 Re-install OS
 -------------
