@@ -1549,6 +1549,23 @@ if ($dbmaster) {
 
 # stop the monitoring process
 xCAT_monitoring::monitorctrl::stop($$);
+stop_tftp_service();
+
+sub stop_tftp_service {
+    eval {
+        require xCAT_plugin::AAsn;
+    };
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Failed to load AAsn module");
+        return;
+    }
+    no strict 'refs';
+    if (!defined(${ "xCAT_plugin::AAsn::" }{stop_TFTP})) {
+        return;
+    }
+    xCAT_plugin::AAsn::stop_TFTP();
+    use strict 'refs';
+}
 
 my $parent_fd;
 my %resps;
