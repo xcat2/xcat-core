@@ -139,6 +139,7 @@ Getopt::Long::Configure("pass_through");
 use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
+my $reload;
 my $foreground;
 GetOptions(
     'pidfile|p=s'  => \$pidfile,
@@ -1278,6 +1279,7 @@ $SIG{USR2} = sub {
     if ($listener) {
         unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit = 1; $listener = 0;
         $udpctl = 0;
+        $reload = 1;
         xCAT::MsgUtils->message("S", "xcatd main service $$ quiescing");
     }
 };
@@ -1552,7 +1554,9 @@ if ($dbmaster) {
 
 # stop the monitoring process
 xCAT_monitoring::monitorctrl::stop($$);
-stop_tftp_service();
+if (! $reload) {
+    stop_tftp_service();
+}
 
 sub stop_tftp_service {
     eval {
