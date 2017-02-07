@@ -66,6 +66,7 @@ sub addnode
     my $othernames = shift;
     my $domain     = shift;
     my $nics       = shift;
+    my $label      = shift;
     my $idx        = 0;
     my $foundone   = 0;
 
@@ -94,7 +95,7 @@ sub addnode
                     # at this point "othernames", if any is just a space
                     # elimited list - so just add the node name to the list
                     $othernames .= " $node";
-                    $hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
+                    $hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames, $label);
                 } else {
 
                     # otherwise just try to completely update the existing
@@ -108,7 +109,7 @@ sub addnode
     }
     if ($foundone) { return; }
 
-    my $line = build_line($callback, $ip, $node, $domain, $othernames);
+    my $line = build_line($callback, $ip, $node, $domain, $othernames, $label);
     if ($line) {
         push @hosts, $line;
     }
@@ -121,6 +122,7 @@ sub build_line
     my $node       = shift;
     my $domain     = shift;
     my $othernames = shift;
+    my $label      = shift;
     my @o_names    = ();
     my @n_names    = ();
 
@@ -141,7 +143,7 @@ sub build_line
             $longname = "$node.$domain";
             $_        = "";
         }
-        elsif ($_ =~ /\./)
+        elsif ($_ =~ /\./ && !$label)
         {
             if (!$longname)
             {
@@ -193,11 +195,12 @@ sub addotherinterfaces
     my @itf_pairs = split(/,/, $otherinterfaces);
     foreach (@itf_pairs)
     {
-        my ($itf, $ip);
+        my ($itf, $ip, $label);
+        $label ='';
         if ($_ =~ /!/) {
-            ($itf, $ip) = split(/!/, $_);
+            ($itf, $ip, $label) = split(/!/, $_);
         } else {
-            ($itf, $ip) = split(/:/, $_);
+            ($itf, $ip, $label) = split(/:/, $_);
         }
         if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
         {
@@ -210,9 +213,15 @@ sub addotherinterfaces
             #if failed, use the domain passed in
             my ($mydomain,$mynet)=getIPdomain($ip);
             if($mydomain){
-               $domain=$mydomain;
+                $domain=$mydomain;
             }
-            addnode $callback, $itf, $ip, '', $domain;
+            if($label eq '1'){
+                my $otherhostname;
+                $otherhostname = "$node\.$domain";
+                addnode $callback, $itf, $ip, $otherhostname, $domain, '',$label;
+            } else {
+                addnode $callback, $itf, $ip, '', $domain;
+            }
         }
     }
 }
@@ -865,7 +874,7 @@ sub donics
                 }
                 else
                 {
-                    addnode $callback, $nichostname, $nicip, $nicaliases, $nicdomain, 1;
+                    addnode $callback, $nichostname, $nicip, $nicaliases, $nicdomain, 1, 1;
                 }
             }    # end for each index
         }    # end for each nic
