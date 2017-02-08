@@ -6,33 +6,51 @@ Diskful (Stateful) Installation
 
 Any cluster using statelite compute nodes must use a stateful (diskful) Service Nodes.
 
-**Note: All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node**. Copy the files to the Management Node (MN) and untar them in the appropriate sub-directory of ``/install/post/otherpkgs``
+**Note:** All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node.
 
-**Note for the appropriate directory below, check the ``otherpkgdir=/install/post/otherpkgs/rhels7/x86_64`` attribute of the osimage defined for the servicenode.**
- 
-For example, for osimage rhels7-x86_64-install-service ::
+Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
+----------------------------------------------------------------------
 
-    mkdir -p /install/post/otherpkgs/**rhels7**/x86_64/xcat
-    cd /install/post/otherpkgs/**rhels7**/x86_64/xcat
+ * Create a subdirectory ``xcat`` under a path specified by ``otherpkgdir`` attribute of the service node os image, selected during the :doc:`../define_service_nodes` step. 
+
+   For example, for osimage *rhels7-x86_64-install-service* ::
+
+    [root@fs4 xcat]# lsdef -t osimage rhels7-x86_64-install-service -i otherpkgdir
+       Object name: rhels7-x86_64-install-service
+          otherpkgdir=/install/post/otherpkgs/rhels7/x86_64
+    [root@fs4 xcat]# mkdir -p /install/post/otherpkgs/rhels7/x86_64/xcat
+
+ * Download or copy `xcat-core` and `xcat-dep` .bz2 files into that `xcat` directory ::
+
+    wget https://xcat.org/files/xcat/xcat-core/<version>_Linux/xcat-core/xcat-core-<version>-linux.tar.bz2
+    wget https://xcat.org/files/xcat/xcat-dep/<version>_Linux/xcat-dep-<version>-linux.tar.bz2
+
+ * untar the `xcat-core` and `xcat-dep` .bz2 files ::
+
+    cd /install/post/otherpkgs/<os>/<arch>/xcat
     tar jxvf core-rpms-snap.tar.bz2
     tar jxvf xcat-dep-*.tar.bz2
 
-Next, add rpm names into your own version of service.<osver>.<arch>.otherpkgs.pkglist file. In most cases, you can find an initial copy of this file under ``/opt/xcat/share/xcat/install/<platform>`` . Or copy one from another similar platform. :: 
+ * Verify the following entries are included in the package file specified by the ``otherpkglist`` attribute of the service node osimage. ::
 
-    mkdir -p /install/custom/install/rh
-    cp /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist \
-       /install/custom/install/rh
-    vi /install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+    xcat/xcat-dep/<os>/<arch>/xCATsn
+    xcat/xcat-dep/<os>/<arch>/conserver-xcat
+    xcat/xcat-dep/<os>/<arch>/perl-Net-Telnet
+    xcat/xcat-dep/<os>/<arch>/perl-Expect
 
-Make sure the following entries are included in the
-/install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist: ::
+   For example, for the osimage *rhels7-x86_64-install-service* ::
 
-    xCATsn
-    conserver-xcat
-    perl-Net-Telnet
-    perl-Expect
+    [root@fs4 ~]# lsdef -t osimage rhels7-x86_64-install-service -i otherpkglist
+       Object name: rhels7-x86_64-install-service
+         otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+    [root@fs4 ~]# cat /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+       xcat/xcat-core/xCATsn
+       xcat/xcat-dep/rh7/x86_64/conserver-xcat
+       xcat/xcat-dep/rh7/x86_64/perl-Net-Telnet
+       xcat/xcat-dep/rh7/x86_64/perl-Expect
+    [root@fs4 ~]#
 
-**Note: you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.**
+**Note:** you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.
 
 Update the rhels6 RPM repository (rhels6 only)
 ----------------------------------------------
@@ -71,12 +89,12 @@ Update the rhels6 RPM repository (rhels6 only)
 
 **Note:** you should use comps-rhel6-Server.xml with its key as the group file.
 
-Set the node status to ready for installation
----------------------------------------------
+Set the node boot state to ready for installation
+-------------------------------------------------
 
-Run nodeset to the osimage name defined in the provmethod attribute on your Service Node. ::
+Run **nodeset** command to the osimage name defined in the ``provmethod`` attribute on your Service Node. ::
 
-  nodeset service osimage="<osimagename>"
+  nodeset <service_node> osimage="<osimagename>"
 
 For example ::
 
