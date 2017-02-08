@@ -2607,16 +2607,16 @@ sub addnet
             }
             if ($ddnserver)
             {
-                push @netent, "   primary $ddnserver; key xcat_key; \n";
+                push @netent, "       primary $ddnserver; key xcat_key; \n";
             }
-            push @netent, " }\n";
+            push @netent, "    }\n";
             foreach (getzonesfornet($net, $mask)) {
-                push @netent, "zone $_ {\n";
+                push @netent, "    zone $_ {\n";
                 if ($ddnserver)
                 {
-                    push @netent, "   primary $ddnserver; key xcat_key; \n";
+                    push @netent, "       primary $ddnserver; key xcat_key; \n";
                 }
-                push @netent, " }\n";
+                push @netent, "    }\n";
             }
         }
 
@@ -2629,32 +2629,32 @@ sub addnet
 
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n";
-        push @netent, "       always-broadcast on;\n";
-        push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        always-broadcast on;\n";
+        push @netent, "        filename = \"http://$tftp/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . "\";\n";
         push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
-        push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
+        push @netent, "        filename = \"http://$tftp/tftpboot/xcat/xnba/nets/" . $net . "_" . $maskbits . ".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
-        push @netent, "      filename \"xcat/xnba.kpxe\";\n";
+        push @netent, "        filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
-        push @netent, "      filename \"xcat/xnba.kpxe\";\n";
+        push @netent, "        filename \"xcat/xnba.kpxe\";\n";
         push @netent,
           "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ";
-        push @netent, "      filename \"xcat/xnba.efi\";\n";
+        push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
 "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
-        push @netent, "      filename \"xcat/xnba.efi\";\n";
+        push @netent, "        filename \"xcat/xnba.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
-        push @netent, "      filename \"elilo.efi\";\n";
+        push @netent, "        filename \"elilo.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
-        push @netent, "      option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
+        push @netent, "        option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/" . $net . "_" . $maskbits . "\";\n";
         push @netent,
 "    } else if substring (option vendor-class-identifier,0,11) = \"onie_vendor\" { #for onie on cumulus switch\n";
-        push @netent, "      option www-server = \"http://$tftp/install/onie/onie-installer\";\n";
+        push @netent, "        option www-server = \"http://$tftp/install/onie/onie-installer\";\n";
         push @netent,
 "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
-        push @netent, "      filename \"/yaboot\";\n";
+        push @netent, "        filename \"/yaboot\";\n";
         push @netent, "    }\n";
 
         if ($range) {
