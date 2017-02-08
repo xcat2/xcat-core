@@ -1298,7 +1298,7 @@ sub stop_TFTP
         }
     }
     if (-x "/usr/sbin/in.tftpd") {
-        system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
+        system("killall in.tftpd >/dev/null 2>&1"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
         if ($distro =~ /ubuntu.*/i || $distro =~ /debian.*/i) {
             sleep 1;
             my @checkproc = `ps axf|grep -v grep|grep in.tftpd`;
@@ -1322,7 +1322,7 @@ sub stop_TFTP
                         if ($count == 5) {
                             my $tftpinfo = `ps axf|grep -v grep|grep in.tftpd`;
                             xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process $pid [$tftpinfo] in 5 seconds, stop it again.");
-                            my $cmd = "killall -s KILL in.tftpd";
+                            my $cmd = "killall -s KILL in.tftpd >/dev/null 2>&1";
                             system($cmd);
                             if($? != 0) {
                                 xCAT::MsgUtils->message("S", "ERROR: Can not execute command $cmd.");
