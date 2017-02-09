@@ -14,7 +14,7 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
    **[small clusters]** If you know the mac address of the management port on the switch, create the pre-defined switch defintion providing the mac address. ::
 
-       mkdef switch01 --template onieswitch arch=armv71 \
+       mkdef frame01sw1 --template onieswitch arch=armv71 \
            ip=192.168.1.1 mac="aa:bb:cc:dd:ee:ff"
 
    **[large clusters]** xCAT's :doc:`switchdiscover </guides/admin-guides/references/man1/switchdiscover.1>` command can be used to discover the mac address and fill in the predefined switch definitions based on the switch/switchport mapping.  
@@ -22,13 +22,13 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
     #. Define all the switch objects providing the switch/switchport mapping: ::
 
-         mkdef switch01 --template onieswitch arch=armv71 \
+         mkdef frame01sw1 --template onieswitch arch=armv71 \
              ip=192.168.1.1 switch=coresw1 switchport=1
-         mkdef switch02 --template onieswitch arch=armv71 \
+         mkdef frame02sw1 --template onieswitch arch=armv71 \
              ip=192.168.2.1 switch=coresw1 switchport=2
-         mkdef switch03 --template onieswitch arch=armv71 \
+         mkdef frame03sw1 --template onieswitch arch=armv71 \
              ip=192.168.3.1 switch=coresw1 switchport=3
-         mkdef switch04 --template onieswitch arch=armv71 \
+         mkdef frame04sw1 --template onieswitch arch=armv71 \
              ip=192.168.4.1 switch=coresw1 switchport=4
          ... 
   
@@ -37,13 +37,14 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
          switchdiscover --range <IP range>
 
 
-#. Set the ``provmethod`` of the target switch to the Cumulus Linux install image:  ::
+#. Set the ``provmethod`` attribute of the target switch(es) to the Cumulus Linux install image:  ::
 
-    chdef <switch> provmethod="/install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin"
+    chdef frame[01-04]sw1 \
+      provmethod="/install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin"
 
 #. Run ``makedhcp`` to prepare the DHCP/BOOTP lease information for the switch: ::
 
-    makedhcp -a <switch> 
+    makedhcp -a frame[01-04]sw1
 
 
 At this point, the DHCPREQUEST from the switch should now get a response with the Cumulus Linux OS and begin the network installation.  *(Normal  installation time for Cumulus Linux is 1 hour)*
@@ -58,7 +59,11 @@ To ease in the management of the switch, xCAT provides a script to help configur
 
 Execute the following to sync the xCAT keys to the switch: ::
 
-    /opt/xcat/share/xcat/scripts/configonie --switches <switch> --ssh 
+    /opt/xcat/share/xcat/scripts/configonie --switches frame01sw1 --ssh 
+
+Validate the ssh keys are correctly configured by running a ``xdsh`` command: ::
+
+    xdsh frame01sw1 uptime
 
 
 Activate the License
@@ -68,28 +73,28 @@ After Cumulus Linux OS is installed onto the ONIE switch, only the serial port c
 
 #. Copy the license file to the switch: ::
 
-      xdcp <switch> /install/custom/sw_os/cumulus/licensefile.txt /root/
+      xdcp frame01sw1 /install/custom/sw_os/cumulus/licensefile.txt /root/
 
 #. Activate the license: ::
 
-      xdsh <switch> "/usr/cumulus/bin/cl-license -i /root/licensefile.txt"
+      xdsh frame01sw1 "/usr/cumulus/bin/cl-license -i /root/licensefile.txt"
 
 #. Verify that the license file is successfully installed: ::
 
-      xdsh <switch> /usr/cumulus/bin/cl-license
+      xdsh frame01sw1 /usr/cumulus/bin/cl-license
 
-   Output should be similar to: ``<switch> xxx@xx.com|xxxxxxxxxxxxxxx``
+   Output should be similar to: ``frame01sw1 xxx@xx.com|xxxxxxxxxxxxxxx``
 
 #. Reboot the switch to apply the license file: ::
 
-      xdsh <switch> reboot
+      xdsh frame01sw1 reboot
 
 
 Enable SNMP (optional)
 ----------------------
 
-To enable ``snmpd``, execute the ``enablesnmp`` postscript on the switch: ::
+In order to utilize ``xcatprobe switch_macmap``, snmp needs to be enabled.  To enable, run the ``enablesnmp`` postscript on the switch: ::
 
-    updatenode <switch> -P enablesnmp
+    updatenode frame01sw1 -P enablesnmp
 
 
