@@ -72,6 +72,17 @@ else
         echo "GATEWAY=$defgw" >> /etc/sysconfig/network
     fi
 fi
+
+HOSTNAMECTL=`which hostnamectl 2>&1 | grep -v "/usr/bin/which: no"`
+if [ ! -z $HOSTNAMECTL ] && [ ! -z $NODE ]; then
+    SET_HOSTNAME=$NODE
+    if [ ! -z $DOMAIN ]; then 
+        SET_HOSTNAME=$NODE.$DOMAIN
+    fi
+    echo "Setting hostname to: $SET_HOSTNAME"
+    hostnamectl set-hostname $SET_HOSTNAME
+fi
+
 for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
     IPADDRMASK=`ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
     IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
