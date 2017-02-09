@@ -53,6 +53,15 @@ echolog()
 {
    local msgtype=$1
    local msgstr=$2
+   local ismsgutil_r=1
+
+   #if msgutil_r is not defined, when no /xcatpost directory exists on the node running this script
+   #write the message to local log file as a simplified function
+   type -t msgutil_r >/dev/null || ismsgutil_r=0
+   [ "$ismsgutil_r" = "0" ]  && msgutil_r () {
+                                    echo "$(date) [$2]: $3" >> $4
+                                }
+
 
    if [ "$msgtype" = "debug"  ];then
       if [ "$VERBOSE" = "1"  ]; then
@@ -66,6 +75,11 @@ echolog()
       msgutil_r "$MASTER_IP"  "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" 
    fi
    
+   #reload the functions defined in./xcatlib.sh
+   if [ "$ismsgutil_r" = "0" ];then
+       unset msgutil_r
+       [ -f ./xcatlib.sh ] && source ./xcatlib.sh
+   fi
 }
 
 
