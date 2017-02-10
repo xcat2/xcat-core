@@ -946,6 +946,7 @@ sub bmcdiscovery_ipmi {
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
+                $node =~ s/[\s:\._]/-/g;
             }
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("E", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
