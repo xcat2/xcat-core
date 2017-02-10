@@ -921,6 +921,13 @@ sub bmcdiscovery_ipmi {
                         $serial = $2;
                         last;
                     }
+
+                    if (($fru_output =~ /Product Manufacturer\s+:\s+(.*?)\s+P.*?roduct Name\s+:\s+(.*?)\s+P.*?roduct Serial\s+:\s+(\S+)/)) {
+                        $mtm    = $1.":".$2;
+                        $serial = $3;
+                        last;
+                    }
+
                 }
             }
 

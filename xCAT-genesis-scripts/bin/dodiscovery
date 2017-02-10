@@ -72,6 +72,15 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		MTM=VMware
 	else 
 		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
+		if [ -z "$MTM" ]; then
+			SYS=`cat /sys/devices/virtual/dmi/id/sys_vendor`
+            PRD=`cat /sys/devices/virtual/dmi/id/product_name`
+			if [ ! -z "$SYS" ]; then
+				MTM=${SYS^^}":"${PRD^^}
+			else
+				MTM=${PRD^^}
+			fi
+		fi
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
         CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
