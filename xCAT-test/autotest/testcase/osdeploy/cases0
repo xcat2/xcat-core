@@ -1,0 +1,72 @@
+start:osdeploy_usage
+description: osdeploy check usage 
+cmd:xcatprobe osdeploy -h 
+check:rc==0
+check:output~=Usage
+check:output~=osdeploy -h
+check:output~=Description
+end
+
+start:osdeploy_n
+description: osdeploy -n node to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN >> /tmp/osdeploy.test &
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+start:osdeploy_n_r
+description: osdeploy -n -r node to probe osdeploy to trigger 'Replay history' mode.
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN >> /tmp/osdeploy.test &
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -r 1h>> /tmp/osdeploy.test 
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep "OK"
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -r 10m >> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"|grep "FAIL"
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+start:osdeploy_n_t
+description: osdeploy -n node -t 1m,probe osdeploy in 1min
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -t 1m >> /tmp/osdeploy.test &
+check:rc==0
+cmd:sleep 120
+check:rc==0
+cmd: cat  /tmp/osdeploy.test |grep "1m minutes have expired, stop monitoring"
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+
