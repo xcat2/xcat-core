@@ -7,6 +7,7 @@ use File::Path;
 use File::Copy;
 use Time::Local;
 use Socket;
+use List::Util qw/sum/;
 
 #-----------------------------------------
 
@@ -595,6 +596,66 @@ sub convert_second_to_time {
     $result = join(":", @time_result);
 
     return $result;
+}
+
+sub print_table {
+    my $content = shift;
+    $content = shift if (($content) && ($content =~ /probe_utils/));
+    my $has_title = shift;
+    my $title;
+
+    if ($has_title) {
+        $title = shift(@$content);
+    }
+
+    my @length_array;
+    my $count_num = 0;
+    foreach my $row (@$content) {
+        $count_num = 0;
+        foreach my $element (@{$row}) {
+            $length_array[$count_num] = length($element) if ($length_array[$count_num] < length($element));
+            $count_num++;
+        }
+    }
+
+    my @content_new;
+    my @row_new;
+    my $row_line;
+    my $whole_length;
+    foreach my $row (@$content) {
+        $count_num = 0;
+        @row_new = ();
+        foreach my $element (@{$row}) {
+           push @row_new, $element. " " x ($length_array[$count_num] - length($element));
+           $count_num++;
+        }
+        $row_line = "| " . join(" | ", @row_new) . " |";
+        $whole_length = length($row_line);
+        push @content_new, $row_line;
+    }
+
+    my $title_new;
+    my $title_length = length($title);
+    if ($has_title) {
+        if ($whole_length < $title_length) {
+            $title_new = $title;
+        } elsif ($whole_length - 2 == $title_length) {
+            $title_new = "|". $title. "|";
+        } else {
+            $title_new = " " x (($whole_length - 2 - $title_length)/2) . "$title";
+            $title_new .= " " x ($whole_length - 2 - length($title_new));
+            $title_new = "|" . $title_new . "|";
+        }
+    }
+
+    my $format_line = "-" x $whole_length;
+    print $format_line . "\n";
+    print $title_new . "\n" if ($has_title);
+    print $format_line . "\n";
+    foreach (@content_new) {
+        print $_ . "\n";
+    }
+    print $format_line . "\n";
 }
 
 1;

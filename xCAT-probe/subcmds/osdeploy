@@ -580,78 +580,74 @@ sub performance_calculation {
 
     return if (!%node_status_time);
 
-    probe_utils->send_msg("stdout", "", "-----------node provision performance-----------");
-
     # Currently, only diskful is supported
     my $provision_type = $::DISKFUL;
 
     my @status_for_time = ();
     my $isnull = 0;
-
-    my $length_node = 20;
-    my $space = " " x ($length_node - 4);
-
+    my @time_content;
     # print table's first line
     # @status_for_time: the status that needed to calculate time
    
+
+    push @time_content, "node provision performance";
     my @title_lines = (
-        "NODE $space ELAPSED\n",
-        "NODE $space SVRBOOT    RPM        POST       POSTBOOT   ELAPSED\n",
-        "NODE $space RPOWER     DHCP       BOOTLOADER KERNEL     INITRD     RPM        POST       POSTBOOT   COMPLETED\n",
-        "NODE $space RPOWER     DHCP       BOOTLOADER KERNEL     INITRD     NETBOOTING ROOTIMG    POSTBOOT   COMPLETED\n",
-        "NODE $space DHCP       BOOTLOADER KERNEL     INITRD     NETBOOTING ROOTIMG    POSTBOOT   ELAPSED\n");
+        [qw/NODE ELAPSED/],
+        [qw/NODE SVRBOOT RPM POST POSTBOOT ELAPSED/],
+        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD RPM POST POSTBOOT COMPLETED/],
+        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT COMPLETED/],
+        [qw/NODE DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT ELAPSED/]);
  
     if ($performance eq "compact") {
-        print $title_lines[0];
+        push @time_content, $title_lines[0];
         @status_for_time = ($::STATE_COMPLETED);
     }
 
     if ($performance eq "phase") {
-        print $title_lines[1];
+        push @time_content, $title_lines[1];
         @status_for_time = ($::STATE_DHCP, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
     }
 
     if ($performance eq "origin") {
         if ($provision_type == $::DISKFUL){
-            print $title_lines[2];
+            push @time_content, $title_lines[2];
             @status_for_time = ($::STATE_POWER_ON, $::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
         } else { # reserved for diskless
-            print $title_lines[3];
+            push @time_content, $title_lines[3];
             @status_for_time = ($::STATE_POWER_ON, $::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_NETBOOTING, $::STATE_ROOTIMG, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
         }
     }
 
     if ($performance eq "reserve") {
-        print $title_lines[4];
+        push @time_content, $title_lines[4];
         @status_for_time = ($::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_NETBOOTING, $::STATE_ROOTIMG, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
     }
 
     # calculate time for each node and status
     foreach my $node (keys %node_status_time) {
 
+        my @timeinfo = ();
+        push @timeinfo, $node;
+
         if ($performance eq "origin") {
-            my @time_origin = ();
             foreach my $status (@status_for_time) {
                 if ($node_status_time{$node}{$status}{time_point}) {
                     if ($status == $::STATE_DHCP and $node_status_time{$node}{$::STATE_DHCP}{end_time} > $node_status_time{$node}{$::STATE_BOOTLODER}{start_time}){
-                        push @time_origin, "NULL*   ";
+                        push @timeinfo, "NULL";
                         $isnull = 1;
                     } else {
-                        push @time_origin, $node_status_time{$node}{$status}{time_point};
+                        push @timeinfo, $node_status_time{$node}{$status}{time_point};
                     }
                 } else {
-                    push @time_origin, "NULL*   ";
+                    push @timeinfo, "NULL";
                     $isnull = 1;
                 }
             }
-            my $time_str = join("   ", @time_origin);
-            $space = " " x ($length_node - length($node));
-            print "$node $space $time_str\n";
+            push @time_content, [ @timeinfo ];
             next;
         }
 
         # get the start time and end time for each step
-        @timeinfo = ();
         foreach my $status (@status_for_time) {
             my $tmp_status;
             my $tmp_detail_status;
@@ -676,17 +672,14 @@ sub performance_calculation {
             if ($tmp_start_time && $tmp_end_time) {
                 push @timeinfo, probe_utils->convert_second_to_time($tmp_end_time - $tmp_start_time);
             } else {
-                push @timeinfo, "NULL*   ";
+                push @timeinfo, "NULL";
                 $isnull = 1;
             }
         }
-
-        my $time_str = join("   ", @timeinfo);
-        $space = " " x ($length_node - length($node));
-        print "$node $space $time_str\n";
+        push @time_content, [ @timeinfo ];
     }
 
-    probe_utils->send_msg("stdout", "", "------------------------------------------------");
+    probe_utils->print_table(\@time_content, 1);
 
     if ($isnull and $is_success) {
         my $command_input = "xcatprobe -w $program_name";
