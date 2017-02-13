@@ -46,8 +46,20 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
     makedhcp -a frame[01-04]sw1
 
+   Executing the ``makedhcp`` command will kick off the network install of the ONIE enabled switch.  If there is no OS pre-loaded on the switch, the switch continues to send a DHCPREQUEST out to the network.   After ``makedhcp`` is run against the switch, an entry is added to the leases file that will respond to the request with the Cumulus Linux installer file. ::
 
-At this point, the DHCPREQUEST from the switch should now get a response with the Cumulus Linux OS and begin the network installation.  *(Normal  installation time for Cumulus Linux is 1 hour)*
+       host frame1sw1 {
+         dynamic;
+         hardware ethernet 8c:ea:1b:12:ca:40;
+         fixed-address 192.168.3.200;
+               supersede server.ddns-hostname = "frame1sw1";
+               supersede host-name = "frame1sw1";
+               if substring (option vendor-class-identifier, 0, 11) = "onie_vendor" {
+                 supersede www-server = "http://192.168.27.1/install/custom/sw_os/cumulus/cumulus-linux-3.1.0-bcm-armel.bin";
+               }
+       }
+
+   *Typical installation time is around 1 hour*
 
 
 Configure xCAT Remote Commands
