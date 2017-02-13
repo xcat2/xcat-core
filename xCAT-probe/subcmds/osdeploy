@@ -69,7 +69,7 @@ Options:
          Support 2 output format:
          'compact': Elapsed time of provision for each node.
          'phase'  : Elapsed time for DHCP, RPM, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
-         'origin' : Show origin time of each stage.
+         'origin' : Show origin start time of each stage.
 ";
 
 
@@ -589,8 +589,6 @@ sub performance_calculation {
     # print table's first line
     # @status_for_time: the status that needed to calculate time
    
-
-    push @time_content, "node provision performance";
     my @title_lines = (
         [qw/NODE ELAPSED/],
         [qw/NODE SVRBOOT RPM POST POSTBOOT ELAPSED/],
@@ -599,16 +597,19 @@ sub performance_calculation {
         [qw/NODE DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT ELAPSED/]);
  
     if ($performance eq "compact") {
+        push @time_content, "Provision Time";
         push @time_content, $title_lines[0];
         @status_for_time = ($::STATE_COMPLETED);
     }
 
     if ($performance eq "phase") {
+        push @time_content, "Time for Phases";
         push @time_content, $title_lines[1];
         @status_for_time = ($::STATE_DHCP, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
     }
 
     if ($performance eq "origin") {
+        push @time_content, "Start Time for Stage";
         if ($provision_type == $::DISKFUL){
             push @time_content, $title_lines[2];
             @status_for_time = ($::STATE_POWER_ON, $::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
