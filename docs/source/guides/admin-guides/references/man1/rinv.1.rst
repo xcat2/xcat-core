@@ -25,7 +25,7 @@ BMC/MPA specific:
 =================
 
 
-\ **rinv**\  \ *noderange*\  {\ **pci | model | serial | asset | vpd | mprom | deviceid | guid | firm | diag | bios | mparom | mac | all**\ }
+\ **rinv**\  \ *noderange*\  {\ **pci | model | serial | asset | vpd | mprom | deviceid | guid | firm | diag | dimm | bios | mparom | mac | all**\ }
 
 
 OpenPOWER server specific:
@@ -63,6 +63,13 @@ VMware specific:
 
 
 \ **rinv**\  \ *noderange*\  [\ **-t**\ ]
+
+
+pdu specific:
+=============
+
+
+\ **rinv**\  \ *noderange*\ 
 
 
 zVM specific:
