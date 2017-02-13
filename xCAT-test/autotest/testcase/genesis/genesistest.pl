@@ -198,13 +198,9 @@ sub rungenesiscmd {
     if ($?) {
         send_msg(0, "mknb $arch failed for runcmd test.");
     }
-    `nodeset $noderange "runcmd=cmdtest,shell"`;
+    `rinstall $noderange "runcmd=cmdtest,shell"`;
     if ($?) {
-        send_msg(0, "nodeset noderange shell failed for runcmd test");
-    }
-    `rpower $noderange boot`;
-    if ($?) {
-        send_msg(0, "rpower noderange boot failed for runcmd test");
+        send_msg(0, "rinstall noderange shell failed for runcmd test");
     }
     return $value;
 }
@@ -240,13 +236,9 @@ sub rungenesisimg {
     chmod 0755, "/install/my_image/runme.sh";
     `tar -zcvf /tmp/my_image.tgz -C /install/my_image .`;
     copy("/tmp/my_image.tgz", "/install/my_image") or die "Copy failed: $!";
-    `nodeset $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
+    `rinstall $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
     if ($?) {
-        send_msg(0, "nodeset noderange failed for runimg");
-    }
-    `rpower $noderange boot`;
-    if ($?) {
-        send_msg(0, "rpower boot failed for runimg test");
+        send_msg(0, "rinstall noderange failed for runimg");
     }
     return $value;
 }
@@ -311,14 +303,9 @@ sub clearenv {
             exit 1;
         }
     }
-    `nodeset $noderange boot`;
+    `rinstall $noderange boot`;
     if ($?) {
-        send_msg(0, "nodeset node failed");
-        exit 1;
-    }
-    `rpower $noderange boot`;
-    if ($?) {
-        send_msg(0, "rpower node failed");
+        send_msg(0, "rinstall node failed");
         exit 1;
     }
     return 0;
