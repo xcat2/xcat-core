@@ -87,26 +87,18 @@ Update the rhels6 RPM repository (rhels6 only)
       createrepo \
       -g repodata /98462d05248098ef1724eddb2c0a127954aade64d4bb7d4e693cff32ab1e463c-comps-rhel6-Server.xml
 
-**Note:** you should use comps-rhel6-Server.xml with its key as the group file.
+**Note:** you should use ``comps-rhel6-Server.xml`` with its key as the group file.
 
-Set the node boot state to ready for installation
--------------------------------------------------
-
-Run **nodeset** command to the osimage name defined in the ``provmethod`` attribute on your Service Node. ::
-
-  nodeset <service_node> osimage="<osimagename>"
-
-For example ::
-
-  nodeset <service_node> osimage="rhels7-x86_64-install-service"
-
-Initialize network boot to install Service Nodes
-------------------------------------------------
+Install Service Nodes
+---------------------
 
 ::
 
-  rsetboot <service_node> net
-  rpower <service_node> boot
+  rinstall <service_node> osimage="<osimagename>"
+
+For example ::
+
+  rinstall <service_node> osimage="rhels7-x86_64-install-service"
 
 Monitor the Installation
 ------------------------
