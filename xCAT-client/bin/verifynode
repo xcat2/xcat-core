@@ -70,7 +70,8 @@ my $notify = 0;                        # Notify a user
 my $notifyOnErrorOrWarning = 0;        # Indicates a log file should be sent if the need to notify
                                        #   a user was determined.
 my $openstackIP = '';                  # IP address of the OpenStack node
-my $openstackUser = 'nova';            # OpenStack for Nova
+my $openstackUser = 'root';            # User on the OpenStack system that can access the
+                                       # OpenStack configuration files
 my $orchParms = '';                    # Orchestrator parms to be stored in the zvmivp table
 my $prepParms = '';                    # Parameters to pass to the preparation script
 my $remove = 0;                        # Remove a scheduled IVP
@@ -240,7 +241,7 @@ my $usage_string = "Usage:\n
                           IP address of the OpenStack compute node.
       --openstackuser <user>
                           User to use to access the compute node.
-                          The user defaults to 'nova'.
+                          The user defaults to 'root'.
       --orchparms <parms>
                           Parameters to be stored in the zvmivp table. These
                           parameters are passed to this routine when a

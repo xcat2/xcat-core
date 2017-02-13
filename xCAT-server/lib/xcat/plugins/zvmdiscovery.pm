@@ -1943,8 +1943,9 @@ sub startDiscovery{
         'ftpserve', 'gcs',      'gskadmin',
         'ibmuser',  'imap',     'imapauth',
         'ldapsrv',  'lohcost',
-        'maint',    'maint630', 'migmaint', 'monwrite', 'mproute',
-        'operator', 'operatns', 'opersymp', 'osadmin1', 'osadmin2',
+        'maint',    'maint630', 'maint640',
+        'migmaint', 'monwrite', 'mproute',
+        'operator', 'operatns', 'opersymp', 'opncloud', 'osadmin1', 'osadmin2',
         'osadmin3', 'osamaint', 'osasf',    'ovfdev62',
         'perfsvm',  'persmapi', 'pmaint',   'portmap',
         'racfsmf',  'racfvm',   'racmaint', 'rexecd',
@@ -1956,7 +1957,8 @@ sub startDiscovery{
         'vmnfs',    'vmrmadmn', 'vmrmsvm',
         'vmservp',  'vmservr',  'vmservu',  'vmservs',  'vsmevsrv', 
         'vsmguard', 'vsmproxy', 'vsmreqim', 'vsmreqin', 'vsmreqiu', 
-        'vsmreqi6', 'vsmwork1', 'vsmwork2', 'vsmwork3', 
+        'vsmreqi6', 'vsmwork1', 'vsmwork2', 'vsmwork3', 'vsmwork4',
+        'vsmwork5', 'vsmwork6', 'vsmwork7', 'vsmwork8', 'vsmwork9',
         'xcat',     'xcatserv', 'xchange',
         'zhcp',     'zvmlxapp', 'zvmmaplx',
         '4osasf40', '5684042j', '6vmdir30', '6vmhcd20', '6vmlen20',
@@ -2044,7 +2046,7 @@ sub startDiscovery{
         }
     }
 
-    my $numSystems = length( %discoverable );
+    my $numSystems = scalar( keys %discoverable );
     xCAT::MsgUtils->message( "S", "Discovery for $zvmHost found $numSystems virtual machines." );
 
     # Perform a set of potentially long running functions.  We do this one 

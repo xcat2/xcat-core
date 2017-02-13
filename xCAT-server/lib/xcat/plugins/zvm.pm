@@ -3411,14 +3411,6 @@ sub powerVM {
             $generalArgs{'verbose'} = 0;
             my $nodes = [$node];
             xCAT::zvmUtils->handlePowerUp( $callback, $nodes, \%generalArgs );
-            my $oldstatus = $status;
-            $status =~ s/IUCV=1/SSH=1/g;
-            if (!($status =~ /SSH=1/)){
-                $status = "$status;SSH=1";
-            }
-            if ($status != $oldstatus){
-                xCAT::zvmUtils->setNodeProp( 'zvm', $node, 'status', $status );
-            }
         }
         # Check vm's status
         xCAT::zvmUtils->printSyslog("check $node isreachable");
