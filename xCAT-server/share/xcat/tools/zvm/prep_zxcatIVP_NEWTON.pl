@@ -209,6 +209,44 @@ my %respMsgs = (
                           'exists under a different name then you may need to modify the invocation '.
                           'parameters for this script and rerun it.',
          },
+    'FILE05' =>
+         { 'severity'  => 2,
+           'recAction' => 0,
+           'text'      => '%s cannot be read.',
+           'explain'   => 'The indicated file is an OpenStack configuration file which was '.
+                          'attempted to be scanned to obtain configuration properties.  '.
+                          'This file cannot be read.',
+           'sysAct'    => 'Verification continues but without properties from the indicated file.',
+           'userResp'  => 'Determine why the file cannot be read.  If the file is not needed then you can '.
+                          'ignore this message.  Otherwise, you should correct the issue.'.
+                          "\n".
+                          'If this script is being run remotely by the xCAT IVP rather than '.
+                          'by your invocation of the script, you may need to specify a '.
+                          'different OpenStack user to the orchestrator script (verifynode). '.
+                          'This will require that you have set up the certificates on the '.
+                          'compute node to allow the xCAT MN to access the system during the IVP. '.
+                          'You can find information on setting up SSH keys in the Enabling z/VM for OpenStack '.
+                          'manual in the OpenStack Configuration chapter.',
+         },
+    'FILE06' =>
+         { 'severity'  => 4,
+           'recAction' => 0,
+           'text'      => '%s cannot be read.',
+           'explain'   => 'The indicated file is an OpenStack configuration file which was '.
+                          'attempted to be scanned to obtain configuration properties.  '.
+                          'This file cannot be read.',
+           'sysAct'    => 'Verification continues but without properties from the indicated file.',
+           'userResp'  => 'Determine why the file cannot be read.  If the file is not needed then you can '.
+                          'ignore this message.  Otherwise, you should correct the issue.'.
+                          "\n".
+                          'If this script is being run remotely by the xCAT IVP rather than '.
+                          'by your invocation of the script, you may need to specify a '.
+                          'different OpenStack user to the orchestrator script (verifynode). '.
+                          'This will require that you have set up the certificates on the '.
+                          'compute node to allow the xCAT MN to access the system during the IVP. '.
+                          'You can find information on setting up SSH keys in the Enabling z/VM for OpenStack '.
+                          'manual in the OpenStack Configuration chapter.',
+         },
     'MISS01' =>
          { 'severity'  => 4,
            'recAction' => 0,
@@ -600,10 +638,10 @@ sub buildDriverProgram{
     }
 
     # Open the driver program for output.
-    $rc = open( my $fileHandle, '>', $driver ) or die;
-    if ( $rc != 1 ) {
+    $rc = open( my $fileHandle, '>', $driver );
+    if ( ! defined $rc or $rc ne '1' ) {
         logResponse( 'DRIV02', $driver, $! );
-        return ( 200 + $rc );
+        return 200;
     }
 
     # Construct the file in an array.
@@ -1035,6 +1073,15 @@ sub hashFile{
     # Read the configuration file and construct the hash of values.
     if (( $file =~ /.conf$/ ) or ( $file =~ /.ini$/ ) or ( $file =~ /.service$/ )) {
         $out = `egrep -v '(^#|^\\s*\\t*#)' $file`;
+        my $rc = $?;
+        if ( $rc != 0 ) {
+            if ( $required ) {
+                logResponse( 'FILE06', $file );
+            } else {
+                logResponse( 'FILE05', $file );
+            }
+            return 603;
+        }
         my @lines = split( "\n", $out );
         foreach my $line ( @lines ) {
             if ( $line =~ /^\[/ ) {
@@ -1071,12 +1118,22 @@ sub hashFile{
     } else {
         # Hash .COPY files
         # Read the file and remove comment lines and sequence columns (72-80)
-        $out = `grep -v ^\$ $file| cut -c1-71`;
+        $out = `grep -v ^\$ $file`;
+        my $rc = $?;
+        if ( $rc != 0 ) {
+            if ( $required ) {
+                logResponse( 'FILE06', $file );
+            } else {
+                logResponse( 'FILE05', $file );
+            }
+            return 604;
+        }
         $out =~ s{/\*.*?\*/}{}gs;
 
         my @lines = split( "\n", $out );
         foreach my $line ( @lines ) {
-            # Weed out blank lines
+            # Remove sequence numbers and weed out blank lines
+            $line = substr( $line, 0, 71 );
             $line =~ s/^\s+|\s+$//g;       # trim both ends of the string
             next if ( length( $line ) == 0 );
 
@@ -2131,7 +2188,9 @@ if ( -e $locVersionFileCMO ) {
     my %settings;
     if ( -e $locApplSystemRole ) {
         $rc = hashFile( $locApplSystemRole, \%settings, 0 );
+        if ( exists $settings{'role'} ) {
         $cmaSystemRole = uc( $settings{'role'} );
+    }
     }
     if ( $cmaSystemRole eq '' and -e $locDMSSICMOCopy ) {
         $rc = hashFile( $locDMSSICMOCopy, \%settings, 0 );

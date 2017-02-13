@@ -65,17 +65,11 @@ function loadConfigPage() {
     // Add tab to configure xCAT tables
     tab.add('configTablesTab', 'Tables', loader, false);
 
-    // Add the update tab
-//    tab.add('updateTab', 'Update', '', false);
-
-    // Add the Users tab
+    // Add the self-service tab
     tab.add('usersTab', 'Users', '', false);
 
-    // Add the discover tab
-//    tab.add('discoverTab', 'Discover', '', false);
-
 	// Add the self-service tab
-//    tab.add('serviceTab', 'Service', '', false);
+    tab.add('serviceTab', 'Service', '', false);
 
     // Add the files tab
     tab.add('filesTab', 'Files', '', false);
@@ -107,9 +101,6 @@ function loadConfigPage() {
             loadServicePage();
         } else if (ui.index == 3) {
             loadFilesPage();
-//          loadDiscoverPage();
-//        } else if (ui.index == 4) {
-//          loadServicePage();
         }
     });
 }

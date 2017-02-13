@@ -4736,8 +4736,8 @@ sub execcmdonVM {
     }
     $commandwithparm =~ s/"/\\"/g;
 
-    # For not xcat deployed or cloning node, use SSH to make communication.
-    if (!(defined($userid)) || !(defined($hcp)) || ($status =~ /CLONE_ONLY=1/)){
+    # For not xcat deployed node, use SSH to make communication.
+    if (!(defined($userid)) || !(defined($hcp))){
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"$commandwithparm\"";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "$commandwithparm"`;
         ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );

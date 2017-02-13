@@ -170,10 +170,10 @@ sub buildDriverProgram{
     }
 
     # Open the driver program for output.
-    $rc = open( my $fileHandle, '>', $driver ) or die;
-    if ( $rc != 1 ) {
+    $rc = open( my $fileHandle, '>', $driver );
+    if ( ! defined $rc or $rc ne '1' ) {
         print "Unable to open $driver for output: $!\n";
-        return ( 200 + $rc );
+        return 200;
     }
 
     # Construct the file in an array.
@@ -462,6 +462,17 @@ sub hashFile{
     # Read the configuration file and construct the hash of values.
     if (( $file =~ /.conf$/ ) or ( $file =~ /.ini$/ ) or ( $file =~ /.service$/ )) {
         $out = `egrep -v '(^#|^\\s*\\t*#)' $file`;
+        my $rc = $?;
+        if ( $rc != 0 ) {
+            if ( $required ) {
+                print "Warning: $file cannot be read.\n".
+                      "         Verification continues but without properties from the indicated file.\n";
+            } else {
+                print "Info: $file cannot be read.\n".
+                      "      Verification continues but without properties from the indicated file.\n";
+            }
+            return 603;
+        }
         my @lines = split( "\n", $out );
         foreach my $line ( @lines ) {
             if ( $line =~ /^\[/ ) {
@@ -497,13 +508,25 @@ sub hashFile{
         }
     } else {
         # Hash .COPY files
-        # Read the file and remove comment lines and sequence columns (72-80)
-        $out = `grep -v ^\$ $file| cut -c1-71`;
+        # Read the file and remove comment lines
+        $out = `grep -v ^\$ $file`;
+        my $rc = $?;
+        if ( $rc != 0 ) {
+            if ( $required ) {
+                print "Warning: $file cannot be read.\n".
+                      "         Verification continues but without properties from the indicated file.\n";
+            } else {
+                print "Info: $file cannot be read.\n".
+                      "      Verification continues but without properties from the indicated file.\n";
+            }
+            return 604;
+        }
         $out =~ s{/\*.*?\*/}{}gs;
 
         my @lines = split( "\n", $out );
         foreach my $line ( @lines ) {
-            # Weed out blank lines
+            # Remove sequence numbers and weed out blank lines
+            $line = substr( $line, 0, 71 );
             $line =~ s/^\s+|\s+$//g;       # trim both ends of the string
             next if ( length( $line ) == 0 );
 
@@ -1496,7 +1519,9 @@ if ( -e $locVersionFileCMO ) {
     my %settings;
     if ( -e $locApplSystemRole ) {
         $rc = hashFile( $locApplSystemRole, \%settings, 0 );
+        if ( exists $settings{'role'} ) {
         $cmaSystemRole = uc( $settings{'role'} );
+    }
     }
     if ( $cmaSystemRole eq '' and -e $locDMSSICMOCopy ) {
         $rc = hashFile( $locDMSSICMOCopy, \%settings, 0 );

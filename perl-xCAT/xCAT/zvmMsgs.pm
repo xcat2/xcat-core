@@ -798,9 +798,10 @@ my %zxcativpMsgs = (
            'text'      => 'The file system related to the %s directory on the %s system has %s percent space '.
                           'in use which is more than the expected maximum of %s percent.',
            'explain'   => 'The file system is over the recommended percentage of space in use. This can cause processing errors.',
-           'userResp'  => 'You can eliminate this warning by freeing up space in the directories related to the file system. '.
-                          'See the troubleshooting sections on space issues related to the type of system, whether it is running '.
-                          'xCAT MN or the ZHCP server, in the Enabling z/VM for OpenStack Manual for instructions on addressing space issues.'
+           'userResp'  => 'You can eliminate this warning by freeing up space in the directories related to the file system or '.
+                          'adding space to the CMA\'s root disk. '.
+                          'See Appendix G, "Increasing the Size of the CMA\'s Root Disk using LVM Commands" section '.
+                          'in the Enabling z/VM for OpenStack Manual for instructions on increasing the size of the root disk.'
          },
     'VDS02' =>
          { 'severity'  => 4,
@@ -808,9 +809,10 @@ my %zxcativpMsgs = (
            'text'      => 'The file system related to the %s directory on the %s system has %s available space '.
                           'which is less than the expected minimum of %s.',
            'explain'   => 'The file system has less than the minimum available space. This can cause processing errors.',
-           'userResp'  => 'You can eliminate this warning by freeing up space in the directories related to the file system. '.
-                          'See the troubleshooting sections on space issues related to the type of system, whether it is running '.
-                          'xCAT MN or the ZHCP server, in the Enabling z/VM for OpenStack Manual for instructions on addressing space issues.'
+           'userResp'  => 'You can eliminate this warning by freeing up space in the directories related to the file system or '.
+                          'adding space to the CMA\'s root disk. '.
+                          'See Appendix G, "Increasing the Size of the CMA\'s Root Disk using LVM Commands" section '.
+                          'in the Enabling z/VM for OpenStack Manual for instructions on increasing the size of the root disk.'
          },
     'VDS03' =>
          { 'severity'  => 4,
@@ -1069,12 +1071,25 @@ my %zxcativpMsgs = (
     'VU01' =>
          { 'severity'  => 4,
            'recAction' => 0,
-           'text'      => 'user %s is not in the policy table.',
+           'text'      => 'user %s is not in the policy table or has no rule defined in the table.',
            'explain'   => 'The specified xCAT user is not a known xCAT user. This is most likely '.
                           'caused by a typo in the zvm_xcat_username property in the '.
                           '/etc/nova/nova.conf file. The xCAT management node obtains the value that it '.
-                          'recognizes for the user name from the XCAT_MN_admin property in DMSSICNF COPY.',
-           'userResp'  => 'Correct the OpenStack configuration file.',
+                          'recognizes for the user name from the XCAT_MN_admin property in DMSSICNF COPY. '.
+                          "\n".
+                          'Another cause is if the user is defined in the policy table but does not '.
+                          'have a rule defined.',
+           'userResp'  => 'Correct the OpenStack configuration file, if it is incorrect. '.
+                          'Correct the xCAT POLICY table, if it is incorrect.',
+         },
+    'VU02' =>
+         { 'severity'  => 4,
+           'recAction' => 0,
+           'text'      => 'user %s is in the xCAT POLICY table but the rule property is not \'accept\' or '.
+                          '\'allow\'.  It is \'%s\'.',
+           'explain'   => 'The specified xCAT user is not defined in the xCAT POLICY table with the '.
+                          'correct rule. ',
+           'userResp'  => 'Correct the xCAT POLICY table entry for the user.',
          },
     'VVO01' =>
          { 'severity'  => 4,
