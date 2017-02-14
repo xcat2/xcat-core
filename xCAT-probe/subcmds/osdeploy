@@ -41,6 +41,8 @@ my $monitor = 1;
 #used by developer, to debug the detail information about function running
 my $debug = 0;
 
+my $osdeploy_start_time;
+
 #---------------------------------------------
 #            Command Usage
 #---------------------------------------------
@@ -68,7 +70,7 @@ Options:
     -p Show elapsed time of each stage during provision for each node
          Support 2 output format:
          'compact': Elapsed time of provision for each node.
-         'phase'  : Elapsed time for DHCP, RPM, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
+         'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
          'origin' : Show origin start time of each stage.
 ";
 
@@ -567,7 +569,7 @@ sub conclusion_report {
         Calculate the performance of provision (for each node)
     Arguments:
         performance: compact: calculate how much time spent for provision
-                     phase: calculate how much time spent for each status (DHCP, RPM, POSTSCRIPTS, POSTBOOTSCRIPTS)
+                     phase: calculate how much time spent for each status (DHCP, INSTALL, POSTSCRIPTS, POSTBOOTSCRIPTS)
                      origin : show time point for each status
                      reserve: reserve for other type
     Returns:
@@ -591,8 +593,8 @@ sub performance_calculation {
    
     my @title_lines = (
         [qw/NODE ELAPSED/],
-        [qw/NODE SVRBOOT RPM POST POSTBOOT ELAPSED/],
-        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD RPM POST POSTBOOT COMPLETED/],
+        [qw/NODE SVRBOOT INSTALL POST POSTBOOT ELAPSED/],
+        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD INSTALL POST POSTBOOT COMPLETED/],
         [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT COMPLETED/],
         [qw/NODE DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT ELAPSED/]);
  
@@ -687,7 +689,10 @@ sub performance_calculation {
         $command_input .= " -n $noderange" if ($noderange);
         $command_input .= " -p $performance";
         $command_input .= " -V" if ($verbose);
-        $command_input .= " -r xxhxxm";
+        my $osdeploy_end_time = time();
+        my $time_for_replay = $osdeploy_end_time - $osdeploy_start_time;
+        my $time_hour = ($time_for_replay - $time_for_replay%3600) / 3600 + 1;
+        $command_input .= " -r $time_hour" . "h";
         probe_utils->send_msg("stdout", "", "Did not get correct time, please run '$command_input' to get correct time");
     }
 }
@@ -712,6 +717,8 @@ sub do_monitor {
 
     my $rst      = 0;
     my $terminal = 0;
+
+    $osdeploy_start_time = time() if ($performance);
 
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;

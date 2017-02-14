@@ -598,6 +598,50 @@ sub convert_second_to_time {
     return $result;
 }
 
+#------------------------------------------
+
+=head3
+    Description:
+        print table
+    Arguments:
+        content: double dimensional array
+        has_title: whether has title in content
+        
+        eg: @content = ($title,
+                        @content1,
+                        @content2,
+                        ......
+            );
+            $has_title = 1;
+            print_table(\@content, $has_title);
+
+        or @content = (@content1,
+                       @content2,
+                       ......
+           );
+           $has_title = 0;
+           print_table(\@content, $has_title);
+
+    Ouput:
+        --------------------------
+        |         xxxxxxx        |
+        --------------------------
+        | xxx | xxxx | xx   | xx |  
+        --------------------------
+        | xx  | xxxx | xxxx | xx | 
+        --------------------------
+
+        or 
+
+        --------------------------
+        | xxx | xxxx | xx   | xx |
+        --------------------------
+        | xx  | xxxx | xxxx | xx |
+        --------------------------
+
+=cut
+
+#------------------------------------------
 sub print_table {
     my $content = shift;
     $content = shift if (($content) && ($content =~ /probe_utils/));
@@ -609,12 +653,10 @@ sub print_table {
     }
 
     my @length_array;
-    my $count_num = 0;
     foreach my $row (@$content) {
-        $count_num = 0;
-        foreach my $element (@{$row}) {
-            $length_array[$count_num] = length($element) if ($length_array[$count_num] < length($element));
-            $count_num++;
+        for (my $i = 0; $i < @{$row}; $i++) {
+            my $ele_length = length(${$row}[$i]);
+            $length_array[$i] = $ele_length if ($length_array[$i] < $ele_length);
         }
     }
 
@@ -623,24 +665,20 @@ sub print_table {
     my $row_line;
     my $whole_length;
     foreach my $row (@$content) {
-        $count_num = 0;
         @row_new = ();
-        foreach my $element (@{$row}) {
-           push @row_new, $element. " " x ($length_array[$count_num] - length($element));
-           $count_num++;
+        for (my $i = 0; $i < @{$row}; $i++) {
+            push @row_new, ${$row}[$i] . " " x ($length_array[$i] - length(${$row}[$i]));
         }
         $row_line = "| " . join(" | ", @row_new) . " |";
-        $whole_length = length($row_line);
         push @content_new, $row_line;
     }
+    $whole_length = length($row_line);
 
     my $title_new;
     my $title_length = length($title);
     if ($has_title) {
-        if ($whole_length < $title_length) {
+        if ($whole_length - 1 <= $title_length) {
             $title_new = $title;
-        } elsif ($whole_length - 2 == $title_length) {
-            $title_new = "|". $title. "|";
         } else {
             $title_new = " " x (($whole_length - 2 - $title_length)/2) . "$title";
             $title_new .= " " x ($whole_length - 2 - length($title_new));
@@ -649,7 +687,7 @@ sub print_table {
     }
 
     my $format_line = "-" x $whole_length;
-    print $format_line . "\n";
+    print $format_line . "\n" if ($has_title);
     print $title_new . "\n" if ($has_title);
     print $format_line . "\n";
     foreach (@content_new) {
