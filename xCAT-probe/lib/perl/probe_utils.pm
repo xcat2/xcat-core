@@ -7,6 +7,7 @@ use File::Path;
 use File::Copy;
 use Time::Local;
 use Socket;
+use List::Util qw/sum/;
 
 #-----------------------------------------
 
@@ -548,6 +549,151 @@ sub is_ntp_ready{
     }
     $$errormsg_ref = "ntpd did not synchronize.";
     return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert second to time
+    Arguments:
+        second_in : the time in seconds
+    Returns:
+        xx:xx:xx xx hours xx minutes xx seconds
+=cut
+
+#------------------------------------------
+sub convert_second_to_time {
+    my $second_in = shift;
+    $second_in = shift if (($second_in) && ($second_in =~ /probe_utils/));
+    my @time = ();
+    my $result;
+
+    if ($second_in == 0) {
+        return "00:00:00";
+    }
+
+    my $count = 0;
+    while ($count < 3) {
+        my $tmp_second;
+        if ($count == 2) {
+            $tmp_second = $second_in % 100;
+        } else {
+            $tmp_second = $second_in % 60;
+        }
+
+        if ($tmp_second < 10) {
+            push @time,  "0$tmp_second";
+        } else {
+            push @time, "$tmp_second";
+        }
+
+        $second_in = ($second_in - $tmp_second) / 60;
+        $count++;
+    }
+
+    my @time_result = reverse @time;
+    $result = join(":", @time_result);
+
+    return $result;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        print table
+    Arguments:
+        content: double dimensional array
+        has_title: whether has title in content
+        
+        eg: @content = ($title,
+                        @content1,
+                        @content2,
+                        ......
+            );
+            $has_title = 1;
+            print_table(\@content, $has_title);
+
+        or @content = (@content1,
+                       @content2,
+                       ......
+           );
+           $has_title = 0;
+           print_table(\@content, $has_title);
+
+    Ouput:
+        --------------------------
+        |         xxxxxxx        |
+        --------------------------
+        | xxx | xxxx | xx   | xx |  
+        --------------------------
+        | xx  | xxxx | xxxx | xx | 
+        --------------------------
+
+        or 
+
+        --------------------------
+        | xxx | xxxx | xx   | xx |
+        --------------------------
+        | xx  | xxxx | xxxx | xx |
+        --------------------------
+
+=cut
+
+#------------------------------------------
+sub print_table {
+    my $content = shift;
+    $content = shift if (($content) && ($content =~ /probe_utils/));
+    my $has_title = shift;
+    my $title;
+
+    if ($has_title) {
+        $title = shift(@$content);
+    }
+
+    my @length_array;
+    foreach my $row (@$content) {
+        for (my $i = 0; $i < @{$row}; $i++) {
+            my $ele_length = length(${$row}[$i]);
+            $length_array[$i] = $ele_length if ($length_array[$i] < $ele_length);
+        }
+    }
+
+    my @content_new;
+    my @row_new;
+    my $row_line;
+    my $whole_length;
+    foreach my $row (@$content) {
+        @row_new = ();
+        for (my $i = 0; $i < @{$row}; $i++) {
+            push @row_new, ${$row}[$i] . " " x ($length_array[$i] - length(${$row}[$i]));
+        }
+        $row_line = "| " . join(" | ", @row_new) . " |";
+        push @content_new, $row_line;
+    }
+    $whole_length = length($row_line);
+
+    my $title_new;
+    my $title_length = length($title);
+    if ($has_title) {
+        if ($whole_length - 1 <= $title_length) {
+            $title_new = $title;
+        } else {
+            $title_new = " " x (($whole_length - 2 - $title_length)/2) . "$title";
+            $title_new .= " " x ($whole_length - 2 - length($title_new));
+            $title_new = "|" . $title_new . "|";
+        }
+    }
+
+    my $format_line = "-" x $whole_length;
+    print $format_line . "\n" if ($has_title);
+    print $title_new . "\n" if ($has_title);
+    print $format_line . "\n";
+    foreach (@content_new) {
+        print $_ . "\n";
+    }
+    print $format_line . "\n";
 }
 
 1;
