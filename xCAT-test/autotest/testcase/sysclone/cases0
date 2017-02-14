@@ -40,12 +40,9 @@ check:rc==0
 cmd:chdef -t osimage -o $$GOS-x86_64-install-compute otherpkglist=$$OTHERPKGLIST
 check:rc==0
 
-cmd:nodeset $$GOLDEN_CLIENT osimage=$$GOS-x86_64-install-compute
+cmd:rinstall $$GOLDEN_CLIENT osimage=$$GOS-x86_64-install-compute   
 check:rc==0
-cmd:rsetboot $$GOLDEN_CLIENT net
-check:rc==0
-cmd:rpower $$GOLDEN_CLIENT reset
-check:rc==0
+check:output=~Provision node\(s\)\: $$GOLDEN_CLIENT
 
 cmd:sleep 500
 cmd:a=0;while ! `lsdef -l $$GOLDEN_CLIENT|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 200 ];then break;fi done
@@ -75,12 +72,9 @@ check:rc==0
 cmd:lsdef -t osimage goldenclient-osimage-$$GOS-$$MODE| grep provmethod
 check:output=~sysclone
 
-cmd:nodeset $$TARGET_NODE osimage=goldenclient-osimage-$$GOS-$$MODE
+cmd:rinstall $$TARGET_NODE  osimage=goldenclient-osimage-$$GOS-$$MODE
 check:rc==0
-cmd:rsetboot $$TARGET_NODE net
-check:rc==0
-cmd:rpower $$TARGET_NODE reset
-check:rc==0
+check:output=~Provision node\(s\)\: $$TARGET_NODE
 
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$TARGET_NODE|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done

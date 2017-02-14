@@ -20,10 +20,9 @@ cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=`cat /etc/*-re
 check:rc==0 
 cmd: chdef $$CN -p postbootscripts="setupdockerhost mynet0=$$MYNET0VALUE@$$DOCKERHOSIP:$$NICNAME"
 check:rc==0
-cmd:nodeset  $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
 check:rc==0
-cmd:rpower $$CN boot
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
