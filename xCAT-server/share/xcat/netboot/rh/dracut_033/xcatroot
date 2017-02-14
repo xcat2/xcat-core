@@ -43,6 +43,7 @@ if [ ! -z "$imgurl" ]; then
                 sleep 27
             fi
         done
+        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Download complete."
     elif [ xnfs = x${imgurl%%:*} ]; then
         NFS=1
         SERVER=${imgurl#nfs:}
@@ -53,7 +54,6 @@ if [ ! -z "$imgurl" ]; then
         SERVER=${SERVER%:}
         ROOTDIR=/${ROOTDIR#*/} 
     fi
-    [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Download complete."
 fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
 
