@@ -434,7 +434,6 @@ sub setdestiny {
         }
     } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
         $restab = xCAT::Table->new('noderes', -create => 1);
-        my $bootparms = xCAT::Table->new('bootparams', -create => 1);
         my $nodetype = xCAT::Table->new('nodetype');
 
         #my $sitetab = xCAT::Table->new('site');
@@ -506,18 +505,18 @@ sub setdestiny {
                     }
                 }
                 if (-r "$tftpdir/xcat/genesis.fs.$arch.$bestsuffix") {
-                    $bootparms->setNodeAttribs($_, { kernel => "xcat/genesis.kernel.$arch",
-                            initrd => "xcat/genesis.fs.$arch.$bestsuffix",
-                            kcmdline => $kcmdline . "xcatd=$master:$xcatdport destiny=$state" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$bestsuffix";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
                 } else {
-                    $bootparms->setNodeAttribs($_, { kernel => "xcat/genesis.kernel.$arch",
-                            initrd => "xcat/genesis.fs.$arch.$othersuffix",
-                            kcmdline => $kcmdline . "xcatd=$master:$xcatdport destiny=$state" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$othersuffix";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
                 }
             } else {    #'legacy' environment
-                $bootparms->setNodeAttribs($_, { kernel => "xcat/nbk.$arch",
-                        initrd   => "xcat/nbfs.$arch.gz",
-                        kcmdline => $kcmdline . "xcatd=$master:$xcatdport" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/nbk.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/nkfs.$arch.gz";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport";
             }
         }
 
