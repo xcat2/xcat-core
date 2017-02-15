@@ -406,6 +406,10 @@ sub process_request {
         @exargs = ($request->{arg});
     }
 
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+        return;
+    }
     #my $sitetab = xCAT::Table->new('site');
     #if($sitetab){
     #(my $ref) = $sitetab->getAttribs({key => 'usehostnamesforvcenter'}, 'value');

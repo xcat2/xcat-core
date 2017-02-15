@@ -50,6 +50,9 @@ my %usage = (
        rpower noderange [stat|state|on|off|reset|boot]
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
+     pdu specific:
+       rpower noderange [off|on|stat]
+       rpower noderange [pduoff|pduon|pdustat]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
@@ -100,7 +103,9 @@ my %usage = (
     zVM specific:
        rinv noderange [all|config]
     MIC specific:
-       rinv noderange [system|ver|board|core|gddr|all]",
+       rinv noderange [system|ver|board|core|gddr|all]
+    pdu specific:
+       rinv noderange ",
     "rsetboot" =>
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
