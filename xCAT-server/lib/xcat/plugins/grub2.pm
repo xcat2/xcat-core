@@ -186,7 +186,7 @@ sub setstate {
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
 
     # remove the old boot configuration files and create a new one, but only if not offline directive
-    system("find . -inum \$(stat --printf \%i $tftpdir/boot/grub2/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+    system("find $tftpdir/boot/grub2/ -inum \$(stat --printf \%i $tftpdir/boot/grub2/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
     if ($cref and $cref->{currstate} ne "offline") {
         open($pcfg, '>', $tftpdir . "/boot/grub2/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
