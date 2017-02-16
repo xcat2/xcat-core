@@ -46,8 +46,12 @@ network_ipv4calc ()
     echo $NETWORK
 }
 
+if (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1); then
+    osver="cumulus"
+fi
+
 defgw=`ip route | grep default | awk '{print $3}'`
-if ( pmatch $OSVER "ubuntu*" )
+if ( pmatch $OSVER "ubuntu*" ) || (pmatch $osver "cumulus")
 then
     echo `hostname` >/etc/hostname
     mv /etc/network/interfaces /etc/network/interfaces.old # this file will be filled up next
@@ -76,7 +80,7 @@ fi
 HOSTNAMECTL=`which hostnamectl 2>&1 | grep -v "/usr/bin/which: no"`
 if [ ! -z $HOSTNAMECTL ] && [ ! -z $NODE ]; then
     SET_HOSTNAME=$NODE
-    if [ ! -z $DOMAIN ]; then 
+    if [ ! -z $DOMAIN ]; then
         SET_HOSTNAME=$NODE.$DOMAIN
     fi
     echo "Setting hostname to: $SET_HOSTNAME"
@@ -90,7 +94,7 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
     PREFIXMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`
     # converts to x.x.x.x mask value
     maskfromprefix $PREFIXMASK
-    if ( pmatch $OSVER "ubuntu*" )
+    if ( pmatch $OSVER "ubuntu*" ) || (pmatch $osver "cumulus")
     then
         NETWORK=`network_ipv4calc $IPADDR $NETMASK`
         #BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
@@ -149,7 +153,7 @@ EOF
     fi
 done
 
-if ( pmatch $OSVER "ubuntu*")
+if ( pmatch $OSVER "ubuntu*") || (pmatch $osver "cumulus")
 then
     cat >>/etc/network/interfaces <<EOF
 auto lo
