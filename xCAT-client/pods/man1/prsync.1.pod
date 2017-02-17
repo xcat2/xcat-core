@@ -6,18 +6,16 @@ prsync - parallel rsync
 
 B<prsync> I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
-B<prsync>  [B<-o> I<rsync options>] [B<-f> I<fanout>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
+B<prsync>  [B<-o> I<rsyncopts>] [B<-f> I<fanout>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
 I<noderange:destinationdirectory>
 
 B<prsync> {B<-h>|B<--help>|B<-v>|B<--version>}
 
 =head1 B<Description>
 
-B<prsync> is a front-end to rsync for a single or range  of  nodes  and/or
-groups in parallel.
+B<prsync> is a front-end to rsync for a single or range of nodes and/or groups in parallel.
 
-Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node. It does not support hierarchy, use xdcp -F to run rsync from the
-management node to the compute node via a service node
+Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node. It does not support hierarchy, use B<xdcp -F> to run rsync from the management node to the compute node via a service node
 
 B<prsync> is NOT multicast, but is parallel unicasts.
 
@@ -25,14 +23,13 @@ B<prsync> is NOT multicast, but is parallel unicasts.
 
 =over 7
 
-=item I<rsyncopts>
+=item B<-o> I<rsyncopts>
 
 rsync options.  See B<rsync(1)>.
 
 =item B<-f> I<fanout>
 
-Specifies a fanout value for the maximum number of  concur-
-rently  executing  remote shell processes.
+Specifies a fanout value for the maximum number of concurrently executing remote shell processes.
 
 =item I<filename>
 
