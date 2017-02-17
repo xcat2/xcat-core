@@ -3662,7 +3662,7 @@ sub process_request {
     }
 
     #pdu commands will be handled in the pdu plugin
-    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat/, @exargs)) {
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
         return;
     }
 
