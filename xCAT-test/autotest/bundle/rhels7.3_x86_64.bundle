@@ -219,6 +219,16 @@ nodeset_check_warninginfo
 nodeset_shell
 nodeset_cmdline
 nodeset_runimg
+xcatconfig_null
+xcatconfig_h
+xcatconfig_v
+xcatconfig_k
+xcatconfig_k_c
+xcatconfig_s
+xcatconfig_s_c
+xcatconfig_d_V
+xcatconfig_i
+xcatconfig_u
 xcatconfig_u_check_xcatsslversion_rhels_sles
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat

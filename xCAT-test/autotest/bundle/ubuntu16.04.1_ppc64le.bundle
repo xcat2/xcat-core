@@ -262,6 +262,16 @@ xcatd_restart_systemd
 run_command_with_XCATBYPASS_systemd
 disable_root_permission_in_policy_table_systemd
 assign_certain_command_permission_systemd
+xcatconfig_null
+xcatconfig_h
+xcatconfig_v
+xcatconfig_k
+xcatconfig_k_c
+xcatconfig_s
+xcatconfig_s_c
+xcatconfig_d_V
+xcatconfig_i
+xcatconfig_u
 xcatconfig_u_check_xcatsslversion_ubuntu
 ubuntu_migration1_p8le
 ubuntu_migration2_p8le
