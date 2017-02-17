@@ -1,8 +1,3 @@
-start:testtest
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/xcatconfig/change_site_table_values
-check:rc==0
-end
-
 start:xcatconfig_null
 description:xcatconfig with no argument
 os:Linux
