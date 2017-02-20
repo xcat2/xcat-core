@@ -397,6 +397,7 @@ sub setdestiny {
 
 
             my $ntents = $nodetypetable->getNodesAttribs($samestatenodes, [qw(os arch profile)]);
+            my $updates;
             foreach (@{$samestatenodes}) {
                 $nstates{$_} = $tempstate; #local copy of state variable for mod
                 my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
@@ -416,9 +417,10 @@ sub setdestiny {
                     } else { $errored = 1; $callback->({ errorcode => [1], error => "nodetype.profile not defined for $_" }); }
                 }
                 if ($errored) { return; }
-
-                #statelite
-                unless ($tempstate =~ /^netboot|^statelite/) { $chaintab->setNodeAttribs($_, { currchain => "boot" }); }
+                $updates->{$_}->{'currchain'} = "boot";
+            }
+            unless ($tempstate =~ /^netboot|^statelite/) {
+                $chaintab->setNodesAttribs($updates);
             }
 
             if ($action eq "reboot4deploy") {
@@ -599,18 +601,20 @@ sub setdestiny {
     }
 
     if ($noupdate) { return; }    #skip table manipulation if just doing 'enact'
+    my $updates;
     foreach (@nodes) {
         my $lstate = $state;
         if ($nstates{$_}) {
             $lstate = $nstates{$_};
         }
-        $chaintab->setNodeAttribs($_, { currstate => $lstate });
+        $updates->{$_}->{'currstate'} = $lstate;
 
         # if there are multiple actions in the state argument, set the rest of states (shift out the first one)
         # to chain.currchain so that the rest ones could be used by nextdestiny command
         if ($reststates) {
-            $chaintab->setNodeAttribs($_, { currchain => $reststates });
+            $updates->{$_}->{'currchain'} = $reststates;
         }
+        $chaintab->setNodesAttribs($updates);
     }
     return getdestiny($flag + 1);
 }

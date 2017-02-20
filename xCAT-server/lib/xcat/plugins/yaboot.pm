@@ -95,7 +95,7 @@ sub setstate {
     my $tftpdir      = shift;
     my %nrhash       = %{ shift() };
     my $linuximghash = shift();
-    my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+    my $kern = $bphash{$node}->[0];
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
@@ -567,17 +567,18 @@ sub process_request {
     if (exists($::YABOOT_request->{inittime})) { $inittime = $::YABOOT_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
     $errored = 0;
+    my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "yaboot: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
                 inittime => [$inittime],
-                arg      => \@args }, \&pass_along);
+                arg      => \@args,
+                bootparams => \%bphash},
+                \&pass_along);
     }
     if ($errored) { return; }
 
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
-    my $bphash = $bptab->getNodesAttribs(\@nodes, [ 'kernel', 'initrd', 'kcmdline', 'addkcmdline' ]);
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
@@ -614,7 +615,7 @@ sub process_request {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
 
-            ($rc, $errstr) = setstate($_, $bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash);
+            ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
                 $response{node}->[0]->{errorc}->[0]    = $errstr;
