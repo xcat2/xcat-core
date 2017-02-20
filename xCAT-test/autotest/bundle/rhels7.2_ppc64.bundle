@@ -4,6 +4,10 @@ go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
+makehosts_h
+makehosts_help
+makehosts_n
+makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -261,6 +265,7 @@ xdsh_Q_command
 xdsh_c_cn
 xdsh_e_filename
 xdsh_E
+xdsh_i_linux
 xdsh_t
 xdsh_q
 xdsh_T
@@ -282,6 +287,9 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 makentp_v
 makentp_h
 nodeset_check_warninginfo
