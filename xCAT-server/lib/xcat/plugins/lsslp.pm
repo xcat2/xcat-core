@@ -1267,12 +1267,6 @@ sub parse_responses {
                 }
             }
 
-            # this part of code is used to avoid two messages sent from different ports of fsp give different info. Although this hasn't showed.
-            #else {
-            #  ${$outhash{$tmphash1{ip}}{fid} = int(${$attributes->{'frame-number'}}[0]) if(int(${$attributes->{'frame-number'}}[0]) != 0);
-            #  ${$outhash{$tmphash1{ip}}{cid} = int(${$attributes->{'cage-number'}}[0]) if(int(${$attributes->{'cage-number'}}[0]) != 0);
-            #  trace( $request, "change frame id to ${$outhash{$tmphash1{ip}}{fid}, change cec id to ${$outhash{$tmphash1{ip}}{cid} \n");
-            #}
             ######################################################################
 
             #begin to define frame and cec
@@ -1301,9 +1295,13 @@ sub parse_responses {
                 #update frameid and cageid to fix the firmware mistake
                 ${ $outhash{$name} }{fid} = int(${ $attributes->{'frame-number'} }[0]) if (int(${ $attributes->{'frame-number'} }[0]) != 0);
                 ${ $outhash{$name} }{cid} = int(${ $attributes->{'cage-number'} }[0]) if (int(${ $attributes->{'cage-number'} }[0]) != 0);
-                ${ $outhash{$name} }{bpcmtm} = ${ $attributes->{'bpc-machinetype-model'} }[0] if (int(${ $attributes->{'bpc-machinetype-model'} }[0]) != 0);
-                ${ $outhash{$name} }{bpcsn} = ${ $attributes->{'bpc-serial-number'} }[0] if (int(${ $attributes->{'bpc-serial-number'} }[0]) != 0);
-                $atthash{parent} = 'Server-' . ${ $outhash{$name} }{bpcmtm} . '-SN' . ${ $outhash{$name} }{bpcsn} if ($type eq SERVICE_FSP);
+                ${ $outhash{$name} }{bpcmtm} = ${ $attributes->{'bpc-machinetype-model'} }[0] if ( ${ $attributes->{'bpc-machinetype-model'} }[0] );
+                ${ $outhash{$name} }{bpcsn} = ${ $attributes->{'bpc-serial-number'} }[0] if ( ${ $attributes->{'bpc-serial-number'} }[0] );
+                
+                if ( (${ $attributes->{'bpc-machinetype-model'} }[0])  && (${ $attributes->{'bpc-serial-number'} }[0])  ) {
+                    # this should only be set when there are valid attributes for bpc-machinetype-model and bpc-serial-number.
+                    $atthash{parent} = 'Server-' . ${ $outhash{$name} }{bpcmtm} . '-SN' . ${ $outhash{$name} }{bpcsn} if ($type eq SERVICE_FSP);
+                }
                 $outhash{$name}{children} .= "," . ${ $attributes->{'ip-address'} }[0] . "," . ${ $attributes->{'ip-address'} }[1]; # at most save 8 ips and have redendant
                 trace($request, "adjust frame id to ${$outhash{$name}}{fid}, cec id to  ${$outhash{$name}}{cid}, children to $outhash{$name}{children},\
 				bpcmtm to ${$outhash{$name}}{bpcmtm}, bpcsn to ${$outhash{$name}}{bpcsn}");
