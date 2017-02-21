@@ -942,7 +942,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
-    my $bootparams = ${$request->{bootparams}};
+    my $bootparams = ${$req->{bootparams}};
     my $tftpdir = "/tftpboot";
     my $nodes   = @{ $req->{node} };
     my @args    = @{ $req->{arg} };
