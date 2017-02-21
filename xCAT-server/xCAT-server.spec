@@ -347,6 +347,7 @@ cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 # xcatws.cgi causes xCAT-server requires perl-JSON, which is not shipped with PCM
 %if %pcm
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/zvmxcatws.cgi
 %endif
 
 %if %fsm
@@ -354,8 +355,16 @@ rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
 %if %notpcm
+%if %nots390x
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+%else
+# Add in old version 1 REST-API and version 2 REST-API to z/VM, default to version 1
+echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatwsv2 %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatws %{prefix}/ws/zvmxcatws.cgi" >> $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache24
+%endif
 %endif
 
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/%httpconfigdir/conf.orig/xcat-ws.conf.apache22
