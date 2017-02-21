@@ -198,10 +198,9 @@ check:output=~archive method:tar
 check:output=~compress method:pigz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
@@ -239,10 +238,9 @@ check:output=~archive method:tar
 check:output=~compress method:gzip
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.gz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0
@@ -280,10 +278,9 @@ check:output=~archive method:tar
 check:output=~compress method:xz
 cmd:ls -l /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg.tar.xz
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 150 ];then break;fi done
 cmd:ping $$CN -c 3
 check:rc==0

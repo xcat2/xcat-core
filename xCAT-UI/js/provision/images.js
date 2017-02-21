@@ -48,7 +48,7 @@ function loadImages(data) {
     // Data returned
     var rsp = data.rsp;
     if (rsp[0].indexOf('Could not find any object definitions') > -1) {
-    	rsp = new Array();
+        rsp = new Array();
     }
 
     // Image attributes hash
@@ -198,7 +198,7 @@ function loadImages(data) {
 
     // Turn table into a datatable
     var myDataTable = $('#' + imgTableId).dataTable({
-    	'iDisplayLength': 50,
+        'iDisplayLength': 50,
         'bLengthChange': false,
         "bScrollCollapse": true,
         "sScrollY": "400px",
@@ -502,7 +502,7 @@ function openAddImageDialog() {
     imageAttr.append(imageName, imageType, architecture, osName, osVersion, profile, provisionMethod);
     optionAttr.append(otherpkgDirectory, packageDirectory, packageList, template);
 
-	// Generate tooltips
+    // Generate tooltips
     addImageForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -720,9 +720,9 @@ function loadCreateImage() {
         return;
     }
 
-    var imageOsVers = $.cookie("osvers").split(",");
-    var imageArch = $.cookie("osarchs").split(",");
-    var profiles = $.cookie("profiles").split(",");
+    var imageOsVers = $.cookie("xcat_osvers").split(",");
+    var imageArch = $.cookie("xcat_osarchs").split(",");
+    var profiles = $.cookie("xcat_profiles").split(",");
 
     var createImgForm = $('<div class="form"></div>');
     var createImgFS = $('<fieldset></fieldset>').append('<legend>Create Image</legend>');
@@ -1329,7 +1329,7 @@ function openCopyCdDialog() {
         basePath : '/install' // Limit user to only install directory
     });
 
-	// Generate tooltips
+    // Generate tooltips
     copyLinuxForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],

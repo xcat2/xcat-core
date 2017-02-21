@@ -104,7 +104,7 @@ function snooze() {
     fi
 } 
 
-if which ipmitool 2>&1 | grep no; then 
+if ! ipmitool -V 2>/dev/null| grep "version"; then
     echo "No ipmitool find, please install it first"; 
     exit 1;
 fi
@@ -253,7 +253,7 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
     logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
     if [ "$BMCPORT" == "0" ]; then # dedicated
         ipmitool delloem lan set dedicated &>/dev/null
-    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4"]; then # shared
+    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4" ]; then # shared
         ipmitool delloem lan set shared &>/dev/null
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>dev/null
@@ -440,7 +440,7 @@ for user in $BMCUS; do
     TRIES=0
     if [ "$CURRENTUSER" != "$user" ]; then
         # Change the user name, if necessary
-        while ! ipmitool -d $idev user set name $USERSLOT $user; do
+        while ! ipmitool -d $idev user set name $USERSLOT "$user"; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -455,7 +455,7 @@ for bmcp in $BMCPW; do
 
     TRIES=0
     # Set the password for the specified user 
-    while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
+    while ! ipmitool -d $idev user set password $USERSLOT "$bmcp"; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi

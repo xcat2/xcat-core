@@ -1,5 +1,6 @@
 start:reg_linux_diskless_installation_hierarchy
 os:Linux
+stop:yes
 
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
@@ -42,13 +43,10 @@ check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]]; then rnetboot $$CN;else rpower $$CN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 
 cmd:sleep 900
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done

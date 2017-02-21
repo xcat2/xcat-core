@@ -101,7 +101,7 @@ function submit_request($req, $skipVerify, $opts_array){
         if ($flush){
             echo str_pad('',1024)."\n";
         }
-        
+
         while (!feof($fp)) {
             // Read until there is no more
             // Remove newlines and add it to the response
@@ -118,7 +118,7 @@ function submit_request($req, $skipVerify, $opts_array){
                     } else {
                         $flushtail = '';
                     }
-                    
+
                     $str = preg_replace('/<errorcode>.*<\/errorcode>/', '', $str);
                     // Strip HTML tags from output
                     if ($tmp = trim(strip_tags($str))) {
@@ -127,7 +127,7 @@ function submit_request($req, $skipVerify, $opts_array){
                             format_TBD($tmp);
                         } else {
                             $tmp = preg_replace('/\n\s*/', "\n", $tmp);
-                            
+
                             // Print out output by default
                             echo '<pre style="font-size: 10px;">' . $tmp . '</pre>';
                             ob_flush();
@@ -180,7 +180,7 @@ function submit_request($req, $skipVerify, $opts_array){
             $rsp = FALSE;
         }
     }
-    
+
     return $rsp;
 }
 
@@ -201,10 +201,10 @@ function xorcrypt($data, $key) {
  * Get password
  */
 function getpassword() {
-    if (isset($GLOBALS['xcatauthsecret'])) {
-        $cryptext = $GLOBALS['xcatauthsecret'];
-    } else if (isset($_COOKIE["xcatauthsecret"])) {
-        $cryptext = $_COOKIE["xcatauthsecret"];
+    if (isset($GLOBALS['xcat_authsecret'])) {
+        $cryptext = $GLOBALS['xcat_authsecret'];
+    } else if (isset($_COOKIE["xcat_authsecret"])) {
+        $cryptext = $_COOKIE["xcat_authsecret"];
     } else {
         return false;
     }
@@ -214,7 +214,7 @@ function getpassword() {
 
 /**
  * Get the password splitting knowledge between server and client side persistant storage.
- * Caller should regenerate session ID when contemplating a new user/password, 
+ * Caller should regenerate session ID when contemplating a new user/password,
  * to preclude session fixation, though fixation is limited without the secret.
  *
  * @param $password    Password
@@ -226,8 +226,8 @@ function setpassword($password) {
 
     // Non-ascii characters, encode it in base64
     $cryptext = base64_encode($cryptext);
-    setcookie("xcatauthsecret",$cryptext,0,'/');
-    $GLOBALS["xcatauthsecret"] = $cryptext;
+    setcookie("xcat_authsecret",$cryptext,0,'/xcat','',true);
+    $GLOBALS["xcat_authsecret"] = $cryptext;
     $_SESSION["secretkey"] = $key;
 }
 
@@ -342,18 +342,31 @@ function isRootAcess() {
  * Log out of current user session
  */
 function logout() {
+    session_start();
     // Clear the secret cookie from browser
-    if (isset($_COOKIE["xcatauthsecret"])) {
-        setcookie("xcatauthsecret",'',time()-86400*7,'/');
+    if (isset($_COOKIE["xcat_authsecret"])) {
+        setcookie("xcat_authsecret",'',time()-86400*7,'/xcat','',true);
+    }
+
+    // Clear any cookies where the key starts with "xcat_"
+    foreach ($_COOKIE as $key => $value) {
+        if (substr($key,0,5) === "xcat_") {
+            unset($_COOKIE[$key]);
+            setcookie($key, null, time() - 3600, '/xcat','',true);
+        }
     }
 
     // Expire session cookie
     if (isset($_COOKIE[session_name()])) {
-        setcookie(session_name(),"",time()-86400*7,"/");
+        setcookie(session_name(),"",time()-86400*7,"/xcat",'',true);
     }
+
+    // Clear session id
+    setcookie(session_id(),"",time()-86400*7,"/");
 
     // Clear server store of data
     $_SESSION=array();
+    session_destroy();
 }
 
 /**

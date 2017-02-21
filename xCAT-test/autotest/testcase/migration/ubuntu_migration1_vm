@@ -1,6 +1,6 @@
 start:ubuntu_migration1_vm
 os:Linux
-description:update xCAT from $$UBUNTU_MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$UBUNTU_MIGRATION1_VERSION to latest version, these two global parameter defined in config file
 
 cmd:copycds $$ISO
 check:rc==0
@@ -15,10 +15,9 @@ cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rpower $$CN boot
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 cmd:ping $$CN -c 3
@@ -107,7 +106,9 @@ cmd:xdsh $$CN "apt-get -y --only-upgrade install .*xcat.*"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /newxcat/new_version"
 check:rc==0
-cmd:xdsh $$CN "cat /newxcat/new_version|grep $$LATEST_VERSION"
+cmd:lsxcatd -v > /latest_version_info;scp /latest_version_info root@$$CN:/newxcat/
+check:rc==0
+cmd:xdsh $$CN diff /newxcat/latest_version_info /newxcat/new_version
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0

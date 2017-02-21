@@ -32,4 +32,4 @@
 ./usr/share/zoneinfo*
 ./var/cache/man*
 ./var/lib/yum*
-
+./tmp*

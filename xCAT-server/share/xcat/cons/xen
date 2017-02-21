@@ -32,20 +32,8 @@ BEGIN
         exit 0;
     }
     get_lock();
-
-    #my $sleepint=int(rand(10));
-    #print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
-    #sleep $sleepint;
 }
 
-#BEGIN
-#{
-#    use Time::HiRes qw(sleep);
-#    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
-#    my $sleepint=int(rand(10));
-#    print "Opening console in ".(0.5*$sleepint)." seconds...\n";
-#    sleep (0.5*$sleepint);
-#}
 my $sleepint;
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
@@ -81,10 +69,3 @@ until ($dsthost and $speed and $dstty) {
 }
 release_lock();
 exec "ssh -t $dsthost screen -U -a -O -e ^]a -d -R -S serial-" . $ARGV[0] . "-cons -A $dstty $speed";
-
-#my $pathtochild= dirname($scriptname). "/";
-#exec $pathtochild."blade.expect $mm $slot $username $password";
-
-
-
-

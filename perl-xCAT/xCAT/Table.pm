@@ -2299,6 +2299,91 @@ $evalcpt->permit('require');
 
 #--------------------------------------------------------------------------
 
+=head3 transRegexAttrs
+
+    Description: Transform the regular expression attribute to the target value
+                 based on the node name.
+
+    Arguments:
+            Node
+            Attribute value (may have regular expression)
+    Returns:
+            Attribute value
+            undef
+    Globals:
+
+    Error:
+
+    Example:
+           if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
+                $datum->{$attrib} = $retval;
+           } else {
+                delete $datum->{$attrib};
+           }
+
+    Comments:
+        none
+
+=cut
+
+#---------------------------------------------------------------------------
+sub transRegexAttrs
+{
+    my ($node, $attr) = @_;
+    my $retval = $attr;
+    if ($attr =~ /^\/[^\/]*\/[^\/]*\/$/) {
+        my $exp = substr($attr, 1);
+        chop $exp;
+        my @parts = split('/', $exp, 2);
+        $retval = $node;
+        $retval =~ s/$parts[0]/$parts[1]/;
+    } elsif ($attr =~ /^\|.*\|$/) {
+        my $exp = substr($attr, 1);
+        chop $exp;
+        my @parts = split('\|', $exp, 2);
+        my $arraySize = @parts;
+        if ($arraySize < 2) {    # easy regx, generate lhs from node
+            my $lhs;
+            my @numbers = $node =~ m/[\D0]*(\d+)/g;
+            $lhs = '[\D0]*(\d+)' x scalar(@numbers);
+            $lhs .= '.*$';
+            unshift(@parts, $lhs);
+        }
+        my ($curr, $next, $prev);
+        $retval = $parts[1];
+
+        ($curr, $next, $prev) =
+            extract_bracketed($retval, '()', qr/[^()]*/);
+        unless ($curr) { #If there were no paramaters to save, treat this one like a plain regex
+            undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
+            $retval = $node;
+            $retval =~ s/$parts[0]/$parts[1]/;
+        }
+        while ($curr)
+        {
+            my $value = $node;
+            $value =~ s/$parts[0]/$curr/;
+            $value  = $evalcpt->reval('use integer;' . $value);
+            $retval = $prev . $value . $next;
+            ($curr, $next, $prev) =
+                extract_bracketed($retval, '()', qr/[^()]*/);
+        }
+        undef $@;
+
+        #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+        #must be applied in total
+        my $answval = $node;
+        $answval =~ s/$parts[0]/$retval/;
+        $retval = $answval;
+    }
+    if ($retval =~ /^$/) {
+        $retval = undef;
+    }
+    return $retval;
+}
+
+#--------------------------------------------------------------------------
+
 =head3 getNodeAttribs
 
     Description: Retrieves the requested attribute
@@ -2392,77 +2477,10 @@ sub getNodeAttribs
                 #skip undefined values, save time
                 next;
             }
-            if ($datum->{$attrib} =~ /^\/[^\/]*\/[^\/]*\/$/)
-            {
-                my $exp = substr($datum->{$attrib}, 1);
-                chop $exp;
-                my @parts = split('/', $exp, 2);
-                my $retval = $node;
-                $retval =~ s/$parts[0]/$parts[1]/;
+            my $retval;
+            if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
                 $datum->{$attrib} = $retval;
-            }
-            elsif ($datum->{$attrib} =~ /^\|.*\|$/)
-            {
-
-                #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
-                #Tricky part:  don't allow potentially dangerous code, only eval if
-                #to-be-evaled expression is only made up of ()\d+-/%$
-                #Futher paranoia?  use Safe module to make sure I'm good
-                my $exp = substr($datum->{$attrib}, 1);
-                chop $exp;
-                my @parts = split('\|', $exp, 2);
-                my $arraySize = @parts;
-                if ($arraySize < 2) {    # easy regx, generate lhs from node
-                    my $lhs;
-                    my @numbers = $node =~ m/[\D0]*(\d+)/g;
-                    $lhs = '[\D0]*(\d+)' x scalar(@numbers);
-                    $lhs .= '.*$';
-                    unshift(@parts, $lhs);
-                }
-                my $curr;
-                my $next;
-                my $prev;
-                my $retval = $parts[1];
-                ($curr, $next, $prev) =
-                  extract_bracketed($retval, '()', qr/[^()]*/);
-
-                unless ($curr) { #If there were no paramaters to save, treat this one like a plain regex
-                    undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
-                    $retval = $node;
-                    $retval =~ s/$parts[0]/$parts[1]/;
-                    $datum->{$attrib} = $retval;
-                    if ($datum->{$attrib} =~ /^$/) {
-
-                        #If regex forces a blank, act like a normal blank does
-                        delete $datum->{$attrib};
-                    }
-                    next;     #skip the redundancy that follows otherwise
-                }
-                while ($curr)
-                {
-
-                    #my $next = $comps[0];
-                    my $value = $node;
-                    $value =~ s/$parts[0]/$curr/;
-                    $value  = $evalcpt->reval('use integer;' . $value);
-                    $retval = $prev . $value . $next;
-                    ($curr, $next, $prev) =
-                      extract_bracketed($retval, '()', qr/[^()]*/);
-                }
-                undef $@;
-
-                #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
-                #must be applied in total
-                my $answval = $node;
-                $answval =~ s/$parts[0]/$retval/;
-                $datum->{$attrib} = $answval;    #$retval;
-
-                #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
-                #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
-            }
-            if ($datum->{$attrib} =~ /^$/) {
-
-                #If regex forces a blank, act like a normal blank does
+            } else {
                 delete $datum->{$attrib};
             }
         }

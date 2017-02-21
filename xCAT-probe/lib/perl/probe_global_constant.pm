@@ -27,12 +27,14 @@ $::STATE_BOOTLODER      = 4;
 $::STATE_KERNEL         = 5;
 $::STATE_INITRD         = 6;
 $::STATE_KICKSTART      = 7;
-$::STATE_INSTALLING     = 8;
-$::STATE_INSTALLRPM     = 9;
-$::STATE_POSTSCRIPT     = 10;
-$::STATE_BOOTING        = 11;
-$::STATE_POSTBOOTSCRIPT = 12;
-$::STATE_COMPLETED      = 13;
+$::STATE_NETBOOTING     = 8;
+$::STATE_ROOTIMG        = 9;
+$::STATE_INSTALLING     = 10;
+$::STATE_INSTALLRPM     = 11;
+$::STATE_POSTSCRIPT     = 12;
+$::STATE_BOOTING        = 13;
+$::STATE_POSTBOOTSCRIPT = 14;
+$::STATE_COMPLETED      = 15;
 
 #The description of every important stage of provision process
 %::STATE_DESC = (
@@ -77,5 +79,7 @@ $::STATE_DISCOVER_COMPLETED      = 10;
     $::STATE_DISCOVER_COMPLETED      => "discovery_complete",
 );
 
+$::DISKFUL  = 1;
+$::DISKLESS = 2;
 
 1;

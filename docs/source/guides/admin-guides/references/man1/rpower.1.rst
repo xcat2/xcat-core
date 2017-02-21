@@ -29,6 +29,8 @@ BMC (using IPMI) specific:
 
 \ **rpower**\  \ *noderange*\  [\ **on | off | softoff | reset | boot | stat | state | status | wake | suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
 
+\ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat**\ ]
+
 
 PPC (with IVM or HMC) specific:
 ===============================
@@ -100,6 +102,13 @@ docker specific:
 
 
 \ **rpower**\  \ *noderange*\  [\ **start | stop | restart | pause | unpause | state**\ ]
+
+
+pdu specific:
+=============
+
+
+\ **rpower**\  \ *noderange*\  [\ **stat | off | on**\ ]
 
 
 

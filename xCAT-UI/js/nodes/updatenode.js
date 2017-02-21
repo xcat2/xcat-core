@@ -1,6 +1,6 @@
 /**
  * Load updatenode page
- * 
+ *
  * @param tgtNodes Targets to run updatenode against
  */
 function loadUpdatenodePage(tgtNodes) {
@@ -17,7 +17,7 @@ function loadUpdatenodePage(tgtNodes) {
 
         success : setOSImageCookies
     });
-    
+
     // Get node OS
     var osHash = new Object();
     var nodes = tgtNodes.split(',');
@@ -28,7 +28,7 @@ function loadUpdatenodePage(tgtNodes) {
             nodes[osBase] = 1;
         }
     }
-    
+
     // Get nodes tab
     var tab = getNodesTab();
 
@@ -40,10 +40,10 @@ function loadUpdatenodePage(tgtNodes) {
         inst = inst + 1;
         newTabId = 'updatenodeTab' + inst;
     }
-    
+
     // Create rscan form
     var updatenodeForm = $('<div class="form"></div>');
-    
+
     // Create status bar
     var statBarId = 'updatenodeStatusBar' + inst;
     var statusBar = createStatusBar(statBarId).hide();
@@ -55,35 +55,35 @@ function loadUpdatenodePage(tgtNodes) {
     // Create info bar
     var infoBar = createInfoBar('Update nodes in an xCAT environment');
     updatenodeForm.append(statusBar, infoBar);
-    
+
 	// Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     updatenodeForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
-    
+
 	// Create options fieldset
     var optionsFS = $('<fieldset></fieldset>');
     var optionsLegend = $('<legend>Options</legend>');
     optionsFS.append(optionsLegend);
     updatenodeForm.append(optionsFS);
-    
+
     var optionsAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     optionsFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
     optionsFS.append(optionsAttr);
-    
+
     // Create target node or group input
     var tgt = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
     vmAttr.append(tgt);
 
-    // Create options   
+    // Create options
     var optionsList = $('<ul></ul>');
     optionsAttr.append(optionsList);
-        
+
     // Create update all software checkbox (only AIX)
     if (osHash['AIX']) {
         var updateAllOption = $('<li></li>');
@@ -91,7 +91,7 @@ function loadUpdatenodePage(tgtNodes) {
         updateAllOption.append(updateAllChkBox);
         optionsList.append(updateAllOption);
         updateAllOption.append('Install or update all software contained in the source directory');
-        
+
         // Create source directory input
         var allSwScrDirectory = $('<li><label style="vertical-align: middle">Source directory:</label><input type="text" id="allSwSrcDirectory" name="allSwSrcDirectory"/></li>');
         // Browse server directory and files
@@ -131,14 +131,14 @@ function loadUpdatenodePage(tgtNodes) {
             }
         });
     }
-    
+
     // Create update software checkbox
     var updateOption = $('<li></li>');
     var updateChkBox = $('<input type="checkbox" id="S" name="S"/>');
     optionsList.append(updateOption);
     updateOption.append(updateChkBox);
     updateOption.append('Update existing software');
-        
+
     // Create source directory input
     var scrDirectory = $('<li><label style="vertical-align: middle">Source directory:</label><input type="text" id="srcDirectory" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
     // Browse server directory and files
@@ -168,27 +168,27 @@ function loadUpdatenodePage(tgtNodes) {
     scrDirectory.append(srcDirBrowse);
     scrDirectory.hide();
     optionsList.append(scrDirectory);
-    
+
     // Create other packages input
     var otherPkgs = $('<li><label style="vertical-align: middle">otherpkgs:</label><input type="text" id="otherpkgs" name="otherpkgs"/></li>');
     otherPkgs.hide();
     optionsList.append(otherPkgs);
-    
+
     // Create RPM flags input (only AIX)
     var aixRpmFlags = $('<li><label>rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
     aixRpmFlags.hide();
     optionsList.append(aixRpmFlags);
-    
+
     // Create installp flags input (only AIX)
     var aixInstallPFlags = $('<li><label>installp_flags:</label><input type="text" name="installp_flags"/></li>');
     aixInstallPFlags.hide();
     optionsList.append(aixInstallPFlags);
-    
+
     // Create emgr flags input (only AIX)
     var aixEmgrFlags = $('<li><label>emgr_flags:</label><input type="text" name="emgr_flags"/></li>');
     aixEmgrFlags.hide();
     optionsList.append(aixEmgrFlags);
-    
+
     // Show flags when checked
     updateChkBox.bind('click', function(event) {
         if ($(this).is(':checked')) {
@@ -209,7 +209,7 @@ function loadUpdatenodePage(tgtNodes) {
             }
         }
     });
-    
+
     // Create postscripts input
     var postOption = $('<li></li>');
     var postChkBox = $('<input type="checkbox" id="P" name="P"/>');
@@ -219,7 +219,7 @@ function loadUpdatenodePage(tgtNodes) {
     var postscripts = $('<li><label style="vertical-align: middle">Postscripts:</label><input type="text" id="postscripts" name="postscripts" title="You must give the postscript(s) to run"/></li>');
     postscripts.hide();
     optionsList.append(postscripts);
-    
+
     // Show alternate source directory when checked
     postChkBox.bind('click', function(event) {
         if ($(this).is(':checked')) {
@@ -230,7 +230,7 @@ function loadUpdatenodePage(tgtNodes) {
     });
     optionsList.append('<li><input type="checkbox" id="F" name="F"/>Distribute and synchronize files</li>');
     optionsList.append('<li><input type="checkbox" id="k" name="k"/>Update the ssh keys and host keys for the service nodes and compute nodes</li>');
-    
+
     // Create update OS checkbox
     if (!osHash['AIX']) {
         var osOption = $('<li></li>');
@@ -238,12 +238,12 @@ function loadUpdatenodePage(tgtNodes) {
         optionsList.append(osOption);
         osOption.append(osChkBox);
         osOption.append('Update the operating system');
-        
+
         var os = $('<li></li>').hide();
         var osLabel = $('<label>Operating system:</label>');
         var osInput = $('<input type="text" name="os" title="You must give the operating system to upgrade to, e.g. rhel5.5"/>');
         osInput.one('focus', function(){
-            var tmp = $.cookie('osvers');
+            var tmp = $.cookie('xcat_osvers');
             if (tmp) {
                 // Turn on auto complete
                 $(this).autocomplete({
@@ -254,7 +254,7 @@ function loadUpdatenodePage(tgtNodes) {
         os.append(osLabel);
         os.append(osInput);
         optionsList.append(os);
-        
+
         // Show alternate source directory when checked
         osChkBox.bind('click', function(event) {
             if ($(this).is(':checked')) {
@@ -264,7 +264,7 @@ function loadUpdatenodePage(tgtNodes) {
             }
         });
     }
-    
+
     // Generate tooltips
     updatenodeForm.find('div input[title]').tooltip({
         position: "center right",
@@ -279,7 +279,7 @@ function loadUpdatenodePage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-    
+
     /**
      * Ok
      */
@@ -292,7 +292,7 @@ function loadUpdatenodePage(tgtNodes) {
     	// Remove any warning messages
     	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
         var ready = true;
-        
+
         // Generate arguments
         var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
         var optionsStr = '';
@@ -300,7 +300,7 @@ function loadUpdatenodePage(tgtNodes) {
         for ( var i = 0; i < chkBoxes.length; i++) {
             option = chkBoxes.eq(i).attr('name');
             optionsStr += '-' + option;
-            
+
             // If update all software is checked
             if (option == 'S') {
                 var srcDir = $('#' + newTabId + ' input[name=allSwSrcDirectory]').val();
@@ -316,50 +316,50 @@ function loadUpdatenodePage(tgtNodes) {
                 if (srcDirectory) {
                     optionsStr += ';-d;' + srcDirectory;
                 }
-                
+
                 // Get otherpkgs
                 var otherpkgs = $('#' + newTabId + ' input[name=otherpkgs]').val();
                 if (otherpkgs) {
                     optionsStr += ';otherpkgs=' + otherpkgs;
                 }
-                
+
                 // Get rpm_flags
                 var rpm_flags = $('#' + newTabId + ' input[name=rpm_flags]').val();
                 if (rpm_flags) {
                     optionsStr += ';rpm_flags=' + rpm_flags;
                 }
-                
+
                 // Get installp_flags
                 var installp_flags = $('#' + newTabId + ' input[name=installp_flags]').val();
                 if (installp_flags) {
                     optionsStr += ';installp_flags=' + installp_flags;
                 }
-                
+
                 // Get emgr_flags
                 var emgr_flags = $('#' + newTabId + ' input[name=emgr_flags]').val();
                 if (emgr_flags) {
                     optionsStr += ';emgr_flags=' + emgr_flags;
                 }
             }
-            
+
             // If postscripts is checked
             if (option == 'P') {
                 // Get postscripts
                 optionsStr += ';' + $('#' + newTabId + ' input[name=postscripts]').val();
             }
-            
+
             // If operating system is checked
             if (option == 'o') {
                 // Get the OS
                 optionsStr += ';' + $('#' + newTabId + ' input[name=os]').val();
             }
-            
+
             // Append ; to end of string
             if (i < (chkBoxes.length - 1)) {
                 optionsStr += ';';
             }
         }
-        
+
         // If no inputs are empty
         if (ready) {
             // Get nodes
@@ -368,7 +368,7 @@ function loadUpdatenodePage(tgtNodes) {
             // Disable all inputs and Ok button
             $('#' + newTabId + ' input').attr('disabled', 'disabled');
             $(this).attr('disabled', 'true');
-            
+
             /**
              * (1) Boot to network
              */
