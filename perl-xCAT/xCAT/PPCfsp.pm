@@ -38,7 +38,8 @@ my %cmds = (
         autopower => [ "Auto Power Restart",             \&autopower ],
         sysdump   => [ "System Dump",                    \&sysdump ],
         spdump    => [ "Service Processor Dump",         \&spdump ],
-        network   => [ "Network Configuration",          \&netcfg ]},
+        network   => [ "Network Configuration",          \&netcfg ],
+        sslmode   => [ "Security Configuration",         \&sslenable]},
 );
 
 
@@ -107,6 +108,9 @@ sub connect {
     if (($req->{dev} eq '1') or ($req->{command} eq 'rpower')) {
         my @cred_array = xCAT::PPCdb::credentials($server, $req->{hwtype}, "celogin");
         $cred = \@cred_array;
+    } elsif (( $req->{command} eq 'rspconfig') and ($req->{arg}[0] =~ /(^sslmode)*/)) {
+        my @cred_array = xCAT::PPCdb::credentials($server, $req->{hwtype}, "admin");
+        $cred = \@cred_array;
     } else {
         $cred = $req->{$server}{cred};
     }
@@ -119,8 +123,8 @@ sub connect {
             return ("Unable to redirect STDERR: $!");
         }
     }
-    $IO::Socket::SSL::VERSION = undef;
-    eval { require Net::SSL };
+    #$IO::Socket::SSL::VERSION = undef;
+    #eval { require Net::SSL };
 
     ##################################
     # Turn on tracing
@@ -158,6 +162,7 @@ sub connect {
     my $url = "https://$server/cgi-bin/cgi?form=2";
     $ua->cookie_jar($cookie);
     $ua->timeout($timeout);
+    $ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
 
     ##################################
     # Submit logon
@@ -212,6 +217,10 @@ sub connect {
     }
     return ($lwp_log . "Logon failure");
 
+}
+
+sub sslenable {
+    return &sslmode($_[0], $_[1], $_[2], "sslmode");
 }
 
 sub loginstate {
@@ -319,6 +328,91 @@ sub process_cmd {
     return (\@result);
 }
 
+##########################################################################
+# Returns current SSLmode state
+##########################################################################
+sub sslmode {
+
+##print("xCAT::PPCfsp::sslmode\n");
+
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+    my $cur_state;
+    my $cur_val = 0;
+    my $next_val = 100;
+    my $next_state = "unset";
+
+    # $request->{arg}->[0] will be 'sslmode' if querying or
+    # 'sslmode=enabled' if setting to enabled or such.
+    # Any other values would have failed parsing arg
+    # previous to getting here.
+    my @sslargs  = split('=',$request->{arg}->[0]);
+    if (@sslargs[1] =~ /^disabled/i) {
+        $next_val = 0;
+        $next_state = "Disabled";
+    } elsif (@sslargs[1] =~ /^enabled/i) {
+        $next_val = 1;
+        $next_state = "Enabled";
+    } elsif (@sslargs[1] =~ /^default/i) {
+        $next_val = 2;
+        $next_state = "Default";
+    }
+
+    ##################################
+    # Get current Security Configuration
+    ##################################
+    my $res = $ua->get( "https://$server/cgi-bin/cgi?form=$id" );
+
+    ##################################
+    # Return error
+    ##################################
+    if ( !$res->is_success() ) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+    ##################################
+    # Get SSLmode state
+    ##################################
+    if ( $res->content =~ /Current SSL security mode : (.*) <p*/) {
+    # print ("Current SSL security mode: $1\n");
+        $cur_state = $1;
+
+        # convert current text state to appropriate number value
+        if ($cur_state =~ /^disabled/i) {
+            $cur_val = 0;
+        } elsif ($cur_state =~ /^enabled/i) {
+            $cur_val = 1;
+        } elsif ($cur_state =~ /^default/i) {
+            $cur_val = 2;
+        }
+
+        if ($next_val == 100) {
+            return( [SUCCESS,$cur_state]);
+        } elsif ( $cur_val == $next_val) {
+            return( [SUCCESS,"Sucessfully set to $cur_state"]);
+        }
+
+        # set next SSL mode
+        my $res = $ua->post( "https://$server/cgi-bin/cgi",
+             [ form   => $id,
+               secconf => $next_val,
+               submit => "Save settings" ]
+        );
+        ##################################
+        # Return error
+        ##################################
+        if ( !$res->is_success() ) {
+            my @tmpres = (RC_ERROR, $res->status_line);
+            my @rs;
+            push @rs, \@tmpres;
+            return(\@rs );
+        }
+        return( [SUCCESS,"Sucessfully set to $next_state"] );
+    }
+    return( [RC_ERROR,"unknown"] );
+}
 
 ##########################################################################
 # Returns current power state

@@ -50,7 +50,8 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "hostname",
-        "resetnet"
+        "resetnet",
+        "sslmode"
     );
     my @bpa = (
         "frame",
@@ -61,7 +62,8 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "hostname",
-        "resetnet"
+        "resetnet",
+        "sslmode"
     );
     my @ppc = (
         "sshcfg"
@@ -290,6 +292,14 @@ sub parse_option {
             return ("New password couldn't be empty for user 'HMC'");
         }
     }
+
+    if ( $command eq 'sslmode' ) {
+       if ($value !~ /^(default|enabled|disabled)$/i ) {
+           return( "Invalid argument '$value'. sslmode must be set to 'Disabled', 'Enabled', or 'Default'." );
+       }
+       $request->{sslmode} = 1;
+    }
+
 
     return undef;
 }
@@ -1319,8 +1329,8 @@ sub connect {
             return ("Unable to redirect STDERR: $!");
         }
     }
-    $IO::Socket::SSL::VERSION = undef;
-    eval { require Net::SSL };
+#    $IO::Socket::SSL::VERSION = undef;
+#    eval { require Net::SSL };
 
     ##################################
     # Turn on tracing
@@ -1345,6 +1355,7 @@ sub connect {
     my $url = "https://$server/cgi-bin/cgi?form=2";
     $ua->cookie_jar($cookie);
     $ua->timeout($timeout);
+    $ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
 
     ##################################
     # Submit logon

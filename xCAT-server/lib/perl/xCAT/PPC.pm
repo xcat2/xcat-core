@@ -2222,6 +2222,12 @@ sub process_request {
         if ($request->{command} eq "rspconfig" and ref($request->{method}) eq 'HASH') {
             $request->{fsp_api} = 0;
         }
+        #similar for ASMI to set sslmode and not use fsp_api
+        my $arg = $request->{arg};
+        if($request->{command} eq "rspconfig" and grep(/^(sslmode)/, @$arg)) {
+           $request->{fsp_api} = 0;
+        }
+
     } else {
         $request->{fsp_api} = 0;
     }

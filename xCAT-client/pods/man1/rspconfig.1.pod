@@ -90,6 +90,10 @@ B<rspconfig> I<noderange> B<hostname>={* | I<name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
+B<rspconfig> I<noderange> {B<sslmode>}
+
+B<rspconfig> I<noderange> B<sslmode>={B<Default>|B<Enabled>|B<Disabled>}
+
 =head2 Flex system Specific:
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
@@ -128,6 +132,10 @@ B<rspconfig> I<noderange> {B<hostname>}
 B<rspconfig> I<noderange> B<hostname>={* | I<name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
+
+B<rspconfig> I<noderange> {B<sslmode>}
+
+B<rspconfig> I<noderange> B<sslmode>={B<Default>|B<Enabled>|B<Disabled>}
 
 =head2 FSP/CEC (using Direct FSP Management) Specific:
 
@@ -240,6 +248,16 @@ Set or get frame number.  If no framenumber and * specified, framenumber for the
 =item B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.  
+
+=item B<sslmode>={B<Default>|B<Enabled>|B<Disabled>>}
+
+The sslmode configures the support for SSLv3 protocol on the service processor communication interfaces. It supports three values:
+
+B<Default>: SSLv3 is enabled only on service processor communication interface with the HMC. This mode enables interoperability with HMC having no TLS support while providing a high security level. Choose this mode when the HMC has no TLS support and the CIM client and browsers are capable of cummunication over TLSv1.2.
+
+B<Enabled>: SSLv3 is enabled on all service processor communication interfaces. This mode provides a basic security level and is suitable for interoperability with HMC, CIM client and browsers with no TLS support.
+
+B<Disabled>: SSLv3 is disabled on all service processor communication interfaces. This mode uses TLS v1.2 to provide a very high security level. Choose this mode when the HMC, CIM client and browsers are all capable of communications over TLS v1.2.
 
 =item B<HMC_passwd>={I<currentpasswd,newpasswd>}
 
