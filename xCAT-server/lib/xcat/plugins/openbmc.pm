@@ -1,11 +1,21 @@
 #!/usr/bin/perl
-## IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------
 
+=head1
+  xCAT plugin package to handle openbmc 
+
+   Supported command:
+       getopenbmccons
+
+=cut
+
+#-------------------------------------------------------
 package xCAT_plugin::openbmc;
 
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -24,6 +34,10 @@ use JSON;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 
+my $VERBOSE = 0;
+my %allerrornodes = ();
+my $callback;
+
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -37,6 +51,7 @@ sub handled_commands {
     return {
         rpower => 'nodehm:mgt',
         rinv   => 'nodehm:mgt',
+        getopenbmccons => 'nodehm:cons',
     };
 }
 
@@ -233,6 +248,33 @@ sub process_request {
         }
     } 
 
+
+    #Assume the openbmc user/password is defined in the passwd
+    my $passtab = xCAT::Table->new('passwd');
+    if ($passtab) {
+       ($dba) = $passtab->getAttribs({key=>'openbmc'},qw(username password));
+        if ($dba) {
+            if ($dba->{username}) { $username = $dba->{username}; }
+            if ($dba->{password}) { $password = $dba->{password}; }
+      }
+    }
+
+
+    foreach (@$noderange) {
+        my $node     = $_;
+        my $nodeip = $node;
+        push @donargs, [ $node,$nodeip,$username, $password];
+        my $output = "openbmc, get $username and $password from passwd table for $nodeip";
+        xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
+    }
+
+
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        foreach (@donargs) {
+            getopenbmccons($_, $callback);
+        }
+        return;
+    }
     return;
 }
 
@@ -624,5 +666,24 @@ sub rinv_response {
     return;
 }
 
+
+sub getopenbmccons {
+    my $argr = shift;
+
+    #$argr is [$node,$nodeuser,$nodepass];
+    my $callback = shift;
+
+    my $rsp;
+    my $node=$argr->[0];
+    my $output = "openbmc, getopenbmccoms";
+    xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
+
+    $rsp = { node => [ { name => [ $argr->[0] ] } ] };
+    $rsp->{node}->[0]->{nodeip}->[0]    = $argr->[1];
+    $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
+    $rsp->{node}->[0]->{passwd}->[0]  = $argr->[3];
+    $callback->($rsp);
+    return $rsp;
+}
 
 1;
