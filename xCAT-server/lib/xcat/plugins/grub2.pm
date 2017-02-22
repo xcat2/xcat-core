@@ -23,7 +23,7 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
 
 my %usage = (
-"nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat]",
+"nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename> [--password <grub2_password> [--user <grub2_user>]]]|offline|shutdown|stat]",
 );
 
 sub handled_commands {
@@ -253,8 +253,28 @@ sub setstate {
 
         # write entries to boot config file, but only if not offline directive
         if ($cref and $cref->{currstate} ne "offline") {
+            # process grub2 password and user arguments
+            if (defined $grub2_password) {
+                my $passwdtag = "password";
+                if ($grub2_password =~/grub.pbkdf2/) {
+                    $passwdtag = "password_pbkdf2";
+                }
+                if (defined $grub2_user) {
+                    print $pcfg "set superusers=\"$grub2_user\"\n";
+                    print $pcfg "$passwdtag $grub2_user $grub2_password\n";
+                }
+                else {
+                    print $pcfg "set superusers=\"xcat_grub2\"\n";
+                    print $pcfg "$passwdtag xcat_grub2 $grub2_password\n";
+                }
+                print $pcfg "export superusers\n";
+            }
             print $pcfg "set default=\"xCAT OS Deployment\"\n";
-            print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
+            if (defined $grub2_password) {
+                print $pcfg "menuentry \"xCAT OS Deployment\" --unrestricted {\n";
+            } else {
+                print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
+            }
             print $pcfg "    insmod http\n";
             print $pcfg "    insmod tftp\n";
             print $pcfg "    set root=$grub2protocol,$serverip\n";
@@ -384,7 +404,9 @@ sub preprocess_request {
     Getopt::Long::Configure("pass_through");
     if (!GetOptions('h|?|help' => \$HELP,
             'v|version' => \$VERSION,
-            'V'         => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
+            'V'         => \$VERBOSE,    #>>>>>>>used for trace log>>>>>>>
+            'password=s' => \$grub2_password,
+            'user=s' => \$grub2_user
         )) {
         if ($usage{$command}) {
             my %rsp;
@@ -413,6 +435,14 @@ sub preprocess_request {
         my $ver = xCAT::Utils->Version();
         my %rsp;
         $rsp{data}->[0] = "$ver";
+        $callback1->(\%rsp);
+        return;
+    }
+
+    if (defined $grub2_user  && !defined $grub2_password) {
+        my %rsp;
+        $rsp{data}->[0] = "--user is only valid when --password is specified\n",$usage{$command};
+        $rsp{data}->[1] = $usage{$command};
         $callback1->(\%rsp);
         return;
     }
