@@ -1455,7 +1455,7 @@ sub nodeonmynet
         my $nettab=xCAT::Table->new("networks");
         my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
         foreach (@vnets) {
-            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} =~ /!remote!/))
             {
                 if (xCAT::NetworkUtils->ishostinsubnet($nodeip, $_->{mask}, $_->{net}))
                 {
@@ -1492,7 +1492,7 @@ sub nodeonmynet
         my $nettab=xCAT::Table->new("networks");
         my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
         foreach (@vnets) {
-            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} =~ /!remote!/))
             { #global scoped network
                 my $curm = unpack("N", inet_aton($_->{mask}));
                 my $bits=32;
