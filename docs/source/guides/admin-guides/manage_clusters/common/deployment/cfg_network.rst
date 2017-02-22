@@ -19,6 +19,8 @@ The following example set the xCAT properties for compute node ``cn1`` to achiev
 Define attributes in the ``nics`` table
 ---------------------------------------
 
+Chose one of three methods described below:
+
 #. Using the ``mkdef`` or ``chdef`` commands  
 
     a. Compute node ``cn1`` has two physical NICs: ``eth2`` and ``eth3`` ::
@@ -30,7 +32,7 @@ Define attributes in the ``nics`` table
         chdef cn1 nictypes.bond0=bond \
                   nicdevices.bond0="eth2|eth3"
 
-    c. Fom ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2`` ::
+    c. From ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2`` ::
     
         chdef cn1 nictypes.bond0.1=vlan \
                   nictypes.bond0.2=vlan \
@@ -102,6 +104,11 @@ Use the ``chdef`` command to add/modify the networks in the ``networks`` table :
     chdef -t network net10 net=10.0.0.0 mask=255.0.0.0 mgtifname=eth0
     chdef -t network net20 net=20.0.0.0 mask=255.0.0.0 mgtifname=eth1
 
+For bonding add ::
+
+    chdef -t network net40 net=20.0.0.0 mask=255.0.0.0 mgtifname=eth1
+    chdef cn1 nicnetworks.bond0=net40
+
 Add ``confignetwork`` into the node's postscripts list
 ------------------------------------------------------
 
@@ -110,12 +117,19 @@ Using below command to add ``confignetwork`` into the node's postscripts list ::
     chdef cn1 -p postscripts=confignetwork
 
 
-During OS deployment on compute node, ``confignetwork`` will be run in postscript. 
-If the compute node has OS, use ``updatenode`` command to run ``confignetwork`` ::
+During OS deployment on compute node, ``confignetwork`` postscript will be executed. 
+If the compute node is already running, use ``updatenode`` command to run ``confignetwork`` postscript without rebooting the node::
 
     updatenode cn1 -P confignetwork
 
 
+Verify bonding mode
+-------------------
 
+Login to compute node and check bonding options in ``/etc/sysconfig/network-scripts/ifcfg-bond0`` file ::
 
+   BONDING_OPTS="mode=802.3ad xmit_hash_policy=layer2+3"
 
+The ``mode=802.3ad`` requires additional configuration on the switch. ``mode=2`` can be used for bonding without additional switch configuration. If changes are made to ``/etc/sysconfig/network-scripts/ifcfg-bond0`` file, restart network service ::
+
+   systemctl restart network.service
