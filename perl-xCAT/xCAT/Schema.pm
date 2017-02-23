@@ -679,12 +679,12 @@ passed as argument rather than by table value',
         },
     },
     pdu => {
-        cols => [qw(pdu machinetype modelnum serialnum outletCount comments disable)],
-        keys         => [qw(pdu)],
-        nodecol      => "pdu",
+        cols => [qw(node machinetype modelnum serialnum outletCount comments disable)],
+        keys         => [qw(node)],
+        nodecol      => "node",
         table_desc   => 'Parameters to use when interrogating pdus',
         descriptions => {
-            pdu => 'The hostname/address of the pdu to which the settings apply',
+            node => 'The hostname/address of the pdu to which the settings apply',
             machinetype => 'The pdu machine type',
             modelnum    => 'The pdu model number',
             serialnum   => 'The pdu serial number',
@@ -1840,6 +1840,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
     zone           => { attrs => [], attrhash => {}, objkey => 'zonename' },
     firmware       => { attrs => [], attrhash => {}, objkey => 'cfgfile' },
     taskstate      => { attrs => [], attrhash => {}, objkey => 'node' },
+    pdu            => { attrs => [], attrhash => {}, objkey => 'node' },
 
 );
 
@@ -2855,22 +2856,22 @@ my @nodeattrs = (
     {   attr_name => 'machinetype',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.machinetype',
-        access_tabentry => 'pdu.pdu=attr:node',
+        access_tabentry => 'pdu.node=attr:node',
     },
     { attr_name => 'modelnum',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.modelnum',
-        access_tabentry => 'pdu.pdu=attr:node',
+        access_tabentry => 'pdu.node=attr:node',
     },
     { attr_name => 'serialnum',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.serialnum',
-        access_tabentry => 'pdu.pdu=attr:node',
+        access_tabentry => 'pdu.node=attr:node',
     },
     { attr_name => 'outletcount',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.outletcount',
-        access_tabentry => 'pdu.pdu=attr:node',
+        access_tabentry => 'pdu.node=attr:node',
     },
 
 #########################
@@ -4074,6 +4075,46 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
         access_tabentry => 'boottarget.bprofile=attr:bprofile',
     },
   );
+
+#############################
+#  pdu object #
+#############################
+#############################
+#    pdu table #
+#############################
+@{ $defspec{pdu}->{'attrs'} } =
+  (
+    { attr_name => 'node',
+        tabentry        => 'pdu.node',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'nodetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.nodetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    {   attr_name => 'machinetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.machinetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'modelnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.modelnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'serialnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.serialnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'outletcount',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.outletcount',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+);
+
 
 
 ###################################################
