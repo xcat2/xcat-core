@@ -679,12 +679,13 @@ passed as argument rather than by table value',
         },
     },
     pdu => {
-        cols => [qw(node machinetype modelnum serialnum outletCount comments disable)],
+        cols => [qw(node nodetype machinetype modelnum serialnum outletCount comments disable)],
         keys         => [qw(node)],
         nodecol      => "node",
         table_desc   => 'Parameters to use when interrogating pdus',
         descriptions => {
             node => 'The hostname/address of the pdu to which the settings apply',
+            nodetype => 'The node type should be pdu ',
             machinetype => 'The pdu machine type',
             modelnum    => 'The pdu model number',
             serialnum   => 'The pdu serial number',
@@ -2853,6 +2854,11 @@ my @nodeattrs = (
 #########################
 ##   pdu  table         #
 #########################
+    {   attr_name => 'nodetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.nodetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
     {   attr_name => 'machinetype',
         only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.machinetype',
@@ -4085,6 +4091,7 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
 @{ $defspec{pdu}->{'attrs'} } =
   (
     { attr_name => 'node',
+        only_if         => 'nodetype=pdu',
         tabentry        => 'pdu.node',
         access_tabentry => 'pdu.node=attr:node',
     },
