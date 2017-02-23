@@ -452,7 +452,8 @@ Usage:
     Sequential Discovery:
         nodediscoverstart noderange=<noderange> [hostiprange=<hostiprange>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [-V|--verbose]
     Profile Discovery:
-        nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank-num]";
+        nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank-num]
+
     z/VM Discovery:
         nodediscoverstart zvmhost=<noderange> [defineto=both] [groups=<groups>] [ipfilter=<filter>] [openstackoperands=<operands>] [useridfilter=<filter>]
         nodediscoverstart zvmhost=<noderange> defineto=xcatonly [groups=<groups>] [ipfilter=<filter>] [nodenameformat=<nodenameformat>] [useridfilter=<filter>]
