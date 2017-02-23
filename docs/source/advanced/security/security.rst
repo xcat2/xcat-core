@@ -4,23 +4,10 @@ Transmission Channel
 The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. All xCAT commands are initiated as an xCAT **client**, even when run commands from the xCAT management node. This **client** opens an SSL socket to the xCAT daemon, sends the command and receives responses through this one socket. xCAT has configured the certificate for root, if you nee to authorize other users, refer to the section below.
 
 
-Create SSL Certificate So That User Can Be Authenticated By xCAT
-````````````````````````````````````````````````````````````````
+.. toctree::
+   :maxdepth: 2
 
-Running the following command on the Management node as root:  ::
-
-    /opt/xcat/share/xcat/scripts/setup-local-client.sh <username>
-
-By running this command you'll see SSL certificates are creating, enter ``yes`` where prompted and take the defaults.
-
-This will create the following files in the <username> 's ``$HOME/.xcat`` directory: ::
-
-    ca.pem
-    client-cert.pem
-    client-cred.pem
-    client-key.pem
-    client-req.pem
-
+   certs.rst
 
 Commands Access Control
 -----------------------
