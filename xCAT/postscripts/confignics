@@ -236,9 +236,9 @@ fi
 #do not configure the loopback nic
 if [ $bool_remove -eq 1 ];then
     if [ "$str_os_type" = "aix" ];then
-        str_temp=`ifconfig -a | grep flags | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk -F: {'print $1'}`
+        str_temp=`ifconfig -a | grep flags | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk -F: {'print $1'}`
     else
-        str_temp=`ip link show | grep -v link | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk {'print $2'} | sed s/://`
+        str_temp=`ip link show | grep -v link | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk {'print $2'} | sed s/://`
     fi
     old_ifs=$IFS
     IFS=$'\n'
