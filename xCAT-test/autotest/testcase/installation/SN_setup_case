@@ -2,7 +2,7 @@ start:SN_setup_case
 os:Linux
 stop:yes
 
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
+cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
 check:rc==0
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
