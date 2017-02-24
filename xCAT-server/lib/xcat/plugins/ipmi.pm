@@ -7681,6 +7681,11 @@ sub preprocess_request {
             return 0;
         }
 
+        #pdu commands will be handled in the pdu plugin
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+             return 0;
+        }
+
         if (($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi') && ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
 
             #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});

@@ -33,7 +33,7 @@ function loadProvisionPage() {
     }
 
     // Get OS image names
-    if (!$.cookie('imagenames')){
+    if (!$.cookie('xcat_imagenames')){
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -49,7 +49,7 @@ function loadProvisionPage() {
     }
 
     // Get groups
-    if (!$.cookie('groups')){
+    if (!$.cookie('xcat_groups')){
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',

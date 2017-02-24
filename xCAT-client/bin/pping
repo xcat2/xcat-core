@@ -162,6 +162,11 @@ sub fping_pping {
     }
     else
     {
+        if (!-x '/usr/bin/fping')
+        {
+            print "fping is not available, please install missing package fping.\n";
+            exit 1;
+        }
         open(FPING, "fping " . join(' ', @$nodes) . " 2>&1 |") or die("Cannot open fping pipe: $!");
     }
     while (<FPING>) {

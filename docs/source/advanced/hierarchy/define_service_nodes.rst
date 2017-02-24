@@ -53,7 +53,7 @@ The following table illustrates the cluster being used in this example:
                                   setupconserver=1
 
    **Tips/Hint**
-      * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node**
+      * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node
       * See the ``setup*`` attributes in the node definition man page for the list of available services:  ``man node``
       * For clusters with subnetted management networks, you might want to set ``setupupforward=1``
 
@@ -82,4 +82,20 @@ The following table illustrates the cluster being used in this example:
         chdef -t group -o rack1 conserver=r1n01 monserver=r1n01
         chdef -t group -o rack2 conserver=r2n01 monserver=r2n01
 
+#. Choose location of ``/install`` and ``/tftpboot`` directories (optional).
 
+   The ``site`` table attributes ``installloc`` and ``sharedtftp`` control mounting of ``/install`` and ``/tftpboot`` directories from Management Node to Service node.
+
+   To mount ``/install`` and ``/tftpboot`` directories from Management node to each Service Node: ::
+
+         chdef -t site clustersite sharedtftp=1
+         chdef -t site clustersite installloc="/install"
+
+   To make ``/install`` and ``/tftpboot`` directories local on each Service Node, set ``site`` table attributes and "sync" ``/install`` and ``/tftpoot`` directory contents from Management Node to Service Nodes: ::
+
+         chdef -t site clustersite sharedtftp=0
+         chdef -t site clustersite installloc=
+         rsync -auv --exclude 'autoinst' /install r1n01:/ 
+         rsync -auv --exclude 'autoinst' /install r2n01:/ 
+         rsync -auv --exclude 'autoinst' /tftpboot r1n01:/ 
+         rsync -auv --exclude 'autoinst' /tftpboot r2n01:/ 

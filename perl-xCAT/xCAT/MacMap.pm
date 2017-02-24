@@ -329,14 +329,14 @@ sub dump_mac_info {
     foreach my $switch (keys %{ $self->{switchparmhash} }) {
         if ($dump_all_switches or defined($switches_to_dump{$switch})) {
             if ($self->{show_verbose_info}) {
-                xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Start to get information"] }, $self->{callback});
+                xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Attempting to refresh switch information..."] }, $self->{callback});
             }
             $self->refresh_switch(undef, $community, $switch);
             if ($self->{show_verbose_info}) {
-                xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Finish to get information"] }, $self->{callback});
+                xCAT::MsgUtils->message("I", { data => ["<INFO>$switch: Finished refreshing switch information."] }, $self->{callback});
             }
             if (!defined($self->{macinfo}->{$switch})) {
-                $ret{$switch}->{ErrorStr} = "No information get";
+                $ret{$switch}->{ErrorStr} = "No switch information obtained.";
                 foreach my $defportname (keys %{ $self->{switches}->{$switch} }) {
                     $ret{$switch}->{$defportname}->{Node} = $self->{switches}->{$switch}->{$defportname};
                 }

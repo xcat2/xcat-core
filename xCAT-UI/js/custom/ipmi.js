@@ -14,7 +14,7 @@ var ipmiPlugin = function() {
 
 /**
  * Steps for hardware discovery wizard
- * 
+ *
  * @return Discovery steps
  */
 ipmiPlugin.prototype.getStep = function() {
@@ -37,7 +37,7 @@ ipmiPlugin.prototype.getNextFunction = function() {
 
 /**
  * Load node inventory
- * 
+ *
  * @param data Data from HTTP request
  */
 ipmiPlugin.prototype.loadInventory = function(data) {
@@ -82,7 +82,7 @@ ipmiPlugin.prototype.loadInventory = function(data) {
 
 /**
  * Load clone page
- * 
+ *
  * @param node Source node to clone
  */
 ipmiPlugin.prototype.loadClonePage = function(node) {
@@ -108,7 +108,7 @@ ipmiPlugin.prototype.loadClonePage = function(node) {
 
 /**
  * Load provision page
- * 
+ *
  * @param tabId The provision tab ID
  */
 ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
@@ -297,7 +297,7 @@ function addIdataplex() {
 
 /**
  * Create provision existing node division
- * 
+ *
  * @param inst Provision tab instance
  * @return Provision existing node division
  */
@@ -336,7 +336,7 @@ function createIpmiProvisionExisting(inst) {
     var dTableDivId = 'ipmiNodesDatatableDIV' + inst; // Division ID where
                                                         // nodes datatable will
                                                         // be appended
-    var groupNames = $.cookie('groups');
+    var groupNames = $.cookie('xcat_groups');
     if (groupNames) {
         // Split group names into an array
         var tmp = groupNames.split(',');
@@ -397,7 +397,7 @@ function createIpmiProvisionExisting(inst) {
     var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
-        var tmp = $.cookie('osvers');
+        var tmp = $.cookie('xcat_osvers');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -414,7 +414,7 @@ function createIpmiProvisionExisting(inst) {
     var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
-        var tmp = $.cookie('osarchs');
+        var tmp = $.cookie('xcat_osarchs');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -431,7 +431,7 @@ function createIpmiProvisionExisting(inst) {
     var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
-        var tmp = $.cookie('profiles');
+        var tmp = $.cookie('xcat_profiles');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -553,7 +553,7 @@ function createIpmiProvisionExisting(inst) {
 
 /**
  * Update the provision existing node status
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function updateIpmiProvisionExistingStatus(data) {
@@ -645,17 +645,17 @@ function idataplexInitBasic() {
     }
     showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/> 172.30.20.1 is suggested." '
             + 'name="idataplexnodeip" value="' + tempip + '"></td></tr>';
-    
+
     showString += '<tr><td>Nodes number <br/>per Frame:</td><td><input type="text" title="84: Each frame contains 84 nodes.<br/>Valide Number:20,21,40,41,42,84." '
             + 'name="idataplexperframe" value="'
             + getDiscoverEnv('idataplexperframe')
             + '"></td><td></td><td></td></tr>';
-    
+
     showString += '<tr><td><h3>BMCs:</h3></td></tr>';
     showString += '<tr><td>Name Range:</td><td><input type="text" title="bmc[1-167] or bmc1-bmc167" '
             + 'name="idataplexbmcname" value="'
             + getDiscoverEnv('idataplexbmcname') + '"></td>';
-    
+
     if (getDiscoverEnv('idataplexbmcip')) {
         tempip = getDiscoverEnv('idataplexbmcip');
     } else {
@@ -663,12 +663,12 @@ function idataplexInitBasic() {
     }
     showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/>172.30.120.1 is suggested." '
             + 'name="idataplexbmcip" value="' + tempip + '"></td></tr>';
-    
+
     showString += '<tr><td><h3>Switches:</h3></td></tr>';
     showString += '<tr><td>Name Range:</td><td><input type="text" title="switch[1-4] or switch1-switch4" '
             + 'name="idataplexswitchname" value="'
             + getDiscoverEnv('idataplexswitchname') + '"></td>';
-    
+
     if (getDiscoverEnv('idataplexswitchip')) {
         tempip = getDiscoverEnv('idataplexswitchip');
     } else {
@@ -676,7 +676,7 @@ function idataplexInitBasic() {
     }
     showString += '<td>Start IP:</td><td><input type="text" title="Format: XXX.XXX.XXX.1, last number must be 1.<br/>172.30.10.1 is suggested." '
             + 'name="idataplexswitchip" value="' + tempip + '"></td></tr>';
-    
+
     showString += '<tr><td>Nodes number <br/>per Switch:</td><td><input type="text" title="42: Each switch connect 42 nodes.<br/>Valide Number:20,21,40,41,42."'
             + 'name="idataplexperswitch" value="'
             + getDiscoverEnv('idataplexperswitch')
@@ -697,8 +697,8 @@ function idataplexInitBasic() {
 
 /**
  * Step 2: Collect and check the basic pattern input
- * 
- * @param operType Operating type 
+ *
+ * @param operType Operating type
  * @return True if the inputs are correct, false otherwise
  */
 function idataplexCheckBasic(operType) {
@@ -819,7 +819,7 @@ function idataplexInitNetwork() {
             + steps[currentStep] + '</h2>');
     var infoBar = createInfoBar('Make sure the discovery NIC\'s IP, start IP addresses and DHCP dynamic IP range are in the same subnet.');
     showDiv.append(infoBar);
-    
+
     // Init the IP range by input
     if (getDiscoverEnv('idataplexIpStart')) {
         startIp = getDiscoverEnv('idataplexIpStart');
@@ -927,7 +927,7 @@ function idataplexCreateSetupFile() {
     fileContent += "xcat-service-lan:\n" + "  dhcp-dynamic-range = "
             + getDiscoverEnv('idataplexIpStart') + "-"
             + getDiscoverEnv('idataplexIpEnd') + "\n";
-    
+
     fileContent += "xcat-switches:\n" + "  hostname-range = "
             + getDiscoverEnv('idataplexswitchname') + "\n" + "  starting-ip = "
             + getDiscoverEnv('idataplexswitchip') + "\n";

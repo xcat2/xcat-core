@@ -14,14 +14,14 @@ var bladePlugin = function() {
 
 /**
  * Load node inventory
- * 
+ *
  * @param data Data from HTTP request
  */
 bladePlugin.prototype.loadInventory = function(data) {
     var args = data.msg.split(',');
     var tabId = args[0].replace('out=', '');
     var node = args[1].replace('node=', '');
-    
+
     // Get node inventory
     var inv = data.rsp;
 
@@ -30,7 +30,7 @@ bladePlugin.prototype.loadInventory = function(data) {
 
     // Create division to hold inventory
     var invDiv = $('<div></div>');
-    
+
     // Create a fieldset
     var fieldSet = $('<fieldset></fieldset>');
     var legend = $('<legend>Hardware</legend>');
@@ -58,7 +58,7 @@ bladePlugin.prototype.loadInventory = function(data) {
 
 /**
  * Load clone page
- * 
+ *
  * @param node Source node to clone
  */
 bladePlugin.prototype.loadClonePage = function(node) {
@@ -78,13 +78,13 @@ bladePlugin.prototype.loadClonePage = function(node) {
         // Add clone tab
         tab.add(newTabId, 'Clone', cloneForm, true);
     }
-    
+
     tab.select(newTabId);
 };
 
 /**
  * Load provision page
- * 
+ *
  * @param tabId The provision tab ID
  */
 bladePlugin.prototype.loadProvisionPage = function(tabId) {
@@ -142,14 +142,14 @@ bladePlugin.prototype.loadResources = function() {
     var tabId = 'bladeResourceTab';
     // Remove loader
     $('#' + tabId).find('img').remove();
-    
+
     // Create info bar
     var infoBar = createInfoBar('Not yet supported');
 
     // Create resource form
     var resrcForm = $('<div class="form"></div>');
     resrcForm.append(infoBar);
-    
+
     $('#' + tabId).append(resrcForm);
 };
 
@@ -160,18 +160,18 @@ bladePlugin.prototype.addNode = function() {
     var addNodeForm = $('<div id="addBladeCenter" class="form"></div>');
     var info = createInfoBar('Add a BladeCenter node');
     addNodeForm.append(info);
-    
+
     var typeFS = $('<fieldset></fieldset>');
     var typeLegend = $('<legend>Type</legend>');
     typeFS.append(typeLegend);
     addNodeForm.append(typeFS);
-    
+
     var settingsFS = $('<fieldset id="bcSettings"></fieldset>');
     var nodeLegend = $('<legend>Settings</legend>');
     settingsFS.append(nodeLegend);
     addNodeForm.append(settingsFS);
-    
-    typeFS.append('<div>' + 
+
+    typeFS.append('<div>' +
             '<label>Node type:</label>' +
             '<select id="typeSelect">' +
                 '<option value="amm">AMM</option>' +
@@ -179,18 +179,18 @@ bladePlugin.prototype.addNode = function() {
                 '<option value="scan">Blade by scan</option>' +
             '</select>' +
     '</div>');
-    
+
     // Change dialog width
     $('#addBladeCenter').dialog('option', 'width', '400');
-    
+
     typeFS.find('#typeSelect').bind('change', function(){
         // Remove any existing warnings
         $('#addBladeCenter .ui-state-error').remove();
         settingsFS.find('div').remove();
-        
+
         // Change dialog width
         $('#addBladeCenter').dialog('option', 'width', '400');
-        
+
         var nodeType = $(this).val();
         switch (nodeType) {
             case 'amm':
@@ -208,17 +208,17 @@ bladePlugin.prototype.addNode = function() {
                 break;
             case 'scan':
                 settingsFS.append('<div><label style="vertical-align: middle;">Blade MPA:</label><select id="bladeMpa"></select></div>');
-                
+
                 // Change dialog width
                 $('#addBladeCenter').dialog('option', 'width', '650');
                 break;
         }
-                
+
         // Do not continue if node type is AMM
         if ($(this).val() == 'amm') {
             return;
         }
-        
+
         // Gather AMM nodes
         settingsFS.find('select:eq(0)').after(createLoader());
         $.ajax({
@@ -234,16 +234,16 @@ bladePlugin.prototype.addNode = function() {
                    var position = 0;
                    var tmp = '';
                    var options = '';
-                   
+
                    // Remove the loading image
                    settingsFS.find('img').remove();
-               
+
                    // Do not continue if no AMM nodes are found
                    if (data.rsp.length < 1) {
                        $('#addBladeCenter').prepend(createWarnBar('Please define an AMM node before continuing'));
                        return;
                    }
-               
+
                    // Create options for AMM nodes
                    for (var i in data.rsp){
                        tmp = data.rsp[i];
@@ -257,7 +257,7 @@ bladePlugin.prototype.addNode = function() {
                    if (data.msg != 'scan') {
                        return;
                    }
-                   
+
                    // Create Scan button
                    var scan = createButton('Scan');
                    scan.bind('click', function(){
@@ -273,10 +273,10 @@ bladePlugin.prototype.addNode = function() {
                                args : '',
                                msg : ''
                            },
-                           
+
                            /**
                             * Show scanned results for AMM
-                            * 
+                            *
                             * @param data Data returned from HTTP request
                             */
                            success: function(data){
@@ -284,12 +284,12 @@ bladePlugin.prototype.addNode = function() {
                            }
                        });
                    });
-                   
+
                    settingsFS.find('select:eq(0)').after(scan);
                }
         });
     });
-    
+
     // Create dialog for BladeCenter
     addNodeForm.dialog({
         modal : true,
@@ -306,7 +306,7 @@ bladePlugin.prototype.addNode = function() {
                 // Remove any existing warnings
                 $('#addBladeCenter .ui-state-error').remove();
                 var addMethod = $('#typeSelect').val();
-                
+
                 if (addMethod == "amm") {
                     addAmmNode();
                 } else if(addMethod == "blade") {
@@ -320,7 +320,7 @@ bladePlugin.prototype.addNode = function() {
             }
         }
     });
-    
+
     addNodeForm.find('#typeSelect').trigger('change');
 };
 
@@ -331,16 +331,16 @@ bladePlugin.prototype.addNode = function() {
 function addAmmNode(){
     var args = '';
     var errorMsg = '';
-    
+
     // Check for missing inputs
     $('#addBladeCenter input').each(function(){
         if (!$(this).val()) {
             errorMsg = 'Please provide a value for each missing field!';
         }
-        
+
         args += $(this).val() + ',';
     });
-    
+
     // Do not continue if error was found
     if (errorMsg) {
         $('#addBladeCenter').prepend(createWarnBar(errorMsg));
@@ -348,7 +348,7 @@ function addAmmNode(){
     }
 
     args = args.substring(0, args.length - 1);
-    
+
     // Add the loader
     $('#addBladeCenter').append(createLoader());
     $('.ui-dialog-buttonpane .ui-button').attr('disabled', true);
@@ -385,17 +385,17 @@ function addBladeNode(){
     var series = $('#bcSettings input[name="bladeSeries"]:selected').val();
     var mpa = $('#bcSettings select[name="bladeMpa"]').val();
 
-    var args = '-t;node;-o;' + name 
-        + ';id=' + id 
-        + ';nodetype=osi;groups=' + group 
-        + ';mgt=blade;mpa=' + mpa 
+    var args = '-t;node;-o;' + name
+        + ';id=' + id
+        + ';nodetype=osi;groups=' + group
+        + ';mgt=blade;mpa=' + mpa
         + ';serialflow=hard';
-    
+
     // Set the serial speed and port for LS series blade
     if (series != 'js') {
         args += ';serialspeed=19200;serialport=1';
     }
-    
+
     // Check for missing inputs
     if (!name || !group || !id || !mpa) {
         $('#addBladeCenter').prepend(createWarnBar("Please provide a value for each missing field!"));
@@ -427,7 +427,7 @@ function addBladeNode(){
 
             // Append response message to dialog
             $('#addBladeCenter').prepend(createInfoBar(rspMessage));
-            
+
             // Change dialog button
             $('#addBladeCenter').dialog("option", "buttons", {
                 "Close" : function() {
@@ -440,29 +440,29 @@ function addBladeNode(){
 
 /**
  * Show rscan results
- * 
+ *
  * @param results Results from rscan of blade MPA
  */
 function showScanAmmResult(results){
     var rSection = $('<div style="height: 300px; overflow: auto;" id="scanResults"></div>');
-    
+
     // Create table to hold results
     var rTable = $('<table></table>');
-    
+
     // Reset scan results area
     $('#addBladeCenter #scanResults').remove();
     $('#bcSettings img').remove();
     $('#bcSettings button').attr('disabled', '');
     if (!results)
         return;
-    
+
     // Do not continue if there are no results
     var rows = results.split("\n");
     if (rows.length < 2){
         $('#bcSettings').prepend(createWarnBar(rows[0]));
         return;
     }
-    
+
     // Add the table header
     var fields = rows[0].match(/\S+/g);
     var column = fields.length;
@@ -472,23 +472,23 @@ function showScanAmmResult(results){
         row.append('<td>' + fields[i] + '</td>');
     }
     rTable.append(row);
-    
+
     // Add table body
     var line;
     for (var i = 1; i < rows.length; i++) {
         line = rows[i];
-        
+
         if (!line)
             continue;
-        
+
         var fields = line.match(/\S+/g);
         if (fields[0] == 'mm')
             continue;
-        
+
         // Create a row for each result
         var row = $('<tr></tr>');
         row.append('<td><input type="checkbox" name="' + fields[1] + '"></td>');
-        
+
         // Add column for each field
         for (var j = 0; j < column; j++){
             if (fields[j]) {
@@ -501,11 +501,11 @@ function showScanAmmResult(results){
                 row.append('<td></td>');
             }
         }
-        
+
         // Append row to table
         rTable.append(row);
     }
-    
+
     rSection.append(rTable);
     $('#bcSettings').prepend(rSection);
 }
@@ -517,25 +517,25 @@ function addMmScanNode(){
     // Get the AMM name
     var ammName = $('#bcSettings select').val();
     var nodeName = '';
-    
+
     $('#bcSettings :checked').each(function() {
         if ($(this).attr('name')) {
             nodeName += $(this).attr('name') + ',';
             nodeName += $(this).parents('tr').find('input').eq(1).val() + ',';
         }
     });
-    
+
     if (!nodeName) {
         $('#addBladeCenter').prepend(createWarnBar('Please select a node!'));
         return;
     }
-    
+
     // Disabled button
     $('.ui-dialog-buttonpane button').attr('disabled', 'disabled');
-    
+
     nodeName = nodeName.substr(0, nodeName.length - 1);
     $('#nodeAttrs').append(createLoader());
-    
+
     // Send add request
     $.ajax({
         url : 'lib/cmd.php',
@@ -554,7 +554,7 @@ function addMmScanNode(){
 
 /**
  * Create provision existing node division
- * 
+ *
  * @param inst Provision tab instance
  * @return Provision existing node division
  */
@@ -566,22 +566,22 @@ function createBladeProvisionExisting(inst) {
     var nodeFS = $('<fieldset></fieldset>');
     var nodeLegend = $('<legend>Node</legend>');
     nodeFS.append(nodeLegend);
-    
+
     var nodeAttr = $('<div style="display: inline-table; vertical-align: middle; width: 85%; margin-left: 10px;"></div>');
     nodeFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     nodeFS.append(nodeAttr);
-    
+
     // Create image fieldset
     var imgFS = $('<fieldset></fieldset>');
     var imgLegend = $('<legend>Image</legend>');
     imgFS.append(imgLegend);
-    
+
     var imgAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     imgFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
     imgFS.append(imgAttr);
-    
+
     provExisting.append(nodeFS, imgFS);
-    
+
     // Create group input
     var group = $('<div></div>');
     var groupLabel = $('<label>Group:</label>');
@@ -589,7 +589,7 @@ function createBladeProvisionExisting(inst) {
 
     // Turn on auto complete for group
     var dTableDivId = 'bladeNodesDatatableDIV' + inst;    // Division ID where nodes datatable will be appended
-    var groupNames = $.cookie('groups');
+    var groupNames = $.cookie('xcat_groups');
     if (groupNames) {
         // Split group names into an array
         var tmp = groupNames.split(',');
@@ -642,13 +642,13 @@ function createBladeProvisionExisting(inst) {
     method.append(methodLabel);
     method.append(methodSelect);
     imgAttr.append(method);
-    
+
     // Create operating system input
     var os = $('<div></div>');
     var osLabel = $('<label>Operating system:</label>');
     var osInput = $('<input type="text" name="os"/>');
     osInput.one('focus', function() {
-        var tmp = $.cookie('osvers');        
+        var tmp = $.cookie('xcat_osvers');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -665,7 +665,7 @@ function createBladeProvisionExisting(inst) {
     var archLabel = $('<label>Architecture:</label>');
     var archInput = $('<input type="text" name="arch"/>');
     archInput.one('focus', function() {
-        var tmp = $.cookie('osarchs');
+        var tmp = $.cookie('xcat_osarchs');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -682,7 +682,7 @@ function createBladeProvisionExisting(inst) {
     var profileLabel = $('<label>Profile:</label>');
     var profileInput = $('<input type="text" name="profile"/>');
     profileInput.one('focus', function() {
-        var tmp = $.cookie('profiles');
+        var tmp = $.cookie('xcat_profiles');
         if (tmp) {
             // Turn on auto complete
             $(this).autocomplete({
@@ -706,7 +706,7 @@ function createBladeProvisionExisting(inst) {
 
         // Get provision tab ID
         var thisTabId = 'bladeProvisionTab' + inst;
-        
+
         // Get nodes that were checked
         var dTableId = 'bladeNodesDatatable' + inst;
         var tgts = getNodesChecked(dTableId);
@@ -714,7 +714,7 @@ function createBladeProvisionExisting(inst) {
             errorMessage += 'You need to select a node. ';
             ready = false;
         }
-        
+
         // Check booth method
         var boot = $('#' + thisTabId + ' select[name=bootMethod]');
         if (!boot.val()) {
@@ -724,7 +724,7 @@ function createBladeProvisionExisting(inst) {
         } else {
             boot.css('border', 'solid #BDBDBD 1px');
         }
-        
+
         // Check operating system image
         var os = $('#' + thisTabId + ' input[name=os]');
         if (!os.val()) {
@@ -734,7 +734,7 @@ function createBladeProvisionExisting(inst) {
         } else {
             os.css('border', 'solid #BDBDBD 1px');
         }
-        
+
         // Check architecture
         var arch = $('#' + thisTabId + ' input[name=arch]');
         if (!arch.val()) {
@@ -744,7 +744,7 @@ function createBladeProvisionExisting(inst) {
         } else {
             arch.css('border', 'solid #BDBDBD 1px');
         }
-        
+
         // Check profile
         var profile = $('#' + thisTabId + ' input[name=profile]');
         if (!profile.val()) {
@@ -754,12 +754,12 @@ function createBladeProvisionExisting(inst) {
         } else {
             profile.css('border', 'solid #BDBDBD 1px');
         }
-        
+
         // If all inputs are valid, ready to provision
-        if (ready) {            
+        if (ready) {
             // Disable provision button
             $(this).attr('disabled', 'true');
-            
+
             // Prepend status bar
             var statBar = createStatusBar('bladeProvisionStatBar' + inst);
             statBar.append(createLoader(''));
@@ -768,11 +768,11 @@ function createBladeProvisionExisting(inst) {
             // Disable all inputs
             var inputs = $('#' + thisTabId + ' input');
             inputs.attr('disabled', 'disabled');
-                        
+
             // Disable all selects
             var selects = $('#' + thisTabId + ' select');
             selects.attr('disabled', 'disabled');
-                                                            
+
             /**
              * (1) Set operating system
              */
@@ -801,7 +801,7 @@ function createBladeProvisionExisting(inst) {
 
 /**
  * Update the provision existing node status
- * 
+ *
  * @param data Data returned from HTTP request
  */
 function updateBladeProvisionExistingStatus(data) {
@@ -813,11 +813,11 @@ function updateBladeProvisionExistingStatus(data) {
     var cmd = args[0].replace('cmd=', '');
     // Get provision tab instance
     var inst = args[1].replace('out=', '');
-    
+
     // Get provision tab and status bar ID
     var statBarId = 'bladeProvisionStatBar' + inst;
     var tabId = 'bladeProvisionTab' + inst;
-    
+
     /**
      * (2) Remote install
      */
@@ -830,11 +830,11 @@ function updateBladeProvisionExistingStatus(data) {
         var os = $('#' + tabId + ' input[name="os"]').val();
         var profile = $('#' + tabId + ' input[name="profile"]').val();
         var arch = $('#' + tabId + ' input[name="arch"]').val();
-        
+
         // Get nodes that were checked
         var dTableId = 'bladeNodesDatatable' + inst;
         var tgts = getNodesChecked(dTableId);
-        
+
         // Begin installation
         $.ajax( {
             url : 'lib/cmd.php',
@@ -848,19 +848,19 @@ function updateBladeProvisionExistingStatus(data) {
 
             success : updateBladeProvisionExistingStatus
         });
-    } 
-    
+    }
+
     /**
      * (3) Prepare node for boot
      */
     if (cmd == 'nodeadd') {
         // Get provision method
         var bootMethod = $('#' + tabId + ' select[name=bootMethod]').val();
-        
+
         // Get nodes that were checked
         var dTableId = 'bladeNodesDatatable' + inst;
         var tgts = getNodesChecked(dTableId);
-        
+
         // Prepare node for boot
         $.ajax( {
             url : 'lib/cmd.php',
@@ -875,18 +875,18 @@ function updateBladeProvisionExistingStatus(data) {
             success : updateBladeProvisionExistingStatus
         });
     }
-    
+
     /**
      * (4) Power on node
      */
     if (cmd == 'nodeset') {
-        var prg = writeRsp(rsp, '');    
+        var prg = writeRsp(rsp, '');
         $('#' + statBarId).find('div').append(prg);
-        
+
         // Get nodes that were checked
         var dTableId = 'bladeNodesDatatable' + inst;
         var tgts = getNodesChecked(dTableId);
-        
+
         // Prepare node for boot
         $.ajax( {
             url : 'lib/cmd.php',
@@ -901,16 +901,16 @@ function updateBladeProvisionExistingStatus(data) {
             success : updateBladeProvisionExistingStatus
         });
     }
-    
+
     /**
      * (5) Done
      */
     else if (cmd == 'rpower') {
         // Write ajax response to status bar
-        var prg = writeRsp(rsp, '');    
+        var prg = writeRsp(rsp, '');
         $('#' + statBarId).find('div').append(prg);
         $('#' + statBarId).find('img').remove();
-        
+
         // If installation was successful
         if (prg.html().indexOf('Error') == -1) {
             $('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use rcons to monitor the status of the install.</pre>');

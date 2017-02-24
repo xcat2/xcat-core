@@ -139,6 +139,7 @@ Getopt::Long::Configure("pass_through");
 use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
+my $reload;
 my $foreground;
 GetOptions(
     'pidfile|p=s'  => \$pidfile,
@@ -395,9 +396,12 @@ sub do_installm_service {
             ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
         unless ($client_name) {
-            my $myaddr = inet_ntoa($conn->peeraddr);
+	    my $addrfamily=sockaddr_family(getpeername($conn));
+	    my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
             xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
+            close($conn);
+            next;
         }
 
         $clients[0] = $client_name;
@@ -1275,6 +1279,7 @@ $SIG{USR2} = sub {
     if ($listener) {
         unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit = 1; $listener = 0;
         $udpctl = 0;
+        $reload = 1;
         xCAT::MsgUtils->message("S", "xcatd main service $$ quiescing");
     }
 };
@@ -1549,6 +1554,25 @@ if ($dbmaster) {
 
 # stop the monitoring process
 xCAT_monitoring::monitorctrl::stop($$);
+if (! $reload) {
+    stop_tftp_service();
+}
+
+sub stop_tftp_service {
+    eval {
+        require xCAT_plugin::AAsn;
+    };
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Failed to load AAsn module");
+        return;
+    }
+    no strict 'refs';
+    if (!defined(${ "xCAT_plugin::AAsn::" }{stop_TFTP})) {
+        return;
+    }
+    xCAT_plugin::AAsn::stop_TFTP();
+    use strict 'refs';
+}
 
 my $parent_fd;
 my %resps;
@@ -2863,7 +2887,7 @@ sub service_connection {
 
     # ----used for command log start-------
     my $reqhandletime = time()-$cmdlog_starttime;
-    $cmdlog_alllog .= "[TimeConsuming] $reqhandletime S\n";
+    $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
     cmdlog_submitlog();
 
     # ----used for command log end---------
@@ -2934,7 +2958,7 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             # ----used for command log start-------
             $cmdlog_alllog .= "Client abort requested\n";
             my $reqhandletime = time()-$cmdlog_starttime;
-            $cmdlog_alllog .= "[TimeConsuming] $reqhandletime S\n";
+            $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
             cmdlog_submitlog();
 
             # ----used for command log end---------

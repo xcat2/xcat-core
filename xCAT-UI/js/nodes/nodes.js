@@ -97,7 +97,7 @@ function loadNodesPage() {
             success : function(data){
                 loadGroups(data);
 
-                var cookieGroup = $.cookie('selectgrouponnodes');
+                var cookieGroup = $.cookie('xcat_selectgrouponnodes');
                 if (cookieGroup) {
                     $('#groups .groupdiv div').each(function(){
                         if ($(this).text() == cookieGroup){
@@ -231,7 +231,7 @@ function loadGroups(data) {
         $(this).addClass('selectgroup');
 
         // Save selected group into cookie
-        $.cookie('selectgrouponnodes', thisGroup, { expires: 7 });
+        $.cookie('xcat_selectgrouponnodes', thisGroup, { expires: 7, path: '/xcat', secure:true });
 
         drawNodesArea(thisGroup,'',thisGroup);
     });
@@ -347,8 +347,8 @@ function drawNodesArea(targetgroup, cmdargs, message){
 
     // Get last view (if any)
     // This can be summary, nodes, or graphic
-    if ($.cookie('tabindex_history')) {
-        var order = $.cookie('tabindex_history').split(',');
+    if ($.cookie('xcat_tabindex_history')) {
+        var order = $.cookie('xcat_tabindex_history').split(',');
         order[0] = parseInt(order[0]);
         order[1] = parseInt(order[1]);
         if (order[0] == 0 || order[1] == 0) {
@@ -1095,7 +1095,7 @@ function loadNodes(data) {
       // Remove any warning messages
       $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
 
-      var zhcpsCheck = $.cookie('zhcps').split(',');
+      var zhcpsCheck = $.cookie('xcat_zhcps').split(',');
       var zhcpHash = new Object();
       for (var h in zhcpsCheck) {
           if (!zhcpHash[zhcpsCheck[h]]) {
@@ -1917,7 +1917,7 @@ function loadNode(e) {
         newTabId = 'nodeTab' + inst;
     }
     // Reset node process
-    $.cookie(node + 'Processes', 0);
+    $.cookie('xcat_' + node + 'Processes', 0, { path: '/xcat', secure:true });
 
     // Add new tab, only if one does not exist
     var loader = createLoader(newTabId + 'TabLoader');
@@ -2909,28 +2909,28 @@ function setOSImageCookies(data) {
     }
 
     // Save image names in a cookie
-    $.cookie('imagenames', imageNames);
+    $.cookie('xcat_imagenames', imageNames, { path: '/xcat', secure:true });
 
     // Save profiles in a cookie
     var tmp = new Array;
     for (var key in profilesHash) {
         tmp.push(key);
     }
-    $.cookie('profiles', tmp);
+    $.cookie('xcat_profiles', tmp, { path: '/xcat', secure:true });
 
     // Save OS versions in a cookie
     tmp = new Array;
     for (var key in osVersHash) {
         tmp.push(key);
     }
-    $.cookie('osvers', tmp);
+    $.cookie('xcat_osvers', tmp, { path: '/xcat', secure:true });
 
     // Save OS architectures in a cookie
     tmp = new Array;
     for (var key in osArchsHash) {
         tmp.push(key);
     }
-    $.cookie('osarchs', tmp);
+    $.cookie('xcat_osarchs', tmp, { path: '/xcat', secure:true });
 }
 
 /**
@@ -2940,7 +2940,7 @@ function setOSImageCookies(data) {
  */
 function setGroupsCookies(data) {
     var rsp = data.rsp;
-    $.cookie('groups', rsp);
+    $.cookie('xcat_groups', rsp, { path: '/xcat', secure:true });
 }
 
 /**
@@ -4202,7 +4202,7 @@ function advancedLoad(group){
             zhcpHash[args[0]] = 1;
 
         // If there are no disk pools or network names cookie for this hcp
-        if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+        if (!$.cookie('xcat_' + args[0] + 'diskpools') || !$.cookie('xcat_' + args[0] + 'networks')) {
             // Check if SMAPI is online
             $.ajax({
                 url : 'lib/cmd.php',
@@ -4226,7 +4226,7 @@ function advancedLoad(group){
     setzHcpCookies(shortzHcps);
 
     // Retrieve z/VM hypervisors and their zHCPs
-    if (!$.cookie('zvms')) {
+    if (!$.cookie('xcat_zvms')) {
         $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',

@@ -2973,7 +2973,6 @@ sub setFINALattrs
                     }
                 }
             }
-
             # $tmphash{nicips} = "eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1"
             foreach my $nicattr (keys %tmphash)
             {
@@ -3188,7 +3187,6 @@ sub defls
 
         }
     }
-
 
     #  if just provided type list then find all objects of these types
     if (!defined $::opt_template && $::objectsfrom_optt)
@@ -3845,11 +3843,11 @@ sub defls
                                         my $nicsstr;
                                         if ($nicnames)
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $nicnames);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, $nicnames);
                                         }
                                         else
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
                                         }
 
                                         # Compress mode, format the output
@@ -3902,7 +3900,7 @@ sub defls
                                     if ($showattr =~ /^nic/)
                                     {
                                         my $nicval = "$showattr=$attrval";
-                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
                                         if ($nicsstr)
                                         {
                                             push(@{ $rsp_info->{data} }, "$nicsstr");

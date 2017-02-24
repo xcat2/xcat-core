@@ -4,32 +4,32 @@
 $(document).ready(function() {
     $('#header').remove();
     $('#content').remove();
-    
+
     var winheight = document.body.clientHeight;
     var diaheight = $('#login').css('height');
     diaheight = diaheight.substr(0, diaheight.length - 2);
     diaheight = Number(diaheight);
-    
+
     // The window's height is to small to show the dialog
     var tempheight = 0;
     if ((winheight - 50) < diaheight){
         tempheight = 0;
     } else {
-        tempheight = parseInt((winheight - diaheight - 50) / 2); 
+        tempheight = parseInt((winheight - diaheight - 50) / 2);
     }
-    
+
     $('#login').css('margin', tempheight + 'px auto');
     $('button').bind('click', function(){
         authenticate();
     });
-    
+
     $('#login button').button();
-    
+
     if (document.location.protocol == "http:") {
         $("#login-status").html("You are using an unencrypted session!");
         $("#login-status").css("color", "#ff0000");
     }
-    
+
     if ($("#login input[name='username']").val() == "") {
         $("#login input[name='username']").focus();
     } else {
@@ -53,7 +53,7 @@ $(document).ready(function() {
 
 /**
  * Update login dialog
- * 
+ *
  * @param data Data returned from AJAX call
  * @param txtStatus Status of login
  */
@@ -64,25 +64,26 @@ function onlogin(data, txtStatus) {
         $("#login-status").text("Login successful");
 
         // Not the first time to log
-        if ($.cookie('logonflag')){
+        if ($.cookie('xcat_logonflag')){
             // Remembered what page they were trying to go to
             window.location = window.location.pathname;
         } else {
             window.location = 'help.php';
         }
-        
+
         // Set user name cookie
         var usrName = $("#login input[name='username']").val();
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-        $.cookie('xcat_username', usrName, { expires: exDate });
-        
+        $.cookie('xcat_username', usrName, { expires: exDate, path: '/xcat', secure:true });
+
         // Set the logonflag
-        $.cookie('logonflag', 'yes', {
+        $.cookie('xcat_logonflag', 'yes', {
             path : '/xcat',
-            expires : 100
+            expires : 100,
+            secure:true
         });
-        
+
     } else {
         $("#login-status").text("Authentication failure").css("color", "#FF0000");
     }

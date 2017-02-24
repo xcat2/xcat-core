@@ -585,6 +585,18 @@ passwd(5)|passwd.5
  
 
 
+pdu(5)|pdu.5
+ 
+ Parameters to use when interrogating pdus
+ 
+
+
+pduoutlet(5)|pduoutlet.5
+ 
+ Contains list of outlet numbers on the pdu each node is connected to.
+ 
+
+
 performance(5)|performance.5
  
  Describes the system performance every interval unit of time.

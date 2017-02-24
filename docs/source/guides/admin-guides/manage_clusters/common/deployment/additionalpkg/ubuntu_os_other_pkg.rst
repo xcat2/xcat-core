@@ -32,5 +32,8 @@ Compute nodes can access the internet
 Compute nodes can not access the internet
 ------------------------------------------
 
-If compute nodes cannot access the internet, there are two ways to install additional packages:use apt proxy or use local mirror according to :ref:`ubuntu-install-non-internet`
+If compute nodes cannot access the internet, there are two ways to install additional packages
+
+   * use apt proxy 
+   * use local mirror 
 

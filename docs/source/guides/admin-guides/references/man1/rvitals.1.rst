@@ -142,14 +142,16 @@ Processor for a single or range of nodes and groups.
 \ **powertime**\ 
  
  Retrieves total power uptime.  This value only increases, unless
- the Service Processor flash gets updated.
+ the Service Processor flash gets updated.  This option is not valid
+ for x86 architecture systems.
  
 
 
 \ **reboot**\ 
  
  Retrieves  total  number of reboots.  This value only increases,
- unless the Service Processor flash gets updated.
+ unless the Service Processor flash gets updated.  This option
+ is not valid for x86 architecture systems.
  
 
 
