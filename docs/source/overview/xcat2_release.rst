@@ -14,10 +14,18 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.2                    |               |             |- Refine ONIE switch support doc  |
+|| 2017/2/24                      |               |             |- Add -p for xcatprobe osdeploy   |
+||                                |               |             |  to support performance calculate|
+| `2.13.2 Release Notes <https:// |               |             |- To support PDU                  |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.2_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.1                    |               |             |- ONIE switch support             |
 || 2017/1/13                      |               |             |- refine xcatprobe subcommand:    |
 ||                                |               |             |  xcatmn, osdeploy                |
-| `2.13.1 Release Notes <https:// |               |             |- add utp-wait for genesis-base   |
+| `2.13.1 Release Notes <https:// |               |             |- add ntp-wait for genesis-base   |
 | github.com/xcat2/xcat-core/wiki |               |             |                                  |
 | /XCAT_2.13.1_Release_Notes>`_   |               |             |                                  |
 |                                 |               |             |                                  |
