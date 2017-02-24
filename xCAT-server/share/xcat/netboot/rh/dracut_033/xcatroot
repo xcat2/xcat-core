@@ -9,6 +9,7 @@ XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
 STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
+rootfsoption="$(getarg rootfsoption=)"
 xcatdebugmode="$(getarg xcatdebugmode=)"
 
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "in dracut, executing xcatroot..."
@@ -72,10 +73,22 @@ if [ -r /rootimg.sfs ]; then
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.cpio.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
+    if [ -z $rootlimit ] && [ -z $rootfsoption ]; then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
+    elif [ ! -z $rootlimit ] && [ -z $rootfsoption ]; then
         mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+    elif [ -z $rootlimit ] && [ ! -z $rootfsoption ]; then
+        mount -t tmpfs -o mode=755,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755 rootfs $NEWROOT
+        fi
+    else
+        mount -t tmpfs -o mode=755,size=$rootlimit,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+        fi
     fi
 
     cd $NEWROOT
@@ -100,10 +113,22 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.tar.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
+    if [ -z $rootlimit ] && [ -z $rootfsoption ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
+    elif [ ! -z $rootlimit ] && [ -z $rootfsoption ];then
         mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+    elif [ -z $rootlimit ] && [ ! -z $rootfsoption ];then
+        mount -t tmpfs -o mode=755,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755 rootfs $NEWROOT
+        fi
+    else
+        mount -t tmpfs -o mode=755,size=$rootlimit,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+        fi
     fi
 
     cd $NEWROOT
@@ -126,11 +151,22 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
 elif [ -r /rootimg-statelite.gz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Setting up RAM-root tmpfs for statelite mode."
     echo Setting up RAM-root tmpfs for statelite mode.
- 
-    if [ -z $rootlimit];then
+    if [ -z $rootlimit ] && [ -z $rootfsoption ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
+    elif [ ! -z $rootlimit ] && [ -z $rootfsoption ];then
         mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+    elif [ -z $rootlimit ] && [ ! -z $rootfsoption ];then
+        mount -t tmpfs -o mode=755,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755 rootfs $NEWROOT
+        fi
+    else
+        mount -t tmpfs -o mode=755,size=$rootlimit,$rootfsoption rootfs $NEWROOT
+        if [ $? != 0 ]; then
+            echo "Mounting with $rootfsoption option was unsuccessful. Trying to mount without..."
+            mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+        fi
     fi
 
     cd $NEWROOT

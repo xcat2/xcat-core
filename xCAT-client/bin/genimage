@@ -35,6 +35,7 @@ my $imagename;
 my $arch;
 my $permission;
 my $rootlimit;
+my $rootfsoption;
 my $tmplimit;
 my $krpmver;
 my $kerneldir;
@@ -82,6 +83,7 @@ if (!GetOptions(
         'i=s'             => \$interface,
         'r=s'             => \$otherInterfaces,
         'l=s'             => \$rootlimit,
+        'rootfsoption=s'  => \$rootfsoption,
         't=s'             => \$tmplimit,
         'k=s'             => \$kernel,
         'g=s'             => \$krpmver,
@@ -376,6 +378,11 @@ if ($rootlimit) {
     push @arg, "$rootlimit";
 }
 
+if ($rootfsoption) {
+    push @arg, "--rootfsoption";
+    push @arg, "$rootfsoption";
+}
+
 if ($tmplimit) {
     push @arg, "-t";
     push @arg, "$tmplimit";
@@ -465,4 +472,5 @@ if (!$interactive) {
         exit 1;
     }
 }
+
 
