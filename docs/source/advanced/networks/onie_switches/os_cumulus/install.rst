@@ -102,8 +102,8 @@ After Cumulus Linux OS is installed onto the ONIE switch, only the serial port c
       xdsh frame01sw1 reboot
 
 
-Enable SNMP (optional)
-----------------------
+Enable SNMP
+------------
 
 In order to utilize ``xcatprobe switch_macmap``, snmp needs to be enabled.  To enable, run the ``enablesnmp`` postscript on the switch: ::
 
