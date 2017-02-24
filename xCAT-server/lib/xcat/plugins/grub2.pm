@@ -256,7 +256,8 @@ sub setstate {
             # process grub2 password and user arguments
             if (defined $grub2_password) {
                 my $passwdtag = "password";
-                if ($grub2_password =~/grub.pbkdf2/) {
+                # check if encrypted password
+                if ($grub2_password =~/^grub\.pbkdf2\.sha.+/) {
                     $passwdtag = "password_pbkdf2";
                 }
                 if (defined $grub2_user) {
