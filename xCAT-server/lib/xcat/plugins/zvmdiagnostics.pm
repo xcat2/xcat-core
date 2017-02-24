@@ -274,7 +274,7 @@ sub collectDiags {
     #TODO If file not found ("should never happen"), log error but continue
     while (<FILE>) {
         # Find record in file with NOTIFY=something on it, optionally delimited with whitespace
-        next unless ( /^[\s]*$NOTIFY_KEYWORD[\s]*$NOTIFY_KEYWORD_DELIMITER[\s]*(\S+)[\s]*$/iaa );
+        next unless ( /^[\s]*$NOTIFY_KEYWORD[\s]*$NOTIFY_KEYWORD_DELIMITER[\s]*(\S+)[\s]*$/i );
         $xcatnotify_found = 1;
         $xcatnotify = $1;  # First parenthesized expression in regex above, that is: \S+
         if ( $DEBUGGING == 1 ) {
