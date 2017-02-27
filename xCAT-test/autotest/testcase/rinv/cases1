@@ -1,0 +1,70 @@
+start:rinv_serial
+arch:ppc64le
+hcp:ipmi
+cmd:rinv $$CN serial
+check:rc==0
+check:output=~NODE 1 Chassis Serial Number:\s*\w{7}
+end
+
+start:rinv_model
+arch:ppc64le
+hcp:ipmi
+cmd:rinv $$CN model
+check:rc==0
+check:output=~NODE 1 Chassis Part Number\s*:\s*\w{4}-\w{3}
+end
+
+start:rinv_firm
+arch:ppc64le
+hcp:ipmi
+cmd:rinv $$CN firm
+check:rc==0
+check:output=~BMC Firmware\s*:\s*\w+.\w+
+end
+
+start:rinv_deviceid
+hcp:ipmi
+arch:ppc64le
+cmd:rinv $$CN deviceid
+check:rc==0
+check:output=~Device ID:\s*\w+
+check:output=~Product ID:\s*\w+
+check:output=~Manufacturer ID:\s*\w+
+end
+
+
+start:rinv_vpd
+hcp:ipmi
+arch:ppc64le
+cmd:rinv $$CN vpd 
+check:rc==0
+check:output=~Manufacturer ID:\s*\w+
+check:output=~Device ID:\s*\w+
+check:output=~BMC Firmware:\s*\w+.\w+
+check:output=~NODE 1 Chassis Serial Number:\s*\w{7}
+check:output=~NODE 1 Chassis Part Number\s*:\s*\w{4}-\w{3}
+end
+
+
+start:rinv_all
+hcp:ipmi
+arch:ppc64le
+cmd:rinv $$CN all
+check:rc==0
+check:output=~BMC Firmware:\s*\w+.\w+
+check:output=~BMCCARD Board Part Number:\s*\w{7}
+check:output=~UUID/GUID:\s*\w+-\w+-\w+-\w+-\w+
+check:output=~Product ID:\s*\d+
+check:output=~Manufacturer ID:\s*\d+
+check:output=~Device ID:\s*\d+
+check:output=~BMCCARD Board Serial Number:\s*\w+
+end
+
+start:rinv_noderange_err
+hcp:ipmi
+arch:ppc64le
+cmd:rinv testnode
+check:rc!=0
+check:output=~Error
+end
+

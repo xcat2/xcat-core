@@ -402,6 +402,7 @@ sub process_request {
 
 
     $errored = 0;
+    my %bphash;
     my $inittime = 0;
     if (exists($::VSMPPXE_request->{inittime})) { $inittime = $::VSMPPXE_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
@@ -409,15 +410,15 @@ sub process_request {
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
                 inittime => [$inittime],
-                arg      => [ $args[0] ] }, \&pass_along);
+                arg      => [ $args[0] ],
+                bootparams => \%bphash
+                }, \&pass_along);
     }
     if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my $chaintab = xCAT::Table->new('chain');
     my $mactab = xCAT::Table->new('mac');    #to get all the hostnames
-    my %bphash = %{ $bptab->getNodesAttribs(\@nodes, [qw(kernel initrd kcmdline addkcmdline)]) };
     my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
     my %machash = %{ $mactab->getNodesAttribs(\@nodes, [qw(mac)]) };
     foreach (@nodes) {

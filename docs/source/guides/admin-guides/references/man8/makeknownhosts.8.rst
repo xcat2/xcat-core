@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-\ **makeknownhosts**\  Replaces or removes in the known_hosts file in the $ROOTHOME/.ssh directory, the enties for the nodes from the noderange input to the command.
+\ **makeknownhosts**\  Replaces or removes entries for the nodes in the known_hosts file in the $ROOTHOME/.ssh directory.
 The known_hosts file entry is built from the shared ssh host key that xCAT distributes to the installed nodes.
 
 HMCs, AMM, switches, etc., where xCAT does not distribute the shared ssh host key, should not be put in the noderange.
@@ -37,7 +37,7 @@ HMCs, AMM, switches, etc., where xCAT does not distribute the shared ssh host ke
 To build the known_hosts entry for a node, you are only required to have the node in the database, and name resolution working for the node. You do not have to be able to access the node.
 
 Having this file with correct entries, will avoid the ssh warning when nodes are automatically added to the known_hosts file.
-The file should be distributed using xdcp to all the nodes, if you want node to node communication not to display the warning.
+The file should be distributed using \ **xdcp**\  to all the nodes, if you want node to node communication not to display the warning.
 
 
 *******
@@ -49,7 +49,7 @@ OPTIONS
 \ *noderange*\ 
  
  A set of comma delimited node names and/or group names.
- See the "noderange" man page for details on supported formats.
+ See the \ *noderange*\  man page for details on supported formats.
  
 
 

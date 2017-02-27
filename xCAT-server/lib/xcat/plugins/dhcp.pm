@@ -1964,7 +1964,7 @@ sub process_request
         } else {
             $chainents = undef;
         }
-        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp' ]);
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode']);
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {

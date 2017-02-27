@@ -127,7 +127,7 @@ sub preprocess_request {
     }
 
     #pdu commands will be handled in the pdu plugin
-    if (($extrargs->[0] eq 'pdustat') || ($extrargs->[0] eq 'pduon') || ($extrargs->[0] eq 'pduoff')) {
+    if (($extraargs->[0] eq 'pdustat') || ($extraargs->[0] eq 'pduon') || ($extraargs->[0] eq 'pduoff')) {
         return;
     }
 

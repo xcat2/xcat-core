@@ -68,7 +68,7 @@ Options:
          Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
          If unit is not specified, hour will be used by default.
     -p Show elapsed time of each stage during provision for each node
-         Support 2 output format:
+         Support 3 output format:
          'compact': Elapsed time of provision for each node.
          'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
          'origin' : Show origin start time of each stage.
@@ -635,7 +635,19 @@ sub performance_calculation {
         if ($performance eq "origin") {
             foreach my $status (@status_for_time) {
                 if ($node_status_time{$node}{$status}{time_point}) {
-                    if ($status == $::STATE_DHCP and $node_status_time{$node}{$::STATE_DHCP}{end_time} > $node_status_time{$node}{$::STATE_BOOTLODER}{start_time}){
+                    if ($status == $::STATE_DHCP or $status == $::STATE_BOOTLODER) {
+                        # If there is no start time of kernel, means osdeploy start after kernel download
+                        if (!$node_status_time{$node}{$::STATE_KERNEL}{start_time}) {
+                            push @timeinfo, "NULL";
+                            $isnull = 1;
+                        # If there is start time of kernel, but dhcp or bootloader's time value larger than kernel. It means dhcp and bootloader is after kernel, not the value we wanted.
+                        } elsif ($node_status_time{$node}{$status}{start_time} > $node_status_time{$node}{$::STATE_KERNEL}{start_time}) {
+                            push @timeinfo, "NULL";
+                            $isnull = 1;      
+                        } else {
+                            push @timeinfo, $node_status_time{$node}{$status}{time_point}; 
+                        }
+                    } elsif ($status >= $::STATE_INSTALLRPM and (!$node_status_time{$node}{$status-1}{start_time} and !$node_status_time{$node}{$status-1}{end_time})) {
                         push @timeinfo, "NULL";
                         $isnull = 1;
                     } else {
@@ -673,7 +685,12 @@ sub performance_calculation {
             $tmp_end_time = $node_status_time{$node}{$status}{start_time} if ($status != $::STATE_DHCP and $status != $::STATE_INSTALLRPM and $status != $::STATE_POSTSCRIPT and $status != $::STATE_POSTBOOTSCRIPT and $node_status_time{$node}{$status}{start_time});
 
             if ($tmp_start_time && $tmp_end_time) {
-                push @timeinfo, probe_utils->convert_second_to_time($tmp_end_time - $tmp_start_time);
+                if ($status >= $::STATE_INSTALLRPM and (!$node_status_time{$node}{$status-1}{start_time} and !$node_status_time{$node}{$status-1}{end_time})) {
+                    push @timeinfo, "NULL";
+                    $isnull = 1;
+                } else {
+                    push @timeinfo, probe_utils->convert_second_to_time($tmp_end_time - $tmp_start_time);
+                } 
             } else {
                 push @timeinfo, "NULL";
                 $isnull = 1;
@@ -683,6 +700,14 @@ sub performance_calculation {
     }
 
     probe_utils->print_table(\@time_content, 1);
+
+    if ($performance eq "phase") {
+        print "SVRBOOT  : Time from rpower to acquire ip\n";
+        print "INSTALL  : Time to download all rpm/deb packages\n";
+        print "POST     : Postscript execution time\n";
+        print "POSTBOOT : Postbootscript execution time\n";
+        print "ELAPSED  : Total provision time\n";
+    }
 
     if ($isnull and $is_success) {
         my $command_input = "xcatprobe -w $program_name";
@@ -1019,8 +1044,8 @@ sub handle_tftp_msg {
             if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/powerpc-ieee1275\//i or $file =~ /\/yb\/node\/yaboot\-/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_BOOTLODER);
                 if ($performance) {
-                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time} = $log_ref->{time};
-                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{time_point} = $log_ref->{time_record};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time} = $log_ref->{time} if (!$node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time});
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{time_point} = $log_ref->{time_record} if (!$node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{time_point});
                 }
             } elsif ($file =~ /vmlinuz|inst64|linux/) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);

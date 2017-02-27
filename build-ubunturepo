@@ -495,5 +495,41 @@ __EOF__
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
+
+    USER="xcat"
+    SERVER="xcat.org"
+    FILES_PATH="files"
+    FRS="/var/www/${SERVER}/${FILES_PATH}"
+    APT_DIR="${FRS}/xcat"
+    APT_REPO_DIR="${APT_DIR}/repos/apt"
+
+    # Decide whether to upload the xcat-dep package or NOT (default is to NOT upload xcat-dep 
+    if [ "$UP" != "1" ]; then
+        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
+        cd $old_pwd
+        exit 0
+    fi
+
+    #upload the dep packages
+    i=0
+    echo "Uploading debs from xcat-dep to ${APT_REPO_DIR}/xcat-dep/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep $USER@${SERVER}:${APT_REPO_DIR}/
+    do : ; done
+
+    #upload the tarball
+    i=0
+    echo "Uploading $dep_tar_name to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
+    do : ; done
+
+    #upload the README file
+    cd debs
+    i=0
+    echo "Uploading README to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
+    do : ; done
+
 fi
+
+cd $old_pwd
 exit 0
