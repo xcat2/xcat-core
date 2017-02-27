@@ -191,6 +191,9 @@ my %usage = (
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
+   CEC|Frame(using ASM)Specific:
+       rspconfig <noderange>  [sslmode]
+       rspconfig <noderange>  [sslmode=<Default|Enabled|Disabled>]
     ",
     "getmacs" =>
       "Usage: 
