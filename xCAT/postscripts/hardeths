@@ -106,7 +106,21 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
             gateway_line=""
         fi
         # add info to interfaces file on ubuntu, TBD does unbuntu change to systemd, this will not exist
-        cat >>/etc/network/interfaces <<EOF
+        if ( pmatch $OSVER "cumulus" )
+        then
+            cat >>/etc/network/interfaces <<EOF
+source /etc/network/interfaces.d/*.intf
+auto $nic
+iface $nic inet static
+    address $IPADDR
+    netmask $NETMASK
+    broadcast $BROADCAST
+    $gateway_line
+
+
+EOF
+        else
+            cat >>/etc/network/interfaces <<EOF
 auto $nic
 iface $nic inet static
     address $IPADDR
@@ -117,6 +131,8 @@ iface $nic inet static
 
 
 EOF
+
+        fi
     # not ubuntu
     else
         if [ -f ${NICFILEPRE}${nic} ]
