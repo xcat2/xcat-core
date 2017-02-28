@@ -13,9 +13,6 @@ use xCAT::Table;
 use xCAT::Usage;
 use XML::LibXML; #now that we are in the business of modifying xml data, need something capable of preserving more of the XML structure
 
-#TODO: convert all uses of XML::Simple to LibXML?  Using both seems wasteful in a way..
-use XML::Simple qw(XMLout);
-use Thread qw(yield);
 use xCAT::Utils qw/genpassword/;
 use File::Basename qw/fileparse/;
 use File::Path qw/mkpath/;
@@ -26,25 +23,8 @@ use xCAT::ServiceNodeUtils;
 use strict;
 
 #use warnings;
-my $use_xhrm = 0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
-my $imgfmt      = 'raw';         #use raw format by default
-my $clonemethod = 'qemu-img';    #use qemu-img command
 my %vm_comm_pids;
-my %offlinehyps;
-my %hypstats;
-my %offlinevms;
 my $parser;
-my @destblacklist;
-my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
-my $confdata;    #a reference to serve as a common pointer betweer VMCommon functions and this plugin
-my %allnodestatus;
-require Sys::Virt;
-
-if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
-    die;
-}
-use XML::Simple;
-$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 use Data::Dumper;
 use POSIX "WNOHANG";
@@ -56,13 +36,10 @@ use xCAT::DBobjUtils;
 use Getopt::Long;
 use xCAT::SvrUtils;
 
-my %runningstates;
-my $vmmaxp = 64;
-my $mactab;
-my %usedmacs;
-my $status_noop = "XXXno-opXXX";
 my $callback;
 my $requester;    #used to track the user
+my $doreq;
+my $node;
 
 sub handled_commands {
     return {
@@ -71,12 +48,6 @@ sub handled_commands {
     };
 }
 
-my $hypconn;
-my $hyp;
-my $doreq;
-my %hyphash;
-my $node;
-my $vmtab;
 
 sub rinv {
     shift;
@@ -88,7 +59,6 @@ sub power {
     my $subcommand_hash = shift @ARGV;
     my $subcommand = $subcommand_hash->[0];
     my $retstring;
-    #xCAT::SvrUtils::sendmsg([ 0, "MG enter power with subcommand $subcommand" ], $callback, $node);
     if ($subcommand eq "boot") {
     }
     my $errstr;
@@ -168,7 +138,6 @@ sub preprocess_request {
 
     foreach my $snkey (keys %$sn)
     {
-        #print "snkey=$snkey\n";
         my $reqcopy = {%$request};
         $reqcopy->{node}                   = $sn->{$snkey};
         $reqcopy->{'_xcatdest'}            = $snkey;
