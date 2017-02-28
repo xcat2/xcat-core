@@ -91,10 +91,5 @@ if ($ENV{SSHCONSOLEPORT}) {
     $sshport= $ENV{SSHCONSOLEPORT};
 }
 
-#sshpass command needs to install before can run that
-if (-x '/usr/bin/sshpass') {
-    exec "/usr/bin/sshpass -p $password ssh -p $sshport -l $username $nodeip";
-} else {
-    print "Please install sshpass first. \n";
-}
+exec "ssh -p $sshport -l $username $nodeip";
 

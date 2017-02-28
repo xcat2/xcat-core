@@ -31,6 +31,16 @@ use xCAT::SvrUtils;
 use File::Basename;
 use Data::Dumper;
 use JSON;
+use Getopt::Long;
+use File::Path;
+use Term::ANSIColor;
+use Time::Local;
+use strict;
+use Class::Struct;
+use XML::Simple;
+use Storable qw(dclone);
+use SNMP;
+use xCAT::PasswordUtils;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 
@@ -249,22 +259,23 @@ sub process_request {
     } 
 
 
-    #Assume the openbmc user/password is defined in the passwd
-    my $passtab = xCAT::Table->new('passwd');
-    if ($passtab) {
-       ($dba) = $passtab->getAttribs({key=>'openbmc'},qw(username password));
-        if ($dba) {
-            if ($dba->{username}) { $username = $dba->{username}; }
-            if ($dba->{password}) { $password = $dba->{password}; }
-      }
-    }
-
+    my $ipmitab     = xCAT::Table->new('ipmi');
+    my $ipmihash = $ipmitab->getNodesAttribs($noderange, [ 'bmc', 'username', 'password' ]);
+    my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange => $noderange, ipmihash => $ipmihash);
 
     foreach (@$noderange) {
         my $node     = $_;
         my $nodeip = $node;
-        push @donargs, [ $node,$nodeip,$username, $password];
-        my $output = "openbmc, get $username and $password from passwd table for $nodeip";
+        my $nodeuser = $authdata->{$node}->{username};
+        my $nodepass = $authdata->{$node}->{password};
+        my $nodeip   = $node;
+        my $ent;
+        if (defined($ipmitab)) {
+            $ent = $ipmihash->{$node}->[0];
+            if (ref($ent) and defined $ent->{bmc}) { $nodeip = $ent->{bmc}; }
+        }
+        push @donargs, [ $node,$nodeip,$nodeuser, $nodepass];
+        my $output = "openbmc, get $username and $password from ipmi table for $nodeip";
         xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
     }
 
