@@ -17,7 +17,7 @@ unless ($ENV{DISPLAY}) {
 my $mydir = dirname($0);
 my $sb;
 my $tilefact;
-my $xrm = "-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737";
+my $xrm = "-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737 -xrm xterm.vt100.color0:#000000 -xrm xterm.vt100.color1:#AA0000 -xrm xterm.vt100.color2:#00AA00 -xrm xterm.vt100.color3:#AA5500 -xrm xterm.vt100.color4:#0000AA -xrm xterm.vt100.color5:#AA00AA -xrm xterm.vt100.color6:#00AAAA -xrm xterm.vt100.color7:#AAAAAA -xrm xterm.vt100.color8:#555555 -xrm xterm.vt100.color9:#FF5555 -xrm xterm.vt100.color10:#55FF55 -xrm xterm.vt100.color11:#FFFF55  -xrm xterm.vt100.color12:#5555FF  -xrm xterm.vt100.color13:#FF55FF -xrm xterm.vt100.color14:#55FFFF  -xrm xterm.vt100.color15:#FFFFFF";
 my $font = "5x7";
 my $sizegeometry;
 GetOptions(
