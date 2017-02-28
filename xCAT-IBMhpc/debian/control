@@ -2,14 +2,14 @@ Source: xcat-ibmhpc
 Section: admin
 Priority: extra
 Maintainer: Arif Ali <aali@ocf.co.uk>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
 
 Package: xcat-ibmhpc
 Architecture: all
-Depends: ${perl:Depends}, perl-xcat (>= 2.8.0), xcat-client (>= 2.8.0)
-Description: Install and configuration utilities for IBM HPC products in an xCAT cluster
- xCAT-IBMhpc provides sample installation and configuration scripts for running 
- the IBM HPC software stack in an xCAT cluser.  Support for the following IBM 
- products is provided:  GPFS, LoadLeveler, Parallel Environment, ESSL and Parallel 
+Depends: ${perl:Depends}, perl-xcat (>= 2.13-snap000000000000), xcat-client (>= 2.13-snap000000000000)
+Description: Utilities for manage IBM HPC products in an xCAT cluster
+ xCAT-IBMhpc provides sample installation and configuration scripts for running
+ the IBM HPC software stack in an xCAT cluser.  Support for the following IBM
+ products is provided:  GPFS, LoadLeveler, Parallel Environment, ESSL and Parallel
  ESSL libraries, some compilers (vac, xlC, xlf).

@@ -139,6 +139,7 @@ Getopt::Long::Configure("pass_through");
 use Storable qw(dclone);
 use POSIX qw(WNOHANG setsid :errno_h);
 my $pidfile;
+my $reload;
 my $foreground;
 GetOptions(
     'pidfile|p=s'  => \$pidfile,
@@ -217,6 +218,7 @@ if ($tmp) {
     $cmdlog_port = $tmp->{value};
 }
 my $cmdlog_alllog = "====================================================\n";
+my $cmdlog_starttime=undef;
 
 # ----used for command log end---------
 
@@ -394,9 +396,12 @@ sub do_installm_service {
             ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
         }
         unless ($client_name) {
-            my $myaddr = inet_ntoa($conn->peeraddr);
+	    my $addrfamily=sockaddr_family(getpeername($conn));
+	    my $myaddr=Socket::inet_ntop($addrfamily,$conn->peeraddr);
             xCAT::MsgUtils->message("S", "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
             print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
+            close($conn);
+            next;
         }
 
         $clients[0] = $client_name;
@@ -1274,6 +1279,7 @@ $SIG{USR2} = sub {
     if ($listener) {
         unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit = 1; $listener = 0;
         $udpctl = 0;
+        $reload = 1;
         xCAT::MsgUtils->message("S", "xcatd main service $$ quiescing");
     }
 };
@@ -1514,9 +1520,6 @@ until ($quit) {
 
         $$progname = "xcatd SSL: Instance for " . ($peername ? $peername . "@" . $peerhost : $peerhost) if $peerhost;
         service_connection($connection, $peername, $peerhost, $peerfqdn, $peerhostorg);
-
-        $debugmsg = "xcatd: close connection with " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
-        xCAT::MsgUtils->trace(0, "D", "$debugmsg");
         xexit(0);
     }
     if ($sslfudgefactor) { $sslfudgefactor -= 1; }
@@ -1551,6 +1554,25 @@ if ($dbmaster) {
 
 # stop the monitoring process
 xCAT_monitoring::monitorctrl::stop($$);
+if (! $reload) {
+    stop_tftp_service();
+}
+
+sub stop_tftp_service {
+    eval {
+        require xCAT_plugin::AAsn;
+    };
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Failed to load AAsn module");
+        return;
+    }
+    no strict 'refs';
+    if (!defined(${ "xCAT_plugin::AAsn::" }{stop_TFTP})) {
+        return;
+    }
+    xCAT_plugin::AAsn::stop_TFTP();
+    use strict 'refs';
+}
 
 my $parent_fd;
 my %resps;
@@ -2106,12 +2128,11 @@ sub dispatch_request {
 
     # ----used for trace start---------
     my $str_cmd = $req->{command}->[0] . " ";
-    if (exists($req->{noderange})) {
-        foreach my $n (@{ $req->{noderange} }) {
-            $str_cmd .= $n . ",";
-        }
-        $str_cmd =~ s/(.+),$/$1 /g;
+    if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+        my $tmpstr = join(",", @{$req->{noderange}});
+        $str_cmd .= "$tmpstr ";
     }
+
     if (exists($req->{arg})) {
         foreach my $arg (@{ $req->{arg} }) {
             $str_cmd .= $arg . " ";
@@ -2636,7 +2657,6 @@ sub service_connection {
     my $peerfqdn    = shift;
     my $peerhostorg = shift;
     my $peerport    = $sock->peerport;
-    my %tables      = ();
 
     # some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
     # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
@@ -2670,7 +2690,8 @@ sub service_connection {
             unless ($req) { last; }
 
             # ----used for command log start----------
-            my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time());
+            $cmdlog_starttime = time();
+            my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);
             $year += 1900;
             $mon  += 1;
             my $strmon  = ($mon > 9  ? $mon  : "0" . $mon);
@@ -2680,16 +2701,11 @@ sub service_connection {
             my $strsec  = ($sec > 9  ? $sec  : "0" . $sec);
             $cmdlog_alllog .= "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n";
 
-            #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
-            #print Dumper $req;
-
             $cmdlog_alllog .= "[ClientType] " . $req->{clienttype}->[0] . " \n";
             $cmdlog_alllog .= "[Request]    " . $req->{command}->[0] . " ";
-            if (exists($req->{noderange})) {
-                foreach my $node (@{ $req->{noderange} }) {
-                    $cmdlog_alllog .= $node . ",";
-                }
-                $cmdlog_alllog =~ s/(.+),$/$1 /g;
+            if (exists($req->{noderange}) && defined($req->{noderange}->[0])) {
+                my $tmpstr = join(",", @{$req->{noderange}});
+                $cmdlog_alllog .= "$tmpstr ";
             }
 
             if (exists($req->{arg})) {
@@ -2870,15 +2886,15 @@ sub service_connection {
     }
 
     # ----used for command log start-------
+    my $reqhandletime = time()-$cmdlog_starttime;
+    $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
     cmdlog_submitlog();
 
     # ----used for command log end---------
-
+    my $debugmsg = "xcatd: close connection with " . ($peername ? $peername . "@" . $peerhost : $peerhost) . "\n";
+    xCAT::MsgUtils->trace(0, "D", "$debugmsg");
     $SIG{ALRM} = sub { xCAT::MsgUtils->message("S", "$$ failed shutting down"); die; };
     alarm(10);
-    foreach (keys %tables) {
-        $tables{$_}->commit;
-    }
     $sock->close(SSL_fast_shutdown => 1);
     if ($timedout == 1) {
         printf("Client timeout");
@@ -2941,6 +2957,8 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
 
             # ----used for command log start-------
             $cmdlog_alllog .= "Client abort requested\n";
+            my $reqhandletime = time()-$cmdlog_starttime;
+            $cmdlog_alllog .= "[ElapsedTime] $reqhandletime s\n";
             cmdlog_submitlog();
 
             # ----used for command log end---------

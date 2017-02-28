@@ -8,7 +8,7 @@ B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head2 BMC/MPA specific:
 
-B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<bios>|B<mparom>|B<mac>|B<all>}
+B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<dimm>|B<bios>|B<mparom>|B<mac>|B<all>}
 
 =head2 OpenPOWER server specific:
   
@@ -31,6 +31,11 @@ B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>
 =head2 VMware specific:
 
 B<rinv> I<noderange> [B<-t>]
+
+=head2 pdu specific:
+
+B<rinv> I<noderange> 
+
 
 =head2 zVM specific:
 

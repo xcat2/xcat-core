@@ -165,12 +165,8 @@ if ($::linuxos == "sles12") {
     close($relfile);
     chomp(@lines);
 
-    # if == 12.1
-    if (grep /VERSION_ID="12.1"/, @lines) {
-
-        #$::linuxos == "sles12.1";
-        $sp1flag = 1;
-    }
+    # for sles12.x
+    $sp1flag = 1;
 }
 
 # set flag

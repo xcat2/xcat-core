@@ -99,9 +99,13 @@ OS_TYPE=`uname`
 if [ $OS_TYPE = Linux ]; then
     mkdir -p /var/lib/ntp
     chown ntp /var/lib/ntp
-    echo "driftfile /var/lib/ntp/drift
-disable auth
-restrict 127.0.0.1" >>$conf_file
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+        echo "driftfile /var/lib/ntp/drift/ntp.drift" >>$conf_file
+    else 
+        echo "driftfile /var/lib/ntp/drift" >>$conf_file
+    fi 
+    echo "disable auth" >>$conf_file
+    echo "restrict 127.0.0.1" >>$conf_file
 
     #ntpdate/sntp conflict with ntpd, stop the service first
     checkservicestatus ntpserver
@@ -122,9 +126,12 @@ restrict 127.0.0.1" >>$conf_file
         output=`eval $cmd 2>&1`
         rc=$?
         if [ "$rc" != "0" ] || (pmatch "$output" "*Time could not*");then
-            echo "$cmd failed, NTP maynot be synchronized, please wait for NTP synchronized then run updatenode nodename -P setupntp"
+            echo "WARNING: "
+            echo "    $cmd failed, NTP may not be synchronized on NTP server "
+            echo "    please wait for NTP synchronized, may take at least 15 mins"
+            echo "    use 'ntpq -p' command (output has "*" or "+" sign)  to validate the NTP server"
+            echo "    run 'updatenode nodename -P setupntp' if NTP is synced on NTP server but nodename is not synced"
             logger -t xcat "$cmd failed"
-            exit 1
         fi
     else
         logger -t xcat "ntpdate -t5 $master "
@@ -140,16 +147,21 @@ restrict 127.0.0.1" >>$conf_file
 
     #setup the RTC is UTC format, which will be used by os
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-        sed -i 's/.*HWCLOCK.*/HWCLOCK="-u"/' /etc/sysconfig/clock
+        grep -i -q "HWCLOCK" /etc/sysconfig/clock
+        if [ $? -eq 0 ];then
+            sed -i 's/.*HWCLOCK.*/HWCLOCK=\"-u\"/' /etc/sysconfig/clock
+        else
+            echo HWCLOCK=\"-u\" >> /etc/sysconfig/clock
+        fi
     elif [ -f "/etc/debian_version" ];then
-        sed -i 's/.*UTC.*/UTC=yes/' /etc/default/rcS
+        sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/default/rcS
     else
         if [ -f "/etc/sysconfig/clock" ];then
-           grep -i "utc" /etc/sysconfig/clock
+           grep -i -q "utc" /etc/sysconfig/clock
            if [ $? -eq 0 ];then
-              sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock
+              sed -i 's/.*UTC.*/UTC=\"yes\"/' /etc/sysconfig/clock
            else
-              echo "UTC=yes" >> /etc/sysconfig/clock
+              echo UTC=\"yes\" >> /etc/sysconfig/clock
            fi
         elif type -P timedatectl >/dev/null 2>&1 ;then
            timedatectl set-local-rtc 0
@@ -158,20 +170,20 @@ restrict 127.0.0.1" >>$conf_file
 
     #update the hardware clock automaticly
     if [ -f "/etc/sysconfig/ntpd" ];then
-        grep -i "SYNC_HWCLOCK" /etc/sysconfig/ntpd
+        grep -i -q "SYNC_HWCLOCK" /etc/sysconfig/ntpd
         if [ $? -eq 0 ];then
-            sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=yes/' /etc/sysconfig/ntpd
+            sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=\"yes\"/' /etc/sysconfig/ntpd
         else
-            echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd
+            echo "SYNC_HWCLOCK=\"yes\"" >> /etc/sysconfig/ntpd
         fi
     elif [ -f /etc/sysconfig/ntp ];then
-        grep -i "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
+        grep -i -q "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP="no"/NTPD_FORCE_SYNC_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
-        grep -i "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
+        grep -i -q "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
         if [ $? -eq 0 ];then
-	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="no"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"no\"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP=\"yes\"/' /etc/sysconfig/ntp
         fi
     else
         cron_file="/etc/cron.daily/xcatsethwclock"

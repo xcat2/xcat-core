@@ -1,0 +1,27 @@
+2017-01-27 - OpenSSL Vulnerabilities
+====================================
+
+*Jan 26, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20170126.txt
+
+
+Advisory CVEs
+-------------
+
+* CVE-2017-3731 - **Truncated packet could crash via OOB read** (Severity:Moderate)
+
+* CVE-2017-3730 - **Bad (EC)DHE parameters cause a client crash** (Severity: Moderate)
+
+* CVE-2017-3732 - **BN_mod_exp may produce incorrect results on x86_64** (Severity: Moderate)
+
+* CVE-2016-7055 - **Montgomery multiplication may produce incorrect results** (Severity: Low)
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+

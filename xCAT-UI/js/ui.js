@@ -1,8 +1,11 @@
 /**
  * Tab constructor
  *
- * @param tabId Tab ID
- * @param tabName Tab name
+ * @param tabId
+ *            Tab ID
+ * @param tabName
+ *            Tab name
+ * @return Nothing
  */
 var Tab = function(tabId) {
     this.tabId = tabId;
@@ -29,8 +32,8 @@ Tab.prototype.init = function() {
     tabs.bind('tabsselect', function(event, ui){
         // Save the order tabs were selected
         var order;
-        if ($.cookie('tabindex_history')) {
-            order = $.cookie('tabindex_history').split(',');
+        if ($.cookie('xcat_tabindex_history')) {
+            order = $.cookie('xcat_tabindex_history').split(',');
             order[1] = order[0];    // Set index 1 to last selected tab
             order[0] = ui.index;    // Set index 0 to currently selected tab
         } else {
@@ -40,7 +43,7 @@ Tab.prototype.init = function() {
             order[1] = ui.index;
         }
 
-        $.cookie('tabindex_history', order);
+        $.cookie('xcat_tabindex_history', order, { path: '/xcat', secure:true });
     });
 
     // Remove dummy tab
@@ -97,7 +100,7 @@ Tab.prototype.add = function(tabId, tabName, tabCont, closeable) {
                 // Go back to last tab if user is trying to close currently selected tab
                 if (tabs.tabs('option', 'selected') == tabIndex) {
                     // Get last selected tab from history
-                    var order = $.cookie('tabindex_history').split(',');
+                    var order = $.cookie('xcat_tabindex_history').split(',');
                     if (order[1]) {
                         tabs.tabs('select', parseInt(order[1]));
                     } else {

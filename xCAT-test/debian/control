@@ -2,10 +2,13 @@ Source: xcat-test
 Section: admin
 Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
-Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.4
+Homepage: https://xcat.org/
 
 Package: xcat-test
 Architecture: all
 Depends: ${perl:Depends}
-Description: Provides automated test tool and buckets to help test xCAT commands automatically
+Description: xCAT automated test tool
+ Provides automated test tool and buckets to help test xCAT commands
+ automatically.

@@ -188,6 +188,17 @@ echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboo
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 
+# add the perl library
+PERL_LIB_DIR="/usr/share/perl5 /usr/lib64/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5"
+for d in `echo $PERL_LIB_DIR`; do
+    if [ -e $d ]; then
+        echo Adding perl libary "$d"
+        TEMP_DIR=/tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/"$d"
+        mkdir -p $TEMP_DIR
+        cp -a -t $TEMP_DIR $d/.
+    fi
+done
+
 if [ $? -ne 0 ]; then
     echo "ERROR - expanding the initramfs, please correct the issues and try again"
     exit 1

@@ -25,7 +25,7 @@ DESCRIPTION
 
 \ **pping**\  is a utility used to ping a list of nodes in parallel.
 \ **pping**\  will return an unsorted list of nodes with a ping or noping status.
-\ **pping**\  front-ends nmap or fping if available.
+\ **pping**\  front-ends \ **nmap**\  or \ **fping**\  if available.
 
 This command does not support the xcatd client/server communication.  It must be run on the management node.
 
@@ -48,7 +48,7 @@ OPTIONS
 
 \ **-f | -**\ **-use_fping**\ 
  
- Use fping instead of nmap
+ Use \ **fping**\  instead of \ **nmap**\ 
  
 
 

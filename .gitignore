@@ -1,2 +1,4 @@
 # ignore the documentation build files
 docs/build
+# Ignore the temporary file for creating the Release version
+Release.save*

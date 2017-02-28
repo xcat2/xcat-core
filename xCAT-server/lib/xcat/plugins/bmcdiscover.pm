@@ -910,19 +910,16 @@ sub bmcdiscovery_ipmi {
                 if (($::RUNCMD_RC eq 0) && @fru_output_array) {
                     my $fru_output = join(" ", @fru_output_array);
 
-                    if ($fru_cmd_num == 0) {
-                        if (($fru_output =~ /Product Part Number   :\s*(\S*).*Product Serial        :\s*(\S*)/)) {
-                            $mtm    = $1;
-                            $serial = $2;
-                            last;
-                        }
+                    if (($fru_output =~ /Chassis Part Number\s*:\s*(\S*).*Chassis Serial\s*:\s*(\S*)/)) {
+                        $mtm    = $1;
+                        $serial = $2;
+                        last;
                     }
-                    else {
-                        if (($fru_output =~ /Chassis Part Number\s*:\s*(\S*).*Chassis Serial\s*:\s*(\S*)/)) {
-                            $mtm    = $1;
-                            $serial = $2;
-                            last;
-                        }
+
+                    if (($fru_output =~ /Product Part Number   :\s*(\S*).*Product Serial        :\s*(\S*)/)) {
+                        $mtm    = $1;
+                        $serial = $2;
+                        last;
                     }
                 }
             }

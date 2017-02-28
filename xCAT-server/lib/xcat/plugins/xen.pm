@@ -704,6 +704,12 @@ sub process_request {
     } else {
         @exargs = ($request->{arg});
     }
+
+     #pdu commands will be handled in the pdu plugin
+     if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+         return;
+     }
+     
     if ($command eq 'revacuate') {
         my $newnoderange;
         foreach (@$noderange) {

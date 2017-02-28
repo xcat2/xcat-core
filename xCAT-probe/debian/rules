@@ -9,9 +9,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-export DH_COMPAT=5
-
-
 build:
 	dh_testdir
 	pwd
@@ -29,7 +26,6 @@ install:
 	dh_install -X".svn"
 	dh_link
 
-
 # Build architecture-independent files here.
 binary-indep: build install
 # We have nothing to do by default.
@@ -40,7 +36,7 @@ binary-arch:
 	export
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs 
+	dh_installchangelogs
 	dh_installdocs
 #	dh_installexamples
 	dh_install -X".svn"

@@ -19,7 +19,7 @@ NAME
 ****************
 
 
-\ **xdshbak**\  [\ **-c**\  | \ **-x**\  | \ **-h**\  | \ **-q**\ ]
+\ **xdshbak**\  [\ **-c**\  | \ **-x**\  [ \ **-b**\  ] | \ **-h**\  | \ **-q**\ ]
 
 
 ***********
@@ -93,6 +93,9 @@ the output by hostname for easier viewing:
   .
 
 
+If the \ **-b**\  flag is specified in addition to \ **-x**\ , the hostname at the beginning
+of each line is stripped.
+
 Standard Error
 ==============
 
@@ -107,6 +110,13 @@ output messages. This is true with and without the \ **-c**\  flag.
 OPTIONS
 *******
 
+
+
+\ **-b**\ 
+ 
+ Strip the host prefix from the beginning of the lines. This only
+ works with the \ **-x**\  option.
+ 
 
 
 \ **-c**\ 

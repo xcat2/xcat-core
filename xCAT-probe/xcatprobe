@@ -141,7 +141,10 @@ sub format_cmd_output {
 
         if ($flag) {
             my $leftspace = $maxlen - length($finalmsg[$i]);
-            my $spacenum = (($leftspace >= $flaglen) ? ($leftspace - $flaglen) : ($screenwidth - length($finalmsg[$i]) + $maxlen - $flaglen));
+            my $spacenum = 0;
+            if($flag !~ /debug/i) {
+                $spacenum = (($leftspace >= $flaglen) ? ($leftspace - $flaglen) : ($screenwidth - length($finalmsg[$i]) + $maxlen - $flaglen));
+            }
             my $spacestr = " " x $spacenum;
             print "$finalmsg[$i]$spacestr";
 

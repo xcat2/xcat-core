@@ -1,3 +1,4 @@
+setup_vm
 reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
@@ -197,6 +198,15 @@ xdsh_t
 xdsh_q
 xdsh_T
 xdsh_o
+psh_h
+psh_v
+psh_node_cmd_linux
+psh_l
+psh_i
+prsync_h
+prsync_v
+prsync_dir_node
+prsync_file_node
 switchdiscover_range_default
 switchdiscover_h
 switchdiscover_range_s

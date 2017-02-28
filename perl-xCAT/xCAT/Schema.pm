@@ -678,6 +678,20 @@ passed as argument rather than by table value',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
     },
+    pdu => {
+        cols => [qw(node nodetype machinetype modelnum serialnum outletCount comments disable)],
+        keys         => [qw(node)],
+        nodecol      => "node",
+        table_desc   => 'Parameters to use when interrogating pdus',
+        descriptions => {
+            node => 'The hostname/address of the pdu to which the settings apply',
+            nodetype => 'The node type should be pdu ',
+            machinetype => 'The pdu machine type',
+            modelnum    => 'The pdu model number',
+            serialnum   => 'The pdu serial number',
+            outletcount => 'The pdu outlet count',
+        },
+    },
     switches => {
         cols => [qw(switch snmpversion username password privacy auth linkports sshusername sshpassword protocol switchtype comments disable)],
         keys         => [qw(switch)],
@@ -1255,6 +1269,17 @@ passed as argument rather than by table value',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
     },
+    pduoutlet => {
+        cols => [qw(node pdu comments disable)],
+        keys => [qw(node)],
+        table_desc => 'Contains list of outlet numbers on the pdu each node is connected to.',
+        descriptions => {
+            node   => 'The node name or group name.',
+            pdu    => 'a comma-separated list of outlet number for each PDU, ex: pdu1:outlet1,pdu2:outlet1',
+            comments => 'Any user-written notes.',
+            disable  => "Set to 'yes' or '1' to comment out this row.",
+        }
+    },
     switch => {
         cols => [qw(node switch port vlan interface comments disable)],
         keys => [qw(node switch port)],
@@ -1816,6 +1841,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
     zone           => { attrs => [], attrhash => {}, objkey => 'zonename' },
     firmware       => { attrs => [], attrhash => {}, objkey => 'cfgfile' },
     taskstate      => { attrs => [], attrhash => {}, objkey => 'node' },
+    pdu            => { attrs => [], attrhash => {}, objkey => 'node' },
 
 );
 
@@ -2700,6 +2726,14 @@ my @nodeattrs = (
         access_tabentry => 'websrv.node=attr:node',
     },
 ######################
+    #  pduoutlet table   #
+######################
+    { attr_name => 'pdu',
+        tabentry        => 'pduoutlet.pdu',
+        access_tabentry => 'pduoutlet.node=attr:node',
+    },
+
+######################
     #  switch table      #
 ######################
     { attr_name => 'switch',
@@ -2815,6 +2849,35 @@ my @nodeattrs = (
     { attr_name => 'disksize',
         tabentry        => 'hwinv.disksize',
         access_tabentry => 'hwinv.node=attr:node',
+    },
+
+#########################
+##   pdu  table         #
+#########################
+    {   attr_name => 'nodetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.nodetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    {   attr_name => 'machinetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.machinetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'modelnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.modelnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'serialnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.serialnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'outletcount',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.outletcount',
+        access_tabentry => 'pdu.node=attr:node',
     },
 
 #########################
@@ -4018,6 +4081,47 @@ push(@{ $defspec{group}->{'attrs'} }, @nodeattrs);
         access_tabentry => 'boottarget.bprofile=attr:bprofile',
     },
   );
+
+#############################
+#  pdu object #
+#############################
+#############################
+#    pdu table #
+#############################
+@{ $defspec{pdu}->{'attrs'} } =
+  (
+    { attr_name => 'node',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.node',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'nodetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.nodetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    {   attr_name => 'machinetype',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.machinetype',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'modelnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.modelnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'serialnum',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.serialnum',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+    { attr_name => 'outletcount',
+        only_if         => 'nodetype=pdu',
+        tabentry        => 'pdu.outletcount',
+        access_tabentry => 'pdu.node=attr:node',
+    },
+);
+
 
 
 ###################################################

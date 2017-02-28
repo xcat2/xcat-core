@@ -428,7 +428,7 @@ sub makeconservercf {
 
         # Now add into the file all the node entries that we kept
         my $node;
-        if ($node = donodeent(\%cfgenthash, \@filecontent)) {
+        if ($node = donodeent(\%cfgenthash, \@filecontent, $delmode)) {
 
             # donodeent will return the 1st node in error
             #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});

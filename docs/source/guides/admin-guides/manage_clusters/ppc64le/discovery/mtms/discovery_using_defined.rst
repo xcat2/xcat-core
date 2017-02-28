@@ -27,27 +27,17 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
 #. Detect the BMCs and add the node definitions into xCAT.
 
-   Use the ``bmcdiscover`` command to discover the BMCs responding over an IP range and automatically write the output into the xCAT database.  You **must** use the ``-w`` option to automatically write the output into the xCAT database. 
+   Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database. 
 
-   To discover the BMC with an IP address of 172.30.0.1, use the command: ::
+   To discover the BMC with an IP address range of 50.0.100.1-100: ::
 
-      bmcdiscover --range 172.30.0.1 -z -w 
+      bmcdiscover --range 50.0.100.1-100 -z -w
 
-   The discovered nodes will be written to xCAT database: ::
+   The discovered nodes will be written to xCAT database.  The discovered BMC nodes are in the form **node-model_type-serial**.   To view the discovered nodes: ::
 
-      # lsdef node-8247-22l-10112ca
-      Object name: node-8247-22l-10112ca
-          bmc=172.30.0.1
-          cons=ipmi
-          groups=all
-          hwtype=bmc
-          mgt=ipmi
-          mtm=8247-22L
-          nodetype=mp
-          postbootscripts=otherpkgs
-          postscripts=syslog,remoteshell,syncfiles
-          serial=10112CA
-          nodetype=mp
+      lsdef /node-.*
+
+   **Note:** The ``bmcdiscover`` command will use the username/password from the ``passwd`` table corresponding to ``key=ipmi``.  To overwrite with a different username/password use the ``-u`` and ``-p`` option to ``bmcdiscover``.
 
 
 #. **Pre-define** the compute nodes:

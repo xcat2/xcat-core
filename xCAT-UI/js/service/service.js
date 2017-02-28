@@ -73,7 +73,7 @@ function initServicePage() {
     loadServicePage();
 
     // Initialize tab index history
-    $.cookie('tabindex_history', '0,0');
+    $.cookie('xcat_tabindex_history', '0,0', { path: '/xcat', secure:true });
 }
 
 /**
@@ -185,14 +185,14 @@ function loadServiceProvisionPage(tabId) {
     var okBtn = createButton('Ok');
     okBtn.bind('click', function(event) {
         var userName = $.cookie('xcat_username');
-        var tmp = $.cookie(userName + '_usrnodes');
+        var tmp = $.cookie('xcat_' + userName + '_usrnodes');
 
         // Get maximun number for nodes from cookie
         var nodes = '';
         var maxVM = 0;
         if (tmp.length) {
             nodes = tmp.split(',');
-            maxVM = parseInt($.cookie(userName + '_maxvm'));
+            maxVM = parseInt($.cookie('xcat_' + userName + '_maxvm'));
 
             // Do not allow user to clone if the maximum number of VMs is reached
             if (nodes.length >= maxVM) {
@@ -302,7 +302,7 @@ function loadManagePage(tabId) {
  */
 function getUserNodesDef() {
     var userName = $.cookie('xcat_username');
-    var userNodes = $.cookie(userName + '_usrnodes');
+    var userNodes = $.cookie('xcat_' + userName + '_usrnodes');
     if (userNodes) {
          // Get nodes definitions
         $.ajax( {
@@ -597,7 +597,7 @@ function loadNodesTable(data) {
 
                 // Refresh nodes table
                 var userName = $.cookie('xcat_username');
-                var userNodes = $.cookie(userName + '_usrnodes');
+                var userNodes = $.cookie('xcat_' + userName + '_usrnodes');
                 if (userNodes) {
                     // Get nodes definitions
                     $.ajax( {
@@ -932,7 +932,7 @@ function setGroupCookies(data) {
         // Set cookie to expire in 60 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-        $.cookie('srv_groups', groups, { expires: exDate });
+        $.cookie('xcat_srv_groups', groups, { expires: exDate, path: '/xcat', secure:true });
     }
 }
 
@@ -1041,28 +1041,28 @@ function setOSImageCookies(data) {
     }
 
     // Save image names in a cookie
-    $.cookie('srv_imagenames', imageNames);
+    $.cookie('xcat_srv_imagenames', imageNames);
 
     // Save profiles in a cookie
     var tmp = new Array;
     for (var key in profilesHash) {
         tmp.push(key);
     }
-    $.cookie('srv_profiles', tmp);
+    $.cookie('xcat_srv_profiles', tmp);
 
     // Save OS versions in a cookie
     tmp = new Array;
     for (var key in osVersHash) {
         tmp.push(key);
     }
-    $.cookie('srv_osvers', tmp);
+    $.cookie('xcat_srv_osvers', tmp);
 
     // Save OS architectures in a cookie
     tmp = new Array;
     for (var key in osArchsHash) {
         tmp.push(key);
     }
-    $.cookie('srv_osarchs', tmp);
+    $.cookie('xcat_srv_osarchs', tmp);
 }
 
 
@@ -1111,7 +1111,7 @@ function setUserNodes(data) {
         // Set cookie to expire in 240 minutes
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-        $.cookie(userName + '_usrnodes', usrNodes, { expires: exDate });
+        $.cookie('xcat_' + userName + '_usrnodes', usrNodes, { expires: exDate, path: '/xcat', secure:true });
     } // End of if
 }
 
@@ -1316,10 +1316,10 @@ function monitorNode(node, monitor) {
 function cloneNode(tgtNodes) {
     var userName = $.cookie('xcat_username');
     var nodes = tgtNodes.split(',');
-    var tmp = $.cookie(userName + '_usrnodes');
+    var tmp = $.cookie('xcat_' + userName + '_usrnodes');
     var usrNodes = tmp.split(',');
 
-    var maxVM = parseInt($.cookie(userName + '_maxvm'));
+    var maxVM = parseInt($.cookie('xcat_' + userName + '_maxvm'));
 
     // Do not allow user to clone if the maximum number of VMs is reached
     if (usrNodes.length >= maxVM) {
@@ -1596,7 +1596,7 @@ function unlockNode(tgtNodes) {
  */
 function getNodesCurrentLoad(){
     var userName = $.cookie('xcat_username');
-    var nodes = $.cookie(userName + '_usrnodes');
+    var nodes = $.cookie('xcat_' + userName + '_usrnodes');
 
     // Get nodes current status
     $.ajax({
@@ -2147,7 +2147,7 @@ function setMaxVM() {
             // Set cookie to expire in 60 minutes
             var exDate = new Date();
             exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
-            $.cookie(userName + '_maxvm', rsp, { expires: exDate });
+            $.cookie('xcat_' + userName + '_maxvm', rsp, { expires: exDate });
         }
     });
 }

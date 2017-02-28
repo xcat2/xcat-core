@@ -15,6 +15,7 @@ Advanced Topics
    kit/index.rst
    mixed_cluster/index.rst
    networks/index.rst
+   pdu/index.rst
    ports/xcat_ports.rst
    probe/index.rst
    raid/index.rst

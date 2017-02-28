@@ -1,3 +1,5 @@
+.. _setup_service_node_stateless_label:
+
 Diskless (Stateless) Installation
 =================================
 

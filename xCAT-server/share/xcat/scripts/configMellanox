@@ -329,12 +329,16 @@ sub run_rspconfig {
 sub usage
 {
     print "Usage:
-    configMellanox [-?│-h│--help] 
-    configMellanox [--switches switchnames] [--all]
-    configMellanox [--switches switchnames] [--ip]
-    configMellanox [--switches switchnames] [--name]
-    configMellanox [--switches switchnames] [--snmp] [--user snmp_user] [--password snmp_password] [--auth snmp_auth]
-    configMellanox [--switches switchnames] [--config]  
+    configMellanox -h│--help 
+    configMellanox --switches switchnames --ip
+    configMellanox --switches switchnames --name
+    configMellanox --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--auth snmp_auth]
+    
+    To set the ip address, hostname, config snmp and run rspconfig command:
+        configMellanox --switches switchnames --all
+
+    To run rspconfig command: 
+        configMellanox --switches switchnames --config  
     \n";
 }
 

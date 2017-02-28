@@ -1,7 +1,7 @@
 Summary: Core executables and data of the xCAT management project
 Name: xCAT-client
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -21,15 +21,13 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Provides: xCAT-client = %{epoch}:%{version}
-
-Requires: perl-xCAT >= %{epoch}:%{version}
+Requires: perl-xCAT = 4:%{version}-%{release}
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
 Requires: nmap perl-XML-Simple perl-XML-Parser
 %else
-Requires: expat 
+Requires: expat
 %endif
 
 %description
@@ -355,4 +353,3 @@ if [ $1 == 0 ]; then  #This means only on -e
 rm -f /etc/profile.d/xcat.*
 fi
 %endif
-

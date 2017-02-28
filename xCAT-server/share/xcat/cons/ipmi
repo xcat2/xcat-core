@@ -94,28 +94,6 @@ if ($password) {
     $pass = '';
 }
 
-#require xCAT::Table;
-#require xCAT::Utils;
-#my $dba;
-#my $ipmitab = xCAT::Table->new('ipmi');
-#unless ($ipmitab) { die "Unable to open IPMI table"; }
-#my $passtab = xCAT::Table->new('passwd');
-#if ($passtab) {
-#  ($dba) = $passtab->getAttribs({key=>'ipmi'},qw(username password));
-#  if ($dba) {
-#    if ($dba->{username}) { $username = $dba->{username}; }
-#    if ($dba->{password}) { $password = $dba->{password}; }
-#  }
-#}
-
-#$dba = $ipmitab->getNodeAttribs($ARGV[0],[qw(bmc username password)]);
-#if ($dba) {
-#  if ($dba->{bmc}) { $bmc = $dba->{bmc}; }
-#  if ($dba->{username}) { $username = $dba->{username}; }
-#  if ($dba->{password}) { $password = $dba->{password}; }
-#}
-#xCAT::Utils::close_all_dbhs;
-#my $isintel = system "ipmitool -I lanplus -U $username -P $password -H $bmc chassis status > /dev/null 2>&1";
 my $isintel = 0;
 my $sleepint;
 my $rc;
@@ -123,7 +101,7 @@ my $ipmitool = "ipmitool";
 if (-x "$XCATROOT/bin/ipmitool-xcat") {
     $ipmitool = "$XCATROOT/bin/ipmitool-xcat";
 }
-my @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`; #| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+my @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`;
 $rc = $?;
 if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 1.5 formats for BMC capability determination, attempt IPMI 2.0 even without the ability to confirm IPMI 2.0 support.  Though SOL was not baked in prior IPMI 2.0, this script supports pre-2.0 'ISOL' on older devices, hence why we are checking for 1.5/2.0 before proceeding normally
     @mcinfo = `$ipmitool -I lan $user $pass -H $bmc mc info`;
@@ -133,7 +111,7 @@ while ($rc != 0) {
     $sleepint = 10 + int(rand(20));
     print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
     sleep ($sleepint);
-    @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`; #| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+    @mcinfo = `$ipmitool -I lanplus $user $pass -H $bmc mc info`;
     $rc     = $?;
     if ($rc) {    #repeat workaround for shoddy vendors
         @mcinfo = `$ipmitool -I lan $user $pass -H $bmc mc info`;
