@@ -7,6 +7,7 @@ use File::Path;
 use File::Copy;
 use Time::Local;
 use Socket;
+use List::Util qw/sum/;
 
 #-----------------------------------------
 
@@ -257,6 +258,7 @@ sub is_firewall_open {
         Test if http service is ready to use in current operating system
     Arguments:
         ip:  http server's ip 
+        errormsg_ref: (output attribute) if there is something wrong for HTTP service, this attribute save the possible reason.
     Returns:
         1 : yes
         0 : no
@@ -266,20 +268,70 @@ sub is_firewall_open {
 sub is_http_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
+    my $installdir = shift;
+    my $errormsg_ref = shift;
 
-    my $http = "http://$mnip/install/postscripts/syslog";
-    rename("./syslog", "./syslog.org") if (-e "./syslog");
+    my $http      = "http://$mnip/$installdir/postscripts/syslog";
+    my %httperror = (
+    "400" => "The request $http could not be understood by the server due to malformed syntax",
+    "401" => "The request requires user authentication.",
+    "403" => "The server understood the request, but is refusing to fulfill it.",
+    "404" => "The server has not found anything matching the test Request-URI $http.",
+    "405" => "The method specified in the Request-Line $http is not allowe.",
+    "406" => "The method specified in the Request-Line $http is not acceptable.",
+    "407" => "The wget client must first authenticate itself with the proxy.",
+    "408" => "The client did not produce a request within the time that the server was prepared to wait. The client MAY repeat the request without modifications at any later time.",
+    "409" => "The request could not be completed due to a conflict with the current state of the resource.",
+    "410" => "The requested resource $http is no longer available at the server and no forwarding address is known.",
+    "411" => "The server refuses to accept the request without a defined Content- Length.",
+    "412" => "The precondition given in one or more of the request-header fields evaluated to false when it was tested on the server.",
+    "413" => "The server is refusing to process a request because the request entity is larger than the server is willing or able to process.",
+    "414" => "The server is refusing to service the request because the Request-URI is longer than the server is willing to interpret.",
+    "415" => "The server is refusing to service the request because the entity of the request is in a format not supported by the requested resource for the requested method.",
+    "416" => "Requested Range Not Satisfiable",
+    "417" => "The expectation given in an Expect request-header field could not be met by this server",
+    "500" => "The server encountered an unexpected condition which prevented it from fulfilling the request.",
+    "501" => "The server does not recognize the request method and is not capable of supporting it for any resource.",
+    "502" => "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the reques.",
+    "503" => "The server is currently unable to handle the request due to a temporary overloading or maintenance of the server.",
+    "504" => "The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server specified by the URI or some other auxiliary server it needed to access in attempting to complete the request.",
+    "505" => "The server does not support, or refuses to support, the HTTP protocol version that was used in the request message.");
 
-    my $outputtmp = `wget $http 2>&1`;
-    my $rst       = $?;
-    if (($outputtmp =~ /200 OK/) && (!$rst) && (-e "./syslog")) {
-        unlink("./syslog");
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
-        return 1;
-    } else {
-        rename("./syslog.org", "./syslog") if (-e "./syslog.org");
+    my $tmpdir = "/tmp/xcatprobe$$/";
+    if(! mkpath("$tmpdir")){
+        $$errormsg_ref = "Prepare test environment error: $!";
         return 0;
     }
+    my @outputtmp = `wget -O $tmpdir/syslog $http 2>&1`;
+    my $rst       = $?;
+    $rst = $rst >> 8;
+
+    if ((!$rst) && (-e "$tmpdir/syslog")) {
+        unlink("$tmpdir/syslog");
+        rmdir ("$tmpdir");
+        return 1;
+    } elsif ($rst == 4) {
+        $$errormsg_ref = "Network failure, the server refuse connection. Please check if httpd service is running first.";
+    } elsif ($rst == 5) {
+        $$errormsg_ref = "SSL verification failure, the server refuse connection";
+    } elsif ($rst == 6) {
+        $$errormsg_ref = "Username/password authentication failure, the server refuse connection";
+    } elsif ($rst == 8) {
+        my $returncode = $outputtmp[2];
+        chomp($returncode);
+        $returncode =~ s/.+(\d\d\d).+/$1/g;
+        if(exists($httperror{$returncode})){
+            $$errormsg_ref = $httperror{$returncode};
+        }else{
+            #should not hit this block normally
+            $$errormsg_ref = "Unknown return code of wget <$returncode>.";
+        }
+    }
+    unlink("$tmpdir/syslog");
+    if(! rmdir ("$tmpdir")){
+        $$errormsg_ref .= " Clean test environment error(rmdir $tmpdir): $!";
+    }
+    return 0;
 }
 
 #------------------------------------------
@@ -298,20 +350,21 @@ sub is_http_ready {
 sub is_tftp_ready {
     my $mnip = shift;
     $mnip = shift if (($mnip) && ($mnip =~ /probe_utils/));
-
-    rename("/tftpboot/tftptestt.tmp", "/tftpboot/tftptestt.tmp.old") if (-e "/tftpboot/tftptestt.tmp");
+    my $tftpdir = shift;
+    
+    rename("/$tftpdir/tftptestt.tmp", "/$tftpdir/tftptestt.tmp.old") if (-e "/$tftpdir/tftptestt.tmp");
     rename("./tftptestt.tmp", "./tftptestt.tmp.old") if (-e "./tftptestt.tmp");
 
-    system("touch /tftpboot/tftptestt.tmp");
+    system("touch /$tftpdir/tftptestt.tmp");
     my $output = `tftp -4 -v $mnip  -c get tftptestt.tmp`;
     if ((!$?) && (-e "./tftptestt.tmp")) {
         unlink("./tftptestt.tmp");
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 1;
     } else {
         rename("./tftptestt.tmp.old", "./tftptestt.tmp") if (-e "./tftptestt.tmp.old");
-        rename("/tftpboot/tftptestt.tmp.old", "/tftpboot/tftptestt.tmp") if (-e "/tftpboot/tftptestt.tmp.old");
+        rename("/$tftpdir/tftptestt.tmp.old", "/$tftpdir/tftptestt.tmp") if (-e "/$tftpdir/tftptestt.tmp.old");
         return 0;
     }
 }
@@ -436,4 +489,211 @@ sub parse_node_range {
     chomp @nodeslist;
     return @nodeslist;
 }
+
+#------------------------------------------
+
+=head3
+    Description:
+        Test if ntp service is ready to use in current operating system
+    Arguments:
+        errormsg_ref: (output attribute) if there is something wrong for ntp service, this attribute save the possible reason.
+    Returns:
+        1 : yes
+        0 : no
+=cut
+
+#------------------------------------------
+sub is_ntp_ready{
+    my $errormsg_ref = shift;
+    $errormsg_ref= shift if (($errormsg_ref) && ($errormsg_ref =~ /probe_utils/));
+
+    my $cmd = 'ntpq -c "rv 0"';
+    $| = 1;
+
+    #wait 5 seconds for ntpd synchronize at most
+    for (my $i = 0; $i < 5; ++$i) {
+        if(!open(NTP, $cmd." 2>&1 |")){
+            $$errormsg_ref = "Can't start ntpq: $!";
+            return 0;
+        }else{
+            while(<NTP>) {
+                chomp;
+                if (/^associd=0 status=(\S{4}) (\S+),/) {
+                    my $leap=$2;
+
+                    last if ($leap =~ /(sync|leap)_alarm/);
+
+                    if ($leap =~ /leap_(none|((add|del)_sec))/){
+                        close(NTP);
+                        return 1;
+                    }
+
+                    #should not hit below 3 lines normally
+                    $$errormsg_ref = "Unexpected ntpq output ('leap' status <$leap>), please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }elsif(/Connection refused/) {
+                    $$errormsg_ref = "ntpd service is not running! Please setup ntp in current node";
+                    close(NTP);
+                    return 0;
+                }else{
+                    #should not hit this block normally
+                    $$errormsg_ref = "Unexpected ntpq output <$_>, please contact xCAT team";
+                    close(NTP);
+                    return 0;
+                }
+            }
+        }
+        close(NTP);
+        sleep 1;
+    }
+    $$errormsg_ref = "ntpd did not synchronize.";
+    return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Convert second to time
+    Arguments:
+        second_in : the time in seconds
+    Returns:
+        xx:xx:xx xx hours xx minutes xx seconds
+=cut
+
+#------------------------------------------
+sub convert_second_to_time {
+    my $second_in = shift;
+    $second_in = shift if (($second_in) && ($second_in =~ /probe_utils/));
+    my @time = ();
+    my $result;
+
+    if ($second_in == 0) {
+        return "00:00:00";
+    }
+
+    my $count = 0;
+    while ($count < 3) {
+        my $tmp_second;
+        if ($count == 2) {
+            $tmp_second = $second_in % 100;
+        } else {
+            $tmp_second = $second_in % 60;
+        }
+
+        if ($tmp_second < 10) {
+            push @time,  "0$tmp_second";
+        } else {
+            push @time, "$tmp_second";
+        }
+
+        $second_in = ($second_in - $tmp_second) / 60;
+        $count++;
+    }
+
+    my @time_result = reverse @time;
+    $result = join(":", @time_result);
+
+    return $result;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        print table
+    Arguments:
+        content: double dimensional array
+        has_title: whether has title in content
+        
+        eg: @content = ($title,
+                        @content1,
+                        @content2,
+                        ......
+            );
+            $has_title = 1;
+            print_table(\@content, $has_title);
+
+        or @content = (@content1,
+                       @content2,
+                       ......
+           );
+           $has_title = 0;
+           print_table(\@content, $has_title);
+
+    Ouput:
+        --------------------------
+        |         xxxxxxx        |
+        --------------------------
+        | xxx | xxxx | xx   | xx |  
+        --------------------------
+        | xx  | xxxx | xxxx | xx | 
+        --------------------------
+
+        or 
+
+        --------------------------
+        | xxx | xxxx | xx   | xx |
+        --------------------------
+        | xx  | xxxx | xxxx | xx |
+        --------------------------
+
+=cut
+
+#------------------------------------------
+sub print_table {
+    my $content = shift;
+    $content = shift if (($content) && ($content =~ /probe_utils/));
+    my $has_title = shift;
+    my $title;
+
+    if ($has_title) {
+        $title = shift(@$content);
+    }
+
+    my @length_array;
+    foreach my $row (@$content) {
+        for (my $i = 0; $i < @{$row}; $i++) {
+            my $ele_length = length(${$row}[$i]);
+            $length_array[$i] = $ele_length if ($length_array[$i] < $ele_length);
+        }
+    }
+
+    my @content_new;
+    my @row_new;
+    my $row_line;
+    my $whole_length;
+    foreach my $row (@$content) {
+        @row_new = ();
+        for (my $i = 0; $i < @{$row}; $i++) {
+            push @row_new, ${$row}[$i] . " " x ($length_array[$i] - length(${$row}[$i]));
+        }
+        $row_line = "| " . join(" | ", @row_new) . " |";
+        push @content_new, $row_line;
+    }
+    $whole_length = length($row_line);
+
+    my $title_new;
+    my $title_length = length($title);
+    if ($has_title) {
+        if ($whole_length - 1 <= $title_length) {
+            $title_new = $title;
+        } else {
+            $title_new = " " x (($whole_length - 2 - $title_length)/2) . "$title";
+            $title_new .= " " x ($whole_length - 2 - length($title_new));
+            $title_new = "|" . $title_new . "|";
+        }
+    }
+
+    my $format_line = "-" x $whole_length;
+    print $format_line . "\n" if ($has_title);
+    print $title_new . "\n" if ($has_title);
+    print $format_line . "\n";
+    foreach (@content_new) {
+        print $_ . "\n";
+    }
+    print $format_line . "\n";
+}
+
 1;

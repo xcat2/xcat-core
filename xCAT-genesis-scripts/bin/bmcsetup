@@ -29,6 +29,7 @@ TIMEOUT=15
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        rm -f /tmp/ipmicfg.xml
         exit 1
     fi
     if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
@@ -87,6 +88,7 @@ function cold_reset_bmc() {
 function snooze() { 
     if [ -z $XPROD ]; then 
         logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        rm -f /tmp/ipmicfg.xml
         exit 1
     fi
     if [ "$XPROD" = "43707" -a "$IPMIMFG" != '0' ]; then
@@ -103,7 +105,15 @@ function snooze() {
         logger -s -t $log_label -p local4.debug "snooze for 1 second..."
         sleep 1
     fi
-}
+} 
+
+if ! ipmitool -V 2>/dev/null| grep "version"; then
+    echo "No ipmitool find, please install it first"; 
+    exit 1;
+fi
+
+# Add ipmi_devintf module to allow the ipmitool operation in-band
+modprobe ipmi_devintf
 
 allowcred.awk &
 CREDPID=$!
@@ -246,7 +256,7 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
     logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
     if [ "$BMCPORT" == "0" ]; then # dedicated
         ipmitool delloem lan set dedicated &>/dev/null
-    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4"]; then # shared
+    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4" ]; then # shared
         ipmitool delloem lan set shared &>/dev/null
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>dev/null
@@ -448,7 +458,7 @@ for user in $BMCUS; do
     TRIES=0
     if [ "$CURRENTUSER" != "$user" ]; then
         # Change the user name, if necessary
-        while ! ipmitool -d $idev user set name $USERSLOT $user; do
+        while ! ipmitool -d $idev user set name $USERSLOT "$user"; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -623,3 +633,5 @@ while [ $idev -gt 0 ]; do
     fi
 done
 
+# remove the bmc configuration information before exit
+rm -f /tmp/ipmicfg.xml

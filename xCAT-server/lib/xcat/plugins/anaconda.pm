@@ -172,6 +172,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
+    my $bootparams = ${$req->{bootparams}};
     my $globaltftpdir   = "/tftpboot";
     my $nodes           = @{ $req->{node} };
     my @args            = @{ $req->{arg} } if (exists($req->{arg}));
@@ -232,7 +233,6 @@ sub mknetboot
     my %donetftp = ();
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
 
@@ -249,8 +249,6 @@ sub mknetboot
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
 
     # Warning message for nodeset <noderange> install/netboot/statelite
     foreach my $knode (keys %oents)
@@ -950,15 +948,9 @@ sub mknetboot
                 $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
-
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => $kernstr,
-                initrd   => $initrdstr,
-                kcmdline => $kcmdline
-            }
-        );
+        $bootparams->{$node}->[0]->{kernel} = $kernstr;
+        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 
 }
@@ -971,6 +963,7 @@ sub mkinstall
     my @nodes           = @{ $request->{node} };
     my $noupdateinitrd  = $request->{'noupdateinitrd'};
     my $ignorekernelchk = $request->{'ignorekernelchk'};
+    my $bootparams = ${$request->{bootparams}};
 
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
@@ -1023,7 +1016,6 @@ sub mkinstall
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
@@ -1033,8 +1025,6 @@ sub mkinstall
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
     my %macents = %{ $mactab->getNodesAttribs(\@nodes, ['mac']) };
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     require xCAT::Template;
 
     # Warning message for nodeset <noderange> install/netboot/statelite
@@ -1668,14 +1658,9 @@ sub mkinstall
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "anaconda->mkinstall: kcmdline=$kcmdline kernal=$k initrd=$i");
 
-            $bptab->setNodeAttribs(
-                $node,
-                {
-                    kernel   => $k,
-                    initrd   => $i,
-                    kcmdline => $kcmdline
-                }
-            );
+            $bootparams->{$node}->[0]->{kernel} = $k;
+            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
         {
@@ -1701,6 +1686,7 @@ sub mksysclone
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{ $request->{node} };
+    my $bootparams = ${$request->{bootparams}};
     my $linuximagetab;
     my $osimagetab;
     my %img_hash = ();
@@ -1727,7 +1713,6 @@ sub mksysclone
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
 
@@ -2064,15 +2049,9 @@ sub mksysclone
 
             $k = "xcat/$kernpath";
             $i = "xcat/$initrdpath";
-
-            $bptab->setNodeAttribs(
-                $node,
-                {
-                    kernel   => $k,
-                    initrd   => $i,
-                    kcmdline => $kcmdline
-                }
-            );
+            $bootparams->{$node}->[0]->{kernel} = $k;
+            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
         {
@@ -2261,6 +2240,20 @@ sub copycd
                 next if /^\s*$/;    #-- skip empty lines
                 if ($_ =~ /variant = ComputeNode/) {
                     $distname = "rhelhpc" . $rhel_version[4];
+                    last;
+                }
+            }
+            close($dinfo);
+        }
+        elsif ($desc =~ /^[\d\.]+$/)
+        {
+            open($dinfo, $mntpath . "/.treeinfo");
+            while (<$dinfo>) {
+                chomp($_);
+                s/\s+$//;    #remove trailing spaces
+                next if /^\s*$/;    #-- skip empty lines
+                if ($_ =~ /family\s*=\s*CentOS/i) {
+                    $distname = "centos" . $desc;
                     last;
                 }
             }

@@ -4399,6 +4399,11 @@ sub process_request {
     if ($request->{moreinfo}) { $moreinfo = $request->{moreinfo}; }
     else { $moreinfo = build_more_info($noderange, $callback); }
 
+    #pdu commands will be handled in the pdu plugin
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+        return;
+    }
+
     if ($command eq "rpower" and grep(/^on|off|boot|reset|cycle$/, @exargs)) {
 
         if (my ($index) = grep($exargs[$_] =~ /^--nodeps$/, 0 .. $#exargs)) {

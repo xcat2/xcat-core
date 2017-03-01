@@ -2317,6 +2317,11 @@ sub powerVM {
 
     # Output string
     my $out;
+    
+    ##pdu commands will be handled in the pdu plugin
+    if ($args->[0] eq 'pduon' || $args->[0] eq 'pduoff' || $args->[0] eq 'pdustat') {
+        return;
+    }
 
     # Power on virtual server
     if ($args->[0] eq 'on') {

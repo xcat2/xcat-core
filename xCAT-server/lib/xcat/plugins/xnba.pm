@@ -108,7 +108,7 @@ sub setstate {
     my $linuximghashref = shift;
     if (ref $linuximghashref) { %linuximghash = %{$linuximghashref}; }
     my $imgaddkcmdline = ($linuximghash{'boottarget'}) ? undef : $linuximghash{'addkcmdline'};
-    my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
+    my $kern = $bphash{$node}->[0];
 
     unless ($::XNBA_addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
         if ($kern->{addkcmdline} or ($imgaddkcmdline)) {
@@ -520,22 +520,24 @@ sub process_request {
     if (exists($::XNBA_request->{inittime})) { $inittime = $::XNBA_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
     $errored = 0;
+    my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
                 inittime => [$inittime],
-                arg      => \@args }, \&pass_along);
+                arg      => \@args ,
+                bootparams => \%bphash},
+                \&pass_along);
     }
+
     if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my $chaintab = xCAT::Table->new('chain');
     my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
     my $mactab     = xCAT::Table->new('mac');     #to get all the hostnames
     my %nrhash = %{ $noderestab->getNodesAttribs(\@nodes, [qw(tftpdir)]) };
-    my %bphash = %{ $bptab->getNodesAttribs(\@nodes, [qw(kernel initrd kcmdline addkcmdline)]) };
     my %chainhash = %{ $chaintab->getNodesAttribs(\@nodes, [qw(currstate)]) };
     my %iscsihash;
     my $iscsitab = xCAT::Table->new('iscsi');

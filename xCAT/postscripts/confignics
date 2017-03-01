@@ -202,7 +202,7 @@ if [ "$str_temp" = "mac" ];then
     else
        str_inst_nic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://` 
     fi
-elif [ `echo $str_temp | grep -E "e(n|th)[0-9a-z]+"` ];then
+elif [ `echo $str_temp | grep -E "e(n|th|m)[0-9a-zA-Z]+"` ];then
     str_inst_nic=$str_temp
 fi
 
@@ -236,9 +236,9 @@ fi
 #do not configure the loopback nic
 if [ $bool_remove -eq 1 ];then
     if [ "$str_os_type" = "aix" ];then
-        str_temp=`ifconfig -a | grep flags | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk -F: {'print $1'}`
+        str_temp=`ifconfig -a | grep flags | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk -F: {'print $1'}`
     else
-        str_temp=`ip link show | grep -v link | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk {'print $2'} | sed s/://`
+        str_temp=`ip link show | grep -v link | grep -vi loopback | grep -v SLAVE | grep -v MASTER | awk {'print $2'} | sed s/://`
     fi
     old_ifs=$IFS
     IFS=$'\n'
@@ -247,7 +247,7 @@ if [ $bool_remove -eq 1 ];then
     for str_temp_nic in ${array_nics_temp[@]}
     do
         #the nic type should be ethernet
-        echo $str_temp_nic | grep -E "e(n|th)[0-9a-z]+"
+        echo $str_temp_nic | grep -E "e(n|th|m)[0-9a-zA-Z]+"
         if [ $? -ne 0 ];then
             continue
         fi

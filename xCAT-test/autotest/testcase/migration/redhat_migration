@@ -1,13 +1,10 @@
 start:redhat_migration1
 os:Linux
-description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$CN kvm_nodedata; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -31,15 +28,9 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:lsdef -l $$CN | grep status
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
@@ -103,22 +94,18 @@ cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
 check:rc==0
-cmd:xdsh $$CN "lsxcatd -v"
+cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-check:output=~$$LATEST_VERSION
 end
 
 start:redhat_migration2
 os:Linux
-description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+description:update xCAT from $$MIGRATION2_VERSION to latest version, these two global parameter defined in config file
 stop:yes
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]]; then tabdump -w node==$$CN kvm_nodedata; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p; mkvm $$CN; else rmvm $$CN -f -p;mkvm $$CN;rmvm $$CN -f -p;mkvm $$CN -s 20G; fi;fi
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -142,15 +129,9 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:lsdef -l $$CN | grep status
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
@@ -214,8 +195,7 @@ cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
 check:rc==0
-cmd:xdsh $$CN "lsxcatd -v"
+cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
-check:output=~$$LATEST_VERSION
 end
 

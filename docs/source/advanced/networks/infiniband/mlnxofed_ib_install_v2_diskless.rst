@@ -44,13 +44,11 @@ Diskless Installation
 
 	packimage <osimage>
 
-#. Provision the node
+#. Provision the node ::
 
+     rinstall <node> osimage=rhels7.2-ppc64le-netboot-compute
+   
 #. Verification
-
-   * The Mellanox IB drivers are located at: ``/lib/modules/<kernel_version>/extra/``
-
-   * Use the ``ibv_devinfo`` comamnd to obtain information about the InfiniBand adapter
 
    * Check the status of ``openibd`` service
 
@@ -62,3 +60,6 @@ Diskless Installation
     
          systemctl status openibd.service 
 
+   * Verify that the Mellanox IB drivers are located at: ``/lib/modules/<kernel_version>/extra/``
+
+   * Use the ``ibv_devinfo`` comamnd to obtain information about the InfiniBand adapter.

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#the postscript to enable snmpd in ONIE compatible switches
+
+if ! cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1 ; then
+    echo "This script is only supported on Cumulus OS in ONIE switch"
+    exit 2
+fi
+snmp_conf="/etc/snmp/snmpd.conf"
+
+[ -f  "$snmp_conf" ] || exit -1
+
+[ -z "$snmp_user" ] && snmp_user="xcatadmin"
+[ -z "$snmp_passwd" ] && snmp_passwd="xcatpassw0rd"
+
+[ -f ${snmp_conf}.orig ] || cp $snmp_conf ${snmp_conf}.orig
+sed -i "1i\#xCAT customized snmpd configuration" $snmp_conf
+sed -i "/^\s*agentAddress/s/^/#/" $snmp_conf
+sed -i '/agentAddress udp\:161\,udp6\:\[\:\:1\]\:161/s/^#//' $snmp_conf
+sed -i "/rocommunity\s*public\s*default/s/^#//" $snmp_conf
+sed -i "/rocommunity\s*public\s*default\s*-V\s*systemonly/s/^#//" $snmp_conf
+sed -i "/#\s*createUser\s*authPrivUser\s*SHA/{n;s/^.*$/createUser $snmp_user SHA $snmp_passwd/}" $snmp_conf
+sed -i "/#rwuser\s*authPrivUser\s*priv/{n;s/^.*$/rwuser $snmp_user/}" $snmp_conf
+sed -i "/view\s*systemonly\s*included\s*.1.3.6.1.2.1.17/s/^#//" $snmp_conf
+sed -i "/pass_persist\s*.1.3.6.1.2.1.17\s*\/usr\/share\/snmp\/bridge_pp.py/s/^#//" $snmp_conf
+
+#create snmpd restart conf file
+mkdir -p /etc/systemd/system/snmpd.service.d
+restart_conf="/etc/systemd/system/snmpd.service.d/restart.conf"
+echo "[Service]" > $restart_conf
+echo "Restart=always" >> $restart_conf
+echo "RestartSec=60" >> $restart_conf
+
+systemctl enable snmpd
+systemctl restart snmpd
+

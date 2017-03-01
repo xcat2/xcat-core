@@ -302,6 +302,7 @@ unless ($onlyinitrd) {
     # apt-get update and apt-get install should be added env param
     my $aptgetcmd = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get update";
     my $aptgetcmdby = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get $non_interactive ";
+    my $aptdistupgrade = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get $non_interactive dist-upgrade";
     my $aptcachecmd = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-cache $non_interactive ";
     my $aptcmd1 = "debootstrap";
     my $aptcmd2;
@@ -586,6 +587,9 @@ unless ($onlyinitrd) {
         # needed when running genimage again after updating software in repositories
         my $aptgetcmd_update = $aptgetcmd . "&&" . $aptgetcmdby . " upgrade  ";
         $rc = system("$aptgetcmd_update");
+
+        #run dist-upgrade for not upgraded packages
+        $rc = system("$aptdistupgrade");
 
         # ignore any return code
     }

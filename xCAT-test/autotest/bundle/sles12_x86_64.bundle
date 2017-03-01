@@ -1,3 +1,4 @@
+setup_vm
 reg_linux_diskfull_installation_flat
 makehosts_h
 makehosts_help

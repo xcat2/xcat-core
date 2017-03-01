@@ -208,10 +208,10 @@ function format_TBD($str) {
  * Get password
  */
 function getpassword() {
-    if (isset($GLOBALS['xcatauthsecret'])) {
-        $cryptext = $GLOBALS['xcatauthsecret'];
-    } else if (isset($_COOKIE["xcatauthsecret"])) {
-        $cryptext = $_COOKIE["xcatauthsecret"];
+    if (isset($GLOBALS['xcat_authsecret'])) {
+        $cryptext = $GLOBALS['xcat_authsecret'];
+    } else if (isset($_COOKIE["xcat_authsecret"])) {
+        $cryptext = $_COOKIE["xcat_authsecret"];
     } else {
         return false;
     }
@@ -233,8 +233,8 @@ function setpassword($password) {
 
     // Non-ascii characters, encode it in base64
     $cryptext = base64_encode($cryptext);
-    setcookie("xcatauthsecret",$cryptext,0,'/');
-    $GLOBALS["xcatauthsecret"] = $cryptext;
+    setcookie("xcat_authsecret",$cryptext,0,'/xcat','',true);
+    $GLOBALS["xcat_authsecret"] = $cryptext;
     $_SESSION["secretkey"] = $key;
 }
 
@@ -285,13 +285,13 @@ function isAuthenticated() {
  */
 function logout() {
     // Clear the secret cookie from browser
-    if (isset($_COOKIE["xcatauthsecret"])) {
-        setcookie("xcatauthsecret",'',time()-86400*7,'/');
+    if (isset($_COOKIE["xcat_authsecret"])) {
+        setcookie("xcat_authsecret",'',time()-86400*7,'/xcat','',true);
     }
 
     // Expire session cookie
     if (isset($_COOKIE[session_name()])) {
-        setcookie(session_name(),"",time()-86400*7,"/");
+        setcookie(session_name(),"",time()-86400*7,"/xcat",'',true);
     }
 
     // Clear server store of data

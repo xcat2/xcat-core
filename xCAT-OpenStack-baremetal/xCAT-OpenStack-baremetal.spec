@@ -1,7 +1,7 @@
 Summary: Executables and data of the xCAT baremetal driver for OpenStack
 Name: xCAT-OpenStack-baremetal
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: IBM
 Group: Applications/System

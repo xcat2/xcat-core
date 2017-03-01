@@ -1,7 +1,7 @@
 Summary: RMC monitoring plug-in for xCAT
 Name: xCAT-rmc
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: System Environment/Libraries
@@ -15,10 +15,8 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Requires: perl-xCAT >= %{epoch}:%{version}
-Requires: xCAT-server  >= %{epoch}:%{version}
-
-Provides: xCAT-rmc = %{version}
+Requires: perl-xCAT = 4:%{version}-%{release}
+Requires: xCAT-server = 4:%{version}-%{release}
 
 %description
 Provides RMC monitoring plug-in module for xCAT, configuration scripts, predefined conditions, responses and sensors.
@@ -41,7 +39,6 @@ cp scripts/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
 
 cp lib/perl/TEAL/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
-
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -82,7 +79,7 @@ else
 	 needCopyFiles=1;
     fi
 fi
-    
+
 if [ $needCopyFiles -eq 1 ]; then
     echo "Copying files to /install/postscripts directory..."
     mkdir -p /install/postscripts
@@ -90,23 +87,23 @@ if [ $needCopyFiles -eq 1 ]; then
     mkdir -p /install/postscripts/rmcmon/scripts
     cp $RPM_INSTALL_PREFIX0/sbin/rmcmon/configrmcnode /install/postscripts
     chmod 755 /install/postscripts/configrmcnode
-    
-    FILES_TO_COPY=`cat $RPM_INSTALL_PREFIX0/sbin/rmcmon/scripts_to_node|tr '\n' ' '` 
+
+    FILES_TO_COPY=`cat $RPM_INSTALL_PREFIX0/sbin/rmcmon/scripts_to_node|tr '\n' ' '`
     for file in $FILES_TO_COPY
     do
 	#echo "file=$file"
 	cp $RPM_INSTALL_PREFIX0/sbin/rmcmon/$file /install/postscripts/rmcmon/scripts
     done
     chmod 755 /install/postscripts/rmcmon/scripts/*
-    
+
     cp -r $RPM_INSTALL_PREFIX0/lib/perl/xCAT_monitoring/rmc/resources/node/* /install/postscripts/rmcmon/resources/node
-fi  
-    
+fi
+
 
 %ifos linux
   if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-      /etc/init.d/xcatd restart 
+      /etc/init.d/xcatd restart
     fi
   fi
 %else
@@ -117,13 +114,7 @@ fi
       echo "Do not restartxcatd in not running system"
     else
       XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
-    fi     
+    fi
   fi
 %endif
 exit 0
-
-
-
-
-
-

@@ -56,7 +56,7 @@ The configuration procedure will be quite different based on the shared data mec
     /<dbdirectory> 
 
 
-``Note``:For mysql, the database directory is ``/var/lib/mysql``; for postgresql, the database directory is ``/var/lib/pgsql``; for DB2, the database directory is specified with the site attribute databaseloc; for sqlite, the database directory is /etc/xcat, already listed above. 
+``Note``:For MySQL, the database directory is ``/var/lib/mysql``; for PostGreSQL, the database directory is ``/var/lib/pgsql``; for DB2, the database directory is specified with the site attribute databaseloc; for sqlite, the database directory is /etc/xcat, already listed above. 
 
 Here is an example of how to make directories be shared data through NFS: ::
 
@@ -125,7 +125,7 @@ Setup xCAT on the Primary Management Node
     service dhcpd stop
     chkconfig --level 2345 dhcpd off
 
-#. Stop Database and prevent the database from auto starting at boot time, use mysql as an example: ::
+#. Stop Database and prevent the database from auto starting at boot time, use MySQL as an example: ::
 
     service mysqld stop
     chkconfig mysqld off
@@ -180,7 +180,7 @@ Setup xCAT on the Standby Management Node
     service dhcpd stop
     chkconfig --level 2345 dhcpd off
 
-#. Stop Database and prevent the database from auto starting at boot time. Use mysql as an example: ::
+#. Stop Database and prevent the database from auto starting at boot time. Use MySQL as an example: ::
 
     service mysqld stop
     chkconfig mysqld off
@@ -303,7 +303,7 @@ If the management node is still available and running the cluster, perform the f
 
 #. Stop database
 
-   Use mysql as an example: ::
+   Use MySQL as an example: ::
 
     service mysqld stop
 
@@ -346,7 +346,7 @@ On the new primary management node:
     mount /.xcat
     mount /db2database
 
-#. Start database, use mysql as an example: ::
+#. Start database, use MySQL as an example: ::
 
     service mysql start
 

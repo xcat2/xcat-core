@@ -24,13 +24,11 @@ Diskful Installation
           -p postscripts="mlnxofed_ib_install -p /install/<path-to>/<MLNX_OFED_LINUX.iso> \
           -m --add-kernel-support -end-"
 
-#. Provision the node
+#. Provision the node ::
+
+      rinstall <node> osimage=
 
 #. Verification
-
-   * The Mellanox IB drivers are located at: ``/lib/modules/<kernel_version>/extra/``
-
-   * Use the ``ibv_devinfo`` comamnd to obtain information about the InfiniBand adapter
 
    * Check the status of ``openibd`` service
 
@@ -42,3 +40,6 @@ Diskful Installation
     
          systemctl status openibd.service 
 
+   * Verify that the Mellanox IB drivers are located at: ``/lib/modules/<kernel_version>/extra/``
+
+   * Use the ``ibv_devinfo`` comamnd to obtain information about the InfiniBand adapter.

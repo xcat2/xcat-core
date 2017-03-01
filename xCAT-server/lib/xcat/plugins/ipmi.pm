@@ -2565,6 +2565,9 @@ sub inv {
         $sessdata->{skipfru} = 1;    #full fru read is expensive, skip it
         @types = qw(guid);
     }
+    elsif ($subcommand eq "hw" or $subcommand eq "dimm" or $subcommand eq "misc") {
+        @types = ($subcommand);
+    }
     else {
         @types = ($subcommand);
 
@@ -7675,6 +7678,11 @@ sub preprocess_request {
             $callback->({ errorcode => [1], data => [ "Please enter an action (eg: boot,off,on, etc)", $usage_string ] });
             $request = {};
             return 0;
+        }
+
+        #pdu commands will be handled in the pdu plugin
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+             return 0;
         }
 
         if (($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi') && ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {

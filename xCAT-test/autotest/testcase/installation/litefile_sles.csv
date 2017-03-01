@@ -14,3 +14,5 @@
 "ALL","/opt/xcat/","tmpfs",,
 "ALL","/xcatpost/","tmpfs",,
 "ALL","/root/.ssh/","tmpfs",,
+"ALL","/etc/init.d/rc3.d/","tmpfs",,
+"ALL","/etc/init.d/rc5.d/","tmpfs",,

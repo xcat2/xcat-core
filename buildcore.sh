@@ -8,7 +8,7 @@
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
 #        conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
-#        popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  
+#        popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.
 #        Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
 #  - Run this script from the xcat-core directory.  It will create the other directories that are needed.
 #
@@ -24,7 +24,7 @@
 #                  (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
 #                  release this build, use PROMOTE=1 without PREGA
 #        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
-#        UP=0 or UP=1 - override the default upload behavior 
+#        UP=0 or UP=1 - override the default upload behavior
 #        GITUP=<filename> - control which rpms get built by specifying a coregitup file
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
@@ -35,14 +35,17 @@
 # The following environment variables can be modified if you need
 #
 
+SCRIPT=$(readlink -f $0)
+SCRIPTPATH=`dirname $SCRIPT`
+
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
 FILES_PATH="files"
-FRS=/var/www/${SERVER}/${FILES_PATH}
+FRS="/var/www/${SERVER}/${FILES_PATH}"
 RELEASE=github.com/xcat2/xcat-core/releases
 
-YUMDIR=$FRS
+YUMDIR="${FRS}"
 YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
 
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
@@ -72,8 +75,8 @@ LENOVOBUILD="perl-xCAT xCAT-client xCAT-server xCAT xCATsn xCAT-genesis-scripts 
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
-# xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
-# xCAT-client has PCM specific configuration - getxcatdocs(perl-JSON) 
+# xCAT-server has PCM specific configuration - RESTAPI(perl-JSON)
+# xCAT-client has PCM specific configuration - getxcatdocs(perl-JSON)
 PCMBUILD="xCAT xCAT-server xCAT-client xCATsn"
 PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-vlan xCAT-probe"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
@@ -104,7 +107,7 @@ OSNAME=$(uname)
 
 if [ "$OSNAME" != "AIX" ]; then
     GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
-    
+
         if [ "$(id -u)" == "0" ]; then
         # Get a lock, so can not do 2 builds at once
         exec 8>/var/lock/xcatbld-$REL.lock
@@ -190,10 +193,36 @@ function setversionvars {
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
     COMMIT_ID=`git rev-parse --short HEAD`
+    XCAT_RELEASE="snap$(date '+%Y%m%d%H%M')"
+    echo "$XCAT_RELEASE" >Release
 }
 
+RELEASE_FILE="${SCRIPTPATH}/Release"
+RELEASE_FILE_SAVE="${RELEASE_FILE}.save.998"
 
-if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
+function internal_backup()
+{
+    # Create a backup for file `Release'
+    if [ ! -f "${RELEASE_FILE_SAVE}" ]
+    then
+        mv "${RELEASE_FILE}" "${RELEASE_FILE_SAVE}"
+        cp "${RELEASE_FILE_SAVE}" "${RELEASE_FILE}"
+    fi
+}
+
+function internal_cleanup()
+{
+    # Restore file `Release'
+    if [ -f "${RELEASE_FILE_SAVE}" ]
+    then
+        mv "${RELEASE_FILE_SAVE}" "${RELEASE_FILE}"
+    fi
+}
+
+internal_backup
+trap internal_cleanup 0
+
+if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting  ### @LINE460 ###
 # we are doing a snap build
 CORE="core-snap"
 if [ "$OSNAME" = "AIX" ]; then
@@ -218,33 +247,27 @@ else
         echo "Error: Could not determine rpmbuild's root directory."
         exit 2
     fi
-    #echo "source=$source"
 fi
 
-# 
-# If no pre-defined update file is provided, do a "git pull" to try and detect 
+#
+# If no pre-defined update file is provided, do a "git pull" to try and detect
 # if anything has changed in the source directories
-# 
+#
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
-    # 
-    # To enable local sandbox build, GITPULL is disabled by default. 
+    #
+    # To enable local sandbox build, GITPULL is disabled by default.
     #
     if [ "$GITPULL" = "1" ] || [ ${PWD} == *"autobuild"* ]; then
-        # TODO: This is really not necessary since the autobuild scripts
-        #       are building the xcat code in a new directory each time
+        # Do some checking for modified files
         MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
         if [ $MODIFIED_FILES ]; then
-                echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
-                echo "Not a clean build, aborting..."
-                exit 3
+            echo "WARNING: The following files have been modified in the local repository: $MODIFIED_FILES..."
         fi
-        # check if there's any modifications to git current repo
+        # Do some checking for untracked files
         UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
         if [ -n "$UNTRACKED_FILES" ]; then
-            echo "The following files are not tracked in git: $UNTRACKED_FILES..."
-            echo "Not a clean build, aborting..."
-            exit 3
+            echo "WARNING: The following files are not tracked in git: $UNTRACKED_FILES..."
         fi
         if [ -z "$GITUP" ]; then
             if [ ! -z "$COMMITID" ]; then
@@ -343,7 +366,7 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
-for rpmname in xCAT xCATsn; do 
+for rpmname in xCAT xCATsn; do
     if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
     if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then        # used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
         UPLOAD=1
@@ -406,48 +429,49 @@ fi
 
 # Prepare the RPMs for pkging and upload
 WGET_CMD="wget"
-if [ ! -z ${LOG} ]; then 
+if [ ! -z ${LOG} ]; then
     WGET_CMD="wget -o ${LOG}"
 fi
 
 # get gpg keys in place
 if [ "$OSNAME" != "AIX" ]; then
     if [ -z "$RPMSIGN" -o "$RPMSIGN" == "1" ]; then
-    mkdir -p $HOME/.gnupg
-    for i in pubring.gpg secring.gpg trustdb.gpg; do
-        if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
-            rm -f $HOME/.gnupg/$i
-            ${WGET_CMD} -P $HOME/.gnupg $GSA/keys/$i
-            chmod 600 $HOME/.gnupg/$i
+        mkdir -p $HOME/.gnupg
+        for i in pubring.gpg secring.gpg trustdb.gpg; do
+            if [ ! -f $HOME/.gnupg/$i ] ||
+               [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
+                rm -f $HOME/.gnupg/$i
+                ${WGET_CMD} -P $HOME/.gnupg $GSA/keys/$i
+                chmod 600 $HOME/.gnupg/$i
+            fi
+        done
+        # tell rpm to use gpg to sign
+        MACROS=$HOME/.rpmmacros
+        if ! $GREP '%_signature gpg' $MACROS 2>/dev/null; then
+            echo '%_signature gpg' >> $MACROS
         fi
-    done
-    # tell rpm to use gpg to sign
-    MACROS=$HOME/.rpmmacros
-    if ! $GREP '%_signature gpg' $MACROS 2>/dev/null; then
-        echo '%_signature gpg' >> $MACROS
+        if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
+            echo '%_gpg_name xCAT Security Key' >> $MACROS
+        fi
+        echo "Signing RPMs..."
+        build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+        build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+        createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
+        createrepo --checksum sha $SRCDIR
+        rm -f $SRCDIR/repodata/repomd.xml.asc
+        rm -f $DESTDIR/repodata/repomd.xml.asc
+        gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
+        gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+        if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
+            ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
+        fi
+        if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
+            ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
+        fi
+    else
+        createrepo --checksum sha $DESTDIR
+        createrepo --checksum sha $SRCDIR
     fi
-    if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-        echo '%_gpg_name xCAT Security Key' >> $MACROS
-    fi
-    echo "Signing RPMs..."
-    build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-    build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-    createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
-    createrepo --checksum sha $SRCDIR
-    rm -f $SRCDIR/repodata/repomd.xml.asc
-    rm -f $DESTDIR/repodata/repomd.xml.asc
-    gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
-    gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
-    if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-        ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
-    fi
-    if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-        ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
-    fi
-   else
-     createrepo --checksum sha $DESTDIR
-     createrepo --checksum sha $SRCDIR 
-   fi
 fi
 
 # set group and permissions correctly on the built rpms
@@ -459,7 +483,7 @@ chmod -R g+w $DESTDIR
 chgrp -R $SYSGRP $SRCDIR
 chmod -R g+w $SRCDIR
 
-else        # end of very long if-not-promote
+else        # end of very long if-not-promote ### @LINE193 ###
     # we are only promoting (not building)
     setversionvars
     setbranch
@@ -494,7 +518,7 @@ EOF
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xCAT-*.repo`
-if [[ $REPOFILE == "xCAT-*.repo" ]]; then 
+if [[ $REPOFILE == "xCAT-*.repo" ]]; then
     echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
     exit 1
 fi
@@ -502,10 +526,10 @@ fi
 # default to RHEL yum, if doesn't exist try Zypper
 #
 DIRECTORY="/etc/yum.repos.d"
-if [[ ! -d ${DIRECTORY} ]]; then                                                                            
-    DIRECTORY="/etc/zypp/repos.d"                                                                           
+if [ ! -d "$DIRECTORY" ]; then
+    DIRECTORY="/etc/zypp/repos.d"
 fi
-sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > ${DIRECTORY}/$REPOFILE
+sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > "$DIRECTORY/$REPOFILE"
 cd -
 EOF2
 chmod 775 mklocalrepo.sh
@@ -525,6 +549,7 @@ fi
 #
 BUILDINFO=$XCATCORE/buildinfo
 echo "VERSION=$VER" > $BUILDINFO
+echo "RELEASE=$XCAT_RELEASE" >> $BUILDINFO
 echo "BUILD_TIME=$BUILD_TIME" >> $BUILDINFO
 echo "BUILD_MACHINE=$BUILD_MACHINE" >> $BUILDINFO
 echo "COMMIT_ID=$COMMIT_ID" >> $BUILDINFO
@@ -549,7 +574,7 @@ if [ -n "$UP" ] && [ "$UP" == 0 ]; then
 fi
 #else we will continue
 
-# Upload the individual RPMs to xcat.org 
+# Upload the individual RPMs to xcat.org
 if [ "$OSNAME" = "AIX" ]; then
     YUM=aix
 else
@@ -565,13 +590,13 @@ if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     do : ; done
 fi
 
-# Upload the individual source RPMs to xcat.org 
+# Upload the individual source RPMs to xcat.org
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
-# Upload the tarball to xcat.org 
+# Upload the tarball to xcat.org
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0

@@ -242,7 +242,7 @@ sub check_pre_defined_node {
                     foreach my $mtmsnode (@{$mtms_node{$mtms}}) {
                         next if ($mtmsnode eq $node);      
                         if (exists($nodecheckrst{$mtmsnode})) {
-                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"mp"} eq $nodecheckrst{$node}{"hwtype"})) {
+                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"hwtype"} eq $nodecheckrst{$node}{"hwtype"})) {
                                 push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
                             }
                         } else {
@@ -315,10 +315,20 @@ sub check_pre_defined_node {
         my $keystring;
         foreach my $node (keys %nodecheckrst) {
             {
+                last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
+
+                my @error_attribute = ();
                 $keystring = "";
-                if (!(exists($nodecheckrst{$node}{"switch"}) && exists($nodecheckrst{$node}{"switchport"}))) {
-                    last if ($nodecheckrst{$node}{"nodetype"} eq "switch");
-                    $keystring = "Atrribute 'switch' or 'switchport' isn't defined for '$discovery_type' type discovery";
+
+                if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
+                    push @error_attribute, "switch";
+                }
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/) {
+                    push @error_attribute, "switchport";
+                }
+
+                if (@error_attribute) {
+                    $keystring = "Attribute " . join(", ", @error_attribute) . " Invalid";
                     last;
                 } else {
                     my $switchport = "$nodecheckrst{$node}{\"switch\"}*$nodecheckrst{$node}{\"switchport\"}";
@@ -914,7 +924,7 @@ sub do_monitor {
     my %fd_filetype_map;
 
     {   #a very important brace to hold a code block
-        my $log_parse         = LogParse->new($verbose);
+        my $log_parse         = LogParse->new($verbose, $::MONITOR);
         my $candidate_log_ref = $log_parse->obtain_log_file_list();
 
         #open candidate log file to obtain realtime log
@@ -1071,7 +1081,7 @@ sub do_replay {
         print Dumper \%node_state;
     }
 
-    my $log_parse = LogParse->new($verbose);
+    my $log_parse = LogParse->new($verbose, $::REPLAY);
     my @candidate_mn_hostname_in_log = $log_parse->obtain_candidate_mn_hostname_in_log();
 
     while ($start_time_of_replay < $end_time_of_replay) {
@@ -1188,11 +1198,11 @@ sub handle_dhcp_msg {
         my $nic = $2;
 
         if ($3 =~ /no free leases/) {
-            probe_utils->send_msg("stdout", "d", "[$mac] Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
             return 0;
         }
         my $record = "Received DHCPDISCOVER from $mac via $nic";
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /DHCPOFFER\s+on\s+(.+)\s+to\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/i) {
         my $ip     = $1;
@@ -1200,7 +1210,7 @@ sub handle_dhcp_msg {
         my $nic    = $3;
         my $record = "Sent DHCPOFFER on $ip back to $mac via $nic";
 
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug); 
     } elsif ($log_ref->{msg} =~ /DHCPREQUEST\s+for\s+(.+)\s+[\(\)0-9\.]*\s*from\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip  = $1;
@@ -1208,7 +1218,7 @@ sub handle_dhcp_msg {
         my $nic = $3;
         my $record = "Received DHCPREQUEST from $mac for $ip via $nic";
 
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /DHCPACK\s+on\s+(.+)\s+to\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip     = $1;
@@ -1216,7 +1226,7 @@ sub handle_dhcp_msg {
         my $nic    = $3;
         my $record = "Sent DHCPACK on $ip back to $mac via $nic";
 
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
         $ipmacmap{$ip} = $mac;
         $node_state_ref->{$mac}{type} = "mac";
@@ -1225,11 +1235,11 @@ sub handle_dhcp_msg {
         my $mac = $1;
         my $nic = $2;
         if ($3 =~ /no dynamic leases/) {
-            probe_utils->send_msg("stdout", "d", "Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} Received DHCPDISCOVER from $mac via $nic, no free leases") if ($monitor);
             return 0;
         }
         my $record = "Received BOOTREQUEST from $mac via $nic";
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /BOOTREPLY\s+for\s+(.+)\s+to\s+.+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w).+via\s+(.+)/) {
         my $ip  = $1;
@@ -1237,7 +1247,7 @@ sub handle_dhcp_msg {
         my $nic = $3;
         my $record = "Sent BOOTREPLY on $ip back to $mac via $nic";
 
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
         $ipmacmap{$ip} = $mac;
         $node_state_ref->{$mac}{type} = "mac";
@@ -1269,7 +1279,7 @@ sub handle_tftp_msg {
 
         if (exists($node_state_ref->{$mac})) {
             my $record = "Via TFTP $ip download $file";
-            probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
             if ($file =~ /\/pxelinux.cfg\//i or $file =~ /\/xcat\/xnba\/nets\//i) {
@@ -1309,7 +1319,7 @@ sub handle_http_msg {
             if ($file =~ /\/install\//i) {
                 return;
             }
-            probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+            probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
             if ($file =~ /\/pxelinux.cfg\//i or $file =~ /\/xcat\/xnba\/nets\//i) {
@@ -1349,13 +1359,13 @@ sub handle_cluster_msg {
         $node_state_ref->{$node}{id} = $mac;
         $node_state_ref->{$node}{discoverytype} = $type;
         my $record = "Start to update node information, discovery type is $type";
-        probe_utils->send_msg("stdout", "d", "[$mac] $record") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} $record") if ($monitor);
         set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_UPDATE);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     } elsif ($log_ref->{msg} =~ /xcat.discovery.$discovery_type: \((.+)\) Warning: Could not find any nodes using (.+) discovery/i) {
         my $mac = $1;
         my $type = $2;
-        probe_utils->send_msg("stdout", "w", "[$mac] Could not find any nodes using $type discovery") if ($monitor);
+        probe_utils->send_msg("stdout", "w", "[$mac] $log_ref->{time_record} Could not find any nodes using $type discovery") if ($monitor);
         set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_FAILED);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
     }
@@ -1381,7 +1391,7 @@ sub handle_compute_msg {
     my $mac            = $ipmacmap{$ip}; 
 
     if (exists $node_state_ref->{$mac}) {
-        probe_utils->send_msg("stdout", "d", "[$mac] ($ip) $log_ref->{msg}") if ($monitor);
+        probe_utils->send_msg("stdout", "d", "[$mac] $log_ref->{time_record} ($ip) $log_ref->{msg}") if ($monitor);
         push(@{ $node_state_ref->{$mac}{log} }, $log_ref->{msg}) if ($debug);
 
         if ($log_ref->{label} == $::LOGLABEL_DOXCAT) {
@@ -1403,7 +1413,7 @@ sub handle_compute_msg {
                 }
                 if ($node ne "") {
                     $node_state_ref->{$node}{done} = 1;
-                    probe_utils->send_msg("stdout", "o", "[$mac] node $node discovery completed") if ($monitor);
+                    probe_utils->send_msg("stdout", "o", "[$mac] $log_ref->{time_record} node $node discovery completed") if ($monitor);
                     set_node_state($node_state_ref, $mac, $::STATE_DISCOVER_COMPLETED);
                 }
             }

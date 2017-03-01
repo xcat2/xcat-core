@@ -360,6 +360,12 @@ sub process_request {
     if (ref($extrargs)) {
         @exargs = @$extrargs;
     }
+
+    #pdu commands will be handled in the pdu plugin
+    if (($extrargs->[0] eq 'pdustat') || ($extrargs->[0] eq 'pduon') || ($extrargs->[0] eq 'pduoff')) {
+        return;
+    }
+
     my $ipmitab = xCAT::Table->new('ipmi');
 
     my $ilouser = "USERID";

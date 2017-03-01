@@ -1,7 +1,7 @@
 Summary: Packages for installation of CSM nodes
 Name: xCAT-csm
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: IBM
 Group: Applications/System

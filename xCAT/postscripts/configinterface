@@ -1,0 +1,48 @@
+#!/bin/bash
+
+#the postscript to configure interface in ONIE compatible switches
+
+if ! cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1 ; then
+    echo "This script is only supported on Cumulus OS in ONIE switch"
+    exit 2
+fi
+
+xcat_intf="/etc/network/interfaces.d/xCAT.intf"
+
+echo "#This is sample interface file provided by xCAT" > $xcat_intf
+echo "# bridge-vlan-aware: set to yes to indicate that the bridge is VLAN-aware. " >> $xcat_intf
+echo "# bridge-access: declares the access port. " >> $xcat_intf
+echo "# bridge-pvid: specifies native VLANs if the ID is other than 1. " >> $xcat_intf
+echo "# bridge-vids: declares the VLANs associated with this bridge. " >> $xcat_intf
+echo " " >> $xcat_intf
+
+#create default bridge
+echo "auto br0" >> $xcat_intf
+echo "iface br0" >> $xcat_intf
+echo "  bridge-vlan-aware yes" >> $xcat_intf
+echo "  bridge-ports glob swp1-52" >> $xcat_intf
+echo "  bridge-stp on" >> $xcat_intf
+echo "  bridge-vids 1 " >> $xcat_intf
+echo "  bridge-pvid 1" >> $xcat_intf
+echo " " >> $xcat_intf
+
+#create each interface
+
+for i in `seq 1 52`;
+do
+    echo "auto swp$i">> $xcat_intf
+    echo "iface swp$i" >> $xcat_intf
+    echo "  mstpctl-portadminedge yes" >> $xcat_intf
+    echo " " >> $xcat_intf
+done
+
+# license needs to set before start switchd
+if [ ! -e /etc/cumulus/.license* ]; then
+   echo "ERROR: cumulus license file is not exist";
+   exit 1;
+fi
+
+systemctl enable switchd
+systemctl restart switchd
+ifreload -a 
+

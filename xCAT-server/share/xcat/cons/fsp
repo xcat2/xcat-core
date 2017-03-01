@@ -32,24 +32,14 @@ BEGIN
         exit 0;
     }
     get_lock();
-
-    #my $sleepint=int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
-    #print "Opening console in ".(2+(0.5*$sleepint))." seconds...\n";
-    #sleep $sleepint;
 }
 my $sleepint = int(rand(10));
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Client;
 require xCAT::Utils;
 use strict;
-
-#use Getopt::Long;
-#use xCAT::Table;
-#use xCAT::PPCdb;
 use Expect;
 
-#use xCAT::DBobjUtils;
-#use Data::Dumper;
 require File::Basename;
 import File::Basename;
 my $scriptname = $0;
@@ -62,108 +52,6 @@ my $node;
 my $ips;
 my $id;
 my $hwtype;
-
-##########################################
-# Database errors
-##########################################
-#my %errmsg = (
-#  NODE_UNDEF =>"Node not defined in '%s' database",
-#  NO_ATTR    =>"'%s' not defined in '%s' database",
-#  DB_UNDEF   =>"'%s' database not defined"
-#);
-
-
-
-##########################################################################
-# Parse the command line for options and operands
-##########################################################################
-#sub parse_args {
-
-#    my %opt = ();
-#    my @VERSION = qw( 2.0 );
-#
-#    #############################################
-#    # Responds with usage statement
-#    #############################################
-#    local *usage = sub {
-#
-#        my $cmd = __FILE__;
-#        $cmd =~ s/.*([\w]{3}$)/$1/;
-#
-#        if ( defined( $_[0] )) {
-#            print STDERR "$_[0]\n";
-#        }
-#        my @msg = (
-#            "$cmd -h|--help\n",
-#            "$cmd -v|--version\n",
-#            "$cmd singlenode [-V|-Verbose]\n" );
-#        print STDERR @msg;
-#    };
-#    #############################################
-#    # Process command-line arguments
-#    #############################################
-#    if ( !defined( @ARGV )) {
-#        usage( "No node specified" );
-#        return(1);
-#    }
-#    #############################################
-#    # Checks case in GetOptions, allows opts
-#    # to be grouped (e.g. -vx), and terminates
-#    # at the first unrecognized option.
-#    #############################################
-#    $Getopt::Long::ignorecase = 0;
-#    Getopt::Long::Configure( "bundling" );
-#
-#    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version) )) {
-#        usage();
-#        return(1);
-#    }
-#    #######################################
-#    # Option -h for Help
-#    #######################################
-#    if ( exists( $opt{h} )) {
-#        usage();
-#        return(1);
-#    }
-#    #######################################
-#    # Option -v for version
-#    #######################################
-#    if ( exists( $opt{v} )) {
-#        print STDERR \@VERSION;
-#        return(1);
-#    }
-#    #######################################
-#    # Option -V for verbose output
-#    #######################################
-#    if ( exists( $opt{V} )) {
-#        $verbose = 1;
-#    }
-#    #######################################
-#    # Check for "-" with no option
-#    #######################################
-#    if ( grep(/^-$/, @ARGV )) {
-#        usage( "Missing option: -" );
-#        return(1);
-#    }
-#    #######################################
-#    # Get node
-#    #######################################
-#    if ( !defined( $ARGV[0] )) {
-#        usage( "No node specified" );
-#        return(1);
-#    }
-#    #######################################
-#    # Check for extra argument
-#    #######################################
-#    $node = shift @ARGV;
-#    if ( defined( $ARGV[0] )) {
-#        usage( "Invalid Argument: $ARGV[0]" );
-#        return(1);
-#    }
-#    return(0);
-#}
-
-
 
 ##########################################################################
 # Open remote console
@@ -179,88 +67,16 @@ sub invoke_cmd {
     } else {
         $machine = "CEC";
     }
-
-    #my @attribs = qw(id parent hcp);
-    #my %tabs    = ();
-
-    ##################################
-    # Open databases needed
-    ##################################
-    #foreach ( qw(ppc vpd nodetype) ) {
-    #    $tabs{$_} = xCAT::Table->new($_);
-    #
-    #    if ( !exists( $tabs{$_} )) {
-    #        return( sprintf( $errmsg{DB_UNDEF}, $_ ));
-    #    }
-    #}
-    ##################################
-    # Get node power type
-    ##################################
-    #my $hwtype = __FILE__;
-    #$hwtype    =~ s/.*([\w]{3})$/$1/;
-    #
-    #################################
-    # Get node type
-    #################################
-    #my ($ent) = $tabs{nodetype}->getNodeAttribs($node, ["nodetype"] );
-    #if ( !defined( $ent )) {
-    #    return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
-    #}
-    #################################
-    # Check for type
-    #################################
-    #if ( !exists( $ent->{nodetype} )) {
-    #    return( sprintf( $errmsg{NO_ATTR}, $ent->{nodetype},"nodetype" ));
-    #}
-    #################################
-    # Check for valid "type"
-    #################################
-    #my @types = split /,/, $ent->{nodetype};
-    #my ($type) = grep( /^(lpar|osi)$/, @types );
-    #
-    #if ( !defined( $type )) {
-    #    return( "Invalid node type: $ent->{nodetype}" );
-    #}
-    #################################
-    # Get attributes
-    #################################
-    #my ($att) = $tabs{ppc}->getAttribs({'node'=>$node}, @attribs );
-    #
-    #if ( !defined( $att )) {
-    #    return( sprintf( $errmsg{NODE_UNDEF}, "ppc" ));
-    #}
-    #################################
-    # Verify required attributes
-    #################################
-    #foreach my $at ( @attribs ) {
-    #    if ( !exists( $att->{$at} )) {
-    #        return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
-    #    }
-    #}
-    #
-    #my $fsp_name   = $att->{hcp};
-    #my $id = $att->{id};
-
     #use xcatd to get the attribute $fsp_name and $id of the node.
-
-    #my $fsp_api ="/opt/xcat/sbin/fsp-api";
     my $fsp_api = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
     my $action = "console";
     my $type   = "0";
-
-    #my $fsp_ip = ();
     my $Rc = 0;
-
-    #$fsp_ip = xCAT::NetworkUtils::getNodeIPaddress( $fsp_name );
-    #if(!defined($fsp_ip)) {
-    #    return "Failed to get the $fsp_name\'s ip";
-    #}
     my $power_state_cmd = "$fsp_api -a cec_state -t $type:$fsp_ip:$id:$node: 2>&1";
     my $res;
     my $index     = 0;
     my $pre_state = undef;
 
-    #my $wait_interval =20;
     my $ipl_num = 0;
     while (1) {
         $res = xCAT::Utils->runcmd($power_state_cmd, -1);
@@ -317,18 +133,11 @@ sub invoke_cmd {
             sleep 5;
         } else {
             $pre_state = $res;
-
-            #print ".";
             sleep 20;
         }
-
-        #$wait_interval =20+int(rand(20));
-        #sleep $wait_interval;
     }
 
     my $cmd = "$fsp_api -a $action -t $type:$fsp_ip:$id:$node:\r";
-
-    #print "cmd: $cmd\n";
     my $running_failed_code = "Reason code: 0x1000000";
     my $fsp_standby_msg     = "Reason code: 0x1300";
     my $fsp_lock_msg        = "Reason code: 0x1f00";
@@ -397,9 +206,6 @@ sub invoke_cmd {
 ##############################################
 # Start main body of code
 ##############################################
-#if ( parse_args() ) {
-#    exit(1);
-#}
 sub getans {
     my $rsp = shift;
     if ($rsp->{node}) {
@@ -433,7 +239,4 @@ if ($result ne "0") {
     exit(1);
 }
 exit(0);
-
-
-
 

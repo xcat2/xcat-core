@@ -1,7 +1,7 @@
 Summary: Server and configuration utilities of the xCAT management project
 Name: xCAT-server
 Version: %{?version:%{version}}%{!?version:%(cat Version)}
-Release: %{?release:%{release}}%{!?release:snap%(date +"%Y%m%d%H%M")}
+Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 4
 License: EPL
 Group: Applications/System
@@ -53,11 +53,8 @@ Requires: perl-IO-Tty perl-Crypt-SSLeay make
 %endif
 %endif
 
-
-Requires: perl-xCAT >= %{epoch}:%{version}
-Requires: xCAT-client  >= %{epoch}:%{version}
-
-Provides: xCAT-server = %{epoch}:%{version}
+Requires: perl-xCAT   = 4:%{version}-%{release}
+Requires: xCAT-client = 4:%{version}-%{release}
 
 %description
 xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server
@@ -358,8 +355,8 @@ echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/xcat/c
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24 >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
 #install lower version(<2.4) apache/httpd conf files by default
-cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf 
-cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf 
+cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 
 
@@ -410,7 +407,7 @@ fi
 %endif
 
 # The Juniper directory is switched to Jun and a sylink is created
-if [ -d $RPM_INSTALL_PREFIX0/share/xcat/devicetype/EthSwitch/Juniper ]; then 
+if [ -d $RPM_INSTALL_PREFIX0/share/xcat/devicetype/EthSwitch/Juniper ]; then
     # need to remove the old directory otherwise the symlink won't get creatd correctly
     rm -rf $RPM_INSTALL_PREFIX0/share/xcat/devicetype/EthSwitch/Juniper
 fi
@@ -437,17 +434,16 @@ fi
 %else
 if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d 
+    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
 
-fi  
+fi
 %endif
-
 
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
 if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
    rm -rf /etc/httpd/conf.d/xcat-ws.conf
-   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf 
+   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf
 fi
 
 if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
@@ -461,7 +457,6 @@ then
    rm -rf /etc/apache2/conf.d/xcat-ws.conf
    cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
 fi
-
 
 exit 0
 

@@ -37,7 +37,7 @@ my %global_mac_identity = (
     "6c:ae:8b" => "BNT G8264-T switch",
     "fc:cf:62" => "BNT G8124 switch",
     "7c:fe:90" => "Mellanox IB switch",
-    "8c:ea:1b" => "Edgecore switch"
+    "8c:ea:1b" => "Edgecore Networks Switch"
 );
 
 my %global_switch_type = (
@@ -53,7 +53,7 @@ my %global_switch_type = (
     mellanox => "Mellanox",
     MLNX => "Mellanox",
     MELLAN => "Mellanox",
-    Edgecore => "cumulus"
+    Edgecore => "onie"
 );
 
 
@@ -1440,8 +1440,8 @@ sub switchsetup {
         my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
-            if ($mytype eq "cumulus") {
-                send_msg($request, 0, "Cumulus switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configcumulus after cumulus OS installed on switch\n");
+            if ($mytype eq "onie") {
+                send_msg($request, 0, "onie switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configonie after Cumulus OS installed on switch\n");
             } else {
                 send_msg($request, 0, "call to config $mytype switches $switches\n");
                 my $out = `$config_script --switches $switches --all`;

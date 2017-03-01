@@ -527,8 +527,7 @@ running commands, are terminated (SIGTERM).
 \ **DSH_TIMEOUT**\ 
  
  Specifies  the  time,  in  seconds, to wait for output from
- each remote target. This variable is overridden by  the  \ **-t**\ 
- flag.
+ each remote target. This variable is overridden by  the  \ **-t**\  flag.
  
 
 
