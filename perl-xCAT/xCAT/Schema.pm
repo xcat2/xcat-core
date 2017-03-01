@@ -443,6 +443,19 @@ passed as argument rather than by table value',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
     },
+    openbmc => {
+        cols => [qw(node bmc username password comments disable)],
+        keys => [qw(node)],
+        table_desc => 'Setting for nodes that are controlled by an on-board OpenBmc.',
+        descriptions => {
+            node => 'The node name or group name.',
+            bmc => 'The hostname of the BMC adapter.',
+            username => 'The BMC userid.',
+            password => 'The BMC password.',
+            comments => 'Any user-written notes.',
+            disable  => "Set to 'yes' or '1' to comment out this row.",
+        },
+    },
     iscsi => {
         cols => [qw(node server target lun iname file userid passwd kernel kcmdline initrd comments disable)],
         keys       => [qw(node)],
@@ -586,7 +599,7 @@ passed as argument rather than by table value',
         descriptions => {
             node => 'The node name or group name.',
             power => 'The method to use to control the power of the node. If not set, the mgt attribute will be used.  Valid values: ipmi, blade, hmc, ivm, fsp, kvm, esx, rhevm.  If "ipmi", xCAT will search for this node in the ipmi table for more info.  If "blade", xCAT will search for this node in the mp table.  If "hmc", "ivm", or "fsp", xCAT will search for this node in the ppc table.',
-            mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.',
+            mgt => 'The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: openbmc, ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.',
             cons => 'The console method. If nodehm.serialport is set, this will default to the nodehm.mgt setting, otherwise it defaults to unused.  Valid values: cyclades, mrv, or the values valid for the mgt attribute.',
             termserver => 'The hostname of the terminal server.',
             termport => 'The port number on the terminal server that this node is connected to.',
@@ -2447,6 +2460,26 @@ my @nodeattrs = (
         tabentry        => 'mpa.urlpath',
         access_tabentry => 'mpa.mpa=attr:node',
     },
+
+#########################
+    # openbmc table      #
+##########################
+    { attr_name => 'bmc',
+        only_if         => 'mgt=openbmc',
+        tabentry        => 'openbmc.bmc',
+        access_tabentry => 'openbmc.node=attr:node',
+    },
+    { attr_name => 'bmcusername',
+        only_if         => 'mgt=openbmc',
+        tabentry        => 'openbmc.username',
+        access_tabentry => 'openbmc.node=attr:node',
+    },
+    { attr_name => 'bmcpassword',
+        only_if         => 'mgt=openbmc',
+        tabentry        => 'openbmc.password',
+        access_tabentry => 'openbmc.node=attr:node',
+    },
+
 ######################
     #  nodepos table     #
 ######################
