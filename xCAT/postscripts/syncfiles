@@ -38,6 +38,7 @@ xcatpostdir="/xcatpost"
 logger -t xcat -p local4.info "$0: the OS name = $osname"
 quit="no"
 count=5
+returncode=0
 while [ $quit = "no" ]; do
   if [ $osname = "Linux" ]
   then
@@ -66,5 +67,4 @@ else
   logger -t xcat -p local4.err "$0: Perform Syncing File action encountered error"
 fi
 
-exit 0
-
+[ $returncode -eq 0 ]
