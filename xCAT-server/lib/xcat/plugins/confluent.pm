@@ -230,6 +230,7 @@ sub makeconfluentcfg {
     # Get db info for the nodes related to console
     my $hmtab      = xCAT::Table->new('nodehm');
     my $nodepostab = xCAT::Table->new('nodepos');
+    my $mptab = xCAT::Table->new('mp');
     my @cfgents1; # = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
     my @cfgents2;
     my @cfgents3;
@@ -238,7 +239,7 @@ sub makeconfluentcfg {
         $explicitnodes = 1;
         @cfgents1 = $hmtab->getNodesAttribs($nodes, [ 'node', 'cons', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getNodesAttribs($nodes, [ 'node', 'rack', 'u', 'chassis', 'slot', 'room' ]);
-        @cfgents3 = $nodepostab->getNodesAttribs($nodes, [ 'node', 'mpa', 'id' ]);
+        @cfgents3 = $mptab->getNodesAttribs($nodes, [ 'node', 'mpa', 'id' ]);
 
         # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
         my @tmpcfgents1;
