@@ -23,6 +23,7 @@ use Socket;
 use Expect;
 
 #global variables for this module
+my $community;
 my %globalopt;
 my @filternodes;
 my @iprange;
@@ -949,6 +950,13 @@ sub snmp_scan {
         send_msg($request, 0, "$result\n" );
     }
     my @lines = split /\n/, $result;
+  
+    #set community string for switch
+    $community = "public";
+    my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+    my $tmp    = $snmpcs[0];
+    if (defined($tmp)) { $community = $tmp }
+
 
     foreach my $line (@lines) {
         my @array = split / /, $line;
@@ -1008,8 +1016,8 @@ sub get_snmpvendorinfo {
 
 
     #Ubuntu only takes OID
-    #my $ccmd = "snmpwalk -Os -v1 -c public $ip sysDescr.0";
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.1.1";
+    #get sysDescr.0";
+    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.1.1";
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -1047,8 +1055,8 @@ sub get_snmpmac {
     my $mac;
 
     #Ubuntu only takes OID
-    #my $ccmd = "snmpwalk -Os -v1 -c public $ip ipNetToMediaPhysAddress | grep $ip"; 
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.4.22.1.2 | grep $ip"; 
+    #get ipNetToMediaPhysAddress; 
+    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.4.22.1.2 | grep $ip"; 
     
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
@@ -1091,8 +1099,8 @@ sub get_snmphostname {
     my $hostname;
 
     #Ubuntu only takes OID
-    #my $ccmd = "snmpwalk -Os -v1 -c public $ip sysName";
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.1.5";
+    #get sysName info;
+    my $ccmd = "snmpwalk -Os -v1 -c $community $ip 1.3.6.1.2.1.1.5";
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
