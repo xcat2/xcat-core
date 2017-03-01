@@ -51,6 +51,8 @@ Login to compute node cn1 and check bonding options in ``/etc/sysconfig/network-
 
    BONDING_OPTS="mode=802.3ad xmit_hash_policy=layer2+3"
 
-The ``mode=802.3ad`` requires additional configuration on the switch. ``mode=2`` can be used for bonding without additional switch configuration. If changes are made to ``/etc/sysconfig/network-scripts/ifcfg-bond0`` file, restart network service ::
 
-   systemctl restart network.service
+* ``mode=802.3ad`` requires additional configuration on the switch. 
+* ``mode=2`` can be used for bonding without additional switch configuration. 
+
+If changes are made to ``/etc/sysconfig/network-scripts/ifcfg-bond0`` file, restart network service.

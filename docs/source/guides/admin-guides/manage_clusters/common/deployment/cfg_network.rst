@@ -1,5 +1,5 @@
-Advanced Networking Configuration
-=================================
+Advanced Networking Configuration - confignetwork
+=================================================
 
 .. toctree::
       :maxdepth: 2

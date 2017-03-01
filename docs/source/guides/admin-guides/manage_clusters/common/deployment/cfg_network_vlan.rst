@@ -1,17 +1,17 @@
 Configure BOND, VLAN and BRIDGES
 --------------------------------
 
-The ``confignetwork`` postscript can be used to configure the network interfaces on the compute nodes to support VLAN, BONDs, and BRIDGES. In order to use the ``confignetwork`` postscript, the following attributes must be configured for the node in the ``nics`` table:
+The ``confignetwork`` postscript can be used to configure the network interfaces on the compute nodes to support VLAN, BONDs, and BRIDGES. In order for the ``confignetwork`` postscript to run successfully, the following attributes must be configured for the node in the ``nics`` table:
 
     * ``nicips``
     * ``nictypes``
     * ``nicnetworks``
-    * ``nicdevices`` - resolves the relationship among the physical network intereface devices
+    * ``nicdevices`` - resolves the relationship among the physical network interface devices
 
 The following example set the xCAT properties for compute node ``cn1`` to achieve the following network configuration using the ``confignetwork`` postscript:
 
-  * Compute node ``cn1`` has two physical NICs: eth2 and eth3  
-  * Bond eth2 and eth3 as ``bond0`` 
+  * Compute node ``cn1`` has two physical NICs: ``eth2`` and ``eth3``  
+  * Bond ``eth2`` and ``eth3`` as ``bond0`` 
   * From ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2``
   * Make bridge ``br1`` using ``bond0.1`` with IP (10.0.0.1)
   * Make bridge ``br2`` using ``bond0.2`` with IP (20.0.0.1)
@@ -93,8 +93,10 @@ Chose one of three methods described below:
         #node,nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases,nicextraparams,nicdevices,comments,disable
         "cn1","br1!10.0.0.1,br2!20.0.0.1",,,"br1!bridge,eth2!ethernet,eth3!ethernet,bond0.2!vlan,bond0!bond,br2!bridge,bond0.1!vlan",,"br1!net10,br2!net20",,,"br1!bond0.1,bond0!eth2|eth3,bond0.2!bond0,bond0.1!bond0,br2!bond0.2",,
 
-Add network object into the networks table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Define the additional networks to xCAT
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If this is a new network being created on the compute nodes, an entry needs to be created into the xCAT database.
 
 The ``nicnetworks`` attribute only defines the nic that uses the IP address.
 Other information about the network should be defined in the ``networks`` table.
@@ -107,11 +109,10 @@ Use the ``chdef`` command to add/modify the networks in the ``networks`` table :
 Add ``confignetwork`` into the node's postscripts list
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Using below command to add ``confignetwork`` into the node's postscripts list ::
+Use the following command to add ``confignetwork`` into postscript list to execute on reboot: ::
 
     chdef cn1 -p postscripts=confignetwork
 
-During OS deployment on compute node, ``confignetwork`` postscript will be executed. 
 If the compute node is already running, use ``updatenode`` command to run ``confignetwork`` postscript without rebooting the node::
 
     updatenode cn1 -P confignetwork
