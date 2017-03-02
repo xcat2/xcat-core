@@ -27,7 +27,7 @@ Add network object into the networks table
 
 Use the ``chdef`` command to add/modify the networks in the ``networks`` table ::
 
-    chdef -t network net40 net=40.0.0.0 mask=255.0.0.0 mgtifname=eth1
+    chdef -t network net40 net=40.0.0.0 mask=255.0.0.0
     chdef cn1 nicnetworks.bond0=net40
 
 Add ``confignetwork`` into the node's postscripts list

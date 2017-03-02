@@ -1,6 +1,8 @@
 Advanced Networking Configuration - confignetwork
 =================================================
 
+**Note:** ``confignetwork`` postscript is only supported on RHEL releases.
+
 .. toctree::
       :maxdepth: 2
 

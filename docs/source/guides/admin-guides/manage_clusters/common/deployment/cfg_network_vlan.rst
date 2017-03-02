@@ -19,7 +19,7 @@ The following example set the xCAT properties for compute node ``cn1`` to achiev
 Define attributes in the ``nics`` table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Chose one of three methods described below:
+Chose one of two methods described below:
 
 #. Using the ``mkdef`` or ``chdef`` commands  
 
@@ -83,16 +83,6 @@ Chose one of three methods described below:
 
         cat <filename>.stanza | mkdef -z
 
-#. Using ``tabedit`` to edit the ``nics`` database table directly
-
-    The ``tabedit`` command opens the specified xCAT database table in a ``vi`` like editor and allows the user to edit any text and write the changes back to the database table.
-
-    After changing the content of the ``nics`` table, here is the result from ``tabdump nics`` ::
-
-        # tabdump nics
-        #node,nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases,nicextraparams,nicdevices,comments,disable
-        "cn1","br1!10.0.0.1,br2!20.0.0.1",,,"br1!bridge,eth2!ethernet,eth3!ethernet,bond0.2!vlan,bond0!bond,br2!bridge,bond0.1!vlan",,"br1!net10,br2!net20",,,"br1!bond0.1,bond0!eth2|eth3,bond0.2!bond0,bond0.1!bond0,br2!bond0.2",,
-
 Define the additional networks to xCAT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -103,8 +93,8 @@ Other information about the network should be defined in the ``networks`` table.
 
 Use the ``chdef`` command to add/modify the networks in the ``networks`` table ::
 
-    chdef -t network net10 net=10.0.0.0 mask=255.0.0.0 mgtifname=eth0
-    chdef -t network net20 net=20.0.0.0 mask=255.0.0.0 mgtifname=eth1
+    chdef -t network net10 net=10.0.0.0 mask=255.0.0.0
+    chdef -t network net20 net=20.0.0.0 mask=255.0.0.0
 
 Add ``confignetwork`` into the node's postscripts list
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
