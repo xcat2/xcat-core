@@ -1,4 +1,4 @@
-#!/bin/bash -x 
+#!/bin/bash  
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only.
 # It configs the Ethernet adpaters on the node
