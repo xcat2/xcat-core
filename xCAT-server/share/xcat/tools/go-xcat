@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.14
+# Version 1.0.15
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -370,7 +370,9 @@ function check_linux_version()
 	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
 		echo "${VERSION_ID}")"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
-		ver="$(awk '{ print $(NF - 1) }' /etc/redhat-release)"
+		# Need gawk to do this trick
+		ver="$(awk '{ match($0, /([.0-9]+)/, a); print substr($0, a[1, "start"], a[1, "length"]); }' \
+			/etc/redhat-release)"
 	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
 	echo "${ver}"
