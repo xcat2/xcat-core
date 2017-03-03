@@ -536,7 +536,9 @@ elif [ "$1" = "-s" ];then
         echo "  address ${str_inst_ip}" >> $str_conf_file
         echo "  netmask ${str_inst_mask}" >> $str_conf_file
         echo "  hwaddress ether ${str_inst_mac}" >> $str_conf_file
-        echo "  mtu ${str_inst_mtu}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "  mtu ${str_inst_mtu}" >> $str_conf_file
+        fi
         if [ -n "$str_inst_gateway" ];then
             echo "  gateway $str_inst_gateway" >> $str_conf_file
         fi
@@ -560,7 +562,9 @@ elif [ "$1" = "-s" ];then
         echo "IPADDR=${str_inst_ip}" >> $str_conf_file
         echo "NETMASK=${str_inst_mask}" >> $str_conf_file
         echo "HWADDR=${str_inst_mac}" >> $str_conf_file
-        echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        fi
         echo "STARTMODE=onboot" >> $str_conf_file
         if [ -n "$str_inst_gateway" ];then
             grep -i "default" /etc/sysconfig/network/routes
@@ -593,7 +597,9 @@ elif [ "$1" = "-s" ];then
         echo "BOOTPROTO=static" >> $str_conf_file
         echo "ONBOOT=yes" >> $str_conf_file
         echo "HWADDR=${str_inst_mac}" >> $str_conf_file
-        echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        fi
         if [ -n "$str_inst_gateway" ];then
             grep -i "GATEWAY" /etc/sysconfig/network
             if [ $? -eq 0 ];then
