@@ -41,6 +41,7 @@ use XML::Simple;
 use Storable qw(dclone);
 use SNMP;
 use xCAT::PasswordUtils;
+use Expect;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 
@@ -282,6 +283,7 @@ sub process_request {
 
     if ($request->{command}->[0] eq "getopenbmccons") {
         foreach (@donargs) {
+            configssh($_, $callback);
             getopenbmccons($_, $callback);
         }
         return;
@@ -688,7 +690,7 @@ sub getopenbmccons {
     my $node=$argr->[0];
     my $output = "openbmc, getopenbmccoms";
     xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
-
+   
     $rsp = { node => [ { name => [ $argr->[0] ] } ] };
     $rsp->{node}->[0]->{nodeip}->[0]    = $argr->[1];
     $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
@@ -696,5 +698,104 @@ sub getopenbmccons {
     $callback->($rsp);
     return $rsp;
 }
+
+#-------------------------------------------------------
+
+=head3  configssh 
+
+    config passwordless for openbmc  
+
+=cut
+
+#-------------------------------------------------------
+sub configssh {
+    my $argr = shift;
+    my $callback = shift;
+
+    my $rsp;
+    my $node=$argr->[0];
+    my $bmcip = $argr->[1];
+    my $bmcuser = $argr->[2];
+    my $bmcpass = $argr->[3];
+    my $timeout = 10;
+
+    my $output = "openbmc, configssh ";
+    xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
+
+    my $rootkey = `cat /root/.ssh/id_rsa.pub`;
+
+    # remove old host key from /root/.ssh/known_hosts
+    my $cmd = `ssh-keygen -R $bmcip`;
+
+    my ($exp, $errstr) = openbmc_connect($bmcip, $bmcuser, $bmcpass, $timeout);
+    if (!defined $exp) {
+        print ("connect failed $errstr\n");
+        next;
+    }
+
+    my $ret;
+    my $err;
+
+    ($ret, $err) = openbmc_exec($exp, "mkdir -p /home/root/.ssh");
+    ($ret, $err) = openbmc_exec($exp, "chmod 700 /home/root/.ssh");
+    ($ret, $err) = openbmc_exec($exp, "echo \"$rootkey\" >/home/root/.ssh/authorized_keys");
+    ($ret, $err) = openbmc_exec($exp, "chmod 644 /home/root/.ssh/authorized_keys");
+
+    $exp->hard_close();
+}
+
+sub openbmc_connect {
+     my $server   = shift;
+     my $userid   = shift;
+     my $password = shift;
+     my $timeout  = shift;
+
+     my $ssh      = Expect->new;
+     my $command     = 'ssh';
+     my @parameters  = ($userid . "@" . $server);
+
+     $ssh->debug(0);
+     $ssh->log_stdout(0);    # suppress stdout output..
+     $ssh->slave->stty(qw(sane -echo));
+
+     unless ($ssh->spawn($command, @parameters))
+     {
+         my $err = $!;
+         $ssh->soft_close();
+         my $rsp;
+         return(undef, "unable to run command $command $err\n");
+     }
+
+     $ssh->expect($timeout,
+                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
+                   [ "-re", qr/ password:/,        sub { $ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/:~\#/,              sub { $ssh->clear_accum(); } ],
+                   [ timeout => sub { die "No login.\n"; } ]
+                  );
+     $ssh->clear_accum();
+     return ($ssh);
+}
+
+sub openbmc_exec {
+     my $exp = shift;
+     my $cmd = shift;
+     my $timeout    = shift;
+     my $prompt =  shift;
+
+     $timeout = 10 unless defined $timeout;
+     $prompt = qr/:~\#/ unless defined $prompt;
+
+     $exp->clear_accum();
+     $exp->send("$cmd\n");
+     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+
+     if (defined $merr) {
+         return(undef,$merr);
+     }
+     return($mbmatch);
+}
+
+
 
 1;
