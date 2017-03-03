@@ -1,0 +1,6 @@
+start:updatenode_S
+check:rc==0
+cmd:updatenode $$CN -S >/tmp/updatenode.S.out
+cmd:grep 'Running of Software Maintenance has completed' /tmp/updatenode.S.out
+check:rc==0
+end 
