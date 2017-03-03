@@ -71,6 +71,9 @@ check:output=~booted
 cmd:xdsh $$SN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
+#after bug 2586 is fixed, following 2 lines should be removed.
+cmd:if [[ "__GETNODEATTR($$SN,os)__" =~ "sles" ]];then xdsh $$SN service xcatd restart; fi
+check:rc==0
 cmd:xdsh $$SN "ps -ef |grep xcatd"
 check:rc==0
 check:output=~xcatd:
