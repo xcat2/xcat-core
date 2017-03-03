@@ -422,7 +422,11 @@ while :; do
 		logger -s -t $log_label -p local4.info "Poweroff..."
 		poweroff -f
 	else 
-		logger -s -t $log_label -p local4.err "Unrecognized directive (dest=$dest)"
+                if [ "$dest" = error ]; then
+                    logger -s -t $log_label -p local4.info "$destparameter"
+                else
+		    logger -s -t $log_label -p local4.err "Unrecognized directive (dest=$dest)"
+                fi
 		destiny=''
 		dest=''
 		delay=$((30+$RANDOM%270))
