@@ -147,18 +147,20 @@ sub process_request
             my $nodehmhash = $nodehm->getNodesAttribs($noderange, ['mgt']);
             foreach my $node (@$noderange) { 
                 if($nodehmhash->{$node}->[0]->{mgt} eq 'pdu'){
-                    if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat')){
-                        push @allpdunodes, $node;
-                    } else {
-                       $callback->({ errorcode => [1],error => "The input $command is not support for pdu"}); 
-                    }
+                    push @allpdunodes, $node;
                 }
             }
-            return powerpdu(\@allpdunodes, $subcmd, $callback);
+            if(@allpdunodes) {
+                if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state')){
+                    return powerpdu(\@allpdunodes, $subcmd, $callback);
+                } else {
+                    my $pdunodes = join (",", @allpdunodes);
+                    $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunodes."});
+                }
+            }
         }
     }elsif($command eq "nodeset") {
-        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"}); 
-
+        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
     }else{
         #reserve for other new command in future
     }
@@ -181,7 +183,7 @@ sub powerpdu {
     my $callback = shift;
     my $outletnum = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
 
-    if ($subcmd eq "stat") {
+    if (($subcmd eq "stat") || ($subcmd eq "state")){
         return powerstat($noderange, $callback);
     }
 
