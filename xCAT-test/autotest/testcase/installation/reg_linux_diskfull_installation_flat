@@ -1,6 +1,5 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
-stop:yes
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
