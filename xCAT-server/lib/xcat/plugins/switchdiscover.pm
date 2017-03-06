@@ -1423,7 +1423,10 @@ sub matchPredefineSwitch {
 
         send_msg($request, 0, "Switch discovered and matched: $dswitch to $node" );
 
-        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+        # only write to xcatdb if -w or --setup option specified
+        if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
+            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+        }
 
         push (@{$configswitch->{$stype}}, $node);
     }
