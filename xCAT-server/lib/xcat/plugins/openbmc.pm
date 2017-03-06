@@ -34,10 +34,11 @@ use JSON;
 sub handled_commands {
     return {
         rpower => 'nodehm:mgt',
-        rinv    => 'nodehm:mgt',
+        rinv   => 'nodehm:mgt',
     };
 }
 
+my $pre_url = "/org/openbmc";
 #-------------------------------------------------------
 
 # The hash table to store method and url for request, 
@@ -76,31 +77,17 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "/org/openbmc/settings/host0",
+        init_url       => "$pre_url/settings/host0",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
     },
 
-    RINV_MTHBRD_REQUEST => {
+    RINV_REQUEST => {
         method         => "GET",
-        init_url       => "/org/openbmc/inventory/system/chassis/motherboard",
+        init_url       => "$pre_url/inventory/enumerate",
     },
-    RINV_MTHBRD_RESPONSE => {
-        process        => \&rinv_response,
-    },
-    RINV_CPU_REQUEST => {
-        method         => "GET",
-        init_url       => "/org/openbmc/inventory/system/chassis/motherboard/",
-    },
-    RINV_CPU_RESPONSE => {
-        process        => \&rinv_response,
-    },
-    RINV_DIMM_REQUEST => {
-        method         => "GET",
-        init_url       => "/org/openbmc/inventory/system/chassis/motherboard/",
-    },
-    RINV_DIMM_RESPONSE => {
+    RINV_RESPONSE => {
         process        => \&rinv_response,
     },
 );
@@ -119,7 +106,6 @@ my %status_info = (
           cur_url    => "",
           method     => "",
           back_urls   => (),
-          $src => "",
       },
   );
 
@@ -268,11 +254,11 @@ sub parse_args {
 
         my $subcommand = $ARGV[0];
 
-# now, only support status, delete when other command supported
-if ($subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat") {
-    return ([ 1, "Only support status check currently" ])
-}
-#----------------------------------------------------------------
+        # now, only support status, delete when other command supported
+        if ($subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat") {
+            return ([ 1, "Only support status check currently" ])
+        }
+        #----------------------------------------------------------------
 
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_ON_REQUEST";
@@ -306,21 +292,12 @@ if ($subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat"
 
         my $subcommand = $ARGV[0];
 
-        if ($subcommand eq "cpu") {
-            $next_status{LOGIN_RESPONSE} = "RINV_CPU_REQUEST";
-            $next_status{RINV_CPU_REQUEST} = "RINV_CPU_RESPONSE";
-        } elsif ($subcommand eq "dimm") {
-            $next_status{LOGIN_RESPONSE} = "RINV_DIMM_REQUEST";
-            $next_status{RINV_DIMM_REQUEST} = "RINV_DIMM_RESPONSE";
-        } elsif ($subcommand eq "all") {
-            $next_status{LOGIN_RESPONSE} = "RINV_MTHBRD_REQUEST";
-            $next_status{RINV_MTHBRD_REQUEST} = "RINV_MTHBRD_RESPONSE";
-            $next_status{RINV_MTHBRD_RESPONSE} = "RINV_CPU_REQUEST";
-            $next_status{RINV_CPU_REQUEST} = "RINV_CPU_RESPONSE";
-            $next_status{RINV_CPU_RESPONSE} = "RINV_DIMM_REQUEST";
-            $next_status{RINV_DIMM_REQUEST} = "RINV_DIMM_RESPONSE";
+        if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "bios" or $subcommand eq "all") {
+            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
         } else {
-            return ([ 1, "Only 'cpu','dimm','all' are supportted at the same time" ]);
+            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted at the same time" ]);
         }
     }
 
@@ -535,65 +512,35 @@ sub rinv_response {
 
     my $response_info = decode_json $response->content;
 
-    my %rinv_response = (
-        RINV_CPU_RESPONSE => {
-            map_str => "cpu",
-            repeat  => "RINV_CPU_REQUEST",
-        },
-        RINV_DIMM_RESPONSE => {
-            map_str => "dimm",
-            repeat  => "RINV_DIMM_REQUEST",
-        },
-  
-    );
+    my $grep_string = $status_info{RINV_RESPONSE}{argv};
+    my $src;
+    my $content_info;
 
-    my $grep_string = $rinv_response{$node_info{$node}{cur_status}}{map_str};
-    my $repeat_status = $rinv_response{$node_info{$node}{cur_status}}{repeat};
-
-    if ($node_info{$node}{cur_status} ne "RINV_MTHBRD_RESPONSE") {
-        if (ref($response_info->{data}) eq "ARRAY") {
-            foreach my $rsp_url (@{$response_info->{data}}) {
-                if ($rsp_url =~ /\/$grep_string/) {
-                    push @{ $node_info{$node}{back_urls} }, $rsp_url;
-                }
-            }
-            
-           $node_info{$node}{cur_url} = shift @{ $node_info{$node}{back_urls} };
-           $node_info{$node}{cur_status} = $repeat_status;
-           $node_info{$node}{src} = basename $node_info{$node}{cur_url};
-           gen_send_request($node);
-        } elsif (ref($response_info->{data}) eq "HASH") {
-            my $cpu_info;
-            foreach my $key (keys %{$response_info->{data}}) {
-                $cpu_info = uc ($node_info{$node}{src}) . " " . $key . " : " . ${$response_info->{data}}{$key};
-                xCAT::SvrUtils::sendmsg("$cpu_info", $callback, $node); 
-            }
-
-            if (@{ $node_info{$node}{back_urls} }) {
-                $node_info{$node}{cur_url} = shift @{ $node_info{$node}{back_urls} };
-                $node_info{$node}{cur_status} = $repeat_status;
-                $node_info{$node}{src} = basename $node_info{$node}{cur_url};
-                gen_send_request($node);
+    foreach my $key_url (keys %{$response_info->{data}}) {
+        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
+            if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
+                $src = "$1 $2";
             } else {
-                if ($next_status{ $node_info{$node}{cur_status} }) {
-                    delete $node_info{$node}{cur_url};
-                    delete $node_info{$node}{src};
-                    gen_send_request($node);
-                } else {
-                    $wait_node_num--;
-                }
+                $src = basename $key_url;
+            }
+
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+            foreach my $key (keys %content) {
+                $content_info = uc ($src) . " " . $key . " : " . $content{$key};
+                xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
             }
         }
+     }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
     }
 
-    #print Dumper(%node_info)  ."\n";
     return;
 }
 
 
 1;
-
-
-
-
-
