@@ -1,0 +1,13 @@
+[Unit]
+Description=xCAT management service
+After=network.target syslog.service
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/xcat
+ExecStartPre=. /etc/profile.d/xcat.sh
+ExecStart=/opt/xcat/sbin/xcatd -p /var/run/xcatd.pid
+Type=forking
+PIDFile=/var/run/xcatd.pid
+
+[Install]
+WantedBy=multi-user.target
