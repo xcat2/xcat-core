@@ -283,7 +283,7 @@ sub process_request {
 
     if ($request->{command}->[0] eq "getopenbmccons") {
         foreach (@donargs) {
-            configssh($_, $callback);
+            #configssh($_, $callback);
             getopenbmccons($_, $callback);
         }
         return;
