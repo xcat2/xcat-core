@@ -105,7 +105,7 @@ my %status_info = (
           cur_status => "LOGIN_REQUEST",
           cur_url    => "",
           method     => "",
-          back_urls   => (),
+          back_urls  => (),
       },
   );
 
@@ -216,6 +216,7 @@ sub process_request {
         $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
         $handle_id_node{$handle_id} = $node;
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        print "$node: POST $login_url -d $content\n";
     }  
 
     while (1) { 
@@ -399,6 +400,7 @@ sub gen_send_request {
     my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
     $handle_id_node{$handle_id} = $node;
     $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+    print "$node: $method $request_url\n";
 
     return;
 }
@@ -420,14 +422,23 @@ sub deal_with_response {
     my $response = shift;
     my $node = $handle_id_node{$handle_id};
 
+    delete $handle_id_node{$handle_id};
+
     if ($response->status_line ne "200 OK") {
         my $response_info = decode_json $response->content;
-        xCAT::SvrUtils::sendmsg($response_info->{'data'}->{'description'}, $callback, $node);
+        my $error;
+        if ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
+            $error = "path or object not found $1";
+        } else {
+            $error = $response_info->{'data'}->{'description'};
+        }
+        xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
         $wait_node_num--;
         return;    
     }
 
-    delete $handle_id_node{$handle_id};
+    print "$node: " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+
     $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
     return;
