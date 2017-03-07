@@ -1,6 +1,18 @@
 start:updatenode_S
-check:rc==0
 cmd:updatenode $$CN -S >/tmp/updatenode.S.out
 cmd:grep 'Running of Software Maintenance has completed' /tmp/updatenode.S.out
 check:rc==0
 end 
+
+start:updatenode_S_gcc
+cmd:lsdef $$CN -i provmethod | tail -n 1 | cut -d= -f2 | xargs lsdef -t osimage -i pkglist | tail -n 1 | cut -d= -f2 >/tmp/pkglist.filename
+cmd:mv `cat /tmp/pkglist.filename` `cat /tmp/pkglist.filename`.save
+cmd:cp `cat /tmp/pkglist.filename`.save `cat /tmp/pkglist.filename`
+cmd:echo gcc >>`cat /tmp/pkglist.filename`
+cmd:updatenode $$CN -S >/tmp/updatenode.S.out
+cmd:grep 'postscript: ospkgs exited with code 0' /tmp/updatenode.S.out
+check:rc==0
+cmd:grep 'Running of Software Maintenance has completed' /tmp/updatenode.S.out
+check:rc==0
+cmd:mv `cat /tmp/pkglist.filename`.save `cat /tmp/pkglist.filename`
+end
