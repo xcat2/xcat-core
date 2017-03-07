@@ -230,16 +230,19 @@ sub makeconfluentcfg {
     # Get db info for the nodes related to console
     my $hmtab      = xCAT::Table->new('nodehm');
     my $nodepostab = xCAT::Table->new('nodepos');
+    my $switchtab = xCAT::Table->new('switch');
     my $mptab = xCAT::Table->new('mp');
     my @cfgents1; # = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
     my @cfgents2;
     my @cfgents3;
+    my @cfgents4;
     my $explicitnodes = 0;
     if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
         $explicitnodes = 1;
         @cfgents1 = $hmtab->getNodesAttribs($nodes, [ 'node', 'cons', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getNodesAttribs($nodes, [ 'node', 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $mptab->getNodesAttribs($nodes, [ 'node', 'mpa', 'id' ]);
+        @cfgents4 = $switchtab->getNodesAttribs($nodes, [ 'node', 'switch', 'port' ]);
 
         # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
         my @tmpcfgents1;
@@ -273,6 +276,7 @@ sub makeconfluentcfg {
         @cfgents1 = $hmtab->getAllNodeAttribs([ 'cons', 'serialport', 'mgt', 'conserver', 'termserver', 'termport', 'consoleondemand' ]);
         @cfgents2 = $nodepostab->getAllNodeAttribs([ 'rack', 'u', 'chassis', 'slot', 'room' ]);
         @cfgents3 = $nodepostab->getAllNodeAttribs([ 'mpa', 'id' ]);
+        @cfgents4 = $nodepostab->getAllNodeAttribs([ 'node', 'switch', 'port' ]);
     }
 
 
@@ -293,6 +297,11 @@ sub makeconfluentcfg {
         }
     }
     foreach my $nent (@cfgents3) {
+        foreach (keys %$nent) {
+            $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
+        }
+    }
+    foreach my $nent (@cfgents4) {
         foreach (keys %$nent) {
             $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
         }
@@ -484,6 +493,12 @@ sub donodeent {
         }
         if (defined $cfgent->{rack}) {
             $parameters{'location.rack'} = $cfgent->{rack};
+        }
+        if (defined $cfgent->{switch}) {
+            $parameters{'net.switch'} = $cfgent->{switch};
+        }
+        if (defined $cfgent->{port}) {
+            $parameters{'net.switchport'} = $cfgent->{port};
         }
         if (defined $cfgent->{room}) {
             $parameters{'location.room'} = $cfgent->{room};
