@@ -420,18 +420,6 @@ elif [ "$1" = "-s" ];then
     str_inst_mask=''
     str_inst_gateway=''
     str_inst_mtu=''
-    str_inst_network=`echo $NICNETWORKS |awk -F${str_inst_nic}'!' '{print $2}' | awk -F'|' '{print $1}'`
-    num_index=1
-    while [ $num_index -le $NETWORKS_LINES ];do
-        eval str_tmp=\$NETWORKS_LINE$num_index
-        str_tmp_name=`echo $str_tmp | awk -F'netname=' '{print $2}' | awk -F'|' '{print $1}'`
-        if [ "$str_tmp_name" = "$str_inst_network" ];then
-            str_inst_mtu=`echo $str_tmp | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
-            break
-        fi
-        num_index=$((num_index+1))
-    done
-
 
     if [ "$str_os_type" = "aix" ];then
         logger -t xcat -p local4.err "configeth: aix does not support -s flag"
@@ -518,7 +506,20 @@ elif [ "$1" = "-s" ];then
         exit 0
     fi
 
-	#get extra configration parameters for each nic
+    str_inst_net=$(v4calcnet $str_inst_ip $str_inst_mask)
+    num_index=1
+    while [ $num_index -le $NETWORKS_LINES ];do
+        eval str_tmp=\$NETWORKS_LINE$num_index
+        str_tmp_name=`echo $str_tmp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
+        if [ "$str_tmp_name" = "$str_inst_net" ];then
+            str_inst_mtu=`echo $str_tmp | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
+            break
+        fi
+        num_index=$((num_index+1))
+    done
+
+
+    #get extra configration parameters for each nic
     #echo "str_inst_nic=$str_inst_nic, str_inst_ip=$str_inst_ip"
 	get_nic_extra_params $str_inst_nic "$NICEXTRAPARAMS"
 	if [ ${#array_nic_params[@]} -gt 0 ]; then
@@ -632,7 +633,9 @@ elif [ "$1" = "-s" ];then
             fi
         fi
     fi
+
     ifup $str_inst_nic
+
     exit 0
 fi
 
