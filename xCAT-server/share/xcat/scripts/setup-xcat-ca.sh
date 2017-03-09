@@ -33,6 +33,6 @@ make init
 #openssl req -nodes -config openssl.cnf -days 7300 -x509 -newkey rsa:2048 -out ca-cert.pem -extensions v3_ca -outform PEM -subj /CN="$CNA"
 openssl genrsa -out private/ca-key.pem 2048
 chmod 600 private/ca-key.pem
-openssl req -new -key private/ca-key.pem -config openssl.cnf -out ca-req.csr -subj /CN="$CNA" -outform PEM
+openssl req -sha256 -new -key private/ca-key.pem -config openssl.cnf -out ca-req.csr -subj /CN="$CNA" -outform PEM
 openssl ca -selfsign -keyfile private/ca-key.pem -in ca-req.csr -startdate 700101010101Z -days 7305 -extensions v3_ca -config openssl.cnf -out ca-cert.pem
 cd -
