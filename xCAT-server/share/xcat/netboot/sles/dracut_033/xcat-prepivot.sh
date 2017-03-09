@@ -140,8 +140,8 @@ for lf in /tmp/dhclient.*.lease; do
     cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
 done
 
-if [ -f $NEWROOT/etc/HOSTNAME ]; then 
-    echo `hostname -s` > $NEWROOT/etc/HOSTNAME
+if [ -f $NEWROOT/etc/hostname ]; then 
+    echo `hostname -s` > $NEWROOT/etc/hostname
 fi
 
 if [ ! -z "$ifname" ]; then
