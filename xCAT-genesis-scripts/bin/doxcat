@@ -266,8 +266,9 @@ ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|
 logger -s -t $log_label -p local4.info "Starting ntpd..." 
 ntpd -g -x
 
-logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
-ntp-wait -n 1999 -s 1 -v
+NTP_WAIT_SECONDS=60
+logger -s -t $log_label -p local4.info "Waiting $NTP_WAIT_SECONDS seconds for ntpd to synchronize..."
+ntp-wait -n $NTP_WAIT_SECONDS -s 1 -v
 if [ $? -ne 0 ]
 then
     logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
