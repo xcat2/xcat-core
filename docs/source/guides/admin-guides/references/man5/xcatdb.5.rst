@@ -288,6 +288,10 @@ osimage(7)|osimage.7
 
 
 
+pdu(7)|pdu.7
+
+
+
 policy(7)|policy.7
 
 
