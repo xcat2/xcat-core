@@ -134,7 +134,15 @@ function getdevfrommac() {
     done
 }
 
-echo `hostname -s` > $NEWROOT/etc/HOSTNAME
+for lf in /tmp/dhclient.*.lease; do
+    netif=${lf#*.}
+    netif=${netif%.*}
+    cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+done
+
+if [ -f $NEWROOT/etc/HOSTNAME ]; then 
+    echo `hostname -s` > $NEWROOT/etc/HOSTNAME
+fi
 
 if [ ! -z "$ifname" ]; then
     MACX=${ifname#*:}
