@@ -56,14 +56,14 @@ my %status_info = (
 
     RPOWER_ON_REQUEST  => {
         method         => "POST",
-        init_url       => "/power/on",
+        init_url       => "$pre_url/control/chassis0/action/powerOn",
     },
     RPOWER_ON_RESPONSE => {
         process        => \&rpower_response,
     },
     RPOWER_OFF_REQUEST  => {
         method         => "POST",
-        init_url       => "/power/off",
+        init_url       => "$pre_url/control/chassis0/action/powerOff",
     },
     RPOWER_OFF_RESPONSE => {
         process        => \&rpower_response,
@@ -77,6 +77,7 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
+        #init_url       => "$pre_url/state/host0",
         init_url       => "$pre_url/settings/host0",
     },
     RPOWER_STATUS_RESPONSE => {
@@ -216,7 +217,7 @@ sub process_request {
         $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
         $handle_id_node{$handle_id} = $node;
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        print "$node: POST $login_url -d $content\n";
+        print "$node: DEBUG POST $login_url -d $content\n";
     }  
 
     while (1) { 
@@ -255,12 +256,6 @@ sub parse_args {
 
         my $subcommand = $ARGV[0];
 
-        # now, only support status, delete when other command supported
-        if ($subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat") {
-            return ([ 1, "Only support status check currently" ])
-        }
-        #----------------------------------------------------------------
-
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_ON_REQUEST";
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
@@ -270,13 +265,13 @@ sub parse_args {
         } elsif ($subcommand eq "status" or $subcommand eq "state" or $subcommand eq "stat") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
             $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
-        } elsif ($subcommand eq "boot") {
-            $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
-            $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
-            $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
-            $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
-            $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
-            $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+       # } elsif ($subcommand eq "boot") {
+       #     $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
+       #     $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
+       #     $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
+       #     $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
+       #     $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
+       #     $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
         } else {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
@@ -382,7 +377,7 @@ sub gen_send_request {
     my $node = shift;
     my $method;
     my $request_url;
-    my $content;
+    my $content = '{"data": [] }';;
 
     if ($node_info{$node}{method}) {
         $method = $node_info{$node}{method};
@@ -400,7 +395,14 @@ sub gen_send_request {
     my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
     $handle_id_node{$handle_id} = $node;
     $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-    print "$node: $method $request_url\n";
+
+    my $debug_info;
+    if ($method eq "GET") {
+        $debug_info = "$node: DEBUG $method $request_url";
+    } else {
+        $debug_info = "$node: DEBUG $method $request_url -d $content";
+    }
+    print "$debug_info\n";
 
     return;
 }
@@ -425,19 +427,23 @@ sub deal_with_response {
     delete $handle_id_node{$handle_id};
 
     if ($response->status_line ne "200 OK") {
-        my $response_info = decode_json $response->content;
         my $error;
-        if ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
-            $error = "path or object not found $1";
+        if ($response->status_line eq "503 Service Unavailable") {
+            $error = "Service Unavailable";
         } else {
-            $error = $response_info->{'data'}->{'description'};
+            my $response_info = decode_json $response->content;
+            if ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
+                $error = "path or object not found $1";
+            } else {
+                $error = $response_info->{'data'}->{'description'};
+            }
         }
         xCAT::SvrUtils::sendmsg([1, $error], $callback, $node);
         $wait_node_num--;
         return;    
     }
 
-    print "$node: " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
 
     $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
