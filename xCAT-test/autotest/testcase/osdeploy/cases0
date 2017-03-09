@@ -53,6 +53,12 @@ cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time
 check:rc==0
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -r 2h5m>> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep "OK"
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
 end
 
 start:osdeploy_n_t
