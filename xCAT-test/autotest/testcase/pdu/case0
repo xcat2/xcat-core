@@ -1,5 +1,5 @@
 start:lsdef_pdu_object
-description:list pdu object and it's attribute
+degscription:list pdu object and it's attribute
 cmd:lsdef -h
 check:output=~pdu
 cmd:mkdef $$PDU mgt=pdu nodetype=pdu groups=pdu
@@ -136,6 +136,8 @@ cmd:oldpdu=`lsdef $$CN |grep pdu|awk -F= '{print $2}'`;chdef $$CN pdu=$$PDU:$$PO
 check:rc==0
 cmd:lsdef $$CN -i pdu
 check:rc==0
+cmd:rpower $$CN stat |awk -F: '{print $2}' > /tmp/cnstat
+check:rc==0
 cmd:rpower $$CN pdustat
 check:rc==0
 check:output=~$$CN: $$PDU outlet $$PORT is 
@@ -146,13 +148,40 @@ cmd:rpower $$CN pduon
 check:rc==0
 check:output=~$$CN: $$PDU outlet $$PORT is on
 cmd:oldpdu=`cat /tmp/pduvalue`;chdef $$CN pdu=$oldpdu
+cmd:if grep on /tmp/cnstat; then rpower $$CN on;fi
+check:rc==0
 cmd:rmdef $$PDU
 check:rc==0
 cmd:rm -rf /tmp/pduvalue
+cmd:rm -rf /tmp/cnstat
 end
 
-
-
-
-
-
+start:pdu_bad_config
+description:test bad config with pdu
+cmd:mkdef $$PDU groups=pdu ip=$$PDUIP mgt=pdu nodetype=pdu
+check:rc==0
+cmd:makehosts $$PDU
+check:rc==0
+cmd:grep $$PDUIP /etc/hosts
+check:rc==0
+cmd:snmpwalk -v1 -cpublic -mALL $$PDU .1.3.6.1.2.1.1
+check:rc==0
+cmd:lsdef $$CN |grep pdu|awk -F= '{print $2}' > /tmp/pduvalue
+cmd:chdef $$CN pdu=$$PDU:1000
+check:rc==0
+cmd:lsdef $$CN -i pdu
+cmd:rpower $$CN pdustat
+check:rc!=0
+check:output=~Error
+cmd:rpower $$CN pduon
+check:rc!=0
+check:output=~Error
+cmd:rpower $$CN pduoff
+check:rc!=0
+check:output=~Error
+cmd:oldpdu=`cat /tmp/pduvalue`;chdef $$CN pdu=$oldpdu
+cmd:rpower $$CN pduof
+check:rc!=0
+check:outpu=~Unsupported command
+cmd:rmdef $$PDU
+end
