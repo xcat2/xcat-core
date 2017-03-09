@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
 use Fcntl qw(:DEFAULT :flock);
 use Time::HiRes qw(sleep);
 use File::Path;
@@ -8,8 +8,8 @@ BEGIN {
 }
 my $sleepint = int(rand(10)); #Stagger start to avoid overwhelming conserver/xCATd
 my ($lockfd, $nodeip);
-my $username = 'UESRID';
-my $password = 'PASSWD';
+my $username = 'root';
+my $password = '0penBmc';
 my $node     = $ARGV[0];
 
 use constant CONSOLE_LOCK_FILE => "/tmp/xcat/consolelock";
