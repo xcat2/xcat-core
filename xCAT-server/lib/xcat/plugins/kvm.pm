@@ -1777,6 +1777,7 @@ sub rmvm {
             if ($disktype eq "cdrom") { next; }
 
             my @driver = $disk->parentNode()->findnodes("driver");
+            unless ($driver[0]) { next; }
             my $drivertype = $driver[0]->getAttribute("type");
             if (($drivertype eq "raw") || ($disktype eq "block")) { 
                 #For raw or block devices, do not remove, even if purge was specified. Log info message.
@@ -1784,6 +1785,7 @@ sub rmvm {
                 next; 
             }
             my $file = $disk->getAttribute("file");
+            unless ($file) { next; }
 
             # try to check the existence first, if cannot find, do nothing.
             # we do retry because we found sometimes the delete might fail
