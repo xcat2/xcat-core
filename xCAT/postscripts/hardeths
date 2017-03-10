@@ -46,7 +46,7 @@ network_ipv4calc ()
     echo $NETWORK
 }
 
-if (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1); then
+if [ -f /etc/os-release ] && (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1); then
     osver="cumulus"
 fi
 
