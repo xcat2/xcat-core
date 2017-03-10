@@ -114,6 +114,17 @@ sub setdestiny {
     my $state = $ARGV[0];
     my $reststates;
 
+    my $bptab = xCAT::Table->new('bootparams', -create => 1);
+    my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
+    while(my ($key, $value) = each(%tempbh)) {
+        if ($value && $value->[0]->{"addkcmdline"}) {
+            my $addkcmdline = $value->[0]->{"addkcmdline"};
+            # $key is node name
+            $bphash->{$key}->[0]->{"addkcmdline"} = $addkcmdline;
+        }
+    }
+    $bptab->close();
+
     # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
     ($state, $reststates) = split(/,/, $state, 2);
     my %nstates;
