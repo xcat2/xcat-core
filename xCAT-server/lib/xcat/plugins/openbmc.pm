@@ -55,30 +55,32 @@ my %status_info = (
     },
 
     RPOWER_ON_REQUEST  => {
-        method         => "POST",
-        init_url       => "$pre_url/control/chassis0/action/powerOn",
+        method         => "PUT",
+        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        data           => "xyz.openbmc_project.State.Host.Transition.On",
     },
     RPOWER_ON_RESPONSE => {
         process        => \&rpower_response,
     },
     RPOWER_OFF_REQUEST  => {
-        method         => "POST",
-        init_url       => "$pre_url/control/chassis0/action/powerOff",
+        method         => "PUT",
+        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        data           => "xyz.openbmc_project.State.Host.Transition.Off",
     },
     RPOWER_OFF_RESPONSE => {
         process        => \&rpower_response,
     },
     RPOWER_RESET_REQUEST  => {
-        method         => "POST",
-        init_url       => "/power/reset",
+        method         => "PUT",
+        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        data           => "xyz.openbmc_project.State.Host.Transition.Reboot",
     },
     RPOWER_RESET_RESPONSE => {
         process        => \&rpower_response,
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        #init_url       => "$pre_url/state/host0",
-        init_url       => "$pre_url/settings/host0",
+        init_url       => "/xyz/openbmc_project/state/host0",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
@@ -262,16 +264,19 @@ sub parse_args {
         } elsif ($subcommand eq "off") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_OFF_REQUEST";
             $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+        } elsif ($subcommand eq "reset") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_RESET_REQUEST";
+            $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
         } elsif ($subcommand eq "status" or $subcommand eq "state" or $subcommand eq "stat") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
             $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
-       # } elsif ($subcommand eq "boot") {
-       #     $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
-       #     $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
-       #     $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
-       #     $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
-       #     $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
-       #     $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+        } elsif ($subcommand eq "boot") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
+            $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
+            $next_status{RPOWER_STATUS_RESPONSE}{OFF} = "RPOWER_ON_REQUEST";
+            $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
+            $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
+            $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
         } else {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
@@ -377,12 +382,16 @@ sub gen_send_request {
     my $node = shift;
     my $method;
     my $request_url;
-    my $content = '{"data": [] }';;
+    my $content;
 
     if ($node_info{$node}{method}) {
         $method = $node_info{$node}{method};
     } else {
         $method = $status_info{ $node_info{$node}{cur_status} }{method};
+    }
+
+    if ($status_info{ $node_info{$node}{cur_status} }{data}) {
+        $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
     }
 
     if ($node_info{$node}{cur_url}) {
@@ -432,7 +441,9 @@ sub deal_with_response {
             $error = "Service Unavailable";
         } else {
             my $response_info = decode_json $response->content;
-            if ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
+            if ($response->status_line eq "500 Internal Server Error") {
+                $error = $response_info->{'data'}->{'exception'};
+            } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
                 $error = "path or object not found $1";
             } else {
                 $error = $response_info->{'data'}->{'description'};
@@ -493,29 +504,38 @@ sub rpower_response {
     my $response_info = decode_json $response->content;
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("on", $callback, $node);
+        if ($response_info->{'message'} eq "200 OK") {
+            xCAT::SvrUtils::sendmsg("on", $callback, $node);
+        }
     } 
 
     if ($node_info{$node}{cur_status} eq "RPOWER_OFF_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("off", $callback, $node);
+        if ($response_info->{'message'} eq "200 OK") {
+            xCAT::SvrUtils::sendmsg("off", $callback, $node);
+        }
     }
 
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") {
-        xCAT::SvrUtils::sendmsg($response_info->{'data'}->{system_state}, $callback, $node);
+    if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
+        if ($response_info->{'message'} eq "200 OK") {
+            xCAT::SvrUtils::sendmsg("reset", $callback, $node);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") { 
+        xCAT::SvrUtils::sendmsg($response_info->{'data'}->{CurrentHostState}, $callback, $node);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") {
-            if ($response_info->{'data'}->{system_state} =~ /HOST_POWERED_ON/) {
-                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
-            } else {
+            if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
                 $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{OFF};
+            } else {
+                $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} }{ON};
             }
         } else {
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         } 
         gen_send_request($node);
-
     } else {
         $wait_node_num--;
     }
@@ -523,6 +543,18 @@ sub rpower_response {
     return;
 }
 
+#-------------------------------------------------------
+
+=head3  rinv_response
+
+  Deal with response of rinv command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
 sub rinv_response {
     my $node = shift;
     my $response = shift;
