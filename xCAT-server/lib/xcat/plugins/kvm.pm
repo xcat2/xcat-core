@@ -1775,6 +1775,14 @@ sub rmvm {
         foreach $disk (@purgedisks) {
             my $disktype = $disk->parentNode()->getAttribute("device");
             if ($disktype eq "cdrom") { next; }
+
+            my @driver = $disk->parentNode()->findnodes("driver");
+            my $drivertype = $driver[0]->getAttribute("type");
+            if (($drivertype eq "raw") || ($disktype eq "block")) { 
+                #For raw or block devices, do not remove, even if purge was specified. Log info message.
+                xCAT::MsgUtils->trace(0, "i", "Not purging raw or block storage device: $disk");
+                next; 
+            }
             my $file = $disk->getAttribute("file");
 
             # try to check the existence first, if cannot find, do nothing.
