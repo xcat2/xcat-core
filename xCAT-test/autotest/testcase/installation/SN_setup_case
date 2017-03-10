@@ -1,6 +1,5 @@
 start:SN_setup_case
 os:Linux
-stop:yes
 
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
 check:rc==0
