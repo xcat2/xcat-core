@@ -53,6 +53,12 @@ cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time
 check:rc==0
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -r 2h5m>> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep "OK"
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
 end
 
 start:osdeploy_n_t
@@ -65,6 +71,261 @@ cmd:sleep 120
 check:rc==0
 cmd: cat  /tmp/osdeploy.test |grep "1m minutes have expired, stop monitoring"
 check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_invalidnode
+description: osdeploy -n node invalid
+cmd:test=`lsdef test_node`;if [ $test eq 0 ]; then lsdef -l test_node -z >/tmp/node.standa ;rmdef test_node;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n test_node
+check:rc==1
+check:output~=without node definition
+cmd:if [ -e /tmp/node.standa ]; then cat /tmp/node.standa | mkdef -z; rm -rf /tmp/node.standa; fi
+check:rc==0
+end
+start:osdeploy_n_p_invalid
+description:osdeploy -n node -p invalid parameter
+cmd:xcatprobe osdeploy -n $$CN -p dsdf
+check:rc==1
+check:output~=Usage:
+check:output~="'compact': Elapsed time of provision for each node."
+check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output~="'origin' : Show origin start time of each stage."
+end
+
+start:osdeploy_n_r_invalid
+description:osdeploy -n node -r invalid parameter
+cmd:xcatprobe osdeploy -n $$CN -r dadf
+check:rc==1
+check:output~=Usage:
+check:output~="'compact': Elapsed time of provision for each node."
+check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output~="'origin' : Show origin start time of each stage."
+end
+
+start:osdeploy_n_t_invalid
+description:osdeploy -n node -t invalid parameter
+cmd:xcatprobe osdeploy -n $$CN -t dadf
+check:rc==1
+check:output~=Usage:
+check:output~="'compact': Elapsed time of provision for each node."
+check:output~="'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provis"
+check:output~="'origin' : Show origin start time of each stage."
+end
+
+start:osdeploy_n_p_origin
+description: osdeploy -n -p origin node to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -p origin >> /tmp/osdeploy.test &
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Start Time for Stage"
+check:rc==0
+cmd:cat /tmp/osdeploy.test | awk '{print $4}'|grep RPOWER && cat /tmp/osdeploy.test | awk '{print $6}'|grep DHCP && cat /tmp/osdeploy.test | awk '{print $8}'|grep BOOTLOADER && cat /tmp/osdeploy.test | awk '{print $10}'|grep KERNEL && cat /tmp/osdeploy.test | awk '{print $12}' |grep  INITRD && cat /tmp/osdeploy.test | awk '{print $14}' |grep INSTALL && cat /tmp/osdeploy.test | awk '{print $16}' |grep POST &&  cat /tmp/osdeploy.test | awk '{print $18}' |grep POSTBOOT && cat /tmp/osdeploy.test | awk '{print $20}' |grep COMPLET
+check:rc==0
+cmd:cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_p_origin_r
+description: osdeploy -n  node -p origin -r to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -p origin -r 1h >> /tmp/osdeploy.test 
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Start Time for Stage"
+check:rc==0
+cmd:cat /tmp/osdeploy.test | awk '{print $4}'|grep RPOWER && cat /tmp/osdeploy.test | awk '{print $6}'|grep DHCP && cat /tmp/osdeploy.test | awk '{print $8}'|grep BOOTLOADER && cat /tmp/osdeploy.test | awk '{print $10}'|grep KERNEL && cat /tmp/osdeploy.test | awk '{print $12}' |grep  INITRD && cat /tmp/osdeploy.test | awk '{print $14}' |grep INSTALL && cat /tmp/osdeploy.test | awk '{print $1
+6}' |grep POST &&  cat /tmp/osdeploy.test | awk '{print $18}' |grep POSTBOOT && cat /tmp/osdeploy.test | awk '{print $20}' |grep COMPLET
+check:rc==0
+cmd:cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $4}' |grep -v NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_p_origin_r_error
+description: osdeploy -n  node -p origin -r  1m to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -p origin -r 1m >> /tmp/osdeploy.test 
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
+check:rc==0
+cmd:cat /tmp/osdeploy.test | awk '{print $4}'|grep RPOWER && cat /tmp/osdeploy.test | awk '{print $6}'|grep DHCP && cat /tmp/osdeploy.test | awk '{print $8}'|grep BOOTLOADER && cat /tmp/osdeploy.test | awk '{print $10}'|grep KERNEL && cat /tmp/osdeploy.test | awk '{print $12}' |grep  INITRD && cat /tmp/osdeploy.test | awk '{print $14}' |grep INSTALL && cat /tmp/osdeploy.test | awk '{print $1
+6}' |grep POST &&  cat /tmp/osdeploy.test | awk '{print $18}' |grep POSTBOOT && cat /tmp/osdeploy.test | awk '{print $20}' |grep COMPLET
+check:rc==0
+cmd:cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL | awk '{print $6}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL |awk '{print $8}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN | grep -v FAIL|awk '{print $10}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL |awk '{print $12}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN|grep -v FAIL |awk '{print $14}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL|awk '{print $16}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |grep -v FAIL |awk '{print $18}' |grep -v NULL && cat /tmp/osdeploy.t |grep $$CN |awk '{print $20}' |grep -v NULL
+check:rc==1
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+start:osdeploy_n_p_compact
+description: osdeploy -n -p compact node to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -p compact >> /tmp/osdeploy.test &
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Provision Time"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}' |grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_p_compact_r
+description: osdeploy -n -p compact -r node to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:xcatprobe osdeploy -n $$CN -p compact -r 30m >> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Provision Time"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}' |grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_p_compact_r_error
+description: osdeploy -n -p compact -r node error to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:xcatprobe osdeploy -n $$CN -p compact -r 3m >> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Provision Time"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}' |grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $4}' |grep NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+start:osdeploy_n_p_phase
+description: osdeploy -n -p phase node to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:xcatprobe osdeploy -n $$CN -p phase >> /tmp/osdeploy.test &
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Time for Phases"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}'|grep SVRBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $6}'|grep INSTALL && cat /tmp/osdeploy.test |grep NODE |awk '{print $8}'|grep POST && cat /tmp/osdeploy.test |grep NODE |awk '{print $10}'|grep POSTBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $12}'|grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $6}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $8}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $10}' |grep -v NULL  && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $12}' |grep -v NULL  
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+start:osdeploy_n_p_phase_r
+description: osdeploy -n -p phase node -r to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:xcatprobe osdeploy -n $$CN -p phase -r 1h >> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "All nodes provisioned successfully"|grep OK
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Time for Phases"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}'|grep SVRBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $6}'|grep INSTALL && cat /tmp/osdeploy.test |grep NODE |awk '{print $8}'|grep POST && cat /tmp/osdeploy.test |grep NODE |awk '{print $10}'|grep POSTBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $12}'|grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |awk '{print $4}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $6}' |grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $8}'
+|grep -v NULL && cat /tmp/osdeploy.test |grep  $$CN |awk '{print $10}' |grep -v NULL &&  cat /tmp/osdeploy.test |grep  $$CN |awk '{print $12}' |grep -v NULL
+check:rc==0
+cmd:rm -rf /tmp/osdeploy.test
+check:rc==0
+end
+
+start:osdeploy_n_p_phase_r_error
+description: osdeploy -n -p phase node -r error to probe osdeploy
+cmd:if [ -e /tmp/osdeploy.test ];then rm -rf /tmp/osdeploy.test*;fi
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower  $$CN boot
+check:rc==0
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
+cmd:xcatprobe osdeploy -n $$CN -p phase -r 3m >> /tmp/osdeploy.test
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Without provision process during rollback time window"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep "Time for Phases"
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep NODE |awk '{print $4}'|grep SVRBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $6}'|grep INSTALL && cat /tmp/osdeploy.test |grep NODE |awk '{print $8}'|grep POST && cat /tmp/osdeploy.test |grep NODE |awk '{print $10}'|grep POSTBOOT && cat /tmp/osdeploy.test |grep NODE |awk '{print $12}'|grep ELAPSED
+check:rc==0
+cmd:cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $4}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl|awk '{print $6}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIl |awk '{print $8}' |grep -v NULL  &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $10}' |grep -v NULL   &&  cat /tmp/osdeploy.test |grep  $$CN |grep -v FAIL |awk '{print $12}' |grep -v NULL 
+check:rc==1
 cmd:rm -rf /tmp/osdeploy.test
 check:rc==0
 end
