@@ -76,6 +76,7 @@ This is the minimal list of files needed, you can add additional files to the li
     "ALL","/etc/ntp.conf","tmpfs",,
     "ALL","/etc/ntp.conf.org","tmpfs",,
     "ALL","/etc/resolv.conf","tmpfs",,
+    "ALL","/etc/hostname","tmpfs",,
     "ALL","/etc/ssh/","tmpfs",,
     "ALL","/etc/sysconfig/","tmpfs",,
     "ALL","/etc/syslog-ng/","tmpfs",,
