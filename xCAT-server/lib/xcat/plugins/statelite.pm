@@ -991,7 +991,7 @@ sub updateFstab {
     open($tfstab, ">", "$rootimg_dir/etc/fstab");
     foreach my $line (@fsdents) {
         if ( $line =~ /^$rootfs_name/ ) {
-            $line =~ s/rw/ro/;
+            $line =~ s/\brw\b/ro/;
         }
         print $tfstab $line;
     }
