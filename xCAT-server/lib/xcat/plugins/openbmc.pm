@@ -262,17 +262,16 @@ sub process_request {
 
     foreach (@$noderange) {
         my $node     = $_;
-        my $nodeip = $node;
+        my $bmcip;
         my $nodeuser = $authdata->{$node}->{username};
         my $nodepass = $authdata->{$node}->{password};
-        my $nodeip   = $node;
         my $ent;
         if (defined($ipmitab)) {
             $ent = $ipmihash->{$node}->[0];
-            if (ref($ent) and defined $ent->{bmc}) { $nodeip = $ent->{bmc}; }
+            if (ref($ent) and defined $ent->{bmc}) { $bmcip = $ent->{bmc}; }
         }
-        push @donargs, [ $node,$nodeip,$nodeuser, $nodepass];
-        my $output = "openbmc, get $username and $password from ipmi table for $nodeip";
+        push @donargs, [ $node,$bmcip,$nodeuser, $nodepass];
+        my $output = "openbmc, get $username and $password from ipmi table for $bmcip";
         xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
     }
 
@@ -678,7 +677,7 @@ sub rinv_response {
 sub getopenbmccons {
     my $argr = shift;
 
-    #$argr is [$node,$nodeuser,$nodepass];
+    #$argr is [$node,$bmcip,$nodeuser,$nodepass];
     my $callback = shift;
 
     my $rsp;
@@ -687,7 +686,7 @@ sub getopenbmccons {
     xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
    
     $rsp = { node => [ { name => [ $argr->[0] ] } ] };
-    $rsp->{node}->[0]->{nodeip}->[0]    = $argr->[1];
+    $rsp->{node}->[0]->{bmcip}->[0]    = $argr->[1];
     $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
     $rsp->{node}->[0]->{passwd}->[0]  = $argr->[3];
     $callback->($rsp);
