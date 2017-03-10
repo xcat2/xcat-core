@@ -181,6 +181,8 @@ sub process_request {
     system("mkdir -p $rootimg_dir/xcatpost");
     system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
 
+    # update rw to ro for sles
+    updateFstab($rootimg_dir,$profile,$arch);
 
     #get the root password for the node
     my $pass = xCAT::PasswordUtils::crypt_system_password();
@@ -257,7 +259,6 @@ sub process_request {
         $callback->({ error => ["parseLiteFiles failed for listSaved!"] });
         return;
     }
-
 
     # now get the files for the node
     my @synclist = xCAT::Utils->runcmd("ilitefile $imagename", 0, 1);
@@ -569,6 +570,8 @@ sub process_request {
         system("rm -f $xcat_packimg_tmpfile");
     }
     chdir($oldpath);
+
+
 }
 
 sub liteMe {
@@ -966,6 +969,34 @@ sub liteItem {
         $verbose && $callback->({ info => ["cp -r -a $rif $rootimg_dir/.default$d"] });
         system("cp -r -a $rif $rootimg_dir/.default$d");
     }
+}
+
+=head3
+    updateFstab
+=cut
+
+sub updateFstab {
+
+    $rootimg_dir = shift;
+    $profile = shift;
+    $arch = shift;
+
+    my $rootfs_name = $profile . "_" . $arch;
+
+    my $tfstab;
+    open($tfstab, "<", "$rootimg_dir/etc/fstab");
+    my @fsdents = <$tfstab>;
+    close($tfstab);
+
+    open($tfstab, ">", "$rootimg_dir/etc/fstab");
+    foreach my $line (@fsdents) {
+        if ( $line =~ /^$rootfs_name/ ) {
+            $line =~ s/\brw\b/ro/;
+        }
+        print $tfstab $line;
+    }
+    close($tfstab);
+
 }
 
 
