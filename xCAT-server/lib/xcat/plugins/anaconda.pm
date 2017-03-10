@@ -2218,7 +2218,8 @@ sub copycd
 
     unless ($distname)
     {
-        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno, attempt to auto-detect...\n";
+        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
+        print "INFO - Attempting to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
@@ -2232,7 +2233,15 @@ sub copycd
             # RHEL 7.3 description is: Red Hat Enterprise Linux 7.3
             #
             my @rhel_version = split / /, $desc;
-            $distname = "rhels" . $rhel_version[4];
+            #
+            # auto-detect pegas beta ISOs
+            #
+            if ( $rhel_version[4] =~ "Pegas") { 
+                $distname = "rhels" . $rhel_version[5] . "-pegas";
+            } 
+            else { 
+                $distname = "rhels" . $rhel_version[4];
+            }
             open($dinfo, $mntpath . "/.treeinfo");
             while (<$dinfo>) {
                 chomp($_);
@@ -2297,7 +2306,7 @@ sub copycd
         );
         return;
     }
-
+    print "INFO - detected distname=$distname, arch=$arch\n";
 
     %{$request} = ();    #clear request we've got it.
     my $disccopiedin = 0;
