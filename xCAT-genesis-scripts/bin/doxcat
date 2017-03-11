@@ -266,12 +266,14 @@ ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|
 logger -s -t $log_label -p local4.info "Starting ntpd..." 
 ntpd -g -x
 
-logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
-ntp-wait -n 1999 -s 1 -v
-if [ $? -ne 0 ]
-then
-    logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
-fi
+#TODO(jjohnson2): Replace with some python to get ntp time
+#and sync, don't need ntpd per se for this
+#logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
+#ntp-wait -n 1999 -s 1 -v
+#if [ $? -ne 0 ]
+#then
+#    logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
+#fi
 
 if [ -e "/dev/rtc" ]; then
     logger -s -t $log_label -p local4.info "Attempting to sync hardware clock..."
