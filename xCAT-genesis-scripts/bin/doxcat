@@ -282,13 +282,15 @@ if [ -e "/dev/rtc" ]; then
 fi
 
 logger -s -t $log_label -p local4.info "Restarting syslog..."
-read -r RSYSLOG_PID </var/run/syslogd.pid 2>/dev/null
-kill "$RSYSLOG_PID" 2>/dev/null
-while kill -0 "$RSYSLOG_PID" 2>/dev/null
-do
-    sleep 0.5
-done
-unset RSYSLOG_PID
+if [ -r /var/run/syslogd.pid ]; then
+	read -r RSYSLOG_PID </var/run/syslogd.pid 2>/dev/null
+	kill "$RSYSLOG_PID" 2>/dev/null
+	while kill -0 "$RSYSLOG_PID" 2>/dev/null
+	do
+	    sleep 0.5
+	done
+	unset RSYSLOG_PID
+fi
 
 RSYSLOGD_VERSION=`rsyslogd -v | awk '/rsyslogd/ { split($2, a, "."); print a[1]; }'`
 if [ "$RSYSLOGD_VERSION" -ge 7 ]; then
