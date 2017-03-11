@@ -9,7 +9,6 @@ log_label="xcat.genesis.doxcat"
 # Later, once xCAT MN is known, dhclient-script will change 
 # rsyslog.conf file to send log entries to xCAT MN
 logger -s -t $log_label -p local4.info "Starting syslog..."
-ls /var/run/
 RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
 
 # if syslog is running and there's a pid file, kill it before restarting syslogd
