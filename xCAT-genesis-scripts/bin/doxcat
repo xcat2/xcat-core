@@ -291,7 +291,7 @@ done
 unset RSYSLOG_PID
 
 RSYSLOGD_VERSION=`rsyslogd -v | awk '/rsyslogd/ { split($2, a, "."); print a[1]; }'`
-if [ "$RSYSLOGD_VERSION" -ge 8 ]; then
+if [ "$RSYSLOGD_VERSION" -ge 7 ]; then
     /sbin/rsyslogd
 else
     /sbin/rsyslogd -c4
