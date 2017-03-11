@@ -17,9 +17,9 @@ if [ -f /var/run/syslogd.pid ]; then
     kill -TERM `cat /var/run/syslogd.pid`
 fi 
 
-if [ $RSYSLOGD_VERSION -ge 8 ]; then
+if [ $RSYSLOGD_VERSION -ge 7 ]; then
     /sbin/rsyslogd
-    # Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
+    # Newer vers of rsyslogd (7 and higher) do not support -c flag anymore
 else
     /sbin/rsyslogd -c4
 fi
