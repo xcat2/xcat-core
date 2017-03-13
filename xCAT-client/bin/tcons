@@ -5,7 +5,7 @@ for i in `nodels "$1"`; do
     if [ "$f" = 1 ]; then                                              
         f=0                                                            
     	qdate=$((`date +%s`+5))
-        tmux new-session -d -s tcons.$$ -x 800 -y 800 "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"       
+        tmux new-session -d -s tcons_$$ -x 800 -y 800 "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"       
         continue                                                       
     fi                                                                 
     tmux select-pane -t $p                                             
@@ -15,4 +15,4 @@ for i in `nodels "$1"`; do
     tmux select-layout tiled
 done                                                                   
 tmux select-pane -t 0
-tmux attach -t tcons.$$                                                
+tmux attach -t tcons_$$                                                
