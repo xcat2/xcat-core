@@ -22,6 +22,8 @@ use File::Basename;
 use Data::Dumper;
 use JSON;
 
+$::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
+
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -147,6 +149,13 @@ sub preprocess_request {
     }
 
     $callback  = shift;
+
+#-------------------------------------------------------
+    if ($::OPENBMC_DEVEL ne "YES") {
+        #xCAT::SvrUtils::sendmsg("OPENBMC_DEVEL is $::OPENBMC_DEVEL", $callback);
+        return;
+    }
+#-------------------------------------------------------
 
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
