@@ -1785,7 +1785,10 @@ sub rmvm {
                 next; 
             }
             my $file = $disk->getAttribute("file");
-            unless ($file) { next; }
+            unless ($file) { 
+                xCAT::MsgUtils->trace(0, "w", "Not able to find 'file' attribute value for: $disk");
+                next; 
+            }
 
             # try to check the existence first, if cannot find, do nothing.
             # we do retry because we found sometimes the delete might fail
