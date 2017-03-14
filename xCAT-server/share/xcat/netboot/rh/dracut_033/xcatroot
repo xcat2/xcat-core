@@ -9,6 +9,7 @@ XCAT="$(getarg XCAT=)"
 XCATMASTER=$XCAT
 STATEMNT="$(getarg STATEMNT=)"
 rootlimit="$(getarg rootlimit=)"
+rootfsoption="$(getarg rootfsoption=)"
 xcatdebugmode="$(getarg xcatdebugmode=)"
 
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "in dracut, executing xcatroot..."
@@ -72,11 +73,8 @@ if [ -r /rootimg.sfs ]; then
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.cpio.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountnewroot $rootlimit $rootfsoption $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -100,11 +98,9 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.tar.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
-    if [ -z $rootlimit ];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountnewroot $rootlimit $rootfsoption $NEWROOT
+
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -127,11 +123,9 @@ elif [ -r /rootimg-statelite.gz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Setting up RAM-root tmpfs for statelite mode."
     echo Setting up RAM-root tmpfs for statelite mode.
  
-    if [ -z $rootlimit];then
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    else
-        mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-    fi
+    # Mounting new root with mount options
+    mountnewroot $rootlimit $rootfsoption $NEWROOT
+
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -293,6 +287,35 @@ function getdevfrommac() {
             fi
         fi
     done
+}
+
+#############################################
+#
+# Mounting with mount options
+#  $1: root limit size
+#  $2: other mount options
+#  $3: NEWROOT
+#
+#############################################
+function mountnewroot() {
+
+    rootlimit=$1
+    rootfsoption=$2
+    NEWROOT=$3
+    mountopt="mode=755"
+
+    if [ -n $rootlimit ]; then
+        mountopt=$mountopt",size=$rootlimit"
+    fi
+    if [ -n $rootfsoption ]; then
+        mountopt=$mountopt",$rootfsoption"
+    fi
+
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
+    if [ $? != 0 ]; then
+        echo "Mounting with $mountopt option was unsuccessful. Trying to only mount with mode=755"
+        mount -t tmpfs -o mode=755 rootfs $NEWROOT
+    fi
 }
 
 

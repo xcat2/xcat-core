@@ -7,7 +7,7 @@ XCATMASTER=$XCAT
 
 . /lib/dracut-lib.sh
 rootlimit="$(getarg rootlimit=)"
-
+rootfsoption="$(getarg rootfsoption=)"
 
 getarg nonodestatus
 NODESTATUS=$?
@@ -70,11 +70,9 @@ if [ -r /rootimg.sfs ]; then
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
-  if [ -z $rootlimit ];then
-    mount -t tmpfs -o mode=755 rootfs $NEWROOT
-  else
-    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-  fi
+
+  # Mounting new root with mount options
+  mountnewroot $rootlimit $rootfsoption $NEWROOT
 
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
@@ -98,11 +96,9 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "rootimg downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
-  if [ -z $rootlimit ];then
-    mount -t tmpfs -o mode=755 rootfs $NEWROOT
-  else
-    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-  fi
+
+  # Mounting new root with mount options
+  mountnewroot $rootlimit $rootfsoption $NEWROOT
 
   cd $NEWROOT
   [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "Extracting root filesystem:"
@@ -124,11 +120,8 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
  
-  if [ -z $rootlimit];then
-    mount -t tmpfs -o mode=755 rootfs $NEWROOT
-  else
-    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
-  fi
+  # Mounting new root with mount options
+  mountnewroot $rootlimit $rootfsoption $NEWROOT
 
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
@@ -288,6 +281,35 @@ function getdevfrommac() {
             fi
         fi
     done
+}
+
+#############################################
+#
+# Mounting with mount options
+#  $1: root limit size
+#  $2: other mount options
+#  $3: NEWROOT
+#
+#############################################
+function mountnewroot() {
+
+    rootlimit=$1
+    rootfsoption=$2
+    NEWROOT=$3
+    mountopt="mode=755"
+
+    if [ -n $rootlimit ]; then
+        mountopt=$mountopt",size=$rootlimit"
+    fi
+    if [ -n $rootfsoption ]; then
+        mountopt=$mountopt",$rootfsoption"
+    fi
+
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
+    if [ $? != 0 ]; then
+        echo "Mounting with $mountopt option was unsuccessful. Trying to only mount with mode=755"
+        mount -t tmpfs -o mode=755 rootfs $NEWROOT
+    fi
 }
 
 
