@@ -150,13 +150,6 @@ sub preprocess_request {
 
     $callback  = shift;
 
-#-------------------------------------------------------
-    if ($::OPENBMC_DEVEL ne "YES") {
-        #xCAT::SvrUtils::sendmsg("OPENBMC_DEVEL is $::OPENBMC_DEVEL", $callback);
-        return;
-    }
-#-------------------------------------------------------
-
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs  = $request->{arg};
@@ -254,6 +247,11 @@ sub parse_args {
     my $command  = shift;
     my $extrargs = shift;
 
+    my $check = unsupported($callback);
+    if (ref($check) eq "ARRAY") {
+        return $check;
+    }
+
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
 
     if ($command eq "rpower") {
@@ -307,15 +305,25 @@ sub parse_args {
             $next_status{RINV_REQUEST} = "RINV_RESPONSE";
             $status_info{RINV_RESPONSE}{argv} = "$subcommand";
         } else {
-            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted at the same time" ]);
+            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted currently" ]);
         }
     }
 
-    print Dumper(%next_status) . "\n";
+    print Dumper(\%next_status) . "\n";
 
     return;
 }
 
+
+sub unsupported {
+    my $callback = shift;
+    if ($::OPENBMC_DEVEL ne "YES") {
+        return ([ 1, "This function is currently not supported" ]);
+    } else {
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
+        return;
+    }
+}
 
 #-------------------------------------------------------
 
@@ -364,7 +372,7 @@ sub parse_node_info {
         }
     }
 
-    print Dumper(%node_info) ."\n";
+    print Dumper(\%node_info) ."\n";
 
     return;
 }
