@@ -56,47 +56,47 @@ OPTIONS
  
  
  
- \ **-f|-**\ **-force**\ 
-  
-  Use this with the \ **-**\ **-all**\  option as an extra indicator that ALL definitions are to be removed.
-  
+
+
+\ **-f|-**\ **-force**\ 
  
+ Use this with the \ **-**\ **-all**\  option as an extra indicator that ALL definitions are to be removed.
  
- \ **-h|-**\ **-help**\ 
-  
-  Display a usage message.
-  
+
+
+\ **-h|-**\ **-help**\ 
  
+ Display a usage message.
  
- \ *noderange*\ 
-  
-  A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
-  
+
+
+\ *noderange*\ 
  
+ A set of comma delimited node names and/or group names. See the "noderange" man page for details on supported formats.
  
- \ **-o**\  \ *object-names*\ 
-  
-  A set of comma delimited object names.
-  
+
+
+\ **-o**\  \ *object-names*\ 
  
+ A set of comma delimited object names.
  
- \ **-t**\  \ *object-types*\ 
-  
-  A set of comma delimited object types.
-  
+
+
+\ **-t**\  \ *object-types*\ 
  
+ A set of comma delimited object types.
  
- \ **-C|-**\ **-cleanup**\ 
-  
-  Perform additional cleanup by running \ **nodeset offline**\  on the objects specified in the \ *noderange*\ .
-  
+
+
+\ **-C|-**\ **-cleanup**\ 
  
+ Perform additional cleanup by running \ **nodeset offline**\  on the objects specified in the \ *noderange*\ .
  
- \ **-V|-**\ **-verbose**\ 
-  
-  Verbose mode.
-  
+
+
+\ **-V|-**\ **-verbose**\ 
  
+ Verbose mode.
  
 
 
