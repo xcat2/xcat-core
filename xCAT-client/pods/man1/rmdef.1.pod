@@ -34,6 +34,8 @@ or
 
 =item 2. Run B<xcatconfig -d> which initializes the database the same as when xCAT was installed. 
 
+=back
+
 =item B<-f|--force>
 
 Use this with the B<--all> option as an extra indicator that ALL definitions are to be removed.
