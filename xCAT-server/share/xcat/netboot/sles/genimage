@@ -43,6 +43,7 @@ if ($name =~ /geninitrd/) {
     $onlyinitrd = 1;
 }
 my $rootlimit;
+my $rootfsoption;
 my $tmplimit;
 my $installroot = "/install";
 my $kerneldir;
@@ -96,6 +97,7 @@ GetOptions(
     'i=s'               => \$prinic,
     'r=s'               => \$othernics,
     'l=s'               => \$rootlimit,
+    'rootfsoption=s'    => \$rootfsoption,
     't=s'               => \$tmplimit,
     'k=s'               => \$kernelver,
     'g=s'               => \$krpmver,
@@ -1109,9 +1111,16 @@ sub mkinitrd_dracut {
     my $additional_options = undef;
     if ($rootlimit)
     {
-        open(my $ETC_CMDLINE, ">", "$rootimg_dir/tmp/cmdline");
         print $ETC_CMDLINE qq{rootlimit=$rootlimit\n};
-        close $ETC_CMDLINE;
+    }
+    if ($rootfsoption)
+    {
+        print $ETC_CMDLINE qq{rootfsoption=$rootfsoption\n};
+    }
+    close $ETC_CMDLINE;
+    if (($rootlimit) or ($rootfsoption))
+    {
+
         $additional_options = qq{--include /tmp/cmdline /etc/cmdline};
     }
 
