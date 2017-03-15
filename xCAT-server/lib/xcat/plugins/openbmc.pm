@@ -196,9 +196,11 @@ sub preprocess_request {
 #-------------------------------------------------------
 sub process_request {
     my $request = shift;
-    my $noderange = $request->{node};        
+    my $command   = $request->{command}->[0];
+    my $noderange = $request->{node};
 
     parse_node_info($noderange);
+    parse_command_status($command);
 
     $cookie_jar = HTTP::Cookies->new({});
     $async = HTTP::Async->new(
@@ -252,17 +254,56 @@ sub parse_args {
         return $check;
     }
 
+    if (!defined($extrargs)) {
+        return ([ 1, "No option specified for rpower" ]);
+    }
+
+    if (scalar(@ARGV) > 1) {
+        return ([ 1, "Only one option is supportted at the same time" ]);
+    }
+
+    my $subcommand = $ARGV[0];
+    if ($command eq "rpower") {
+        if ($subcommand ne "on" and $subcommand ne "off" and $subcommand ne "reset" and $subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat" and $subcommand ne "boot") {
+            return ([ 1, "$subcommand is not supported for rpower" ]);
+        }
+    }
+
+    if ($command eq "rinv") {
+        if ($subcommand ne "cpu" and $subcommand ne "dimm" and $subcommand ne "bios" and $subcommand ne "all") {
+            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted currently" ]);
+        }
+    }
+
+    return;
+}
+
+
+sub unsupported {
+    my $callback = shift;
+    if ($::OPENBMC_DEVEL ne "YES") {
+        return ([ 1, "This function is currently not supported" ]);
+    } else {
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
+        return;
+    }
+}
+
+#-------------------------------------------------------
+
+=head3  parse_command_status
+
+  Parse the command to init status machine
+
+=cut
+
+#-------------------------------------------------------
+sub parse_command_status {
+    my $command  = shift;
+
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
 
     if ($command eq "rpower") {
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for rpower" ]);
-        }
-
-        if (scalar(@ARGV) > 1) {
-            return ([ 1, "Only one option is supportted at the same time" ]);
-        } 
-
         my $subcommand = $ARGV[0];
 
         if ($subcommand eq "on") {
@@ -284,45 +325,20 @@ sub parse_args {
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
             $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
             $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
-        } else {
-            return ([ 1, "$subcommand is not supported for rpower" ]);
         }
-    }
+    } 
 
     if ($command eq "rinv") {
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for rpower" ]);
-        }
-
-        if (scalar(@ARGV) > 1) {
-            return ([ 1, "Only one option is supportted at the same time" ]);
-        }
-
         my $subcommand = $ARGV[0];
 
         if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "bios" or $subcommand eq "all") {
             $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
             $next_status{RINV_REQUEST} = "RINV_RESPONSE";
             $status_info{RINV_RESPONSE}{argv} = "$subcommand";
-        } else {
-            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted currently" ]);
         }
     }
 
     print Dumper(\%next_status) . "\n";
-
-    return;
-}
-
-
-sub unsupported {
-    my $callback = shift;
-    if ($::OPENBMC_DEVEL ne "YES") {
-        return ([ 1, "This function is currently not supported" ]);
-    } else {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
-        return;
-    }
 }
 
 #-------------------------------------------------------
