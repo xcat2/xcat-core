@@ -294,7 +294,6 @@ sub parse_args {
 
 sub unsupported {
     my $callback = shift;
-    xCAT::SvrUtils::sendmsg("ENV: OPENBMC_DEVEL=$ENV{OPENBMC_DEVEL},$ENV{'OPENBMC_DEVEL'}\n",  $callback);
     if ($::OPENBMC_DEVEL ne "YES") {
         return ([ 1, "This function is currently not supported" ]);
     } else {
