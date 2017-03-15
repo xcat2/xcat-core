@@ -5131,14 +5131,10 @@ sub mkcommonboot {
 
 
 
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => $kernel,
-                initrd   => "",
-                kcmdline => $append
-            }
-        );
+        my $bootparams = ${$req->{bootparams}};
+        $bootparams->{$node}->[0]->{kernel} = $kernel;
+        $bootparams->{$node}->[0]->{kcmdline} = $append;
+        $bootparams->{$node}->[0]->{initrd} = "";
     }    # end of node loop
 
 }
