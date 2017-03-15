@@ -211,7 +211,7 @@ fi
 [ -e "/etc/init.d/$apachedaemon" ] && chkconfig $apachedaemon on
 [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl enable $apacheserviceunit
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-          XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
+          XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/xcatctl restart
           [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload
           [ -e "/usr/lib/systemd/system/$apacheserviceunit" ] && systemctl reload $apacheserviceunit
 fi

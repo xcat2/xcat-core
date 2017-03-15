@@ -4,10 +4,11 @@ After=network.target syslog.service
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/xcat
-ExecStartPre=. /etc/profile.d/xcat.sh
-ExecStart=/opt/xcat/sbin/xcatd -p /var/run/xcatd.pid
 Type=forking
 PIDFile=/var/run/xcatd.pid
+ExecStart=/usr/sbin/xcatctl start
+ExecStop=/usr/sbin/xcatctl stop
+ExecReload=/bin/sh -c "echo Not support reload action in systemd, run \'xcatctl reload\' instead.; exit -1"
 
 [Install]
 WantedBy=multi-user.target

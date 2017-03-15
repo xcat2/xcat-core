@@ -25,10 +25,28 @@ case "$1" in
     
     remove)
        if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-             /etc/init.d/xcatd stop
+          [ -f /usr/sbin/xcatctl ] && /usr/sbin/xcatctl stop
        fi
-       update-rc.d xcatd disable
-       rm -f /usr/sbin/xcatd  #remove the symbolic
+       
+      
+       if [ -d "/usr/lib/systemd/system" ]; then   # Systemd
+          UNIT_PATH=/usr/lib/systemd/system
+       elif [ -d "/lib/systemd/system" ]; then
+          UNIT_PATH=/lib/systemd/system
+       fi
+
+       if [ -z "$UNIT_PATH" ]; then   # SysV init
+          update-rc.d xcatd disable
+          rm -f /etc/init.d/xcatd
+       else  # Systemd
+          systemctl --no-reload disable xcat.service >/dev/null 2>&1
+          rm -f $UNIT_PATH/xcatd.service
+          systemctl daemon-reload >/dev/null 2>&1
+        fi
+
+       #remove the symbolic links
+       rm -f /usr/sbin/xcatd  
+       rm -f /usr/sbin/xcatctl
 
        rm -f /etc/apache2/conf-enabled/xcat-ws.conf
     ;;
