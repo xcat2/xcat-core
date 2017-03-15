@@ -402,7 +402,7 @@ while (scalar @checkdeps) {
             unless (grep { $_ eq $dep } @ndrivers) {    #only add if not added
                 unshift(@checkdeps, $dep);    #recursively check dependencies
                 unshift(@ndrivers,  $dep);
-                print "Added $dep as an autodetected depedency\n";
+                print "Added $dep as an autodetected dependency\n";
             }
         }
     }
