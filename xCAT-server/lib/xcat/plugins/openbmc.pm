@@ -1,21 +1,11 @@
 #!/usr/bin/perl
-# IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
-#-------------------------------------------------------
+## IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-=head1
-  xCAT plugin package to handle openbmc 
-
-   Supported command:
-       getopenbmccons
-
-=cut
-
-#-------------------------------------------------------
 package xCAT_plugin::openbmc;
 
 BEGIN
 {
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
@@ -31,19 +21,8 @@ use xCAT::SvrUtils;
 use File::Basename;
 use Data::Dumper;
 use JSON;
-use Getopt::Long;
-use File::Path;
-use Term::ANSIColor;
-use Time::Local;
-use strict;
-use Class::Struct;
-use xCAT::PasswordUtils;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
-
-my $VERBOSE = 0;
-my %allerrornodes = ();
-my $callback;
 
 #-------------------------------------------------------
 
@@ -154,6 +133,7 @@ my $async;
 my $cookie_jar;
 
 my $callback;
+my %allerrornodes = ();
 
 #-------------------------------------------------------
 
@@ -237,6 +217,7 @@ sub process_request {
     my $handle_id;
     my $content;
     $wait_node_num = keys %node_info;
+    my @donargs = ();
 
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
@@ -246,7 +227,17 @@ sub process_request {
         $handle_id_node{$handle_id} = $node;
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         print "$node: DEBUG POST $login_url -d $content\n";
+        push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
     }  
+
+    #process rcons
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        foreach (@donargs) {
+            getopenbmccons($_, $callback);
+        }
+        return;
+    }
+
 
     while (1) { 
         last unless ($wait_node_num);
@@ -255,33 +246,6 @@ sub process_request {
         }
     } 
 
-
-    my $ipmitab     = xCAT::Table->new('ipmi');
-    my $ipmihash = $ipmitab->getNodesAttribs($noderange, [ 'bmc', 'username', 'password' ]);
-    my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange => $noderange, ipmihash => $ipmihash);
-
-    foreach (@$noderange) {
-        my $node     = $_;
-        my $bmcip;
-        my $nodeuser = $authdata->{$node}->{username};
-        my $nodepass = $authdata->{$node}->{password};
-        my $ent;
-        if (defined($ipmitab)) {
-            $ent = $ipmihash->{$node}->[0];
-            if (ref($ent) and defined $ent->{bmc}) { $bmcip = $ent->{bmc}; }
-        }
-        push @donargs, [ $node,$bmcip,$nodeuser, $nodepass];
-        my $output = "openbmc, get $username and $password from ipmi table for $bmcip";
-        xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
-    }
-
-
-    if ($request->{command}->[0] eq "getopenbmccons") {
-        foreach (@donargs) {
-            getopenbmccons($_, $callback);
-        }
-        return;
-    }
     return;
 }
 
@@ -330,6 +294,7 @@ sub parse_args {
 
 sub unsupported {
     my $callback = shift;
+    xCAT::SvrUtils::sendmsg("ENV: OPENBMC_DEVEL=$ENV{OPENBMC_DEVEL},$ENV{'OPENBMC_DEVEL'}\n",  $callback);
     if ($::OPENBMC_DEVEL ne "YES") {
         return ([ 1, "This function is currently not supported" ]);
     } else {
@@ -673,7 +638,15 @@ sub rinv_response {
     return;
 }
 
+#-------------------------------------------------------
 
+=head3  getopenbmccons
+
+    Process getopenbmccons
+
+=cut
+
+#-------------------------------------------------------
 sub getopenbmccons {
     my $argr = shift;
 
@@ -684,7 +657,7 @@ sub getopenbmccons {
     my $node=$argr->[0];
     my $output = "openbmc, getopenbmccoms";
     xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
-   
+
     $rsp = { node => [ { name => [ $argr->[0] ] } ] };
     $rsp->{node}->[0]->{bmcip}->[0]    = $argr->[1];
     $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
@@ -692,5 +665,7 @@ sub getopenbmccons {
     $callback->($rsp);
     return $rsp;
 }
+
+
 
 1;
