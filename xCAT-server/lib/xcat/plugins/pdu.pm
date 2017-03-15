@@ -131,9 +131,12 @@ sub process_request
         return powerstat($noderange, $callback);
     }elsif ($command eq "rpower") {
         my $subcmd = $exargs[0];
-        if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat')){
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+            #if one day, pdu node have pdu attribute, handle in this section too
+            return powerpduoutlet($noderange, $subcmd, $callback);
+        } else {
             #-------------------------------------------
-            #there are 2 cases will enter this black
+            #there are 2 cases will enter this block
             #one is if node's mgt is pdu
             #another is if node has pdu attribute but mgt isn't pdu
             #if the node has pdu attribute but mgt isn't pdu, 
@@ -147,16 +150,17 @@ sub process_request
                     push @allpdunodes, $node;
                 }
             }
-            return powerpdu(\@allpdunodes, $subcmd, $callback);
-        }elsif(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
-            #if one day, pdu node have pdu attribute, handle in this section too
-            return powerpduoutlet($noderange, $subcmd, $callback);
-        }else{
-            $callback->({ errorcode => [1],error => "The input command $subcmd is not support for pdu"});
+            if(@allpdunodes) {
+                if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state')){
+                    return powerpdu(\@allpdunodes, $subcmd, $callback);
+                } else {
+                    my $pdunodes = join (",", @allpdunodes);
+                    $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunodes."});
+                }
+            }
         }
     }elsif($command eq "nodeset") {
-        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"}); 
-
+        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
     }else{
         #reserve for other new command in future
     }
@@ -179,12 +183,15 @@ sub powerpdu {
     my $callback = shift;
     my $outletnum = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
 
-    if ($subcmd eq "stat") {
+    if (($subcmd eq "stat") || ($subcmd eq "state")){
         return powerstat($noderange, $callback);
     }
 
     foreach my $node (@$noderange) {
         my $session = connectTopdu($node,$callback);
+        if (!$session) {
+            next;
+        }
         my $count = $session->get("$outletnum");
         my $value;
         my $statstr;
@@ -244,6 +251,9 @@ sub powerpduoutlet {
         foreach my $pdu_outlet (@pdus) {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             my $session = connectTopdu($pdu,$callback);
+            if (!$session) {
+                next;
+            }
             my $cmd;
             if ($subcmd eq "pdustat") {
                 $statstr=outletstat($session, $outlet);
@@ -307,6 +317,9 @@ sub powerstat {
     my $outletnum = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
     foreach my $pdu (@$noderange) {
         my $session = connectTopdu($pdu,$callback);
+        if (!$session) {
+            next;
+        }
         my $count = $session->get("$outletnum");
         for (my $outlet =1; $outlet <= $count; $outlet++)
         {

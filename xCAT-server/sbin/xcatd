@@ -2843,6 +2843,7 @@ sub service_connection {
                     }
                 } else {
                     my %resp = (error => "Permission denied for request");
+                    $resp{errorcode}=1;
                     $resp{serverdone} = [undef];
                     if ($req->{transid}) {
                         $resp{transid} = $req->{transid}->[0];

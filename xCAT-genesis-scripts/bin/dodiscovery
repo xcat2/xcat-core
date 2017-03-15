@@ -72,6 +72,12 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		MTM=VMware
 	else 
 		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
+		if [ -z "$MTM" ]; then
+			FRU=`ipmitool fru print 0`
+			if [ $? -eq 0 ]; then
+				MTM=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {m=$2} /Product Name/ {n=$2} END {print m":"n}'`
+			fi
+		fi 
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
         CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`

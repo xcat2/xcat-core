@@ -921,6 +921,13 @@ sub bmcdiscovery_ipmi {
                         $serial = $2;
                         last;
                     }
+
+                    if (($fru_output =~ /Product Manufacturer\s+:\s+(.*?)\s+P.*?roduct Name\s+:\s+(.*?)\s+P.*?roduct Serial\s+:\s+(\S+)/)) {
+                        $mtm    = $1.":".$2;
+                        $serial = $3;
+                        last;
+                    }
+
                 }
             }
 
@@ -939,6 +946,7 @@ sub bmcdiscovery_ipmi {
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
+                $node =~ s/[\s:\._]/-/g;
             }
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("E", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);

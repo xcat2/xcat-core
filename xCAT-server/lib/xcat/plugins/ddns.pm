@@ -622,7 +622,7 @@ sub process_request {
                 } else {
 
                     # this host string might be a xcat group, try to test each node in the group
-                    foreach my $host (noderange($hosts)) {
+                    foreach my $host (xCAT::NodeRange->noderange($hosts)) {
                         unless (xCAT::NetworkUtils->thishostisnot($host)) {
                             $listenonifs = $dnsif;
                             last;

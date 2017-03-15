@@ -2358,6 +2358,10 @@ sub transRegexAttrs
             undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
             $retval = $node;
             $retval =~ s/$parts[0]/$parts[1]/;
+            if ($retval =~ /^$/) {
+                return undef;
+            }
+            return $retval;
         }
         while ($curr)
         {

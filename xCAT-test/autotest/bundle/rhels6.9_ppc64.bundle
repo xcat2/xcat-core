@@ -1,15 +1,9 @@
-setup_vm
-Diskless_installation_flat_p8_le
-Full_installation_flat_p8_le
+reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
-makehosts_h
-makehosts_help
-makehosts_n
-makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -56,10 +50,12 @@ packimage_o_p_a_m
 packimage_imagename
 packimage_h
 packimage_v
-
 pping_h
 pping_v
 pping_node
+getmacs_noderange
+getmacs_d
+getmacs_f_D
 gettab_key_table
 gettab_H
 gettab_err
@@ -146,6 +142,12 @@ noderm_err_node
 nodeset_stat
 nodeset_noderange
 nodestat_err_node
+rinv_bus
+rinv_config
+rinv_serial
+rinv_model
+rinv_firm
+rinv_all
 rinv_noderange_err
 rmdef_null
 rmdef_t_err
@@ -252,10 +254,6 @@ confignics_config_multiple_port_withnicaliases_multiple_value
 confignics_disable_set_to_yes
 confignics_disable_set_to_1
 confignics_s
-copycds_iso
-copycds_n
-copycds_a
-copycds_n_a
 xdsh_h
 xdsh_V
 xdsh_regular_command
@@ -263,7 +261,6 @@ xdsh_Q_command
 xdsh_c_cn
 xdsh_e_filename
 xdsh_E
-xdsh_i_linux
 xdsh_t
 xdsh_q
 xdsh_T
@@ -285,9 +282,6 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 makentp_v
 makentp_h
 nodeset_check_warninginfo
@@ -310,6 +304,7 @@ run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
 xcatconfig_u_check_xcatsslversion_rhels_sles
+reg_linux_diskless_installation_flat
 packimage_m_cpio_c_gzip
 packimage_m_cpio_c_xz
 packimage_m_tar_c_gzip
@@ -322,6 +317,4 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
-redhat_migration1
-redhat_migration2
 clean_up_env

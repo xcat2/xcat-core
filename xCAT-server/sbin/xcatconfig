@@ -1542,7 +1542,7 @@ sub genCredentials
         my ($cmd, $outref, $rc);
         $rc = getgrnam($user);
         if (!$rc) {
-            $cmd = "groupadd $user";
+            $cmd = "groupadd --system $user";
             $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message('E', "$cmd failed");
@@ -1551,7 +1551,7 @@ sub genCredentials
         }
         $rc = getpwnam($user);
         if (!$rc) {
-            $cmd = "useradd -g $user -s /bin/bash -d /home/$user -m $user";
+            $cmd = "useradd --system -g $user -s /bin/bash -d /home/$user -m $user";
             $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message('E', "$cmd failed");
