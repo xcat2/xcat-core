@@ -3430,7 +3430,6 @@ sub filter_nodes{
     # if existing in both 'mpa' and 'ipmi', a ngp x86 blade
     # if only in 'ppc', a common power node
     # if only in 'ipmi', a common x86 node
-    # if in ipmi and arch =~ /ppc64/, a pp64le node
     foreach (@nodes) {
         if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
             if ($mptabhash->{$_}->[0]->{'mpa'} eq $_) {
@@ -3470,7 +3469,7 @@ sub filter_nodes{
             push @commonbmc, $_;
             # whether is a Power 8 or higher with FSP
             if (defined ($nodetypehash->{$_}->[0]) && defined ($nodetypehash->{$_}->[0]->{'arch'})) {
-                if ($nodetypehash->{$_}->[0]->{'arch'} !~ /^ppc64/i) {
+                if ($nodetypehash->{$_}->[0]->{'arch'} ne "ppc64le") {
                     push @nonppcle, $_;
                 }
             }
@@ -3597,8 +3596,6 @@ sub version_cmp {
         $ver_a = shift;
     }
     my $ver_b = shift;
-    $ver_a =~ s/([-.]0+)+$//;
-    $ver_b =~ s/([-.]0+)+$//;
     my @array_a = ($ver_a =~ /([-.]|\d+|[^-.\d]+)/g);
     my @array_b = ($ver_b =~ /([-.]|\d+|[^-.\d]+)/g);
 
@@ -3623,12 +3620,9 @@ sub version_cmp {
         } elsif ( $b eq '.' ) {
             return 1;
         } elsif ($a =~ /^\d+$/ and $b =~ /^\d+$/) {
-#            if ($a =~ /^0/ || $b =~ /^0/) {
-#                return ($a cmp $b);
-#            } else {
-#                return ($a <=> $b);
-#            }
-            if($a != $b ){
+            if ($a =~ /^0/ || $b =~ /^0/) {
+                return ($a cmp $b);
+            } else {
                 return ($a <=> $b);
             }
         } else {
@@ -4125,9 +4119,7 @@ sub restartservice{
      return -1;
   }
  
-  #xCAT::Utils->runcmd($cmd, -1);
-  system($cmd);
-  $::RUNCMD_RC=$?;
+  xCAT::Utils->runcmd($cmd, -1);
   return $::RUNCMD_RC;
 }
 
@@ -4505,32 +4497,50 @@ sub parseMacTabEntry{
     return $mac_ret;
 }
 
-#The splitkcmdline subroutine is used to split the "persistent kernel options" 
-#and "provision-time kernel options" out of the kernel cmdline string
-#Arguments:
-#          $kcmdline:  the native kernel cmdline string
-#Return value:
-#          a reference of hash with the following KEY-VALUE def:
-#          "persistent" ==> string of persistent kernel options,delimited with space " "
-#          "volatile"   ==> string of provision-time kernel options,delimited with space " "
-sub splitkcmdline{
- my $kcmdline=shift;
- if( $kcmdline =~ /xCAT::Utils/)     {
-     $kcmdline=shift;
- }
+#--------------------------------------------------------------------------------
 
- my %cmdhash;
+=head3  is_process_exists
+    Check whether a process is exist.
+    Arguments:
+      process id
+    Returns:
+      1 process is exist
+      0 process is not exist
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->is_process_exists($pid);
+    Comments:
+        none
+=cut
 
- my @cmdlist=split(/[, ]/,$kcmdline);
- foreach my $cmd (@cmdlist){
-    if($cmd =~ /^R::(.*)$/){
-      $cmdhash{persistent}.="$1 ";
-    }else{
-      $cmdhash{volatile}.="$cmd ";
+#--------------------------------------------------------------------------------
+sub is_process_exists{
+    my $pid = shift;
+    return 1 if $pid == 0;
+    # NOTE: Add eval and require to process dependency missing of perl-Error
+    # package before sles 12 system.
+    my $miss = undef;
+    eval {
+        require Error;
+    };
+    if ($@) {
+        $miss = 1;
+    }
+    my $ret = kill(0, $pid);
+
+    if (!$miss) {
+        return 0 if ($!{ESRCH});
+        return 1 if ($!{EPERM});
     }
 
- }
-
- return \%cmdhash;
+    if ($ret != 0 ) {
+        return 1;
+    }
+    return 0;
 }
+
+
 1;
