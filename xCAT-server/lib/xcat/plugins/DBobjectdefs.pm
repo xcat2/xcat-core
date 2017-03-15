@@ -1546,7 +1546,12 @@ sub defmk
         my $invalidobjname = ();
         my $invalidnodename = ();
         foreach my $node (@::allobjnames) {
-            unless(isobjnamevalid($node,$::opt_t)){
+            my $myobjtype=$::opt_t;
+            if(!$myobjtype and $::FILEATTRS{$node}{'objtype'}){
+                $myobjtype=$::FILEATTRS{$node}{'objtype'};
+            }
+
+            unless(isobjnamevalid($node,$myobjtype)){
                $invalidobjname .= ",$node";
             }
             if (($node =~ /[A-Z]/) && (((!$::opt_t) && (!$::FILEATTRS{$node}{'objtype'})) || ($::FILEATTRS{$node}{'objtype'} eq "node") || ($::opt_t eq "node"))) { 
