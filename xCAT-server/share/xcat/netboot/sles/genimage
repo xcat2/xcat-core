@@ -1635,6 +1635,23 @@ EOMS
 fi
 # end NFSROOT/Statelite code
 
+function mountopts() {
+
+    rootlimit=\$1
+    rootfsoption=\$2
+    mountopt="mode=755"
+
+    if [ -n \$rootlimit ]; then
+        mountopt=\$mountopt",size=\$rootlimit"
+    fi
+    if [ -n \$rootfsoption ]; then
+        mountopt=\$mountopt",\$rootfsoption"
+    fi
+
+    echo \$mountopt
+}
+
+
 if [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
@@ -1650,11 +1667,8 @@ if [ -r /rootimg.sfs ]; then
 EOMS
     print $inifile "elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then\n";
     print $inifile "echo Setting up RAM-root tmpfs.\n";
-    if ($rootlimit) {
-        print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
-    } else {
-        print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
-    }
+    print $inifile "  mountopt=`mountopts \$rootlimit \$rootfsoption`\n";
+    print $inifile "  mount -o \$mountopt -t tmpfs rootfs \$NEWROOT\n";
     print $inifile "  cd /sysroot\n";
     print $inifile "  echo -n \"Extracting root filesystem:\"\n";
     print $inifile "  if [ -r /rootimg.cpio.gz ]; then\n";
@@ -1673,12 +1687,9 @@ EOMS
     print $inifile "  echo Done\n";
     print $inifile "elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then\n";
     print $inifile "    echo Setting up RAM-root tmpfs.\n";
+    print $inifile "    mountopt=`mountopts \$rootlimit \$rootfsoption`\n";
+    print $inifile "    mount -o \$mountopt -t tmpfs rootfs \$NEWROOT\n";
 
-    if ($rootlimit) {
-        print $inifile "    mount -o \"size=$rootlimit,mode=755\" -t tmpfs rootfs \$NEWROOT\n";
-    } else {
-        print $inifile "    mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
-    }
     print $inifile "    cd \$NEWROOT\n";
     print $inifile "    echo -n \"Extracting root filesystem:\"\n";
     print $inifile "    if [ -r /rootimg.tar.gz ]; then\n";

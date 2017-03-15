@@ -74,7 +74,8 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.cpio.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
     # Mounting new root with mount options
-    mountnewroot $rootlimit $rootfsoption $NEWROOT
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -99,8 +100,8 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloaded rootimg.tar.[gz/xz]...Setting up RAM-root tmpfs."
     echo Setting up RAM-root tmpfs.
     # Mounting new root with mount options
-    mountnewroot $rootlimit $rootfsoption $NEWROOT
-
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -124,8 +125,8 @@ elif [ -r /rootimg-statelite.gz ]; then
     echo Setting up RAM-root tmpfs for statelite mode.
  
     # Mounting new root with mount options
-    mountnewroot $rootlimit $rootfsoption $NEWROOT
-
+    mountopt=`mountopts $rootlimit $rootfsoption`
+    mount -t tmpfs -o $mountopt rootfs $NEWROOT
 
     cd $NEWROOT
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Extracting the root filesystem..."
@@ -294,14 +295,12 @@ function getdevfrommac() {
 # Mounting with mount options
 #  $1: root limit size
 #  $2: other mount options
-#  $3: NEWROOT
 #
 #############################################
-function mountnewroot() {
+function mountopts() {
 
     rootlimit=$1
     rootfsoption=$2
-    NEWROOT=$3
     mountopt="mode=755"
 
     if [ -n $rootlimit ]; then
@@ -311,11 +310,7 @@ function mountnewroot() {
         mountopt=$mountopt",$rootfsoption"
     fi
 
-    mount -t tmpfs -o $mountopt rootfs $NEWROOT
-    if [ $? != 0 ]; then
-        echo "Mounting with $mountopt option was unsuccessful. Trying to only mount with mode=755"
-        mount -t tmpfs -o mode=755 rootfs $NEWROOT
-    fi
+    echo $mountopt
 }
 
 
