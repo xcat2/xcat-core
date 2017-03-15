@@ -925,7 +925,7 @@ while (scalar @checkdeps) {
         foreach $dep (@deps) {
             $dep =~ s/.*\///;
             unless (grep { $_ eq $dep } @ndrivers) {    #only add if not added
-                print "Added $dep as an autodetected depedency\n";
+                print "Added $dep as an autodetected dependency\n";
             }
             unshift(@checkdeps, $dep);    #recursively check dependencies
             unshift(@ndrivers,  $dep);
