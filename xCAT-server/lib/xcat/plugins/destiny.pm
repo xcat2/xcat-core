@@ -400,10 +400,7 @@ sub setdestiny {
                     ignorekernelchk => $ignorekernelchk,
                     bootparams => \$bphash}, \&relay_response);
             if ($errored) {
-                my @myself = xCAT::NetworkUtils->determinehostname();
-                my $myname = $myself[ (scalar @myself) - 1 ];
-                # The callback function point to xcatd::build_response, it use dclone to clone data, but it can only accept a reference. The error msg here is a simple string, and will cause dclone failed. Seems to be string array can be used by dclone.
-                $callback->({ errorcode => [1], error => ["Some nodes failed to set up $state resources on server $myname, aborting"] });
+                # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
                 return;
             }
 
