@@ -60,6 +60,10 @@ B<rpower> I<noderange> [B<start>|B<stop>|B<restart>|B<pause>|B<unpause>|B<state>
 
 B<rpower> I<noderange> [B<stat>|B<off>|B<on>]
 
+=head2 OpenBMC (using Redfish) specific:
+
+B<rpower> I<noderange> [B<off>|B<on>|B<reset>|B<boot>|B<stat>|B<state>|B<status>]
+
 =head1 DESCRIPTION
 
 B<rpower> controls the power for a single or range of nodes,  via the out-of-band path.

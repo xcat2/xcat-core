@@ -53,6 +53,8 @@ my %usage = (
      pdu specific:
        rpower noderange [off|on|stat]
        rpower noderange [pduoff|pduon|pdustat]
+     OpenBMC (using Redfish) specific:
+       rpower noderange [on|off|reset|boot|stat|state|status]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]

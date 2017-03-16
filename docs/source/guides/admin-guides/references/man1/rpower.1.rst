@@ -111,6 +111,13 @@ pdu specific:
 \ **rpower**\  \ *noderange*\  [\ **stat | off | on**\ ]
 
 
+OpenBMC (using Redfish) specific:
+=================================
+
+
+\ **rpower**\  \ *noderange*\  [\ **off | on | reset | boot | stat | state | status**\ ]
+
+
 
 ***********
 DESCRIPTION
