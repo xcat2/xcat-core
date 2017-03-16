@@ -37,6 +37,7 @@ sub handled_commands {
     return {
         rpower => 'nodehm:mgt',
         rinv   => 'nodehm:mgt',
+        getopenbmccons => 'nodehm:cons',
     };
 }
 
@@ -132,6 +133,7 @@ my $async;
 my $cookie_jar;
 
 my $callback;
+my %allerrornodes = ();
 
 #-------------------------------------------------------
 
@@ -215,6 +217,7 @@ sub process_request {
     my $handle_id;
     my $content;
     $wait_node_num = keys %node_info;
+    my @donargs = ();
 
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
@@ -224,7 +227,17 @@ sub process_request {
         $handle_id_node{$handle_id} = $node;
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         print "$node: DEBUG POST $login_url -d $content\n";
+        push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
     }  
+
+    #process rcons
+    if ($request->{command}->[0] eq "getopenbmccons") {
+        foreach (@donargs) {
+            getopenbmccons($_, $callback);
+        }
+        return;
+    }
+
 
     while (1) { 
         last unless ($wait_node_num);
@@ -623,6 +636,35 @@ sub rinv_response {
 
     return;
 }
+
+#-------------------------------------------------------
+
+=head3  getopenbmccons
+
+    Process getopenbmccons
+
+=cut
+
+#-------------------------------------------------------
+sub getopenbmccons {
+    my $argr = shift;
+
+    #$argr is [$node,$bmcip,$nodeuser,$nodepass];
+    my $callback = shift;
+
+    my $rsp;
+    my $node=$argr->[0];
+    my $output = "openbmc, getopenbmccoms";
+    xCAT::SvrUtils::sendmsg($output, $callback, $argr->[0], %allerrornodes);
+
+    $rsp = { node => [ { name => [ $argr->[0] ] } ] };
+    $rsp->{node}->[0]->{bmcip}->[0]    = $argr->[1];
+    $rsp->{node}->[0]->{username}->[0]    = $argr->[2];
+    $rsp->{node}->[0]->{passwd}->[0]  = $argr->[3];
+    $callback->($rsp);
+    return $rsp;
+}
+
 
 
 1;
