@@ -149,6 +149,11 @@ sub crypt_system_password {
             "ERROR: Unable to get password from database table $table, key=$key");
         return undef;
     }
+    if (($password =~ /^\$1\$/) || ($password =~ /^\$5\$/) || ($password =~ /^\$6\$/)) {
+        # pre-crypted for our convenience
+        return $password;
+    }
+
     $cryptmethod = $data->{'cryptmethod'};
     if (!$cryptmethod) {
         # Use sha256 crypt method by default
