@@ -272,19 +272,19 @@ sub parse_args {
     }
 
     if (scalar(@ARGV) > 1) {
-        return ([ 1, "Only one option is supportted at the same time" ]);
+        return ([ 1, "Only one option is supported at the same time" ]);
     }
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
-        if ($subcommand ne "on" and $subcommand ne "off" and $subcommand ne "reset" and $subcommand ne "status" and $subcommand ne "state" and $subcommand ne "stat" and $subcommand ne "boot") {
+        unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
     }
 
     if ($command eq "rinv") {
-        if ($subcommand ne "cpu" and $subcommand ne "dimm" and $subcommand ne "bios" and $subcommand ne "all") {
-            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supportted currently" ]);
+        unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
+            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supported currently" ]);
         }
     }
 
@@ -295,7 +295,7 @@ sub parse_args {
 sub unsupported {
     my $callback = shift;
     if ($::OPENBMC_DEVEL ne "YES") {
-        return ([ 1, "This function is currently not supported" ]);
+        return ([ 1, "This function is currently not supported\nTo enable development code, run the following commands:\n\nexport OPENBMC_DEVEL=YES\nrestartxcatd" ]);
     } else {
         xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
         return;
