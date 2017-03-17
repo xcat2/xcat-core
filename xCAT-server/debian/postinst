@@ -20,15 +20,31 @@ set -e
 
 case "$1" in
     configure)
-	. /etc/profile.d/xcat.sh
+    . /etc/profile.d/xcat.sh
+    ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
+    ln -sf /opt/xcat/sbin/xcatctl /usr/sbin/xcatctl
+  
+    if [ -d "/usr/lib/systemd/system" ]; then   # Systemd
+        UNIT_PATH=/usr/lib/systemd/system
+    elif [ -d "/lib/systemd/system" ]; then
+        UNIT_PATH=/lib/systemd/system
+    fi
+
+    if [ -z "$UNIT_PATH" ]; then   # SysV init
+        ln -sf /opt/xcat/etc/init.d/xcatd /etc/init.d/xcatd
         update-rc.d xcatd defaults
-	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
-	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-		/etc/init.d/xcatd reload
-	    fi
-            rm /tmp/xCAT-server_upgrade.tmp
-	fi
-	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
+    else  # Systemd
+        ln -sf /opt/xcat/etc/systemd/xcatd.service $UNIT_PATH/xcatd.service
+        systemctl daemon-reload >/dev/null 2>&1
+        systemctl enable xcat.service >/dev/null 2>&1
+    fi
+        
+    if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
+        if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+            [ -f /usr/sbin/xcatctl ] && /usr/sbin/xcatctl reload
+        fi
+        rm /tmp/xCAT-server_upgrade.tmp
+    fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
