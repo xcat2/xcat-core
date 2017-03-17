@@ -494,7 +494,10 @@ fi
 if [ "$?" != "0" ];then
    PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs` 
    [ -n "$PIDLIST" ] && kill 9 $PIDLIST
-   /usr/sbin/sshd  
+   # Temporarily stick to the aes ciphers, some compatibility issues with other ciphers
+   /usr/sbin/sshd -o Ciphers=$(ssh -Q cipher|grep aes|tr '\n' ',') 
+   # Run without argument, in case above breaks
+   /usr/sbin/sshd
 fi
 
 kill -9 $CREDPID
