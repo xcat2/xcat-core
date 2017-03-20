@@ -4434,6 +4434,17 @@ sub parse_and_run_dcp
         return 0;
     }
 
+    unless ($options{'user'})
+    {
+            # user was not specified with -l flag, check it user calling the command
+            # was saved in DSH_FROM_USERID environment variable
+            my $current_userid = $ENV{'DSH_FROM_USERID'};
+            if (defined($current_userid)) {
+                # Set userid from value in DSH_FROM_USERID environment variable
+                $options{'user'} = $current_userid;
+            }
+    }
+
     if (defined($options{'rootimg'}))
     {
         if (xCAT::Utils->isAIX())

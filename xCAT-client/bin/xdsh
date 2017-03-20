@@ -666,6 +666,24 @@ sub parse_args_xdcp
         $::NODE_RCP = 1;
     }
 
+    # find out who is the current user running xdcp
+    my $current_userid = getpwuid($>);
+
+    $ENV{DSH_FROM_USERID} = $current_userid;
+
+    my $to_userid;
+    if ($options{'user'})    # if -l option
+    {
+        $to_userid = $options{'user'};
+    }
+    else
+    {
+        $to_userid = $current_userid;
+    }
+    # Save userid running this command in ENV variable.
+    # It will be later extraced by DSHCLI.pm
+    $ENV{DSH_TO_USERID} = $to_userid;
+
     if ($options{'bypass'})
     {
         $ENV{XCATBYPASS} = "yes";    # bypass xcatd
