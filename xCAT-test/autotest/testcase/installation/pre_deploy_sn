@@ -20,7 +20,7 @@ if ($ENV{XCAT_DATABASE} eq "PostgreSQL") {
   $cmd = "XCATPGPW=12345 /opt/xcat/bin/pgsqlsetup -i -V";
   runcmd("$cmd");
 
-  open(my $fh, '>>', '/var/lib/pgsql/data/pg_hba.conf') or die;
+  open(my $fh, '>>', '/var/lib/pgsql/data/pg_hba.conf') or die("failed open file /var/lib/pgsql/data/pg_bha.conf");
   print $fh "host  all  all  0.0.0.0/0  md5\n";
   print $fh "host  all  all      ::0/0  md5\n";
   close $fh;
