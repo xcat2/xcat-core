@@ -28,7 +28,7 @@ $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.\n",  $callback);
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.",  $callback);
         return;
     } else {
         return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport OPENBMC_DEVEL=YES\n\trestartxcatd" ]);
@@ -64,7 +64,8 @@ sub handled_commands {
     };
 }
 
-my $pre_url = "/org/openbmc";
+my $openbmc_url = "/org/openbmc";
+my $openbmc_project_url = "/xyz/openbmc_project";
 #-------------------------------------------------------
 
 # The hash table to store method and url for request, 
@@ -82,7 +83,7 @@ my %status_info = (
 
     RPOWER_ON_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.On",
     },
     RPOWER_ON_RESPONSE => {
@@ -90,7 +91,7 @@ my %status_info = (
     },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.Off",
     },
     RPOWER_OFF_RESPONSE => {
@@ -98,7 +99,7 @@ my %status_info = (
     },
     RPOWER_RESET_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.Reboot",
     },
     RPOWER_RESET_RESPONSE => {
@@ -106,7 +107,7 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "/xyz/openbmc_project/state/host0",
+        init_url       => "$openbmc_project_url/state/host0",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
@@ -114,7 +115,7 @@ my %status_info = (
 
     RINV_REQUEST => {
         method         => "GET",
-        init_url       => "$pre_url/inventory/enumerate",
+        init_url       => "$openbmc_url/inventory/enumerate",
     },
     RINV_RESPONSE => {
         process        => \&rinv_response,
