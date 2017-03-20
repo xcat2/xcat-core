@@ -50,6 +50,17 @@ sub handled_commands {
         rpower => 'nodehm:mgt',
         rinv   => 'nodehm:mgt',
         getopenbmccons => 'nodehm:cons',
+        rsetboot       => 'nodehm:mgt',
+        rspconfig      => 'nodehm:mgt',
+        rvitals        => 'nodehm:mgt',
+        rflash         => 'nodehm:mgt',
+        reventlog      => 'nodehm:mgt',
+        rspreset       => 'nodehm:mgt',
+        rbeacon        => 'nodehm:mgt',
+        renergy        => 'nodehm:mgt',
+        rscan          => 'nodehm:mgt',
+        ripmi          => 'ipmi',
+        getrvidparms   => 'nodehm:mgt',
     };
 }
 
@@ -284,8 +295,7 @@ sub parse_args {
         #
         # disable function until fully tested 
         #
-        $check = unsupported($callback);
-        if (ref($check) eq "ARRAY") { return $check; }
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
         if (!defined($extrargs)) {
             return ([ 1, "No option specified for rpower" ]);
@@ -293,19 +303,18 @@ sub parse_args {
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
-    }
-
-    if ($command eq "rinv") {
+    } elsif ($command eq "rinv") {
         #
         # disable function until fully tested 
         #
-        $check = unsupported($callback);
-        if (ref($check) eq "ARRAY") { return $check; }
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
 
         unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
             return ([ 1, "Only 'cpu','dimm', 'bios','all' are supported currently" ]);
         }
+    } else {
+        return ([ 1, "Command is not supported." ]);
     }
 
     return;
