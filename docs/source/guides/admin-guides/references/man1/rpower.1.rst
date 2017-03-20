@@ -32,6 +32,13 @@ BMC (using IPMI) specific:
 \ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat**\ ]
 
 
+OpenBMC specific:
+=================
+
+
+\ **rpower**\  \ *noderange*\  [\ **off | on | reset | boot | stat | state | status**\ ]
+
+
 PPC (with IVM or HMC) specific:
 ===============================
 
@@ -109,13 +116,6 @@ pdu specific:
 
 
 \ **rpower**\  \ *noderange*\  [\ **stat | off | on**\ ]
-
-
-OpenBMC (using Redfish) specific:
-=================================
-
-
-\ **rpower**\  \ *noderange*\  [\ **off | on | reset | boot | stat | state | status**\ ]
 
 
 

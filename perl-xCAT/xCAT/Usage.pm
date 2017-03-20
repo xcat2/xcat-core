@@ -26,6 +26,8 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
+     OpenBMC specific:
+       rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
      PPC (with IVM or HMC) specific:
@@ -53,8 +55,6 @@ my %usage = (
      pdu specific:
        rpower noderange [off|on|stat]
        rpower noderange [pduoff|pduon|pdustat]
-     OpenBMC (using Redfish) specific:
-       rpower noderange [on|off|reset|boot|stat|state|status]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
