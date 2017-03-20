@@ -74,7 +74,7 @@ sub addnode
     {
 
         if ($hosts[$idx] =~ /^${ip}\s/
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/)
+            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
         {
             if ($foundone)
             {
