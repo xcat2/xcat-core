@@ -28,7 +28,6 @@ updatenode_diskful_syncfiles_P_script1
 updatenode_script3
 updatenode_P_script1_script2
 updatenode_without_flag
-
 chdef_null
 chdef_t_node
 chdef_t_network
