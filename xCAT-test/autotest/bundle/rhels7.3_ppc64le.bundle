@@ -56,7 +56,6 @@ packimage_o_p_a_m
 packimage_imagename
 packimage_h
 packimage_v
-
 pping_h
 pping_v
 pping_node
@@ -252,10 +251,6 @@ confignics_config_multiple_port_withnicaliases_multiple_value
 confignics_disable_set_to_yes
 confignics_disable_set_to_1
 confignics_s
-copycds_iso
-copycds_n
-copycds_a
-copycds_n_a
 xdsh_h
 xdsh_V
 xdsh_regular_command
