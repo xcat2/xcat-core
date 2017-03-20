@@ -163,7 +163,6 @@ rscan_w
 rscan_x_w
 rscan_z_w
 rvitals_lcds
-rvitals_all
 rvitals_noderange_err
 tabdump_table
 tabdump_d
