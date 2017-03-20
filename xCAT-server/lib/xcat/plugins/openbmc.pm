@@ -279,16 +279,15 @@ sub parse_args {
         return $check;
     }
 
-    if (!defined($extrargs)) {
-        return ([ 1, "No option specified for rpower" ]);
-    }
-
     if (scalar(@ARGV) > 1) {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
+        if (!defined($extrargs)) {
+            return ([ 1, "No option specified for rpower" ]);
+        }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
