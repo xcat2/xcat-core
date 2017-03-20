@@ -32,7 +32,8 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sles11" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "rhels" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "sles12.2" ]];then chdef -t node -o $$CN postscripts=setupntp; fi
+cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ; then  chdef -t node -o $$CN postscripts=setupntp; fi
+check:rc==0
 cmd:lsdef -l $$CN
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -55,10 +56,10 @@ cmd:xdsh $$CN mount
 check:rc==0
 cmd:sleep 120
 #comment for further discussion
-#cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sles11" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "rhels" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "sles12.2" ]];then xdsh $$CN service ntpd status;fi
+#cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then xdsh $$CN service ntpd status;fi
 #check:rc==0
 #check:output=~running
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "sles11" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "rhels" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "sles12.2" ]];then chdef -t node -o $$CN postscripts=" "; fi
+cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then chdef  -t node -o $$CN -m postscripts="setupntp"; fi
 cmd:lsdef -l $$CN
 check:rc==0
 cmd:ping $$CN -c 3
