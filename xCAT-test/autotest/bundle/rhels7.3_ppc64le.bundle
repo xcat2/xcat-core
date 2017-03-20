@@ -149,6 +149,13 @@ nodestat_err_node
 rinv_noderange_err
 rmdef_null
 rmdef_t_err
+rpower_off
+rpower_stat
+rpower_boot
+rpower_on
+rpower_reset
+rpower_noderange
+rpower_noderange_nodeps
 rpower_err_noderange
 rscan_noderange
 rscan_x
@@ -282,6 +289,7 @@ nodeset_cmdline
 nodeset_runimg
 makentp_v
 makentp_h
+nodeset_check_warninginfo
 runcmdinstaller_h
 runcmdinstaller_command
 get_xcat_postscripts_loginfo
