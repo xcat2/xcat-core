@@ -16,11 +16,24 @@ sub runcmd {
     }
 }
 
-$cmd = "XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 /opt/xcat/bin/mysqlsetup -i -V";
-runcmd("$cmd");
+if ($ENV{XCAT_DATABASE} eq "PostgreSQL") {
+  $cmd = "XCATPGPW=12345 /opt/xcat/bin/pgsqlsetup -i -V";
+  runcmd("$cmd");
 
-$cmd = "echo \"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\" | mysql -u root -p12345";
-runcmd("$cmd");
+  open(my $fh, '>>', '/var/lib/pgsql/data/pg_hba.conf') or die("failed open file /var/lib/pgsql/data/pg_bha.conf");
+  print $fh "host  all  all  0.0.0.0/0  md5\n";
+  print $fh "host  all  all      ::0/0  md5\n";
+  close $fh;
+
+  $cmd = "service postgresql restart"
+  runcmd("$cmd");
+} else {
+  $cmd = "XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 /opt/xcat/bin/mysqlsetup -i -V";
+  runcmd("$cmd");
+
+  $cmd = "echo \"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\" | mysql -u root -p12345";
+  runcmd("$cmd");
+}
 
 my $xcatballpath = "/install/post/otherpkgs/$os/$arch/xcat";
 $cmd = "mkdir -p $xcatballpath/xcat-core && cp -r /xcat-core/* $xcatballpath/xcat-core && cp -r /xcat-dep $xcatballpath";
