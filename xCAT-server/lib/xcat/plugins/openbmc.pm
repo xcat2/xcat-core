@@ -273,11 +273,7 @@ sub process_request {
 sub parse_args {
     my $command  = shift;
     my $extrargs = shift;
-
-    my $check = unsupported($callback);
-    if (ref($check) eq "ARRAY") {
-        return $check;
-    }
+    my $check = undef;
 
     if (scalar(@ARGV) > 1) {
         return ([ 1, "Only one option is supported at the same time" ]);
@@ -285,6 +281,12 @@ sub parse_args {
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
+        #
+        # disable function until fully tested 
+        #
+        $check = unsupported($callback);
+        if (ref($check) eq "ARRAY") { return $check; }
+
         if (!defined($extrargs)) {
             return ([ 1, "No option specified for rpower" ]);
         }
@@ -294,6 +296,13 @@ sub parse_args {
     }
 
     if ($command eq "rinv") {
+        #
+        # disable function until fully tested 
+        #
+        $check = unsupported($callback);
+        if (ref($check) eq "ARRAY") { return $check; }
+
+
         unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
             return ([ 1, "Only 'cpu','dimm', 'bios','all' are supported currently" ]);
         }
