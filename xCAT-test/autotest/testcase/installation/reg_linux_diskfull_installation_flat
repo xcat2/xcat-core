@@ -60,8 +60,8 @@ cmd:sleep 120
 #check:rc==0
 #check:output=~running
 cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then chdef  -t node -o $$CN -m postscripts="setupntp"; fi
-cmd:lsdef -l $$CN
 check:rc==0
+cmd:lsdef -l $$CN
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
