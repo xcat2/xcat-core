@@ -14,6 +14,10 @@ B<rpower> I<noderange> [B<on>|B<off>|B<softoff>|B<reset>|B<boot>|B<stat>|B<state
 
 B<rpower> I<noderange> [B<pduon>|B<pduoff>|B<pdustat>]
 
+=head2 OpenBMC specific:
+
+B<rpower> I<noderange> [B<off>|B<on>|B<reset>|B<boot>|B<stat>|B<state>|B<status>]
+
 =head2 PPC (with IVM or HMC) specific:
 
 B<rpower> I<noderange> [B<--nodeps>] {B<of>}
