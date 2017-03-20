@@ -15,6 +15,7 @@ check:rc==0
 cmd:grep 'Running of Software Maintenance has completed' /tmp/updatenode.S.out
 check:rc==0
 cmd:mv `cat /tmp/pkglist.filename`.save `cat /tmp/pkglist.filename`
+cmd:rm -f /tmp/pkglist.filename
 cmd:xdsh $$CN '(rpm -qa || dpkg -l) | grep gcc' | grep gcc
 check:rc==0
 end
