@@ -24,6 +24,18 @@ use JSON;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 
+
+sub unsupported {
+    my $callback = shift;
+    if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.\n",  $callback);
+        return;
+    } else {
+        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport OPENBMC_DEVEL=YES\n\trestartxcatd" ]);
+    }
+}
+
+
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -289,17 +301,6 @@ sub parse_args {
     }
 
     return;
-}
-
-
-sub unsupported {
-    my $callback = shift;
-    if ($::OPENBMC_DEVEL ne "YES") {
-        return ([ 1, "This function is currently not supported\nTo enable development code, run the following commands:\n\nexport OPENBMC_DEVEL=YES\nrestartxcatd" ]);
-    } else {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
-        return;
-    }
 }
 
 #-------------------------------------------------------
