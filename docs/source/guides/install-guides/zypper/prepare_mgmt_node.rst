@@ -10,6 +10,8 @@ Install an OS on the Management Node
    :start-after: BEGIN_install_os_mgmt_node
    :end-before: END_install_os_mgmt_node
 
+.. _zypper_configure_the_base_os_repository:
+
 Configure the Base OS Repository
 --------------------------------
 

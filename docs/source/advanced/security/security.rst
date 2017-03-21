@@ -14,29 +14,30 @@ Commands Access Control
 
 Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
 
+.. _granting_xcat_privileges:
 
 Granting Users xCAT Privileges
 ``````````````````````````````
 
-To give a non-root user all xCAT commands privileges, run ``tabedit policy`` and add a line: ::
+To give a non-root user all xCAT command privileges, run ``tabedit policy`` and add a line: ::
 
     "6","<username>",,,,,,"allow",,
 
-Where <username> is the name of the user that you are granting privileges to. In the above case, this user can now perform all xCAT commands, including changing the ``policy`` table to grant right to other users, so this should be used with caution.
+Where <username> is the name of the user that you are granting privileges to. This user can now perform all xCAT commands, including changing the ``policy`` table to grant rights to other users, so this should be used with caution.
 
-You may only want to grant users limited access. One example is that one user may only be allowed to run ``nodels``. This can be done as follows: ::
+To grant a user ability to run ``nodels`` command: ::
 
     "6","<username>",,"nodels",,,,"allow",,
 
-If you want to grant all users the ability to run nodels, add this line:  ::
+To grant all users the ability to run ``nodels``:  ::
 
     "6.1","*",,"nodels",,,,"allow",,
 
-You also can do this by running: ::
+CLI can also be used: ::
 
     chdef -t policy -o 6.1 name=* commands=nodels rule=allow
 
-**Note** Make sure the directories that contain the xCAT commands are in the user's ``$PATH``. If not, add them to ``$PATH`` as appropriate way in your system. ::
+**Note** Make sure the directories that contain the xCAT commands are in the user's ``$PATH``. If not, add them to ``$PATH`` as appropriate in your system. ::
 
     echo $PATH | grep xcat
     /opt/xcat/bin:/opt/xcat/sbin: ....... 
@@ -44,18 +45,18 @@ You also can do this by running: ::
 Extra Setup for Remote Commands
 ```````````````````````````````
 
-To give a user the ability to run remote commands (xdsh, xdcp, psh, pcp) in some node, except above steps, also need to run below steps:  ::
+To give a user the ability to run remote commands (``xdsh``, ``xdcp``, ``psh``, ``pcp``) in some node, in addition to above steps, also need to run below steps:  ::
   
     su - <username>
     xdsh <noderange> -K
 
-This will setup the user and root ssh keys for the user under the ``$HOME/.ssh`` directory of the user on the nodes. The root ssh keys are needed for the user to run the xCAT commands under the xcatd daemon, where the user will be running as root. **Note**: the uid for the user should match the uid on the management node and a password for the user must have been set on the nodes. 
+This will setup the user and root ssh keys for the user under the ``$HOME/.ssh`` directory of the user on the nodes. The root ssh keys are needed for the user to run the xCAT commands under the xcatd daemon, where the user will be running as root. **Note**: the uid and the password for the user on the management node, should match the uid and password on the managed nodes. 
 
 
 Set Up Login Node (Remote Client)
 `````````````````````````````````
 
-In some cases, you don't want your **non-root** user login to management node but still can run some xCAT commands. This time, you need setup a login node(i.e. remote client) for these users.
+In some cases, you don't want your **non-root** user login to management node but still can run some xCAT commands. This time, you need setup a login node (i.e. remote client) for these users.
 
 Below are the steps of how to set up a login node.
 
@@ -65,9 +66,9 @@ Below are the steps of how to set up a login node.
 
   * :doc:`Configure xCAT Software Repository in RHEL</guides/install-guides/yum/configure_xcat>`
 
-  * `Configure the Base OS Repository in SUSE <http://xcat-docs.readthedocs.org/en/latest/guides/install-guides/zypper/prepare_mgmt_node.html#configure-the-base-os-repository>`_
+  * :ref:`Configure the Base OS Repository in SUSE <zypper_configure_the_base_os_repository>`
  
-  * `Configure the Base OS Repository in Ubuntu <http://xcat-docs.readthedocs.org/en/latest/guides/install-guides/apt/prepare_mgmt_node.html#configure-the-base-os-repository>`_
+  * :ref:`Configure the Base OS Repository in Ubuntu <apt_configure_the_base_os_repository>`
 
 
   Then install ``xCAT-client``.
