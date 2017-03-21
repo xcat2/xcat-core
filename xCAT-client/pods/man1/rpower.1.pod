@@ -42,11 +42,11 @@ B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<s
 
 =head2 Blade (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<sms>]
+B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<sms>|B<reseat>]
 
 =head2 Blade specific:
 
-B<rpower> I<noderange> [B<cycle>|B<softoff>] 
+B<rpower> I<noderange> [B<cycle>|B<softoff>|B<reseat>] 
 
 =head2 zVM specific:
 
@@ -168,6 +168,9 @@ This option is recommended over B<cycle>.
 =item B<cycle>
 
 Power off, then on.
+
+=item B<reseat>
+
 
 =item B<of>
 
