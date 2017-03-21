@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-## IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+## IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT_plugin::openbmc;
 
@@ -58,12 +58,10 @@ sub handled_commands {
         rspreset       => 'nodehm:mgt',
         rbeacon        => 'nodehm:mgt',
         renergy        => 'nodehm:mgt',
-        rscan          => 'nodehm:mgt',
-        ripmi          => 'ipmi',
-        getrvidparms   => 'nodehm:mgt',
     };
 }
 
+my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
 my $openbmc_project_url = "/xyz/openbmc_project";
 #-------------------------------------------------------
@@ -245,7 +243,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
-        $login_url = "https://$bmcip/login";
+        $login_url = "$http_protocol://$bmcip/login";
         $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
         $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
         $handle_id_node{$handle_id} = $node;
@@ -464,7 +462,7 @@ sub gen_send_request {
     } else {
         $request_url = $status_info{ $node_info{$node}{cur_status} }{init_url};
     }
-    $request_url = "https://" . $node_info{$node}{bmc} . $request_url;
+    $request_url = "$http_protocol://" . $node_info{$node}{bmc} . $request_url;
 
     my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
     $handle_id_node{$handle_id} = $node;
