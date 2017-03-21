@@ -666,11 +666,6 @@ sub parse_args_xdcp
         $::NODE_RCP = 1;
     }
 
-    # find out who is the current user running xdcp
-    my $current_userid = getpwuid($>);
-
-    $ENV{DSH_FROM_USERID} = $current_userid;
-
     my $to_userid;
     if ($options{'user'})    # if -l option
     {
@@ -678,6 +673,11 @@ sub parse_args_xdcp
     }
     else
     {
+        # find out who is the current user running xdcp
+        my $current_userid = getpwuid($>);
+
+        $ENV{DSH_FROM_USERID} = $current_userid;
+
         $to_userid = $current_userid;
     }
     # Save userid running this command in ENV variable.
