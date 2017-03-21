@@ -171,6 +171,7 @@ Power off, then on.
 
 =item B<reseat>
 
+For blades and NeXtScale, simulates unplugging and replugging the node into the chassis.
 
 =item B<of>
 
