@@ -170,7 +170,7 @@ sub preprocess_request {
 
     my $parse_result = parse_args($command, $extrargs);
     if (ref($parse_result) eq 'ARRAY') {
-        $callback->({ error => $parse_result->[1], errorcode => $parse_result->[0] });
+        $callback->({ errorcode => $parse_result->[0], data => $parse_result->[1] });
         $request = {};
         return;
     }
@@ -278,13 +278,13 @@ sub parse_args {
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
-            return ([ 1, "$subcommand is not supported for rpower" ]);
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     }
 
     if ($command eq "rinv") {
         unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
-            return ([ 1, "Only 'cpu','dimm', 'bios','all' are supported currently" ]);
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     }
 
@@ -366,28 +366,35 @@ sub parse_command_status {
 sub parse_node_info {
     my $noderange = shift;
 
-    my $table = xCAT::Table->new('openbmc');
-    my $tablehash = $table->getNodesAttribs(\@$noderange, ['bmc', 'username', 'password']);
+    my $passwd_table = xCAT::Table->new('passwd');
+    my $passwd_hash = $passwd_table->getAttribs({ 'key' => 'openbmc' }, qw(username password));
+
+    my $openbmc_table = xCAT::Table->new('openbmc');
+    my $openbmc_hash = $openbmc_table->getNodesAttribs(\@$noderange, ['bmc', 'username', 'password']);
 
     foreach my $node (@$noderange) {
-        if (defined($tablehash->{$node}->[0])) {
-            if ($tablehash->{$node}->[0]->{'bmc'}) {
-                $node_info{$node}{bmc} = $tablehash->{$node}->[0]->{'bmc'};
+        if (defined($openbmc_hash->{$node}->[0])) {
+            if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
+                $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute bmc", $callback, $node);
                 next;
             }
 
-            if ($tablehash->{$node}->[0]->{'username'}) {
-                $node_info{$node}{username} = $tablehash->{$node}->[0]->{'username'};
+            if ($openbmc_hash->{$node}->[0]->{'username'}) {
+                $node_info{$node}{username} = $openbmc_hash->{$node}->[0]->{'username'};
+            } elsif ($passwd_hash and $passwd_hash->{username}) {
+                $node_info{$node}{username} = $passwd_hash->{username};
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute username", $callback, $node);
                 delete $node_info{$node};
                 next;
             }
 
-            if ($tablehash->{$node}->[0]->{'password'}) {
-                $node_info{$node}{password} = $tablehash->{$node}->[0]->{'password'};
+            if ($openbmc_hash->{$node}->[0]->{'password'}) {
+                $node_info{$node}{password} = $openbmc_hash->{$node}->[0]->{'password'};
+            } elsif ($passwd_hash and $passwd_hash->{password}) {
+                $node_info{$node}{password} = $passwd_hash->{password};
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute password", $callback, $node);
                 delete $node_info{$node};
