@@ -63,6 +63,12 @@ The following commands are supported against a compute node:
          cn01: f5pdu3 outlet 6 is on
          cn01: f5pdu3 outlet 7 is on
 
+   * Power cycling the PDU outlets on a compute node: :: 
+   
+       # rpower cn01 pdureset
+         cn01: f5pdu3 outlet 6 is on
+         cn01: f5pdu3 outlet 7 is on
+
 The following commands are supported against a PDU: 
 
    * Check the status of the full PDU: ::
@@ -98,8 +104,24 @@ The following commands are supported against a PDU:
          f5pdu3: outlet 12 is off
 
    * Power on the full PDU: ::
-   
+
        # rpower f5pdu3 on
+         f5pdu3: outlet 1 is on
+         f5pdu3: outlet 2 is on
+         f5pdu3: outlet 3 is on
+         f5pdu3: outlet 4 is on
+         f5pdu3: outlet 5 is on
+         f5pdu3: outlet 6 is on
+         f5pdu3: outlet 7 is on
+         f5pdu3: outlet 8 is on
+         f5pdu3: outlet 9 is on
+         f5pdu3: outlet 10 is on
+         f5pdu3: outlet 11 is on
+         f5pdu3: outlet 12 is on
+
+   * Power reset the full PDU: ::
+   
+       # rpower f5pdu3 reset
          f5pdu3: outlet 1 is on
          f5pdu3: outlet 2 is on
          f5pdu3: outlet 3 is on

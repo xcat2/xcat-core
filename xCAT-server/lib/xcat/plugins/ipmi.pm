@@ -7682,7 +7682,7 @@ sub preprocess_request {
         }
 
         #pdu commands will be handled in the pdu plugin
-        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
              return 0;
         }
 
