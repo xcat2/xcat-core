@@ -46,6 +46,8 @@ my %usage = (
        rpower <noderange> [on|onstandby|off|cycle|state|sms]
      Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
+    Lenovo high-density server specific:
+       rpower <noderange> [on|off|reset|boot|reseat]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
      MIC specific:
