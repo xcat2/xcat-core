@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-## IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+## IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT_plugin::openbmc;
 
@@ -24,6 +24,18 @@ use JSON;
 
 $::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
 
+
+sub unsupported {
+    my $callback = shift;
+    if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.",  $callback);
+        return;
+    } else {
+        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport OPENBMC_DEVEL=YES\n\trestartxcatd" ]);
+    }
+}
+
+
 #-------------------------------------------------------
 
 =head3  handled_commands
@@ -38,10 +50,20 @@ sub handled_commands {
         rpower => 'nodehm:mgt',
         rinv   => 'nodehm:mgt',
         getopenbmccons => 'nodehm:cons',
+        rsetboot       => 'nodehm:mgt',
+        rspconfig      => 'nodehm:mgt',
+        rvitals        => 'nodehm:mgt',
+        rflash         => 'nodehm:mgt',
+        reventlog      => 'nodehm:mgt',
+        rspreset       => 'nodehm:mgt',
+        rbeacon        => 'nodehm:mgt',
+        renergy        => 'nodehm:mgt',
     };
 }
 
-my $pre_url = "/org/openbmc";
+my $http_protocol="https";
+my $openbmc_url = "/org/openbmc";
+my $openbmc_project_url = "/xyz/openbmc_project";
 #-------------------------------------------------------
 
 # The hash table to store method and url for request, 
@@ -59,7 +81,7 @@ my %status_info = (
 
     RPOWER_ON_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.On",
     },
     RPOWER_ON_RESPONSE => {
@@ -67,7 +89,7 @@ my %status_info = (
     },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.Off",
     },
     RPOWER_OFF_RESPONSE => {
@@ -75,7 +97,7 @@ my %status_info = (
     },
     RPOWER_RESET_REQUEST  => {
         method         => "PUT",
-        init_url       => "/xyz/openbmc_project/state/host0/attr/RequestedHostTransition",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
         data           => "xyz.openbmc_project.State.Host.Transition.Reboot",
     },
     RPOWER_RESET_RESPONSE => {
@@ -83,7 +105,7 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "/xyz/openbmc_project/state/host0",
+        init_url       => "$openbmc_project_url/state/host0",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
@@ -91,7 +113,7 @@ my %status_info = (
 
     RINV_REQUEST => {
         method         => "GET",
-        init_url       => "$pre_url/inventory/enumerate",
+        init_url       => "$openbmc_url/inventory/enumerate",
     },
     RINV_RESPONSE => {
         process        => \&rinv_response,
@@ -221,7 +243,7 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
-        $login_url = "https://$bmcip/login";
+        $login_url = "$http_protocol://$bmcip/login";
         $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
         $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
         $handle_id_node{$handle_id} = $node;
@@ -261,15 +283,7 @@ sub process_request {
 sub parse_args {
     my $command  = shift;
     my $extrargs = shift;
-
-    my $check = unsupported($callback);
-    if (ref($check) eq "ARRAY") {
-        return $check;
-    }
-
-    if (!defined($extrargs)) {
-        return ([ 1, "No option specified for rpower" ]);
-    }
+    my $check = undef;
 
     if (scalar(@ARGV) > 1) {
         return ([ 1, "Only one option is supported at the same time" ]);
@@ -277,29 +291,32 @@ sub parse_args {
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
+        #
+        # disable function until fully tested 
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+
+        if (!defined($extrargs)) {
+            return ([ 1, "No option specified for rpower" ]);
+        }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "$subcommand is not supported for rpower" ]);
         }
-    }
+    } elsif ($command eq "rinv") {
+        #
+        # disable function until fully tested 
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
-    if ($command eq "rinv") {
+
         unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
             return ([ 1, "Only 'cpu','dimm', 'bios','all' are supported currently" ]);
         }
+    } else {
+        return ([ 1, "Command is not supported." ]);
     }
 
     return;
-}
-
-
-sub unsupported {
-    my $callback = shift;
-    if ($::OPENBMC_DEVEL ne "YES") {
-        return ([ 1, "This function is currently not supported\nTo enable development code, run the following commands:\n\nexport OPENBMC_DEVEL=YES\nrestartxcatd" ]);
-    } else {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk\n",  $callback);
-        return;
-    }
 }
 
 #-------------------------------------------------------
@@ -445,7 +462,7 @@ sub gen_send_request {
     } else {
         $request_url = $status_info{ $node_info{$node}{cur_status} }{init_url};
     }
-    $request_url = "https://" . $node_info{$node}{bmc} . $request_url;
+    $request_url = "$http_protocol://" . $node_info{$node}{bmc} . $request_url;
 
     my $handle_id = xCAT::OPENBMC->send_request($async, $method, $request_url, $content);
     $handle_id_node{$handle_id} = $node;
