@@ -4,8 +4,6 @@ go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
-makehosts_n
-makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -232,6 +230,8 @@ makehosts_help
 makehosts_null
 makehosts_l
 makehosts_d
+makehosts_n
+makehosts_n_noderange
 xdcp_src_dst
 makedns_h
 makedns_d_node
