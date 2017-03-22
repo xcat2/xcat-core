@@ -44,7 +44,7 @@ sub delnode
     while ($idx <= $#hosts)
     {
         if (($ip and $hosts[$idx] =~ /^${ip}\s/)
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/)
+            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
         {
             $hosts[$idx] = "";
         }
