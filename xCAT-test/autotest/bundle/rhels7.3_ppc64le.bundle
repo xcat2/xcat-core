@@ -6,10 +6,6 @@ go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
-makehosts_h
-makehosts_help
-makehosts_n
-makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
