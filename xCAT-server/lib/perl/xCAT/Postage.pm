@@ -1582,7 +1582,10 @@ sub dump_all_attribs_in_tabs
                 } else {
                     $values .= "$attrib=$val||";
                     if ($attrib =~ /^disable$/) {
-                        $values .= "comments=$t";
+                        # Updated on 2017-03-22 for issue 2634 Quotes in tables' comment field break mypostscript
+                        # The original line is : $values .= "comments=$t";
+                        # In order to fix issue 2634, change this line to : $values .= "comments=";
+                        $values .= "comments=";
                     }
                 }
             }
