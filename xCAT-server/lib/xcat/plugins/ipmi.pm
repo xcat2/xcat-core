@@ -3288,7 +3288,7 @@ sub initfru_zero {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            
+            next; 
 
             #print Dumper($_);
             #print $_->{encoding};
