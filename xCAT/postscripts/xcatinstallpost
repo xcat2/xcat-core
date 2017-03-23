@@ -84,6 +84,9 @@ if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then
 
 echo "
 
+[ -f /opt/xcat/xcatinfo ] && grep 'POSTSCRIPTS_RC=1' /opt/xcat/xcatinfo >/dev/null 2>&1 && return_value=1
+
+
 if [ \"\$return_value\" -eq \"0\" ]; then
     if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
         msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
@@ -98,6 +101,7 @@ else
 fi
 " >> /xcatpost/mypostscript.post
 fi
+
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
