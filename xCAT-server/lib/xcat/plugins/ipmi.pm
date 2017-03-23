@@ -2666,16 +2666,18 @@ sub add_textual_frus {
     my $type         = shift;
     my $sessdata     = shift;
     unless ($type) { $type = 'hw'; }
+
     if ($desc =~ /System Firmware/i and $category =~ /product/i) {
         $type = 'firmware,bmc';
     }
-    if ($desc =~ /NODE \d+/ and $category =~ /chassis/) {
+    if ( ($desc =~ /NODE \d+/ or $desc =~ /Backplane/) and $category =~ /chassis/) {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
     } else {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
     }
+
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Manufacturer", $category, "manufacturer", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "FRU Number", $category, "frunum", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Version", $category, "version", $type, $sessdata);
@@ -3035,6 +3037,7 @@ sub initfru_with_mprom {
 sub process_currfruid {
     my $rsp      = shift;
     my $sessdata = shift;
+
     if ($rsp->{code} == 0xcb) {
         $sessdata->{currfrudata} = "Not Present";
         $sessdata->{currfrudone} = 1;
@@ -3299,7 +3302,11 @@ sub initfru_zero {
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
             # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
-            @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            if (isHabanero($sessdata)) {
+                @{$sessdata->{frus_for_openpower}} = qw(2 43);
+            } else {
+                @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            }
             my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
             foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
                 my $sdr = $sessdata->{sdr_hash}->{$key};
@@ -3692,7 +3699,7 @@ sub readcurrfrudevice {
         if ($data[0] != $sessdata->{currfruchunk}) {
 
             # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
-            if ($data[0] gt 0) {
+            if ($data[0] ge 0) {
                 $sessdata->{currfrudone} = 1;
             } else {
                 my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
@@ -7683,7 +7690,7 @@ sub preprocess_request {
 
         #pdu commands will be handled in the pdu plugin
         if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
-             return 0;
+            return 0;
         }
 
         if (($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi') && ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
@@ -8459,6 +8466,36 @@ sub genhwtree
 
 }
 
+##########################################################################
+# To check if this is Habanero system
+# we identified Hananero via Chassis Part number : 8348-21C
+##########################################################################
+sub isHabanero
+{
+    my $sessdata = shift;
+
+    my $bmc_addr     = $sessdata->{ipmisession}->{bmc};
+    my $bmc_userid   = $sessdata->{ipmisession}->{userid};
+    my $bmc_password = undef;
+    if (defined($sessdata->{ipmisession}->{password})) {
+        $bmc_password = $sessdata->{ipmisession}->{password};
+    }
+
+    my $pre_cmd = "$IPMIXCAT -H $bmc_addr -I lanplus -U $bmc_userid";
+    if ($bmc_password) {
+        $pre_cmd = $pre_cmd . " -P $bmc_password";
+    }
+
+    my $cmd = $pre_cmd . " fru print 2";
+    my $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC == 0) {
+        if ($output =~ /8348-21C/) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 
 
