@@ -15,6 +15,7 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
 use Time::HiRes qw/time/;
+use xCAT::SvrUtils;
 
 use IO::Socket::INET qw/!AF_INET6 !PF_INET6/;
 my $initialtimeout = 0.5;
@@ -415,6 +416,10 @@ sub subcmd {
     my %args = @_;
     $self->{expectedcmd}   = $args{command};
     $self->{expectednetfn} = $args{netfn} + 1;
+    if ($self->{onlogon_args}->{xcatdebugmodel}) {
+        my $msg = sprintf ("The command running: $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), the raw data: netfn(0x%02x), cmd(0x%02x)", $args{netfn}, $args{command});
+        xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc});
+    }
     my $seqincrement = 7;
     while ($tabooseq{ $self->{expectednetfn} }->{ $self->{expectedcmd} }->{ $self->{seqlun} } and $seqincrement) { #avoid using a seqlun formerly marked 'taboo', but don't advance by more than 7, just in case
         $tabooseq{ $self->{expectednetfn} }->{ $self->{expectedcmd} }->{ $self->{seqlun} }--; #forgive a taboo lun over time...
