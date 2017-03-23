@@ -180,6 +180,7 @@ echo "
 
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
+
 # subroutine used to run postscripts
 # \$1 argument is the script type
 # rest argument is the script name and arguments
@@ -226,6 +227,7 @@ run_ps () {
         msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` \$scriptype \$1 does NOT exist.\"" \"\$logfile\"
         return_value=-1
     fi
+
 
     return 0
 }
@@ -389,6 +391,19 @@ fi
 #create the preboot script and run here
 TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
+
+echo "
+#save bad return code to /opt/xcat/xcatinfo
+if [ \"\$return_value\" -ne \"0\" ]; then
+    grep 'POSTSCRIPTS_RC' /opt/xcat/xcatinfo > /dev/null 2>&1
+    if [ \$? -eq 0 ]; then
+        sed -i \"s/POSTSCRIPTS_RC=.*/POSTSCRIPTS_RC=1/\" /opt/xcat/xcatinfo
+    else
+        echo \"POSTSCRIPTS_RC=1\" >> /opt/xcat/xcatinfo
+    fi
+fi
+" >> /xcatpost/mypostscript
+
 chmod 755 /xcatpost/mypostscript
 
 export ARCH=#TABLE:nodetype:THISNODE:arch#
