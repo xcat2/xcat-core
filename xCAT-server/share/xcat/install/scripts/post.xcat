@@ -180,6 +180,7 @@ echo "
 
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
+
 # subroutine used to run postscripts
 # \$1 argument is the script type
 # rest argument is the script name and arguments
@@ -227,9 +228,27 @@ run_ps () {
         return_value=-1
     fi
 
+    #save bad return code to /opt/xcat/xcatinfo
+    if [ \"\$return_value\" -ne \"0\" ]; then
+        grep 'POSTSCRIPTS_RC' /opt/xcat/xcatinfo > /dev/null 2>&1
+        if [ \$? -eq 0 ]; then
+            sed -i \"s/POSTSCRIPTS_RC=.*/POSTSCRIPTS_RC=1/\" /opt/xcat/xcatinfo
+        else
+            echo \"POSTSCRIPTS_RC=1\" >> /opt/xcat/xcatinfo
+        fi
+    fi
+
     return 0
 }
 # subroutine end
+
+#retrieve bad return code from /opt/xcat/xcatinfo if any
+if [ -f /opt/xcat/xcatinfo ]; then
+    grep 'POSTSCRIPTS_RC' /opt/xcat/xcatinfo
+    if [ \$? -eq 0 ]; then
+        return_value=1;
+    fi
+fi
 
 " >> /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
