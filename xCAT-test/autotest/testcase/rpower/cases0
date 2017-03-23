@@ -1,75 +1,79 @@
 start:rpower_off
-cmd:rpower $$CN stat
-check:ouptut=~Running
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~Running|on
 cmd:rpower $$CN off
 check:rc==0
-check:output=~Success
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Not Activated
-cmd:rpower $$CN on
-cmd:sleep 60
+check:output=~Not Activated|off
 end
 
 start:rpower_stat
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
 cmd:rpower $$CN stat
 check:rc==0
-check:output=~Running
+check:output=~Running|on
 cmd:rpower $$CN state
 check:rc==0
-check:output=~Running
+check:output=~Running|on
+cmd:rpower $$CN off
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
+cmd:rpower $$CN stat
+check:rc==0
+check:output=~Not Activated|off
+cmd:rpower $$CN state
+check:rc==0
+check:output=~Not Activated|off
 end
 
 start:rpower_boot
 cmd:rpower $$CN off
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Not Activated
+check:output=~Not Activated|off
 cmd:rpower $$CN boot
 check:rc==0
-check:output=~Success
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Running
-cmd:sleep 60
+check:output=~Running|on
 end
 
 start:rpower_on
 cmd:rpower $$CN off
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Not Activated
+check:output=~Not Activated|off
 cmd:rpower $$CN on
 check:rc==0
-check:output=~Success
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Running
-cmd:sleep 60
+check:output=~Running|on
 end
 
 start:rpower_reset
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:ouptut=~Running
+check:ouptut=~Running|on
 cmd:rpower $$CN reset
 check:rc==0
-check:output=~Success
-cmd:sleep 60
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
-check:output=~Running
-cmd:sleep 60
+check:output=~Running|on
 end
 
 start:rpower_noderange
 cmd:rpower $$CN
 check:rc!=0
-check:output=~Usage
+check:output=~Unsupported
 end
 
 start:rpower_noderange_nodeps
 cmd:rpower $$CN --nodeps
 check:rc!=0
-check:output=~Usage
+check:output=~Unsupported
 end
 
 start:rpower_err_noderange
