@@ -356,6 +356,29 @@ sub getSNList
 {
     require xCAT::Table;
     my ($class, $service, $options) = @_;
+    my @servicenodes;
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    unless ($servicenodetab)    # no  servicenode table
+    {
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        $servicenodetab->close;
+        return @servicenodes;
+
+    }
+    
+    if($service){
+        @servicenodes = $servicenodetab->getAllAttribsWhere("$service = '1'",'node');
+    }else{
+        @servicenodes = $servicenodetab->getAllAttribs(['node']);
+    }
+  
+    return @servicenodes;
+}
+
+sub getSNList_orig
+{
+    require xCAT::Table;
+    my ($class, $service, $options) = @_;
 
     # reads all nodes from the service node table
     my @servicenodes;
