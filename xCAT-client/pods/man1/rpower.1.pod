@@ -50,7 +50,11 @@ B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<sms>]
 
 =head2 Blade specific:
 
-B<rpower> I<noderange> [B<cycle>|B<softoff>] 
+B<rpower> I<noderange> [B<cycle>|B<softoff>]
+
+=head2 Lenovo High-Density Server specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<boot>|B<reseat>] 
 
 =head2 zVM specific:
 
@@ -172,6 +176,10 @@ This option is recommended over B<cycle>.
 =item B<cycle>
 
 Power off, then on.
+
+=item B<reseat>
+
+For Lenovo high-density servers, simulates unplugging and replugging the node into the chassis.
 
 =item B<of>
 
