@@ -3288,7 +3288,7 @@ sub initfru_zero {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            next;
+            
 
             #print Dumper($_);
             #print $_->{encoding};
@@ -3301,9 +3301,10 @@ sub initfru_zero {
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
-            # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
-            if (isHabanero($sessdata)) {
+            # For openpower Big Data servers, fru 2 has MTM/Serial and fru 43 has firmware information
+            if (isopenpower_bd($sessdata)) {
                 @{$sessdata->{frus_for_openpower}} = qw(2 43);
+            # For openpower HPC servers, fru 3 has MTM/Serial and fru 47 has firmware information
             } else {
                 @{$sessdata->{frus_for_openpower}} = qw(3 47);
             }
@@ -8467,10 +8468,10 @@ sub genhwtree
 }
 
 ##########################################################################
-# To check if this is Habanero system
-# we identified Hananero via Chassis Part number : 8348-21C
+# To check if this is openpower Big Data system
+# we identified it via Chassis Part number : 8348-21C
 ##########################################################################
-sub isHabanero
+sub isopenpower_bd
 {
     my $sessdata = shift;
 
