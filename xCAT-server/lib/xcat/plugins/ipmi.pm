@@ -3302,12 +3302,8 @@ sub initfru_zero {
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
             # For openpower Big Data servers, fru 2 has MTM/Serial and fru 43 has firmware information
-            if (isopenpower_bd($sessdata)) {
-                @{$sessdata->{frus_for_openpower}} = qw(2 43);
             # For openpower HPC servers, fru 3 has MTM/Serial and fru 47 has firmware information
-            } else {
-                @{$sessdata->{frus_for_openpower}} = qw(3 47);
-            }
+            @{$sessdata->{frus_for_openpower}} = qw(2 3 43 47);
             my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
             foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
                 my $sdr = $sessdata->{sdr_hash}->{$key};
@@ -3594,7 +3590,7 @@ sub add_fruhash {
             $fru->rec_type("hw");
         }
         $fru->value($sessdata->{currfrudata});
-        if (exists($sessdata->{currfrusdr})) {
+        if ($sessdata->{currfrusdr}) {
             $fru->desc($sessdata->{currfrusdr}->id_string);
         }
         $sessdata->{fru_hash}->{ $sessdata->{frudex} } = $fru;
@@ -8466,38 +8462,5 @@ sub genhwtree
     return \%hwtree;
 
 }
-
-##########################################################################
-# To check if this is openpower Big Data system
-# we identified it via Chassis Part number : 8348-21C
-##########################################################################
-sub isopenpower_bd
-{
-    my $sessdata = shift;
-
-    my $bmc_addr     = $sessdata->{ipmisession}->{bmc};
-    my $bmc_userid   = $sessdata->{ipmisession}->{userid};
-    my $bmc_password = undef;
-    if (defined($sessdata->{ipmisession}->{password})) {
-        $bmc_password = $sessdata->{ipmisession}->{password};
-    }
-
-    my $pre_cmd = "$IPMIXCAT -H $bmc_addr -I lanplus -U $bmc_userid";
-    if ($bmc_password) {
-        $pre_cmd = $pre_cmd . " -P $bmc_password";
-    }
-
-    my $cmd = $pre_cmd . " fru print 2";
-    my $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC == 0) {
-        if ($output =~ /8348-21C/) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-
 
 1;
