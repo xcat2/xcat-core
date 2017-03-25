@@ -97,7 +97,7 @@ if ($inet6support) {
 if ($^O =~ /^linux/i) {
 
     # Is IPv6 enabled on the MN or SN at all?
-    my $ipv6enabled = `ip addr | grep inet6`;
+    my $ipv6enabled = `ip -6 -o a`;
     if (!$ipv6enabled) {
         $inet6support = 0;
     }

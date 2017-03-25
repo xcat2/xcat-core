@@ -9,7 +9,7 @@ if [ -z "$1" ];then
 fi
 
 str_nic_name=$1
-str_ip_mask=`ip addr show dev $str_nic_name | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
+str_ip_mask=`ip -4 -o addr show dev $str_nic_name | awk '{print $4}' | head -n 1`
 
 str_ip=`echo $str_ip_mask | awk -F'/' '{print $1}'`
 str_mask=`echo $str_ip_mask | awk -F'/' '{print $2}'`

@@ -46,7 +46,7 @@ $start =~ s/(\d.*)\.(\d.*)/$1/;
 if (!$nic) { print "specify a nic\n"; print $::USAGE; exit 1; }
 
 #my $IP = `ifconfig $nic | grep "inet addr" | awk '{print \$2}' | awk -F: '{print \$2}'`;
-my $IPADDRMASK = `ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print \$2}' | head -n 1`;
+my $IPADDRMASK = `ip -4 -o a show dev $nic | awk '/inet/{print \$4}' | head -n 1`;
 my ($IP, $MASK) = split(/\//, $IPADDRMASK);
 my $MAC;
 my $tmpMAC;
