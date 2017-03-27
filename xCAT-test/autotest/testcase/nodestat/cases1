@@ -1,0 +1,4 @@
+start:nodestat_usage
+cmd:nodestat
+check:rc!=0
+end
