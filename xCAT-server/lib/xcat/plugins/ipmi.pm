@@ -8163,7 +8163,7 @@ sub process_request {
     if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} }
     if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} }
     if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} }
-    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmodel = $::XCATSITEVALS{xcatdebugmode} }
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
     #my @threads;
     my @donargs = ();
