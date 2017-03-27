@@ -43,7 +43,7 @@ my %allerrornodes = ();
 my %newnodestatus = ();
 my $global_sessdata;
 my %child_pids;
-my $xcatdebugmodel = 0;
+my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
@@ -8163,7 +8163,7 @@ sub process_request {
     if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} }
     if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} }
     if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} }
-    if ($::XCATSITEVALS{xcatdebugmodel}) { $xcatdebugmodel = $::XCATSITEVALS{xcatdebugmodel} }
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmodel = $::XCATSITEVALS{xcatdebugmode} }
 
     #my @threads;
     my @donargs = ();
@@ -8377,7 +8377,7 @@ sub donode {
         command    => $command,
         extraargs  => \@exargs,
         subcommand => $exargs[0],
-        xcatdebugmodel => $xcatdebugmodel,
+        xcatdebugmode => $xcatdebugmode,
         outfunc => $callback,
     };
     if ($sessiondata{$node}->{ipmisession}->{error}) {

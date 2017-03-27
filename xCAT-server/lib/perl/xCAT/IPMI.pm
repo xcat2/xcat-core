@@ -416,7 +416,7 @@ sub subcmd {
     my %args = @_;
     $self->{expectedcmd}   = $args{command};
     $self->{expectednetfn} = $args{netfn} + 1;
-    if ($self->{onlogon_args}->{xcatdebugmodel}) {
+    if ($self->{onlogon_args}->{xcatdebugmode}) {
         my $msg = sprintf ("The command running: $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), the raw data: netfn(0x%02x), cmd(0x%02x)", $args{netfn}, $args{command});
         xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc});
     }
