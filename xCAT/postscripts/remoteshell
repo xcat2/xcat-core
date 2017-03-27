@@ -11,7 +11,6 @@
 #      id.rsa
 #
 # if on the Management Node, exit
-
 if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
    #TODO
    echo "Cumulus OS is not supported yet, nothing to do..."
@@ -149,8 +148,7 @@ if [ $? -ne 0 ]; then
                 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
    done
-   chown root:ssh_keys /etc/ssh/ssh_host_dsa_key
-   chmod 640 /etc/ssh/ssh_host_dsa_key
+   egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_dsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_dsa_key
    if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_dsa_key > /dev/null 2>&1 ; then
         rm /etc/ssh/ssh_host_dsa_key
 	else
@@ -216,8 +214,7 @@ if [ $? -ne 0 ]; then
     		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	done
-        chown root:ssh_keys /etc/ssh/ssh_host_rsa_key
-        chmod 640 /etc/ssh/ssh_host_rsa_key
+        egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_rsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_rsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_rsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_rsa_key
 	else
@@ -288,8 +285,7 @@ if ssh-keygen -t ecdsa -f /tmp/ecdsa_key -P "" &>/dev/null ; then
     		getcredentials.awk ssh_ecdsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ecdsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
 	done
-	chown root:ssh_keys /etc/ssh/ssh_host_ecdsa_key
-	chmod 640 /etc/ssh/ssh_host_ecdsa_key
+	egrep  -i "^ssh_keys:" /etc/group >/dev/null 2>&1 && chown root:ssh_keys /etc/ssh/ssh_host_ecdsa_key 2>/dev/null && chmod 640 /etc/ssh/ssh_host_ecdsa_key
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ecdsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_ecdsa_key
 	else
