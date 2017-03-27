@@ -67,13 +67,13 @@ end
 start:rpower_noderange
 cmd:rpower $$CN
 check:rc!=0
-check:output=~Unsupported
+check:output=~Unsupported|Usage
 end
 
 start:rpower_noderange_nodeps
 cmd:rpower $$CN --nodeps
 check:rc!=0
-check:output=~Unsupported
+check:output=~Unsupported|Usage
 end
 
 start:rpower_err_noderange
