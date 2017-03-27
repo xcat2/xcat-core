@@ -1,0 +1,11 @@
+start:mkdef_github_issue2582
+description:Verify github issue 2582
+cmd:mkdef -t group -o doubletrouble bmc='|\z|-imm|' mgt=ipmi
+check:rc==0
+cmd:mkdef mgt02 groups=doubletrouble
+check:rc==0
+cmd:lsdef mgt02 -i bmc | grep bmc=mgt02-imm$
+check:rc==0
+cmd:rmdef mgt02
+cmd:rmdef -t group doubletrouble
+end
