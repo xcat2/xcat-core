@@ -1,0 +1,10 @@
+start:xdsh_permission_denied
+cmd:xdsh $$CN date
+check:rc==0
+cmd:mv /root/.ssh/id_rsa /root/.ssh/id_rsa.backup
+check:rc==0
+cmd:xdsh $$CN date
+check:rc!=0
+cmd:mv /root/.ssh/id_rsa.backup /root/.ssh/id_rsa
+check:rc==0
+end
