@@ -140,7 +140,7 @@ sub process_request
         return powerstat($noderange, $callback);
     }elsif ($command eq "rpower") {
         my $subcmd = $exargs[0];
-        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')|| ($subcmd eq 'pdureset') ){
             #if one day, pdu node have pdu attribute, handle in this section too
             return powerpduoutlet($noderange, $subcmd, $callback);
         } else {
@@ -160,7 +160,7 @@ sub process_request
                 }
             }
             if(@allpdunodes) {
-                if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state')){
+                if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state') || ($subcmd eq 'reset') ){
                     return powerpdu(\@allpdunodes, $subcmd, $callback);
                 } else {
                     my $pdunode = join (",", @allpdunodes);
@@ -232,9 +232,12 @@ sub powerpdu {
         if ($subcmd eq "off") {
             $value = 0;
             $statstr = "off";
-        } else {
+        } elsif ( $subcmd eq "on") {
             $value = 1;
             $statstr = "on";
+        } else  {
+            $value = 2;
+            $statstr = "reset";
         }
 
         for (my $outlet =1; $outlet <= $count; $outlet++)
@@ -303,6 +306,10 @@ sub powerpduoutlet {
             } elsif ($subcmd eq "pduon") {
                 $value = 1;
                 $statstr = "on";
+                outletpower($session, $outlet, $value);
+            } elsif ($subcmd eq "pdureset") {
+                $value = 2;
+                $statstr = "reset";
                 outletpower($session, $outlet, $value);
             } else {
                 $callback->({ error => "$subcmd is not support"});

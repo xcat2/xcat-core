@@ -55,8 +55,8 @@ my %usage = (
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
      pdu specific:
-       rpower noderange [off|on|stat]
-       rpower noderange [pduoff|pduon|pdustat]
+       rpower noderange [off|on|stat|status|reset]
+       rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]

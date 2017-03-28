@@ -2319,7 +2319,7 @@ sub powerVM {
     my $out;
     
     ##pdu commands will be handled in the pdu plugin
-    if ($args->[0] eq 'pduon' || $args->[0] eq 'pduoff' || $args->[0] eq 'pdustat') {
+    if ($args->[0] eq 'pduon' || $args->[0] eq 'pdureset' || $args->[0] eq 'pduoff' || $args->[0] eq 'pdustat') {
         return;
     }
 
