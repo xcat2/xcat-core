@@ -2666,16 +2666,18 @@ sub add_textual_frus {
     my $type         = shift;
     my $sessdata     = shift;
     unless ($type) { $type = 'hw'; }
+
     if ($desc =~ /System Firmware/i and $category =~ /product/i) {
         $type = 'firmware,bmc';
     }
-    if ($desc =~ /NODE \d+/ and $category =~ /chassis/) {
+    if ( ($desc =~ /NODE \d+/ or $desc =~ /Backplane/) and $category =~ /chassis/) {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
     } else {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
     }
+
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Manufacturer", $category, "manufacturer", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "FRU Number", $category, "frunum", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Version", $category, "version", $type, $sessdata);
@@ -3035,6 +3037,7 @@ sub initfru_with_mprom {
 sub process_currfruid {
     my $rsp      = shift;
     my $sessdata = shift;
+
     if ($rsp->{code} == 0xcb) {
         $sessdata->{currfrudata} = "Not Present";
         $sessdata->{currfrudone} = 1;
@@ -3285,7 +3288,7 @@ sub initfru_zero {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            next;
+            next; 
 
             #print Dumper($_);
             #print $_->{encoding};
@@ -3298,8 +3301,9 @@ sub initfru_zero {
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
-            # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
-            @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            # For openpower Big Data servers, fru 2 has MTM/Serial and fru 43 has firmware information
+            # For openpower HPC servers, fru 3 has MTM/Serial and fru 47 has firmware information
+            @{$sessdata->{frus_for_openpower}} = qw(2 3 43 47);
             my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
             foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
                 my $sdr = $sessdata->{sdr_hash}->{$key};
@@ -3586,7 +3590,7 @@ sub add_fruhash {
             $fru->rec_type("hw");
         }
         $fru->value($sessdata->{currfrudata});
-        if (exists($sessdata->{currfrusdr})) {
+        if ($sessdata->{currfrusdr}) {
             $fru->desc($sessdata->{currfrusdr}->id_string);
         }
         $sessdata->{fru_hash}->{ $sessdata->{frudex} } = $fru;
@@ -3692,7 +3696,7 @@ sub readcurrfrudevice {
         if ($data[0] != $sessdata->{currfruchunk}) {
 
             # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
-            if ($data[0] gt 0) {
+            if ($data[0] ge 0) {
                 $sessdata->{currfrudone} = 1;
             } else {
                 my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
@@ -8458,8 +8462,5 @@ sub genhwtree
     return \%hwtree;
 
 }
-
-
-
 
 1;
