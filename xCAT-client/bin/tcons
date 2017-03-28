@@ -9,11 +9,11 @@ for i in `nodels "$1"`; do
         continue                                                       
     fi                                                                 
     tmux select-pane -t $p                                             
+    tmux set-option pane-border-status top > /dev/null 2>&1 | cat > /dev/null
     p=$((p+1))                                                         
     qdate=$((`date +%s`+5))
     tmux split -h "rcons $i;if [ \`date +%s\` -lt $qdate ]; then echo Press enter to close; read qdate; fi"
     tmux select-layout tiled
 done                                                                   
 tmux select-pane -t 0
-tmux set-option pane-border-status top > /dev/null 2>&1 | cat > /dev/null
 tmux attach -t tcons_$$                                                
