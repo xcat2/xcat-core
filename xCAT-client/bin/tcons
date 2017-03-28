@@ -15,4 +15,5 @@ for i in `nodels "$1"`; do
     tmux select-layout tiled
 done                                                                   
 tmux select-pane -t 0
+tmux set-option pane-border-status top > /dev/null 2>&1 | cat > /dev/null
 tmux attach -t tcons_$$                                                
