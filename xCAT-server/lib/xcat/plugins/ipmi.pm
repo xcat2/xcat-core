@@ -43,6 +43,7 @@ my %allerrornodes = ();
 my %newnodestatus = ();
 my $global_sessdata;
 my %child_pids;
+my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
@@ -8166,6 +8167,7 @@ sub process_request {
     if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} }
     if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} }
     if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} }
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
     #my @threads;
     my @donargs = ();
@@ -8379,6 +8381,8 @@ sub donode {
         command    => $command,
         extraargs  => \@exargs,
         subcommand => $exargs[0],
+        xcatdebugmode => $xcatdebugmode,
+        outfunc => $callback,
     };
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
