@@ -4401,7 +4401,7 @@ sub process_request {
     else { $moreinfo = build_more_info($noderange, $callback); }
 
     #pdu commands will be handled in the pdu plugin
-    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdureset|pdustat$/, @exargs)) {
         return;
     }
 

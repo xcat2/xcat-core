@@ -232,6 +232,7 @@ makehosts_l
 makehosts_d
 makehosts_n
 makehosts_n_noderange
+makehost_n_r
 xdcp_src_dst
 makedns_h
 makedns_d_node

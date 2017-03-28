@@ -565,6 +565,12 @@ notification(5)|notification.5
  
 
 
+openbmc(5)|openbmc.5
+ 
+ Setting for nodes that are controlled by an on-board OpenBmc.
+ 
+
+
 osdistro(5)|osdistro.5
  
  Information about all the OS distros in the xCAT cluster

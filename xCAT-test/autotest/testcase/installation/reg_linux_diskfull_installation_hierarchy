@@ -27,6 +27,8 @@ check:rc==0
 cmd:copycds $$ISO
 check:rc==0
 
+cmd:updatenode $$CN -f
+check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN

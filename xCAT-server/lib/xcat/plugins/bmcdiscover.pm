@@ -896,6 +896,11 @@ sub bmcdiscovery_ipmi {
     my $output = xCAT::Utils->runcmd("$icmd", -1);
     if ($output =~ $bmcstr) {
 
+        if ($output =~ /RAKP 2 message indicates an error : (.+)\nError: (.+)/) {
+            xCAT::MsgUtils->message("E", { data => ["$2: $1 for $ip"] }, $::CALLBACK);
+            return 1;
+        }
+
         # The output contains System Power indicated the username/password is correct, then try to get MTMS
         if ($output =~ /System Power\s*:\s*\S*/) {
             my $mtm    = '';

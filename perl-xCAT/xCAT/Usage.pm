@@ -46,6 +46,8 @@ my %usage = (
        rpower <noderange> [on|onstandby|off|cycle|state|sms]
      Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
+    Lenovo high-density server specific:
+       rpower <noderange> [on|off|reset|boot|reseat]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
      MIC specific:
@@ -53,8 +55,8 @@ my %usage = (
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
      pdu specific:
-       rpower noderange [off|on|stat]
-       rpower noderange [pduoff|pduon|pdustat]
+       rpower noderange [off|on|stat|status|reset]
+       rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]

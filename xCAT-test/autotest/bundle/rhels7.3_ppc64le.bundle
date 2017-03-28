@@ -152,13 +152,6 @@ rpower_reset
 rpower_noderange
 rpower_noderange_nodeps
 rpower_err_noderange
-rscan_noderange
-rscan_x
-rscan_z
-rscan_w
-rscan_x_w
-rscan_z_w
-rvitals_lcds
 rvitals_noderange_err
 tabdump_table
 tabdump_d
@@ -224,6 +217,7 @@ makehosts_l
 makehosts_d
 makehosts_n
 makehosts_n_noderange
+makehost_n_r
 xdcp_src_dst
 makedns_h
 makedns_d_node

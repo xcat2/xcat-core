@@ -12,6 +12,10 @@ package xCAT_plugin::docker;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    my $async_path = "/usr/local/share/perl5/";
+    unless (grep { $_ eq $async_path } @INC) {
+        push @INC, $async_path;
+    }
 }
 use lib "$::XCATROOT/lib/perl";
 

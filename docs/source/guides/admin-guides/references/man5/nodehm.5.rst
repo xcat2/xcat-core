@@ -50,7 +50,7 @@ nodehm Attributes:
 
 \ **mgt**\ 
  
- The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.
+ The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: openbmc, ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.
  
 
 
