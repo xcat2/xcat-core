@@ -219,13 +219,13 @@ cmd:chtab node=$$CN nics.disable=0
 end
 start:confignics_s
 description:confignics_s
-cmd:chdef -t network -o $$NETWORKNAME mtu=1501
+cmd:MASTERIP=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print $2}'`;NETWORKNAME=`tabdump networks |grep 10.3.5.9 |awk -F'"' '{print $2}'`;chdef -t network -o $NETWORKNAME mtu=1501
 check:rc==0
 cmd:updatenode $$CN  "confignics -s"
 check:rc==0
 check:output!~invalid
 cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-eth0 ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-eth0 ` =~ "MTU=1501" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-eth0 ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-eth0 ` =~ "MTU=1501" ]] ;then exit 0;else exit 1;fi;fi
 check:rc==0
-cmd:chdef -t network -o $$NETWORKNAME mtu=" "
+cmd:MASTERIP=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print $2}'`;NETWORKNAME=`tabdump networks |grep 10.3.5.9 |awk -F'"' '{print $2}'`;chdef -t network -o $NETWORKNAME mtu=" "
 check:rc==0
 end
