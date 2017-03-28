@@ -80,6 +80,63 @@ sub hexdump {
     print "\n";
 }
 
+my %command_info = (
+    6 => {
+        56 => "Get Channel Authentication Capabilities",
+        59 => "Set session privilege level",
+        60 => "Close Session",
+        58 => "activate session",
+        57 => "Get Session Challenge",
+        1 => "Get Device ID",
+        2 => "Cold Reset",
+        55 => "Get System GUID",
+        64  => "Set Channel Access", 
+        76 => "Set User Payload Access",
+        10 => "Get Command Support",
+    },	 
+    4 => {
+        18 => "Set PEF Configuration Parameters",
+        19 => "Get PEF Configuration Parameters",
+        45 => "Get Sensor Reading",
+    },
+    0 => {
+        8 => "Set System Boot Options",
+        9 => "Get System Boot Options",
+        4 => "Chassis Identify(beacon)",
+        2 => "Chassis Control",
+        1 => "Get Chassis Status",
+    },
+    12 => {
+        1 => "Set LAN Configuration Parameters",
+        2 => "Get LAN Configuration Parameters",
+        33 => "Set SOL Configuration Parameters",
+        34 => "Get SOL Configuration Parameters",         
+    },
+    10 => {
+        35 => "Get SDR",
+        34 => "Reserve SDR Repository",
+        71 => "Clear SEL",
+        67 => "Get SEL Entry",
+        66 => "Reserve SEL",
+        72 => "Get SEL Time",
+        64 => "Get SEL Info",
+        17 => "Read FRU Data",
+        16 => "Get FRU Inventory Area Info",
+        32 => "Get SDR Repository Info",
+    },
+);
+
+my %netfn_types = (
+    0 => "Chassis",
+    2 => "Bridge",
+    4 => "Sensor/Event",
+    6 => "App",
+    8 => "Firmware",
+    10 => "Storage",
+    12 => "Transport",
+    # do we need to define anymore then these?
+);
+
 my %payload_types = ( #help readability in certain areas of code by specifying payload by name rather than number
     'ipmi'                 => 0,
     'sol'                  => 1,
@@ -417,7 +474,9 @@ sub subcmd {
     $self->{expectedcmd}   = $args{command};
     $self->{expectednetfn} = $args{netfn} + 1;
     if ($self->{onlogon_args}->{xcatdebugmode}) {
-        my $msg = sprintf ("The command running: $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), the raw data: netfn(0x%02x), cmd(0x%02x)", $args{netfn}, $args{command});
+        my $command_string = $command_info{$args{netfn}}->{$args{command}};
+        my $data_values = join ", ", @{$args{data}};
+        my $msg = sprintf ("[ipmi_debug] $self->{onlogon_args}->{command}:$self->{onlogon_args}->{subcommand}(@{$self->{onlogon_args}->{extraargs}}), raw_cmd: netfn(0x%02x=>%s), cmd(0x%02x=>%s), data=[%s]", $args{netfn}, $netfn_types{$args{netfn}}, $args{command}, $command_string, $data_values);
         xCAT::SvrUtils::sendmsg([0, $msg], $self->{onlogon_args}->{outfunc});
     }
     my $seqincrement = 7;
