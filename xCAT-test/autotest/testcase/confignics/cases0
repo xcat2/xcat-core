@@ -62,7 +62,7 @@ check:output=~MTU=1501
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi  
 check:output=~12.1.0.100
 check:output!~dhcp
-check:output=~MTU=1502
+check:output=~MTU_1=1502
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
@@ -70,7 +70,7 @@ check:output=~MTU=1503
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
-check:output=~MTU=1504
+check:output=~MTU_1=1504
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
@@ -187,7 +187,7 @@ description:confignics
 cmd:xdsh $$CN ifdown $$SECONDNIC
 cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
-cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0 mtu=1501
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
 check:rc==0
 cmd:chtab node=$$CN nics.disable=yes
 check:rc==0
@@ -219,13 +219,15 @@ cmd:chtab node=$$CN nics.disable=0
 end
 start:confignics_s
 description:confignics_s
-cmd:chdef -t network -o $$NETWORKNAME mtu=1501
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean S 1501
+check:rc==0
+cmd:tabdump networks
 check:rc==0
 cmd:updatenode $$CN  "confignics -s"
 check:rc==0
 check:output!~invalid
 cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-eth0 ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-eth0 ` =~ "MTU=1501" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-eth0 ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-eth0 ` =~ "MTU=1501" ]] ;then exit 0;else exit 1;fi;fi
 check:rc==0
-cmd:chdef -t network -o $$NETWORKNAME mtu=" "
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean C 1501
 check:rc==0
 end
