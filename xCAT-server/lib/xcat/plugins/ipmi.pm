@@ -2072,6 +2072,7 @@ sub abort_fpc_update {
 }
 
 sub fpc_update_aborted {
+    my $sessdata = $_[1];
     if ($_[0]->{code}) {
         xCAT::SvrUtils::sendmsg("Unexpected condition, restarting device", $callback, $sessdata->{node}, %allerrornodes);
         $sessdata->{ipmisession}->subcmd(netfn => 0x2e, command => 0xcc, data => [0x2e, 0xcc, 0x5e, 0x2b, 0, 6, 0x43, 0], callback => \&fpc_update_aborted, callback_args => $sessdata);
