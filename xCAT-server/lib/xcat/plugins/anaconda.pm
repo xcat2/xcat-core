@@ -2188,32 +2188,53 @@ sub copycd
         #If they say to call it something unidentifiable, give up?
         return;
     }
-    unless (-r $mntpath . "/.discinfo")
-    {
-        return;
-    }
+    my $darch;
     my $dinfo;
-    open($dinfo, $mntpath . "/.discinfo");
-    my $did = <$dinfo>;
-    chomp($did);
-    my $desc = <$dinfo>;
-    chomp($desc);
-    my $darch = <$dinfo>;
-    chomp($darch);
-    my $dno = <$dinfo>;
-    chomp($dno);
-
-    if ($darch and $darch =~ /i.86/)
-    {
-        $darch = "x86";
-    }
-    close($dinfo);
-    if ($xCAT::data::discinfo::distnames{$did})
-    {
-        unless ($distname)
+    my $did;
+    my $desc;
+    my $dno;
+    if (-r $mntpath . "/.discinfo") {
+        open($dinfo, $mntpath . "/.discinfo");
+        $did = <$dinfo>;
+        chomp($did);
+        $desc = <$dinfo>;
+        chomp($desc);
+        $darch = <$dinfo>;
+        chomp($darch);
+        $dno = <$dinfo>;
+        chomp($dno);
+    
+        if ($darch and $darch =~ /i.86/)
         {
-            $distname = $xCAT::data::discinfo::distnames{$did};
+            $darch = "x86";
         }
+        close($dinfo);
+        if ($xCAT::data::discinfo::distnames{$did})
+        {
+            unless ($distname)
+            {
+                $distname = $xCAT::data::discinfo::distnames{$did};
+            }
+        }
+    } elsif (-r $mntpath . "/isolinux/isolinux.cfg") {
+        my $icfg;
+
+        if ( -r $mntpath . "/EFI/BOOT/BOOTX64.EFI") {
+            $darch = "x86_64";
+            $arch = "x86_64";
+        }
+        open($icfg, $mntpath . "/isolinux/isolinux.cfg");
+        while (<$icfg>) {
+            if (/^menu title Red Hat Enterprise Linux Atomic Host (\d)/) {
+                $distname = "rhela" . $1;
+            }
+        }
+        close($icfg);
+        unless ($distname) {
+            return;
+        }
+    } else { # we don't known
+        return;
     }
 
     unless ($distname)
