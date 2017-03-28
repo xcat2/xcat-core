@@ -11,6 +11,7 @@
 #      id.rsa
 #
 # if on the Management Node, exit
+umask 0077
 if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
    #TODO
    echo "Cumulus OS is not supported yet, nothing to do..."
@@ -314,7 +315,7 @@ if [[ $NTYPE = service ]]; then
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
 fi
 
-umask 0077 
+
 # This is where we start getting root ssh keys
 # This tells credentials.pm where to get the root .ssh keys.  If no zone then old path of ~.ssh
 #rootsshpvtkey=ssh_root_key:$zonename
