@@ -81,7 +81,7 @@ sub handled_commands {
         #rvitals => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
         getrvidparms  => 'nodehm:mgt',
-        lsvm          => 'nodehm:mgt=ipmi',
+        lsvm          => ['nodehm:mgt=ipmi', 'nodehm:mgt=kvm'], #allow both hypervisor and VMs as params
         rbeacon       => 'nodehm:mgt',
         revacuate     => 'hypervisor:type',
         vmstatenotify => 'hypervisor:type',
@@ -3512,11 +3512,73 @@ sub rscan {
 }
 
 sub lsvm {
-    my $node = shift;
+    my $host = shift;
+    my $vm = shift;
     my @doms = $hypconn->list_domains();
     my @vms;
-    foreach (@doms) {
-        push @vms, $_->get_name();
+
+    if ($host ne $vm) {
+        # Processing lsvm for a VM, display details about that VM
+        foreach (@doms) {
+            if ($_->get_name() eq $vm) {
+                push @vms, "Id:" . $_->get_id();
+                push @vms, "Host:" . $host;
+                push @vms, "OS:" . $_->get_os_type();
+                my $domain_info = $_->get_info();
+                if (exists $domain_info->{"memory"}) {
+                    push @vms, "Memory:" . $domain_info->{"memory"};
+                }
+                if (exists $domain_info->{"nrVirtCpu"}) {
+                    push @vms, "Virt CPU: " . $domain_info->{"nrVirtCpu"};
+                }
+                if (exists $domain_info->{"state"}) {
+                    my $state =  $domain_info->{"state"};
+                    my $state_string = "Unknown";
+                    if ($state == &Sys::Virt::Domain::STATE_NOSTATE) {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_RUNNING) {$state_string = "The domain is active and running";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_BLOCKED) {$state_string = "The domain is active, but execution is blocked";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_PAUSED) {$state_string = "The domain is active, but execution has been paused";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTDOWN) {$state_string = "The domain is active, but in the shutdown phase";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTOFF) {$state_string = "The domain is inactive, and shut down";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_CRUSHED) {$state_string = "The domain is inactive, and crashed";}
+                    elsif ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED) {$state_string = "The domain is active, but in power management suspend state";}
+                    push @vms, "State :" . $domain_info->{"state"} . " ($state_string)";
+                }
+                # The following block of code copied from rscan command processng for disks
+                my $currxml = $_->get_xml_description();
+                if ($currxml) {
+                    my $domain = $parser->parse_string($currxml);
+                    my @vmstoragediskobjs = $domain->findnodes("/domain/devices/disk");
+                    foreach my $vmstoragediskobj (@vmstoragediskobjs) {
+                        my ($vmstorage_file_obj, $vmstorage_block_obj);
+                        if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "file")) {
+                            my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
+                            if (@vmstorageobj) {
+                                $vmstorage_file_obj = $vmstorageobj[0]->getAttribute("file");
+                                push @vms, "Disk file:" . $vmstorage_file_obj;
+                            }
+                        }
+                        if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "block")) {
+                            my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
+                            if (@vmstorageobj) {
+                                $vmstorage_block_obj = $vmstorageobj[0]->getAttribute("dev");
+                                push @vms, "Disk object:" . $vmstorage_block_obj;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else {
+        # Processing lsvm for hypervisor, display a list of VMs on that hypervisor
+        foreach (@doms) {
+            push @vms, $_->get_name();
+        }
+    }
+    # Check if we were able to get any data 
+    unless (@vms) {
+        push @vms, "Could not get any information about specified object";
     }
     return (0, @vms);
 }
@@ -3547,7 +3609,7 @@ sub guestcmd {
     } elsif ($command eq "getcons") {
         return getcons($node, @args);
     } elsif ($command eq "lsvm") {
-        return lsvm($node, @args);
+        return lsvm($hyp, $node, @args);
     } elsif ($command eq "rscan") {
         return rscan($node, @args);
     }
@@ -3783,7 +3845,7 @@ sub process_request {
     if ($::XCATSITEVALS{usexhrm}) { $use_xhrm = 1; }
     $vmtab    = xCAT::Table->new("vm");
     $confdata = {};
-    unless ($command eq 'lsvm' or $command eq 'rscan') {
+    unless ($command eq 'rscan') {
         xCAT::VMCommon::grab_table_data($noderange, $confdata, $callback);
         # Add debug info for issue 1958, the rmvm issue
         my $test_file_fd;
@@ -3824,7 +3886,8 @@ sub process_request {
     my $inputs  = new IO::Select;
     my $sub_fds = new IO::Select;
     %hyphash = ();
-    if ($command eq 'lsvm' or $command eq 'rscan') { #command intended for hypervisors, not guests
+
+    if ($command eq 'rscan') { #command intended for hypervisors, not guests
         foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
     } else {
         foreach (keys %{ $confdata->{vm} }) {
@@ -3868,6 +3931,12 @@ sub process_request {
             #          foreach (keys %orphans) {
             #              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
             #          }
+        } elsif ($command eq "lsvm") {
+            # Special processing for lsvm command, which takes vm name or hypervisor name
+            unless (%hyphash) {
+                # if hyperhash has not been set already, we are processing vms, set it here
+                foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
+            }
         } else {
             $callback->({ error => "Can't find " . join(",", keys %orphans), errorcode => [1] });
             return;
@@ -4000,7 +4069,6 @@ sub dohyp {
         $offlinehyps{$hyp} = 1;
     }
 
-
     eval {    #Contain Sys::Virt bugs that make $@ useless
         if ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') { #Fake connection for commands that have a fake hypervisor key
             $hypconn = 1;
@@ -4031,7 +4099,7 @@ sub dohyp {
             return 1, "General error establishing libvirt communication";
         }
     }
-    if (($command eq 'mkvm' or $command eq 'chvm' or $command eq 'rpower') and $hypconn) {
+    if (($command eq 'mkvm' or $command eq 'chvm' or $command eq 'rpower' or $command eq 'lsvm') and $hypconn) {
         my $nodeinfo = $hypconn->get_node_info();
         if (exists($nodeinfo->{model})) {
             $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
