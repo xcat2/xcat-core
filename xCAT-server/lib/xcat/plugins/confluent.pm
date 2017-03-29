@@ -302,10 +302,15 @@ sub makeconfluentcfg {
         }
     }
     foreach my $nent (@cfgents4) {
-        foreach (keys %$nent) {
-            $cfgenthash{ $nent->{node} }->{$_} = $nent->{$_};
+        foreach my $node (keys %$nent) {
+            foreach (@{$nent->{$node}}) {
+                foreach my $key (keys %$_) {
+                    $cfgenthash{ $node }->{$key} = $_->{$key};
+                }
+            }
         }
     }
+
     my @cfgents = ();
     foreach (values %cfgenthash) {
         push @cfgents, $_;
