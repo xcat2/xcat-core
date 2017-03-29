@@ -33,12 +33,11 @@ Traditionally, network interfaces in Linux are enumerated as eth[0123...], but t
 
 \ **getadapter**\  use genesis to collect network adapters information, so that mean it need to restart the target node.
 
-\ **getadapter**\  follows below scheme:
+\ **getadapter**\  For each node within the <noderange>, follows below scheme:
 
-If the target node is scaned for the first time, \ **getadapter**\  will trigger genesis to collect information then save the information at local.
-If the target node has ever been scaned, i.e. this node has network device information in local, \ **getadapter**\  use the local information first.
-If user doesn't want to use local information, can use \ **-f**\  option to force to trigger new round scan process.
-if part nodes of \ *noderange*\  don't have network device information in local and the rest have, \ **getadapter**\  only trigger real scan process for these nodes which don't have local information, the nodes have network device information in local, \ **getadapter**\  still use the local information first.
+If the target node is scaned for the first time, \ **getadapter**\  will trigger genesis to collect information then save the information at the \ **nicsadapter**\  column of nics table.
+If the target node has ever been scaned,  \ **getadapter**\  will use the information from nics table first.
+If user hopes to scan the adapter information for the node but these information already exist, \ **-f**\  option can be used to start rescan process.
 
 \ **getadapter**\  tries to collect more information for the  target network device,  but doesn't guarantee collect same much information for every network device.
 
