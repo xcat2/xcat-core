@@ -160,9 +160,9 @@ cmd:makehosts -d s01r1b01
 check:rc==0
 cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 = "" ]];then exit 0;else exit 1;fi
 check:rc==0
-cmd:if [ -e /tmp/s01.standa ]; then rmdef s01; cat /tmp/s01.standa | mkdef -z; rm -rf /tmp/s01.standa; fi
+cmd:if [ -e /tmp/s01.standa ]; then rmdef s01; cat /tmp/s01.standa | mkdef -z; rm -rf /tmp/s01.standa; else rmdef s01;fi
 check:rc==0
-cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.standa | mkdef -z; rm -rf /tmp/s01r1b01.standa; fi
+cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.standa | mkdef -z; rm -rf /tmp/s01r1b01.standa;else rmdef s01r1b01; fi
 check:rc==0
 cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 end
