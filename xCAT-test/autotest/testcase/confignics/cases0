@@ -250,7 +250,13 @@ start:confignics_s
 description:confignics_s
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean S 1501
 check:rc==0
-cmd:tabdump networks
+cmd:tabdump networks > /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv
+check:rc==0
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv.bak
+check:rc==0
+cmd:echo "99_1_0_0-255_255_0_0,99.1.0.0,255.255.0.0,,,,,,,,,,,,,,,,test quotes ' in comments," >>/opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv
+check:rc==0
+cmd:if [ -e /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv ]; then tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv; fi
 check:rc==0
 cmd:updatenode $$CN  "confignics -s"
 check:rc==0
@@ -258,5 +264,9 @@ check:output!~invalid
 cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "MTU=1501" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "MTU=1501" ]] ;then exit 0;else exit 1;fi;fi
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean C 1501
+check:rc==0
+cmd:cp -f /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv.bak /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv
+check:rc==0
+cmd:if [ -e /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv ]; then tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv; rm -f /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv*; fi
 check:rc==0
 end
