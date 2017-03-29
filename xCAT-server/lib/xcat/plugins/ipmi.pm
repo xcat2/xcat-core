@@ -1732,6 +1732,37 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    my $exit_with_error_func = sub {
+        my ($node, $callback, $message) = @_;
+        my $status = "failed to update firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        xCAT::MsgUtils->message("S", $node.": ".$message);
+        $callback->({ error => "$node: $message", errorcode => 1 });
+        exit -1;
+    };
+
+    my $exit_with_success_func = sub {
+        my ($node, $callback, $message) = @_;
+        my $status = "success to update firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        xCAT::MsgUtils->message("S", $node.": ".$message);
+        $callback->({ data => "$node: $message" });
+        exit 0;
+    };
+
+
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
         $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
@@ -1742,9 +1773,8 @@ sub do_firmware_update {
     if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
         ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
         ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        xCAT::SvrUtils::sendmsg([ 1, "The image file doesn't match this machine" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "The image file doesn't match this machine");
     }
 
     my $output;
@@ -1774,9 +1804,8 @@ sub do_firmware_update {
     my $cmd = $pre_cmd . " fru print 3";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
     if ($output =~ /8335-GTB/) {
         $buffer_size = "15000";
@@ -1787,18 +1816,16 @@ sub do_firmware_update {
         $cmd = $pre_cmd . " fru print 47";
         $output = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
-            xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-                $callback, $sessdata->{node}, %allerrornodes);
-            exit -1;
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
         }
         my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
         if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
             my $prim_grs_version = $1;
             my $sec_grs_version = $2;
             if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
-                xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
-                $callback, $sessdata->{node}, %allerrornodes);
-                exit -1;
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55");
             }
         }
     }
@@ -1807,34 +1834,30 @@ sub do_firmware_update {
     $cmd = $pre_cmd . " chassis power off";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # step 2 reset cold
     $cmd = $pre_cmd . " mc reset cold";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
-        xCAT::SvrUtils::sendmsg([ 1, "Timeout to check the bmc status" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Timeout to check the bmc status");
     }
 
     # step 3 protect network
     $cmd = $pre_cmd . " raw 0x32 0xba 0x18 0x00";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # step 4 upgrade firmware
@@ -1851,7 +1874,28 @@ sub do_firmware_update {
     xCAT::SvrUtils::sendmsg([ 0,
             "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
         $callback, $sessdata->{node});
-    exec($cmd);
+
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
+    }
+
+    # step 5 power on
+    # check reset status
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Timeout to check the bmc status");
+    }
+
+    $cmd = $pre_cmd . " chassis power on";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
+    }
+    $exit_with_success_func->($sessdata->{node}, $callback,
+        "Success to update firmware. FRU information will be populated in a few minutes.");
 }
 
 sub rflash {
@@ -1997,29 +2041,8 @@ sub start_rflash_processes {
 
     # Wait for all processes to end
     while (keys %child_pids) {
-        my ($node_status, $rc, $cpid);
+        my $cpid;
         if (($cpid = wait()) > 0) {
-            $rc = $?;
-            if (!grep(/^(-c|--check)$/i, @exargs)) {
-                $node_status->{node} = $child_pids{$cpid};
-                if ($rc == 0) {
-                    $node_status->{status} = "success to update firmware";
-                } else {
-                    $node_status->{status} = "failed to update firmware";
-                }
-                my $nodelist_table = xCAT::Table->new('nodelist');
-                if (!$nodelist_table) {
-                    xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-                } else {
-                    $nodelist_table->setNodeAttribs($node_status->{node},
-                        { status => $node_status->{status} });
-                    $nodelist_table->close();
-                }
-                xCAT::MsgUtils->message("S",
-                    $node_status->{node}.": ". $node_status->{status});
-                xCAT::SvrUtils::sendmsg([ $rc,
-                        $node_status->{status} ], $callback, $node_status->{node});
-            }
             delete $child_pids{$cpid};
         }
     }
