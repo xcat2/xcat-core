@@ -53,11 +53,11 @@ cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
 check:rc==0
-cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1502
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
 check:rc==0
 cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC   mtu=1503
 check:rc==0
-cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC    mtu=1504
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC    mtu=1503
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" 
 check:rc==0
@@ -72,7 +72,6 @@ check:output=~MTU=1501
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi  
 check:output=~12.1.0.100
 check:output!~dhcp
-check:output=~MTU=1502
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
@@ -80,7 +79,6 @@ check:output=~MTU=1503
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
-check:output=~MTU=1504
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
@@ -99,11 +97,11 @@ cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
 check:rc==0
-cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1502
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
 check:rc==0
 cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC   mtu=1503
 check:rc==0
-cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC   mtu=1504
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC   mtu=1503
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nichostnamesuffixes.$$SECONDNIC="-$$SECONDNIC-1|-$$SECONDNIC-2"
 check:rc==0
@@ -127,7 +125,6 @@ output=~MTU=1501
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~12.1.0.100
 check:output!~dhcp
-output=~MTU=1502
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
@@ -135,7 +132,6 @@ output=~MTU=1503
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
-output=~MTU=1504
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
@@ -155,11 +151,11 @@ cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC  mtu=1501
 check:rc==0
-cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC   mtu=1502
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC   mtu=1501
 check:rc==0
 cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC    mtu=1503
 check:rc==0
-cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC     mtu=1504
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC     mtu=1503
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nicaliases.$$SECONDNIC="aliases1-1|aliases1-2" 
 check:rc==0
@@ -181,7 +177,6 @@ output=~MTU=1501
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~12.1.0.100
 check:output!~dhcp
-output=~MTU=1502
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
@@ -189,7 +184,6 @@ output=~MTU=1503
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
-output=~MTU=1504
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
