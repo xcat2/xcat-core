@@ -198,7 +198,14 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Licensed Materials - Property of Lenovo/i  &&
                     $line !~ /\(C\) Copyright IBM Corp. \d+-\d+ All Rights Reserved/i &&
                     $line !~ /\(C\) Copyright Lenovo Corp. \d+-\d+ All Rights Reserved/i &&
-                    $line !~ /Connected to IMM at IP address/i)) {
+                    $line !~ /Connected to IMM at IP address/i &&
+                    $line !~ /Lenovo ASU/i &&
+                    $line !~ /^\s*$/i &&
+                    $line !~ /Lenovo ToolsCenterSuite CLI tcli12c-1.4.0/i &&
+                    $line !~ /Invoking SHOW command .../i &&
+                    $line !~ /Connected to BMC by IP address/i &&
+                    $line !~ /Succeed running command /i)) {
+)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
         }
