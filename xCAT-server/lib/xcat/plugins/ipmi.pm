@@ -4132,7 +4132,7 @@ sub parseboard {
         my $macdata   = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
         my $macprefix;
-        while ($macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
+        while ($macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
             my @currmac = splice @$macdata, 0, 6;
             unless ((scalar @currmac) == 6) {
                 last;
