@@ -8,7 +8,7 @@ B<rmdef> - Use this command to remove xCAT data object definitions.
 B<rmdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<rmdef> [B<-V>|B<--verbose>] [B<-a>|B<--all>] [B<-t> I<object-types>] [B<-o> I<object-names>]
-[B<-f>|B<--force>] [I<noderange>]
+[B<-f>|B<--force>] [B<-C>|B<--cleanup>] [I<noderange>]
 
 
 =head1 DESCRIPTION
@@ -22,15 +22,23 @@ This command is used to remove xCAT object definitions that are stored in the xC
 
 =item B<-a|--all>
 
-Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.  Once all the data is removed the xCAT daemon will no longer work. Most xCAT commands will fail. 
-In order to use xCAT commands again, you have two options.  You can restore your database from your backup by switching to bypass mode, and running the restorexCATdb command. 
-You switch to bypass mode by setting the XCATBYPASS environmant variable.  (ex. "export XCATBYPASS=yes") 
-A second option is to run xcatconfig -d.  This will restore the initial setup of the database as when xCAT was initially installed. 
-You can then restart xcatd and run xCAT commands.  
+Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option as the xCAT daemons will no longer work once cleared.
+
+To restore: 
+
+=over 5
+
+=item 1. B<export XCATBYPASS=1> and run the B<restorexCATdb> command.  
+
+or 
+
+=item 2. Run B<xcatconfig -d> which initializes the database the same as when xCAT was installed. 
+
+=back
 
 =item B<-f|--force>
 
-Use this with the all option as an extra indicator that ALL definitions are to be removed.
+Use this with the B<--all> option as an extra indicator that ALL definitions are to be removed.
 
 =item B<-h|--help>
 
@@ -47,6 +55,10 @@ A set of comma delimited object names.
 =item B<-t> I<object-types>
 
 A set of comma delimited object types.
+
+=item B<-C|--cleanup>
+
+Perform additional cleanup by running B<nodeset offline> on the objects specified in the I<noderange>.
 
 =item B<-V|--verbose>
 

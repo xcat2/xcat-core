@@ -26,6 +26,8 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
+     OpenBMC specific:
+       rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
      PPC (with IVM or HMC) specific:
@@ -44,6 +46,8 @@ my %usage = (
        rpower <noderange> [on|onstandby|off|cycle|state|sms]
      Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
+    Lenovo high-density server specific:
+       rpower <noderange> [on|off|reset|boot|reseat]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
      MIC specific:
@@ -51,8 +55,8 @@ my %usage = (
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
      pdu specific:
-       rpower noderange [off|on|stat]
-       rpower noderange [pduoff|pduon|pdustat]
+       rpower noderange [off|on|stat|status|reset]
+       rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]

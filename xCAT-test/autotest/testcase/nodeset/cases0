@@ -169,7 +169,7 @@ cmd:mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10
 check:rc==0
 cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-check:output=~Warning: testnode1: petitboot might be invalid
+check:output=~Warning: testnode1: petitboot might be invalid|testnode1 could not be resolved
 cmd:noderm testnode1
 end
 

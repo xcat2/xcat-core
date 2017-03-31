@@ -1,5 +1,5 @@
-Configure Additional Network Interfaces
-=======================================
+Configure Additional Network Interfaces - confignics
+====================================================
 
 The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (mutltiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
 
@@ -47,7 +47,7 @@ There are 3 ways to complete this operation.
 
    The ``tabedit`` command opens the specified xCAT database table in a vi like editor and allows the user to edit any text and write the changes back to the database table. 
 
-   *WARNING* Using the ``tabedit`` command is not the recommended method because it is tedious and error prone. 
+   *WARNING:* Using the ``tabedit`` command is not the recommended method because it is tedious and error prone. 
 
    After changing the content of the ``nics`` table, here is the result from ``tabdump nics`` ::
 
@@ -70,7 +70,7 @@ After you have defined the configuration information in any of the ways above, r
 Add confignics into the node's postscripts list
 -----------------------------------------------
 
-Using below command to add confignics into the node's postscripts list ::
+Use command below to add confignics into the node's postscripts list ::
 
     chdef cn1 -p postscripts=confignics
 
@@ -78,7 +78,7 @@ By default, confignics does not configure the install nic. if need, using flag "
 
     chdef cn1 -p prostscripts="confignics -s"
 
-Option "-s" write the install nic's information into configuration file for persistance. All install nic's data defined in nics table will be written also.
+Option "-s" writes the install nic's information into configuration file for persistance. All install nic's data defined in nics table will be written also.
 
 
 Add network object into the networks table
@@ -103,6 +103,7 @@ Option -r to remove the undefined NICS
 If the compute node's nics were configured by ``confignics`` and the nics configuration changed in the nics table, user the ``confignics -r`` to remove the undefined nic.  
 
 For example, if on a compute node the ``eth0``, ``eth1``, and ``eth2`` nics were configured: ::
+
     # ifconfig
     eth0      Link encap:Ethernet  HWaddr 00:14:5e:d9:6c:e6
     ...
@@ -114,7 +115,7 @@ For example, if on a compute node the ``eth0``, ``eth1``, and ``eth2`` nics were
 Delete the eth2 definition in nics table using the ``chdef`` command. 
 Then run the following to remove the undefined ``eth2`` nic on the compute node: ::
 
-    # updatenode <noderange> -P "confignics -r"
+    updatenode <noderange> -P "confignics -r"
 
 The result should have ``eth2`` disabled: ::
 

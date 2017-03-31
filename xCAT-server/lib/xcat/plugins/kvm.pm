@@ -1775,7 +1775,20 @@ sub rmvm {
         foreach $disk (@purgedisks) {
             my $disktype = $disk->parentNode()->getAttribute("device");
             if ($disktype eq "cdrom") { next; }
+
+            my @driver = $disk->parentNode()->findnodes("driver");
+            unless ($driver[0]) { next; }
+            my $drivertype = $driver[0]->getAttribute("type");
+            if (($drivertype eq "raw") || ($disktype eq "block")) { 
+                #For raw or block devices, do not remove, even if purge was specified. Log info message.
+                xCAT::MsgUtils->trace(0, "i", "Not purging raw or block storage device: $disk");
+                next; 
+            }
             my $file = $disk->getAttribute("file");
+            unless ($file) { 
+                xCAT::MsgUtils->trace(0, "w", "Not able to find 'file' attribute value for: $disk");
+                next; 
+            }
 
             # try to check the existence first, if cannot find, do nothing.
             # we do retry because we found sometimes the delete might fail
@@ -3662,7 +3675,7 @@ sub process_request {
     }
 
     #pdu commands will be handled in the pdu plugin
-    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdureset|pdustat$/, @exargs)) {
         return;
     }
 

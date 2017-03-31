@@ -40,6 +40,10 @@ use SNMP;
 my $VERBOSE = 0;
 my %allerrornodes = ();
 my $callback;
+my $pdutab;
+my @pduents;
+my $pdunodes;
+
 
 
 #-------------------------------------------------------
@@ -126,14 +130,22 @@ sub process_request
         @exargs = @$extrargs;
     }
 
+    #fill in the total outlet count for each pdu
+    $pdutab = xCAT::Table->new('pdu');
+    @pduents = $pdutab->getAllNodeAttribs(['node', 'outlet']);
+    fill_outletCount(\@pduents, $callback);
+
     if( $command eq "rinv") {
         #for higher performance, handle node in batch
         return powerstat($noderange, $callback);
     }elsif ($command eq "rpower") {
         my $subcmd = $exargs[0];
-        if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat')){
+        if (($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')|| ($subcmd eq 'pdureset') ){
+            #if one day, pdu node have pdu attribute, handle in this section too
+            return powerpduoutlet($noderange, $subcmd, $callback);
+        } else {
             #-------------------------------------------
-            #there are 2 cases will enter this black
+            #there are 2 cases will enter this block
             #one is if node's mgt is pdu
             #another is if node has pdu attribute but mgt isn't pdu
             #if the node has pdu attribute but mgt isn't pdu, 
@@ -147,21 +159,47 @@ sub process_request
                     push @allpdunodes, $node;
                 }
             }
-            return powerpdu(\@allpdunodes, $subcmd, $callback);
-        }elsif(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
-            #if one day, pdu node have pdu attribute, handle in this section too
-            return powerpduoutlet($noderange, $subcmd, $callback);
-        }else{
-            $callback->({ errorcode => [1],error => "The input command $subcmd is not support for pdu"});
+            if(@allpdunodes) {
+                if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'state') || ($subcmd eq 'reset') ){
+                    return powerpdu(\@allpdunodes, $subcmd, $callback);
+                } else {
+                    my $pdunode = join (",", @allpdunodes);
+                    $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunode."});
+                }
+            }
         }
     }elsif($command eq "nodeset") {
-        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"}); 
-
+        $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
     }else{
         #reserve for other new command in future
     }
 
     return;
+}
+
+sub fill_outletCount {
+    my $pduentries = shift;
+    my $callback = shift;
+    my $outletoid = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
+    my $pdutab = xCAT::Table->new('pdu');
+
+    foreach my $pdu (@$pduentries) {
+        my $cur_pdu = $pdu->{node};
+        my $count = $pdu->{outlet};
+        #get total outlet number for the pdu
+        if (!$count) {
+            my $session = connectTopdu($cur_pdu,$callback);
+            #will not log this error to output
+            if (!$session) {
+                next;
+            }
+            $count = $session->get("$outletoid");
+            if ($count) {
+                $pdutab->setNodeAttribs($cur_pdu, {outlet => $count});
+            }
+        }
+        $pdunodes->{$cur_pdu}->{outlet}=$count;
+    }
 }
 
 #-------------------------------------------------------
@@ -177,30 +215,36 @@ sub powerpdu {
     my $noderange = shift;
     my $subcmd = shift;
     my $callback = shift;
-    my $outletnum = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
 
-    if ($subcmd eq "stat") {
+    if (($subcmd eq "stat") || ($subcmd eq "state")){
         return powerstat($noderange, $callback);
     }
 
     foreach my $node (@$noderange) {
         my $session = connectTopdu($node,$callback);
-        my $count = $session->get("$outletnum");
+        if (!$session) {
+            $callback->({ errorcode => [1],error => "Couldn't connect to $node"});
+            next;
+        }
+        my $count = $pdunodes->{$node}->{outlet};
         my $value;
         my $statstr;
         if ($subcmd eq "off") {
             $value = 0;
             $statstr = "off";
-        } else {
+        } elsif ( $subcmd eq "on") {
             $value = 1;
             $statstr = "on";
+        } else  {
+            $value = 2;
+            $statstr = "reset";
         }
 
         for (my $outlet =1; $outlet <= $count; $outlet++)
         {
             outletpower($session, $outlet, $value);
             if ($session->{ErrorStr}) { 
-                $callback->({ error => "$session->{ErrorStr}"});
+                $callback->({ errorcode => [1],error => "Failed to get outlet status for $node"});
             } else {
                 my $output = " outlet $outlet is $statstr"; 
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -244,6 +288,14 @@ sub powerpduoutlet {
         foreach my $pdu_outlet (@pdus) {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             my $session = connectTopdu($pdu,$callback);
+            if (!$session) {
+                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                next;
+            }
+            if ($outlet > $pdunodes->{$pdu}->{outlet} ) {
+                $callback->({ errorcode => [1],error => "outlet number $outlet is invalid for $pdu"});
+                next;
+            }
             my $cmd;
             if ($subcmd eq "pdustat") {
                 $statstr=outletstat($session, $outlet);
@@ -255,12 +307,16 @@ sub powerpduoutlet {
                 $value = 1;
                 $statstr = "on";
                 outletpower($session, $outlet, $value);
+            } elsif ($subcmd eq "pdureset") {
+                $value = 2;
+                $statstr = "reset";
+                outletpower($session, $outlet, $value);
             } else {
                 $callback->({ error => "$subcmd is not support"});
             } 
     
             if ($session->{ErrorStr}) { 
-                $callback->({ error => "$session->{ErrorStr}"});
+                $callback->({ errorcode => [1],error => "$session->{ErrorStr} for $pdu outlet $outlet"});
             } else {
                 $output = "$pdu outlet $outlet is $statstr"; 
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -304,10 +360,13 @@ sub powerstat {
     my $callback = shift;
     my $output;
 
-    my $outletnum = ".1.3.6.1.4.1.2.6.223.8.2.1.0";
     foreach my $pdu (@$noderange) {
         my $session = connectTopdu($pdu,$callback);
-        my $count = $session->get("$outletnum");
+        if (!$session) {
+            $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+            next;
+        }
+        my $count = $pdunodes->{$pdu}->{outlet};
         for (my $outlet =1; $outlet <= $count; $outlet++)
         {
             my $statstr = outletstat($session, $outlet);
@@ -337,8 +396,10 @@ sub outletstat {
     $output = $session->get("$oid.$outlet");
     if ($output eq 1) {
         $statstr = "on";
-    } else {
+    } elsif ($output eq 0) {
         $statstr = "off";
+    } else {
+        return;
     }
     return $statstr;
 }
@@ -368,8 +429,6 @@ sub connectTopdu {
         UseSprintValue => 1,
     );
     unless ($session) {
-        $msg = "Failed to connect to $pdu";
-        xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
         return;
     }
     return $session;

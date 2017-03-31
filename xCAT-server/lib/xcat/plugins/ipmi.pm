@@ -43,6 +43,7 @@ my %allerrornodes = ();
 my %newnodestatus = ();
 my $global_sessdata;
 my %child_pids;
+my $xcatdebugmode = 0;
 
 my $IPMIXCAT  = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
@@ -1731,6 +1732,37 @@ sub do_firmware_update {
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
+    my $exit_with_error_func = sub {
+        my ($node, $callback, $message) = @_;
+        my $status = "failed to update firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        xCAT::MsgUtils->message("S", $node.": ".$message);
+        $callback->({ error => "$node: $message", errorcode => 1 });
+        exit -1;
+    };
+
+    my $exit_with_success_func = sub {
+        my ($node, $callback, $message) = @_;
+        my $status = "success to update firmware";
+        my $nodelist_table = xCAT::Table->new('nodelist');
+        if (!$nodelist_table) {
+            xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
+        } else {
+            $nodelist_table->setNodeAttribs($node, { status => $status });
+            $nodelist_table->close();
+        }
+        xCAT::MsgUtils->message("S", $node.": ".$message);
+        $callback->({ data => "$node: $message" });
+        exit 0;
+    };
+
+
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
         $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
@@ -1741,9 +1773,8 @@ sub do_firmware_update {
     if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
         ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
         ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        xCAT::SvrUtils::sendmsg([ 1, "The image file doesn't match this machine" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "The image file doesn't match this machine");
     }
 
     my $output;
@@ -1773,9 +1804,8 @@ sub do_firmware_update {
     my $cmd = $pre_cmd . " fru print 3";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
     if ($output =~ /8335-GTB/) {
         $buffer_size = "15000";
@@ -1786,18 +1816,16 @@ sub do_firmware_update {
         $cmd = $pre_cmd . " fru print 47";
         $output = xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
-            xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-                $callback, $sessdata->{node}, %allerrornodes);
-            exit -1;
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
         }
         my $grs_version = $output =~ /OP8_v(\d*\.\d*_\d*\.\d*)/;
         if ($grs_version =~ /\d\.(\d+)_(\d+\.\d+)/) {
             my $prim_grs_version = $1;
             my $sec_grs_version = $2;
             if ($prim_grs_version <= 7 && $sec_grs_version < 2.55) {
-                xCAT::SvrUtils::sendmsg([ 1, "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55" ],
-                $callback, $sessdata->{node}, %allerrornodes);
-                exit -1;
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55");
             }
         }
     }
@@ -1806,34 +1834,30 @@ sub do_firmware_update {
     $cmd = $pre_cmd . " chassis power off";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # step 2 reset cold
     $cmd = $pre_cmd . " mc reset cold";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
-        xCAT::SvrUtils::sendmsg([ 1, "Timeout to check the bmc status" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Timeout to check the bmc status");
     }
 
     # step 3 protect network
     $cmd = $pre_cmd . " raw 0x32 0xba 0x18 0x00";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg([ 1, "Running ipmitool command $cmd failed: $output" ],
-            $callback, $sessdata->{node}, %allerrornodes);
-        exit -1;
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
     }
 
     # step 4 upgrade firmware
@@ -1850,7 +1874,28 @@ sub do_firmware_update {
     xCAT::SvrUtils::sendmsg([ 0,
             "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
         $callback, $sessdata->{node});
-    exec($cmd);
+
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
+    }
+
+    # step 5 power on
+    # check reset status
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Timeout to check the bmc status");
+    }
+
+    $cmd = $pre_cmd . " chassis power on";
+    $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "Running ipmitool command $cmd failed: $output");
+    }
+    $exit_with_success_func->($sessdata->{node}, $callback,
+        "Success to update firmware. FRU information will be populated in a few minutes.");
 }
 
 sub rflash {
@@ -1996,29 +2041,8 @@ sub start_rflash_processes {
 
     # Wait for all processes to end
     while (keys %child_pids) {
-        my ($node_status, $rc, $cpid);
+        my $cpid;
         if (($cpid = wait()) > 0) {
-            $rc = $?;
-            if (!grep(/^(-c|--check)$/i, @exargs)) {
-                $node_status->{node} = $child_pids{$cpid};
-                if ($rc == 0) {
-                    $node_status->{status} = "success to update firmware";
-                } else {
-                    $node_status->{status} = "failed to update firmware";
-                }
-                my $nodelist_table = xCAT::Table->new('nodelist');
-                if (!$nodelist_table) {
-                    xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
-                } else {
-                    $nodelist_table->setNodeAttribs($node_status->{node},
-                        { status => $node_status->{status} });
-                    $nodelist_table->close();
-                }
-                xCAT::MsgUtils->message("S",
-                    $node_status->{node}.": ". $node_status->{status});
-                xCAT::SvrUtils::sendmsg([ $rc,
-                        $node_status->{status} ], $callback, $node_status->{node});
-            }
             delete $child_pids{$cpid};
         }
     }
@@ -2666,16 +2690,18 @@ sub add_textual_frus {
     my $type         = shift;
     my $sessdata     = shift;
     unless ($type) { $type = 'hw'; }
+
     if ($desc =~ /System Firmware/i and $category =~ /product/i) {
         $type = 'firmware,bmc';
     }
-    if ($desc =~ /NODE \d+/ and $category =~ /chassis/) {
+    if ( ($desc =~ /NODE \d+/ or $desc =~ /Backplane/) and $category =~ /chassis/) {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", 'model', $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", 'serial', $sessdata);
     } else {
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Part Number", $category, "partnumber", $type, $sessdata);
         add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Serial Number", $category, "serialnumber", $type, $sessdata);
     }
+
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Manufacturer", $category, "manufacturer", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "FRU Number", $category, "frunum", $type, $sessdata);
     add_textual_fru($parsedfru, $desc . " " . $categorydesc . "Version", $category, "version", $type, $sessdata);
@@ -3035,6 +3061,7 @@ sub initfru_with_mprom {
 sub process_currfruid {
     my $rsp      = shift;
     my $sessdata = shift;
+
     if ($rsp->{code} == 0xcb) {
         $sessdata->{currfrudata} = "Not Present";
         $sessdata->{currfrudone} = 1;
@@ -3285,7 +3312,7 @@ sub initfru_zero {
         if ($_->{encoding} == 3) {
             $fru->value($_->{value});
         } else {
-            next;
+            next; 
 
             #print Dumper($_);
             #print $_->{encoding};
@@ -3298,8 +3325,9 @@ sub initfru_zero {
     if ($sessdata->{skipotherfru}) {    #skip non-primary fru devices
 
         if ($sessdata->{skipotherfru} and isopenpower($sessdata)) {
-            # For openpower servers, fru 3 is used to get MTM/Serial information, fru 47 is used to get firmware information
-            @{$sessdata->{frus_for_openpower}} = qw(3 47);
+            # For openpower Big Data servers, fru 2 has MTM/Serial and fru 43 has firmware information
+            # For openpower HPC servers, fru 3 has MTM/Serial and fru 47 has firmware information
+            @{$sessdata->{frus_for_openpower}} = qw(2 3 43 47);
             my %fruids_hash = map {$_ => 1} @{$sessdata->{frus_for_openpower}};
             foreach my $key (keys %{ $sessdata->{sdr_hash} }) {
                 my $sdr = $sessdata->{sdr_hash}->{$key};
@@ -3586,7 +3614,7 @@ sub add_fruhash {
             $fru->rec_type("hw");
         }
         $fru->value($sessdata->{currfrudata});
-        if (exists($sessdata->{currfrusdr})) {
+        if ($sessdata->{currfrusdr}) {
             $fru->desc($sessdata->{currfrusdr}->id_string);
         }
         $sessdata->{fru_hash}->{ $sessdata->{frudex} } = $fru;
@@ -3692,7 +3720,7 @@ sub readcurrfrudevice {
         if ($data[0] != $sessdata->{currfruchunk}) {
 
             # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
-            if ($data[0] gt 0) {
+            if ($data[0] ge 0) {
                 $sessdata->{currfrudone} = 1;
             } else {
                 my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
@@ -4104,7 +4132,7 @@ sub parseboard {
         my $macdata   = $boardinf{extra}->[6]->{value};
         my $macstring = "1";
         my $macprefix;
-        while ($macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
+        while ($macdata and $macstring !~ /00:00:00:00:00:00/ and not ref $global_sessdata->{currmacs}) {
             my @currmac = splice @$macdata, 0, 6;
             unless ((scalar @currmac) == 6) {
                 last;
@@ -7682,7 +7710,7 @@ sub preprocess_request {
         }
 
         #pdu commands will be handled in the pdu plugin
-        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat')){
+        if(($subcmd eq 'pduoff') || ($subcmd eq 'pduon') || ($subcmd eq 'pdustat') || ($subcmd eq 'pdureset')){
              return 0;
         }
 
@@ -8162,6 +8190,7 @@ sub process_request {
     if ($::XCATSITEVALS{ipmitimeout}) { $ipmitimeout = $::XCATSITEVALS{ipmitimeout} }
     if ($::XCATSITEVALS{ipmiretries}) { $ipmitrys = $::XCATSITEVALS{ipmitretries} }
     if ($::XCATSITEVALS{ipmisdrcache}) { $enable_cache = $::XCATSITEVALS{ipmisdrcache} }
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
     #my @threads;
     my @donargs = ();
@@ -8375,6 +8404,8 @@ sub donode {
         command    => $command,
         extraargs  => \@exargs,
         subcommand => $exargs[0],
+        xcatdebugmode => $xcatdebugmode,
+        outfunc => $callback,
     };
     if ($sessiondata{$node}->{ipmisession}->{error}) {
         xCAT::SvrUtils::sendmsg([ 1, $sessiondata{$node}->{ipmisession}->{error} ], $callback, $node, %allerrornodes);
@@ -8458,8 +8489,5 @@ sub genhwtree
     return \%hwtree;
 
 }
-
-
-
 
 1;

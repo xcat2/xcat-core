@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.13
+# Version 1.0.15
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -370,7 +370,9 @@ function check_linux_version()
 	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
 		echo "${VERSION_ID}")"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
-		ver="$(awk '{ print $(NF - 1) }' /etc/redhat-release)"
+		# Need gawk to do this trick
+		ver="$(awk '{ match($0, /([.0-9]+)/, a); print substr($0, a[1, "start"], a[1, "length"]); }' \
+			/etc/redhat-release)"
 	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
 	echo "${ver}"
@@ -636,7 +638,29 @@ function download_file()
 	type wget >/dev/null 2>&1 || return 255
 	local url="$1"
 	local local_file="$2"
-	wget -U "${user_agent}" -q "${url}" -O "${local_file}"
+	local log_file="${TMP_DIR}/wget.log.${RANDOM}"
+	local -i rc=0
+	wget -U "${user_agent}" -nv "${url}" -O "${local_file}" -o "${log_file}"
+	rc="$?"
+	if [[ "${rc}" -ne "0" ]]
+	then
+		while read -r ; do echo "${REPLY}" ; done <"${log_file}"
+		echo -n "${script}: \`wget' exited with an error: (exit code ${rc}, "
+		case "${rc}" in
+		1) echo -n "generic error" ;;
+		2) echo -n "parse error" ;;
+		3) echo -n "file I/O error" ;;
+		4) echo -n "network failure" ;;
+		5) echo -n "SSL verification failure" ;;
+		6) echo -n "username/password authentication failure" ;;
+		7) echo -n "protocol errors" ;;
+		8) echo -n "server issued an error response" ;;
+		*) echo -n "unknown error" ;;
+		esac
+		echo ")"
+		echo "  ... while downloading \`${url}'"
+	fi >&2
+	[[ "${rc}" -eq "0" ]]
 }
 
 #       $1      repo file

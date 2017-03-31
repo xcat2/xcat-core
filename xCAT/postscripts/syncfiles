@@ -7,7 +7,14 @@
 #
 #####################################################
 
-if cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
+#statelite does not support syncfiles
+if [ -d /.statelite ]; then
+   echo "Statelite does not support syncfiles, nothing to do..."
+   logger -t xcat -p local4.info "Statelite does not support syncfiles, nothing to do..."
+   exit 0
+fi
+
+if [ -f /etc/os-release ] && cat /etc/os-release |grep -i -e "^NAME=[ \"']*Cumulus Linux[ \"']*$" >/dev/null 2>&1 ; then
    #TODO
    echo "Cumulus OS is not supported yet, nothing to do..."
    logger -t xcat -p local4.info "Cumulus OS is not supported yet, nothing to do..."
@@ -38,6 +45,7 @@ xcatpostdir="/xcatpost"
 logger -t xcat -p local4.info "$0: the OS name = $osname"
 quit="no"
 count=5
+returncode=0
 while [ $quit = "no" ]; do
   if [ $osname = "Linux" ]
   then
@@ -66,5 +74,4 @@ else
   logger -t xcat -p local4.err "$0: Perform Syncing File action encountered error"
 fi
 
-exit 0
-
+[ $returncode -eq 0 ]

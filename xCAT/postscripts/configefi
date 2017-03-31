@@ -21,7 +21,7 @@ if [ "$arch" =  "x86_64" ]; then
                 elif [ -f "/boot/efi/EFI/redhat/grubx64.efi" ];then
                         efibootmgr -c -l \\EFI\\redhat\\grubx64.efi -L syscloneLinux
                         
-                        boot_root=`df /boot | awk '{print $1}' | tail -n 1`
+                        boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
                         sed -i 's| root=\S*| root='$boot_root' net.ifnames=0|' /boot/efi/EFI/redhat/grub.cfg 
       
                         blkid -c /dev/null |grep UUID|while read str_line
@@ -52,10 +52,10 @@ if [ "$arch" =  "x86_64" ]; then
 		boot_device=''
 		if [ -f "/etc/systemconfig/systemconfig.conf" ];then
 			#boot_root=`cat /etc/systemconfig/systemconfig.conf | grep ROOTDEV | awk '{print $3}'`
-                        boot_root=`df /boot | awk '{print $1}' | tail -n 1`
+			boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
 			boot_device=`cat /etc/systemconfig/systemconfig.conf | grep BOOTDEV | awk '{print $3}'`
 		else
-			boot_root=`df /boot | awk '{print $1}' | tail -n 1`
+			boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
 			boot_device=`echo $boot_root | sed -e 's/[0-9]*$//'`
 
 			#str_temp=`mount | awk '{print $1","$3}'`

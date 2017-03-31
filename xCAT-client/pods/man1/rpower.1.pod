@@ -12,7 +12,11 @@ B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<rpower> I<noderange> [B<on>|B<off>|B<softoff>|B<reset>|B<boot>|B<stat>|B<state>|B<status>|B<wake>|B<suspend> [B<-w> I<timeout>] [B<-o>] [B<-r>]] 
 
-B<rpower> I<noderange> [B<pduon>|B<pduoff>|B<pdustat>]
+B<rpower> I<noderange> [B<pduon>|B<pduoff>|B<pdustat>|B<pdureset>]
+
+=head2 OpenBMC specific:
+
+B<rpower> I<noderange> [B<off>|B<on>|B<reset>|B<boot>|B<stat>|B<state>|B<status>]
 
 =head2 PPC (with IVM or HMC) specific:
 
@@ -46,7 +50,11 @@ B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<sms>]
 
 =head2 Blade specific:
 
-B<rpower> I<noderange> [B<cycle>|B<softoff>] 
+B<rpower> I<noderange> [B<cycle>|B<softoff>]
+
+=head2 Lenovo High-Density Server specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<boot>|B<reseat>] 
 
 =head2 zVM specific:
 
@@ -58,7 +66,7 @@ B<rpower> I<noderange> [B<start>|B<stop>|B<restart>|B<pause>|B<unpause>|B<state>
 
 =head2 pdu specific:
 
-B<rpower> I<noderange> [B<stat>|B<off>|B<on>]
+B<rpower> I<noderange> [B<stat>|B<off>|B<on>|B<reset>]
 
 =head1 DESCRIPTION
 
@@ -168,6 +176,10 @@ This option is recommended over B<cycle>.
 =item B<cycle>
 
 Power off, then on.
+
+=item B<reseat>
+
+For Lenovo high-density servers, simulates unplugging and replugging the node into the chassis.
 
 =item B<of>
 

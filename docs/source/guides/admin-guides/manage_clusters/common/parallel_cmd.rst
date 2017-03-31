@@ -25,11 +25,11 @@ Examples for xdsh
 
     xdsh node1 -K
 
-- To run the ps -ef command on node targets node1 and node2, enter: ::
+- To run the ``ps -ef`` command on node targets node1 and node2, enter: ::
 
     xdsh node1,node2 "ps -ef"
 
-- To run the ps command on node targets node1 and run the remote command with the -v and -t flag, enter: ::
+- To run the ``ps`` command on node targets node1 and run the remote command with the ``-v`` and ``-t`` flag, enter: ::
 
     xdsh node1,node2 -o"-v -t" ps =item *
 
@@ -37,15 +37,15 @@ Examples for xdsh
 
     xdsh node1,node2 -f 1 -e myfile
 
-- To run the ps command on node1 and ignore all the dsh environment variable except the DSH_NODE_OPTS, enter: ::
+- To run the ``ps`` command on node1 and ignore all the dsh environment variable except the DSH_NODE_OPTS, enter: ::
 
     xdsh node1 -X `DSH_NODE_OPTS' ps
 
-- To run on Linux, the xdsh command "dpkg | grep vim" on the node ubuntu diskless image, enter: ::
+- To run on Linux, the ``xdsh`` command ``dpkg -l| grep vim`` on the node ubuntu diskless image, enter: ::
 
     xdsh -i /install/netboot/ubuntu14.04.2/ppc64el/compute/rootimg "dpkg -l|grep vim"
 
-- To run xdsh with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges: ::
+- To run ``xdsh`` with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see :ref:`Granting users xCAT privileges <granting_xcat_privileges>`: ::
 
     xdsh node1,node2 --sudo -l user1 "cat /etc/passwd"
 
@@ -70,7 +70,7 @@ Examples for xdcp
 
     xdcp all /etc/hosts /etc/hosts
 
-- To rsync the /etc/hosts file to your compute nodes:
+- To ``rsync`` the /etc/hosts file to your compute nodes:
 
   Create a rsync file /tmp/myrsync, with this line: ::
 
@@ -84,7 +84,7 @@ Examples for xdcp
 
    xdcp compute -F /tmp/myrsync
 
-- To rsync the /etc/file1 and file2 to your compute nodes and rename to filex and filey:
+- To ``rsync`` the /etc/file1 and file2 to your compute nodes and rename to filex and filey:
 
   Create a rsync file /tmp/myrsync, with these line: ::
 
@@ -96,7 +96,7 @@ Examples for xdcp
 
    xdcp compute -F /tmp/myrsync to update the Compute Nodes
 
-- To rsync files in the Linux image at /install/netboot/ubuntu14.04.2/ppc64el/compute/rootimg on the MN:
+- To ``rsync`` files in the Linux image at /install/netboot/ubuntu14.04.2/ppc64el/compute/rootimg on the MN:
 
   Create a rsync file /tmp/myrsync, with this line: ::
 

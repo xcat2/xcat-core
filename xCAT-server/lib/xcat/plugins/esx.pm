@@ -407,7 +407,7 @@ sub process_request {
     }
 
     #pdu commands will be handled in the pdu plugin
-    if ($command eq "rpower" and grep(/^pduon|pduoff|pdustat$/, @exargs)) {
+    if ($command eq "rpower" and grep(/^pduon|pduoff|pdureset|pdustat$/, @exargs)) {
         return;
     }
     #my $sitetab = xCAT::Table->new('site');
@@ -5131,14 +5131,10 @@ sub mkcommonboot {
 
 
 
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => $kernel,
-                initrd   => "",
-                kcmdline => $append
-            }
-        );
+        my $bootparams = ${$req->{bootparams}};
+        $bootparams->{$node}->[0]->{kernel} = $kernel;
+        $bootparams->{$node}->[0]->{kcmdline} = $append;
+        $bootparams->{$node}->[0]->{initrd} = "";
     }    # end of node loop
 
 }

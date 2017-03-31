@@ -1,8 +1,9 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
-stop:yes
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -13,7 +14,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" = "ppc64" ]] && [[ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]]; then getmacs -D $$CN; fi 
 check:rc==0
 cmd:chtab key=extntpservers site.value=""
 check:rc==0
@@ -30,7 +31,8 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
+cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ; then  chdef -t node -o $$CN postscripts=setupntp; fi
+check:rc==0
 cmd:lsdef -l $$CN
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -53,9 +55,12 @@ cmd:xdsh $$CN mount
 check:rc==0
 cmd:sleep 120
 #comment for further discussion
-#cmd:xdsh $$CN service ntpd status
+#cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then xdsh $$CN service ntpd status;fi
 #check:rc==0
 #check:output=~running
+cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ;then chdef  -t node -o $$CN -m postscripts="setupntp"; fi
+check:rc==0
+cmd:lsdef -l $$CN
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN

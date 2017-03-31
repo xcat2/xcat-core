@@ -9,7 +9,7 @@ Any cluster using statelite compute nodes must use a stateful (diskful) Service 
 **Note:** All xCAT Service Nodes must be at the exact same xCAT version as the xCAT Management Node.
 
 Configure ``otherpkgdir`` and ``otherpkglist`` for service node osimage
-----------------------------------------------------------------------
+-----------------------------------------------------------------------
 
  * Create a subdirectory ``xcat`` under a path specified by ``otherpkgdir`` attribute of the service node os image, selected during the :doc:`../define_service_nodes` step. 
 

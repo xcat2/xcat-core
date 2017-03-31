@@ -288,6 +288,10 @@ osimage(7)|osimage.7
 
 
 
+pdu(7)|pdu.7
+
+
+
 policy(7)|policy.7
 
 
@@ -558,6 +562,12 @@ nodetype(5)|nodetype.5
 notification(5)|notification.5
  
  Contains registrations to be notified when a table in the xCAT database changes.  Users can add entries to have additional software notified of changes.  Add and remove entries using the provided xCAT commands regnotif and unregnotif.
+ 
+
+
+openbmc(5)|openbmc.5
+ 
+ Setting for nodes that are controlled by an on-board OpenBmc.
  
 
 

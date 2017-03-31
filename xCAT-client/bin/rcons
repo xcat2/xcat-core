@@ -73,7 +73,7 @@ fi
 
 if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]); then
     # use confluent, make sure conserver is not also running
-    CONSERVER_RC=`service conserver status >& /dev/null; echo $?`
+    CONSERVER_RC=`pidof conserver >> /dev/null; echo $?`
     if [[ ${CONSERVER_RC} == 0 ]]; then 
         echo "Error: consoleservice is set to 'confluent' but conserver is running.  Stop conserver, run makeconfluentcfg, and retry..."
         exit 1

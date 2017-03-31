@@ -1,0 +1,59 @@
+#!/bin/bash
+function test_ip()
+{
+    IP=$1
+    VALID_CHECK=$(echo $IP|awk -F. '$1<=255&&$2<=255&&$3<=255&&$4<=255{print "yes"}')
+    if echo $IP|grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$">/dev/null; then
+        if [ ${VALID_CHECK:-no} == "yes" ]; then
+            echo $1; 
+        else
+            return 1;
+        fi
+    else
+         return 1;
+    fi
+
+}
+function get_master_ip()
+{
+    test_ip $1;
+    if [[ $? -eq 1 ]]; then
+        rc2=`ping $MASTERIP -c 10`;
+        if [[ $? -eq 0 ]]; then
+            MASTERIPN=` ping $MASTERIP -c 1 |grep "64 bytes from" |awk -F'(' '{print $2}'|awk -F')' '{print $1}'`;
+            echo $MASTERIPN;
+        else
+            echo "invalid master value";
+            exit 1;
+        fi
+    fi
+
+}
+MASTERIP=""
+NETWORKNAME=""
+MASTERIP=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print $2}'`;
+MASTERIP=$(get_master_ip $MASTERIP);
+if [[ `tabdump networks |grep $MASTERIP` = "" ]]; then 
+    makenetworks
+fi
+NETWORKNAME=`tabdump networks |grep $MASTERIP|awk -F'"' '{print $2}'`;
+echo $NETWORKNAME,$MASTERIP;
+if [[ $NETWORKNAME = "" ]] || [[ $MASTERIP = "" ]];then 
+    exit 2;
+else
+    if [ $1 = "S" ] ;then
+        chdef -t network -o $NETWORKNAME mtu=$2
+        if [[ $? -eq 0 ]];then
+            exit 0;
+        else
+            exit 1;
+        fi
+    else [ $1 = "C" ]
+        chdef -t network -o $NETWORKNAME mtu=" "
+        if [[ $? -eq 0 ]];then
+            exit 0;
+        else
+            exit 1;
+        fi
+     fi
+fi
