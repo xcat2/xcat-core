@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.15
+# Version 1.0.16
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -955,6 +955,7 @@ function remove_repo_yum()
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
 	yum clean metadata
+	:
 }
 
 #       $1      repo id
