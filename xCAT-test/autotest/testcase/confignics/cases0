@@ -261,7 +261,7 @@ check:rc==0
 cmd:updatenode $$CN  "confignics -s"
 check:rc==0
 check:output!~invalid
-cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "MTU=1501" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "MTU=1501" ]] ;then exit 0;else exit 1;fi;fi
+cmd:if  cat /etc/*release |grep "Red Hat" >/dev/null ;then if [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN  cat /etc/sysconfig/network-scripts/ifcfg-* ` =~ "MTU=1496" ]] ; then exit 0 ;else exit 1 ; fi ;elif  cat /etc/*release |grep SUSE >/dev/null ; then if [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "IPADDR=$$NODEIP" ]] && [[ `xdsh $$CN cat /etc/sysconfig/network/ifcfg-* ` =~ "MTU=1496" ]] ;then exit 0;else exit 1;fi;fi
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/confignics/mtu_set_clean C 1496
 check:rc==0
