@@ -717,7 +717,7 @@ sub mknetboot
 
             my $mntoptions = $mntopts->{'mntopts'};
             if (defined($mntoptions)) {
-                $kcmdline .= "MNTOPTS=\'$mntoptions\'";
+                $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
         $bootparams->{$node}->[0]->{kernel} = "$rtftppath/kernel";
