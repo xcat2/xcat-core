@@ -201,9 +201,11 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Connected to IMM at IP address/i &&
                     $line !~ /Lenovo ASU/i &&
                     $line !~ /^\s*$/i &&
-                    $line !~ /Lenovo ToolsCenterSuite CLI tcli12c-1.4.0/i &&
+                    $line !~ /Lenovo ToolsCenterSuite CLI/i &&
                     $line !~ /Invoking SHOW command .../i &&
                     $line !~ /Connected to BMC by IP address/i &&
+                    $line !~ /Succeeded running command /i &&
+                    $line !~ /Based on module version /i &&
                     $line !~ /Succeed running command /i)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
