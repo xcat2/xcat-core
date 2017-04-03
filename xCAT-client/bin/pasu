@@ -205,7 +205,6 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Invoking SHOW command .../i &&
                     $line !~ /Connected to BMC by IP address/i &&
                     $line !~ /Succeed running command /i)) {
-)) {
                 print $nodehdl{$readyh} . ": " . $line . "\n";
             }
         }
