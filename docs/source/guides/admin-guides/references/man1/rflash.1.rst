@@ -11,7 +11,7 @@ Name
 ****
 
 
-\ **rflash**\  - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. rflash is also able to update firmware for NextScale Fan Power Controllers (FPC).
+\ **rflash**\  - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. \ **rflash**\  is also able to update firmware for NextScale Fan Power Controllers (FPC).
 
 
 ****************
@@ -25,7 +25,7 @@ PPC (with HMC) specific:
 ========================
 
 
-\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  {\ **-**\ **-activate**\  \ **concurrent | disruptive**\ } [\ **-V | -**\ **-verbose**\ ]
+\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  [\ **-**\ **-activate**\  {\ **concurrent | disruptive**\ }] [\ **-V | -**\ **-verbose**\ ]
 
 \ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ } [\ **-V | -**\ **-verbose**\ ]
 
@@ -34,7 +34,7 @@ PPC (without HMC, using Direct FSP Management) specific:
 ========================================================
 
 
-\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  \ **-**\ **-activate**\  \ **disruptive | deferred**\  [\ **-d**\  \ *data_directory*\ ]
+\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  [\ **-**\ **-activate**\  {\ **disruptive | deferred**\ }] [\ **-d**\  \ *data_directory*\ ]
 
 \ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ }
 
@@ -43,14 +43,14 @@ NeXtScale FPC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *http directory*\ 
+\ **rflash**\  \ *noderange*\  \ *http_directory*\ 
 
 
 OpenPOWER BMC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c | -**\ **-check**\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  \ *hpm_file_path*\  [\ **-c | -**\ **-check**\ ] [\ **-V**\ ]
 
 
 
@@ -59,13 +59,13 @@ OpenPOWER BMC specific:
 *******************
 
 
-\ **rflash**\  The \ **rflash**\  command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.
+The \ **rflash**\  command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.
 
 The command scans the specified directory structure for Firmware update package files applicable to the given nodes and components. And then it will \ **automatically**\  select the \ **latest**\  version for the upgrade. The firmware update files include the Microcode update package and associated XML file. They can be downloaded from the IBM Web site: \ *http://www-933.ibm.com/support/fixcentral/*\ .
 
 The POWER5  and POWER6 systems contain several components that use Licensed Internal Code.  The \ **rflash**\  command supports two of these components: the managed system (also known as the Central Electronics Complex, or CEC) and the power subsystem (also known as the Bulk Power Assembly (BPA) or Bulk Power Controller (BPC)).  Some POWER5 managed systems can be attached to a power subsystem.  These power subsystems can support multiple managed systems.  When the \ **rflash**\  command is invoked, xCAT will determine the managed system or power subsystem associated with that CEC and perform the update.
 
-The \ **noderange**\  can be an CEC or CEC list, a Lpar or Lpar list and a Frame or Frame list. But CEC (or Lpar) and Frame \ **can't**\  be used at the same time. When the \ *noderange*\  is an CEC or CEC list, \ **rflash**\  will upgrade the firmware of the CEC or CECs in the cec list. If \ *noderange*\  is a Lpar or Lpar list, \ **rflash**\  will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.  If \ *noderange*\  is a Frame or Frame list, \ **rflash**\  will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The \ *noderange*\  can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the \ *noderange*\   man  page  for  detailed usage information.
+The \ *noderange*\  can be an CEC or CEC list, a Lpar or Lpar list and a Frame or Frame list. But CEC (or Lpar) and Frame \ **can't**\  be used at the same time. When the \ *noderange*\  is an CEC or CEC list, \ **rflash**\  will upgrade the firmware of the CEC or CECs in the cec list. If \ *noderange*\  is a Lpar or Lpar list, \ **rflash**\  will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.  If \ *noderange*\  is a Frame or Frame list, \ **rflash**\  will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The \ *noderange*\  can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the \ *noderange*\   man  page  for  detailed usage information.
 
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware.
 
@@ -102,11 +102,11 @@ In currently Direct FSP/BPA Management, our \ **rflash**\  doesn't support \ **c
 
 The \ **deferred**\  option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details: XCAT_Power_775_Hardware_Management
 
-In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute:
+In Direct FSP/BPA Management, there is \ **-d**\  \ *data_directory*\  option. The default value is /tmp. When doing firmware update, \ **rflash**\  will put some related data from rpm packages in <data_directory> directory, so the execution of \ **rflash**\  will require available disk space in <data_directory> for the command to properly execute:
 
 For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 1.5\*gfw_rpmsize + 1.5\*power_rpmsize
 
-For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel.
+For Power 775, the \ **rflash**\  command takes effect on the primary and secondary FSPs or BPAs almost in parallel.
 
 For more details about the Firmware Update using Direct FSP/BPA Management, refer to: XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
 
@@ -156,7 +156,7 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
  
 
 
-\ **-**\ **-activate**\  \ **concurrent**\  | \ **disruptive**\ 
+\ **-**\ **-activate**\  {\ **concurrent**\  | \ **disruptive**\ }
  
  Must be specified to activate the new Licensed Internal Code.  The "disruptive" option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
  
@@ -251,7 +251,7 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
  
  
- Print verbose message to rflash log file per node when updading firmware:
+ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
  
  
  .. code-block:: perl
