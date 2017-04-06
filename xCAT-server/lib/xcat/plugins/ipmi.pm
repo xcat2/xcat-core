@@ -1693,11 +1693,14 @@ sub calc_ipmitool_version {
 #----------------------------------------------------------------#
 # Check bmc status:
 #  Arguments:
-#        pre_cmd: A string prep cmd like ipmitool-xcat -H
-#                 <bmc_addr> -I lan -U <bmc_userid> -P
-#                 <bmc_password>
-#        inteval: inteval time to check
-#        retry: max retry time
+#        pre_cmd:  A string prep cmd like ipmitool-xcat -H
+#                  <bmc_addr> -I lan -U <bmc_userid> -P
+#                  <bmc_password>
+#        inteval:  inteval time to check
+#        retry:    max retry time
+#        zz_retry: minimum number of 00 to receive before exiting
+#        sessdata: session data for display
+#        verbose:  verbose output
 #    Returns:
 #        1 when bmc is up
 #        0 when no response from bmc
@@ -1706,21 +1709,54 @@ sub check_bmc_status_with_ipmitool {
     my $pre_cmd      = shift;
     my $interval     = shift;
     my $retry        = shift;
+    my $zz_retry     = shift;
+    my $sessdata     = shift;
+    my $verbose      = shift;
     my $count        = 0;
+    my $zz_count     = 0;
     my $bmc_response = 0;
     my $cmd          = $pre_cmd . " raw 0x3a 0x0a";
 
     # BMC response of " c0" means BMC still running IPL
     # BMC response of " 00" means ready to flash
+    #
+    # Under certain conditions is it necessary to make sure BMC ready code 00 gets
+    # returned for several seconds. zz_retry argument is used to control how many iterations
+    # in the row 00 code is returned. This counter is reset if some other, non 00 code
+    # interrupts it.
     while ($count < $retry) {
         $bmc_response = xCAT::Utils->runcmd($cmd, -1);
         if ($bmc_response =~ /00/) {
-            return 1;
+            if ($zz_count > $zz_retry) {
+                # zero-zero ready code was received for $zz_count iterations - good to exit
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("Received BMC ready code 00 for $zz_count iterations - BMC is ready.", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                return 1;
+            }
+            else {
+                # check to make sure zero-zero is received again
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("($zz_count) BMC ready code - 00", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                $zz_count++;
+            }
         }
         else {
-            sleep($interval);
+            if ($zz_count > 0) {
+                # zero-zero was received before, but now we get something else.
+                # reset the zero-zero counter to make sure we get $zz_count iterations of zero-zero
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("Resetting counter because BMC ready code - $bmc_response", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                $zz_count = 0;
+            }
         }
+        sleep($interval);
         $count++;
+    }
+    if ($verbose) {
+        xCAT::SvrUtils::sendmsg("Never received 00 code after $count retries - BMC not ready.", $callback, $sessdata->{node}, %allerrornodes);
     }
     return 0;
 }
@@ -1729,6 +1765,7 @@ sub do_firmware_update {
     my $sessdata = shift;
     my $ret;
     my $ipmitool_ver;
+    my $verbose = 0;
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
@@ -1847,7 +1884,7 @@ sub do_firmware_update {
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 1, $sessdata, $verbose)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -1866,6 +1903,7 @@ sub do_firmware_update {
     for my $opt (@{$sessdata->{'extraargs'}}) {
         if ($opt =~ /-V{1,4}/) {
             $cmd .= lc($opt);
+            $verbose = 1;
             last;
         }
     }
@@ -1883,7 +1921,7 @@ sub do_firmware_update {
 
     # step 5 power on
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 15, $sessdata, $verbose)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
