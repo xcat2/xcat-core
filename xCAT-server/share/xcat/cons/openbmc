@@ -58,7 +58,6 @@ sub getans {
             my $error = $rsp->{node}->[0]->{error}->[0];
             print "$error\n";
         }
-        print "$bmcip, $username, $password\n";
     }
 }
 my $cmdref = {

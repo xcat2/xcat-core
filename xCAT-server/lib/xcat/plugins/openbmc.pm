@@ -316,6 +316,8 @@ sub parse_args {
         unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } elsif ($command eq "getopenbmccons") {
+        #command for openbmc rcons
     } else {
         return ([ 1, "Command is not supported." ]);
     }
