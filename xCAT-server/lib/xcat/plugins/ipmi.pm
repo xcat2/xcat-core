@@ -1766,6 +1766,7 @@ sub do_firmware_update {
     my $ret;
     my $ipmitool_ver;
     my $verbose = 0;
+    my $verbose_opt;
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
@@ -1848,6 +1849,21 @@ sub do_firmware_update {
         $buffer_size = "15000";
     }
 
+    # check verbose and buffersize options
+    for my $opt (@{$sessdata->{'extraargs'}}) {
+        if ($opt =~ /-V{1,4}/) {
+            $verbose_opt = lc($opt);
+            $verbose = 1;
+        }
+        if ($opt =~ /buffersize=/) {
+            my ($attribute, $buffer_value) = split(/=/, $opt);
+            if ($buffer_value) {
+                # buffersize option was passed in, reset the default
+                $buffer_size = $buffer_value;
+            }
+        }
+    }
+
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
         $cmd = $pre_cmd . " fru print 47";
@@ -1899,14 +1915,8 @@ sub do_firmware_update {
 
     # step 4 upgrade firmware
     $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
-    # check verbose debug option
-    for my $opt (@{$sessdata->{'extraargs'}}) {
-        if ($opt =~ /-V{1,4}/) {
-            $cmd .= lc($opt);
-            $verbose = 1;
-            last;
-        }
-    }
+    $cmd .= $verbose_opt;
+
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
     $cmd .= " >".$rflash_log_file." 2>&1";
     xCAT::SvrUtils::sendmsg([ 0,
@@ -1933,7 +1943,7 @@ sub do_firmware_update {
             "Running ipmitool command $cmd failed: $output");
     }
     $exit_with_success_func->($sessdata->{node}, $callback,
-        "Success to update firmware. FRU information will be populated in a few minutes.");
+        "Success updating firmware. FRU information will be populated in a few minutes.");
 }
 
 sub rflash {
@@ -1946,7 +1956,7 @@ sub rflash {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
-            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/) {
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/ && $opt !~ /^--buffersize=/) {
                 $callback->({ error => "The option $opt is not supported",
                         errorcode => 1 });
                 return;
