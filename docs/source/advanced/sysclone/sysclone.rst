@@ -35,16 +35,16 @@ List of Supported Arch and OS
 Using Sysclone to Install Nodes
 -------------------------------
 
-This document describes how to install and configure a template node (called golden client), capture an image from this template node. Then using this image to deploy other same nodes (called target nodes) quickly. 
+This document describes how to install and configure a template node (called golden client), capture an image from this template node, then using this image to deploy other nodes (called target nodes) quickly. 
 
 Prepare the xCAT Management Node for Support Sysclone
 `````````````````````````````````````````````````````
 
 To configure xCAT management node refer to section :ref:`install_guides`
 
-For support Sysclone, we need to install some extra rpms on management node and the golden client.
+To support Sysclone, we need to install some extra rpms on management node and the golden client.
 
-1. Download the xcat-dep tarball (xcat-dep-XXX.tar.bz2) which includes extra rpms needed by Sysclone. (You might already have the xcat-dep tarball on management node. If not, go to `xcat-dep  <http://xcat.org/files/xcat-dep/2.x_Linux>`_ and get the latest xCAT dependency tarball.)
+1. Download the xcat-dep tarball (xcat-dep-XXX.tar.bz2) which includes extra rpms needed by Sysclone. (You might already have the xcat-dep tarball on management node. If not, go to `xcat-dep  <http://xcat.org/files/xcat/xcat-dep/2.x_Linux>`_ and get the latest xCAT dependency tarball.)
 
 2. Install systemimager server on management node
 
@@ -56,7 +56,7 @@ For support Sysclone, we need to install some extra rpms on management node and 
 
      zypper -n install systemimager-server
 
-*[Note] Maybe you will encounter below failed message when you install systemimager-server, just ignore it.*::
+*[Note] You may ignore the following messages when installing systemimager-server.*::
 
     Can't locate AppConfig.pm in @INC (@INC contains: /usr/lib/systemimager/perl /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .) at /usr/lib/systemimager/perl/SystemImager/Config.pm line 13.
     BEGIN failed--compilation aborted at /usr/lib/systemimager/perl/SystemImager/Config.pm line 13.
@@ -65,7 +65,7 @@ For support Sysclone, we need to install some extra rpms on management node and 
     Compilation failed in require at /usr/sbin/si_mkrsyncd_conf line 28.
     BEGIN failed--compilation aborted at /usr/sbin/si_mkrsyncd_conf line 28.
 
-3. Do some preparation for install and configure golden client in management node. Copy the xcat-dep-XXX.tar.bz2 file to directory ``/install/post/otherpkgs/<os>/<arch>/xcat/`` of the management node according your golden client's OS version and system architecture, then decompression it. For example: 
+3. Copy the xcat-dep-XXX.tar.bz2 file to directory ``/install/post/otherpkgs/<os>/<arch>/xcat/`` of the management node according your golden client's OS version and system architecture, then decompress it: 
 
 * **[CentOS6.3 and x86_64]**::
     
@@ -91,15 +91,15 @@ For support Sysclone, we need to install some extra rpms on management node and 
 Install and Configure the Golden Client	
 ```````````````````````````````````````
 	
-The Golden Client acts as a regular node for xCAT, just have some extra rpms to support clone. When you deploy golden client with xCAT, you just need to add a few additional definitions to the image which will be used to deploy golden client.
+The Golden Client acts as a regular node for xCAT, it just has some extra rpms to support clone. When you deploy golden client with xCAT, you just need to add a few additional definitions to the image which will be used to deploy golden client.
 
 For information of how to install a regular node, refer to section :ref:`Diskful Installation <diskful_installation>`
 
-For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. then the golden client will have extra rpms to support clone. If you have deployed your golden client already, using 'updatenode' command to push these extra rpms to golden client. CentOS share the same pkglist file with RHEL. For example: 
+To support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. Once deployed, the golden client will have extra rpms to support cloning. If you have deployed your golden client already, use **updatenode** command to push these extra rpms to golden client. CentOS shares the same pkglist file with RHEL. For example: 
 
 * **[RH6.4 and x86_64]**::
 
-    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/instal/rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
+    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.4/x86_64
     updatenode <golden-cilent> -S
 
@@ -121,23 +121,23 @@ For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image 
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.3/ppc64
     updatenode <golden-cilent> -S
 
-*[Note]: If you install systemimager RPMs on CentOS 6.5 node by above steps, you maybe hit failure. this is a known issue because some defect of CentOS6.5 itself. Refer to known issue section for help.*
+*[Note]: If you install systemimager RPMs on CentOS 6.5 node by above steps, you maybe hit a failure. This is a known issue with CentOS6.5. Refer to known issue section for help.*
 
 Capture Image from Golden Client
 ````````````````````````````````
 
-On Management node, use xCAT command 'imgcapture' to capture an image from the golden-client.:: 
+On Management node, use xCAT command **imgcapture** to capture an image from the golden-client.:: 
 
     imgcapture <golden-client> -t sysclone -o <mycomputeimage>
 
-When imgcapture is running, it pulls the image from the golden-client, and creates a image files system and a corresponding osimage definition on the xcat management node. You can use below command to check the osimage attributes.::
+When **imgcapture** is running, it pulls the image from the golden-client, and creates an image files system and a corresponding osimage definition on the xcat management node. You can use command below to check the osimage attributes.::
 
     lsdef -t osimage <mycomputeimage>
 
 Install the target nodes with the image from the golden-client
 ``````````````````````````````````````````````````````````````
 
-following below commands to install the target nodes with the image captured from golden client.
+To install the target nodes with the image captured from golden client.
 
 * **[x86_64]**::
 
@@ -155,11 +155,11 @@ following below commands to install the target nodes with the image captured fro
 Update Nodes Later On
 ---------------------
 
-If, at a later time, you need to make changes to the golden client (install new rpms, change config files, etc.), you can capture the changes and push them to the already cloned nodes without need to restart cloned nodes. This process will only transfer the deltas, so it will be much faster than the original cloning.
+If, at a later time, you need to make changes to the golden client (install new rpms, change config files, etc.), you can capture the changes and push them to the already cloned nodes without a need to restart cloned nodes. This process will only transfer the deltas, so it will be much faster than the original cloning.
 
-**[Limitation]**: In xcat2.8.5, this feature has limitation in RHEL and CentOS. when your delta changes related bootloader, it would encounter error. This issue will be fixed in xcat higher version. So up to now, in RHEL and CentOS, this feature just update files not related bootloader.
+**[Limitation]**: In xcat2.8.5, this feature has limitation on RHEL and CentOS. When your delta changes related bootloader, it would encounter error. This issue will be fixed in xcat higher version. So up to now, in RHEL and CentOS, this feature just update files not related bootloader.
 
-Update delta changes follow below steps:
+Update delta changes:
 
 1. Make changes to your golden node (install new rpms, change config files, etc.).
 
@@ -199,7 +199,7 @@ Known Issue
 Can not install systemimager RPMs in CentOS6.5 by yum
 ``````````````````````````````````````````````````````
 
-If you install systemimager RPMs on CentOS 6.5 node using yum, you may experience some problems due to CentOS6.5 itself. If that happens, copy related RPMs to CentOS 6.5 node and install them by hand.
+If you install systemimager RPMs on CentOS 6.5 node using **yum**, you may experience some problems due to CentOS6.5 itself. If that happens, copy related RPMs to CentOS 6.5 node and install them by hand.
 
 * **On management node**::
 
@@ -220,4 +220,4 @@ If you install systemimager RPMs on CentOS 6.5 node using yum, you may experienc
 Kernel panic at times when install target node with rhels7.0 in Power 7 server
 ``````````````````````````````````````````````````````````````````````````````
 
-When you clone rhels7.0 image to target node which is Power 7 server lpar, maybe you will hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without resolve yet. up to now, we recommend you try again. 
+When you clone rhels7.0 image to target node which is Power 7 server lpar, you may hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without a resulution. For now, we recommend you try again. 
