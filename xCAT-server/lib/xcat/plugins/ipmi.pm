@@ -1885,6 +1885,7 @@ sub do_firmware_update {
 
     # step 1 power off
     $cmd = $pre_cmd . " chassis power off";
+    xCAT::SvrUtils::sendmsg("Preparing to upgrade firmware, powering chassis off...", $callback, $sessdata->{node}, %allerrornodes);
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         $exit_with_error_func->($sessdata->{node}, $callback,
@@ -1936,6 +1937,7 @@ sub do_firmware_update {
             "Timeout to check the bmc status");
     }
 
+    xCAT::SvrUtils::sendmsg("Firmware updated, powering chassis on to populate FRU information...", $callback, $sessdata->{node}, %allerrornodes);
     $cmd = $pre_cmd . " chassis power on";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
@@ -1943,7 +1945,7 @@ sub do_firmware_update {
             "Running ipmitool command $cmd failed: $output");
     }
     $exit_with_success_func->($sessdata->{node}, $callback,
-        "Success updating firmware. FRU information will be populated in a few minutes.");
+        "Success updating firmware.");
 }
 
 sub rflash {
