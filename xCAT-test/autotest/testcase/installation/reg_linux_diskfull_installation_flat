@@ -31,6 +31,9 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
+cmd:if [[ -f /tmp/test.synclist ]] ;then mv /tmp/test.synclist /tmp/test.synclist.bak;fi;
+cmd:echo "/tmp/test.synclist -> /tmp/test.synclist" > /tmp/test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/tmp/test.synclist
+check:rc==0
 cmd:if ! ([[ "__GETNODEATTR($$CN,os)__" = "sles12.1" ]] || [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" && "__GETNODEATTR($$CN,arch)__" = "x86_64" ]]) ; then  chdef -t node -o $$CN postscripts=setupntp; fi
 check:rc==0
 cmd:lsdef -l $$CN
@@ -38,10 +41,8 @@ check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
-
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
-
 cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
@@ -65,4 +66,8 @@ cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:xdsh $$CN "cat /tmp/test.synclist"
+check:rc==0
+cmd:if [[ -f /tmp/test.synclist.bak ]] ;then mv /tmp/test.synclist.bak /tmp/test.synclist;else rm -rf /tmp/test.synclist;fi
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=" "
 end
