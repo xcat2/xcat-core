@@ -218,7 +218,7 @@ check:output!~ffoNorm
 check:output!~ffovalue
 end
 
-tart:query_9125-F2C_ffoVmin
+start:query_9125-F2C_ffoVmin
 description:
 type:9125-F2C
 cmd:renergy $$CN ffoVmin
