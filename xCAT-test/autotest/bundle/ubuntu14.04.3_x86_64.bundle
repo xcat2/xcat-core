@@ -1,6 +1,6 @@
 setup_vm
-Ubuntu_diskless_installation_flat_x86_vm
-Ubuntu_full_installation_flat_x86_vm
+reg_linux_diskless_installation_flat
+reg_linux_diskfull_installation_flat
 makehosts_h
 makehosts_help
 makehosts_n_noderange
