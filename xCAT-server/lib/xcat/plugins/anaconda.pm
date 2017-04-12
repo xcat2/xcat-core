@@ -1260,6 +1260,9 @@ sub mkinstall
             }
         }
 
+       require xCAT::Yum;
+       xCAT::Yum->localize_yumrepo($pkgdir, $os, $arch);
+
         my @missingparms;
         unless ($os) {
             if   ($imagename) { push @missingparms, "osimage.osvers"; }
