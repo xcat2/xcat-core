@@ -1870,7 +1870,7 @@ sub do_firmware_update {
         }
     }
 
-    xCAT::SvrUtils::sendmsg("rflash started, individual node upgrade failure will be retried upto $retry times. Please wait.......",
+    xCAT::SvrUtils::sendmsg("rflash started, upgrade failure will be retried up to $retry times. Please wait...",
         $callback, $sessdata->{node}, %allerrornodes);
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
@@ -2012,7 +2012,7 @@ RETRY_UPGRADE:
         else {
             # After 10 min of waiting node has not rebooted. Give up retrying.
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Giving up waiting for the node to reboot. No firther upgrade retries will be attempted.");
+                "Giving up waiting for the node to reboot. No further retries will be attempted.");
         }
         
     }
