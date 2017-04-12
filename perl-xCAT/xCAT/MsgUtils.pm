@@ -16,6 +16,7 @@ use xCAT::Utils;
 #use locale;
 use Socket;
 use File::Path;
+use constant PERF_LOG => "/var/log/xcat/perf.log";
 
 $::NOK = -1;
 $::OK  = 0;
@@ -820,6 +821,66 @@ sub trace() {
                 closelog();
             }
         }
+    }
+}
+
+#------------------------------------------------------------------
+
+=head3  _perf_log
+  Libary function to write the perf log. Do not use it directly.
+=cut
+
+#-----------------------------------------------------------------
+sub _perf_log
+{
+    my $type = shift;
+    my $msg = shift;
+    my $fh;
+    my $ret = open($fh, '>>', PERF_LOG);
+    if (!$ret) {
+        xCAT::MsgUtils->message("S", "Open perf log file error: $!");
+    }
+    my $line = localtime()."\t$type\t$msg\n";
+    print $fh $line;
+    close $fh;
+}
+
+#------------------------------------------------------------------
+
+=head3  perf_log_info
+  Trace information for perf
+  Argument:
+           $msg (trace message)
+=cut
+
+#-----------------------------------------------------------------
+sub perf_log_info
+{
+    shift;
+    my $msg = shift;
+    _perf_log('info', $msg);
+}
+
+#------------------------------------------------------------------
+
+=head3  perf_log_process
+  Trace process information for perf
+  Arguments:
+            $process_type (immediate, plugin, etc)
+            $req (xcat reqeust)
+            $msg (additional message, optional)
+=cut
+
+#-----------------------------------------------------------------
+sub perf_log_process
+{
+    shift;
+    my ($process_type, $req, $msg, $pid) = @_;
+    if (defined($req)) {
+        my $command = $req->{command}->[0];
+        _perf_log($process_type, "$$\t$command\t$msg");
+    } else {
+        _perf_log($process_type, "$pid\t$msg");
     }
 }
 
