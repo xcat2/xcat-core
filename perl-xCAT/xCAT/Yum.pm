@@ -54,8 +54,9 @@ sub generate_repo
     my $dirlocation = shift;
     my @dircomps    = File::Spec->splitdir($dirlocation);
     pop(@dircomps);
+    my $reponame = join("-",@dircomps);
     my $yumurl = File::Spec->catdir(@dircomps);
-    my $reponame = $dircomps[$#dircomps];
+
     print $yumrepofile "[local-$distname-$arch-$reponame]\n";
     print $yumrepofile "name=xCAT configured yum repository for $yumurl\n";
     print $yumrepofile "baseurl=$yumurl\n";
