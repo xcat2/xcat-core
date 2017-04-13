@@ -1225,7 +1225,7 @@ cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.2
 check:rc==0
 cmd:chdef -t node -o dnstestnode[1-10] groups=dnsnode  ip="|dnstestnode(\d+)|100.100.100.(\$1+0)|"
 check:rc==0
-cmd:cp /etc/hosts  /etc/hosts.testbak
+cmd:cp -f /etc/hosts  /etc/hosts.testbak
 check:rc==0
 cmd:for i in {1..10}; do echo "100.100.100.$i  dnstestnode$i" >> /etc/hosts; done
 check:rc==0
@@ -1255,5 +1255,5 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cp /etc/hosts.testbak /etc/hosts
+cmd:cp -f /etc/hosts.testbak /etc/hosts
 end
