@@ -50,7 +50,7 @@ OpenPOWER BMC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm_file_path*\  [\ **-c | -**\ **-check**\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  \ *hpm_file_path*\  [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
 
 
 
@@ -171,6 +171,12 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 \ **-**\ **-recover**\ 
  
  Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+ 
+
+
+\ **-**\ **-retry=**\ \ *count*\ 
+ 
+ Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
  
 
 
