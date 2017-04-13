@@ -24,7 +24,7 @@ B<rflash> I<noderange> I<http_directory>
 
 =head2 OpenPOWER BMC specific:
 
-B<rflash> I<noderange> I<hpm_file_path> [B<-c>|B<--check>] [B<-V>]
+B<rflash> I<noderange> I<hpm_file_path> [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
 
 =head1 B<Description>
 
@@ -113,6 +113,10 @@ Used to commit the flash image in the temporary side of the chip to the permanen
 =item B<--recover>
 
 Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+
+=item B<--retry=>I<count>
+
+Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
 
 =item B<-v|--version>
 

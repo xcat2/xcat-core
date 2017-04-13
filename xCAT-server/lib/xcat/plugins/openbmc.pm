@@ -273,6 +273,8 @@ sub process_request {
     $cookie_jar = HTTP::Cookies->new({});
     $async = HTTP::Async->new(
         cookie_jar => $cookie_jar,
+        timeout => 10,
+        max_request_time => 60,
         ssl_options => {
             SSL_verify_mode => 0,
         },
@@ -353,7 +355,7 @@ sub parse_args {
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^model$|^serial$|^all$/) {
+        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
@@ -423,7 +425,7 @@ sub parse_command_status {
             $subcommand = "all";
         }
 
-        if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "bios" or $subcommand eq "model" or $subcommand eq "serial" or $subcommand eq "all") {
+        if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "firm" or $subcommand eq "model" or $subcommand eq "serial" or $subcommand eq "all") {
             $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
             $next_status{RINV_REQUEST} = "RINV_RESPONSE";
             $status_info{RINV_RESPONSE}{argv} = "$subcommand";
@@ -602,6 +604,8 @@ sub deal_with_response {
 
     delete $handle_id_node{$handle_id};
 
+    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+
     if ($response->status_line ne "200 OK") {
         my $error;
         if ($response->status_line eq "503 Service Unavailable") {
@@ -620,8 +624,6 @@ sub deal_with_response {
         $wait_node_num--;
         return;    
     }
-
-    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
 
     $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
@@ -755,7 +757,7 @@ sub rinv_response {
                 xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
                 next;
             }
-        } elsif ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
+        } elsif ($grep_string eq "all" or $key_url =~ /\/$grep_string/ or ($grep_string eq "firm" and defined($content{Name}) and $content{Name} eq "OpenPOWER Firmware")) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
