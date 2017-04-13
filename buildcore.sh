@@ -188,7 +188,7 @@ function setversionvars {
     SHORTSHORTVER=`echo $VER|cut -d. -f 1`
     BUILD_TIME=`date`
     BUILD_MACHINE=`hostname`
-    COMMIT_ID=`git rev-parse --short HEAD`
+    COMMIT_ID=`git rev-parse HEAD`
     XCAT_RELEASE="snap$(date '+%Y%m%d%H%M')"
     echo "$XCAT_RELEASE" >Release
 }
@@ -541,7 +541,7 @@ else
 fi
 
 #
-# Add a VERSION file into the tar.bz2 file to track information about the build
+# Add a buildinfo file into the tar.bz2 file to track information about the build
 #
 BUILDINFO=$XCATCORE/buildinfo
 echo "VERSION=$VER" > $BUILDINFO
