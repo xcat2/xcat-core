@@ -1,6 +1,13 @@
 start:reg_linux_diskfull_installation_hierarchy
 os:Linux
-
+cmd:df
+check:rc==0
+cmd:fdisk -l
+check:rc==0
+cmd:cat /proc/meminfo
+check:rc==0
+cmd:cat /proc/cpuinfo
+check:rc==0
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
 cmd:chdef -t node $$SN groups=service,all
@@ -24,6 +31,9 @@ cmd:makedhcp -a
 check:rc==0
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
+cmd:if cat /var/lib/*/dhcpd.leases ;then exit 0 ;else cat  /var/lib/*/*/dhcpd.leases;fi
+check:rc==0
+
 cmd:copycds $$ISO
 check:rc==0
 cmd:if [[ -f /tmp/test.synclist ]] ;then mv /tmp/test.synclist /tmp/test.synclist.bak;fi;

@@ -1,5 +1,13 @@
 start:reg_linux_statelite_installation_hierarchy_by_nfs
 os:Linux
+cmd:df
+check:rc==0
+cmd:fdisk -l
+check:rc==0
+cmd:cat /proc/meminfo
+check:rc==0
+cmd:cat /proc/cpuinfo
+check:rc==0
 
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
@@ -16,6 +24,8 @@ check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
+check:rc==0
+cmd:if cat /var/lib/*/dhcpd.leases ;then exit 0 ;else cat  /var/lib/*/*/dhcpd.leases;fi
 check:rc==0
 
 cmd:copycds $$ISO
@@ -87,6 +97,13 @@ check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:xdsh $$CN "echo "test"> /test.statelite"
+check:rc==0
+cmd:xdsh $$CN cat /test.statelite
+check:rc==0
+check:output=~test
+cmd:xdsh $$CN rm -rf /test.statelite
+check:rc==0
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0
 end

@@ -1,6 +1,13 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
-
+cmd:df
+check:rc==0
+cmd:fdisk -l
+check:rc==0
+cmd:cat /proc/meminfo
+check:rc==0
+cmd:cat /proc/cpuinfo
+check:rc==0
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
@@ -28,6 +35,8 @@ cmd:makedhcp -a
 check:rc==0
 cmd:sleep 10
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:if cat /var/lib/*/dhcpd.leases ;then exit 0 ;else cat  /var/lib/*/*/dhcpd.leases;fi
 check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
