@@ -909,7 +909,7 @@ sub runcase
             my $runstart = timelocal(localtime());
             my $runstartstr = scalar(localtime());
             log_this("\nRUN:$cmd  [$runstartstr]");
-            push(@record, "\nRUN:$cmd");
+            push(@record, "\nRUN:$cmd [$runstartstr]");
             @output = &runcmd($cmd);
             $rc     = $::RUNCMD_RC;
 
