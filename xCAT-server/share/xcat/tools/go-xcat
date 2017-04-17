@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.17
+# Version 1.0.18
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -517,8 +517,9 @@ function check_repo_version_zypper()
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(zypper --no-gpg-checks -n search -u -s --match-exact "$@" \
-		2>/dev/null | awk -F ' *\\| *' '/ package / { print $2, $4 }')
+	done < <(zypper --no-gpg-checks -n search --match-exact -C -t package \
+		-s "$@" 2>/dev/null |
+		awk -F ' +\\| +' '/ package / { if ("(" != substr($6, 0, 1)) print $2, $4 }')
 	local -i i
 	while [[ -n "$1" ]]
 	do
@@ -599,7 +600,7 @@ function get_package_list_zypper()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	zypper --no-gpg-checks -n search -r "${repo_id}" 2>/dev/null |
-		awk -F ' *\\| *' '/ package$/ { print $2 }'
+		awk -F ' +\\| +' '/ package$/ { print $2 }'
 }
 
 #       $1      repo id
