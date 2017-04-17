@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **imgcapture**\  \ *node*\  \ **-t | -**\ **-type**\  {\ **diskless | sysclone**\ } \ **-o | -**\ **-osimage**\  \ *osimage*\  [\ **-V | -**\ **-verbose**\ ]
+\ **imgcapture**\  \ *node*\  \ **-t | -**\ **-type**\  {\ **diskless | sysclone**\ } \ **-o | -**\ **-osimage**\  \ *osimage*\  [\ **-i**\  \ *nodebootif*\ ] [\ **-n**\  \ *nodenetdrivers*\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **imgcapture**\  [\ **-h**\  | \ **-**\ **-help**\ ] | [\ **-v**\  | \ **-**\ **-version**\ ]
 
@@ -31,9 +31,9 @@ DESCRIPTION
 
 The \ **imgcapture**\  command will capture an image from one running diskful Linux node and create a diskless or diskful image for later use.
 
-The \ **node**\  should be one diskful Linux node, managed by the xCAT MN, and the remote shell between MN and the \ **node**\  should have been configured. AIX is not supported.
+The \ **node**\  should be one diskful Linux node, managed by the xCAT MN, and the remote shell between MN and the \ **node**\  should have been configured. AIX is not supported. VMs are not supported.
 
-The \ **imgcapture**\  command supports two image types: \ **diskless**\  and \ **sysclone**\ . For the \ **diskless**\  type, it will capture an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial rmadisks for the \ **liteimg**\ /\ **packimage**\  command to generate the statelite/stateless rootimg. For the \ **sysclone**\  type, it will capture an image from one running diskful Linux node, create an osimage which can be used to clone other diskful Linux nodes.
+The \ **imgcapture**\  command supports two image types: \ **diskless**\  and \ **sysclone**\ . For the \ **diskless**\  type, it will capture an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial ramdisks for the \ **liteimg**\ /\ **packimage**\  command to generate the statelite/stateless rootimg. For the \ **sysclone**\  type, it will capture an image from one running diskful Linux node, create an osimage which can be used to clone other diskful Linux nodes.
 
 The \ **diskless**\  type:
 
@@ -80,15 +80,13 @@ OPTIONS
  
  The network interface the diskless node will boot over (e.g. eth0), which is used by the \ **genimage**\  command to generate initial ramdisks.
  
- This is optional.
- 
 
 
 \ **-n**\  \ *nodenetdrivers*\ 
  
  The driver modules needed for the network interface, which is used by the \ **genimage**\  command to generate initial ramdisks.
  
- This is optional. By default, the \ **genimage**\  command can provide drivers for the following network interfaces:
+ By default, the \ **genimage**\  command can provide drivers for the following network interfaces:
  
  For x86 or x86_64 platform:
  

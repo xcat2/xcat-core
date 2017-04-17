@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the \ *osimage*\  table. All the columns in the \ *osimage*\  and \ *linuximage*\  tables will be exported. If kits are used in stateful or stateless images, \ *kit*\ , \ *kitcomponent*\  and \ *kitrepo*\  tables will be exported. In addition, the following files will also be exported.
+The \ **imgexport**\  command will export an image that is being used by xCAT.  To export images, you must have the images defined in the \ *osimage*\  table. All the columns in the \ *osimage*\  and \ *linuximage*\  tables will be exported. If kits are used in stateful or stateless images, \ *kit*\ , \ *kitcomponent*\  and \ *kitrepo*\  tables will be exported. In addition, the following files will also be exported.
 
 For stateful:
   x.pkglist
@@ -61,7 +61,7 @@ For statelite:
 
 where x is the name of the profile.
 
-Any files specified by the -e flag will also be exported. If -p flag is specified, the names of the postscripts and the postbootscripts for the given node will be exported. The postscripts themsleves need to be manualy exported using -e flag.
+Any files specified by the \ **-e**\  flag will also be exported. If \ **-p**\  flag is specified, the names of the postscripts and the postbootscripts for the given node will be exported. The postscripts themsleves need to be manualy exported using \ **-e**\  flag.
 
 For statelite, the litefile table settings for the image will also be exported. The litetree and statelite tables are not exported.
 
@@ -71,17 +71,42 @@ OPTIONS
 *******
 
 
-\ **-e|-**\ **-extra**\  \ *srcfile:destdir*\     Pack up extra files. If \ *destdir*\  is omitted, the destination directory will be the same as the source directory.
 
-\ **-h|-**\ **-help**\                          Display usage message.
+\ **-e|-**\ **-extra**\  \ *srcfile:destdir*\ 
+ 
+ Pack up extra files. If \ *destdir*\  is omitted, the destination directory will be the same as the source directory.
+ 
 
-\ **-p|-**\ **-postscripts**\  \ *node_name*\   Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
 
-\ **-v|-**\ **-verbose**\                       Verbose output.
+\ **-h|-**\ **-help**\ 
+ 
+ Display usage message.
+ 
 
-\ *image_name*\                         The name of the image. Use \ *lsdef -t*\  osimage to find out all the image names.
 
-\ *destination*\                        The output bundle file name.
+\ **-p|-**\ **-postscripts**\  \ *node_name*\ 
+ 
+ Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
+ 
+
+
+\ **-v|-**\ **-verbose**\ 
+ 
+ Verbose output.
+ 
+
+
+\ *image_name*\ 
+ 
+ The name of the image. Use \ **lsdef -t osimage**\  to find out all the image names.
+ 
+
+
+\ *destination*\ 
+ 
+ The output bundle file name.
+ 
+
 
 
 ************
