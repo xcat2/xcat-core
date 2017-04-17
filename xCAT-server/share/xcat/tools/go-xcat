@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.18
+# Version 1.0.19
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -593,6 +593,7 @@ function get_package_list_yum()
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
+
 #       $1      repo id
 function get_package_list_zypper()
 {
@@ -1181,7 +1182,7 @@ function install_packages_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-n") && shift
-	zypper --no-gpg-checks "${yes[@]}" install "$@"
+	zypper --no-gpg-checks "${yes[@]}" install --force-resolution "$@"
 }
 
 function install_packages_apt()
