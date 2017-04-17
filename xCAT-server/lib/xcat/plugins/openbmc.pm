@@ -27,19 +27,15 @@ use Data::Dumper;
 use Getopt::Long;
 use JSON;
 
-$::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
-
-
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.",  $callback);
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset XCAT_OPENBMC_DEVEL",  $callback);
         return;
     } else {
-        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport OPENBMC_DEVEL=YES\n\trestartxcatd" ]);
+        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport XCAT_OPENBMC_DEVEL=YES" ]);
     }
 }
-
 
 #-------------------------------------------------------
 
@@ -216,6 +212,16 @@ sub preprocess_request {
         return [$request];
     }
 
+    ##############################################
+    # Delete this when could be released
+
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
+        $::OPENBMC_DEVEL = $request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}->[0];
+    } else {
+        $::OPENBMC_DEVEL = $request->{environment}->{XCAT_OPENBMC_DEVEL};
+    }
+    ##############################################
+
     $callback  = shift;
 
     my $command   = $request->{command}->[0];
@@ -355,7 +361,7 @@ sub parse_args {
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^all$/) {
+        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
@@ -425,7 +431,7 @@ sub parse_command_status {
             $subcommand = "all";
         }
 
-        if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "firm" or $subcommand eq "model" or $subcommand eq "serial" or $subcommand eq "all") {
+        if ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
             $next_status{RINV_REQUEST} = "RINV_RESPONSE";
             $status_info{RINV_RESPONSE}{argv} = "$subcommand";
@@ -690,7 +696,7 @@ sub rpower_response {
         }
     }
 
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") { 
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
         if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
             xCAT::SvrUtils::sendmsg("off", $callback, $node);
         } else {
@@ -741,22 +747,26 @@ sub rinv_response {
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
-        if ($grep_string eq "model") {
-            if ($key_url =~ /\/motherboard$/) {
-                my $model = "Model : " . $content{Model};
-                my $partnumber = "PartNumber : " . "$content{PartNumber}";
-                xCAT::SvrUtils::sendmsg("$model", $callback, $node);
-                xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
-                next;
-            }
-        } elsif ($grep_string eq "serial") {
-            if ($key_url =~ /\/motherboard$/) {
-                my $prettyname = "PrettyName : " . $content{PrettyName};
-                my $serialnumber = "SerialNumber : " . "$content{SerialNumber}";
-                xCAT::SvrUtils::sendmsg("$prettyname", $callback, $node);
-                xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
-                next;
-            }
+        if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
+            my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
+            xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
+            next;
+        } elsif (($grep_string eq "vpd" or $grep_string eq "serial") and $key_url =~ /\/motherboard$/) {
+            my $serialnumber = "BOARD Serial Number: " . "$content{SerialNumber}";
+            xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
+            next;
+        } elsif (($grep_string eq "vpd" or $grep_string eq "mprom")) {
+            # wait for interface
+        } elsif (($grep_string eq "vpd" or $grep_string eq "deviceid")) {
+            # wait for interface      
+        } elsif ($grep_string eq "uuid") {
+            # wait for interface 
+        } elsif ($grep_string eq "guid") {
+            # wait for interface
+        } elsif ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
+            my $macaddress = "MAC: " . $content{MACAddress};
+            xCAT::SvrUtils::sendmsg("$macaddress", $callback, $node);
+            next;
         } elsif ($grep_string eq "all" or $key_url =~ /\/$grep_string/ or ($grep_string eq "firm" and defined($content{Name}) and $content{Name} eq "OpenPOWER Firmware")) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
@@ -829,25 +839,25 @@ sub rsetboot_response {
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_HD_RESPONSE") {
         if ($response_info->{'message'} eq "200 OK") {
-            xCAT::SvrUtils::sendmsg("HD", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_NET_RESPONSE") {
         if ($response_info->{'message'} eq "200 OK") {
-            xCAT::SvrUtils::sendmsg("NET", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Network", $callback, $node);
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_CD_RESPONSE") {
         if ($response_info->{'message'} eq "200 OK") {
-            xCAT::SvrUtils::sendmsg("CD", $callback, $node);
+            xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_DEF_RESPONSE") {
         if ($response_info->{'message'} eq "200 OK") {
-            xCAT::SvrUtils::sendmsg("DEF", $callback, $node);
+            xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node);
         }
     }
 
