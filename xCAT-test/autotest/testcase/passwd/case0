@@ -1,10 +1,8 @@
 start:encrypted_passwd_md5_diskfull
 description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=md5
-check:rc==0
-cmd:tabdump passwd |grep -i md5
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
@@ -19,11 +17,9 @@ end
 
 start:encrypted_passwd_md5_diskless
 description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=md5
-check:rc==0
-cmd:tabdump passwd |grep -i md5
 check:rc==0
 #config CN to do diskless provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -76,7 +72,7 @@ end
 
 start:encrypted_passwd_sha256_diskfull
 description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha256
 check:rc==0
@@ -95,11 +91,9 @@ end
 
 start:encrypted_passwd_sha256_diskless
 description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha256
-check:rc==0
-cmd:tabdump passwd |grep -i sha256 
 check:rc==0
 #config CN to do diskless provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -152,11 +146,9 @@ end
 
 start:encrypted_passwd_sha512_diskfull
 description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha512
-check:rc==0
-cmd:tabdump passwd |grep -i sha512 
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
@@ -171,11 +163,9 @@ end
 
 start:encrypted_passwd_sha512_diskless
 description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
-cmd:tabdump passwd |grep -i system| awk -F, '{print $4}' > /tmp/tmpcryptmethod
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha512
-check:rc==0
-cmd:tabdump passwd |grep -i sha512
 check:rc==0
 #config CN to do diskless provision
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
