@@ -223,17 +223,19 @@ cmd:gettab key=system passwd.password > /tmp/tmppassword
 check:rc==0
 cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
 check:rc==0
-cmd:gettab key=system passwd.password |grep '\$1\$'
+cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd 
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:grep '\$1\$' /install/autoinst/$$CN
+cmd:grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd
+check:rc==0
+cmd:diff /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
 check:rc==0
 cmd:oldpassword=`cat /tmp/tmppassword |sed 's/\"//g'`;oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.password=$oldpassword passwd.cryptmethod=$oldcryptmethod
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rm -rf /tmp/tmpcryptmethod /tmp/tmppassword
+cmd:rm -rf /tmp/tmpcryptmethod /tmp/tmppassword /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
 end
 
 start:encrypted_passwd_openssl_diskless
