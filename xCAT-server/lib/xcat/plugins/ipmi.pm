@@ -1863,7 +1863,7 @@ sub do_firmware_update {
         }
         if ($opt =~ /retry=/) {
             my ($attribute, $retry_value) = split(/=/, $opt);
-            if ($retry_value) {
+            if (defined $retry_value) {
                 # retry option was passed in, reset the default
                 $retry = $retry_value;
             }
@@ -1941,14 +1941,19 @@ RETRY_UPGRADE:
     # report an error, exit to the caller and leave node in powered off state
     # otherwise report an error, power on the node  and try upgrade again
     if ($::RUNCMD_RC != 0) {
+        # Since "hpm update" command in step 4 above redirects standard out and error to a log file,
+        # nothing gets returned from execution of the command. Here if RC is not zero, we
+        # extract all lines containing "Error" from that log file and display them in the sendmsg below
+        my $get_error_cmd = "/usr/bin/cat ".$rflash_log_file." | grep Error";
+        $output = xCAT::Utils->runcmd($get_error_cmd, 0);
         if ($retry == 0) {
             # No more retries left, report and error and exit
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Running ipmitool command $cmd failed: $output");
+                "Running ipmitool command $cmd failed:\n $output");
         }
         else {
             # Error upgrading, set a flag to attempt a retry
-            xCAT::SvrUtils::sendmsg("Running ipmitool command $cmd failed: $output", $callback, $sessdata->{node}, %allerrornodes);
+            xCAT::SvrUtils::sendmsg("Running ipmitool command $cmd failed:\n $output", $callback, $sessdata->{node}, %allerrornodes);
             $failed_upgrade = 1;
             
         } 
