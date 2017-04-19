@@ -1,37 +1,40 @@
-start:rsetboot_hd
+start:rsetboot_hd_statcheck
 description:set the boot device from hd
 cmd:rsetboot $$CN hd
 check:rc==0
 check:output=~Hard Drive
+cmd:rsetboot $$CN stat
+check:rc==0
+check:output=~$$CN: Hard Drive
 end
  
-start:rsetboot_net
+start:rsetboot_net_statcheck
 description:set the boot device from net
 cmd:rsetboot $$CN net
 check:rc==0
 check:output=~Network
+cmd:rsetboot $$CN stat
+check:rc==0
+check:output=~$$CN: Network
 end
 
-start:rsetboot_cd
+start:rsetboot_cd_statcheck
 description:set the boot device from CD/DVD
-cmd:rsetboot $$CN cd
-check:rc==0
-check:output=~CD/DVD
-end
-
-start:rsetboot_default
-description:set the boot device default
-cmd:rsetboot $$CN default
-check:rc==0
-check:output=~boot override inactive
-end
-
-start:rsetboot_stat
-description:check the status for rsetboot
 cmd:rsetboot $$CN cd
 check:rc==0
 check:output=~CD/DVD
 cmd:rsetboot $$CN stat
 check:rc==0
-check:output=~CD/DVD
+check:output=~$$CN: CD/DVD
 end
+
+start:rsetboot_default_statcheck
+description:set the boot device default
+cmd:rsetboot $$CN default
+check:rc==0
+check:output=~boot override inactive
+cmd:rsetboot $$CN stat
+check:rc==0
+check:output=~$$CN: boot override inactive
+end
+
