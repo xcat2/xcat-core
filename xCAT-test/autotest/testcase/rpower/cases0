@@ -53,6 +53,19 @@ cmd:rpower $$CN status
 check:output=~Running|on
 end
 
+start:rpower_state_bmc
+description:checkout rpower node status could get node's stauts
+cmd:rpower $$CN off
+cmd:a=0;while ! `rpower $$CN state|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN state
+check:output=~Not Activated|off
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `rpower $$CN state|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN state
+check:output=~Running|on
+end
+
 start:rpower_on
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
