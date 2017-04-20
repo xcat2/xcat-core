@@ -1766,6 +1766,7 @@ sub do_firmware_update {
     my $ret;
     my $ipmitool_ver;
     my $verbose = 0;
+    my $retry = 2;
     my $verbose_opt;
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
@@ -1834,8 +1835,6 @@ sub do_firmware_update {
     if ($bmc_password) {
         $pre_cmd = $pre_cmd . " -P $bmc_password";
     }
-    xCAT::SvrUtils::sendmsg("rflash started, please wait.......",
-        $callback, $sessdata->{node}, %allerrornodes);
     
     # check for 8335-GTB Model Type to adjust buffer size
     my $buffer_size = "30000";
@@ -1849,7 +1848,7 @@ sub do_firmware_update {
         $buffer_size = "15000";
     }
 
-    # check verbose and buffersize options
+    # check verbose, buffersize, and retry options
     for my $opt (@{$sessdata->{'extraargs'}}) {
         if ($opt =~ /-V{1,4}/) {
             $verbose_opt = lc($opt);
@@ -1862,7 +1861,17 @@ sub do_firmware_update {
                 $buffer_size = $buffer_value;
             }
         }
+        if ($opt =~ /retry=/) {
+            my ($attribute, $retry_value) = split(/=/, $opt);
+            if ($retry_value) {
+                # retry option was passed in, reset the default
+                $retry = $retry_value;
+            }
+        }
     }
+
+    xCAT::SvrUtils::sendmsg("rflash started, upgrade failure will be retried up to $retry times. Please wait...",
+        $callback, $sessdata->{node}, %allerrornodes);
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
@@ -1882,6 +1891,9 @@ sub do_firmware_update {
             }
         }
     }
+
+RETRY_UPGRADE:
+    my $failed_upgrade = 0;
 
     # step 1 power off
     $cmd = $pre_cmd . " chassis power off";
@@ -1925,9 +1937,21 @@ sub do_firmware_update {
         $callback, $sessdata->{node});
 
     $output = xCAT::Utils->runcmd($cmd, -1);
+    # if upgrade command failed and we exausted number of retries 
+    # report an error, exit to the caller and leave node in powered off state
+    # otherwise report an error, power on the node  and try upgrade again
     if ($::RUNCMD_RC != 0) {
-        $exit_with_error_func->($sessdata->{node}, $callback,
-            "Running ipmitool command $cmd failed: $output");
+        if ($retry == 0) {
+            # No more retries left, report and error and exit
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
+        }
+        else {
+            # Error upgrading, set a flag to attempt a retry
+            xCAT::SvrUtils::sendmsg("Running ipmitool command $cmd failed: $output", $callback, $sessdata->{node}, %allerrornodes);
+            $failed_upgrade = 1;
+            
+        } 
     }
 
     # step 5 power on
@@ -1937,15 +1961,65 @@ sub do_firmware_update {
             "Timeout to check the bmc status");
     }
 
-    xCAT::SvrUtils::sendmsg("Firmware updated, powering chassis on to populate FRU information...", $callback, $sessdata->{node}, %allerrornodes);
+    if ($failed_upgrade) {
+        xCAT::SvrUtils::sendmsg("Firmware update failed, powering chassis on for a retry. This can take several minutes. $retry retries left ...", $callback, $sessdata->{node}, %allerrornodes);
+    }
+    else {
+        xCAT::SvrUtils::sendmsg("Firmware updated, powering chassis on to populate FRU information...", $callback, $sessdata->{node}, %allerrornodes);
+    }
+
     $cmd = $pre_cmd . " chassis power on";
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Running ipmitool command $cmd failed: $output");
     }
-    $exit_with_success_func->($sessdata->{node}, $callback,
-        "Success updating firmware.");
+
+    my $node_ready_for_retry = 0;
+    if ($failed_upgrade) {
+        # Update has failed in step 4. Wait for node to reboot and try again
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting a retry", $callback, $sessdata->{node}, %allerrornodes);
+        }
+        sleep(300); # sleep for 5 min for node to reboot
+        # Start testing every 10 sec for node to be booted. Give up after 5 min.
+        foreach (1..30) {
+            # Test node is booted in to OS
+            $cmd = "nodestat $sessdata->{node} | grep sshd";
+            $output = xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC == 0) {
+                # Node is ready to retry an upgrage
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("Detected node booted. Will retry upgrade", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                $node_ready_for_retry = 1;
+                last;
+            }
+            else {
+                # Still not booted, wait for 10 sec and try again
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("Node still not ready, Test again in 10 sec.", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                sleep(10);
+            }
+        }
+        if ($node_ready_for_retry) {
+            $retry--;   # decrement number of retries left
+            # Yes, it is a goto statement here. Ugly, but removes the need to restructure
+            # the above block of code.
+            goto RETRY_UPGRADE; 
+        }
+        else {
+            # After 10 min of waiting node has not rebooted. Give up retrying.
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Giving up waiting for the node to reboot. No further retries will be attempted.");
+        }
+        
+    }
+    else {
+        $exit_with_success_func->($sessdata->{node}, $callback,
+            "Success updating firmware.");
+    }
 }
 
 sub rflash {
@@ -1958,7 +2032,7 @@ sub rflash {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
-            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/ && $opt !~ /^--buffersize=/) {
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/ && $opt !~ /^--buffersize=/ && $opt !~ /^--retry=/) {
                 $callback->({ error => "The option $opt is not supported",
                         errorcode => 1 });
                 return;

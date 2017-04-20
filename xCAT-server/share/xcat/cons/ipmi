@@ -124,7 +124,7 @@ my $iface  = "lanplus";
 if (grep /IPMI Version              : 1.5/, @mcinfo) {
     $solcom = "isol";
     $iface  = "lan";
-} elsif (grep /Manufacturer ID           : 343/, @mcinfo) {
+} elsif (grep /Manufacturer ID           : 343/, @mcinfo && ! grep /Product ID                : 117/,@mcinfo) {
     $isintel = 1;
 }
 my $inteloption = "";

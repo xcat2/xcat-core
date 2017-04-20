@@ -410,9 +410,9 @@ export ARCH=#TABLE:nodetype:THISNODE:arch#
 export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#
 
 #for redhat:
-##place-holder for the code to save the repo info on compute node,pointing to the "pkgdir" of the osimage
-##so that the provisioned node
-##WRITEREPO#
+#place-holder for the code to save the repo info on compute node,pointing to the "pkgdir" of the osimage
+#so that the provisioned node has the repo pointed to the distro path on MN
+#WRITEREPO#
 
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "info" "running mypostscript" "/var/log/xcat/xcat.log"
