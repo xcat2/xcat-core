@@ -490,7 +490,7 @@ sub getobjdefs
                         # The %tabhash is for performance considerations
                         my $tabspec = $xCAT::Schema::tabspec{$lookup_table};
                         my $nodecol = $tabspec->{'nodecol'} if defined($tabspec->{'nodecol'});
-                        if (($lookup_attr eq 'node' && $objtype eq 'node') || (defined($nodecol) && $objtype eq 'node')) {
+                        if (($lookup_attr eq 'node' && $objtype eq 'node') || (defined($nodecol) && $objtype eq 'node' && $lookup_table ne 'ppcdirect')) {
                             if (defined($tabhash{$lookup_table}{$objname}{$tabattr})) {
                                 if ($verbose == 1) {
                                     $objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
