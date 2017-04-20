@@ -20,7 +20,7 @@ use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
 use Sys::Hostname;
-
+#use Data::Dumper;
 #use Data::Dumper;
 use strict;
 use warnings "all";
@@ -276,9 +276,22 @@ sub getipaddr
         $isip=1;
     }
 
+
+#print "============================\n";
+#print Dumper(\%::hostiphash);
+#print "\n";
+#print Dumper(\%extraarguments);
+#print "\n";
+#print "iporhost=$iporhost";
+#print "\n";
+#print "============================\n";
     #cache, do not lookup DNS each time
-    if ($::hostiphash and defined($::hostiphash{$iporhost}) && $::hostiphash{$iporhost})
+    if (
+        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetNumber}) and (not $extraarguments{GetAllAddresses})) 
+        and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
     {
+#        print "YYYYYYYYYYYYYYYYYYY\n";
+
         return $::hostiphash{$iporhost};
     }
     else
@@ -299,6 +312,15 @@ sub getipaddr
                 @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
             }  
             my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
+            unless($reqfamily == AF_INET6){
+                if($isip){
+                   if($name){
+                       $::hostiphash{$iporhost}=$name;
+                   }
+                }elsif($ip){
+                    $::hostiphash{$iporhost}=$ip;
+                }
+            }
             while ($ip)
             {
                 if ($extraarguments{GetNumber}) { #return a BigInt for compare, e.g. for comparing ip addresses for determining if they are in a common network or range
@@ -338,10 +360,18 @@ sub getipaddr
             {
                 return undef;
             }
+            
+            my $myip=inet_ntoa($packed_ip);
+            
+            unless($isip) {
+                $::hostiphash{$iporhost}=$myip;
+            }
+
             if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
                 return Math::BigInt->new(unpack("N*", $packed_ip));
             }
-            return inet_ntoa($packed_ip);
+
+            return $myip;
         }
     }
 }
