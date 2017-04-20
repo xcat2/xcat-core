@@ -1,4 +1,4 @@
-start:genimage_stateless
+start:rmimage_diskless_bug2225
 descriptiion:This case is to verify bug 2225 to test rmimage could work correctly to remove all image files.
 cmd:ls /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/;if [ $? -eq 0 ];then mv -f /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute.bak;fi
 cmd:copycds $$ISO
