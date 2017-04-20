@@ -1,9 +1,7 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
 cmd:fdisk -l
-check:rc==0
 cmd:df -T
-check:rc==0
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 cmd:MINIISO=NUll;if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]] && [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
@@ -32,8 +30,6 @@ check:rc==0
 cmd:sleep 10
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
 check:rc==0
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
-check:rc==0
 cmd:copycds $$ISO 
 check:rc==0
 cmd:if [[ -f /tmp/test.synclist ]] ;then mv -f /tmp/test.synclist /tmp/test.synclist.bak;fi;
@@ -46,6 +42,7 @@ check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:sleep 300
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 300 ];then break;fi done
 cmd:ping $$CN -c 3

@@ -1,18 +1,14 @@
 start:reg_linux_diskless_installation_hierarchy
 os:Linux
 cmd:xdsh $$SN fdisk -l
-check:rc==0
 cmd:xdsh $$SN df -T
-check:rc==0
 cmd:xdsh $$SN "echo "test"> /test.hierarchy"
 check:rc==0
 cmd:xdsh $$SN cat /test.hierarchy
 check:rc==0
 check:output=~test
-cmd:xdsh $$SN rm -rf /test.hierarchy
-check:rc==0
+cmd:output=$(xdsh $$SN ls -al / |grep test.hierarchy);if [[ $? -eq 0 ]];then  xdsh $$SN rm -rf /test.hierarchy;fi
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
-check:rc==0
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 
@@ -32,8 +28,6 @@ check:rc==0
 cmd:service dhcpd restart
 check:rc==0
 cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
-check:rc==0
-cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
@@ -55,6 +49,7 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ne
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
+cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 cmd:sleep 900
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 

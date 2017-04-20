@@ -1,9 +1,7 @@
 start:reg_linux_statelite_installation_flat
 os:Linux
 cmd:fdisk -l
-check:rc==0
 cmd:df -T
-check:rc==0
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -18,8 +16,6 @@ check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
-check:rc==0
-cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 check:rc==0
 
 cmd:copycds $$ISO
@@ -61,6 +57,7 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-st
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:sleep 900
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
@@ -99,7 +96,7 @@ cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-st
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
-
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:sleep 900
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
 
@@ -122,12 +119,8 @@ check:rc==0
 check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
-check:rc==0
-cmd:xdsh $$CN cat /test.statelite
-check:rc==0
-check:output=~test
-cmd:xdsh $$CN rm -rf /test.statelite
-check:rc==0
+check:rc!=0
+cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
 cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz
