@@ -1,12 +1,8 @@
 start:reg_linux_statelite_installation_flat
 os:Linux
-cmd:df
-check:rc==0
 cmd:fdisk -l
 check:rc==0
-cmd:cat /proc/meminfo
-check:rc==0
-cmd:cat /proc/cpuinfo
+cmd:df -T
 check:rc==0
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
@@ -23,7 +19,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if cat /var/lib/*/dhcpd.leases ;then exit 0 ;else cat  /var/lib/*/*/dhcpd.leases;fi
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 check:rc==0
 
 cmd:copycds $$ISO
@@ -54,13 +50,6 @@ cmd:chtab priority=4.8 policy.commands=litetree policy.rule=allow
 check:rc==0
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
-check:rc==0
-
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -d /install/custom/netboot/rh ]; then mkdir -p /install/custom/netboot/rh; fi;fi
-check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -e /install/custom/netboot/rh/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/rh/compute.synclist; fi;fi
-check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute synclists=/install/custom/netboot/sles/compute.synclist rootfstype=; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute synclists=/install/custom/netboot/rh/compute.synclist rootfstype=; fi
 check:rc==0
 
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
