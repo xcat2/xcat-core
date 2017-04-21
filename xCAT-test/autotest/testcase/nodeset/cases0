@@ -173,8 +173,8 @@ check:output=~Warning: testnode1: petitboot might be invalid|testnode1 could not
 cmd:noderm testnode1
 end
 
-start:nodeset_addkcmdline_bug2614
-description: This case is to verify bug 2614. To support addkcmdline when netboot=xnba.
+start:nodeset_addkcmdline
+description: This case is to verify when netboot=xnba, addkcmdline is correctly supported. 
 cmd:mkdef -t node -o testnode1 arch=x86_64 cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 os=__GETNODEATTR($$CN,os)__ 
 check:rc==0
@@ -188,9 +188,7 @@ cmd: mkdef "__GETNODEATTR($$CN,os)__-x86_64-install-compute" -u profile=compute 
 check:rc==0
 cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-x86_64-install-compute
 check:rc==0
-cmd:grep "rd.break=pre-pivot" /tftpboot/xcat/xnba/nodes/testnode1
-check:rc==0
-cmd:grep "rd.break=pre-pivot" /tftpboot/xcat/xnba/nodes/testnode1.elilo
+cmd:find -L /tftpboot -name '*testnode1*' -exec cat {} + | grep "rd.break=pre-pivot" 
 check:rc==0
 cmd:noderm testnode1
 cmd:rmdef -t osimage -o "__GETNODEATTR($$CN,os)__-x86_64-install-compute"
