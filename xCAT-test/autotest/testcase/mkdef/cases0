@@ -340,7 +340,7 @@ cmd:cat /tmp/osiamge.stanza1|mkdef -z
 check:rc==0
 cmd:rm -rf /tmp/osiamge.stanza;rm -rf /tmp/osiamge.stanza1
 check:rc==0
-cmd:lsdef -t osimage -o rhels7.3-test |grep rhels7.3-test
+cmd:lsdef -t osimage -o rhels7.3-test |grep "Object name: rhels7.3-test"
 check:rc==0
 cmd:lsdef -t osimage -o rhels7.3-test |grep pkgdir=
 check:rc==0
