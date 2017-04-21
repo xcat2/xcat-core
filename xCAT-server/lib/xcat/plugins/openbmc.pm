@@ -24,21 +24,18 @@ use xCAT::Usage;
 use xCAT::SvrUtils;
 use File::Basename;
 use Data::Dumper;
+use Getopt::Long;
 use JSON;
-
-$::OPENBMC_DEVEL = $ENV{'OPENBMC_DEVEL'};
-
 
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset OPENBMC_DEVEL and `restartxcatd` to disable.",  $callback);
+        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset XCAT_OPENBMC_DEVEL to disable.",  $callback);
         return;
     } else {
-        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport OPENBMC_DEVEL=YES\n\trestartxcatd" ]);
+        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport XCAT_OPENBMC_DEVEL=YES" ]);
     }
 }
-
 
 #-------------------------------------------------------
 
@@ -117,13 +114,55 @@ my %status_info = (
 
     RINV_REQUEST => {
         method         => "GET",
-        init_url       => "$openbmc_url/inventory/enumerate",
+        init_url       => "$openbmc_project_url/inventory/enumerate",
     },
     RINV_RESPONSE => {
         process        => \&rinv_response,
     },
+    RSETBOOT_HD_REQUEST => {
+        method         => "PUT",
+        init_url       => "",
+        data           => "", 
+    },
+    RSETBOOT_HD_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
+    RSETBOOT_NET_REQUEST => {
+        method         => "PUT",
+        init_url       => "",
+        data           => "",
+    },
+    RSETBOOT_NET_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
+    RSETBOOT_CD_REQUEST => {
+        method         => "PUT",
+        init_url       => "",
+        data           => "",
+    },
+    RSETBOOT_CD_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
+    RSETBOOT_DEF_REQUEST => {
+        method         => "PUT",
+        init_url       => "",
+        data           => "",
+    },
+    RSETBOOT_DEF_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
+    RSETBOOT_STATUS_REQUEST  => {
+        method         => "GET",
+        init_url       => "",
+    },
+    RSETBOOT_STATUS_RESPONSE => {
+        process        => \&rsetboot_response,
+    },
 );
 
+$::RESPONSE_OK                  = "200 OK";
+$::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
+$::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 
 #-----------------------------
 
@@ -175,6 +214,16 @@ sub preprocess_request {
     if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) {
         return [$request];
     }
+
+    ##############################################
+    # Delete this when could be released
+
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
+        $::OPENBMC_DEVEL = $request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}->[0];
+    } else {
+        $::OPENBMC_DEVEL = $request->{environment}->{XCAT_OPENBMC_DEVEL};
+    }
+    ##############################################
 
     $callback  = shift;
 
@@ -233,6 +282,8 @@ sub process_request {
     $cookie_jar = HTTP::Cookies->new({});
     $async = HTTP::Async->new(
         cookie_jar => $cookie_jar,
+        timeout => 10,
+        max_request_time => 60,
         ssl_options => {
             SSL_verify_mode => 0,
         },
@@ -289,7 +340,7 @@ sub parse_args {
     my $extrargs = shift;
     my $check = undef;
 
-    if (scalar(@ARGV) > 1) {
+    if (scalar(@ARGV) > 1 and $command ne "rsetboot") {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
@@ -312,12 +363,23 @@ sub parse_args {
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
-
-        unless ($subcommand =~ /^cpu$|^dimm$|^bios$|^all$/) {
+        $subcommand = "all" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
         #command for openbmc rcons
+    } elsif ($command eq "rsetboot") {
+        if (!defined($extrargs)) {
+            return ([ 1, "No option specified for $command" ]);
+        }
+        #
+        # disable function until fully tested
+        #        
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
     } else {
         return ([ 1, "Command is not supported." ]);
     }
@@ -336,11 +398,12 @@ sub parse_args {
 #-------------------------------------------------------
 sub parse_command_status {
     my $command  = shift;
+    my $subcommand;
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
 
     if ($command eq "rpower") {
-        my $subcommand = $ARGV[0];
+        $subcommand = $ARGV[0];
 
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_ON_REQUEST";
@@ -365,13 +428,47 @@ sub parse_command_status {
     } 
 
     if ($command eq "rinv") {
-        my $subcommand = $ARGV[0];
-
-        if ($subcommand eq "cpu" or $subcommand eq "dimm" or $subcommand eq "bios" or $subcommand eq "all") {
-            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
-            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
-            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+        if (defined($ARGV[0])) {
+            $subcommand = $ARGV[0];
+        } else {
+            $subcommand = "all";
         }
+
+        $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+        $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+        $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+    }
+
+    if ($command eq "rsetboot") {
+        my $persistent = 0;
+        unless (GetOptions("p" => \$persistent,)) {
+            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            exit 1;
+        }
+
+        $subcommand = $ARGV[0];
+        if ($subcommand eq "hd") {
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_HD_REQUEST";
+            $next_status{RSETBOOT_HD_REQUEST} = "RSETBOOT_HD_RESPONSE";
+            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
+        } elsif ($subcommand eq "net") {
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_NET_REQUEST";
+            $next_status{RSETBOOT_NET_REQUEST} = "RSETBOOT_NET_RESPONSE";
+            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
+        } elsif ($subcommand eq "cd"){
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_CD_REQUEST";
+            $next_status{RSETBOOT_CD_REQUEST} = "RSETBOOT_CD_RESPONSE";
+            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
+        } elsif ($subcommand eq "default" or $subcommand eq "def") {
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_DEF_REQUEST";
+            $next_status{RSETBOOT_DEF_REQUEST} = "RSETBOOT_DEF_RESPONSE";
+            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
+        } elsif ($subcommand eq "stat") {
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
+            $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
+        }
+        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
+        exit;
     }
 
     print Dumper(\%next_status) . "\n";
@@ -511,13 +608,15 @@ sub deal_with_response {
 
     delete $handle_id_node{$handle_id};
 
-    if ($response->status_line ne "200 OK") {
+    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+
+    if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
-        if ($response->status_line eq "503 Service Unavailable") {
+        if ($response->status_line eq $::RESPONSE_SERVICE_UNAVAILABLE) {
             $error = "Service Unavailable";
         } else {
             my $response_info = decode_json $response->content;
-            if ($response->status_line eq "500 Internal Server Error") {
+            if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
                 $error = $response_info->{'data'}->{'exception'};
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
                 $error = "path or object not found $1";
@@ -529,8 +628,6 @@ sub deal_with_response {
         $wait_node_num--;
         return;    
     }
-
-    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
 
     $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
@@ -580,25 +677,29 @@ sub rpower_response {
     my $response_info = decode_json $response->content;
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
-        if ($response_info->{'message'} eq "200 OK") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("on", $callback, $node);
         }
     } 
 
     if ($node_info{$node}{cur_status} eq "RPOWER_OFF_RESPONSE") {
-        if ($response_info->{'message'} eq "200 OK") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("off", $callback, $node);
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
-        if ($response_info->{'message'} eq "200 OK") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("reset", $callback, $node);
         }
     }
 
-    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE") { 
-        xCAT::SvrUtils::sendmsg($response_info->{'data'}->{CurrentHostState}, $callback, $node);
+    if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
+        if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
+            xCAT::SvrUtils::sendmsg("off", $callback, $node);
+        } else {
+            xCAT::SvrUtils::sendmsg("on", $callback, $node);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -642,14 +743,49 @@ sub rinv_response {
     my $content_info;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
-        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
+        my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+        if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
+            my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
+            xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
+            next if ($grep_string eq "model");
+        } 
+
+        if (($grep_string eq "vpd" or $grep_string eq "serial") and $key_url =~ /\/motherboard$/) {
+            my $serialnumber = "BOARD Serial Number: " . "$content{SerialNumber}";
+            xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
+            next if ($grep_string eq "serial");
+        } 
+
+        if (($grep_string eq "vpd" or $grep_string eq "mprom")) {
+            # wait for interface
+        } 
+
+        if (($grep_string eq "vpd" or $grep_string eq "deviceid")) {
+            # wait for interface      
+        } 
+
+        if ($grep_string eq "uuid") {
+            # wait for interface 
+        } 
+
+        if ($grep_string eq "guid") {
+            # wait for interface
+        } 
+
+        if ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
+            my $macaddress = "MAC: " . $content{MACAddress};
+            xCAT::SvrUtils::sendmsg("$macaddress", $callback, $node);
+            next;
+        } 
+
+        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/ or ($grep_string eq "firm" and defined($content{Name}) and $content{Name} eq "OpenPOWER Firmware")) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
                 $src = basename $key_url;
             }
 
-            my %content = %{ ${ $response_info->{data} }{$key_url} };
             foreach my $key (keys %content) {
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
                 xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
@@ -695,6 +831,60 @@ sub getopenbmccons {
     return $rsp;
 }
 
+#-------------------------------------------------------
 
+=head3  rsetboot_response
+
+  Deal with response of rsetboot command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rsetboot_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;    
+
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_HD_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_NET_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("Network", $callback, $node);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_CD_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_DEF_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node);
+        }
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
+        # wait for more information
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+
+    return;
+}
 
 1;
