@@ -88,7 +88,7 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n update '*xCAT*'"
+cmd:xdsh $$CN "zypper refresh;zypper -n update \$(rpm -q --queryformat '%{vendor}\n' xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 | grep -q -v '^IBM Corp\.$' && echo --force-resolution) '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -191,7 +191,7 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n update '*xCAT*'"
+cmd:xdsh $$CN "zypper refresh;zypper -n update \$(rpm -q --queryformat '%{vendor}\n' xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 | grep -q -v '^IBM Corp\.$' && echo --force-resolution) '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
