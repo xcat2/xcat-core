@@ -326,7 +326,7 @@ check:rc==0
 end
 start:mkdef_rhels73
 os:linux
-description:check rootimgdir warning message after make new osimage with mkdef --template
+description: mkdef --template could create rhels7.3 osiamge
 cmd:mkdef -t osimage -o rhels7.3-test-osimage --template  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 output=~1 object definitions have been created or modified
