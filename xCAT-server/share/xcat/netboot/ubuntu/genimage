@@ -1657,9 +1657,12 @@ EOMS
             push @filestoadd, $_;
         }
     }
+    
 
     if ($arch =~ /x86_64/) {
         push @filestoadd, "lib64/libnss_dns.so.2";
+        #the path of libnss_dns.so.2 for ubuntu 14.4+
+        push @filestoadd, "lib/x86_64-linux-gnu/libnss_dns.so.2";
         push @filestoadd, "lib64/libresolv.so.2";
     } elsif ($arch =~ /ppc64el/) {
         push @filestoadd, "lib/powerpc64le-linux-gnu/libnss_files.so.2";
