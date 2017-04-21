@@ -326,10 +326,20 @@ check:rc==0
 end
 start:mkdef_rhels73
 os:linux
-description: mkdef --template could create rhels7.3 osiamge
+description:create rhels7.3 osimage
 cmd:mkdef -t osimage -o rhels7.3-test-osimage --template  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 output=~1 object definitions have been created or modified
 cmd:rmdef -t osimage -o rhels7.3-test-osimage
+check:rc==0
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -z > /tmp/osiamge.stanza
+check:rc==0
+cmd:cat /tmp/osiamge.stanza |sed 's/__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute:/rhels7.3-test:/g' >/tmp/osiamge.stanza1
+check:rc==0
+cmd:cat /tmp/osiamge.stanza1|mkdef -z
+check:rc==0
+cmd:rm -rf /tmp/osiamge.stanza;rm -rf /tmp/osiamge.stanza1
+check:rc==0
+cmd:rmdef -t osimage -o rhels7.3-test
 check:rc==0
 end
