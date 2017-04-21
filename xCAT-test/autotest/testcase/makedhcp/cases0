@@ -176,8 +176,8 @@ check:output!~$$CN
 cmd:makedhcp -a
 end
 
-start:makedhcp_remote_network_bug2521
-descriptiion:This case is to verify bug 2521 to test when there is mgtifname='!remote!<nicname>', makedhcp could work correctly and create entrys in dhcp lease file.
+start:makedhcp_remote_network
+descriptiion:This case is to test when there is mgtifname='!remote!<nicname>', makedhcp could work correctly and create entrys in dhcp lease file.
 cmd:mkdef -t network -o testnetwork net=100.100.100.0 mask=255.255.255.0 mgtifname='!remote!eth0' gateway=100.100.100.1
 check:rc==0
 cmd:lsdef -t network
