@@ -1,9 +1,0 @@
-start:nodeset_addkcmdline
-cmd:chdef $$CN addkcmdline=debug
-check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:rc==0
-cmd:find -L /tftpboot -name '*$$CN*' -exec cat {} + | grep debug
-check:rc==0
-cmd:chdef $$CN addkcmdline=
-end
