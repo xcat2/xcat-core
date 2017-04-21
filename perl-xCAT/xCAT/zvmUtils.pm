@@ -374,7 +374,7 @@ sub isZvmNode {
     # Look in 'zvm' table
     my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
 
-    my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'userid' );
+    my @results = $tab->getAllAttribsWhere( "node = '" . $node . "'", 'userid' );
     foreach (@results) {
 
         # Return 'TRUE' if given node is in the table
@@ -563,17 +563,19 @@ sub getIfcfgByNic {
         # Go through each line
         foreach (@parms) {
 
+            my $filename = $_;
             # If the network file contains the NIC address
             #$out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | egrep -i "$nic"`;
-            my $cmd = $sudo . ' cat $_ | egrep -i "' . $nic .'"';
+            my $cmd = $sudo . ' cat $filename';
             $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
             if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
                 return $out;
             }
+            $out = `echo "$out" | egrep -a -i "$nic"`;
             if ($out) {
 
                 # Return network file path
-                return ($_);
+                return ($filename);
             }
         }
     }
@@ -581,11 +583,12 @@ sub getIfcfgByNic {
     # If it is SLES 10 - ifcfg-qeth file is in /etc/sysconfig/network
     elsif ( $os =~ m/SUSE Linux Enterprise Server 10/i ) {
         #$out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo ls /etc/sysconfig/network/ifcfg-qeth*" | grep -i "$nic"`;
-        my $cmd = $sudo . ' ls /etc/sysconfig/network/ifcfg-qeth* | grep -i "' . $nic .'"';
+        my $cmd = $sudo . ' ls /etc/sysconfig/network/ifcfg-qeth*';
         $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
         if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
             return $out;
         }
+        $out = `echo "$out" | egrep -a -i "$nic"`;
         @parms = split( '\n', $out );
         return ( $parms[0] );
     }
@@ -607,11 +610,12 @@ sub getIfcfgByNic {
 
             # If the network file contains the NIC address
             #$out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo cat $_" | grep -i "$nic"`;
-            my $cmd = $sudo . ' cat $_ | grep -i "' . $nic .'"';
+            my $cmd = $sudo . ' cat $_';
             $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
             if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
                 return $out;
             }
+            $out = `echo "$out" | egrep -a -i "$nic"`;
             if ($out) {
 
                 # Return ifcfg-eth file path
@@ -691,11 +695,12 @@ sub getRootDeviceAddr {
     # Get the root device node
     # LVM is not supported
     #my $out = `ssh $user\@$node  "mount" | grep "/ type" | sed 's/1//'`;
-    my $cmd = $sudo . ' mount | grep "/ type" | sed \'s/1//\'';
+    my $cmd = $sudo . ' mount';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i "/ type" | sed \'s/1//\'`;
 
     my @parms = split( " ", $out );
     @parms = split( "/", xCAT::zvmUtils->trimStr( $parms[0] ) );
@@ -703,11 +708,12 @@ sub getRootDeviceAddr {
 
     # Get disk address
     #$out = `ssh $user\@$node "cat /proc/dasd/devices" | grep "$devNode" | sed 's/(ECKD)//' | sed 's/(FBA )//' | sed 's/0.0.//'`;
-    $cmd = $sudo . ' cat /proc/dasd/devices | grep "' . $devNode . '" | sed "s/(ECKD)//" | sed "s/(FBA )//" | sed \'s/0.0.//\'';
+    $cmd = $sudo . ' cat /proc/dasd/devices';
     $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i  "$devNode" | sed "s/(ECKD)//" | sed "s/(FBA )//" | sed \'s/0.0.//\'`;
 
     @parms = split( " ", $out );
     return ( $parms[0] );
@@ -766,7 +772,7 @@ sub disableEnableDisk {
     Description : Get the MDISK statements in the user entry of a given node
     Arguments   :   User (root or non-root)
                     Node
-    Returns     : MDISK statements
+    Returns     : MDISK statements array or or string containing (Error)...
     Example     : my @mdisks = xCAT::zvmUtils->getMdisks($callback, $user, $node);
 
 =cut
@@ -793,7 +799,14 @@ sub getMdisks {
     # Get node userID
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId" | grep "MDISK"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo $dir/getuserentry $userId"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/getuserentry $userId\"", $hcp, "getMdisks", $out, $node );
+    if ($rc != 0) {
+       return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i  "MDISK"`;
 
     # Get MDISK statements
     my @lines = split( '\n', $out );
@@ -819,7 +832,7 @@ sub getMdisks {
     Description : Get the DEDICATE statements in the user entry of a given node
     Arguments   :   User (root or non-root)
                     Node
-    Returns     : DEDICATE statements
+    Returns     : DEDICATE statements array or string containing (Error)...
     Example     : my @dedicates = xCAT::zvmUtils->getDedicates($callback, $user, $node);
 
 =cut
@@ -846,7 +859,14 @@ sub getDedicates {
     # Get node userId
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId" | egrep -i "DEDICATE"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "commandString", $hcp, "getMdisks", $out, $node );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "DEDICATE"`;
 
     # Get DEDICATE statements
     my @lines = split( '\n', $out );
@@ -868,7 +888,7 @@ sub getDedicates {
     Description : Get the COMMAND statements in the user entry of a given node
     Arguments   :   User (root or non-root)
                     Node
-    Returns     : COMMAND statements
+    Returns     : COMMAND statements array or or string containing (Error)...
     Example     : my @commands = xCAT::zvmUtils->getCommands($callback, $user, $node);
 
 =cut
@@ -895,7 +915,14 @@ sub getCommands {
     # Get node userId
     my $userId = $propVals->{'userid'};
 
-    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId" | egrep -i "COMMAND"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getCommands", $out, $node );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "COMMAND"`;
 
     # Get COMMAND statements
     my @lines = split( '\n', $out );
@@ -919,7 +946,7 @@ sub getCommands {
     Arguments   :   User (root or non-root)
                     Node
                     File name to save user entry under
-    Returns     : Nothing
+    Returns     : Nothing, or string containing (Error)...
     Example     : my $out = xCAT::zvmUtils->getUserEntryWODisk($callback, $user, $node, $file);
 
 =cut
@@ -956,8 +983,15 @@ sub getUserEntryWODisk {
         return;
     }
 
-    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId" | sed '\$d' | grep -v "MDISK"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo $dir/smcli Image_Query_DM -T $userId"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Query_DM -T $userId\"", $hcp, "getUserEntryWODisk", $out, $node );
+    if ($rc != 0) {
+        return $outmsg;
+    }
 
+    $out = `echo "$out" | sed '\$d' | grep -a -i -v "MDISK"`;
     # Create a file to save output
     open( DIRENTRY, ">$file" );
 
@@ -1064,35 +1098,71 @@ sub checkOutputExtractReason {
 
 #-------------------------------------------------------
 
-=head3   checkSSHOutput
+=head3   checkSSH_Rc
 
-    Description : Check for SSH errors, and command failure
+    Description : Check for SSH errors, and command return code failure
+
     Arguments   : $?
-                  command that was issued
-    Returns     : rc = 0  Good output
-                  rc = -1  Error occurred
-                  $outmsg = error message string if $rc = -1
+                  command that was issued (do not pass in a password in cmd string, just mask it out)
+                  node the SSH is targeting
+                  function name the SSH call was done in
+                  optional command output
+                  optional final target node (used to prefix "Node: " to error message. Helps in tracing hcp calls on behalf of a node)
+                  optional syslog supression, "NONE", "SSHONLY" defaults to syslog message of any SSH or command error
+
+    Returns     : rc = 0   Good output
+                  rc = 255 Error occurred in SSH
+                  rc > 0   Command error
+
+                  $outmsg = error message string if $rc !=0
+                  plus syslog entry for non zero errors
 
 
-    Example     : ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "Command being issued");
+    Example     : ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "Command being issued", $hcp, "testfunc", $out, $node, "NONE");
 
 =cut
 
 #-------------------------------------------------------
-sub checkSSHOutput {
-    my ( $class, $rc, $cmd ) = @_;
+sub checkSSH_Rc {
+    my ( $class, $rc, $cmd, $tgtNode, $functionName, $cmdOutput, $finalTargetNode, $syslogOptions ) = @_;
 
     my $msgTxt = '';
+    my $logit = 2;
+
+    if (!defined $cmdOutput) {
+        $cmdOutput = '';
+    } else {
+        $cmdOutput = " Output: " . $cmdOutput . " ";
+    }
+
+    if (!defined $finalTargetNode) {
+        $finalTargetNode = '';
+    } else {
+        $finalTargetNode = "Node: " . $finalTargetNode . " ";
+    }
+    if (defined $syslogOptions) {
+        if ( $syslogOptions =~ m/NONE/i ) {
+            $logit = 0;
+        } elsif ( $syslogOptions =~ m/SSHONLY/i ) {
+            $logit = 1;
+        }
+    }
+
+
     $rc = $rc >> 8;
     if ( $rc == 255 ) {
-        # SSH failure to communicate with zHCP.
-        $msgTxt = "SSH Failed to communicate when trying command: $cmd";
-        xCAT::zvmUtils->printSyslog("$msgTxt");
-        return (-1, $msgTxt);
+        # SSH failure to communicate with $tgtNode.
+        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), SSH communication to $tgtNode failed for command: $cmd";
+        if ($logit > 0 ) {
+            xCAT::zvmUtils->printSyslog("$msgTxt");
+        }
+        return ($rc, $msgTxt);
     } elsif ( $rc != 0 ) {
         # Generic failure of the command.
-        $msgTxt = "Command failed with return code $rc trying to issue cmd: $cmd";
-        xCAT::zvmUtils->printSyslog("$msgTxt");
+        $msgTxt = "$finalTargetNode" . "(Error) In $functionName(), command to $tgtNode failed with return code $rc for: $cmd" . "$cmdOutput";
+        if ($logit > 1 ) {
+            xCAT::zvmUtils->printSyslog("$msgTxt");
+        }
         return ($rc, $msgTxt);
     }
     return 0;
@@ -1122,11 +1192,12 @@ sub getDeviceNode {
 
     # Determine device node
     #my $out = `ssh $user\@$node "$sudo cat /proc/dasd/devices" | grep ".$tgtAddr("`;
-    my $cmd = $sudo . ' cat /proc/dasd/devices | grep ".' . $tgtAddr . '("';
+    my $cmd = $sudo . ' cat /proc/dasd/devices';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i  ".$tgtAddr("`;
     my @words = split(' ', $out);
     my $tgtDevNode;
 
@@ -1168,11 +1239,12 @@ sub getDeviceNodeAddr {
     #   /proc/dasd/devices look similar to this:
     #   0.0.0100(ECKD) at ( 94: 0) is dasda : active at blocksize: 4096, 1802880 blocks, 7042 MB
     #my $addr = `ssh $user\@$node "$sudo cat /proc/dasd/devices" | grep -i "is $deviceNode"`;
-    my $cmd = $sudo . ' cat /proc/dasd/devices | grep -i "is ' . $deviceNode . '"';
+    my $cmd = $sudo . ' cat /proc/dasd/devices';
     my $addr = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $addr ) == -1) {
         return $addr;
     }
+    $addr = `echo "$addr" | egrep -a -i "is $deviceNode"`;
     $addr =~ s/ +/ /g;
     $addr =~ s/^0.0.([0-9a-f]*).*/$1/;
     chomp($addr);
@@ -1205,11 +1277,12 @@ sub isAddressUsed {
 
     # Search for disk address
     #my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v dasd" | grep "DASD $address"`;
-    my $cmd = $sudo . ' /sbin/vmcp q v dasd | grep "DASD '. $address. '"';
+    my $cmd = $sudo . ' /sbin/vmcp q v dasd';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i  "DASD $address"`;
     if ($out) {
         return 0;
     }
@@ -1344,7 +1417,7 @@ sub generateMacId {
     Arguments   :   User (root or non-root)
                     Node
                     MAC suffix
-    Returns     : MAC address
+    Returns     : MAC address or string containing (Error)...
     Example     : my $mac = xCAT::zvmUtils->createMacAddr($user, $node, $suffix);
 
 =cut
@@ -1369,14 +1442,22 @@ sub createMacAddr {
     }
 
     # Get USER Prefix
-    my $prefix = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q vmlan" | egrep -i "USER Prefix:"`;
+    my $outmsg;
+    my $rc;
+    my $prefix;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q vmlan"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo /sbin/vmcp q vmlan\"", $hcp, "createMacAddr", $out, $node );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $prefix = `echo "$out" | egrep -a -i "USER Prefix:"`;
     $prefix =~ s/(.*?)USER Prefix:(.*)/$2/;
     $prefix =~ s/^\s+//;
     $prefix =~ s/\s+$//;
 
-    # Get MACADDR Prefix instead if USER Prefix is not defined
+    # Get MACADDR Prefix instead if USER Prefix is not defined, use saved out data
     if (!$prefix) {
-        $prefix = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q vmlan" | egrep -i "MACADDR Prefix:"`;
+        $prefix = `echo "$out" | egrep -a -i "MACADDR Prefix:"`;
         $prefix =~ s/(.*?)MACADDR Prefix:(.*)/$2/;
         $prefix =~ s/^\s+//;
         $prefix =~ s/\s+$//;
@@ -1431,11 +1512,12 @@ sub getOs {
 
     # Get operating system
     #my $out = `ssh -o ConnectTimeout=10 $user\@$node "$sudo cat /etc/*release" | egrep -v "LSB_VERSION"`;
-    my $cmd = $sudo . ' cat /etc/*release | egrep -v "LSB_VERSION"';
+    my $cmd = $sudo . ' cat /etc/*release';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i -v "LSB_VERSION"`;
     my @results = split( '\n', $out );
     return ( xCAT::zvmUtils->trimStr( $results[0] ) );
 }
@@ -1548,7 +1630,7 @@ sub getUserProfile {
     Arguments   :   User (root or non-root)
                     zHCP
                     Userid
-    Returns     : Vswitch names
+    Returns     : Vswitch names array or or string containing (Error)...
     Example     : my $vSwitchNamers = xCAT::zvmCPUtils->getVswitchIdsFromDirectory($user, $hcp, $userId);
 
 =cut
@@ -1572,8 +1654,15 @@ sub getVswitchIdsFromDirectory {
     # NICDEF=VDEV=0700 TYPE=QDIO LAN=SYSTEM SWITCHNAME=XCATVSW2
     #
 
+    my $outmsg;
+    my $rc;
     xCAT::zvmUtils->printSyslog("Calling: ssh $user\@$hcp $sudo /opt/zhcp/bin/smcli Image_Definition_Query_DM -T $userId -k NICDEF | egrep -i 'SWITCHNAME'");
-    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli Image_Definition_Query_DM -T $userId -k NICDEF | egrep -i 'SWITCHNAME'"`;
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli Image_Definition_Query_DM -T $userId -k NICDEF"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo /opt/zhcp/bin/smcli Image_Definition_Query_DM -T $userId -k NICDEF\"", $hcp, "getVswitchIdsFromDirectory", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i 'SWITCHNAME'`;
     # if there is nothing found, log that and return;
     if ( !length($out) ) {
         xCAT::zvmUtils->printSyslog("No SWITCHNAME found in NICDEF statement for userid $userId");
@@ -1645,11 +1734,12 @@ sub getOsVersion {
 
     # Contact the system to extract the possible files which contain pertinent data.
     #my $releaseInfo = `ssh -qo ConnectTimeout=2 $user\@$node "$sudo ls /dev/null $locAllEtcVerFiles 2>/dev/null | xargs grep ''"`;
-    my $cmd = $sudo . ' ls /dev/null '. $locAllEtcVerFiles . ' 2>/dev/null | xargs grep ""';
+    my $cmd = $sudo . ' ls /dev/null '. $locAllEtcVerFiles . ' 2>/dev/null';
     my $releaseInfo = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd);
     if (xCAT::zvmUtils->checkOutput( $releaseInfo ) == -1) {
         return '';
     }
+    $releaseInfo = `echo "$releaseInfo" | xargs grep ''`;
     $osVer = buildOsVersion( $callback, $releaseInfo, 'all' );
 
     return $osVer;
@@ -1680,9 +1770,10 @@ sub getOSFromIP {
     my $rc = 0;
 
     # Get operating system
-    my $releaseInfo = `ssh -qo ConnectTimeout=2 $ipAddr "ls /dev/null $locAllEtcVerFiles 2>/dev/null | xargs grep ''"`;
+    my $releaseInfo = `ssh -qo ConnectTimeout=2 $ipAddr "ls /dev/null $locAllEtcVerFiles 2>/dev/null"`;
     $rc = $? >> 8;
     if ( $rc == 0 ) {
+        $releaseInfo = `echo "$releaseInfo" | xargs grep ''`;
         $osVer = buildOsVersion( $callback, $releaseInfo, 'all' );
     } else {
         if ( $callback ) {
@@ -2034,12 +2125,13 @@ sub getZfcpInfo {
         chomp($tmp);
 
         # Find the size in MiB
-        #$size = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /usr/bin/sg_readcap $tmp" | egrep -i "Device size:"`;
-        my $cmd = $sudo . ' /usr/bin/sg_readcap ' . $tmp . ' | egrep -i Device size:';
+        #$size = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /usr/bin/sg_readcap $tmp" | egrep -i "Device[[:space:]]size:"`;
+        my $cmd = $sudo . ' /usr/bin/sg_readcap ' . $tmp;
         $size = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
         if (xCAT::zvmUtils->checkOutput( $size ) == -1) {
             return $size;
         }
+        $size = `echo "$size" | egrep -a -i "Device[[:space:]]size:"`;
         $size =~ s/Device size: //g;
         @args = split(",", $size);
         $size = xCAT::zvmUtils->trimStr($args[1]);
@@ -2072,7 +2164,7 @@ sub isHypervisor {
     # Look in 'zvm' table
     my $tab = xCAT::Table->new( "hypervisor", -create => 1, -autocommit => 0 );
 
-    my @results = $tab->getAllAttribsWhere( "node like '%" . $node . "%'", 'type' );
+    my @results = $tab->getAllAttribsWhere( "node = '" . $node . "'", 'type' );
     foreach (@results) {
 
         # Return 'TRUE' if given node is in the table
@@ -2188,12 +2280,12 @@ sub getFreeAddress {
     if ($type eq 'vmcp') {
         # When the node is up, vmcp can be used
         #$allUsedAddr = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v all | awk '\$1 ~/^($deviceTypesVm)/ {print \$2}' | sort"`;
-        my $cmd = $sudo . '/sbin/vmcp q v all | egrep "' . $deviceTypesVm . '"';
+        my $cmd = $sudo . '/sbin/vmcp q v all';
         my $allUsedAddr = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
         if (xCAT::zvmUtils->checkOutput( $allUsedAddr ) == -1) {
            return -1;
         }
-        $allUsedAddr = `echo '$allUsedAddr' | awk '\$1 ~/^($deviceTypesVm)/ {print \$2}' | sort`;
+        $allUsedAddr = `echo '$allUsedAddr' | egrep -a -i "$deviceTypesVm"`;
     } else {
         # When the node is down, use zHCP to get its user directory entry
         # Get HCP
@@ -2241,7 +2333,7 @@ sub getFreeAddress {
     Arguments   :   User (root or non-root)
                     zHCP (to query on)
                     node
-    Returns     : In nanoseconds for used CPU time
+    Returns     : In nanoseconds for used CPU time or string containing (Error)...
     Example     : my $out = xCAT::zvmUtils->getUsedCpuTime($hcp, $node);
 
 =cut
@@ -2261,7 +2353,14 @@ sub getUsedCpuTime {
     my $userId = xCAT::zvmCPUtils->getUserId($user, $node);
 
     # Call IUO function to query CPU used time
-    my $time = `ssh $user\@$hcp "$sudo $dir/smcli Image_Performance_Query -T $userId -c 1" | egrep -i "Used CPU time:"`;
+    my $outmsg;
+    my $rc;
+    my $time = `ssh $user\@$hcp "$sudo $dir/smcli Image_Performance_Query -T $userId -c 1"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli Image_Performance_Query -T $userId -c 1\"", $hcp, "getUsedCpuTime", $time, $node );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $time = `echo "$time" | egrep -a -i "Used CPU time:"`;
     $time =~ s/^Used CPU time:(.*)/$1/;
     $time =~ s/"//g;
     $time =~ s/^\s+//;
@@ -2401,7 +2500,7 @@ sub getSizeFromPage {
     Description : Get total count of logical CPUs in the LPAR
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Total CPU count
+    Returns     : Total CPU count or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getLparCpuTotal($user, $hcp);
 
 =cut
@@ -2415,7 +2514,14 @@ sub getLparCpuTotal {
         $sudo = "";
     }
 
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "LPAR CPUs Total"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo cat /proc/sysinfo\"", $hcp, "getLparCpuTotal", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "LPAR CPUs Total"`;
 
     my @results = split(' ', $out);
     return ($results[3]);
@@ -2428,7 +2534,7 @@ sub getLparCpuTotal {
     Description : Get count of used logical CPUs in the LPAR
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Used CPU count
+    Returns     : Used CPU count or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getLparCpuUsed($user, $hcp);
 
 =cut
@@ -2442,7 +2548,14 @@ sub getLparCpuUsed {
         $sudo = "";
     }
 
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "LPAR CPUs Configured"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo cat /proc/sysinfo\"", $hcp, "getLparCpuUsed", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "LPAR CPUs Configured"`;
 
     my @results = split(' ', $out);
     return ($results[3]);
@@ -2455,7 +2568,7 @@ sub getLparCpuUsed {
     Description : Get the model of this CEC (LPAR)
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Model of this CEC
+    Returns     : Model of this CEC or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getCecModel($user, $hcp);
 
 =cut
@@ -2469,7 +2582,14 @@ sub getCecModel {
         $sudo = "";
     }
 
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "^Type:"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo cat /proc/sysinfo\"", $hcp, "getCecModel", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "^Type:"`;
     my @results = split(' ', $out);
 
     return ($results[1]);
@@ -2482,7 +2602,7 @@ sub getCecModel {
     Description : Get the vendor of this CEC (LPAR)
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Vendor of this CEC
+    Returns     : Vendor of this CEC or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getCecVendor($user, $hcp);
 
 =cut
@@ -2496,7 +2616,14 @@ sub getCecVendor {
         $sudo = "";
     }
 
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "Manufacturer"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo cat /proc/sysinfo\"", $hcp, "getCecVendor", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "Manufacturer"`;
     my @results = split(' ', $out);
 
     return ($results[1]);
@@ -2509,7 +2636,7 @@ sub getCecVendor {
     Description : Get the info(name & version) for this hypervisor
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Name & version of this hypervisor
+    Returns     : Name & version of this hypervisor or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getHypervisorInfo($user, $hcp);
 
 =cut
@@ -2523,7 +2650,14 @@ sub getHypervisorInfo {
         $sudo = "";
     }
 
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo" | grep "VM00 Control Program"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo cat /proc/sysinfo"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo cat /proc/sysinfo\"", $hcp, "getHypervisorInfo", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "VM00 Control Program"`;
     my @results = split(' ', $out);
 
     my $str = "$results[3] $results[4]";
@@ -2538,7 +2672,7 @@ sub getHypervisorInfo {
     Description : Get the total physical memory of this LPAR
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Total physical memory
+    Returns     : Total physical memory or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getLparMemoryTotal($user, $hcp);
 
 =cut
@@ -2552,7 +2686,14 @@ sub getLparMemoryTotal {
         $sudo = "";
     }
 
-    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query" | grep "real storage"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo /opt/zhcp/bin/smcli System_Info_Query\"", $hcp, "getLparMemoryTotal", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "real storage"`;
     my @results = split(' ', $out);
 
     return ($results[5]);
@@ -2565,7 +2706,7 @@ sub getLparMemoryTotal {
     Description : Get the offline physical memory of this LPAR
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Offline physical memory
+    Returns     : Offline physical memory or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getLparMemoryOffline($user, $hcp);
 
 =cut
@@ -2579,7 +2720,14 @@ sub getLparMemoryOffline {
         $sudo = "";
     }
 
-    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query" | grep "real storage"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Info_Query"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo /opt/zhcp/bin/smcli System_Info_Query\"", $hcp, "getLparMemoryOffline", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "real storage"`;
     my @results = split(' ', $out);
 
     return ($results[14]);
@@ -2592,7 +2740,7 @@ sub getLparMemoryOffline {
     Description : Get the used physical memory of this LPAR
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : Used physical memory
+    Returns     : Used physical memory or string containing (Error)...
     Example     : my $out = xCAT::zvmCPUtils->getLparMemoryUsed($user, $hcp);
 
 =cut
@@ -2606,7 +2754,14 @@ sub getLparMemoryUsed {
         $sudo = "";
     }
 
-    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Performance_Info_Query " | grep "Used memory pages:"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo /opt/zhcp/bin/smcli System_Performance_Info_Query "`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo /opt/zhcp/bin/smcli System_Performance_Info_Query \"", $hcp, "getLparMemoryUsed", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $out = `echo "$out" | egrep -a -i "Used memory pages:"`;
     my @results = split(':', $out);
 
     my $page = xCAT::zvmUtils->trimStr( $results[1] );
@@ -3262,7 +3417,7 @@ sub generateUserEntryFile {
     Description : Obtain the SSI and system status
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : SSI cluster name
+    Returns     : SSI cluster name or string containing (Error)...
     Example     : my $out = xCAT::zvmUtils->querySSI($user, $hcp);
 
 =cut
@@ -3279,7 +3434,14 @@ sub querySSI {
         $sudo = "";
     }
 
-    my $ssi = `ssh -o ConnectTimeout=10 $user\@$hcp "$sudo $dir/smcli SSI_Query" | egrep -i "ssi_name"`;
+    my $outmsg;
+    my $rc;
+    my $ssi = `ssh -o ConnectTimeout=10 $user\@$hcp "$sudo $dir/smcli SSI_Query"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=10 $user\@$hcp \"$sudo $dir/smcli SSI_Query\"", $hcp, "querySSI", $ssi );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    $ssi = `echo "$ssi" | egrep -a -i "ssi_name"`;
     $ssi =~ s/ssi_name = //;
     $ssi =~ s/\s*$//;
     $ssi =~ s/^\s*//;
@@ -3328,7 +3490,7 @@ sub rExecute {
     Description : Get a list of used FCP devices in the zFCP pools
     Arguments   :   User (root or non-root)
                     zHCP
-    Returns     : List of known FCP devices
+    Returns     : List of known FCP devices, or hash with key "Error" containing error message
     Example     : my %devices = xCAT::zvmUtils->getUsedFcpDevices($user, $zhcp);
 
 =cut
@@ -3348,7 +3510,16 @@ sub getUsedFcpDevices {
     # Grep the pools for used or allocated zFCP devices
     my %usedDevices;
     my @args;
-    my @devices = split("\n", `ssh $user\@$hcp "$sudo cat $pool/*.conf" | egrep -i "used|allocated"`);
+    my $outmsg;
+    my $rc;
+    my $out = `ssh $user\@$hcp "$sudo cat $pool/*.conf"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo cat $pool/*.conf\"", $hcp, "getUsedFcpDevices", $out );
+    if ($rc != 0) {
+        $usedDevices{"Error"} = $outmsg;
+        return %usedDevices;
+    }
+    $out = `echo "$out" | egrep -a -i "used|allocated"`;
+    my @devices = split("\n", $out);
     foreach (@devices) {
         @args = split(",", $_);
 
@@ -3381,7 +3552,7 @@ sub getUsedFcpDevices {
                   Mount access ('ro' for read only, 'rw' for read write)
                   Directory as known to zHCP (out)
     Returns     : 0 - Mounted, or zHCP and MN are on the same system
-                  1 - Mount failed
+                  1 - Mount failed, errors returned in $callback
     Example     : establishMount( $callback, $::SUDOER, $::SUDO, $hcp, $installRoot, $provMethod, "ro", \$remoteDeployDir );
 
 =cut
@@ -3426,7 +3597,15 @@ sub establishMount {
         $$mountedPt = "/mnt/$masterHostname$installRoot/$localDir";
 
         # If the mount point already exists then return because we are done.
-        my $rc = `ssh $sudoer\@$hcp "$sudo mount | grep $$mountedPt > /dev/null; echo \\\$?"`;
+        my $outmsg;
+        my $rc;
+        $out = `ssh $sudoer\@$hcp "$sudo mount"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $sudoer\@$hcp \"$sudo mount\"", $hcp, "establishMount", $out );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return 1;
+        }
+        $rc = `echo "$out" | egrep -a -i $$mountedPt > /dev/null; echo \\\$?"`;
         if ($rc == 0) {
             return 0;
         }
@@ -3513,7 +3692,7 @@ sub getFreeRepoSpace {
                         - Owner
                         - Tag
     Returns     :   Results hash including:
-                        - Return code (0 = Success, -1 = Failure)
+                        - Return code (0 = Success, -1 = Failure, errors returned in $callback)
                         - zFCP device (if one is requested)
                         - WWPN
                         - LUN
@@ -3526,6 +3705,9 @@ sub findAndUpdatezFcpPool {
     # Get inputs
     my ($class, $callback, $header, $user, $hcp, $pool, $criteriaRef) = @_;
 
+    my $outmsg;
+    my $rc;
+    my $out;
     # Determine if sudo is used
     my $sudo = "sudo";
     if ($user eq "root") {
@@ -3614,7 +3796,6 @@ sub findAndUpdatezFcpPool {
     }
 
     # Find disk pool (create one if non-existent)
-    my $out;
     if (!(`ssh $user\@$hcp "$sudo test -d $zfcpDir && echo Exists"`)) {
         # Create pool directory
         $out = `ssh $user\@$hcp "$sudo mkdir -p $zfcpDir"`;
@@ -3639,7 +3820,14 @@ sub findAndUpdatezFcpPool {
         #     used,1000000000000000,2000000000000110,8g,3B00-3B3F,ihost1,1a23,$root_device$
         #     free,1000000000000000,2000000000000111,,3B00-3B3F,,,
         #     free,1230000000000000;4560000000000000,2000000000000112,,3B00-3B3F,,,
-        my @devices = split("\n", `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | egrep -i ^free`);
+        $out = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo cat $zfcpDir/$pool.conf\"", $hcp, "findAndUpdatezFcpPool", $out );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn($callback, "$outmsg");
+            return \%results;
+        }
+        $out = `echo "$out" | egrep -a -i ^free`;
+        my @devices = split("\n", $out);
         $sizeFound = 0;
         foreach (@devices) {
             @info = split(',', $_);
@@ -3677,7 +3865,13 @@ sub findAndUpdatezFcpPool {
         }
     } else {
         # Find given WWPN and LUN. Do not continue if device is used
-        my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | grep -i "$wwpn,$lun"`;
+        my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo cat $zfcpDir/$pool.conf\"", $hcp, "findAndUpdatezFcpPool", $select );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn($callback, "$outmsg");
+            return \%results;
+        }
+        $select = `echo "$select" | egrep -a -i "$wwpn,$lun"`;
         chomp($select);
         if (!$select) {
             xCAT::zvmUtils->printLn($callback, "$header: (Error) zFCP device 0x$wwpn/0x$lun could not be found in zFCP pool $pool");
@@ -3724,7 +3918,13 @@ sub findAndUpdatezFcpPool {
     # Mark WWPN and LUN as used, free, or reserved and set the owner/channel appropriately
     # This config file keeps track of the owner of each device, which is useful in nodeset
     $size = $size . "M";
-    my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | grep -i "$lun"`;
+    my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo cat $zfcpDir/$pool.conf\"", $hcp, "findAndUpdatezFcpPool", $select );
+    if ($rc != 0) {
+        xCAT::zvmUtils->printLn($callback, "$outmsg");
+        return \%results;
+    }
+    $select = `echo "$select" | egrep -a -i "$lun"`;
     chomp($select);
     if ($select) {
         @info = split(',', $select);
@@ -3770,7 +3970,7 @@ sub findAndUpdatezFcpPool {
                     candidate FCP devices or auto
                     FCP device range
                     zFCP device owner
-    Returns     : selected FCP device or empty if no one is selected
+    Returns     : selected FCP device or empty if no one is selected, errors returned in $callback
     Example     : my $fcpDevice = xCAT::zvmUtils->selectFcpDevice($callback, $header, $user, $hcp, $fcpDevice, $range, $owner);
 
 =cut
@@ -3840,12 +4040,24 @@ sub selectFcpDevice {
         if (!$found) {
             # If the node has no eligible FCP device, find a free one for it.
             my %usedDevices = xCAT::zvmUtils->getUsedFcpDevices($user, $hcp);
+            if (exists $usedDevices{"Error"}) {
+                xCAT::zvmUtils->printLn($callback, "$header: $usedDevices{Error}");
+                return;
+            }
 
             my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
             $hcpUserId =~ tr/a-z/A-Z/;
 
             # Find a free FCP channel
-            my $out = `ssh $user\@$hcp "$sudo $dir/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
+            my $outmsg;
+            my $rc;
+            my $out = `ssh $user\@$hcp "$sudo $dir/smcli System_WWPN_Query -T $hcpUserId"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo $dir/smcli System_WWPN_Query -T $hcpUserId\"", $hcp, "selectFcpDevice", $out );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn($callback, "$outmsg");
+                return;
+            }
+            $out = `echo "$out" | egrep -a -i "FCP device number|Status"`;
             my @devices = split( "\n", $out );
             for (my $i = 0; $i < @devices; $i++) {
                 # Extract the device number and status
@@ -3918,7 +4130,7 @@ sub selectFcpDevice {
                     zHCP
                     WWPN
                     LUN
-    Returns     : Storage pool where zFCP device resides
+    Returns     : Storage pool where zFCP device resides, or string containing (Error)...
     Example     : my $pool = xCAT::zvmUtils->findzFcpDevicePool($user, $hcp, $wwpn, $lun);
 
 =cut
@@ -3938,7 +4150,15 @@ sub findzFcpDevicePool {
     my $zfcpDir = "/var/opt/zhcp/zfcp";
 
     # Find the pool that contains the SCSI/FCP device
-    my @pools = split("\n", `ssh $user\@$hcp "$sudo grep -i -l \\\"$wwpn,$lun\\\" $zfcpDir/*.conf"`);
+    my $out;
+    my $outmsg;
+    my $rc;
+    $out = `ssh $user\@$hcp "$sudo grep -i -l \\\"$wwpn,$lun\\\" $zfcpDir/*.conf"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo grep -i -l \\\"$wwpn,$lun\\\" $zfcpDir/*.conf\"", $hcp, "findzFcpDevicePool", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    my @pools = split("\n", $out);
     my $pool = "";
     if (scalar(@pools)) {
         $pool = basename($pools[0]);
@@ -3958,7 +4178,7 @@ sub findzFcpDevicePool {
                     Storage pool
                     WWPN
                     LUN
-    Returns     : Architecture of node
+    Returns     : Architecture of node or string containing (Error)...
     Example     : my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($user, $hcp, $pool, $wwpn, $lun);
 
 =cut
@@ -3979,7 +4199,15 @@ sub findzFcpDeviceAttr {
 
     # Find the SCSI/FCP device
     # Entry order: status,wwpn,lun,size,range,owner,channel,tag
-    my @info = split("\n", `ssh $user\@$hcp "$sudo grep -i \"$wwpn,$lun\" $zfcpDir/$pool.conf"`);
+    my $out;
+    my $outmsg;
+    my $rc;
+    $out = `ssh $user\@$hcp "$sudo grep -i \"$wwpn,$lun\" $zfcpDir/$pool.conf"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $user\@$hcp \"$sudo grep -i \"$wwpn,$lun\" $zfcpDir/$pool.conf\"", $hcp, "findzFcpDeviceAttr", $out );
+    if ($rc != 0) {
+        return $outmsg;
+    }
+    my @info = split("\n", $out);
     my $entry = $info[0];
     chomp($entry);
 
@@ -4479,7 +4707,7 @@ sub execcmdthroughIUCV {
         }
         return $result;
     } elsif ( $rc == 1 ) {
-            $msg = "IUCV authorized error, error details $result";
+            $msg = "Issued command was not authorized or a generic Linux error occurred. error details $result";
             push @{$rsp->{data}}, $msg;
     } elsif ( $rc == 2 ) {
             $msg = "parameter to iucvclient error, $result";
@@ -4514,7 +4742,7 @@ sub execcmdthroughIUCV {
                   VM's node
                   VM's system
 
-    Returns     :
+    Returns     : Nothing
     Example     : xCAT::zvmUtils->cleanIUCV( $user, $hcp, $userid);
 
 =cut
@@ -4541,11 +4769,8 @@ sub cleanIUCV {
     #clean iucv server file
     $cmd = "ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvpath 2>&1";
     $result = `ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvpath 2>&1`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-    if ($rc == -1) {
-       xCAT::zvmUtils->printSyslog("$node: SSH to VM to clean iucv server file failed. $result");
-       # Continue processing even if an error.
-    }
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "cleanIUCV", $result, $result, $node );
+    # Continue processing even if an error.
 
     #clean iucv server service file
     if ( $os =~ m/sles11/i or $os =~ m/rhel6/i ) {
@@ -4563,38 +4788,26 @@ sub cleanIUCV {
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvservicepath_ubuntu16 2>&1";
         $result = `ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvservicepath_ubuntu16 2>&1`;
     }
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-    if ($rc == -1) {
-        xCAT::zvmUtils->printSyslog("$node: SSH to VM to clean iucv server serivce file failed. $result");
-        # Continue processing even if an error.
-    }
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "cleanIUCV", $result, $node );
+    # Continue processing even if an error.
 
     #clean iucv server authorized file
     $cmd = "ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvpath 2>&1";
     $result = `ssh -o ConnectTimeout=5 $user\@$node rm -rf $trgtiucvpath 2>&1`;
-    ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-    if ($rc == -1) {
-        xCAT::zvmUtils->printSyslog("$node: SSH to VM to clean iucv server authorized file failed. $result");
-        # Continue processing even if an error.
-    }
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "cleanIUCV", $result, $node );
+    # Continue processing even if an error.
 
     #clean iucv server service start
     if ( $os =~ m/sles11/i or $os =~ m/rhel6/i ){
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"chkconfig --del iucvserd && service iucvserd stop 2>&1";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "chkconfig --del iucvserd && service iucvserd stop 2>&1"`;
-        ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-        if ($rc == -1) {
-           xCAT::zvmUtils->printSyslog("$node: SSH to VM to clean iucv server serivce start failed. $result");
-           # Continue processing even if an error.
-        }
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "cleanIUCV", $result, $node );
+        # Continue processing even if an error.
     }else{
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"systemctl disable iucvserd.service && systemctl stop iucvserd.service 2>&1";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "systemctl disable iucvserd.service && systemctl stop iucvserd.service 2>&1"`;
-        ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-        if ($rc == -1) {
-           xCAT::zvmUtils->printSyslog("$node: SSH to VM to clean iucv server serivce start failed. $result");
-           # Continue processing even if an error.
-        }
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "cleanIUCV", $result, $node );
+        # Continue processing even if an error.
     }
 }
 
@@ -4643,10 +4856,10 @@ sub setsshforvm {
     if ($? == 0) {
         my $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"$commandwithparm\"";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "$commandwithparm"`;
-        ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-        if ($rc == -1) {
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "setsshforvm", $result, $node );
+        if ($rc == 255) {
             if ($isCallback){
-                xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                xCAT::zvmUtils->printLn( $callback, "$outmsg");
             }
             # Continue processing even if an error.
         }
@@ -4717,6 +4930,7 @@ sub execcmdonVM {
     my $msg = '';
     my $cmd = '';
     my $opnclouduserid='OPNCLOUD';
+    my $simplecmd = 'date';
 
     # Create path string
     my $dest = "$user\@$node";
@@ -4740,11 +4954,10 @@ sub execcmdonVM {
     if (!(defined($userid)) || !(defined($hcp))){
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"$commandwithparm\"";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "$commandwithparm"`;
-        ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-        if ($rc == -1) {
-            xCAT::zvmUtils->printSyslog("$node: $cmd $outmsg");
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "execcmdonVM", $result, $node );
+        if ($rc == 255) {
             if ($isCallback){
-                xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                xCAT::zvmUtils->printLn( $callback, "$outmsg");
             }
         }
         # Remove IUCV=1 if it has been set
@@ -4763,10 +4976,10 @@ sub execcmdonVM {
         while ( !$result && $max < 10 ) {
             $cmd = "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp q user $userid 2>/dev/null\" | sed 's/HCPCQU045E.*/off/' | sed 's/$userid.*/on/'";
             $result = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q user $userid 2>/dev/null" | sed 's/HCPCQU045E.*/off/' | sed 's/$userid.*/on/'`;
-            ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-            if ($rc == -1) {
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $hcp, "execcmdonVM", $result, $node );
+            if ($rc == 255) {
                 if ($isCallback){
-                    xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg");
                 }
                return $outmsg;
             }
@@ -4824,11 +5037,10 @@ sub execcmdonVM {
         # SSH=1, Use ssh to make communication.
         $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"$commandwithparm\"";
         $result = `ssh -o ConnectTimeout=5 $user\@$node "$commandwithparm"`;
-        ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
-        if ($rc == -1) {
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "execcmdonVM", $result, $node );
+        if ($rc == 255) {
             if ($isCallback){
-                xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
-                xCAT::zvmUtils->printSyslog("$node: $cmd $outmsg");
+                xCAT::zvmUtils->printLn( $callback, "$outmsg");
             }
         }
         return $result;
@@ -4902,10 +5114,10 @@ sub execcmdonVM {
 
             $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"echo -n $opnclouduserid >$authorizedfilepath\" 2>&1";
             $result = `ssh -o ConnectTimeout=5 $user\@$node "echo -n $opnclouduserid >$authorizedfilepath" 2>&1`;
-            ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "execcmdonVM", $result, $node );
             if ($rc != 0) {
                 if ($isCallback){
-                    xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg");
                 }
                 $msg = "echo -n $hcp >$authorizedfilepath, failed to create authorized userid for $node. return $rc $result";
                 return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
@@ -4915,10 +5127,10 @@ sub execcmdonVM {
             if ( $os =~ m/sles11/i or $os =~ m/rhel6/i ){
                 $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"chkconfig --add iucvserd && service iucvserd start 2>&1\"";
                 $result = `ssh -o ConnectTimeout=5 $user\@$node "chkconfig --add iucvserd && service iucvserd start 2>&1"`;
-                ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "execcmdonVM", $result, $node );
                 if ($rc != 0) {
                     if ($isCallback){
-                        xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                        xCAT::zvmUtils->printLn( $callback, "$outmsg");
                     }
                     $msg = "echo -n $hcp >$authorizedfilepath, failed to create authorized userid for $node. return $rc $result";
                     return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
@@ -4926,10 +5138,10 @@ sub execcmdonVM {
             }else{
                 $cmd = "ssh -o ConnectTimeout=5 $user\@$node \"systemctl enable iucvserd.service && systemctl start iucvserd.service 2>&1\"";
                 $result = `ssh -o ConnectTimeout=5 $user\@$node "systemctl enable iucvserd.service && systemctl start iucvserd.service 2>&1"`;
-                ($rc, $outmsg) = xCAT::zvmUtils->checkSSHOutput( $?, "$cmd" );
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "$cmd", $node, "execcmdonVM", $result, $node );
                 if ($rc != 0) {
                     if ($isCallback){
-                        xCAT::zvmUtils->printLn( $callback, "$node: $outmsg");
+                        xCAT::zvmUtils->printLn( $callback, "$outmsg");
                     }
                     $msg = "echo -n $hcp >$authorizedfilepath, failed to create authorized userid for $node. return $rc $result";
                     return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
@@ -4937,8 +5149,10 @@ sub execcmdonVM {
             }
             $rc = $? >> 8;
             xCAT::zvmUtils->printSyslog("$node: start iucvserver service return $rc. $result");
+            # Now that the IUCV server has started successfully, send a simple command
             if ($rc == 0) {
-                $result = xCAT::zvmUtils->execcmdthroughIUCV($user, $hcp, $userid, $commandwithparm, $callback);
+                $result = xCAT::zvmUtils->execcmdthroughIUCV($user, $hcp, $userid, $simplecmd, $callback);
+                # The simple command worked!  Update the zvm table so we always communicate via IUCV
                 if ($? == 0){
                     xCAT::zvmUtils->printSyslog("$node: successfully initialized IUCV, Set IUCV=1 for $user");
                     if ($callback){
@@ -4950,7 +5164,7 @@ sub execcmdonVM {
                         $status = "IUCV=1";
                     }
                     xCAT::zvmUtils->setNodeProp( 'zvm', $node, 'status', $status );
-                    return $result;
+                    return xCAT::zvmUtils->execcmdthroughIUCV($user, $hcp, $userid, $commandwithparm, $callback);
                 }else{
                     $msg = "$node: Failed to start iucvserver, result is $result";
                     return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
@@ -4959,8 +5173,11 @@ sub execcmdonVM {
                 $msg = "$node: Failed to start iucvserver, result is $result";
                 return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
             }
+        # If our command failed, just return the error
+        } elsif ($result =~ /Command executed failed/) {
+            return $result;
         } else {
-            $msg = "$node: IUCV server on VM doesn't start well, result is $result";
+            $msg = "$node: IUCV server on VM got another error that is not a socket error, result is $result";
             return xCAT::zvmUtils->setsshforvm($user, $node, $os, $commandwithparm, $msg, $status, $callback);
         }
     } else {

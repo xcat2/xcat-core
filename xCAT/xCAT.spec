@@ -28,9 +28,12 @@ Conflicts: xCATsn
 Requires: perl-DBD-SQLite
 Requires: xCAT-client = 4:%{version}-%{release}
 Requires: xCAT-server = 4:%{version}-%{release}
+
+%ifnarch s390x
 Requires: xCAT-probe  = 4:%{version}-%{release}
 Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
 Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
+%endif
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
@@ -86,7 +89,9 @@ Requires: ipmitool-xcat >= 1.8.17-1
 
 %if %notpcm
 # PCM does not need or ship syslinux-xcat
+%ifnarch s390x
 Requires: syslinux-xcat
+%endif
 %endif
 
 %description

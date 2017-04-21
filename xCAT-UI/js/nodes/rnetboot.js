@@ -1,6 +1,6 @@
 /**
  * Load netboot page
- * 
+ *
  * @param tgtNodes Targets to run rnetboot against
  */
 function loadNetbootPage(tgtNodes) {
@@ -14,10 +14,10 @@ function loadNetbootPage(tgtNodes) {
             nodes[osBase] = 1;
         }
     }
-    
+
     // Get nodes tab
     var tab = getNodesTab();
-    
+
     // Generate new tab ID
     var inst = 0;
     var newTabId = 'netbootTab' + inst;
@@ -26,7 +26,7 @@ function loadNetbootPage(tgtNodes) {
         inst = inst + 1;
         newTabId = 'netbootTab' + inst;
     }
-    
+
 	// Create netboot form
     var netbootForm = $('<div class="form"></div>');
 
@@ -41,36 +41,36 @@ function loadNetbootPage(tgtNodes) {
     // Create info bar
     var infoBar = createInfoBar('Cause the range of nodes to boot to network');
     netbootForm.append(statusBar, infoBar);
-    
+
 	// Create VM fieldset
     var vmFS = $('<fieldset></fieldset>');
     var vmLegend = $('<legend>Virtual Machine</legend>');
     vmFS.append(vmLegend);
     netbootForm.append(vmFS);
-    
+
     var vmAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     vmFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/computer.png"></img></div>'));
     vmFS.append(vmAttr);
-    
+
 	// Create options fieldset
     var optionsFS = $('<fieldset></fieldset>');
     var optionsLegend = $('<legend>Options</legend>');
     optionsFS.append(optionsLegend);
     netbootForm.append(optionsFS);
-    
+
     var optionsAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     optionsFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/setting.png" style="width: 70px;"></img></div>'));
-    optionsFS.append(optionsAttr);    
+    optionsFS.append(optionsAttr);
 
     // Create target node or group input
     var target = $('<div><label>Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to boot to network"/></div>');
     vmAttr.append(target);
 
     // Create options
-    var optsLabel = $('<label>Options:</label>');    
+    var optsLabel = $('<label>Options:</label>');
     var optsList = $('<ul></ul>');
     optionsAttr.append(optsList);
-    
+
     // Create boot order checkbox
     var opt = $('<li></li>');
     var bootOrderChkBox = $('<input type="checkbox" id="s" name="s"/>');
@@ -81,7 +81,7 @@ function loadNetbootPage(tgtNodes) {
     var bootOrder = $('<li><label>Boot order:</label><input type="text" name="bootOrder"/></li>');
     bootOrder.hide();
     optsList.append(bootOrder);
-    
+
     // Create force reboot checkbox
     optsList.append('<li><input type="checkbox" id="F" name="F"/>Force reboot</li>');
     // Create force shutdown checkbox
@@ -90,7 +90,7 @@ function loadNetbootPage(tgtNodes) {
         // Create iscsi dump checkbox
         optsList.append('<li><input type="checkbox" id="I" name="I"/>Do a iscsi dump on AIX</li>');
     }
-    
+
     // Show boot order when checkbox is checked
     bootOrderChkBox.bind('click', function(event) {
         if ($(this).is(':checked')) {
@@ -126,7 +126,7 @@ function loadNetbootPage(tgtNodes) {
             tooltip : "mouseover,mouseout"
         }
     });
-    
+
     /**
      * Ok
      */
@@ -138,7 +138,7 @@ function loadNetbootPage(tgtNodes) {
     okBtn.bind('click', function(event) {
     	// Remove any warning messages
     	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-        
+
         // Check inputs
         var ready = true;
         var inputs = $("#" + newTabId + " input[type='text']:visible");
@@ -158,13 +158,13 @@ function loadNetbootPage(tgtNodes) {
         for ( var i = 0; i < chkBoxes.length; i++) {
             opt = chkBoxes.eq(i).attr('name');
             optStr += '-' + opt;
-            
+
             // If it is the boot order
             if (opt == 's') {
                 // Get the boot order
                 optStr += ';' + $('#' + newTabId + ' input[name=bootOrder]').val();
             }
-            
+
             // Append ; to end of string
             if (i < (chkBoxes.length - 1)) {
                 optStr += ';';
@@ -199,7 +199,10 @@ function loadNetbootPage(tgtNodes) {
                     msg : 'out=' + statBarId + ';cmd=rnetboot;tgt=' + tgts
                 },
 
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar

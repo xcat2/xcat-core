@@ -279,6 +279,7 @@ sub getNetworkNames {
 
     # Get network names
     my $out;
+    my $outmsg;
     my $names;
     my $count;
     my @parms;
@@ -369,11 +370,12 @@ sub getNetworkNames {
     # use vmcp q lan if this is not the zhcp node
     } else {
         #$out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q lan | egrep 'LAN|VSWITCH'"`;
-        my $cmd = $sudo . ' /sbin/vmcp q lan | egrep "LAN|VSWITCH"';
+        my $cmd = $sudo . ' /sbin/vmcp q lan';
         $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
         if (xCAT::zvmUtils->checkOutput($out) == -1) {
             return $out;
         }
+        $out = `echo "$out" | egrep -a -i 'LAN|VSWITCH'`;
         @lines = split( '\n', $out );
 
         foreach (@lines) {
@@ -431,11 +433,12 @@ sub getNetworkNamesArray {
 
     # Get the networks used by the node
     #my $out   = `ssh $user\@$node "$sudo /sbin/vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-    my $cmd = $sudo . ' /sbin/vmcp q v nic | egrep -i "VSWITCH|LAN"';
+    my $cmd = $sudo . ' /sbin/vmcp q v nic';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput($out) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i 'VSWITCH|LAN'`;
     my @lines = split( '\n', $out );
 
     # Loop through each line
@@ -549,7 +552,7 @@ sub getNetwork {
             xCAT::zvmUtils->printSyslog("ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_LAN_Query -T $hcpUserId -n $netNameQuery -o '*'");
             $out = `ssh $user\@$hcp "$sudo $dir/smcli Virtual_Network_LAN_Query -T $hcpUserId -n $netNameQuery -o '*' "`;
             $rc = $? >> 8;
-            if ($rc) {
+            if ($rc == 255) {
                $retStr = "(Error) unable to communicate with the zhcp system: $hcpUserId";
                xCAT::zvmUtils->printSyslog($retStr);
                return $retStr;
@@ -674,11 +677,12 @@ sub getVswitchId {
 
     # Get VSwitch
     #my $out = `ssh -o ConnectTimeout=5 $user\@$node "$sudo /sbin/vmcp q v nic" | grep "VSWITCH"`;
-    my $cmd = $sudo . ' /sbin/vmcp q v nic | grep "VSWITCH"';
+    my $cmd = $sudo . ' /sbin/vmcp q v nic';
     my $out = xCAT::zvmUtils->execcmdonVM($user, $node, $cmd); # caller sets $user to $::SUDOER
     if (xCAT::zvmUtils->checkOutput($out) == -1) {
         return $out;
     }
+    $out = `echo "$out" | egrep -a -i 'VSWITCH'`;
     my @lines = split( '\n', $out );
     my @parms;
     my @vswitch;
@@ -731,8 +735,9 @@ sub grantVSwitch {
     # Use SMAPI EXEC, use new extended SMAPI vs old one
     # my $out = `ssh $user\@$hcp "$sudo $dir/smcli Virtual_Network_Vswitch_Set -T SYSTEM -n $vswitchId -I $userId -u 2"`;
     # xCAT::zvmUtils->printSyslog("grantVSwitch- ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_Vswitch_Set -T SYSTEM -n $vswitchId -I $userId -u 2");
+    xCAT::zvmUtils->printSyslog( "grantVSwitch- ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_Vswitch_Set_Extended -T SYSTEM -k 'switch_name='$vswitchId -k 'grant_userid='$userId -k 'persist=YES '$lanidparm" );
     my $out = `ssh $user\@$hcp "$sudo $dir/smcli Virtual_Network_Vswitch_Set_Extended -T SYSTEM -k 'switch_name='$vswitchId -k 'grant_userid='$userId -k 'persist=YES' $lanidparm"`;
-    xCAT::zvmUtils->printSyslog("grantVSwitch- ssh $user\@$hcp $sudo $dir/smcli Virtual_Network_Vswitch_Set_Extended -T SYSTEM -k 'switch_name='$vswitchId -k 'grant_userid='$userId -k 'persist=YES '$lanidparm");
+
     $out = xCAT::zvmUtils->trimStr($out);
 
     # If return string contains 'Done' - Operation was successful
@@ -915,8 +920,9 @@ sub smapiFlashCopy {
                     SPOOL file class to be assigned to the punched file
                         "" means that the current class is to be used
                         anything else is the class to set on the punched file
-    Returns     : Operation results (Done/Failed)
-    Example     : my $rc = xCAT::zvmCPUtils->punch2Reader($hcp, $userId, $srcFile, $tgtFile, $options, $spoolClass );
+    Returns     : Operation results ("Done" or "Failed" with additional info)
+    Example     : my $response = xCAT::zvmCPUtils->punch2Reader( $user, $hcp, $userId, $srcFile, 
+                                                                 $tgtFile, $options, $spoolClass );
 
 =cut
 
@@ -950,29 +956,32 @@ sub punch2Reader {
         $vmur = "/usr/sbin/vmur";
     }
 
-    my $done = 0;
-
     # Punch the file.  A loop is done in case the punch is currently in use.
-    until ( $done ) {
+    my $done = 0;
+    my $maxTries = 12;              # 12 attempts with 15 second waits for punch to become available
+    my $maxTime = $maxTries / 4;    # Total time: 3 minutes
+    for ( my $i=0; ( $i < $maxTries and !$done ); $i++ ) {
         $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo $vmur punch $options $punchTarget -r $srcFile -N $tgtFile" 2>&1`;
         $rc = $? >> 8;
         if ( $rc == 255 ) {
+            xCAT::zvmUtils->printSyslog( "(Error) In punch2Reader(), SSH communication with $hcp failed for command: $vmur punch" );
             $subResp = "Failed to communicate with the zHCP system: $hcp";
             $done = 1;
         } elsif ( $out =~ m/A concurrent instance of vmur is already active/i ) {
             # Recoverable error: retry the command after a delay
             xCAT::zvmUtils->printSyslog( "punch2Reader() Punch in use on $hcp, retrying in 15 seconds" );
+            $subResp = "Failed, Punch in use on $hcp for over $maxTime minutes.";    # Assume it will never become available
             sleep( 15 );
+        } elsif ( $rc == 0 ) {
+            # Punch appears successful
+            $subResp = '';
+            $punched = 1;
+            $done = 1;
         } else {
-            # Punch appears successful -- Look for the completion string
-            my $searchStr = "created";
-            if ( $out =~ m/$searchStr/i ) {
-                $punched = 1;
-            } else {
-                chomp( $out );
-                $subResp = "Failed, punch info: '$out'";
-                xCAT::zvmUtils->printSyslog( "punch2Reader() Failed punching $srcFile to $userId from $hcp, rc: $rc, out: '$out'" );
-            }
+            # Punch failed for other than currently in use.
+            chomp( $out );
+            $subResp = "Failed, punch info: '$out'";
+            xCAT::zvmUtils->printSyslog( "punch2Reader() Failed punching $srcFile to $userId from $hcp, rc: $rc, out: '$out'" );
             $done = 1;
         }
     }
@@ -996,6 +1005,7 @@ sub punch2Reader {
             $rc = $? >> 8;
             if ( $rc == 255 ) {
                 # SSH failure to communicate with zHCP.  Nothing to do, file remains in zHCP's reader.
+                xCAT::zvmUtils->printSyslog( "(Error) In punch2Reader(), SSH communication with $hcp failed for command: vmcp change rdr $spoolId class $spoolClass" );
                 $subResp = "Failed to communicate with the zHCP system to change the reader file $spoolId to class $spoolClass: $hcp";
             } elsif ( $rc != 0 ) {
                 # Generic failure of transfer command.
@@ -1013,6 +1023,7 @@ sub punch2Reader {
                     $subResp = "Done";
                 } elsif ( $rc == 255 ) {
                     # SSH failure to communicate with zHCP.  Nothing to do, file remains in zHCP's reader.
+                    xCAT::zvmUtils->printSyslog( "(Error) In punch2Reader(), SSH communication with $hcp failed for command: vmcp transfer rdr $spoolId to $userId" );
                     $subResp = "Failed to communicate with the zHCP system to transfer reader file $spoolId: $hcp";
                 } else {
                     # Generic failure of transfer command.
@@ -1028,6 +1039,7 @@ sub punch2Reader {
                 $rc = $? >> 8;
                 if ( $rc == 255 ) {
                     # SSH failure to communicate with zHCP.  Nothing to do, file remains in zHCP's reader.
+                    xCAT::zvmUtils->printSyslog( "(Error) In punch2Reader(), SSH communication with $hcp failed for command: vmcp purge reader $spoolId" );
                     $subResp = $subResp. "\nFailed to communicate with the zHCP system to purge reader file $spoolId: $hcp";
                 } elsif ( $rc != 0 ) {
                     # Any failure is bad and unrecoverable.
@@ -1194,7 +1206,7 @@ sub getNetworkLayer {
     Arguments   :   User (root or non-root)
                     zHCP
                     Name of network
-    Returns     : Network type (VSWITCH/HIPERS/QDIO)
+    Returns     : Network type (VSWITCH/HIPERS/QDIO) or string containing (Error)...
     Example     : my $netType = xCAT::zvmCPUtils->getNetworkType($hcp, $netName);
 
 =cut
@@ -1209,7 +1221,15 @@ sub getNetworkType {
     }
 
     # Get network details
-    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q lan $netName" | grep "Type"`;
+    my $outmsg;
+    my $rc;
+    my $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmcp q lan $netName"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $user\@$hcp \"$sudo /sbin/vmcp q lan $netName\"", $hcp, "getNetworkType", $out );
+    if ($rc != 0) {
+       return $outmsg;
+    }
+
+    $out = `echo "$out" | egrep -a 'Type'`;
 
     # Go through each line and determine network type
     my @lines = split( '\n', $out );

@@ -23,6 +23,7 @@ function createNodesDatatable(group, outId) {
          * @param data Data returned from HTTP request
          */
         success : function(data) {
+            data = decodeRsp(data);
             // Data returned
             var rsp = data.rsp;
 
@@ -433,6 +434,7 @@ function appendProvisionSection(plugin, container) {
         },
 
         success : function(data){
+            data = decodeRsp(data);
             var tabId = data.msg;
             var i = 0;
             var imageName = 0;
@@ -673,6 +675,7 @@ function createAdvancedOptions(image, outId) {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             var outId = data.msg;
             var osName = '';
             var provMethod = '';
@@ -726,6 +729,7 @@ function createNodesTable(group, outId) {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             var outId = $(data.msg);
             var nodes = data.rsp;
 

@@ -15,7 +15,10 @@ function loadUpdatenodePage(tgtNodes) {
             msg : ''
         },
 
-        success : setOSImageCookies
+        success : function(data) {
+            data = decodeRsp(data);
+            setOSImageCookies(data);
+        }
     });
 
     // Get node OS
@@ -382,7 +385,10 @@ function loadUpdatenodePage(tgtNodes) {
                     msg : 'out=' + statBarId + ';cmd=updatenode;tgt=' + tgts
                 },
 
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar

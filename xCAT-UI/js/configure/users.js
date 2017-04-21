@@ -38,7 +38,10 @@ function loadUserPage() {
             msg : ''
         },
 
-        success : loadUserTable
+        success : function(data) {
+            data = decodeRsp(data);
+            loadUserTable(data);
+        }
     });
 }
 
@@ -383,7 +386,10 @@ function openCreateUserDialog(data) {
                         msg : dialogId
                     },
 
-                    success : updatePanel
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updatePanel(data);
+                    }
                 });
 
                 if (password) {
@@ -397,7 +403,10 @@ function openCreateUserDialog(data) {
 	                        msg : dialogId
 	                    },
 
-	                    success : updatePanel
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updatePanel(data);
+                        }
 	                });
                 }
 
@@ -526,7 +535,10 @@ function openDeleteUserDialog(users) {
                         args : 'deleteuser||' + users,
                         msg : dialogId
                     },
-                    success : updatePanel
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updatePanel(data);
+                    }
                 });
             },
             "Cancel": function() {
