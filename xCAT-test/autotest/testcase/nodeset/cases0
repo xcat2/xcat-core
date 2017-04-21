@@ -178,7 +178,7 @@ description: This case is to verify bug 2614. To support addkcmdline when netboo
 cmd:mkdef -t node -o testnode1 arch=x86_64 cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 os=__GETNODEATTR($$CN,os)__ 
 check:rc==0
-cmd:cp -f /etc/hosts /etc/hosts.bak
+cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
 cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
 cmd:makedns -n
 check:rc==0
@@ -194,6 +194,6 @@ cmd:grep "rd.break=pre-pivot" /tftpboot/xcat/xnba/nodes/testnode1.elilo
 check:rc==0
 cmd:noderm testnode1
 cmd:rmdef -t osimage -o "__GETNODEATTR($$CN,os)__-x86_64-install-compute"
-cmd:cp -f /etc/hosts.bak /etc/hosts
+cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
 end
 
