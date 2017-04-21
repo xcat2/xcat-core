@@ -651,8 +651,9 @@ sub loadcase
             #skip comment lines
             next if ($line =~ /^\s*#/);
 
-            #TODO: description line is treated as a comment line for now
+            #TODO: description and attribute line is treated as a comment line for now
             next if ($line =~ /^description\s*:/);
+            next if ($line =~ /^attribute\s*:/);
 
             if ($line =~ /^start\s*:\s*(.*)/) {
                 my $name =$1;
