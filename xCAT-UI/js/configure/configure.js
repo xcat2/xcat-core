@@ -68,10 +68,10 @@ function loadConfigPage() {
     // Add the self-service tab
     tab.add('usersTab', 'Users', '', false);
 
-	// Add the self-service tab
+    // Add the self-service tab
     tab.add('serviceTab', 'Service', '', false);
 
-    // Add the files tab
+	// Add the files tab
     tab.add('filesTab', 'Files', '', false);
 
     // Get list of tables and their descriptions
@@ -85,7 +85,10 @@ function loadConfigPage() {
             msg : ''
         },
 
-        success : loadTableNames
+        success : function(data) {
+            data = decodeRsp(data);
+            loadTableNames(data);
+        }
     });
 
     // Do not load everything at once
@@ -96,11 +99,11 @@ function loadConfigPage() {
     	}
 
         if (ui.index == 1) {
-            loadUserPage();
+        	loadUserPage();
         } else if (ui.index == 2) {
-            loadServicePage();
+        	loadServicePage();
         } else if (ui.index == 3) {
-            loadFilesPage();
+        	loadFilesPage();
         }
     });
 }
@@ -158,7 +161,10 @@ function loadTableNames(data) {
                         msg : id
                     },
 
-                    success : loadTable
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        loadTable(data);
+                    }
                 });
             }
 
@@ -351,6 +357,7 @@ function loadTable(data) {
                 cont : newCont
             },
             success : function(data) {
+                // data = decodeRsp(data); Do not do this here until tabRestore.php is analyzed
                 // Create info message
                 var dialog = $('<div></div>').append(createInfoBar('Changes saved!'));
 

@@ -106,6 +106,7 @@ function loadServicePage() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             setUserNodes(data);
             setMaxVM();
             getUserNodesDef();
@@ -127,6 +128,7 @@ function loadServicePage() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             setOSImageCookies(data);
         }
     });
@@ -144,6 +146,7 @@ function loadServicePage() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             setGroupCookies(data);
         }
     });
@@ -251,6 +254,7 @@ function loadServiceProvisionPage(tabId) {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         setzVMCookies(data);
                     }
                 });
@@ -268,6 +272,7 @@ function loadServiceProvisionPage(tabId) {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         setGoldenImagesCookies(data);
                     }
                 });
@@ -315,7 +320,10 @@ function getUserNodesDef() {
                 msg : ''
             },
 
-            success : loadNodesTable
+            success : function(data) {
+                data = decodeRsp(data);
+                loadNodesTable(data);
+            }
         });
     } else {
         // Clear the tab before inserting the table
@@ -591,6 +599,7 @@ function loadNodesTable(data) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 // Save nodes owned by user
                 setUserNodes(data);
                 getNodesCurrentLoad();
@@ -610,7 +619,10 @@ function loadNodesTable(data) {
                             msg : ''
                         },
 
-                        success : loadNodesTable
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            loadNodesTable(data);
+                        }
                     });
                 } else {
                     // Clear the tab before inserting the table
@@ -667,7 +679,10 @@ function refreshNodeStatus(nodes) {
             msg : ''
         },
 
-        success : loadNodePing
+        success : function(data) {
+            data = decodeRsp(data);
+            loadNodePing(data);
+        }
     });
 }
 
@@ -725,7 +740,10 @@ function refreshPowerStatus(nodes) {
             msg : ''
         },
 
-        success : loadPowerStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            loadPowerStatus(data);
+        }
     });
 }
 
@@ -781,7 +799,10 @@ function refreshGangliaStatus(nodes) {
             msg : ''
         },
 
-        success : loadGangliaStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            loadGangliaStatus(data);
+        }
     });
 }
 
@@ -852,6 +873,7 @@ function loadNode(e) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 var args = data.msg.split(',');
 
                 // Get node
@@ -1159,7 +1181,10 @@ function powerNode(tgtNodes, power2) {
             msg : tgtNodes
         },
 
-        success : updatePowerStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updatePowerStatus(data);
+        }
     });
 }
 
@@ -1240,6 +1265,7 @@ function monitorNode(node, monitor) {
                  * @return Nothing
                  */
                 success : function(data) {
+                    data = decodeRsp(data);
                     // Get response
                     var out = data.rsp[0].split(/\n/);
 
@@ -1277,6 +1303,7 @@ function monitorNode(node, monitor) {
                             },
 
                             success : function(data) {
+                                data = decodeRsp(data);
                                 // Remove any warnings
                                 $('#nodesTab').find('.ui-state-error').remove();
                                 refreshGangliaStatus(data.msg);
@@ -1301,6 +1328,7 @@ function monitorNode(node, monitor) {
                 },
 
                 success : function(data) {
+                    data = decodeRsp(data);
                     refreshGangliaStatus(data.msg);
                 }
             });
@@ -1421,6 +1449,7 @@ function deleteNode(tgtNodes) {
                     },
 
                     success : function(data) {
+                        data = decodeRsp(data);
                         var args = data.msg.split(';');
                         var statBarId = args[0].replace('out=', '');
                         var tgts = args[2].replace('tgt=', '').split(',');
@@ -1464,6 +1493,7 @@ function deleteNode(tgtNodes) {
                             },
 
                             success : function(data) {
+                                data = decodeRsp(data);
                                 setUserNodes(data);
                             }
                         });
@@ -1572,6 +1602,7 @@ function unlockNode(tgtNodes) {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             // Create an info box to show output
                             var output = writeRsp(data.rsp, '');
                             output.css('margin', '0px');
@@ -1609,7 +1640,10 @@ function getNodesCurrentLoad(){
             msg : ''
         },
 
-        success: saveNodeLoad
+        success: function(data) {
+            data = decodeRsp(data);
+            saveNodeLoad(data);
+        }
     });
 }
 
@@ -1681,6 +1715,7 @@ function getMonitorMetrics(node) {
         },
 
         success: function(data) {
+            data = decodeRsp(data);
             var ganglia = data.rsp;
             var node, status;
 
@@ -1702,7 +1737,10 @@ function getMonitorMetrics(node) {
                             msg : node
                         },
 
-                        success: drawMonitoringCharts
+                        success: function(data) {
+                            data = decodeRsp(data);
+                            drawMonitoringCharts(data);
+                        }
                     });
                 } else if (node && status == 'off') {
                     var info = createInfoBar('Ganglia monitoring is disabled for this node');
@@ -2140,6 +2178,7 @@ function setMaxVM() {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             // Get response
             var rsp = jQuery.trim(data.rsp);
             rsp = rsp.replace('Max allowed:', '');

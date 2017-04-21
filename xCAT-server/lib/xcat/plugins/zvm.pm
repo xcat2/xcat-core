@@ -742,7 +742,7 @@ sub process_request {
     Arguments    : Node to remove
                    Upstream instance ID (Optional)
                    Upstream request ID (Optional)
-    Returns      : Nothing
+    Returns      : Nothing, errors returned in $callback
     Example      : removeVM($callback, $node);
 
 =cut
@@ -776,6 +776,7 @@ sub removeVM {
 
     xCAT::zvmUtils->printSyslog("sudoer:$::SUDOER zHCP:$hcp sudo:$::SUDO");
     my $out;
+    my $outmsg;
 
     my $requestId = "NoUpstreamRequestID"; # Default is still visible in the log
     my $objectId = "NoUpstreamObjectID"; # Default is still visible in the log
@@ -796,6 +797,10 @@ sub removeVM {
         # its resources.  First, get any vswitches in directory.
         xCAT::zvmUtils->printSyslog("Calling getVswitchIdsFromDirectory $::SUDOER, $hcp, $userId");
         my @vswitch = xCAT::zvmUtils->getVswitchIdsFromDirectory( $::SUDOER, $hcp, $userId);
+        if (xCAT::zvmUtils->checkOutput( $vswitch[0] ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$vswitch[0]" );
+            return;
+        }
         my %vswitchhash;
         # For each vswitch revoke the userid vswitch authority
         foreach (@vswitch) {
@@ -864,7 +869,14 @@ sub removeVM {
             if (!(length $_)) {next;}
             $pool = xCAT::zvmUtils->replaceStr( $_, ".conf", "" );
 
-            @luns = split("\n", `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -a -i $node`);
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$_\"", $hcp, "removeVM", $out, $node );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                return;
+            }
+            $out = `echo "$out" | egrep -a -i $node`;
+            @luns = split("\n", $out);
             foreach (@luns) {
                 if (!(length $_)) {next;}
                 # Update entry: status,wwpn,lun,size,range,owner,channel,tag
@@ -916,7 +928,7 @@ sub removeVM {
     Description  : Change a virtual machine's configuration
     Arguments    : Node
                    Option
-    Returns      : Nothing
+    Returns      : Nothing, errors returned in $callback
     Example      : changeVM($callback, $node, $args);
 
 =cut
@@ -964,6 +976,11 @@ sub changeVM {
 
     # Output string
     my $out = "";
+    my $outmsg;
+    my $device = 0;
+    my $newlinkcall = 0;
+    my $rc = 0;
+    my $vdev;
 
     # add3390 [disk pool] [device address] [size] [mode] [read password (optional)] [write password (optional)] [multi password (optional)] [fstype (optional)]
     if ( $args->[0] eq "--add3390" ) {
@@ -1041,56 +1058,103 @@ sub changeVM {
 
         if ( $fstype && !$error ) { # Format the disk before making it active.
             # link the disk
-            my $retry = 3;
-            my $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
-            while ( $retry > 0 ) {
-                # wait 2 seconds for disk creation complete
-                sleep(2);
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+            # Check if zhcp has the new routine to link and online the disk
+            $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/linkdiskandbringonline $userId $addr $mode"`;
 
-                if ($error) {
-                    $retry -= 1;
-                    $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+            $rc = $? >> 8;
+            if ($rc == 255) {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
+                xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unable to communicate with zHCP agent: $hcp" );
+                $error = 1;
+            } elsif ( $rc > 0 && $rc != 127 ) {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Unexpected error from SSH call to linkdiskandbringonline rc: $rc $out" );
+                xCAT::zvmUtils->printLn( $callback, "$node: changeVM()Unexpected error from SSH call to linkdiskandbringonline rc: $rc $out" );
+                $error = 1;
+            } elsif ( $rc ==0 ) {
+                $newlinkcall = 1;
+                if ($out =~ m/Success:/i){
+                    # sample output=>linkdiskandbringonline maint start time: 2017-03-03-16:20:48.011
+                    #                Success: Userid maint vdev 193 linked at ad35 device name dasdh
+                    #                linkdiskandbringonline exit time: 2017-03-03-16:20:52.150
+                    $out = `echo "$out" | egrep -a -i "Success:"`;
+                    my @info = split( ' ', $out );
+                    $device = "/dev/" . $info[10];
                 } else {
-                    last;
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to linkdiskandbringonline: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in call to linkdiskandbringonline: $out" );
+                    $error = 1;
                 }
-            }
+            } else {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Could not find zhcp linkdiskandbringonline, using old code path." );
+                my $retry = 3;
+                $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+                while ( $retry > 0 ) {
+                    # wait 2 seconds for disk creation complete
+                    sleep(2);
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
+                    $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
 
-            # make the disk online and get it's device name
-            my $device = 0;
-            if ( !$error ) {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
-                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
-                my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices | grep -a 0.0.$vdev"`;
-                chomp( $select );
-                # A sample entry:
-                # 0.0.0101(ECKD) at ( 94:     0) is dasda       : active at blocksize: 4096, 600840 blocks, 2347 MB
-                if ( $select ) {
-                    my @info = split( ' ', $select );
-                    $device = "/dev/" . $info[6];
+                    if ($error) {
+                        $retry -= 1;
+                        $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+                    } else {
+                        last;
+                    }
                 }
-                $error = !$device;
+
+                # make the disk online and get it's device name
+                if ( !$error ) {
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
+                    $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
+                    my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat /proc/dasd/devices\"", $hcp, "changeVM", $select, $node );
+                    if ($rc != 0) {
+                        xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                        $error = 1;
+                    } else {
+                        $select = `echo "$select" | egrep -a -i "0.0.$vdev"`;
+                        chomp( $select );
+                        # A sample entry:
+                        # 0.0.0101(ECKD) at ( 94:     0) is dasda       : active at blocksize: 4096, 600840 blocks, 2347 MB
+                        if ( $select ) {
+                            my @info = split( ' ', $select );
+                            $device = "/dev/" . $info[6];
+                        }
+                        $error = !$device;
+                    }
+                }
             }
 
             # format the disk
             if ( !$error ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/dasdfmt -y -b 4096 -d cdl -f $device 2>&1"`;
                 $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                if ($error) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred during dasdfmt $device. Output: $out" );
+                }
             }
             if ( !$error ) {
                 $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdasd -a $device 2>&1"`;
                 $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                if ($error) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred during fdasd $device. Output: $out" );
+            }
             }
             if ( !$error ) {
                 $device .= '1';
                 if ( $fstype =~ m/xfs/i ) {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs $device 2>&1"`;
                     $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                    if ($error) {
+                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs.xfs $device. Output: $out" );
+                    }
                 } else {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -t $fstype $device 2>&1"`;
                     $error = !($out =~ m/done/);
-                }
+                    if ($error) {
+                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs $fstype $device. Output: $out" );
+                    }
+            }
             }
             if ( $error ) {
                 xCAT::zvmUtils->printSyslog("$out");
@@ -1099,20 +1163,46 @@ sub changeVM {
                 $out = "";
             }
 
-            xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
-            `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
-            xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
+            # offline and detach disk using new call so that zhcp records are updated
+            if ( $newlinkcall == 1 ){
+                $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/offlinediskanddetach $userId $addr"`;
+                $rc = $?;
+
+                $rc = $? >> 8;
+                if ( $rc == 255 ) {
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unable to communicate with zHCP agent: $hcp" );
+                    $error = 1;
+                }
+                if ($out =~ m/Success:/i){
+                    # sample output=>offlinediskanddetach maint start time: 2017-03-03-16:20:48.011
+                    #                Success: Userid maint vdev 193 unlinked
+                    #                offlinediskanddetach exit time: 2017-03-03-16:20:52.150
+                    xCAT::zvmUtils->printSyslog("$out");
+                } else {
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                    $error = 1;
+                }
+            # Use old code to disable and detach
+            } else {
+                xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
+                `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
+                xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
+            }
         }
 
-        # Add to active configuration
-        $out .= "Adding 3390 disk for $node as $addr ... Done";
-        my $power = `/opt/xcat/bin/rpower $node stat`;
-        if ($power =~ m/: on/i) {
-            $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-            xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
-        }
+        if ( !$error ) {
+            # Add to active configuration
+            $out .= "Adding 3390 disk for $node as $addr ... Done";
+            my $power = `/opt/xcat/bin/rpower $node stat`;
+            if ($power =~ m/: on/i) {
+                $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+            }
 
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+            $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        }
     }
 
     # add3390active [device address] [mode]
@@ -1198,38 +1288,79 @@ sub changeVM {
             $error = 1;
         }
 
+        my $device = 0;
+        my $newlinkcall = 0;
+        my $rc = 0;
+        my $vdev;
+
         if ( $fstype && !$error ) { # Format the disk before making it active.
             # link the disk
-            my $retry = 3;
-            my $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
-            while ( $retry > 0 ) {
-                # wait 2 seconds for disk creation complete
-                sleep(2);
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
-                $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+            # Check if zhcp has the new routine to link and online the disk
+            $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/linkdiskandbringonline $userId $addr $mode"`;
+            $rc = $?;
 
-                if ($error) {
-                    $retry -= 1;
-                    $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+            $rc = $? >> 8;
+            if ($rc == 255) {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
+                xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unable to communicate with zHCP agent: $hcp" );
+                $error = 1;
+            } elsif ( $rc > 0 && $rc != 127 ) {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Unexpected error from SSH call to linkdiskandbringonline rc: $rc $out" );
+                xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Unexpected error from SSH call to linkdiskandbringonline rc: $rc $out" );
+                $error = 1;
+            } elsif ( $rc ==0 ) {
+                $newlinkcall = 1;
+                if ($out =~ m/Success:/i){
+                    # sample output=>linkdiskandbringonline maint start time: 2017-03-03-16:20:48.011
+                    #                Success: Userid maint vdev 193 linked at ad35 device name dasdh
+                    #                linkdiskandbringonline exit time: 2017-03-03-16:20:52.150
+                    $out = `echo "$out" | egrep -a -i "Success:"`;
+                    my @info = split( ' ', $out );
+                    $device = $info[10];
                 } else {
-                    last;
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to linkdiskandbringonline: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM()(Error occurred in call to linkdiskandbringonline: $out" );
+                    $error = 1;
                 }
-            }
+            } else {
+                xCAT::zvmUtils->printSyslog( "$node: changeVM() Could not find zhcp linkdiskandbringonline, using old code path." );
+                my $retry = 3;
+                $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+                while ( $retry > 0 ) {
+                    # wait 2 seconds for disk creation complete
+                    sleep(2);
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp LINK TO $userId $addr AS $vdev M 2>&1"`;
+                    $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
 
-            # make the disk online and get it's device name
-            my $device = 0;
-            if ( !$error ) {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
-                $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
-                my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices | grep -a 0.0.$vdev"`;
-                chomp( $select );
-                # A sample entry:
-                # 0.0.1300(FBA ) at ( 94:    56) is dasdo       : active at blocksize: 512, 7291441 blocks, 3560 MB
-                if ( $select ) {
-                    my @info = split( ' ', $select );
-                    $device = "/dev/" . $info[7];
+                    if ($error) {
+                        $retry -= 1;
+                        $vdev = xCAT::zvmUtils->getFreeAddress( $::SUDOER, $hcp, 'vmcp' );
+                    } else {
+                        last;
+                    }
                 }
-                $error = !$device;
+
+                # make the disk online and get it's device name
+                if ( !$error ) {
+                    $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/cio_ignore -r $vdev &> /dev/null"`;
+                    $out = xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-e", $vdev );
+                    my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat /proc/dasd/devices"`;
+                    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat /proc/dasd/devices\"", $hcp, "changeVM", $select, $node );
+                    if ($rc != 0) {
+                        xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                        $error = 1;
+                    } else {
+                        $out = `echo "$out" | egrep -a -i "0.0.$vdev"`;
+                        chomp( $select );
+                        # A sample entry:
+                        # 0.0.0101(ECKD) at ( 94:     0) is dasda       : active at blocksize: 4096, 600840 blocks, 2347 MB
+                        if ( $select ) {
+                            my @info = split( ' ', $select );
+                            $device = "/dev/" . $info[6];
+                        }
+                        $error = !$device;
+                    }
+                }
             }
 
             #Delete the existing partition in case the disk already has partition on it
@@ -1240,6 +1371,9 @@ d
 w
 EOF"`;
                 $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                if ($error) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred during fdisk $device. Output: $out" );
+            }
             }
 
             # Create one partition to use the entire disk space
@@ -1254,15 +1388,24 @@ p
 w
 EOF"`;
                 $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                if ($error) {
+                    xCAT::zvmUtils->printSyslog( "Error occurred during fdisk to make a partition on $device. Output: $out" );
+                }
             }
             if ( !$error ) {
                 $device .= '1';
                 if ( $fstype =~ m/xfs/i ) {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs.xfs $device 2>&1"`;
                     $error = (xCAT::zvmUtils->checkOutput( $out ) == -1) ? 1 : 0;
+                    if ($error) {
+                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs.xfs $device. Output: $out" );
+                    }
                 } else {
                     $out = `ssh $::SUDOER\@$hcp "$::SUDO mkfs -t $fstype $device 2>&1"`;
                     $error = !($out =~ m/done/);
+                    if ($error) {
+                        xCAT::zvmUtils->printSyslog( "Error occurred during mkfs $fstype $device. Output: $out" );
+                    }
                 }
             }
             if ( $error ) {
@@ -1272,20 +1415,48 @@ EOF"`;
                 $out = "";
             }
 
-            xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
-            `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
-            xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
-        }
+            # offline and detach disk using new call so that zhcp records are updated
+            if ( $newlinkcall == 1 ){
+                $out = `ssh -o ConnectTimeout=30 $::SUDOER\@$hcp "$::SUDO $::DIR/offlinediskanddetach $userId $addr"`;
+                $rc = $?;
 
-        # Add to active configuration
-        $out .= "Adding 9336 disk for $node as $addr ... Done";
-        my $power = `/opt/xcat/bin/rpower $node stat`;
-        if ($power =~ m/: on/i) {
-            $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
-            xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+                $rc = $? >> 8;
+                if ( $rc == 255 ) {
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unable to communicate with zHCP agent" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM()( is unable to communicate with zHCP agent: $hcp" );
+                    $error = 1;
+                }
+                if ( $rc > 0 ) {
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Unexpected error from SSH call to offlinediskanddetach rc: $rc $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM()Unexpected error from SSH call to offlinediskanddetach rc: $rc $out" );
+                    $error = 1;
+                }
+                if ($out =~ m/Success:/i){
+                    # sample output=>Success: Userid maint vdev 193 unlinked
+                    xCAT::zvmUtils->printSyslog("$out");
+                } else {
+                    xCAT::zvmUtils->printSyslog( "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: changeVM() Error occurred in call to offlinediskanddetach: $out" );
+                    $error = 1;
+                }
+            # Use old code to disable and detach
+            } else {
+                xCAT::zvmUtils->disableEnableDisk( $::SUDOER, $hcp, "-d", $vdev );
+                `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp DETACH $vdev &> /dev/null"`;
+                xCAT::zvmUtils->printSyslog("vmcp DETACH $vdev");
+            }
         }
+        if (!$error) {
+            # Add to active configuration
+            $out .= "Adding 9336 disk for $node as $addr ... Done";
+            my $power = `/opt/xcat/bin/rpower $node stat`;
+            if ($power =~ m/: on/i) {
+                $out .= "\n" . `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
+                xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
+            }
 
-        $out = xCAT::zvmUtils->appendHostname( $node, $out );
+            $out = xCAT::zvmUtils->appendHostname( $node, $out );
+        }
     }
 
     # adddisk2pool [function] [region] [volume] [group]
@@ -1438,6 +1609,10 @@ EOF"`;
         if ($useWwpnLun) {
             # Store current attributes of the SCSI/FCP device in case need to roll back when something goes wrong
             my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $wwpn, $lun);
+            if (xCAT::zvmUtils->checkOutput( $deviceRef ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$deviceRef" );
+                return;
+            }
             %zFCP = %$deviceRef;
 
             # Check current status of the FCP device
@@ -1582,9 +1757,13 @@ EOF"`;
                         }
 
                         # Check if the config file already exists and contains the zFCP channel
-                        $cmd = $::SUDO . ' cat /etc/udev/rules.d/51-zfcp-0.0.' . $cur_device . '.rules | egrep -a -i ccw/0.0.' . $cur_device. ']online';
+                        $cmd = $::SUDO . ' cat /etc/udev/rules.d/51-zfcp-0.0.' . $cur_device . '.rules';
                         $out = xCAT::zvmUtils->execcmdonVM($::SUDOER, $node, $cmd);
                         if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
+                            return;
+                        }
+                        $out = `echo "$out" | egrep -a -i 'ccw/0.0.' . $cur_device. ']online'`;
+                        if (!(length $out)) {
                             # Configure zFCP device to be persistent
                             $cmd = "$::SUDO touch /etc/udev/rules.d/51-zfcp-0.0.$cur_device.rules";
                             $out = xCAT::zvmUtils->execcmdonVM($::SUDOER, $node, $cmd, $callback);
@@ -2022,8 +2201,12 @@ EOF"`;
                         next;
                     }
 
-                    $cmd = $::SUDO . ' /sbin/udevadm info --query=all --name=' . $srcFile . ' | grep -a "ID_SERIAL="';
-                    $out = xCAT::zvmUtils->execcmdonVM($::SUDOER, $node, $cmd);
+                    $cmd = $::SUDO . ' /sbin/udevadm info --query=all --name=' . $srcFile;
+                    $out = xCAT::zvmUtils->execcmdonVM($::SUDOER, $node, $cmd, $callback);
+                    if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
+                        return;
+                    }
+                    $out = `echo "$out" | egrep -a -i "ID_SERIAL="`;
                     $out =~ m/ID_SERIAL=(\w+)\s*$/;
                     $wwid = $1;
                     if ($wwid) { last; }
@@ -2522,13 +2705,23 @@ EOF"`;
 
         # Find the pool that contains the SCSI/FCP device
         my $pool = xCAT::zvmUtils->findzFcpDevicePool($::SUDOER, $hcp, $wwpn, $lun);
+        if (xCAT::zvmUtils->checkOutput( $pool ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$pool" );
+            return;
+        }
         if (!$pool) {
             # Continue to try and remove the SCSI/FCP device even when it is not found in a storage pool
             xCAT::zvmUtils->printLn( $callback, "$node: Could not find FCP device in any FCP storage pool" );
         } else {
             xCAT::zvmUtils->printLn( $callback, "$node: Found FCP device in $pool" );
 
-            my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep -a -i "$wwpn,$lun"`;
+            my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$pool.conf\" ", $hcp, "changeVM", $select, $node );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                return;
+            }
+            $select = `echo "$select" | egrep -a -i "$wwpn,$lun"`;
             chomp($select);
             my @info = split(',', $select);
 
@@ -2873,8 +3066,14 @@ EOF"`;
                             '30','31','32','33','34','35','36','37','39','39','3A','3B','3C','3D','3E','3F');
 
         # Get current CPU count and address
-        my $proc = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $userId -k CPU" | grep -a CPU=`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $userId -k CPU | grep -a CPU=");
+        xCAT::zvmUtils->printSyslog("smcli Image_Definition_Query_DM -T $userId -k CPU");
+        my $proc = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $userId -k CPU"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Definition_Query_DM -T $userId -k CPU\"", $hcp, "changeVM", $proc, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $proc = `echo "$proc" | egrep -a -i CPU=`;
         while ( index( $proc, "CPUADDR" ) != -1) {
             my $position = index($proc, "CPUADDR");
             my $address = substr($proc, $position + 8, 2);
@@ -3420,8 +3619,6 @@ sub powerVM {
             xCAT::zvmUtils->printLn( $callback, "$node: unreachable");
             return;
         }
-
-
         # Create output string
         if ($out) {
             xCAT::zvmUtils->printLn( $callback, "$node: reachable");
@@ -3648,7 +3845,7 @@ sub scanVM {
     Description : Get hardware and software inventory of a given node
     Arguments   :   Node
                     Type of inventory (all|config|console [logsize]|cpumem|cpumempowerstat|--freerepospace)
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : inventoryVM($callback, $node, $args);
 
 =cut
@@ -3661,6 +3858,9 @@ sub inventoryVM {
 
     # Output string
     my $str = "";
+
+    my $outmsg;
+    my $rc;
 
     # Check if node is pingable
     if (($args->[0] ne '--consoleoutput') and ($args->[0] ne 'cpumempowerstat')){
@@ -3752,6 +3952,10 @@ sub inventoryVM {
 
         # Get instance CPU used time
         my $cputime = xCAT::zvmUtils->getUsedCpuTime($::SUDOER, $hcp , $node);
+        if (xCAT::zvmUtils->checkOutput( $cputime ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$cputime" );
+            return;
+        }
 
         $str .= "Total Memory: $memory\n";
         $str .= "Processors: \n$proc\n";
@@ -3856,6 +4060,10 @@ sub inventoryVM {
 
         # Get instance CPU used time
         my $cputime = xCAT::zvmUtils->getUsedCpuTime($::SUDOER, $hcp , $node);
+        if (xCAT::zvmUtils->checkOutput( $cputime ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$cputime" );
+            return;
+        }
 
         # Create output string
         $str .= "z/VM UserID: $userId\n";
@@ -3914,7 +4122,13 @@ sub inventoryVM {
         xCAT::zvmUtils->printSyslog( "vmcp spool c class return: $out" );
 
         # Get console output from zhcp
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/sbin/vmur list | egrep -a -i $userId "`;
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/sbin/vmur list"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO /usr/sbin/vmur list\"", $hcp, "inventoryVM", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | egrep -a -i "$userId "`;
         my @spoolFiles = sort(split('\n', $out));
         $str = "";
         foreach (@spoolFiles){
@@ -4206,6 +4420,8 @@ sub makeVM {
 
     # Create a new user in zVM without user directory entry file
     my $out;
+    my $outmsg;
+    my $rc;
     my $stdin;
     my $password = "";
     my $memorySize = "";
@@ -4313,14 +4529,20 @@ sub makeVM {
         $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "/sbin/modprobe vmcp"`;
 
         # Get USER Prefix
-        my $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan" | egrep -a -i "USER Prefix:"`;
+        my $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp q vmlan\"", $hcp, "makeVM", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        my $prefix = `echo "$out" | egrep -a -i "USER Prefix:"`;
         $prefix =~ s/(.*?)USER Prefix:(.*)/$2/;
         $prefix =~ s/^\s+//;
         $prefix =~ s/\s+$//;
 
         # Get MACADDR Prefix instead if USER Prefix is not defined
         if (!$prefix) {
-            $prefix = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q vmlan" | egrep -a -i "MACADDR Prefix:"`;
+            $prefix = `echo "$out" | egrep -a -i "MACADDR Prefix:"`;
             $prefix =~ s/(.*?)MACADDR Prefix:(.*)/$2/;
             $prefix =~ s/^\s+//;
             $prefix =~ s/\s+$//;
@@ -4387,7 +4609,6 @@ sub makeVM {
     my $oldNicDef;
     my $nicDef;
     my $id;
-    my $rc;
     my @vswId;
     my $target = "$::SUDOER\@$hcp";
     if ($userEntry) {
@@ -4619,6 +4840,10 @@ sub cloneVM {
     my $sourceIp = xCAT::zvmUtils->getIp($sourceNode);
 
     my @dedicates = xCAT::zvmUtils->getDedicates( $callback, $::SUDOER, $sourceNode );
+    if (xCAT::zvmUtils->checkOutput( $dedicates[0] ) == -1) {
+        xCAT::zvmUtils->printLn( $callback, "$dedicates[0]" );
+        return;
+    }
     if (scalar(@dedicates)) {
         xCAT::zvmUtils->printLn( $callback, "$sourceNode: (Error) Dedicate statements found in source directory." );
         return;
@@ -4728,6 +4953,10 @@ sub cloneVM {
 
             # Create MAC address (target)
             $targetMac = xCAT::zvmUtils->createMacAddr( $::SUDOER, $_, $macId );
+            if (xCAT::zvmUtils->checkOutput( $targetMac ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$targetMac" );
+                return;
+            }
 
             # Save MAC address in 'mac' table
             xCAT::zvmUtils->setNodeProp( 'mac', $_, 'mac', $targetMac );
@@ -4756,6 +4985,10 @@ sub cloneVM {
     # $srcLinkAddr[$addr] = $type
     my %srcDiskType;
     my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $sourceNode );
+    if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
+        xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+        return;
+    }
 
     # Get details about source disks
     # Output is similar to:
@@ -4938,6 +5171,10 @@ sub cloneVM {
     my $srcUserEntry = "/tmp/$sourceNode.txt";
     $out = `rm $srcUserEntry`;
     $out = xCAT::zvmUtils->getUserEntryWODisk( $callback, $::SUDOER, $sourceNode, $srcUserEntry );
+    if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
+        xCAT::zvmUtils->printLn( $callback, "$out" );
+        return;
+    }
 
     # Check if user entry is valid
     $out = `cat $srcUserEntry`;
@@ -5074,7 +5311,7 @@ sub cloneVM {
                     Root parition device address
                     Path to network configuration file
                     Path to hardware configuration file (SUSE only)
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : clone($callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize,
                     $srcNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $netEntries,
                     $sourceIp, $srcNetwork, $srcMask);
@@ -5162,6 +5399,7 @@ sub clone {
     xCAT::zvmUtils->printSyslog("hcp:$hcp tgtUserId:$tgtUserId targetIp:$targetIp");
 
     my $out;
+    my $outmsg;
     my @lines;
     my @words;
 
@@ -5454,8 +5692,14 @@ sub clone {
     while ( $try > 0 ) {
 
         # Get disks within user entry
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d' | grep -a "MDISK"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId | grep -a MDISK");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId\"", $hcp, "clone", $out, $tgtNode );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | sed '\$d' | grep -a -i "MDISK"`;
         xCAT::zvmUtils->printSyslog("$out");
         @disks = split( '\n', $out );
 
@@ -5795,12 +6039,24 @@ sub clone {
         while (!$out && $try > 0) {
             # Check if /usr/bin/file is available
             if (`ssh $::SUDOER\@$hcp "$::SUDO test -f /usr/bin/file && echo Exists"`) {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*" | grep -a -v swap | grep -a -o "$tgtDevNode\[1-9\]"`;
+                xCAT::zvmUtils->printSyslog("ssh $::SUDOER\@$hcp \"$::SUDO /usr/bin/file -s /dev/$tgtDevNode*\"");
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/file -s /dev/$tgtDevNode*"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO /usr/bin/file -s /dev/$tgtDevNode*\"", $hcp, "clone", $out, $tgtDevNode );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
             } else {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdisk -l /dev/$tgtDevNode* | grep -a -v swap | grep -a -o $tgtDevNode\[1-9\]"`;
+                xCAT::zvmUtils->printSyslog("ssh $::SUDOER\@$hcp \"$::SUDO /sbin/fdisk -l /dev/$tgtDevNode*\"");
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/fdisk -l /dev/$tgtDevNode*"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO /sbin/fdisk -l /dev/$tgtDevNode*\"", $hcp, "clone", $out, $tgtDevNode );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
             }
+            $out = `echo "$out" | egrep -a -i -v swap | egrep -a -o "$tgtDevNode\[1-9\]"`;
             $out = xCAT::zvmUtils->trimStr($out);
-            xCAT::zvmUtils->printSyslog("fdisk -l /dev/$tgtDevNode* | grep -a -v swap | grep -a -o $tgtDevNode\[1-9\]");
             xCAT::zvmUtils->printSyslog("$out");
 
             # Wait before trying again
@@ -5868,8 +6124,14 @@ sub clone {
             # If it is Red Hat - ifcfg-qeth file is in /etc/sysconfig/network-scripts
             my @files;
             if ( $srcOs =~ m/rhel/i ) {
-            $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -a -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts | grep -a -i 'ifcfg-eth' "`;
                 xCAT::zvmUtils->printSyslog("grep -a -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts");
+                $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -a -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO grep -a -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network-scripts\"", $hcp, "clone", $out, $tgtDevNode );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
+                $out = `echo "$out" | egrep -a -i 'ifcfg-eth'`;
                 xCAT::zvmUtils->printSyslog("$out");
                 @files = split('\n', $out);
                 @words = split( ':', $files[0] );
@@ -5932,15 +6194,20 @@ sub clone {
             # Set MAC address
             my $networkFile = $tgtNode . "NetworkConfig";
             my $config;
-            if ( $srcOs =~ m/rhel/i ) {
 
+            $config = `ssh $::SUDOER\@$hcp "$::SUDO cat $ifcfgPath"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $ifcfgPath\"", $hcp, "clone", $config, $tgtDevNode );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                return;
+            }
+            if ( $srcOs =~ m/rhel/i ) {
                 # Red Hat only
-                $config = `ssh $::SUDOER\@$hcp "$::SUDO cat $ifcfgPath" | grep -a -v "MACADDR"`;
+                $config = `echo "$config" | egrep -a -i -v "MACADDR"`;
                 $config .= "MACADDR='" . $targetMac . "'\n";
             } else {
-
                 # SUSE only
-                $config = `ssh $::SUDOER\@$hcp "$::SUDO cat $ifcfgPath" | grep -a -v "LLADDR" | grep -a -v "UNIQUE"`;
+                $config = `echo "$config" | egrep -a -i -v "LLADDR" | egrep -a -i -v "UNIQUE"`;
 
                 # Set to MAC address (only for layer 2)
                 if ( $layer == 2 ) {
@@ -6033,7 +6300,7 @@ sub clone {
                     * Punch initrd, kernel, and parmfile to node reader
                     * Layer 2 and 3 VSwitch/Lan supported
     Arguments   : Node
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : nodeSet($callback, $node, $args);
 
 =cut
@@ -6158,6 +6425,7 @@ sub nodeSet {
 
     # Get action
     my $out;
+    my $outmsg;
     if ( $action eq "install" ) {
 
         # Get node root password
@@ -6611,7 +6879,13 @@ sub nodeSet {
             my $zfcpSection = "";
             foreach (@pools) {
                 if (!(length $_)) {next;}
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -a -i ",$node,"`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$_\"", $hcp, "nodeSet", $entry, $node );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
+                $entry = `echo "$entry" | egrep -a -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -6895,7 +7169,13 @@ END
             my $zfcpSection = "";
             foreach (@pools) {
                 if (!(length $_)) {next;}
-                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_" | egrep -a -i ",$node,"`;
+                $entry = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$_"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$_\"", $hcp, "nodeSet", $entry, $node );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
+                $entry = `echo "$entry" | egrep -a -i ",$node,"`;
                 chomp($entry);
                 if (!$entry) {
                     next;
@@ -6973,6 +7253,10 @@ END
 
             # Get mdisk virtual address
             my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $node );
+            if (xCAT::zvmUtils->checkOutput( $mdisks[0] ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$mdisks[0]" );
+                return;
+            }
             @mdisks = sort(@mdisks);
             my $dasd   = "";
             my $devices = "";
@@ -6998,6 +7282,10 @@ END
 
             # Get dedicated virtual address
             my @dedicates = xCAT::zvmUtils->getDedicates( $callback, $::SUDOER, $node );
+            if (xCAT::zvmUtils->checkOutput( $dedicates[0] ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$dedicates[0]" );
+                return;
+            }
             @dedicates = sort(@dedicates);
             $i = 0;
             foreach (@dedicates) {
@@ -7217,7 +7505,13 @@ END
         my $tmpInitFile   = "/tmp/$os-initrd-statelite.gz";
 
         xCAT::zvmUtils->printLn( $callback, "$node: Looking for kernel $os-kernel." );
-        if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO ls /tmp" | grep -a "$os-kernel"`) {
+        $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO ls /tmp"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $::SUDOER\@$hcp \"$::SUDO ls /tmp\"", $hcp, "nodeSet", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        if (`echo "$out" | egrep -a -i "$os-kernel"`) {
             # Do nothing
         } else {
             # Send kernel to reader to HCP
@@ -7225,14 +7519,14 @@ END
             xCAT::zvmUtils->printLn( $callback, "sendfile $kernelFile, $tmpKernelFile" );
         }
 
-        if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO ls /tmp" | grep -a "$os-parm-statelite"`) {
+        if (`echo "$out" | egrep -a -i "$"os-parm-statelite"`) {
             # Do nothing
         } else {
             # Send parmfile to reader to HCP
             xCAT::zvmUtils->sendFile( $::SUDOER, $hcp, $parmFile, $tmpParmFile );
         }
 
-        if (`ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO ls /tmp" | grep -a "$os-initrd-statelite.gz"`) {
+        if (`echo "$out" | egrep -a -i "$os-initrd-statelite.gz"`) {
             # Do nothing
         } else {
             # Send initrd to reader to HCP
@@ -7314,6 +7608,10 @@ END
             # Handle sysclone which can have multiple image files which MUST match each mdisk
             # Get the list of mdisks
             my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $node );
+            if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+                return;
+            }
 
             # Verify the list of images and matching disks
             my $validArrayDisks = 0;
@@ -7561,7 +7859,7 @@ END
                     * Requires the node be online
                     * Saves MAC address in 'mac' table
     Arguments   : Node
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : getMacs($callback, $node, $args);
 
 =cut
@@ -7578,6 +7876,10 @@ sub getMacs {
         # Parse options
         GetOptions( 'f' => \$force );
     }
+
+    my $out;
+    my $outmsg;
+    my $rc;
 
     # Get node properties from 'zvm' table
     my @propNames = ( 'hcp', 'userid' );
@@ -7615,7 +7917,13 @@ sub getMacs {
     xCAT::zvmCPUtils->loadVmcp($::SUDOER, $node);
 
     # Get xCat MN Lan/VSwitch name
-    my $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic" | egrep -a -i "VSWITCH|LAN"`;
+    $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q v nic"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh -o ConnectTimeout=5 $::SUDOER\@$hcp \"$::SUDO /sbin/vmcp q v nic\"", $hcp, "getMacs", $out, $node );
+    if ($rc != 0) {
+        xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+        return;
+    }
+    $out = `echo "$out" | egrep -a -i "VSWITCH|LAN"`;
     my @lines = split( '\n', $out );
     my @words;
 
@@ -8054,6 +8362,10 @@ sub listTree {
 
         # Find out if this z/VM belongs to an SSI cluster
         $ssi{$node} = xCAT::zvmUtils->querySSI($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $ssi{$node} ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$ssi{$node}" );
+            return;
+        }
 
         # Find CEC root based on LPAR
         # CEC -> LPAR
@@ -8182,7 +8494,7 @@ sub listTree {
     Description : Configure the virtualization hosts
     Arguments   :   Node
                     Arguments
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : changeHypervisor($callback, $node, $args);
 
 =cut
@@ -8219,6 +8531,8 @@ sub changeHypervisor {
 
     # Output string
     my $out = "";
+    my $outmsg;
+    my $rc;
 
     # adddisk2pool [function] [region] [volume] [group]
     if ( $args->[0] eq "--adddisk2pool" ) {
@@ -8552,11 +8866,19 @@ sub changeHypervisor {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Failed to find FCP device in any zFCP storage pool" );
             return;
         } else {
+            if (xCAT::zvmUtils->checkOutput( $pool ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$pool" );
+                return;
+            }
             xCAT::zvmUtils->printLn( $callback, "$node: Found FCP device in $pool" );
         }
 
         # Get source device's attributes
         my $srcDiskRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $srcWwpn, $srcLun);
+        if (xCAT::zvmUtils->checkOutput( $srcDiskRef ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$srcDiskRef" );
+            return;
+        }
         my %srcDisk = %$srcDiskRef;
         if (!defined($srcDisk{'lun'}) && !$srcDisk{'lun'}) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Source zFCP device $srcWwpn/$srcLun does not exists" );
@@ -8568,6 +8890,10 @@ sub changeHypervisor {
         my $tgtSize;
         if ($useWwpnLun) {
             my $tgtDiskRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $tgtWwpn, $tgtLun);
+            if (xCAT::zvmUtils->checkOutput( $tgtDiskRef ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$tgtDiskRef" );
+                return;
+            }
             my %tgtDisk = %$tgtDiskRef;
             if (!defined($tgtDisk{'lun'}) && !$tgtDisk{'lun'}) {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) Target zFCP device $tgtWwpn/$tgtLun does not exists" );
@@ -8793,11 +9119,19 @@ sub changeHypervisor {
             xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to find FCP device in any zFCP storage pool");
             return;
         } else {
+            if (xCAT::zvmUtils->checkOutput( $pool ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$pool" );
+                return;
+            }
             xCAT::zvmUtils->printLn($callback, "$node: Found FCP device in $pool");
         }
 
         # Get source device's attributes
         my $srcDiskRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $wwpn, $lun);
+        if (xCAT::zvmUtils->checkOutput( $srcDiskRef ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$srcDiskRef" );
+            return;
+        }
         my %srcDisk = %$srcDiskRef;
         if (!defined($srcDisk{'lun'}) && !$srcDisk{'lun'}) {
             xCAT::zvmUtils->printLn($callback, "$node: (Error) Source zFCP device $wwpn/$lun does not exists");
@@ -8972,6 +9306,10 @@ sub changeHypervisor {
             xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to find FCP device in any zFCP storage pool");
             return;
         } else {
+            if (xCAT::zvmUtils->checkOutput( $pool ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$pool" );
+                return;
+            }
             xCAT::zvmUtils->printLn($callback, "$node: Found FCP device in $pool");
         }
 
@@ -9154,7 +9492,13 @@ sub changeHypervisor {
             my $cur_lun = $_;
             if (!(length $cur_lun)) {next;}
             # Entry should contain: status, wwpn, lun, size, range, owner, channel, tag
-            $entry =  `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -a -i $cur_lun`;
+            $entry =  `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$pool.conf\"", $hcp, "changeHypervisor", $entry, $node );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                return;
+            }
+            $entry = `echo "$entry" | egrep -a -i "$cur_lun"`;
             # Do not update if LUN does not exists, stop checking other luns if this one not found
             if (!$entry) {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) zFCP device $cur_lun does not exist" );
@@ -9285,6 +9629,10 @@ sub changeHypervisor {
         if ($wwpn && $lun) {
             # Check the status of the FCP device
             my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $wwpn, $lun);
+            if (xCAT::zvmUtils->checkOutput( $deviceRef ) == -1) {
+                xCAT::zvmUtils->printLn( $callback, "$deviceRef" );
+                return;
+            }
             my %zFCP = %$deviceRef;
             if ($zFCP{'status'} eq 'used') {
                 xCAT::zvmUtils->printLn($callback, "$node: (Error) FCP device 0x$wwpn/0x$lun is in use.");
@@ -9386,7 +9734,7 @@ sub changeHypervisor {
     Description : Get hardware and software inventory of a given hypervisor
     Arguments   :   Node
                     Type of inventory (config|all)
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : inventoryHypervisor($callback, $node, $args);
 
 =cut
@@ -9404,6 +9752,8 @@ sub inventoryHypervisor {
     my $str = "";
 
     my $rc;
+    my $out;
+    my $outmsg;
 
     # Get node properties from 'zvm' table
     my @propNames = ( 'hcp' );
@@ -9422,7 +9772,7 @@ sub inventoryHypervisor {
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
 
     # Load VMCP module
-    my $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/modprobe vmcp"`;
+    $out = `ssh -o ConnectTimeout=5 $::SUDOER\@$hcp "$::SUDO /sbin/modprobe vmcp"`;
 
     # Get configuration
     if ( $args->[0] eq 'config' ) {
@@ -9431,18 +9781,38 @@ sub inventoryHypervisor {
 
         # Get total physical CPU in this LPAR
         my $lparCpuTotal = xCAT::zvmUtils->getLparCpuTotal($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparCpuTotal ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparCpuTotal" );
+            return;
+        }
 
         # Get used physical CPU in this LPAR
         my $lparCpuUsed = xCAT::zvmUtils->getLparCpuUsed($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparCpuUsed ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparCpuUsed" );
+            return;
+        }
 
         # Get LPAR memory total
         my $lparMemTotal = xCAT::zvmUtils->getLparMemoryTotal($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemTotal ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemTotal" );
+            return;
+        }
 
         # Get LPAR memory Offline
         my $lparMemOffline = xCAT::zvmUtils->getLparMemoryOffline($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemOffline ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemOffline" );
+            return;
+        }
 
         # Get LPAR memory Used
         my $lparMemUsed = xCAT::zvmUtils->getLparMemoryUsed($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemUsed ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemUsed" );
+            return;
+        }
 
         $str .= "z/VM Host: $hypname\n";
         $str .= "zHCP: $hcp\n";
@@ -9458,18 +9828,38 @@ sub inventoryHypervisor {
         my $hypname = xCAT::zvmCPUtils->getHost($::SUDOER, $hcp);
         # Get total physical CPU in this LPAR
         my $lparCpuTotal = xCAT::zvmUtils->getLparCpuTotal($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparCpuTotal ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparCpuTotal" );
+            return;
+        }
 
         # Get used physical CPU in this LPAR
         my $lparCpuUsed = xCAT::zvmUtils->getLparCpuUsed($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparCpuUsed ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparCpuUsed" );
+            return;
+        }
 
         # Get CEC model
         my $cecModel = xCAT::zvmUtils->getCecModel($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $cecModel ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$cecModel" );
+            return;
+        }
 
         # Get vendor of CEC
         my $cecVendor = xCAT::zvmUtils->getCecVendor($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $cecVendor ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$cecVendor" );
+            return;
+        }
 
         # Get hypervisor type and version
         my $hvInfo = xCAT::zvmUtils->getHypervisorInfo($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $hvInfo ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$hvInfo" );
+            return;
+        }
 
         # Get processor architecture
         my $arch = xCAT::zvmUtils->getArch($::SUDOER, $hcp);
@@ -9479,12 +9869,24 @@ sub inventoryHypervisor {
 
         # Get LPAR memory total
         my $lparMemTotal = xCAT::zvmUtils->getLparMemoryTotal($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemTotal ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemTotal" );
+            return;
+        }
 
         # Get LPAR memory Offline
         my $lparMemOffline = xCAT::zvmUtils->getLparMemoryOffline($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemOffline ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemOffline" );
+            return;
+        }
 
         # Get LPAR memory Used
         my $lparMemUsed = xCAT::zvmUtils->getLparMemoryUsed($::SUDOER, $hcp);
+        if (xCAT::zvmUtils->checkOutput( $lparMemUsed ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$lparMemUsed" );
+            return;
+        }
 
         # Get IPL Time
         my $ipl = xCAT::zvmCPUtils->getIplTime($::SUDOER, $hcp);
@@ -9653,8 +10055,14 @@ sub inventoryHypervisor {
                     }
                 }
             } else {
-                $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId" | egrep -a -i "FCP device number|Status"`;
-                xCAT::zvmUtils->printSyslog("smcli System_WWPN_Query -T $hcpUserId | egrep -a -i FCP device number|Status");
+                xCAT::zvmUtils->printSyslog("smcli System_WWPN_Query -T $hcpUserId");
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId"`;
+                ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli System_WWPN_Query -T $hcpUserId\"", $hcp, "inventoryHypervisor", $out, $node );
+                if ($rc != 0) {
+                    xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                    return;
+                }
+                $out = `echo "$out" | egrep -a -i "FCP device number|Status"`;
 
                 @devices = split( "\n", $out );
                 for ($i = 0; $i < @devices; $i++) {
@@ -9691,8 +10099,14 @@ sub inventoryHypervisor {
             return;
         }
 
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -a -i "FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:"`;
-        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -a -i FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:");
+        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp\"", $hcp, "inventoryHypervisor", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | egrep -a -i "FCP device number:|World wide port number:|Logical unit number:|Number of bytes residing on the logical unit:"`;
 
         my @wwpns = split( "\n", $out );
         my %map;
@@ -9908,8 +10322,14 @@ sub inventoryHypervisor {
             return;
         }
 
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp" | egrep -a -i "World wide port number:"`;
-        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp | egrep -a -i World wide port number:");
+        xCAT::zvmUtils->printSyslog("smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli System_FCP_Free_Query -T $hcpUserId -k fcp_dev=$fcp\"", $hcp, "inventorHypervisor", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | egrep -a -i "World wide port number:"`;
 
         my @wwpns = split( "\n", $out );
         my %uniqueWwpns;
@@ -9942,7 +10362,14 @@ sub inventoryHypervisor {
             $str = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf"`;
         } else {
             $str = "#status,wwpn,lun,size,range,owner,channel,tag\n";
-            $str .= `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | egrep -a -i $space`;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf"`;
+            ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO cat $::ZFCPPOOL/$pool.conf\"", $hcp, "inventoryHypervisor", $out, $node );
+            if ($rc != 0) {
+                xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+                return;
+            }
+            $out = `echo "$out" | egrep -a -i "$space"`;
+            $str .= $out;
         }
     }
 
@@ -10421,7 +10848,7 @@ sub eventLog {
                   Profile
                   Device information
                   Compression level: 0 - none, 1 thru 9 - gzip compression level
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : imageCapture( $callback, $node, $os, $arch, $type, $profile, $osimg, $device, $comp );
 
 =cut
@@ -10431,6 +10858,7 @@ sub imageCapture {
     my ($class, $callback, $node, $os, $arch, $type, $profile, $osimg, $device, $comp) = @_;
     my $rc;
     my $out = '';
+    my $outmsg;
     my $reason = "";
     my $provMethod;
     my $compParm = "";
@@ -10532,12 +10960,12 @@ sub imageCapture {
         if ($devName eq '/dev/root') {
             # Determine which Linux device is associated with the root directory
             #$out = `ssh $sudoer\@$node $sudo 'cat /proc/cmdline | tr " " "\\n" | grep -a "^root=" | cut -c6-'`;
-            $cmd = "$::SUDO" . ' cat /proc/cmdline | tr " " "\\n" | grep -a "^root=" | cut -c6-';
+            $cmd = "$::SUDO" . ' cat /proc/cmdline | tr " " "\\n"';
             $out = xCAT::zvmUtils->execcmdonVM($sudoer, $node, $cmd, $callback);
             if (xCAT::zvmUtils->checkOutput( $out ) == -1) {
                 return;
             }
-
+            $out = `echo "$out" | egrep -a -i "^root=" | cut '-c6-'`;
 
             my $rootDev = '';
             if ($out) {
@@ -10596,6 +11024,10 @@ sub imageCapture {
 
         # Get the list of mdisks
         my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $sudoer, $node );
+        if (xCAT::zvmUtils->checkOutput( $srcDisks[0] ) == -1) {
+            xCAT::zvmUtils->printLn( $callback, "$srcDisks[0]" );
+            return;
+        }
         foreach (@srcDisks) {
             # Get disk address
             my @words = split( ' ', $_ );
@@ -10691,11 +11123,23 @@ sub imageCapture {
 
     # Wait (checking every 15 seconds) until user is finally logged off or maximum wait time has elapsed
     my $max = 0;
-    $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null | grep -a HCPCQU045E"`;
+    $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null"`;
+    ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $sudoer\@$hcp \"$sudo /sbin/vmcp q user $targetUserId 2>/dev/null\"", $hcp, "imageCapture", $out, $node );
+    if ($rc != 0) {
+        xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+        return;
+    }
+    $out = `echo "$out" | egrep -a -i "HCPCQU045E"`;
     while ( !$out && $max < 60 ) {
         sleep(15);  # Wait 15 seconds
         $max++;
-        $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null | grep -a HCPCQU045E"`;
+        $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $sudoer\@$hcp \"$sudo /sbin/vmcp q user $targetUserId 2>/dev/null\"", $hcp, "imageCapture", $out, $node );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | egrep -a -i "HCPCQU045E"`;
     }
     my $totalMinutes = $max * 15 / 60;
     if ( $out ) {
@@ -11286,7 +11730,7 @@ sub specialcloneVM {
                     clone info hash from doclone.txt
                     Source zvm userid
                     Source userid directory file name
-    Returns     : Nothing
+    Returns     : Nothing, errors returned in $callback
     Example     : specialClone($callback, $_, $args, \@srcMdisks, \%srcLinkAddr, \%cloneInfoHash, $sourceId, $srcUserEntry);
 
 =cut
@@ -11348,6 +11792,7 @@ sub specialClone {
     $hcpUserId =~ tr/a-z/A-Z/;
 
     my $out;
+    my $outmsg;
     my @lines;
     my @words;
 
@@ -11551,8 +11996,14 @@ sub specialClone {
     while ( $try > 0 ) {
 
         # Get disks within user entry
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId" | sed '\$d' | grep -a "MDISK"`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId | grep -a MDISK");
+        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $tgtUserId");
+        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId"`;
+        ($rc, $outmsg) = xCAT::zvmUtils->checkSSH_Rc( $?, "ssh $::SUDOER\@$hcp \"$::SUDO $::DIR/smcli Image_Query_DM -T $tgtUserId\"", $hcp, "specialClone", $out, $tgtNode );
+        if ($rc != 0) {
+            xCAT::zvmUtils->printLn( $callback, "$outmsg" );
+            return;
+        }
+        $out = `echo "$out" | sed '\$d' | grep -a -i "MDISK"`;
         xCAT::zvmUtils->printSyslog("$out");
         @disks = split( '\n', $out );
 

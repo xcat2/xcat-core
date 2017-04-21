@@ -35,7 +35,10 @@ function loadImagesPage() {
             msg : ''
         },
 
-        success : loadImages
+        success : function(data) {
+            data = decodeRsp(data);
+            loadImages(data);
+        }
     });
 }
 
@@ -189,7 +192,10 @@ function loadImages(data) {
                 msg : ''
             },
 
-            success : loadImages
+            success : function(data) {
+                data = decodeRsp(data);
+                loadImages(data);
+            }
         });
     });
 
@@ -282,7 +288,10 @@ function loadImages(data) {
                     msg : 'out=imagesTab;tgt=' + image
                 },
 
-                success: showChdefOutput
+                success : function(data) {
+                    data = decodeRsp(data);
+                    showChdefOutput(data);
+                }
             });
 
             return value;
@@ -305,7 +314,10 @@ function loadImages(data) {
             msg : ''
         },
 
-        success : setImageDefAttrs
+        success : function(data) {
+            data = decodeRsp(data);
+            setImageDefAttrs(data);
+        }
     });
 }
 
@@ -348,7 +360,10 @@ function confirmImageDeleteDialog(images) {
                         msg : dialogId
                     },
 
-                    success : updateImageDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateImageDialog(data);
+                    }
                 });
             },
             "Cancel": function(){
@@ -606,7 +621,10 @@ function openAddImageDialog() {
                             msg : dialogId
                         },
 
-                        success : updateImageDialog
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateImageDialog(data);
+                        }
                     });
                 }
             },
@@ -860,7 +878,10 @@ function softwareCheck(softwareObject) {
                         cmd : genLsCmd(data.msg),
                         msg : data.msg
                     },
-                    success : rpmCopyCheck
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        rpmCopyCheck(data);
+                    }
                 });
             }
         }
@@ -1253,7 +1274,10 @@ function openEditImagePage(tgtImage) {
                 msg : 'out=' + newTabId + ';tgt=' + tgtImage
             },
 
-            success: showChdefOutput
+            success : function(data) {
+                data = decodeRsp(data);
+                showChdefOutput(data);
+            }
         });
     });
     setPropsForm.append(saveBtn);
@@ -1384,7 +1408,10 @@ function openCopyCdDialog() {
                         msg : dialogId
                     },
 
-                    success : updateImageDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateImageDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -1429,7 +1456,7 @@ function createImage() {
             msg : ''
         },
         success : function(data) {
-
+             data = decodeRsp(data);
         }
     });
 }

@@ -141,7 +141,10 @@ function loadHcpInfo(data) {
                         msg : hcp
                     },
 
-                    success : setDiskPoolCookies,
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        setDiskPoolCookies(data);
+                    },
                     complete : function() {
                         if (nodeInfoBar !== null) {
                             findingPoolsCount--;
@@ -172,7 +175,10 @@ function loadHcpInfo(data) {
                         msg : hcp
                     },
 
-                    success : setZfcpPoolCookies,
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        setZfcpPoolCookies(data);
+                    },
                     complete : function() {
                         if (nodeInfoBar !== null) {
                             findingPoolsCount--;
@@ -203,7 +209,10 @@ function loadHcpInfo(data) {
                         msg : hcp
                     },
 
-                    success : setNetworkCookies,
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        setNetworkCookies(data);
+                    },
                     complete : function() {
                         if (nodeInfoBar !== null) {
                             findingPoolsCount--;
@@ -327,7 +336,10 @@ function loadUserEntry(data) {
                 msg : node
             },
 
-            success : updateZNodeStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZNodeStatus(data);
+            }
         });
 
         // Increment node process and save it in a cookie
@@ -432,7 +444,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=mkvm;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -459,7 +474,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=makehosts;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -484,7 +502,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=makedns;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -551,7 +572,10 @@ function updateZProvisionNewStatus(data) {
                             msg : 'cmd=chvm-disk;out=' + out2Id
                         },
 
-                        success : updateZProvisionNewStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZProvisionNewStatus(data);
+                        }
                     });
                 }
             }
@@ -583,7 +607,8 @@ function updateZProvisionNewStatus(data) {
                         args += ';' + tag;
                     } else {
                         args += ';';
-                    } if (portName && tag != "null") {
+                    }
+                    if (portName && tag != "null") {
                         args += ';' + portName;
                     } else {
                         args += ';';
@@ -604,7 +629,10 @@ function updateZProvisionNewStatus(data) {
                             msg : 'cmd=chvm-zfcp;out=' + out2Id
                         },
 
-                        success : updateZProvisionNewStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZProvisionNewStatus(data);
+                        }
                     });
                 }
             }
@@ -671,7 +699,10 @@ function updateZProvisionNewStatus(data) {
                             msg : 'cmd=noderes;out=' + out2Id
                         },
 
-                        success : updateZProvisionNewStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZProvisionNewStatus(data);
+                        }
                     });
                 } else {
                     $('#' + loaderId).hide();
@@ -700,7 +731,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=makedhcp;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -736,7 +770,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=nodeset;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -764,7 +801,10 @@ function updateZProvisionNewStatus(data) {
                     msg : 'cmd=rnetboot;out=' + out2Id
                 },
 
-                success : updateZProvisionNewStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionNewStatus(data);
+                }
             });
         }
     }
@@ -829,7 +869,10 @@ function updateZProvisionExistingStatus(data) {
                 msg : 'cmd=nodeset;out=' + inst
             },
 
-            success : updateZProvisionExistingStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZProvisionExistingStatus(data);
+            }
         });
     }
 
@@ -863,7 +906,10 @@ function updateZProvisionExistingStatus(data) {
                 msg : 'cmd=rnetboot;out=' + inst
             },
 
-            success : updateZProvisionExistingStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZProvisionExistingStatus(data);
+            }
         });
     }
 
@@ -953,7 +999,10 @@ function updateZCloneStatus(data) {
                         msg : 'cmd=makehosts;inst=' + inst + ';out=' + out2Id
                     },
 
-                    success : updateZCloneStatus
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateZCloneStatus(data);
+                    }
                 });
             }
         }
@@ -983,7 +1032,10 @@ function updateZCloneStatus(data) {
                     msg : 'cmd=makedns;inst=' + inst + ';out=' + out2Id
                 },
 
-                success : updateZCloneStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZCloneStatus(data);
+                }
             });
         }
     }
@@ -1057,7 +1109,10 @@ function updateZCloneStatus(data) {
             error: function(jqXHR, textStatus) {
                 $('#' + out2Id).find('div').append('<pre>(Error) Failed in clone call with ' + textStatus + '</pre>');
             },
-            success : updateZCloneStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZCloneStatus(data);
+            }
         });
     }
 
@@ -1171,7 +1226,10 @@ function getZResources(data) {
                         msg : hcps[i]
                     },
 
-                    success : getDiskPool
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getDiskPool(data);
+                    }
                 });
                 zhcpQueryCountForDisks--;
             }
@@ -1220,7 +1278,10 @@ function getZResources(data) {
                         msg : hcps[i]
                     },
 
-                    success : getZfcpPool
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getZfcpPool(data);
+                    }
                 });
                 zhcpQueryCountForZfcps--;
             }
@@ -1270,7 +1331,10 @@ function getZResources(data) {
                         msg : hcps[i]
                     },
 
-                    success : getNetwork
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getNetwork(data);
+                    }
                 });
                 zhcpQueryCountForNetworks--;
             }
@@ -1417,7 +1481,10 @@ function openAddProcDialog(node) {
                             msg : node
                         },
 
-                        success : updateZNodeStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZNodeStatus(data);
+                        }
                     });
 
                     // Increment node process
@@ -1553,7 +1620,10 @@ function openAddDiskDialog(node, hcp) {
                                 msg : node
                             },
 
-                            success : updateZNodeStatus
+                            success : function(data) {
+                                data = decodeRsp(data);
+                                updateZNodeStatus(data);
+                            }
                         });
 
                         // Increment node process
@@ -1578,7 +1648,10 @@ function openAddDiskDialog(node, hcp) {
                                 msg : node
                             },
 
-                            success : updateZNodeStatus
+                            success : function(data) {
+                                data = decodeRsp(data);
+                                updateZNodeStatus(data);
+                            }
                         });
 
                         // Increment node process
@@ -1734,7 +1807,10 @@ function openAddZfcpDialog(node, hcp, zvm) {
                             msg : node
                         },
 
-                        success : updateZNodeStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZNodeStatus(data);
+                        }
                     });
 
                     // Increment node process
@@ -1836,7 +1912,10 @@ function openDedicateDeviceDialog(node, hcp) {
                             msg : node
                         },
 
-                        success : updateZNodeStatus
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateZNodeStatus(data);
+                        }
                     });
 
                     // Increment node process
@@ -1962,7 +2041,10 @@ function openAddEckd2SystemDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2077,7 +2159,10 @@ function openAddVolume2SystemDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2192,7 +2277,10 @@ function openRemoveVolumeFromSystemDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2316,7 +2404,10 @@ function openAddPageSpoolDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2427,7 +2518,10 @@ function openShareDiskDialog(disks2share) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2677,7 +2771,10 @@ function openAddScsi2SystemDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -2793,7 +2890,10 @@ function openRemoveScsiDialog(hcp) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -3178,7 +3278,10 @@ function openAddNicDialog(node, hcp) {
                                 msg : 'node=' + node + ';addr=' + address + ';lan='
                                     + lanName + ';owner=' + lanOwner
                             },
-                            success : connect2GuestLan
+                            success : function(data) {
+                                data = decodeRsp(data);
+                                connect2GuestLan(data);
+                            }
                         });
                     }
 
@@ -3205,7 +3308,10 @@ function openAddNicDialog(node, hcp) {
                                     + porttype + ';lanid=' + lanid
                             },
 
-                            success : connect2VSwitch
+                            success : function(data) {
+                                data = decodeRsp(data);
+                                connect2VSwitch(data);
+                            }
                         });
                     }
 
@@ -3496,7 +3602,10 @@ function openAddVswitchVlanDialog(hcp) {
                             msg : dialogId
                         },
 
-                        success : updateResourceDialog
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateResourceDialog(data);
+                        }
                     });
                 } else if (networkType == "vlan") {
                     var networkArgs = "--addvlan;";
@@ -3551,7 +3660,10 @@ function openAddVswitchVlanDialog(hcp) {
                             msg : dialogId
                         },
 
-                        success : updateResourceDialog
+                        success : function(data) {
+                            data = decodeRsp(data);
+                            updateResourceDialog(data);
+                        }
                     });
                 }  // End of else if
             },
@@ -3601,7 +3713,8 @@ function openRemoveVswitchVlanDialog(networkList) {
                                 msg : ''
                             },
 
-                            success: function(data) {
+                            success : function(data) {
+                                data = decodeRsp(data);
                                 var infoMsg;
 
                                 // Create info message
@@ -3628,7 +3741,8 @@ function openRemoveVswitchVlanDialog(networkList) {
                                 msg : ''
                             },
 
-                            success: function(data) {
+                            success : function(data) {
+                                data = decodeRsp(data);
                                 var infoMsg;
 
                                 // Create info message
@@ -3672,7 +3786,10 @@ function removeProcessor(node, address) {
             msg : node
         },
 
-        success : updateZNodeStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updateZNodeStatus(data);
+        }
     });
 
     // Increment node process
@@ -3700,7 +3817,10 @@ function removeDisk(node, address) {
             msg : node
         },
 
-        success : updateZNodeStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updateZNodeStatus(data);
+        }
     });
 
     // Increment node process
@@ -3730,7 +3850,10 @@ function removeZfcp(node, address, wwpn, lun) {
             msg : node
         },
 
-        success : updateZNodeStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updateZNodeStatus(data);
+        }
     });
 
     // Increment node process
@@ -3761,7 +3884,10 @@ function removeNic(node, nic) {
             msg : node
         },
 
-        success : updateZNodeStatus
+        success : function(data) {
+            data = decodeRsp(data);
+            updateZNodeStatus(data);
+        }
     });
 
     // Increment node process
@@ -3778,7 +3904,7 @@ function removeNic(node, nic) {
  * @param data Data from HTTP request
  */
 function setNetworkCookies(data) {
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var node = data.msg;
         var networks = data.rsp[0].split(node + ': ');
 
@@ -3795,7 +3921,7 @@ function setNetworkCookies(data) {
  * @param data HTTP request data
  */
 function getDiskPool(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
 
@@ -3815,7 +3941,10 @@ function getDiskPool(data) {
                         msg : 'hcp=' + hcp + ';pool=' + pools[i] + ';stat=used'
                     },
 
-                    success : loadDiskPoolTable
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        loadDiskPoolTable(data);
+                    }
                 });
 
                 // Get free space
@@ -3829,7 +3958,10 @@ function getDiskPool(data) {
                         msg : 'hcp=' + hcp + ';pool=' + pools[i] + ';stat=free'
                     },
 
-                    success : loadDiskPoolTable
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        loadDiskPoolTable(data);
+                    }
                 });
             } // End of if
         } // End of for
@@ -3860,7 +3992,7 @@ function getZfcpPool(data) {
     if (typeof console == "object"){
         console.log("Entering getZfcpPool.");
     }
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var hcp = data.msg;
         var pools = data.rsp[0].split(hcp + ': ');
         zhcpQueryCountForZfcps = 0;
@@ -3879,7 +4011,10 @@ function getZfcpPool(data) {
                         args : '--zfcppool;' + pools[i] + ';all',
                         msg : 'hcp=' + hcp + ';pool=' + pools[i]
                     },
-                    success : loadZfcpPoolTable
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        loadZfcpPoolTable(data);
+                    }
                 });
             } // End of if
         } // End of for
@@ -3907,7 +4042,7 @@ function getZfcpPool(data) {
  * @param data HTTP request data
  */
 function getNetwork(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Invalid") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var hcp = data.msg;
         var networks = data.rsp[0].split(hcp + ': ');
         if (typeof console == "object"){
@@ -3933,7 +4068,10 @@ function getNetwork(data) {
                     msg : 'hcp=' + hcp + ';type=' + type + ';network=' + name
                 },
 
-                success : loadNetworkTable
+                success : function(data) {
+                    data = decodeRsp(data);
+                    loadNetworkTable(data);
+                }
             });
         } // End of for
     } // End of if
@@ -4091,7 +4229,10 @@ function loadDiskPoolTable(data) {
                         msg : hcps[i]
                     },
 
-                    success : getDiskPool
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getDiskPool(data);
+                    }
                 });
                 zhcpQueryCountForDisks--;
             }
@@ -4339,7 +4480,10 @@ function loadZfcpPoolTable(data) {
                         msg : hcps[i]
                     },
 
-                    success : getZfcpPool
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getZfcpPool(data);
+                    }
                 });
                 zhcpQueryCountForZfcps--;
             }
@@ -4532,7 +4676,10 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -4659,7 +4806,10 @@ function openAddDisk2PoolDialog() {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -4806,9 +4956,9 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                         args : args,
                         msg : dialogId
                     },
-
                     success : function(data) {
-                         updateResourceDialog(data);
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
                     }
                 });
             },
@@ -4946,7 +5096,10 @@ function openAddZfcp2PoolDialog() {
                         msg : dialogId
                     },
 
-                    success : updateResourceDialog
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateResourceDialog(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -5046,6 +5199,7 @@ function loadNetworkTable(data) {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 setzVMCookies(data);
             }
         });
@@ -5200,7 +5354,10 @@ function loadNetworkTable(data) {
                         msg : hcps[i]
                     },
 
-                    success : getNetwork
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        getNetwork(data);
+                    }
                 });
                 zhcpQueryCountForNetworks--;
             }
@@ -5255,7 +5412,7 @@ function connect2GuestLan(data) {
     $('#' + node + 'StatusBar').find('div').append(prg);
 
     // Continue if no errors found
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         // Connect NIC to Guest LAN
         $.ajax( {
             url : 'lib/cmd.php',
@@ -5268,7 +5425,10 @@ function connect2GuestLan(data) {
                 msg : node
             },
 
-            success : updateZNodeStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZNodeStatus(data);
+            }
         });
     } else {
         // Hide loader when error
@@ -5310,7 +5470,7 @@ function connect2VSwitch(data) {
     $('#' + node + 'StatusBar').find('div').append(prg);
 
     // Continue if no errors found
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         // Connect NIC to VSwitch
         $.ajax( {
             url : 'lib/cmd.php',
@@ -5323,7 +5483,10 @@ function connect2VSwitch(data) {
                 msg : node
             },
 
-            success : updateZNodeStatus
+            success : function(data) {
+                data = decodeRsp(data);
+                updateZNodeStatus(data);
+            }
         });
     } else {
         // Hide loader when error
@@ -5524,7 +5687,10 @@ function createZProvisionExisting(inst) {
                     msg : 'cmd=nodeadd;out=' + inst
                 },
 
-                success : updateZProvisionExistingStatus
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateZProvisionExistingStatus(data);
+                }
             });
         } else {
             // Show warning message
@@ -5651,8 +5817,9 @@ function createZProvisionNew(inst) {
                         msg : zhcpToCheck
                 },
 
-                success: function(data) {
-                    if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || data.rsp[0].indexOf("Invalid") > -1 || data.rsp[0].indexOf("Error") > -1) ) {
+                success : function(data) {
+                    data = decodeRsp(data);
+                    if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || data.rsp[0].indexOf("Invalid") > -1 || data.rsp[0].indexOf("Error") > -1 ) ) {
                         // Remove the progress gif, since bailing out
                         removeProvisionLoadingGif(provisionStatusBar);
 
@@ -5693,7 +5860,8 @@ function createZProvisionNew(inst) {
                                     msg : 'zhcpFullName'
                             },
 
-                            success: function(data) {
+                            success : function(data) {
+                                data = decodeRsp(data);
                                 if (data.rsp.length && (data.rsp[0].indexOf("Failed") > -1 || data.rsp[0].indexOf("Invalid") > -1) ) {
                                     // Remove the progress gif, since bailing out
                                     removeProvisionLoadingGif(provisionStatusBar);
@@ -5772,7 +5940,10 @@ function createZProvisionNew(inst) {
                                     msg : zhcpToCheck
                                        },
 
-                                success : setDiskPoolCookies,
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    setDiskPoolCookies(data);
+                                },
                                 complete : function() {
                                     checkProvisionCallsDone(provisionStatusBar, ajaxCalls, "diskpoolnames");
                                 }
@@ -5793,7 +5964,10 @@ function createZProvisionNew(inst) {
                                     msg : zhcpToCheck
                                        },
 
-                                success : setZfcpPoolCookies,
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    setZfcpPoolCookies(data);
+                                },
                                 complete : function() {
                                     checkProvisionCallsDone(provisionStatusBar, ajaxCalls, "zfcppoolnames");
                                 }
@@ -5815,7 +5989,10 @@ function createZProvisionNew(inst) {
                                     msg : zhcpToCheck
                                             },
 
-                                success : setUserProfilesCookies,
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    setUserProfilesCookies(data);
+                                },
                                 complete : function() {
                                     checkProvisionCallsDone(provisionStatusBar, ajaxCalls, "userprofilenames");
                                 }
@@ -5960,7 +6137,8 @@ function createZProvisionNew(inst) {
                         msg : thisTabId
                     },
 
-                    success:function(data) {
+                    success :function(data) {
+                        data = decodeRsp(data);
                         // Populate user entry
                         var tabId = data.msg;
                         var entry = new String(data.rsp);
@@ -6470,7 +6648,7 @@ function createZProvisionNew(inst) {
                     var loaddev = diskArgs.eq(7).find('input').attr('checked');
                     if (loaddev && iplSet) {
                         errMsg = errMsg + 'You cannot have both disk IPL and zFCP LOADDEV, can only IPL one device.<br/>';
-            ready = false;
+                        ready = false;
                     }
                 }
             }
@@ -6570,7 +6748,10 @@ function createZProvisionNew(inst) {
                                     msg : 'cmd=nodeadd;out=' + inst
                                 },
 
-                                success : updateZProvisionNewStatus
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    updateZProvisionNewStatus(data);
+                                }
                             });
 
                             $(this).dialog("close");
@@ -6657,7 +6838,10 @@ function createZProvisionNew(inst) {
                         msg : 'cmd=nodeadd;out=' + inst
                     },
 
-                    success : updateZProvisionNewStatus
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updateZProvisionNewStatus(data);
+                    }
                 });
             }
         } else {
@@ -6921,7 +7105,7 @@ function loadGoldenImages(col) {
  * @param data Data from HTTP request
  */
 function setzVMCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var zvms = new Array();
         var hosts = data.rsp[0].split("\n");
         for ( var i = 0; i < hosts.length; i++) {
@@ -6968,7 +7152,7 @@ function setGoldenImagesCookies(data) {
  * @param data Data from HTTP request
  */
 function setDiskPoolCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ": ");
         var pools2 = [];
@@ -6991,7 +7175,7 @@ function setDiskPoolCookies(data) {
  * @param data Data from HTTP request
  */
 function setZfcpPoolCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         var pools2 = [];
@@ -7028,7 +7212,7 @@ function setzHcpCookies(zhcps) {
  * @param data Data from HTTP request
  */
 function setUserProfilesCookies(data) {
-    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var node = data.msg;
         var profiles = data.rsp[0].split(node + ': ');
         var profiles2 = [];
@@ -7077,6 +7261,7 @@ function queryProfiles(panelId) {
         },
 
         success : function(data) {
+            data = decodeRsp(data);
             var panelId = data.msg;
             setOSImageCookies(data);
             configProfilePanel(panelId);
@@ -7212,7 +7397,10 @@ function configProfilePanel(panelId) {
                 msg : 'out=' + panelId + ';profile=' + profiles[i]
             },
 
-            success: insertDirectoryEntry
+            success : function(data) {
+                data = decodeRsp(data);
+                insertDirectoryEntry(data);
+            }
         });
 
         $.ajax({
@@ -7225,7 +7413,10 @@ function configProfilePanel(panelId) {
                 msg : 'out=' + panelId + ';profile=' + profiles[i]
             },
 
-            success: insertDiskInfo
+            success : function(data) {
+                data = decodeRsp(data);
+                insertDiskInfo(data);
+            }
         });
     }
 }
@@ -7400,6 +7591,7 @@ function profileDialog() {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             var args = data.msg.split(';');
 
                             // Create profile in xCAT
@@ -7413,7 +7605,10 @@ function profileDialog() {
                                     msg : args[0]
                                 },
 
-                                success: updatePanel
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    updatePanel(data);
+                                }
                             });
                         }
                     });
@@ -7468,7 +7663,10 @@ function deleteProfileDialog(profiles) {
                         args : 'rmzprofile;' + profiles,
                         msg : dialogId
                     },
-                    success : updatePanel
+                    success : function(data) {
+                        data = decodeRsp(data);
+                        updatePanel(data);
+                    }
                 });
             },
             "Cancel": function() {
@@ -7585,6 +7783,7 @@ function editProfileDialog(profile, pool, size, entry) {
                         },
 
                         success : function(data) {
+                            data = decodeRsp(data);
                             var args = data.msg.split(';');
 
                             // Create profile in xCAT
@@ -7598,7 +7797,10 @@ function editProfileDialog(profile, pool, size, entry) {
                                     msg : args[0]
                                 },
 
-                                success: updatePanel
+                                success : function(data) {
+                                    data = decodeRsp(data);
+                                    updatePanel(data);
+                                }
                             });
                         }
                     });
@@ -7631,6 +7833,7 @@ function getHcpZvmHash() {
             },
 
             success : function(data) {
+                data = decodeRsp(data);
                 setzVMCookies(data);
             }
         });
@@ -7747,6 +7950,7 @@ function updateUserEntry(tabId) {
                     }
                 }
 
+
                 // Only update directory entry if the basic tab is selected
                 var inst = tabId.replace('zvmProvisionTab', '');
                 var hwTabIndex = $("#hwConfig" + inst).tabs('option', 'selected');
@@ -7858,7 +8062,7 @@ function updateUserEntry(tabId) {
                 if (loaddev) {
                     ipl = address;
                 }
-        }
+            }
         }
 
         // Only update directory entry if the basic tab is selected
@@ -8033,7 +8237,8 @@ function getNetworkDetails(hcpNode, vswitchname, hashId, tabId) {
             msg: 'hcp=' + hcpNode + ';type=VSWITCH' + ';network=' + vswitchname + ';hashindex=' + hashId
         },
 
-        success: function(data) {
+        success : function(data) {
+            data = decodeRsp(data);
 
             var vlanid =  "";
             var vlanaware = "";
@@ -8116,7 +8321,7 @@ function getNetworkDetails(hcpNode, vswitchname, hashId, tabId) {
  * @param data Data from HTTP request
  */
 function setNodeZhcpNodename(data) {
-    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1 && data.rsp[0].indexOf("Error") == -1 ) {
         var savedTokens = data.msg.split(';');
         var node = savedTokens[0];
         var hcphostname = savedTokens[1];

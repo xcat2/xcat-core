@@ -46,9 +46,8 @@ Obsoletes: atftp-xcat
 %ifos linux
 #
 # PCM does not use or ship grub2-xcat
-Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
 %if %nots390x
-Requires: grub2-xcat
+Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
 %endif
 %endif
 %endif

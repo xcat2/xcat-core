@@ -21,7 +21,10 @@ function loadXcatMon() {
             args : 'monsetting',
             msg : ''
         },
-        success : loadXcatMonSetting
+        success : function(data) {
+            data = decodeRsp(data);
+            loadXcatMonSetting(data);
+        }
     });
 }
 
@@ -30,7 +33,7 @@ function loadXcatMonSetting(data) {
     var rsp = data.rsp;
     if (!rsp.length)
     	return;
-    
+
     var apps_flag = 0;
     var ping; // xcatmon ping interval
     var ping_flag = 0;
@@ -163,7 +166,7 @@ function loadXcatMonSetting(data) {
         ping = rsp[0].split(',');
         ping[0] = "xcatmon";
         ping[1] = "ping-interval";
-        
+
         // Set default ping-interval setting to 5
         ping[2] = "5";
         ping[3] = "";
@@ -257,7 +260,7 @@ function loadXcatMonSetting(data) {
         // Get datatable rows
         var dRows = dTable.fnGetNodes();
         var count = 0;
-        
+
         // Create a new container for the apps value
         var appValue = '';
         var tableName = 'monsetting';
@@ -289,7 +292,7 @@ function loadXcatMonSetting(data) {
                 vals.push('');
                 vals.push('');
                 vals.unshift('xcatmon');
-                
+
                 // Stored new column to newCont
                 newCont[i + 1] = vals;
 
@@ -312,7 +315,7 @@ function loadXcatMonSetting(data) {
         }
 
         count++;
-        
+
         // Delete the last comma of the apps value
         appValue = appValue.substring(0, (appValue.length - 1));
         apps[2] = appValue;
@@ -328,12 +331,12 @@ function loadXcatMonSetting(data) {
         // Create save dialog
         var dialogSave = $('<div id="saveDialog" align="center">Saving configuration</div>');
         dialogSave.append(createLoader());
-        
+
         $('#xcatmon').append(dialogSave);
         $("#saveDialog").dialog({
             modal : true
         });
-        
+
         $('.ui-dialog-titlebar-close').hide();
         $.ajax({
             type : 'POST',
@@ -344,6 +347,7 @@ function loadXcatMonSetting(data) {
                 cont : newCont
             },
             success : function(data) {
+                // do not put in until tabRestore.php has been updated: data = decodeRsp(data);
                 // empty the dialog.add the close button
                 $("#saveDialog").empty().append('<p>Configuration saved!</p>');
                 $("#saveDialog").append(closeBtn);

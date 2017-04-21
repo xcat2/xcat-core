@@ -44,6 +44,7 @@ use xCAT::zvmUtils;
 my $version = "1";
 
 my $comments = '';                     # Comments for the IVP run
+my $dataFile = '';                     # Input data file
 my $decode = '';                       # String specified by the --decode operand.
 my $disable = '';                      # Disable scheduled IVP from running.
 my $displayHelp = 0;                   # Display help information
@@ -56,6 +57,8 @@ my %hosts;                             # Information on host nodes known by xCAT
 my $id = '';                           # Id of the IVP run
 my %ignored;                           # List of ignored messages
 my $ignoreCnt = 0;                     # Number of times we ignored a message
+my $issueCmdOverIUCV = '';             # Issue a command to a node over IUCV
+my $issueCmdToNode = '';               # Issue a command to a node using IUCV or SSH
 my %localIPs;                          # Hash of the Local IP addresses for the xCAT MN system
 my $logDir = '/var/log/xcat/ivp';      # Log location
 my $logFile = '';                      # Log file name and location
@@ -63,7 +66,7 @@ my $logFileHandle;                     # File handle for the log file.
 my @ivpSummary;                        # Summary output lines for an IVP run.
 my $locApplSystemRole = '/var/lib/sspmod/appliance_system_role';
 my %mnInfo;                            # Managed node environment information
-my %msgsToIgnore;            # Hash of messages to ignore
+my %msgsToIgnore;                      # Hash of messages to ignore
 my $needToFinishLogFile = 0;           # If 1 then finishLogFile() needs to be called
 my $nodeName = '';                     # Name of node to be verified
 my $notify = 0;                        # Notify a user
@@ -112,6 +115,14 @@ my %verifySets = (
          [ 'Encoding a string',
            'encodeDecodeString()',
          ],
+    '$issueCmdOverIUCV ne \'\'' =>
+         [ 'Issue a command to a node using IUCV',
+           'cmdOnVM( \'onlyIUCV\' )',
+         ],
+    '$issueCmdToNode ne \'\'' =>
+         [ 'Issue a command to a node using IUCV or SSH',
+           'cmdOnVM( \'either\' )',
+         ],
     '$remove' =>
          [ 'Remove an automated periodic IVP',
            'removeIVP( $id )',
@@ -159,7 +170,7 @@ my %verifySets = (
            'verifyPower( $nodeName )',
            'verifyAccess( $nodeName )',
            'getDistro( $nodeName )',
-           'verifyService($nodeOrIP, "cloud-config,2,3,4,5 cloud-final,2,3,4,5 cloud-init,2,3,4,5 cloud-init-local,2,3,4,5")',
+           'verifyService($nodeName, "cloud-config,2,3,4,5 cloud-final,2,3,4,5 cloud-init,2,3,4,5 cloud-init-local,2,3,4,5")',
            'showCILevel()',
          ],
     '$verifyXcatconf4z' =>
@@ -167,7 +178,7 @@ my %verifySets = (
            'verifyPower( $nodeName )',
            'verifyAccess( $nodeName )',
            'getDistro( $nodeName )',
-           'verifyXcatconf4z()',
+           'verifyXcatconf4z( $nodeName )',
          ],
     '$test' =>
          [ 'Script test functon.',
@@ -193,6 +204,14 @@ my $usage_string = "Usage:\n
       --capturereqs
                           Verify that node meets system capture
                           requirements for OpenStack.
+      --cmdoveriucv <cmd>
+                          Issue a command to a node using IUCV.
+                          Specify a period for <cmd> when combining this
+                          option with the --file option.
+      --cmdtonode <cmd>   Issue a command to a node using IUCV or SSH
+                          if IUCV is not available.
+                          Specify a period for <cmd> when combining this
+                          option with the --file option.
       -c | --cloudinit
                           Verify that node has cloud-init installed.
       --comments
@@ -214,6 +233,9 @@ my $usage_string = "Usage:\n
                           string from the zvmivp table. The <parm> must be
                           an ASCII string.  This function does not support
                           encoding a UTF-8 character string.
+      --file              File location containing additional input.
+                          When used with the --cmdoveriucv or --cmdtonode
+                          operands, this file contains the command to issue.
       --fullivp
                           Run the full end-to-end IVP.  This
                           verification checks the compute node and builds
@@ -376,6 +398,127 @@ sub checkForDefault {
         }
     }
 
+    return $rc;
+}
+
+
+#-------------------------------------------------------
+
+=head3   cmdOnVM
+
+    Description : Send a command to a node and show the result.
+    Arguments   : Target function, either 'onlyIUCV' or 'either'.
+    Returns     : Return code:
+                      0 - Normal Linux success
+                      255 - Unable to SSH to system
+                      non-zero - command error
+                  Output from the command or a error string on an SSH failure.
+    Example     : $rc = cmdOnVM( 'onlyIUCV' );
+                  $rc = cmdOnVM( 'either' );
+
+=cut
+
+#-------------------------------------------------------
+sub cmdOnVM {
+    my ( $targetFunc ) = @_;
+    my $cmd = '';
+    my $hcp = '';
+    my @lines;
+    my $rc = 0;
+    my $out = '';
+    my $sudo;
+    my $user;
+    my $userid = '';
+
+    # Get the command to issue.
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        if ( $issueCmdOverIUCV ne '.' ) {
+            $cmd = $issueCmdOverIUCV;
+        }
+    } else {
+        if ( $issueCmdToNode ne '.' ) {
+            $cmd = $issueCmdToNode;
+        }
+    }
+
+    # Use the data file if it was specified.
+    if ( $dataFile ne '' ) {
+        if ( -e $dataFile ) {
+            open my $handle, '<', $dataFile;
+            chomp( @lines = <$handle> );
+            close $handle;
+            if ( $lines[0] ne '' ) {
+                $cmd = $lines[0];
+            } else {
+                logResponse( 'DF', 'GENERIC_RESPONSE', "$dataFile does not have anything in the first line.");
+                goto FINISH_cmdUsingIUCV;
+            }
+        } else {
+            logResponse( 'DF', 'GENERIC_RESPONSE', "$dataFile does not exist.");
+            goto FINISH_cmdUsingIUCV;
+        }
+    }
+
+    # Verify that we have a command to issue.
+    if ( $cmd eq '' ) {
+        logResponse( 'DF', 'GENERIC_RESPONSE', "A command to issue was not specified.");
+        goto FINISH_cmdUsingIUCV;
+    }
+
+    ($user, $sudo) = xCAT::zvmUtils->getSudoer();
+
+    # Get the required properties (hcp, userid, user) from the node
+    $out = `/opt/xcat/bin/lsdef $nodeName -i hcp,userid`;
+    $rc = $?;
+    if ( $rc eq 0 ) {
+        my $fndNode = 0;
+        @lines = split( '\n', $out );
+        my $host = '';
+        foreach my $line ( @lines ) {
+            $line =~ s/^\s+|\s+$//g;         # trim blanks from both ends of the string
+            if ( $line =~ /Object name:/ ) {
+                $fndNode = 1;
+                next;
+            } elsif ( $line =~ /hcp\=/ ) {
+                ($hcp) = $line =~ m/hcp\=(.*)/;
+                next;
+            } elsif ( $line =~ /userid\=/ ) {
+                ($userid) = $line =~ m/userid\=(.*)/;
+                next;
+            }
+        }
+        if ( $fndNode != 1 ) {
+            logResponse( 'DF', 'GENERIC_RESPONSE', "'$nodeName' is not an xCAT node." );
+            goto FINISH_cmdUsingIUCV;
+        }
+    } else {
+        $rc = logResponse( 'DFS', 'GNRL01', "$cmd", $rc, $out );
+        goto FINISH_cmdUsingIUCV;
+    }
+
+    # Send the command through IUCV
+    logResponse( 'DF', '*NONFORMATTED*', "\n**************************\nData for the function call\n**************************" );
+    logResponse( 'DF', '*NONFORMATTED*',  "       Node: $nodeName" );
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        logResponse( 'DF', '*NONFORMATTED*',  "z/VM userid: $userid" );
+        logResponse( 'DF', '*NONFORMATTED*',  "        HCP: $hcp" );
+        logResponse( 'DF', '*NONFORMATTED*',  "       User: $user" );
+        logResponse( 'DF', '*NONFORMATTED*',  "   Function: xCAT::zvmUtils->execcmdthroughIUCV" );
+    } else {
+        logResponse( 'DF', '*NONFORMATTED*',  "       User: $user" );
+        logResponse( 'DF', '*NONFORMATTED*',  "   Function: xCAT::zvmUtils->execcmdonVM" );
+    }
+    logResponse( 'DF', '*NONFORMATTED*', "        Cmd: $cmd" );
+
+    logResponse( 'DF', '*NONFORMATTED*', "\n*********************\nInvoking the function\n*********************" );
+    if ( $targetFunc eq 'onlyIUCV' ) {
+        $out = xCAT::zvmUtils->execcmdthroughIUCV( $user, $hcp, $userid, $cmd );
+    } else {
+        $out = xCAT::zvmUtils->execcmdonVM( $user, $nodeName, $cmd );
+    }
+    logResponse( 'DF', '*NONFORMATTED*', "\n******\nResult\n******\n$out" );
+
+FINISH_cmdUsingIUCV:
     return $rc;
 }
 
@@ -2590,7 +2733,7 @@ FINISH_verifyService:
 
     Description : Verify xcatconf4z is properly installed
                   and is the correct version.
-    Arguments   : None
+    Arguments   : Node name or IP address
     Returns     : 0 - No error
                   non-zero - Terminating error detected.
     Example     : $rc = verifyXcatconf4z();
@@ -2695,10 +2838,13 @@ if (!GetOptions(
          'disable'         => \$disable,
          'enable'          => \$enable,
          'encode=s'        => \$encode,
+         'file=s'          => \$dataFile,
          'fullivp'         => \$runFullIVP,
          'h|help'          => \$displayHelp,
          'i|id=s'          => \$id,
          'ignore=s'        => \$ignoreOpt,
+         'cmdoveriucv=s'   => \$issueCmdOverIUCV,
+         'cmdtonode=s'     => \$issueCmdToNode,
          'n|node=s'        => \$nodeName,
          'notify'          => \$notifyOnErrorOrWarning,
          'openstackuser=s' => \$openstackUser,
@@ -2810,9 +2956,7 @@ if ( $decode ne '' or
      $remove or
      $schedule ne '' ) {
     # IVP runs do not need the node.
-} elsif ( $nodeName ne '' ) {
-    $nodeName = lc( $nodeName );
-} else {
+} elsif ( $nodeName eq '' ) {
     $rc = logResponse( 'DFS', 'OPER01', '-n or --node' );
     goto FINISH_main;
 }

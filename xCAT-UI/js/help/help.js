@@ -21,7 +21,7 @@ function loadHelpPage(){
  *
  * @return Tab object
  */
-function createHelpTab(){
+function createHelpTab() {
     // Create help tab
     var tab = new Tab();
     setHelpTab(tab);
@@ -219,48 +219,44 @@ function createVerifyXCATTab() {
                   + '</div>' ));
     fs.append( $('<div id=divAutoParms>'
                     + '<span style="font-weight:bold">Automation Parameters:</span><br>'
-                    +
-               '<table style="border: 0pm none; text-align: left;">'+
-               '<tr>'+
-               '<td style="background-color:rgb(220,220,220)"><span style="font-weight:bold">Schedule</span></td>'+
-               '<td><input type="checkbox" value="24" name="ivpSchedule" onclick="everyHourClick(this)">Every hour</td>'+
-               '</tr><tr>'+
-               '<td><input type="checkbox" value="0" name="ivpSchedule" onclick="hourClick(this)">Midnight</td>'
-                    +
-               '<td><input type="checkbox" value="1" name="ivpSchedule" onclick="hourClick(this)">1 am</td>'+
-               '<td><input type="checkbox" value="2" name="ivpSchedule" onclick="hourClick(this)">2 am</td>'+
-               '<td><input type="checkbox" value="3" name="ivpSchedule" onclick="hourClick(this)">3 am</td>'+
-               '<td><input type="checkbox" value="4" name="ivpSchedule" onclick="hourClick(this)">4 am</td>'+
-               '<td><input type="checkbox" value="5" name="ivpSchedule" onclick="hourClick(this)">5 am</td>'+
-               '</tr><tr></td>'+
-               '<td><input type="checkbox" value="6" name="ivpSchedule" onclick="hourClick(this)">6 am</td>'+
-               '<td><input type="checkbox" value="7" name="ivpSchedule" onclick="hourClick(this)">7 am</td>'+
-               '<td><input type="checkbox" value="8" name="ivpSchedule" onclick="hourClick(this)">8 am</td>'+
-               '<td><input type="checkbox" value="9" name="ivpSchedule" onclick="hourClick(this)">9 am</td>'+
-               '<td><input type="checkbox" value="10" name="ivpSchedule" onclick="hourClick(this)">10 am</td>'+
-               '<td><input type="checkbox" value="11" name="ivpSchedule" onclick="hourClick(this)">11 am</td>'+
-               '</tr><tr></td>'+
-               '<td><input type="checkbox" value="12" name="ivpSchedule" onclick="hourClick(this)">Noon</td>'
-                    +
-               '<td><input type="checkbox" value="13" name="ivpSchedule" onclick="hourClick(this)">1 pm</td>'+
-               '<td><input type="checkbox" value="14" name="ivpSchedule" onclick="hourClick(this)">2 pm</td>'+
-               '<td><input type="checkbox" value="15" name="ivpSchedule" onclick="hourClick(this)">3 pm</td>'+
-               '<td><input type="checkbox" value="16" name="ivpSchedule" onclick="hourClick(this)">4 pm</td>'+
-               '<td><input type="checkbox" value="17" name="ivpSchedule" onclick="hourClick(this)">5 pm</td>'+
-               '</tr><tr></td>'+
-               '<td><input type="checkbox" value="18" name="ivpSchedule" onclick="hourClick(this)">6 pm</td>'+
-               '<td><input type="checkbox" value="19" name="ivpSchedule" onclick="hourClick(this)">7 pm</td>'+
-               '<td><input type="checkbox" value="20" name="ivpSchedule" onclick="hourClick(this)">8 pm</td>'+
-               '<td><input type="checkbox" value="21" name="ivpSchedule" onclick="hourClick(this)">9 pm</td>'+
-               '<td><input type="checkbox" value="22" name="ivpSchedule" onclick="hourClick(this)">10 pm</td>'+
-               '<td><input type="checkbox" value="23" name="ivpSchedule" onclick="hourClick(this)">11 pm</td>'+
-               '</tr>'+
-               '</table>'
+                    + '<table style="border: 0pm none; text-align: left;">'
+                    + '<tr>'
+                    + '<td style="background-color:rgb(220,220,220)"><span style="font-weight:bold">Schedule</span></td>'
+                    + '<td><input type="checkbox" value="24" name="ivpSchedule" onclick="everyHourClick(this)">Every hour</td>'
+                    + '</tr><tr>'
+                    + '<td><input type="checkbox" value="0" name="ivpSchedule" onclick="hourClick(this)">Midnight</td>'
+                    + '<td><input type="checkbox" value="1" name="ivpSchedule" onclick="hourClick(this)">1 am</td>'
+                    + '<td><input type="checkbox" value="2" name="ivpSchedule" onclick="hourClick(this)">2 am</td>'
+                    + '<td><input type="checkbox" value="3" name="ivpSchedule" onclick="hourClick(this)">3 am</td>'
+                    + '<td><input type="checkbox" value="4" name="ivpSchedule" onclick="hourClick(this)">4 am</td>'
+                    + '<td><input type="checkbox" value="5" name="ivpSchedule" onclick="hourClick(this)">5 am</td>'
+                    + '</tr><tr></td>'
+                    + '<td><input type="checkbox" value="6" name="ivpSchedule" onclick="hourClick(this)">6 am</td>'
+                    + '<td><input type="checkbox" value="7" name="ivpSchedule" onclick="hourClick(this)">7 am</td>'
+                    + '<td><input type="checkbox" value="8" name="ivpSchedule" onclick="hourClick(this)">8 am</td>'
+                    + '<td><input type="checkbox" value="9" name="ivpSchedule" onclick="hourClick(this)">9 am</td>'
+                    + '<td><input type="checkbox" value="10" name="ivpSchedule" onclick="hourClick(this)">10 am</td>'
+                    + '<td><input type="checkbox" value="11" name="ivpSchedule" onclick="hourClick(this)">11 am</td>'
+                    + '</tr><tr></td>'
+                    + '<td><input type="checkbox" value="12" name="ivpSchedule" onclick="hourClick(this)">Noon</td>'
+                    + '<td><input type="checkbox" value="13" name="ivpSchedule" onclick="hourClick(this)">1 pm</td>'
+                    + '<td><input type="checkbox" value="14" name="ivpSchedule" onclick="hourClick(this)">2 pm</td>'
+                    + '<td><input type="checkbox" value="15" name="ivpSchedule" onclick="hourClick(this)">3 pm</td>'
+                    + '<td><input type="checkbox" value="16" name="ivpSchedule" onclick="hourClick(this)">4 pm</td>'
+                    + '<td><input type="checkbox" value="17" name="ivpSchedule" onclick="hourClick(this)">5 pm</td>'
+                    + '</tr><tr></td>'
+                    + '<td><input type="checkbox" value="18" name="ivpSchedule" onclick="hourClick(this)">6 pm</td>'
+                    + '<td><input type="checkbox" value="19" name="ivpSchedule" onclick="hourClick(this)">7 pm</td>'
+                    + '<td><input type="checkbox" value="20" name="ivpSchedule" onclick="hourClick(this)">8 pm</td>'
+                    + '<td><input type="checkbox" value="21" name="ivpSchedule" onclick="hourClick(this)">9 pm</td>'
+                    + '<td><input type="checkbox" value="22" name="ivpSchedule" onclick="hourClick(this)">10 pm</td>'
+                    + '<td><input type="checkbox" value="23" name="ivpSchedule" onclick="hourClick(this)">11 pm</td>'
+                    + '</tr>'
+                    + '</table>'
                     + '<p>'
                     + '<label>Name:</label><input type="text" size="80" id="comments" name="comments" value="'+comments+'" title="Name of the automated IVP run"/><br>'
                     + '<input type="checkbox" value="disabled" name="disableRun">Disable this run'
-                  +
-               '</div>'));
+                  + '</div>'));
     verifyXCATForm.append( fs );
     verifyXCATForm.find('#' + divFullParms).hide();
 
@@ -340,7 +336,10 @@ function createVerifyXCATTab() {
                     args : 'verifynode '+ argList,
                     msg  : 'out=' + statBarId + ';cmd=verifynode'
                 },
-                success : updateStatusBar
+                success : function(data) {
+                    data = decodeRsp(data);
+                    updateStatusBar(data);
+                }
             });
 
             // Show status bar
@@ -403,13 +402,13 @@ function createVerifyXCATTab() {
         if ( everyHourChecked ) {
             ivpSchedule = '0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23';
         } else {
-        for ( var i=0, n=checkboxes.length; i<n; i++ )
-        {
-            if ( checkboxes[i].checked )
+            for ( var i=0, n=checkboxes.length; i<n; i++ )
             {
-                ivpSchedule += " " + checkboxes[i].value;
+                if ( checkboxes[i].checked )
+                {
+                    ivpSchedule += " " + checkboxes[i].value;
+                }
             }
-        }
         }
         if ( ivpSchedule != '' ) {
             argList += '||--schedule \'' + ivpSchedule + '\'';
@@ -457,8 +456,9 @@ function createVerifyXCATTab() {
                     args : 'verifynode '+ argList,
                     msg  : 'out=' + statBarId + ';cmd=verifynode;ivpId=' + ivpId
                 },
-                success : function(data) {
-                    updateStatusBar(data);
+                success : function( data ) {
+                    data = decodeRsp(data);
+                    updateStatusBar( data );
                     var args = data.msg.split(';');
                     var ivpId = '';
                     for ( var i=0; i < args.length; i++ ) {
@@ -509,8 +509,9 @@ function createVerifyXCATTab() {
                     args : 'verifynode '+ argList,
                     msg  : 'out=' + statBarId + ';cmd=verifynode'
                 },
-                success : function(data) {
-                    updateStatusBar(data);
+                success : function( data ) {
+                    data = decodeRsp(data);
+                    updateStatusBar( data );
                     readIvpTable( 'NEW' );
                 }
             });
@@ -522,6 +523,7 @@ function createVerifyXCATTab() {
     verifyXCATForm.append( removeBtn );
 
     tab.add( xcatVerTabId, 'Verify xCAT', verifyXCATForm, false );
+
 }
 
 
@@ -532,7 +534,7 @@ function createVerifyXCATTab() {
  */
 function everyHourClick( cb ) {
     if ( cb.checked ) {
-        for (var i = 0; i <= 23; i++){
+        for (var i = 0; i <= 23; i++) {
             var thisField = $( '#' + xcatVerTabId + ' input[name=ivpSchedule][value='+i+']' );
             thisField.attr( 'checked', true );
         }
@@ -616,7 +618,7 @@ function hourClick( cb ) {
 function readIvpTable( ivpId ) {
     if ( typeof console == "object" ) {
         console.log( "Entering readIvpTable(" + ivpId + ")" );
-}
+    }
 
     // Get IVP information
     $.ajax( {
@@ -630,6 +632,7 @@ function readIvpTable( ivpId ) {
         },
 
         success : function( data ) {
+            data = decodeRsp(data);
             setArrays( data );
             var ivpId = data.msg.replace('ivpId=', '');
             setVarsForId( ivpId );
@@ -643,8 +646,8 @@ function readIvpTable( ivpId ) {
  *
  * @param data Data from HTTP request
  */
-function setArrays(data) {
-    if ( typeof console == "object" ) {
+function setArrays( data ) {
+    if ( typeof console == "object" ){
         console.log( "Entering setArrays(" + data.rsp + ")" );
     }
 
@@ -860,9 +863,9 @@ function setVarsForId( id ) {
         thisField = $( '#' + xcatVerTabId + ' input[name=ivpSchedule][value=24]' );
         thisField.attr( 'checked', true );
     } else {
-            thisField = $( '#' + xcatVerTabId + " input[name=ivpSchedule][value=24]" );
-            thisField.attr( 'checked', false );
-        }
+        thisField = $( '#' + xcatVerTabId + " input[name=ivpSchedule][value=24]" );
+        thisField.attr( 'checked', false );
+    }
 
     thisField = $( '#' + xcatVerTabId + ' input[name=comments]' );
     thisField.val( selectInfo[id]['comments'] );
