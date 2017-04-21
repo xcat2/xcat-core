@@ -188,7 +188,9 @@ cmd: mkdef "__GETNODEATTR($$CN,os)__-x86_64-install-compute" -u profile=compute 
 check:rc==0
 cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-x86_64-install-compute
 check:rc==0
-cmd:find -L /tftpboot -name '*testnode1*' -exec cat {} + | grep "rd.break=pre-pivot" 
+cmd:grep "rd.break=pre-pivot" /tftpboot/xcat/xnba/nodes/testnode1
+check:rc==0
+cmd:grep "rd.break=pre-pivot" /tftpboot/xcat/xnba/nodes/testnode1.elilo
 check:rc==0
 cmd:noderm testnode1
 cmd:rmdef -t osimage -o "__GETNODEATTR($$CN,os)__-x86_64-install-compute"
