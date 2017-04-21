@@ -1,7 +1,7 @@
 Manually Define Nodes
 =====================
 
-**Manually Define Node** means if admin knows the detailed information of the physical server, ``mkdef`` command can be used to manually define it into xCAT database..
+If admin knows the detailed information of the physical server, ``mkdef`` command can be used to manually define it into xCAT database.
 
 In this document, the following configuration is used as an example
 
