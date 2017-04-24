@@ -1,4 +1,4 @@
-start:xdcp_github_issue2637
+start:xdcp_nonroot_user
 cmd:useradd -m xyzzy
 check:rc==0
 cmd:( cd ~ && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )
