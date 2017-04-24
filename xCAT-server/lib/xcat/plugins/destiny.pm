@@ -26,7 +26,6 @@ my $errored = 0;
 #DESTINY SCOPED GLOBALS
 my $chaintab;
 my $iscsitab;
-my $bptab;
 my $typetab;
 my $restab;
 
@@ -94,6 +93,7 @@ sub setdestiny {
     my $noupdate = shift;
     $chaintab = xCAT::Table->new('chain', -create => 1);
     my @nodes = @{ $req->{node} };
+    my $bphash = $req->{bootparams};
 
     @ARGV = @{ $req->{arg} };
     my $noupdateinitrd;
@@ -113,6 +113,17 @@ sub setdestiny {
 
     my $state = $ARGV[0];
     my $reststates;
+
+    my $bptab = xCAT::Table->new('bootparams', -create => 1);
+    my %tempbh = %{ $bptab->getNodesAttribs(\@nodes, [qw(addkcmdline)]) };
+    while(my ($key, $value) = each(%tempbh)) {
+        if ($value && $value->[0]->{"addkcmdline"}) {
+            my $addkcmdline = $value->[0]->{"addkcmdline"};
+            # $key is node name
+            $bphash->{$key}->[0]->{"addkcmdline"} = $addkcmdline;
+        }
+    }
+    $bptab->close();
 
     # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
     ($state, $reststates) = split(/,/, $state, 2);
@@ -157,7 +168,6 @@ sub setdestiny {
         unless ($iscsitab) {
             $callback->({ error => "Unable to open iscsi table to get iscsiboot parameters", errorcode => [1] });
         }
-        my $bptab = xCAT::Table->new('bootparams', -create => 1);
         my $nodetype = xCAT::Table->new('nodetype');
         my $ntents = $nodetype->getNodesAttribs($req->{node}, [qw(os arch profile)]);
         my $ients = $iscsitab->getNodesAttribs($req->{node}, [qw(kernel kcmdline initrd)]);
@@ -168,11 +178,9 @@ sub setdestiny {
                 unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) { $callback->({ error => "$_: No iscsi boot data available", errorcode => [1] }); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
                 next;
             }
-            my $hash;
-            $hash->{kernel} = $ient->{kernel};
-            if ($ient->{initrd})   { $hash->{initrd}   = $ient->{initrd} }
-            if ($ient->{kcmdline}) { $hash->{kcmdline} = $ient->{kcmdline} }
-            $bptab->setNodeAttribs($_, $hash);
+            $bphash->{kernel} = $ient->{kernel};
+            if ($ient->{initrd})   { $bphash->{initrd}   = $ient->{initrd} }
+            if ($ient->{kcmdline}) { $bphash->{kcmdline} = $ient->{kcmdline} }
         }
     } elsif ($state =~ /^install[=\$]/ or $state eq 'install' or $state =~ /^netboot[=\$]/ or $state eq 'netboot' or $state eq "image" or $state eq "winshell" or $state =~ /^osimage/ or $state =~ /^statelite/) {
         my %state_hash;
@@ -389,17 +397,16 @@ sub setdestiny {
             $subreq->({ command => ["mk$tempstate"],
                     node            => $samestatenodes,
                     noupdateinitrd  => $noupdateinitrd,
-                    ignorekernelchk => $ignorekernelchk, }, \&relay_response);
+                    ignorekernelchk => $ignorekernelchk,
+                    bootparams => \$bphash}, \&relay_response);
             if ($errored) {
-                my @myself = xCAT::NetworkUtils->determinehostname();
-                my $myname = $myself[ (scalar @myself) - 1 ];
-                # The callback function point to xcatd::build_response, it use dclone to clone data, but it can only accept a reference. The error msg here is a simple string, and will cause dclone failed. Seems to be string array can be used by dclone.
-                $callback->({ errorcode => [1], error => ["Some nodes failed to set up $state resources on server $myname, aborting"] });
+                # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
                 return;
             }
 
 
             my $ntents = $nodetypetable->getNodesAttribs($samestatenodes, [qw(os arch profile)]);
+            my $updates;
             foreach (@{$samestatenodes}) {
                 $nstates{$_} = $tempstate; #local copy of state variable for mod
                 my $ntent = $ntents->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(os arch profile)]);
@@ -419,9 +426,10 @@ sub setdestiny {
                     } else { $errored = 1; $callback->({ errorcode => [1], error => "nodetype.profile not defined for $_" }); }
                 }
                 if ($errored) { return; }
-
-                #statelite
-                unless ($tempstate =~ /^netboot|^statelite/) { $chaintab->setNodeAttribs($_, { currchain => "boot" }); }
+                $updates->{$_}->{'currchain'} = "boot";
+            }
+            unless ($tempstate =~ /^netboot|^statelite/) {
+                $chaintab->setNodesAttribs($updates);
             }
 
             if ($action eq "reboot4deploy") {
@@ -437,7 +445,6 @@ sub setdestiny {
         }
     } elsif ($state eq "shell" or $state eq "standby" or $state =~ /^runcmd/ or $state =~ /^runimage/) {
         $restab = xCAT::Table->new('noderes', -create => 1);
-        my $bootparms = xCAT::Table->new('bootparams', -create => 1);
         my $nodetype = xCAT::Table->new('nodetype');
 
         #my $sitetab = xCAT::Table->new('site');
@@ -509,18 +516,18 @@ sub setdestiny {
                     }
                 }
                 if (-r "$tftpdir/xcat/genesis.fs.$arch.$bestsuffix") {
-                    $bootparms->setNodeAttribs($_, { kernel => "xcat/genesis.kernel.$arch",
-                            initrd => "xcat/genesis.fs.$arch.$bestsuffix",
-                            kcmdline => $kcmdline . "xcatd=$master:$xcatdport destiny=$state" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$bestsuffix";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
                 } else {
-                    $bootparms->setNodeAttribs($_, { kernel => "xcat/genesis.kernel.$arch",
-                            initrd => "xcat/genesis.fs.$arch.$othersuffix",
-                            kcmdline => $kcmdline . "xcatd=$master:$xcatdport destiny=$state" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$othersuffix";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
                 }
             } else {    #'legacy' environment
-                $bootparms->setNodeAttribs($_, { kernel => "xcat/nbk.$arch",
-                        initrd   => "xcat/nbfs.$arch.gz",
-                        kcmdline => $kcmdline . "xcatd=$master:$xcatdport" });
+                    $bphash->{$_}->[0]->{kernel} = "xcat/nbk.$arch";
+                    $bphash->{$_}->[0]->{initrd} = "xcat/nkfs.$arch.gz";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport";
             }
         }
 
@@ -603,18 +610,20 @@ sub setdestiny {
     }
 
     if ($noupdate) { return; }    #skip table manipulation if just doing 'enact'
+    my $updates;
     foreach (@nodes) {
         my $lstate = $state;
         if ($nstates{$_}) {
             $lstate = $nstates{$_};
         }
-        $chaintab->setNodeAttribs($_, { currstate => $lstate });
+        $updates->{$_}->{'currstate'} = $lstate;
 
         # if there are multiple actions in the state argument, set the rest of states (shift out the first one)
         # to chain.currchain so that the rest ones could be used by nextdestiny command
         if ($reststates) {
-            $chaintab->setNodeAttribs($_, { currchain => $reststates });
+            $updates->{$_}->{'currchain'} = $reststates;
         }
+        $chaintab->setNodesAttribs($updates);
     }
     return getdestiny($flag + 1);
 }
@@ -747,7 +756,7 @@ sub getdestiny {
     my $chaintab = xCAT::Table->new('chain');
     my $chainents = $chaintab->getNodesAttribs(\@nodes, [qw(currstate chain)]);
     my $nrents = $restab->getNodesAttribs(\@nodes, [qw(tftpserver xcatmaster)]);
-    $bptab = xCAT::Table->new('bootparams', -create => 1);
+    my $bptab = xCAT::Table->new('bootparams', -create => 1);
     my $bpents = $bptab->getNodesAttribs(\@nodes, [qw(kernel initrd kcmdline xcatmaster)]);
 
     #my $sitetab= xCAT::Table->new('site');

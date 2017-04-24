@@ -21,7 +21,7 @@ prsync - parallel rsync
 
 \ **prsync**\  \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
 
-\ **prsync**\   [\ **-o**\  \ *rsync options*\ ] [\ **-f**\  \ *fanout*\ ] [\ *filename*\  \ *filename*\  \ *...*\ ] [\ *directory*\  \ *directory*\  \ *...*\ ]
+\ **prsync**\   [\ **-o**\  \ *rsyncopts*\ ] [\ **-f**\  \ *fanout*\ ] [\ *filename*\  \ *filename*\  \ *...*\ ] [\ *directory*\  \ *directory*\  \ *...*\ ]
 \ *noderange:destinationdirectory*\ 
 
 \ **prsync**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
@@ -32,11 +32,9 @@ prsync - parallel rsync
 *******************
 
 
-\ **prsync**\  is a front-end to rsync for a single or range  of  nodes  and/or
-groups in parallel.
+\ **prsync**\  is a front-end to rsync for a single or range of nodes and/or groups in parallel.
 
-Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node. It does not support hierarchy, use xdcp -F to run rsync from the
-management node to the compute node via a service node
+Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node. It does not support hierarchy, use \ **xdcp -F**\  to run rsync from the management node to the compute node via a service node
 
 \ **prsync**\  is NOT multicast, but is parallel unicasts.
 
@@ -47,7 +45,7 @@ management node to the compute node via a service node
 
 
 
-\ *rsyncopts*\ 
+\ **-o**\  \ *rsyncopts*\ 
  
  rsync options.  See \ **rsync(1)**\ .
  
@@ -55,8 +53,7 @@ management node to the compute node via a service node
 
 \ **-f**\  \ *fanout*\ 
  
- Specifies a fanout value for the maximum number of  concur-
- rently  executing  remote shell processes.
+ Specifies a fanout value for the maximum number of concurrently executing remote shell processes.
  
 
 

@@ -44,7 +44,7 @@ sub delnode
     while ($idx <= $#hosts)
     {
         if (($ip and $hosts[$idx] =~ /^${ip}\s/)
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/)
+            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
         {
             $hosts[$idx] = "";
         }
@@ -74,7 +74,7 @@ sub addnode
     {
 
         if ($hosts[$idx] =~ /^${ip}\s/
-            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/)
+            or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
         {
             if ($foundone)
             {
@@ -87,13 +87,10 @@ sub addnode
 
                     # we're processing the nics table and we found an
                     #   existing entry for this ip so just add this
-                    # ode name as an alias for the existing entry
+                    # node name as an alias for the existing entry
                     chomp($hosts[$idx]);
                     my ($hip, $hnode, $hdom, $hother) = split(/ /, $hosts[$idx]);
 
-                    # at this point "othernames", if any is just a space
-                    # elimited list - so just add the node name to the list
-                    $othernames .= " $node";
                     $hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
                 } else {
 

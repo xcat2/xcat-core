@@ -149,16 +149,21 @@ sub crypt_system_password {
             "ERROR: Unable to get password from database table $table, key=$key");
         return undef;
     }
-    $cryptmethod = $data->{'cryptmethod'};
-    if (!$cryptmethod) {
-        # Use sha256 crypt method by default
-        $result = crypt($password, $CRYPT_METHOD{'sha256'} . xCAT::Utils::genpassword(8));
-    } elsif( defined($CRYPT_METHOD{$cryptmethod})) {
-        $result = crypt($password,
-            $CRYPT_METHOD{$cryptmethod} . xCAT::Utils::genpassword(8));
+    if (($password =~ /^\$1\$/) || ($password =~ /^\$5\$/) || ($password =~ /^\$6\$/)) {
+        # $password is already hashed
+        $result = $password;
     } else {
-        xCAT::MsgUtils->message("S", "Unsupported crypt method $cryptmethod");
-        return undef;
+        $cryptmethod = $data->{'cryptmethod'};
+        if (!$cryptmethod) {
+            # Use sha256 crypt method by default
+            $result = crypt($password, $CRYPT_METHOD{'sha256'} . xCAT::Utils::genpassword(8));
+        } elsif( defined($CRYPT_METHOD{$cryptmethod})) {
+            $result = crypt($password,
+                $CRYPT_METHOD{$cryptmethod} . xCAT::Utils::genpassword(8));
+        } else {
+            xCAT::MsgUtils->message("S", "Unsupported crypt method $cryptmethod");
+            return undef;
+        }
     }
     return $result;
 }

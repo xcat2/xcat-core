@@ -233,6 +233,12 @@ sub process_command {
     if (($command eq 'rpower') || ($command eq 'rnetboot')) {
         my $subcommand = "temp";
         if ($command eq 'rpower') { $subcommand = $request->{op}; }
+
+        #pdu commands will be handled in the pdu plugin
+        if(($subcommand eq 'pduoff') || ($subcommand eq 'pduon') || ($subcommand eq 'pdustat') || ($subcommand eq 'pdureset')){
+             return 0;
+        }
+
         if (($global_check) && ($subcommand ne 'stat') && ($subcommand ne 'status') && ($subcommand ne 'state')) {
             $check = 1;
             my $noderange = $request->{node};

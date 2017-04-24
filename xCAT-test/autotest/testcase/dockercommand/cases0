@@ -1,4 +1,4 @@
-start:rpower_stop
+start:rpower_stop_docker
 description:stop a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -25,7 +25,7 @@ check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
 end
-start:rpower_start
+start:rpower_start_docker
 description:start a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -50,7 +50,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 
-start:rpower_state
+start:rpower_state_docker
 description:get state of the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -82,7 +82,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 
-start:rpower_restart
+start:rpower_restart_docker
 description:restart a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -112,7 +112,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 
-start:rpower_pause
+start:rpower_pause_docker
 decription:pause all processes in the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -122,7 +122,7 @@ cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag=
 check:rc==0
 cmd:rpower $$DOCKERCN pause
 check:rc!=0
-check:output=~$$DOCKERCN: Error: Container
+check:output=~$$DOCKERCN: Error 
 cmd:rpower $$DOCKERCN start
 check:rc==0
 cmd:rpower $$DOCKERCN pause
@@ -139,7 +139,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 
-start:rpower_unpause
+start:rpower_unpause_docker
 description:unpause all processes in the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
@@ -223,7 +223,7 @@ cmd:rmdocker $$DOCKERCN
 check:rc==0
 cmd:lsdocker -l $$DOCKERCN
 check:rc!=0
-check:output=~ Error: No such container
+check:output=~$$DOCKERCN: Error
 cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN

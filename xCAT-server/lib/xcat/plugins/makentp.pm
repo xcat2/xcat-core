@@ -366,6 +366,7 @@ sub process_request {
         }
         if ($::RUNCMD_RC != 0) {
             send_msg(\%request, 1, "Error from command $cmd\n    $result.");
+            send_msg(\%request, 1, "Please check $ntp_master, make sure time is synced (can be validated by 'ntpq -p'), then rerun makentp command again ");
             return 1;
         }
     }

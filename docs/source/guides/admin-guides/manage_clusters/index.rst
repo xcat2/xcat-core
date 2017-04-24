@@ -11,3 +11,4 @@ The sections are organized based on hardware architecture.
 
    ppc64le/index.rst
    x86_64/index.rst
+   openbmc/index.rst

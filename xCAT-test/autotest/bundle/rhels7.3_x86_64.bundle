@@ -9,6 +9,7 @@ makehosts_h
 makehosts_help
 makehosts_n
 makehosts_n_noderange
+makehost_n_r
 chdef_null
 chdef_z
 chdef_t_o_error
@@ -198,6 +199,15 @@ xdsh_t
 xdsh_q
 xdsh_T
 xdsh_o
+psh_h
+psh_v
+psh_node_cmd_linux
+psh_l
+psh_i
+prsync_h
+prsync_v
+prsync_dir_node
+prsync_file_node
 switchdiscover_range_default
 switchdiscover_h
 switchdiscover_range_s

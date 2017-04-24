@@ -29,7 +29,7 @@ Vendor: IBM Corp.
 Summary: xCAT Genesis netboot image - Core content
 URL:	 https://xcat.org/
 Source1: xCAT-genesis-scripts.tar.bz2
-Requires: xCAT-genesis-base-%{tarch} >= 2:2.13.0
+Requires: xCAT-genesis-base-%{tarch} >= 2:2.13.2
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.

@@ -5,6 +5,7 @@ use File::Path;
 use Getopt::Long;
 use xCAT::Table;
 use Sys::Syslog;
+use xCAT::Scope;
 
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
@@ -460,12 +461,15 @@ sub process_request {
     if (exists($request->{inittime})) { $inittime = $request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
     $errored = 0;
+    my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
                 inittime => [$inittime],
-                arg      => \@args }, \&pass_along);
+                arg      => \@args,
+                bootparams => \%bphash},
+                \&pass_along);
     }
     if ($errored) { return; }
 
@@ -476,8 +480,6 @@ sub process_request {
                 arg  => ['default'] });
         xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): @nodes boot device setting.");
     }
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
-    my $bphash = $bptab->getNodesAttribs(\@nodes, [ 'kernel', 'initrd', 'kcmdline', 'addkcmdline' ]);
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
@@ -510,7 +512,7 @@ sub process_request {
             my $linuximghash = $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
 
 
-            ($rc, $errstr) = setstate($_, $bphash, $chainhash, $machash, $tftpdir, $nodereshash, $linuximghash);
+            ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nodereshash, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
                 $response{node}->[0]->{errorc}->[0]    = $errstr;
@@ -543,21 +545,14 @@ sub process_request {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
         if ($do_dhcpsetup) {
-            foreach my $node (@normalnodeset) {
-                if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => [$node],
-                            arg => ['-l'] }, $callback);
-
-                    #arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
-                } else {
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => [$node] }, $callback);
-
-                    #arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);
-                }
+            if ($::request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
+                $sub_req->({ command => ['makedhcp'], arg => ['-l'],
+                        node => \@normalnodeset }, $callback);
+            } else {
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
+                $sub_req->({ command => ['makedhcp'],
+                        node => \@normalnodeset }, $callback);
             }
         }
     }

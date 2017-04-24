@@ -1,6 +1,5 @@
 start:Full_installation_flat_p8_le
 os:Linux
-stop:yes
 
 cmd:copycds $$ISO
 check:rc==0
@@ -27,10 +26,9 @@ check:output=~$$CN
 cmd:if [ "__GETNODEATTR($$CN,os)__" != "sles12.1" ];then chdef -t node -o $$CN postscripts=setupntp; fi
 cmd:lsdef -l $$CN
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rpower $$CN boot
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 50 ];then break;fi done
 cmd:ping $$CN -c 3

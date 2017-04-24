@@ -1,6 +1,6 @@
 setup_vm
-Diskless_installation_flat_p8_le
-Full_installation_flat_p8_le
+reg_linux_diskless_installation_flat
+reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
 go_xcat_with_xcat-version-1
@@ -9,6 +9,7 @@ makehosts_h
 makehosts_help
 makehosts_n_noderange
 makehosts_n
+makehost_n_r
 chdef_null
 chdef_z
 chdef_t_o_error
@@ -236,6 +237,15 @@ xdsh_t
 xdsh_q
 xdsh_T
 xdsh_o
+psh_h
+psh_v
+psh_node_cmd_linux
+psh_l
+psh_i
+prsync_h
+prsync_v
+prsync_dir_node
+prsync_file_node
 switchdiscover_range_default
 switchdiscover_h
 switchdiscover_range_s

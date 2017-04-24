@@ -28,15 +28,9 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:lsdef -l $$CN | grep status
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
@@ -94,7 +88,7 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n update '*xCAT*'"
+cmd:xdsh $$CN "zypper refresh;zypper -n update \$(rpm -q --queryformat '%{vendor}\n' xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 | grep -q -v '^IBM Corp\.$' && echo --force-resolution) '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
@@ -137,15 +131,9 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
-check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$CN
 cmd:sleep 600
 cmd:lsdef -l $$CN | grep status
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
@@ -203,7 +191,7 @@ cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
 cmd:xdsh $$CN "cd /root/xcat-dep/sles1`more /etc/*release|grep VERSION_ID|cut -c14`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "zypper refresh;zypper -n update '*xCAT*'"
+cmd:xdsh $$CN "zypper refresh;zypper -n update \$(rpm -q --queryformat '%{vendor}\n' xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 | grep -q -v '^IBM Corp\.$' && echo --force-resolution) '*xCAT*'"
 check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0

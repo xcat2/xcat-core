@@ -288,6 +288,10 @@ osimage(7)|osimage.7
 
 
 
+pdu(7)|pdu.7
+
+
+
 policy(7)|policy.7
 
 
@@ -561,6 +565,12 @@ notification(5)|notification.5
  
 
 
+openbmc(5)|openbmc.5
+ 
+ Setting for nodes that are controlled by an on-board OpenBmc.
+ 
+
+
 osdistro(5)|osdistro.5
  
  Information about all the OS distros in the xCAT cluster
@@ -582,6 +592,18 @@ osimage(5)|osimage.5
 passwd(5)|passwd.5
  
  Contains default userids and passwords for xCAT to access cluster components.  In most cases, xCAT will also actually set the userid/password in the relevant component when it is being configured or installed.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.
+ 
+
+
+pdu(5)|pdu.5
+ 
+ Parameters to use when interrogating pdus
+ 
+
+
+pduoutlet(5)|pduoutlet.5
+ 
+ Contains list of outlet numbers on the pdu each node is connected to.
  
 
 

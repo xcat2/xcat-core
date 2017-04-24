@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.12
+# Version 1.0.19
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -370,7 +370,9 @@ function check_linux_version()
 	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
 		echo "${VERSION_ID}")"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
-		ver="$(awk '{ print $(NF - 1) }' /etc/redhat-release)"
+		# Need gawk to do this trick
+		ver="$(awk '{ match($0, /([.0-9]+)/, a); print substr($0, a[1, "start"], a[1, "length"]); }' \
+			/etc/redhat-release)"
 	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
 	echo "${ver}"
@@ -515,8 +517,9 @@ function check_repo_version_zypper()
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(zypper --no-gpg-checks -n search -s --match-exact "$@" \
-		2>/dev/null | awk -F ' *\\| *' '/ package / { print $2, $4 }')
+	done < <(zypper --no-gpg-checks -n search --match-exact -C -t package \
+		-s "$@" 2>/dev/null |
+		awk -F ' +\\| +' '/ package / { if ("(" != substr($6, 0, 1)) print $2, $4 }')
 	local -i i
 	while [[ -n "$1" ]]
 	do
@@ -590,6 +593,7 @@ function get_package_list_yum()
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
+
 #       $1      repo id
 function get_package_list_zypper()
 {
@@ -597,7 +601,7 @@ function get_package_list_zypper()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	zypper --no-gpg-checks -n search -r "${repo_id}" 2>/dev/null |
-		awk -F ' *\\| *' '/ package$/ { print $2 }'
+		awk -F ' +\\| +' '/ package$/ { print $2 }'
 }
 
 #       $1      repo id
@@ -606,14 +610,20 @@ function get_package_list_apt()
 	[[ -d /var/lib/apt/lists ]] || return 255
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
+	local -i rc=0
 	awk '/^Package: / { print $2 }' \
 		"/var/lib/apt/lists/"*"_${repo_id}_dists"*"_main_binary-"*"_Packages" \
 		2>/dev/null
 	# This is a dirty hack, and use recursion.
 	# For the `devel' branch of the online repo for apt, it has the
 	# subdirectory name of `core-snap' instead of `xcat-core'.
-	[[ "$?" -ne "0" && "${repo_id}" = "xcat-core" ]] &&
+	rc="$?"
+	if [[ "${rc}" -ne "0" && "${repo_id}" = "xcat-core" ]]
+	then
 		"${FUNCNAME}" "core-snap"
+		rc="$?"
+	fi
+	return "${rc}"
 }
 
 #       $1      repo id
@@ -630,7 +640,29 @@ function download_file()
 	type wget >/dev/null 2>&1 || return 255
 	local url="$1"
 	local local_file="$2"
-	wget -U "${user_agent}" -q "${url}" -O "${local_file}"
+	local log_file="${TMP_DIR}/wget.log.${RANDOM}"
+	local -i rc=0
+	wget -U "${user_agent}" -nv "${url}" -O "${local_file}" -o "${log_file}"
+	rc="$?"
+	if [[ "${rc}" -ne "0" ]]
+	then
+		while read -r ; do echo "${REPLY}" ; done <"${log_file}"
+		echo -n "${script}: \`wget' exited with an error: (exit code ${rc}, "
+		case "${rc}" in
+		1) echo -n "generic error" ;;
+		2) echo -n "parse error" ;;
+		3) echo -n "file I/O error" ;;
+		4) echo -n "network failure" ;;
+		5) echo -n "SSL verification failure" ;;
+		6) echo -n "username/password authentication failure" ;;
+		7) echo -n "protocol errors" ;;
+		8) echo -n "server issued an error response" ;;
+		*) echo -n "unknown error" ;;
+		esac
+		echo ")"
+		echo "  ... while downloading \`${url}'"
+	fi >&2
+	[[ "${rc}" -eq "0" ]]
 }
 
 #       $1      repo file
@@ -925,6 +957,7 @@ function remove_repo_yum()
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
 	yum clean metadata
+	:
 }
 
 #       $1      repo id
@@ -1149,7 +1182,7 @@ function install_packages_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-n") && shift
-	zypper --no-gpg-checks "${yes[@]}" install "$@"
+	zypper --no-gpg-checks "${yes[@]}" install --force-resolution "$@"
 }
 
 function install_packages_apt()

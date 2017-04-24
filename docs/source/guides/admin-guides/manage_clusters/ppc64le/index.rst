@@ -13,6 +13,7 @@ These are machines use the IBM Power Architecture and is **IPMI** managed.
    management.rst
    diskful/index.rst
    diskless/index.rst
+   statelite/index.rst
    updatenode.rst
    parallel_cmd.rst
    virtual_machines/index.rst

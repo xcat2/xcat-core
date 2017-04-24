@@ -186,7 +186,7 @@ sub setstate {
     my $cref = $chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
 
     # remove the old boot configuration files and create a new one, but only if not offline directive
-    system("find . -inum \$(stat --printf \%i $tftpdir/boot/grub2/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+    system("find $tftpdir/boot/grub2/ -inum \$(stat --printf \%i $tftpdir/boot/grub2/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
     if ($cref and $cref->{currstate} ne "offline") {
         open($pcfg, '>', $tftpdir . "/boot/grub2/" . $node);
         print $pcfg "#" . $cref->{currstate} . "\n";
@@ -570,17 +570,18 @@ sub process_request {
     if (exists($request->{inittime})) { $inittime = $request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
     $errored = 0;
+    my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
                 inittime => [$inittime],
-                arg      => \@args }, \&pass_along);
+                arg      => \@args,
+                bootparams => \%bphash
+                }, \&pass_along);
     }
     if ($errored) { return; }
 
-    my $bptab = xCAT::Table->new('bootparams', -create => 1);
-    my $bphash = $bptab->getNodesAttribs(\@nodes, [ 'kernel', 'initrd', 'kcmdline', 'addkcmdline' ]);
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);
     my $noderestab = xCAT::Table->new('noderes', -create => 1);
@@ -617,7 +618,7 @@ sub process_request {
                 $linuximghash = $linuximgtab->getAttribs({ imagename => $osimgname }, 'boottarget', 'addkcmdline');
             }
 
-            ($rc, $errstr) = setstate($_, $bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash);
+            ($rc, $errstr) = setstate($_, \%bphash, $chainhash, $machash, $tftpdir, $nrhash, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
                 $response{node}->[0]->{errorc}->[0]    = $errstr;

@@ -468,6 +468,7 @@ sub processArgs
     undef $::opt_nics;
     undef $::opt_setattr;
     undef $::opt_template;
+    undef $::opt_cleanup;
 
     # parse the options - include any option from all 4 cmds
     Getopt::Long::Configure("no_pass_through");
@@ -497,6 +498,7 @@ sub processArgs
             'nics'       => \$::opt_nics,
             'u'          => \$::opt_setattr,
             'template:s' => \$::opt_template,
+            'C|cleanup'  => \$::opt_cleanup,
         )
       )
     {
@@ -509,6 +511,13 @@ sub processArgs
     if (defined($::opt_setattr) && ($::command ne "chdef") && ($::command ne "mkdef")) {
         my $rsp;
         $rsp->{data}->[0] = "Option \'-u\' can not work with $::command.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    if (defined($::opt_cleanup) && ($::command ne "rmdef")) {
+        my $rsp;
+        $rsp->{data}->[0] = "Option \'-C\' can not be used with $::command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -2973,7 +2982,6 @@ sub setFINALattrs
                     }
                 }
             }
-
             # $tmphash{nicips} = "eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1"
             foreach my $nicattr (keys %tmphash)
             {
@@ -3188,7 +3196,6 @@ sub defls
 
         }
     }
-
 
     #  if just provided type list then find all objects of these types
     if (!defined $::opt_template && $::objectsfrom_optt)
@@ -3845,11 +3852,11 @@ sub defls
                                         my $nicsstr;
                                         if ($nicnames)
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $nicnames);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, $nicnames);
                                         }
                                         else
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
                                         }
 
                                         # Compress mode, format the output
@@ -3902,7 +3909,7 @@ sub defls
                                     if ($showattr =~ /^nic/)
                                     {
                                         my $nicval = "$showattr=$attrval";
-                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
                                         if ($nicsstr)
                                         {
                                             push(@{ $rsp_info->{data} }, "$nicsstr");
@@ -4016,6 +4023,9 @@ sub defrm
 
     # process the command line
     my $rc = &processArgs;
+
+    # Issue info message if more than cleanup_msg_trigger nodes are being removed with --cleanup option
+    my $cleanup_msg_trigger = 100;
 
     if ($rc != 0)
     {
@@ -4260,24 +4270,33 @@ sub defrm
         }
     }
 
-    # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
-    if ($doreq) {
-        # Go through each object and make sure it is a node type
-        my @allnodes;
-        foreach my $single_object (keys %objhash) {
-            if ($objhash{$single_object} eq "node") {
-                # build a list of nodes to offline
-                push @allnodes, $single_object;
+    if ($::opt_cleanup) {
+        # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
+        if ($doreq) {
+            # Go through each object and make sure it is a node type
+            my @allnodes;
+            foreach my $single_object (keys %objhash) {
+                if ($objhash{$single_object} eq "node") {
+                    # build a list of nodes to offline
+                    push @allnodes, $single_object;
+                }
             }
+            # If cleaning up (issuing nodeset offline) for more than cleanup_msg_trigger node, 
+            # issue info message
+            if (@allnodes > $cleanup_msg_trigger) {
+               my $rsp;
+               $rsp->{data}->[0] = "Performing configuration cleanup. This might take a some time.";
+               xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            # Run nodeset offline and capture output.
+            # But the output can be ignored since we do not want to prevent user from doing rmdef if
+            # nodeset returns some error.
+            my @output = xCAT::Utils->runxcmd({
+                command => ['nodeset'],
+                node => [@allnodes],
+                arg  => ['offline'],
+            }, $doreq, 0 ,1);
         }
-        # Run nodeset offline and capture output.
-        # But the output can be ignored since we do not want to prevent user from doing rmdef if
-        # nodeset returns some error.
-        my @output = xCAT::Utils->runxcmd({
-            command => ['nodeset'],
-            node => [@allnodes],
-            arg  => ['offline'],
-        }, $doreq, 0 ,1);
     }
 
     # remove the objects
@@ -4490,7 +4509,7 @@ sub defrm_usage
     $rsp->{data}->[0] = "\nUsage: rmdef - Remove xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] = "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
-    $rsp->{data}->[3] = "    [-o object-names] [-w attr=val,[attr=val...] [noderange]\n";
+    $rsp->{data}->[3] = "    [-o object-names] [-C | --cleanup] [noderange]\n";
     $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 5;
 

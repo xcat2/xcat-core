@@ -2037,7 +2037,7 @@ sub query_cec_info {
             if (scalar(@$rethash)) {
                 push @result, @$rethash;
             } else {
-                push @result, [ $name, "No information got", -1 ];
+                push @result, [ $name, "No information obtained.", -1 ];
                 last;
             }
             $lpar_hash{$name} = \%tmp_hash;
@@ -2048,7 +2048,7 @@ sub query_cec_info {
             if (scalar(@$rethash)) {
                 push @result, @$rethash;
             } else {
-                push @result, [ @td[3], "No information got", -1 ];
+                push @result, [ @td[3], "No information obtained.", -1 ];
                 last;
             }
 

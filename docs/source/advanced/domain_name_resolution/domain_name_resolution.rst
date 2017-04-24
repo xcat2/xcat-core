@@ -459,19 +459,6 @@ You can either specify the base nic* attribute name or the expanded name for a s
        nicips.eth1=11.1.89.7
        nichostnamesuffixes.eth1=-lab
 
-"otherinterfaces" vs. nic* attributes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For now the "otherinterfaces" attribute will still be supported but it may be dropped in future releases.Any new network interface information should be provided using the new nic attributes.
-
-If you are currently using the "otherinterfaces" node attribute you do not have to move it to the nic* attributes at this time. However, be careful to avoid any overlap or conflict with the information provided for each.
-
-If you are using "otherinterfaces" and add additional interfaces using the nic* attributes the makehosts command will add both to the /etc/hosts table.
-
-When both the "otherinterfaces" and nic attributes are used the "otherinterfaces" attribute is processed before the nic attributes.
-
-To do more nic introduce (refer to :ref:`confignics_label` ).
-
 Setting addition interface information using the xCAT tabedit command
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

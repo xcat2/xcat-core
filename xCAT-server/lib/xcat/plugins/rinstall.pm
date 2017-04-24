@@ -218,9 +218,9 @@ sub rinstall {
             }
             my $nodetypearch = $nodetypeattribs->{'arch'};
             if ($nodetypearch ne $osimagearch) {
-                unless ((($nodetypearch =~ /ppc64le/) or ($nodetypearch =~ /ppc64el/)) and (($osimagearch =~ /ppc64le/) or ($osimagearch =~ /ppc64el/))) {
+	        unless(($nodetypearch =~ /^ppc64(le|el)?$/i) and ($osimagearch =~ /^ppc64(le|el)?$/i)){
                     my $rsp = {};
-                    $rsp->{error}->[0] = "$node: The value of 'arch' attribute is not same as the 'osarch' attribute for osimage.";
+                    $rsp->{error}->[0] = "$node: The value of 'arch' attribute of node does not match the 'osarch' attribute of osimage.";
                     $rsp->{errorcode}->[0] = 1;
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     next;

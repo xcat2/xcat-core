@@ -16,6 +16,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
+use xCAT::MsgUtils;
 use XML::Simple;
 
 BEGIN
@@ -302,11 +303,12 @@ sub subvars {
                         $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #for rhels5.9
                     }
-                    if( -f "$pkgdir/local-repository.tmpl"){
+                    my $distrepofile="/install/postscripts/repos/$pkgdir/local-repository.tmpl";
+                    if( -f "$distrepofile"){
                         my $repofd;
                         my $repo_in_post;
                         local $/=undef;
-                        open($repofd,"<","$pkgdir/local-repository.tmpl");
+                        open($repofd,"<","$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
                         $repo_in_post =~ s#baseurl=#baseurl=http://$master/#g;
@@ -852,7 +854,10 @@ sub windows_join_data {
         }
         unless ($adminuser and $adminpass) {
             my $passtab = xCAT::Table->new('passwd', -create => 0);
-            unless ($passtab) { sendmsg([ 1, "Error authenticating to Active Directory" ], $node); return; }
+            unless ($passtab) {
+                xCAT::MsgUtils->message("SE", "[ERROR]$node: Error authenticating to Active Directory");
+                return;
+            }
             my @adpents = $passtab->getAttribs({ key => 'activedirectory' }, [ 'username', 'password', 'authdomain' ]);
             my $adpent;
             foreach $adpent (@adpents) {
@@ -1411,7 +1416,10 @@ sub machinepassword {
     $ENV{KRB5CCNAME} = "/tmp/xcat/krbcache.$realm.$$";
     unless ($loggedrealms{$realm}) {
         my $passtab = xCAT::Table->new('passwd', -create => 0);
-        unless ($passtab) { sendmsg([ 1, "Error authenticating to Active Directory" ], $node); return; }
+        unless ($passtab) {
+            xCAT::MsgUtils->message("SE", "[ERROR]$node: Error authenticating to Active Directory");
+            return;
+        }
         my @adpents = $passtab->getAttribs({ key => 'activedirectory' }, [ 'username', 'password', 'authdomain' ]);
         my $adpent;
         my $username;
@@ -1452,7 +1460,7 @@ sub machinepassword {
             }
         }
         unless ($server) {
-            sendmsg([ 1, "Unable to determine a directory server to communicate with, try site.directoryserver" ]);
+            xCAT::MsgUtils->message("SE", "[ERROR]Unable to determine a directory server to communicate with, try site.directoryserver");
             return;
         }
     }
@@ -1589,7 +1597,7 @@ sub crydb
             $kp{$k} = $v if defined($k);
         }
         return \%kp if %kp;
-        sendmsg([ 1, "Unable to parse password parameters $key" ]);
+        xCAT::MsgUtils->message("SE", "[ERROR]Unable to parse password parameters $key");
         return undef;
     };
     $kp = $get_query_map->($key);

@@ -3,31 +3,18 @@ Discover server and define
 
 After environment is ready, and the server is powered, we can start server discovery process. The first thing to do is discovering the FSP/BMC of the server. It is automatically powered on when the physical server is powered.
 
-The following command can be used to discovery BMC within an IP range and write the discovered node definition into xCAT database::
+Use the :doc:`bmcdiscover </guides/admin-guides/references/man1/bmcdiscover.1>` command to discover the BMCs responding over an IP range and write the output into the xCAT database.  This discovered BMC node is used to control the physical server during hardware discovery and will be deleted after the correct server node object is matched to a pre-defined node.  You **must** use the ``-w`` option to write the output into the xCAT database.  
 
-    bmcdiscover -s nmap --range 50.0.100.1-100 -z -w
+To discover the BMC with an IP address range of 50.0.100.1-100: ::
 
-The discovered BMC node will be like this::
+   bmcdiscover --range 50.0.100.1-100 -z -w
 
-    # lsdef node-8247-42l-10112ca
-    Object name: node-8247-42l-10112ca
-    bmc=50.0.100.1
-    cons=ipmi
-    groups=all
-    hwtype=bmc
-    mgt=ipmi
-    mtm=8247-42L
-    nodetype=mp
-    postbootscripts=otherpkgs
-    postscripts=syslog,remoteshell,syncfiles
-    serial=10112CA
+The discovered nodes will be written to xCAT database.  The discovered BMC nodes are in the form **node-model_type-serial**.   To view the discovered nodes: ::
 
-**Note**:
-    1. The BMC node is just used to control the physical during hardware discovery process, it will be deleted after the correct server node object is found.
-    
-    2. bmcdiscover will use username/password pair set in ``passwd`` table with **key** equal **ipmi**. If you'd like to use other username/password pair, you can use ::
+   lsdef /node-.*
 
-        bmcdiscover -s nmap --range 50.0.100.1-100 -z -w -u <username> -p <password>
+**Note:** The ``bmcdiscover`` command will use the username/password from the ``passwd`` table corresponding to ``key=ipmi``.  To overwrite with a different username/password use the ``-u`` and ``-p`` option to ``bmcdiscover``.
+
 
 Start discovery process
 -----------------------

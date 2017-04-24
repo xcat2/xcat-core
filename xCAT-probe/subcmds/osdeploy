@@ -41,14 +41,16 @@ my $monitor = 1;
 #used by developer, to debug the detail information about function running
 my $debug = 0;
 
+my $osdeploy_start_time;
+
 #---------------------------------------------
 #            Command Usage
 #---------------------------------------------
 my $program_name = basename("$0");
 $::USAGE = "Usage:
     $program_name -h
-    $program_name -n <node_range> [-t <max_waiting_time>] [-V]
-    $program_name -n <node_range> -r <roll_back_duration> [-V]
+    $program_name -n <node_range> [-t <max_waiting_time>] [-p <level>] [-V]
+    $program_name -n <node_range> -r <roll_back_duration> [-p <level>] [-V]
 
 Description:
     Probe operating system provision process. Supports two modes - 'Realtime monitor' and 'Replay history'. 
@@ -65,6 +67,11 @@ Options:
     -r : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
          Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
          If unit is not specified, hour will be used by default.
+    -p Show elapsed time of each stage during provision for each node
+         Support 3 output format:
+         'compact': Elapsed time of provision for each node.
+         'phase'  : Elapsed time for DHCP, INSTALL, POSTSCRIPTS and POSTBOOTSCRIPTS stages, and time for whole provision.
+         'origin' : Show origin start time of each stage.
 ";
 
 
@@ -82,6 +89,7 @@ if (
     !GetOptions("--help|h|?" => \$help,
         "T"   => \$test,
         "V"   => \$verbose,
+        "p=s" => \$performance,
         "t=s" => \$maxwaittime,
         "r=s" => \$rollforward_time_of_replay,
         "n=s" => \$noderange))
@@ -107,10 +115,31 @@ unless ($noderange) {
     exit 1;
 }
 
+my @nodes = split (",", $noderange);
+my @error_nodes;
+foreach my $node (@nodes) {
+    if ($node =~ /^-/) {
+        push @error_nodes, $node;
+    }
+}
+if (@error_nodes) {
+    my $error = join (",", @error_nodes);
+    probe_utils->send_msg("stdout", "f", "[$error]: Wrong node definition.");
+    exit 1;
+}
+
 if ($rollforward_time_of_replay) {
     if (($rollforward_time_of_replay !~ /(\d+)h(\d+)m/i) && ($rollforward_time_of_replay !~ /^(\d+)h*$/i) && ($rollforward_time_of_replay !~ /^(\d+)m$/i)) {
         probe_utils->send_msg("stdout", "f", "Unsupported time format for option '-r'");
         probe_utils->send_msg("stdout", "", "$::USAGE");
+        exit 1;
+    }
+}
+
+if ($performance) {
+    if ($performance ne "compact" and $performance ne "phase" and $performance ne "origin") {
+        probe_utils->send_msg("stdout", "f", "Unsupported parameter for option '-p'");
+        probe_utils->send_msg("stdout", "",  "$::USAGE");
         exit 1;
     }
 }
@@ -127,6 +156,9 @@ if ($debug) {
 #if failed to pass pre-check, exit directly
 exit $rst if ($rst);
 
+# record every status's start time and end time for each node
+# $node_status_time{$node}{$status}{start_time} = $start_time;
+my %node_status_time = () if ($performance);
 
 if ($rollforward_time_of_replay) {
     $monitor = 0;
@@ -433,7 +465,7 @@ sub do_replay {
 sub conclusion_report {
     my $node_state_ref = shift;
 
-    probe_utils->send_msg("stdout", "", "==================osdeploy_probe_report=================");
+    probe_utils->send_msg("stdout", "", "======================  Summary  =====================");
 
     if ($debug) {
         print "---->the result of %node_state<------\n";
@@ -468,6 +500,7 @@ sub conclusion_report {
         my $start_rpower   = 0;
         my $isntalling     = 0;
         my $postbootscript = 0;
+        my $completed      = 0;
 
         #calculate node provision result
         #the max value of all state is the final stop stage
@@ -476,24 +509,20 @@ sub conclusion_report {
             $start_rpower   = 1  if ($_ == $::STATE_POWER_ON);
             $isntalling     = 1  if ($_ == $::STATE_INSTALLING);
             $postbootscript = 1  if ($_ == $::STATE_POSTBOOTSCRIPT);
+            $completed      = 1  if ($_ == $::STATE_COMPLETED)
         }
 
-        # Cover limited non-privision error 
+        # Cover limited non-privision error when replay
         # 1 if power on target node successfully and there is 'running postbootscript' in node state history, but without "installing" state,
         #   It is very possible to just do reboot process
-        # 2 When replay, if there isn't reboot operation for target node during the rollback time window 
+        # 2 if there isn't reboot operation for target node during the rollback time window 
         #   That means there isn't provision process happened 
 
-        if ($monitor) {
-            if (!$isntalling && $postbootscript) {
-                $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
-                next;
-            }
-        } else {
+        unless ($monitor) {
             if (! $start_rpower) {
                 $failed_node{$node}{non_provision_prediction} = "Without provision process during rollback time window";
                 next;
-            } elsif (!$isntalling && $postbootscript) {
+            } elsif (!$isntalling && $postbootscript && !$completed) {
                 $failed_node{$node}{non_provision_prediction} = "Target node just reboot from disk";
                 next;
             }
@@ -505,7 +534,9 @@ sub conclusion_report {
         }
     }
 
+    my $is_success = 1;
     if (%failed_node) {
+        $is_success = 0;
         my $failed_node_num = keys %failed_node;
         if ($failed_node_num > 1) {
             probe_utils->send_msg("stdout", "d", "There are $failed_node_num node provision failures");
@@ -538,7 +569,170 @@ sub conclusion_report {
     } else {
         probe_utils->send_msg("stdout", "o", "All nodes provisioned successfully");
     }
+
+    performance_calculation($is_success) if ($performance);
+
     return 0;
+}
+
+#------------------------------------------
+
+=head3
+    Description:
+        Calculate the performance of provision (for each node)
+    Arguments:
+        performance: compact: calculate how much time spent for provision
+                     phase: calculate how much time spent for each status (DHCP, INSTALL, POSTSCRIPTS, POSTBOOTSCRIPTS)
+                     origin : show time point for each status
+                     reserve: reserve for other type
+    Returns:
+=cut
+
+#------------------------------------------
+sub performance_calculation {
+    my $is_success = shift;
+    #print Dumper(%node_status_time);
+
+    return if (!%node_status_time);
+
+    # Currently, only diskful is supported
+    my $provision_type = $::DISKFUL;
+
+    my @status_for_time = ();
+    my $isnull = 0;
+    my @time_content;
+    # print table's first line
+    # @status_for_time: the status that needed to calculate time
+   
+    my @title_lines = (
+        [qw/NODE ELAPSED/],
+        [qw/NODE SVRBOOT INSTALL POST POSTBOOT ELAPSED/],
+        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD INSTALL POST POSTBOOT COMPLETED/],
+        [qw/NODE RPOWER DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT COMPLETED/],
+        [qw/NODE DHCP BOOTLOADER KERNEL INITRD NETBOOTING ROOTIMG POSTBOOT ELAPSED/]);
+ 
+    if ($performance eq "compact") {
+        push @time_content, "Provision Time";
+        push @time_content, $title_lines[0];
+        @status_for_time = ($::STATE_COMPLETED);
+    }
+
+    if ($performance eq "phase") {
+        push @time_content, "Time for Phases";
+        push @time_content, $title_lines[1];
+        @status_for_time = ($::STATE_DHCP, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
+    }
+
+    if ($performance eq "origin") {
+        push @time_content, "Start Time for Stage";
+        if ($provision_type == $::DISKFUL){
+            push @time_content, $title_lines[2];
+            @status_for_time = ($::STATE_POWER_ON, $::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_INSTALLRPM, $::STATE_POSTSCRIPT, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
+        } else { # reserved for diskless
+            push @time_content, $title_lines[3];
+            @status_for_time = ($::STATE_POWER_ON, $::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_NETBOOTING, $::STATE_ROOTIMG, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
+        }
+    }
+
+    if ($performance eq "reserve") {
+        push @time_content, $title_lines[4];
+        @status_for_time = ($::STATE_DHCP, $::STATE_BOOTLODER, $::STATE_KERNEL, $::STATE_INITRD, $::STATE_NETBOOTING, $::STATE_ROOTIMG, $::STATE_POSTBOOTSCRIPT, $::STATE_COMPLETED);
+    }
+
+    # calculate time for each node and status
+    foreach my $node (keys %node_status_time) {
+
+        my @timeinfo = ();
+        push @timeinfo, $node;
+
+        if ($performance eq "origin") {
+            foreach my $status (@status_for_time) {
+                if ($node_status_time{$node}{$status}{time_point}) {
+                    if ($status == $::STATE_DHCP or $status == $::STATE_BOOTLODER) {
+                        # If there is no start time of kernel, means osdeploy start after kernel download
+                        if (!$node_status_time{$node}{$::STATE_KERNEL}{start_time}) {
+                            push @timeinfo, "NULL";
+                            $isnull = 1;
+                        # If there is start time of kernel, but dhcp or bootloader's time value larger than kernel. It means dhcp and bootloader is after kernel, not the value we wanted.
+                        } elsif ($node_status_time{$node}{$status}{start_time} > $node_status_time{$node}{$::STATE_KERNEL}{start_time}) {
+                            push @timeinfo, "NULL";
+                            $isnull = 1;      
+                        } else {
+                            push @timeinfo, $node_status_time{$node}{$status}{time_point}; 
+                        }
+                    } elsif ($status >= $::STATE_INSTALLRPM and (!$node_status_time{$node}{$status-1}{start_time} and !$node_status_time{$node}{$status-1}{end_time})) {
+                        push @timeinfo, "NULL";
+                        $isnull = 1;
+                    } else {
+                        push @timeinfo, $node_status_time{$node}{$status}{time_point};
+                    }
+                } else {
+                    push @timeinfo, "NULL";
+                    $isnull = 1;
+                }
+            }
+            push @time_content, [ @timeinfo ];
+            next;
+        }
+
+        # get the start time and end time for each step
+        foreach my $status (@status_for_time) {
+            my $tmp_status;
+            my $tmp_detail_status;
+            if ($performance eq "phase") {
+                # when phase, if the status is DHCP, use power on time as it's start time
+                $tmp_detail_status = $::STATE_DHCP;
+            } else {
+                # if not phase, power on time is the start time for each steps
+                $tmp_detail_status = $::STATE_COMPLETED;
+            }
+
+            if ($status <= $tmp_detail_status or $status == $::STATE_COMPLETED) {
+                $tmp_status = $::STATE_POWER_ON;
+            } else {
+                $tmp_status = $status;
+            }
+
+            my $tmp_start_time = $node_status_time{$node}{$tmp_status}{start_time};
+            my $tmp_end_time = $node_status_time{$node}{$status}{end_time};
+            $tmp_end_time = $node_status_time{$node}{$status}{start_time} if ($status != $::STATE_DHCP and $status != $::STATE_INSTALLRPM and $status != $::STATE_POSTSCRIPT and $status != $::STATE_POSTBOOTSCRIPT and $node_status_time{$node}{$status}{start_time});
+
+            if ($tmp_start_time && $tmp_end_time) {
+                if ($status >= $::STATE_INSTALLRPM and (!$node_status_time{$node}{$status-1}{start_time} and !$node_status_time{$node}{$status-1}{end_time})) {
+                    push @timeinfo, "NULL";
+                    $isnull = 1;
+                } else {
+                    push @timeinfo, probe_utils->convert_second_to_time($tmp_end_time - $tmp_start_time);
+                } 
+            } else {
+                push @timeinfo, "NULL";
+                $isnull = 1;
+            }
+        }
+        push @time_content, [ @timeinfo ];
+    }
+
+    probe_utils->print_table(\@time_content, 1);
+
+    if ($performance eq "phase") {
+        print "SVRBOOT  : Time from rpower to acquire ip\n";
+        print "INSTALL  : Time to download all rpm/deb packages\n";
+        print "POST     : Postscript execution time\n";
+        print "POSTBOOT : Postbootscript execution time\n";
+        print "ELAPSED  : Total provision time\n";
+    }
+
+    if ($isnull and $is_success) {
+        my $command_input = "xcatprobe -w $program_name";
+        $command_input .= " -n $noderange" if ($noderange);
+        $command_input .= " -p $performance";
+        $command_input .= " -V" if ($verbose);
+        my $osdeploy_end_time = time();
+        my $time_for_replay = $osdeploy_end_time - $osdeploy_start_time;
+        my $time_hour = ($time_for_replay - $time_for_replay%3600) / 3600 + 1;
+        $command_input .= " -r $time_hour" . "h";
+        probe_utils->send_msg("stdout", "", "Did not get correct time, please run '$command_input' to get correct time");
+    }
 }
 
 #------------------------------------------
@@ -561,6 +755,8 @@ sub do_monitor {
 
     my $rst      = 0;
     my $terminal = 0;
+
+    $osdeploy_start_time = time() if ($performance);
 
     $SIG{TERM} = $SIG{INT} = sub {
         $terminal = 1;
@@ -766,7 +962,7 @@ sub handle_dhcp_msg {
         my $ip  = $1;
         my $mac = $2;
         my $nic = $3;
-
+ 
         if (exists $macmap{$mac}) {
             my $node   = $macmap{$mac}{"node"};
             my $record = $log_ref->{msg};
@@ -793,6 +989,10 @@ sub handle_dhcp_msg {
 
             $ipnodemap{$ip} = $node;
             set_node_state($node_state_ref, $node, $::STATE_DHCP);
+            if ($performance and !$node_status_time{$node}{$::STATE_DHCP}{end_time}) {
+                $node_status_time{$node}{$::STATE_DHCP}{time_point} = $log_ref->{time_record};
+                $node_status_time{$node}{$::STATE_DHCP}{end_time} = $log_ref->{time};
+            }
         }
     } elsif ($log_ref->{msg} =~ /BOOTREQUEST\s+from\s+(.+)\s+via\s+([^:]+)(.*)/) {
         my $mac = $1;
@@ -821,6 +1021,10 @@ sub handle_dhcp_msg {
 
             $ipnodemap{$ip} = $node;
             set_node_state($node_state_ref, $node, $::STATE_DHCP);
+            if ($performance and !$node_status_time{$node}{$::STATE_DHCP}{end_time}) {
+                $node_status_time{$node}{$::STATE_DHCP}{end_time} = $log_ref->{time};
+                $node_status_time{$node}{$::STATE_DHCP}{time_point} = $log_ref->{time_record};
+            }
         }
     }
 }
@@ -852,10 +1056,22 @@ sub handle_tftp_msg {
 
             if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/powerpc-ieee1275\//i or $file =~ /\/yb\/node\/yaboot\-/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_BOOTLODER);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time} = $log_ref->{time} if (!$node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time});
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{time_point} = $log_ref->{time_record} if (!$node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{time_point});
+                }
             } elsif ($file =~ /vmlinuz|inst64|linux/) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KERNEL}{start_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KERNEL}{time_point} = $log_ref->{time_record};
+                }
             } elsif ($file =~ /initrd/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INITRD);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INITRD}{start_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INITRD}{time_point} = $log_ref->{time_record};
+                }
             }
         }
     }
@@ -892,16 +1108,39 @@ sub handle_http_msg {
 
             if ($file =~ /vmlinuz|inst64/i or ($file =~ /linux/i and $file =~ /osimage/i)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KERNEL);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KERNEL}{start_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KERNEL}{time_point} = $log_ref->{time_record};
+                }
                 push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_KERNEL} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif ($file =~ /initrd/i and $file =~ /osimage/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INITRD);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INITRD}{start_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INITRD}{time_point} = $log_ref->{time_record};
+                }
                 push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_INITRD} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif (($file =~ /^\/install\/autoinst\//i) and ($file !~ /getinstdisk$/i) and ($file !~ /\.pre$/i) and ($file !~ /\.post$/i)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_KICKSTART);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KICKSTART}{start_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_KICKSTART}{time_point} = $log_ref->{time_record};
+                }
                 push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_KICKSTART} }, "$record failed with $http_code") if ($http_code >= 400);
             } elsif ($file =~ /\.deb$/i or $file =~ /\/Packages\/.+\.rpm$/ or $file =~ /\/suse\/noarch\/.+\.rpm$/i) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_INSTALLRPM);
+                if ($performance) {
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{end_time} = $log_ref->{time};
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time} =  $log_ref->{time}  unless ( $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{start_time} );
+                    $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{time_point} = $log_ref->{time_record} unless ( $node_status_time{$ipnodemap{$ip}}{$::STATE_INSTALLRPM}{time_point} );
+                }
                 push (@{ $node_state_ref->{ $ipnodemap{$ip} }{errors}{$::STATE_INSTALLRPM} }, "$record failed with $http_code") if ($http_code >= 400);
+            } elsif ($file =~ /rootimg/) {
+                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_ROOTIMG);
+                 if ($performance) {
+                     $node_status_time{$ipnodemap{$ip}}{$::STATE_ROOTIMG}{start_time} = $log_ref->{time};
+                     $node_status_time{$ipnodemap{$ip}}{$::STATE_ROOTIMG}{time_point} = $log_ref->{time_record};
+                 }
             }
         }
     }
@@ -939,6 +1178,10 @@ sub handle_cluster_msg {
                     probe_utils->send_msg("stdout", "d", "[$node] $log_ref->{time_record} Use command $command to reboot node $node") if ($monitor);
                     push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
                     set_node_state($node_state_ref, $node, $::STATE_POWER_ON);
+                    if ($performance) {
+                        $node_status_time{$node}{$::STATE_POWER_ON}{start_time} = $log_ref->{time};
+                        $node_status_time{$node}{$::STATE_POWER_ON}{time_point} = $log_ref->{time_record};
+                    }
                 }
             }
         }
@@ -955,10 +1198,28 @@ sub handle_cluster_msg {
 
                 if ($status eq "installing") {
                     set_node_state($node_state_ref, $node, $::STATE_INSTALLING);
+                    if ($performance) {
+                        $node_status_time{$node}{$::STATE_INSTALLING}{start_time} = $log_ref->{time};
+                        $node_status_time{$node}{$::STATE_INSTALLING}{time_point} = $log_ref->{time_record};
+                    }
                 } elsif ($status eq "powering-on") {
                     set_node_state($node_state_ref, $node, $::STATE_POWERINGON);
+                    if ($performance) {
+                        $node_status_time{$node}{$::STATE_POWERINGON}{start_time} = $log_ref->{time};
+                        $node_status_time{$node}{$::STATE_POWERINGON}{time_point} = $log_ref->{time_record};
+                    }
                 } elsif ($status eq "booting") {
                     set_node_state($node_state_ref, $node, $::STATE_BOOTING);
+                    if ($performance) {
+                        $node_status_time{$node}{$::STATE_BOOTING}{start_time} = $log_ref->{time};
+                        $node_status_time{$node}{$::STATE_BOOTING}{time_point} = $log_ref->{time_record};
+                    }
+                } elsif ($status eq "netbooting") {
+                    set_node_state($node_state_ref, $node, $::STATE_NETBOOTING);
+                    if ($performance) {
+                        $node_status_time{$node}{$::STATE_NETBOOTING}{start_time} = $log_ref->{time};
+                        $node_status_time{$node}{$::STATE_NETBOOTING}{time_point} = $log_ref->{time_record};
+                    }
                 } elsif ($status eq "failed") {
                     $node_state_ref->{$node}{done} = 1;
                 } 
@@ -990,6 +1251,10 @@ sub handle_compute_msg {
         push(@{ $node_state_ref->{$node}{log} }, $log_ref->{msg}) if ($debug);
         if ($log_ref->{msg} =~ /Running postscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTSCRIPT);
+            if ($performance) {
+                $node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time} = $log_ref->{time} unless ($node_status_time{$node}{$::STATE_POSTSCRIPT}{start_time});
+                $node_status_time{$node}{$::STATE_POSTSCRIPT}{time_point} = $log_ref->{time_record} unless ($node_status_time{$node}{$::STATE_POSTSCRIPT}{time_point});
+            }
         } elsif ($log_ref->{msg} =~ /postscript (.+) return with (\d+)/) {
             my $script_name = $1;
             my $return_code = $2;
@@ -1000,8 +1265,13 @@ sub handle_compute_msg {
                     push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTSCRIPT} }, $error_str;
                 }
             }
+            $node_status_time{$node}{$::STATE_POSTSCRIPT}{end_time} = $log_ref->{time} if ($performance);
         } elsif ($log_ref->{msg} =~ /Running postbootscript:/i) {
             set_node_state($node_state_ref, $node, $::STATE_POSTBOOTSCRIPT);
+            if ($performance) {
+                $node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time} = $log_ref->{time} unless ($node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{start_time});
+                $node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{time_point} = $log_ref->{time_record} unless ($node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{time_point});
+            }
         } elsif ($log_ref->{msg} =~ /postbootscript (.+) return with (\d+)/) {
             my $script_name = $1;
             my $return_code = $2;
@@ -1012,10 +1282,15 @@ sub handle_compute_msg {
                     push @{ $node_state_ref->{$node}{errors}{$::STATE_POSTBOOTSCRIPT} }, $error_str;
                 }
             }
+            $node_status_time{$node}{$::STATE_POSTBOOTSCRIPT}{end_time} = $log_ref->{time} if ($performance);
         } elsif ($log_ref->{msg} =~ /provision completed/) {
             set_node_state($node_state_ref, $node, $::STATE_COMPLETED);
             $node_state_ref->{$node}{done} = 1;
             probe_utils->send_msg("stdout", "o", "[$node] $log_ref->{time_record} provision completed") if ($monitor);
+            if ($performance) {
+                $node_status_time{$node}{$::STATE_COMPLETED}{start_time} = $log_ref->{time};
+                $node_status_time{$node}{$::STATE_COMPLETED}{time_point} = $log_ref->{time_record};
+            }
         }
     }
 }
@@ -1078,6 +1353,7 @@ sub set_node_state {
         @{ $node_state_ref->{$node}{statehistory} } = ();
         %{ $node_state_ref->{$node}{errors} } = ();
         push @{ $node_state_ref->{$node}{statehistory} }, $newstate;
+        $node_status_time{$node} = ();
     } else {
         my $index = @{ $node_state_ref->{$node}{statehistory} } - 1;
 

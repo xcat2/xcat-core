@@ -264,7 +264,7 @@ exit 0
 /install/postscripts
 /install/prescripts
 %ifos linux
-/etc/logrotate.d/xcat
+%config /etc/logrotate.d/xcat
 /etc/rsyslog.d/xcat-cluster.conf
 /etc/rsyslog.d/xcat-compute.conf
 /etc/rsyslog.d/xcat-debug.conf

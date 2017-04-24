@@ -14,7 +14,7 @@ end
 
 start:makehosts_null
 description:makehosts 
-cmd:cp -f /etc/hosts /etc/hosts.xcatbak
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
 cmd:mkdef -t node -o node01,node02 groups="compute"
@@ -31,11 +31,11 @@ check:output=~node02
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:rmdef node02
-cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 end
 
 start:makehosts_l
-cmd:cp -f /etc/hosts /etc/hosts.xcatbak
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
 cmd:chdef -t node -o node01,node02 groups="compute"
@@ -51,12 +51,12 @@ check:output=~node02.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:rmdef node02
-cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 cmd:rm -rf /tmp/hosts
 end
 
 start:makehosts_d
-cmd:cp -f /etc/hosts /etc/hosts.xcatbak
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
@@ -73,12 +73,12 @@ cmd:diff /tmp/1 /tmp/2
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
-cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 cmd:rm -f /tmp/1 /tmp/2
 end
 
 start:makehosts_n
-cmd:cp -f /etc/hosts /etc/hosts.xcatbak
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
@@ -97,12 +97,12 @@ check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:cp /etc/hosts /hosts
-cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 cmd:rm -rf /tmp/hosts
 end
 
 start:makehosts_n_noderange
-cmd:cp -f /etc/hosts /etc/hosts.xcatbak
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
 cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.*)|(\$1).cluster.net|"
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
@@ -119,10 +119,52 @@ cmd:cat /tmp/hosts
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
-cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 cmd:cat /etc/hosts| grep -v node01 > /tmp/1
 cmd:mv -f /tmp/1 /etc/hosts 
 cmd:rm -rf /tmp/hosts
+end
+
+start:makehost_n_r
+descriptions:modify makehosts testcases according to special node name eg:s01 and s01r* . for issue #2717 and #2683
+cmd:cp -f /etc/hosts /etc/hosts.xcatbakautotest
+cmd:lsdef s01;if [ $? -eq 0 ]; then lsdef -l s01 -z >/tmp/s01.standa ;rmdef s01;fi
+check:rc==0
+cmd:lsdef s01r1b01;if [ $? -eq 0 ]; then lsdef -l s01r1b01 -z >/tmp/s01r1b01.standa ;rmdef s01r1b01;fi
+check:rc==0
+cmd:nodeadd s01 groups=service; chdef s01 ip=70.2.0.254;nodeadd s01r1b01 groups=compute; chdef s01r1b01 ip=80.2.0.254;makehosts
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:makehosts s01
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:makehosts service
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:makehosts -d s01
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 = "" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:makehosts
+check:rc==0
+cmd:makehosts -d service 
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 = "" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:makehosts
+check:rc==0
+cmd:makehosts -d s01r1b01
+check:rc==0
+cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 = "" ]];then exit 0;else exit 1;fi
+check:rc==0
+cmd:if [ -e /tmp/s01.standa ]; then rmdef s01; cat /tmp/s01.standa | mkdef -z; rm -rf /tmp/s01.standa; else rmdef s01;fi
+check:rc==0
+cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.standa | mkdef -z; rm -rf /tmp/s01r1b01.standa;else rmdef s01r1b01; fi
+check:rc==0
+cmd:mv -f /etc/hosts.xcatbakautotest /etc/hosts
 end
 
 

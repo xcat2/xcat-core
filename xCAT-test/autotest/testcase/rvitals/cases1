@@ -1,0 +1,61 @@
+start:rvitals_temp
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN temp
+check:rc==0
+check:output=~Ambient Temp
+end
+
+start:rvitals_disktemp
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN disktemp
+check:rc==0
+check:output=~Ambient Temp
+end
+
+start:rvitals_cputemp
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN cputemp
+check:rc==0
+check:output=~Ambient Temp
+end
+
+start:rvitals_fanspeed
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN fanspeed
+check:rc==0
+check:output=~Fan\s*\d:\s*\w+\s*RPM
+end
+
+start:rvitals_voltage
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN voltage
+check:rc==0
+check:output=~CPU VDD Volt
+end
+
+start:rvitals_all
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN all
+check:rc==0
+check:output=~Power Status
+check:output=~Power Overload
+check:output=~Power Interlock
+check:output=~Power Fault
+check:output=~Power Control Fault
+check:output=~Power Restore Policy
+check:output=~Ambient Temp
+end
+
+start:rvitals_noderange_err
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals testnode 
+check:rc!=0
+check:output=~Error
+end

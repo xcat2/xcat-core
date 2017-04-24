@@ -266,8 +266,11 @@ ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|
 logger -s -t $log_label -p local4.info "Starting ntpd..." 
 ntpd -g -x
 
-logger -s -t $log_label -p local4.info "Waiting for ntpd to synchronize..."
-ntp-wait -n 1999 -s 1 -v
+# ntp-wait defaults to 6 seconds between retries, wait for 1 minute
+NTP_TRIES=10
+NTP_SLEEP=6
+logger -s -t $log_label -p local4.info "Waiting for $NTP_TRIES x $NTP_SLEEP seconds for ntpd to synchronize..."
+ntp-wait -n $NTP_TRIES -s $NTP_SLEEP -v
 if [ $? -ne 0 ]
 then
     logger -s -t $log_label -p local4.info "... ntpd did not synchronize."
@@ -422,7 +425,11 @@ while :; do
 		logger -s -t $log_label -p local4.info "Poweroff..."
 		poweroff -f
 	else 
-		logger -s -t $log_label -p local4.err "Unrecognized directive (dest=$dest)"
+                if [ "$dest" = error ]; then
+                    logger -s -t $log_label -p local4.info "$destparameter"
+                else
+		    logger -s -t $log_label -p local4.err "Unrecognized directive (dest=$dest)"
+                fi
 		destiny=''
 		dest=''
 		delay=$((30+$RANDOM%270))

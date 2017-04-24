@@ -16,6 +16,7 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::SvrUtils;
+use xCAT::Yum;
 
 #use Data::Dumper;
 use Getopt::Long;
@@ -172,6 +173,7 @@ sub mknetboot
     if ($req->{command}->[0] =~ 'mkstatelite') {
         $statelite = "true";
     }
+    my $bootparams = ${$req->{bootparams}};
     my $globaltftpdir   = "/tftpboot";
     my $nodes           = @{ $req->{node} };
     my @args            = @{ $req->{arg} } if (exists($req->{arg}));
@@ -232,7 +234,6 @@ sub mknetboot
     my %donetftp = ();
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
 
@@ -249,8 +250,6 @@ sub mknetboot
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
 
     # Warning message for nodeset <noderange> install/netboot/statelite
     foreach my $knode (keys %oents)
@@ -950,15 +949,9 @@ sub mknetboot
                 $kcmdline .= " MNTOPTS=$mntoptions";
             }
         }
-
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => $kernstr,
-                initrd   => $initrdstr,
-                kcmdline => $kcmdline
-            }
-        );
+        $bootparams->{$node}->[0]->{kernel} = $kernstr;
+        $bootparams->{$node}->[0]->{initrd} = $initrdstr;
+        $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
     }
 
 }
@@ -971,6 +964,7 @@ sub mkinstall
     my @nodes           = @{ $request->{node} };
     my $noupdateinitrd  = $request->{'noupdateinitrd'};
     my $ignorekernelchk = $request->{'ignorekernelchk'};
+    my $bootparams = ${$request->{bootparams}};
 
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
@@ -1023,7 +1017,6 @@ sub mkinstall
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
     my %osents = %{ $ostab->getNodesAttribs(\@nodes, [ 'profile', 'os', 'arch', 'provmethod' ]) };
@@ -1033,8 +1026,6 @@ sub mkinstall
             [ 'serialport', 'serialspeed', 'serialflow' ]) };
     my %macents = %{ $mactab->getNodesAttribs(\@nodes, ['mac']) };
 
-    #my $addkcmdhash =
-    #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
     require xCAT::Template;
 
     # Warning message for nodeset <noderange> install/netboot/statelite
@@ -1267,6 +1258,17 @@ sub mkinstall
                 $callback->(
                     { error => [qq{ Cannot find the linux image called "$imgname", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}], errorcode => [1] }
                 );
+            }
+        }
+
+        my @pkgdirs=split(/,/,$pkgdir);
+        foreach my $mypkgdir (@pkgdirs){
+            unless(-f "/install/postscripts/repos/$mypkgdir/local-repository.tmpl"){
+                #fix issue #2856@github
+                #for the osimages created by <=xCAT 2.12.3
+                #there is no local-repository.tmpl under pkgdir created on copycds
+                #generate local-repository.tmpl here if it does not exist
+                xCAT::Yum->localize_yumrepo($mypkgdir, $os, $arch);
             }
         }
 
@@ -1668,14 +1670,9 @@ sub mkinstall
 
             xCAT::MsgUtils->trace($verbose_on_off, "d", "anaconda->mkinstall: kcmdline=$kcmdline kernal=$k initrd=$i");
 
-            $bptab->setNodeAttribs(
-                $node,
-                {
-                    kernel   => $k,
-                    initrd   => $i,
-                    kcmdline => $kcmdline
-                }
-            );
+            $bootparams->{$node}->[0]->{kernel} = $k;
+            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
         {
@@ -1701,6 +1698,7 @@ sub mksysclone
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{ $request->{node} };
+    my $bootparams = ${$request->{bootparams}};
     my $linuximagetab;
     my $osimagetab;
     my %img_hash = ();
@@ -1727,7 +1725,6 @@ sub mksysclone
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
     my $restab = xCAT::Table->new('noderes');
-    my $bptab  = xCAT::Table->new('bootparams', -create => 1);
     my $hmtab  = xCAT::Table->new('nodehm');
     my $mactab = xCAT::Table->new('mac');
 
@@ -2064,15 +2061,9 @@ sub mksysclone
 
             $k = "xcat/$kernpath";
             $i = "xcat/$initrdpath";
-
-            $bptab->setNodeAttribs(
-                $node,
-                {
-                    kernel   => $k,
-                    initrd   => $i,
-                    kcmdline => $kcmdline
-                }
-            );
+            $bootparams->{$node}->[0]->{kernel} = $k;
+            $bootparams->{$node}->[0]->{initrd} = $i;
+            $bootparams->{$node}->[0]->{kcmdline} = $kcmdline;
         }
         else
         {
@@ -2239,7 +2230,8 @@ sub copycd
 
     unless ($distname)
     {
-        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno, attempt to auto-detect...\n";
+        print "INFO - Could not find ID=$did in the discinfo database for OS=$desc ARCH=$darch NUM=$dno\n";
+        print "INFO - Attempting to auto-detect...\n";
         if ($desc =~ /IBM_PowerKVM/)
         {
             # check for PowerKVM support
@@ -2253,7 +2245,15 @@ sub copycd
             # RHEL 7.3 description is: Red Hat Enterprise Linux 7.3
             #
             my @rhel_version = split / /, $desc;
-            $distname = "rhels" . $rhel_version[4];
+            #
+            # auto-detect pegas beta ISOs
+            #
+            if ( $rhel_version[4] =~ "Pegas") { 
+                $distname = "rhels" . $rhel_version[5] . "-pegas";
+            } 
+            else { 
+                $distname = "rhels" . $rhel_version[4];
+            }
             open($dinfo, $mntpath . "/.treeinfo");
             while (<$dinfo>) {
                 chomp($_);
@@ -2318,7 +2318,7 @@ sub copycd
         );
         return;
     }
-
+    print "INFO - detected distname=$distname, arch=$arch\n";
 
     %{$request} = ();    #clear request we've got it.
     my $disccopiedin = 0;
@@ -2474,8 +2474,6 @@ sub copycd
         }
     }
 
-
-    require xCAT::Yum;
     xCAT::Yum->localize_yumrepo($path, $distname, $arch);
 
     if ($rc != 0)

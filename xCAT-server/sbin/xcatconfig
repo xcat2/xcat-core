@@ -969,6 +969,10 @@ sub genSSHNodeHostKey
     #
     # generate new hostkeys
     #
+
+    my ($rlogin,$rpass,$ruid,$rgid) = getpwnam("root");
+    my ($sname, $spasswd,$sgid,$smembers)=getgrnam("ssh_keys");
+    my @sshkeylist;
     xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
     xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
     my $cmd =
@@ -978,6 +982,10 @@ sub genSSHNodeHostKey
     {
         xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
     }
+    else{
+        push @sshkeylist,"/etc/xcat/hostkeys/ssh_host_rsa_key";
+    }
+
 
     xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
     $cmd =
@@ -986,6 +994,9 @@ sub genSSHNodeHostKey
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.");
+    }
+    else{
+        push @sshkeylist,"/etc/xcat/hostkeys/ssh_host_dsa_key";
     }
 
     # see if this system supports the ecdsa
@@ -999,8 +1010,17 @@ sub genSSHNodeHostKey
         {
             xCAT::MsgUtils->message('E', "Could not generate SSH2 ECDSA key.");
         }
+	else{
+            push @sshkeylist,"/etc/xcat/hostkeys/ssh_host_ecdsa_key";
+	}
     }
 
+    if(@sshkeylist){
+        if(defined $ruid && defined $sgid){
+            chown $ruid,$sgid,@sshkeylist;
+        }
+        chmod 0640,@sshkeylist;
+    }
 
     # copy the public keys to install directory
     $cmd =
@@ -1542,7 +1562,7 @@ sub genCredentials
         my ($cmd, $outref, $rc);
         $rc = getgrnam($user);
         if (!$rc) {
-            $cmd = "groupadd $user";
+            $cmd = "groupadd --system $user";
             $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message('E', "$cmd failed");
@@ -1551,7 +1571,7 @@ sub genCredentials
         }
         $rc = getpwnam($user);
         if (!$rc) {
-            $cmd = "useradd -g $user -s /bin/bash -d /home/$user -m $user";
+            $cmd = "useradd --system -g $user -s /bin/bash -d /home/$user -m $user";
             $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message('E', "$cmd failed");

@@ -125,7 +125,8 @@ sub init_plugin
                     if (xCAT::Utils->isServiceNode()) {    # service node
                         &setup_TFTP($nodename, $doreq);    # setup TFTP
                     } else {                               # management node
-                        &enable_TFTPhpa();
+                        &stop_TFTP();
+                        &enable_TFTP();
                     }
 
                 }
@@ -1204,10 +1205,13 @@ sub setup_TFTP
 
         }
     }
+    $rc = stop_TFTP();
+    if($rc !=0) {
+        xCAT::MsgUtils->message("S", "Failed to stop tftp service.");
+    }
 
     # enable the tftp-hpa
-    $rc = enable_TFTPhpa();
-
+    $rc = enable_TFTP();
     if ($rc == 0)
     {
 
@@ -1262,29 +1266,95 @@ sub setup_HTTP
 
 #-----------------------------------------------------------------------------
 #
-#=head3 enable_TFTPhpa
+#=head3 stop_TFTP
 #
-#    Configure and enable the tftp-hpa in the xinetd.
+#    Stop tftp process for multiple platforms
+#
+#    return:
+#       1 on faled
+#       0 on success
 #
 #=cut
 #
 #-----------------------------------------------------------------------------
-sub enable_TFTPhpa
+sub stop_TFTP
 {
+    my $distro=xCAT::Utils->osver();
     # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
     unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
         xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");
         return 1;
     }
-
     # kill the process of atftp if it's there
     my @output = xCAT::Utils->runcmd("ps -ef | grep atftpd | grep -v grep", -1);
     foreach my $ps (@output) {
         $ps =~ s/^\s+//;    # strip any leading spaces
         my ($uid, $pid, $ppid, $desc) = split /\s+/, $ps;
-        system("kill -9 $pid >/dev/null 2>&1");
+        my $cmd = "kill -9 $pid >/dev/null 2>&1";
+        system($cmd);
+        if ($? != 0) {
+            xCAT::MsgUtils->message("S", "ERROR: Can not execute command $cmd.");
+            return 1;
+        }
     }
+    if (-x "/usr/sbin/in.tftpd") {
+        system("killall in.tftpd >/dev/null 2>&1"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
+        if ($distro =~ /ubuntu.*/i || $distro =~ /debian.*/i) {
+            sleep 1;
+            my @checkproc = `ps axf|grep -v grep|grep in.tftpd`;
+            if (@checkproc) {
+                if (xCAT::Utils->stopservice("tftpd-hpa") != 0) {
+                    xCAT::MsgUtils->message("S", "ERROR: Can not stop tftpd-hpa service.");
+                    return 1;
+                }
+            }
+        }
 
+        my @tftpprocpids = `ps axf | grep -v 'awk /in.tftpd/' | awk '/in.tftpd/ {print \$1}'`;
+        if (@tftpprocpids) {
+            my %pids_map;
+            my $count = 0;
+            map { chomp; $pids_map{$_} = 1 } @tftpprocpids;
+            while (keys %pids_map) {
+                foreach my $pid (keys %pids_map) {
+                    if (xCAT::Utils::is_process_exists($pid)) {
+                        $count++;
+                        if ($count == 5) {
+                            my $tftpinfo = `ps axf|grep -v grep|grep in.tftpd`;
+                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process $pid [$tftpinfo] in 5 seconds, stop it again.");
+                            my $cmd = "killall -s KILL in.tftpd >/dev/null 2>&1";
+                            system($cmd);
+                            if($? != 0) {
+                                xCAT::MsgUtils->message("S", "ERROR: Can not execute command $cmd.");
+                                return 1;
+                            }
+                        }
+                        if ($count > 10) {
+                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process in 10 seconds.");
+                            return 1;
+                        }
+                        sleep 1;
+                    } else {
+                        delete $pids_map{$pid}
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+#
+#=head3 enable_TFTP
+#
+#    Configure and enable the tftp service.
+#
+#=cut
+#
+#-----------------------------------------------------------------------------
+sub enable_TFTP
+{
     # read tftpdir directory from database
     my $tftpdir = xCAT::TableUtils->getTftpDir();
     if (!(-e $tftpdir)) {
@@ -1381,7 +1451,6 @@ sub enable_TFTPhpa
                         "Error on restart xinetd\n");
 
                 }
-
                 #if (grep(/running/, @output))
                 #{
                 #  print ' ';              # indent service output to separate it from the xcatd service output
@@ -1429,43 +1498,12 @@ sub enable_TFTPhpa
         $startcmd = "/usr/sbin/in.tftpd $v4only $tftpflags";
     }
 
-
-    if (-x "/usr/sbin/in.tftpd") {
-        system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
-        if ($distro =~ /ubuntu.*/i || $distro =~ /debian.*/i) {
-            sleep 1;
-            my @checkproc = `ps axf|grep -v grep|grep in.tftpd`;
-            if (@checkproc) {
-                xCAT::Utils->stopservice("tftpd-hpa");
-            }
-        }
-
-        my @tftpprocpids = `ps axf | grep -v 'awk /in.tftpd/' | awk '/in.tftpd/ {print \$1}'`;
-        if (@tftpprocpids) {
-            my %pids_map;
-            my $count = 0;
-            map { chomp; $pids_map{$_} = 1 } @tftpprocpids;
-            while (keys %pids_map) {
-                foreach my $pid (keys %pids_map) {
-                    if (xCAT::Utils::is_process_exists($pid)) {
-                        $count++;
-                        if ($count == 5) {
-                            my $tftpinfo = `ps axf|grep -v grep|grep in.tftpd`;
-                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process $pid [$tftpinfo] in 5 seconds, stop it again.");
-                            system("killall -s KILL in.tftpd");
-                        }
-                        if ($count > 10) {
-                            xCAT::MsgUtils->message("S", "ERROR: Can not stop tftp process in 10 seconds.");
-                            return 1;
-                        }
-                        sleep 1;
-                    } else {
-                        delete $pids_map{$pid}
-                    }
-                }
-            }
-        }
+    if ( -x "/usr/sbin/in.tftpd") {
         system("$startcmd");
+        if($? != 0) {
+            xCAT::MsgUtils->message("S", "ERROR: Can not execute command $startcmd.");
+            return 1;
+        }
     }
     return 0;
 }

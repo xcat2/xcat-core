@@ -175,15 +175,10 @@ sub winshell {
         } else {
             mkwinlinks($node, $oshash->{$node}->[0]);
         }
-        my $bptab = xCAT::Table->new('bootparams', -create => 1);
-        $bptab->setNodeAttribs(
-            $node,
-            {
-                kernel   => "Boot/pxeboot.0",
-                initrd   => "",
-                kcmdline => ""
-            }
-        );
+        my $bootparams = ${$request->{bootparams}};
+        $bootparams->{$node}->[0]->{kernel} = "Boot/pxeboot.0";
+        $bootparams->{$node}->[0]->{kcmdline} = "";
+        $bootparams->{$node}->[0]->{initrd} = "";
     }
 }
 
@@ -245,7 +240,7 @@ sub mkinstall
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %doneimgs;
-    my $bptab    = xCAT::Table->new('bootparams', -create => 1);
+    my $bootparams = ${$request->{bootparams}};
     my $hmtab    = xCAT::Table->new('nodehm');
     my $vpdtab   = xCAT::Table->new('vpd');
     my $vpdhash  = $vpdtab->getNodesAttribs(\@nodes, ['uuid']);
@@ -365,16 +360,11 @@ sub mkinstall
                 } else {
                     mkwinlinks($node, $ent);
                 }
+                $bootparams->{$node}->[0]->{kcmdline} = "";
+                $bootparams->{$node}->[0]->{initrd} = "";
                 if ($arch =~ /x86_64/)
                 {
-                    $bptab->setNodeAttribs(
-                        $node,
-                        {
-                            kernel   => "Boot/pxeboot.0",
-                            initrd   => "",
-                            kcmdline => ""
-                        }
-                    );
+                    $bootparams->{$node}->[0]->{kernel} = "Boot/pxeboot.0";
                 } elsif ($arch =~ /x86/) {
                     unless (-r "$tftpdir/Boot/pxeboot32.0") {
                         my $origpxe;
@@ -402,14 +392,7 @@ sub mkinstall
                             print $bootmgr $_;
                         }
                     }
-                    $bptab->setNodeAttribs(
-                        $node,
-                        {
-                            kernel   => "Boot/pxeboot32.0",
-                            initrd   => "",
-                            kcmdline => ""
-                        }
-                    );
+                    $bootparams->{$node}->[0]->{kernel} = "Boot/pxeboot32.0";
                 }
                 next;
             }
@@ -500,14 +483,9 @@ sub mkinstall
         } elsif (-r $installroot . "/$os/$arch/sources/install.wim") {
             if ($arch =~ /x86/)
             {
-                $bptab->setNodeAttribs(
-                    $node,
-                    {
-                        kernel   => "$winpepath" . "Boot/pxeboot.0",
-                        initrd   => "",
-                        kcmdline => ""
-                    }
-                );
+                $bootparams->{$node}->[0]->{kcmdline} = "";
+                $bootparams->{$node}->[0]->{initrd} = "";
+                $bootparams->{$node}->[0]->{kernel} = "Boot/pxeboot.0";
             }
         }
         else

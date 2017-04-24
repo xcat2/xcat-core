@@ -26,6 +26,8 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
+     OpenBMC specific:
+       rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
      PPC (with IVM or HMC) specific:
@@ -44,12 +46,17 @@ my %usage = (
        rpower <noderange> [on|onstandby|off|cycle|state|sms]
      Blade(using AMM) specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
+    Lenovo high-density server specific:
+       rpower <noderange> [on|off|reset|boot|reseat]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
      MIC specific:
        rpower noderange [stat|state|on|off|reset|boot]
      docker specific:
        rpower noderange [start|stop|restart|pause|unpause|state]
+     pdu specific:
+       rpower noderange [off|on|stat|status|reset]
+       rpower noderange [pduoff|pduon|pdustat|pdustatus|pdureset]
 ",
     "rbeacon" =>
       "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
@@ -81,7 +88,7 @@ my %usage = (
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
     BMC specific:
-       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|all]
+       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
     OpenPOWER server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all]
     MPA specific:
@@ -100,7 +107,9 @@ my %usage = (
     zVM specific:
        rinv noderange [all|config]
     MIC specific:
-       rinv noderange [system|ver|board|core|gddr|all]",
+       rinv noderange [system|ver|board|core|gddr|all]
+    pdu specific:
+       rinv noderange ",
     "rsetboot" =>
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",

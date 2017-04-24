@@ -58,11 +58,9 @@ check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
 check:rc==0
 
-
-cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then rnetboot $$SN;elif [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rpower $$SN boot; fi
-check:rc==0
+check:output=~Provision node\(s\)\: $$SN
 
 cmd:sleep 600
 cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 60;((a++));if [ $a -gt 70 ];then break;fi done

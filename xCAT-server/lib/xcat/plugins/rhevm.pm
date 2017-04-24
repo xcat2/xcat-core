@@ -103,6 +103,7 @@ sub preprocess_request {
     my $command   = $request->{command}->[0];
     my $extraargs = $request->{arg};
 
+
     if ($extraargs) {
         @ARGV = @{$extraargs};
         my $help;
@@ -123,6 +124,11 @@ sub preprocess_request {
             xCAT::MsgUtils->message("I", $rsp, $callback);
             return ();
         }
+    }
+
+    #pdu commands will be handled in the pdu plugin
+    if (($extraargs->[0] eq 'pdustat') || ($extraargs->[0] eq 'pdureset') || ($extraargs->[0] eq 'pduon') || ($extraargs->[0] eq 'pduoff')) {
+        return;
     }
 
     # Read the user password for the rhevm

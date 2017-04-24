@@ -242,7 +242,7 @@ fi
 # add bonding driver alias for <bondname>
 echo "alias $str_bond_name bonding" > /etc/modprobe.d/$str_bond_name.conf
 
-# Bring down the salve devices first
+# Bring down the slave devices first
 for slave in ${str_bond_name} ${array_bond_slaves[*]}; do
     $(ifdown $slave &>/dev/null)
 done
