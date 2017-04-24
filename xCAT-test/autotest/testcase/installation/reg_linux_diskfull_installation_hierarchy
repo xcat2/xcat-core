@@ -33,8 +33,8 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ -f /tmp/test.synclist ]] ;then mv -f /tmp/test.synclist /tmp/test.synclist.bak;fi;
-cmd:echo "/tmp/test.synclist -> /tmp/test.synclist" > /tmp/test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/tmp/test.synclist
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/test.synclist
 check:rc==0
 cmd:updatenode $$CN -f
 check:rc==0
@@ -63,8 +63,8 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
-cmd:xdsh $$CN "cat /tmp/test.synclist"
+cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0
-cmd:if [[ -f /tmp/test.synclist.bak ]] ;then mv -f /tmp/test.synclist.bak /tmp/test.synclist;else rm -rf /tmp/test.synclist;fi
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 end
