@@ -1,5 +1,4 @@
-#SERIES: 1,50,100,250,500,1000,2500,5000
-mkdef -z -f < #STANZ#
+#SERIES# 1,50,100,250,500,1000,2500,5000,10000
 lsdef #NODES#
 makehosts #NODES#
 makedns -n #NODES#

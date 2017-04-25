@@ -147,4 +147,5 @@ To run the performance testing for the commands defined in /opt/xcat/share/xcat/
 =head1 FILES
 
 /opt/xcat/bin/xcatperftest
+
 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst

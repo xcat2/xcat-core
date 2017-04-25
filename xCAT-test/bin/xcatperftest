@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
 #
@@ -135,13 +135,9 @@ fakeNode()
   #                bmc=$FAKE_NETWORK_BMC.$2.$3 bmcpassword=fake bmcusername=fake groups=all,performance > /dev/null 2>&1
 }
 
-# Create batch fake nodes for testing
+# Create batch fake nodes stanz file for testing
 bootstrap()
 {
-  if [ ! -z $PERF_NOCREATE ]; then
-    echo "Ignore the bootstrap to create fake nodes."
-    return
-  fi
   declare -i  count=0
   [ $rack = 0 ] && rack=1
   for i in $(seq 0 $(expr $rack - 1))
@@ -208,12 +204,11 @@ printResult()
 # Executing each command and print the result to report file
 execCmd()
 {
+  echo "Testing for [ $1 ] ..."
   if [ ! -z $PERF_DRYRUN ]; then
-    echo "$1"
     return
   fi
 
-  echo -n .
   starttime=`date +'%Y-%m-%d %H:%M:%S'`
   start=$(getTime "$starttime")
   eval "$1" > /dev/null 2>&1
@@ -264,7 +259,12 @@ fi
 echo "Continue the performance testing for commands in $RUN_CMD_LIST "
 echo "=================================================="
 
-series=`grep '^#SERIES#' $RUN_CMD_LIST | awk  -F ':' '{print $2}'`
+# Initial Populate the fake nodes into DB
+if [ -z $PERF_NOCREATE ]; then
+  execCmd "mkdef -z -f < $PERFORMANCE_STANZ" "$FAKE_NODE_TOTAL"
+fi
+
+series=`grep '^#SERIES#' $RUN_CMD_LIST | awk  '{print $2}'`
 if [ ! -z $series ]; then
   series=${series//,/ }
 fi
@@ -288,5 +288,7 @@ IFS_BAK=
 rm -f $PERFORMANCE_NODE_TMPL
 rm -f $PERFORMANCE_STANZ
 
-echo
-echo "Done. Check the performance result in $PERFORMANCE_REPORT"
+if [ -z $PERF_DRYRUN ]; then
+  echo
+  echo "Done. Check the performance result in $PERFORMANCE_REPORT"
+fi
