@@ -649,7 +649,10 @@ sub process_request_nmap {
 
     # get additional options from site table
     my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
-    my $more_options = $nmap_options[0];
+    my $more_options = "";
+    if (defined($nmap_options[0])) {
+        $more_options = $nmap_options[0];
+    }
 
     foreach my $ip6 (0, 1) {    #first pass, ipv4, second pass ipv6
         if ($ip6 and scalar(@ip6s)) {
