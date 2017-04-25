@@ -321,6 +321,8 @@ my %usage = (
     "rflash" =>
       "Usage: 
     rflash [ -h|--help|-v|--version]
+    Lenovo Dense Enclosure Manager specific:
+        rflash <noderange> http://<server>/path/to/update.rom
     PPC (with HMC) specific:
 	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
