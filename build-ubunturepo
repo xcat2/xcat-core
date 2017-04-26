@@ -177,7 +177,8 @@ then
         short_short_ver=`cat Version|cut -d. -f 1`
         build_time=`date`
         build_machine=`hostname`
-        commit_id=`git rev-parse HEAD`
+        commit_id=`git rev-parse --short HEAD`
+        commit_id_long=`git rev-parse HEAD`
 
         package_dir_name=debs$REL
         #TODO: define the core path and tarball name
@@ -370,6 +371,7 @@ __EOF__
     echo "BUILD_TIME=$build_time" >> $BUILDINFO
     echo "BUILD_MACHINE=$build_machine" >> $BUILDINFO
     echo "COMMIT_ID=$commit_id" >> $BUILDINFO
+    echo "COMMIT_ID_LONG=$commit_id_long" >> $BUILDINFO
 
     #create the xcat-core.list file
 
