@@ -244,7 +244,6 @@ cmd:rpower $$DOCKERCN start
 check:rc==0
 cmd:rmdocker $$DOCKERCN
 chec:rc!=0
-check:output=~Stop the container before attempting removal or use -f
 cmd:rmdocker $$DOCKERCN -f
 check:rc==0
 check:output=~$$DOCKERCN: success
