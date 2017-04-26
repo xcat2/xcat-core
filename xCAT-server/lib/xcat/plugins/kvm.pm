@@ -26,6 +26,7 @@ use IO::Select;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 use strict;
+use feature "switch"; # For given-when block
 
 #use warnings;
 my $use_xhrm = 0; #xCAT Hypervisor Resource Manager, to satisfy networking and storage prerequisites, default to not using it for the moment
@@ -3529,19 +3530,30 @@ sub lsvm {
                     push @vms, "Memory:" . $domain_info->{"memory"};
                 }
                 if (exists $domain_info->{"nrVirtCpu"}) {
-                    push @vms, "Virt CPU: " . $domain_info->{"nrVirtCpu"};
+                    push @vms, "CPU: " . $domain_info->{"nrVirtCpu"};
                 }
                 if (exists $domain_info->{"state"}) {
                     my $state =  $domain_info->{"state"};
-                    my $state_string = "Unknown";
-                    if ($state == &Sys::Virt::Domain::STATE_NOSTATE) {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_RUNNING) {$state_string = "The domain is active and running";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_BLOCKED) {$state_string = "The domain is active, but execution is blocked";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_PAUSED) {$state_string = "The domain is active, but execution has been paused";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTDOWN) {$state_string = "The domain is active, but in the shutdown phase";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_SHUTOFF) {$state_string = "The domain is inactive, and shut down";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_CRUSHED) {$state_string = "The domain is inactive, and crashed";}
-                    elsif ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED) {$state_string = "The domain is active, but in power management suspend state";}
+                    my $state_string;
+                    given($state) {
+                        when ($state == &Sys::Virt::Domain::STATE_NOSTATE) 
+                            {$state_string = "The domain is active, but is not running / blocked (eg idle)";}
+                        when ($state == &Sys::Virt::Domain::STATE_RUNNING) 
+                            {$state_string = "The domain is active and running";}
+                        when ($state == &Sys::Virt::Domain::STATE_BLOCKED) 
+                            {$state_string = "The domain is active, but execution is blocked";}
+                        when ($state == &Sys::Virt::Domain::STATE_PAUSED) 
+                            {$state_string = "The domain is active, but execution has been paused";}
+                        when ($state == &Sys::Virt::Domain::STATE_SHUTDOWN) 
+                            {$state_string = "The domain is active, but in the shutdown phase";}
+                        when ($state == &Sys::Virt::Domain::STATE_SHUTOFF) 
+                            {$state_string = "The domain is inactive, and shut down";}
+                        when ($state == &Sys::Virt::Domain::STATE_CRUSHED) 
+                            {$state_string = "The domain is inactive, and crashed";}
+                        when ($state == &Sys::Virt::Domain::STATE_PMSUSPENDED) 
+                            {$state_string = "The domain is active, but in power management suspend state";}
+                        default {$state_string = "Unknown"};
+                    }
                     push @vms, "State :" . $domain_info->{"state"} . " ($state_string)";
                 }
                 # The following block of code copied from rscan command processng for disks
@@ -4099,7 +4111,7 @@ sub dohyp {
             return 1, "General error establishing libvirt communication";
         }
     }
-    if (($command eq 'mkvm' or $command eq 'chvm' or $command eq 'rpower' or $command eq 'lsvm') and $hypconn) {
+    if (($command =~ /^mkvm$|^chvm$|^rpower$|^lsvm$/) and $hypconn) {
         my $nodeinfo = $hypconn->get_node_info();
         if (exists($nodeinfo->{model})) {
             $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
