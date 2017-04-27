@@ -37,6 +37,10 @@ check:rc==0
 cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
 cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/test.synclist
 check:rc==0
+#wang jun xia add debug information here to trace synlist could not work on provison
+cmd:sleep 20
+cmd:lsdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput 
+#will delete the debug information after get the root cause
 cmd:updatenode $$CN -f
 check:rc==0
 cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
