@@ -2510,6 +2510,7 @@ sub power_response {
         my $text = $codes{ $rsp->{code} };
         unless ($text) { $text = sprintf("Unknown response %02xh", $rsp->{code}); }
         xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
+        return;
     } else {
         my $command = $sessdata->{subcommand};
         my $status  = $sessdata->{powerstatus};
