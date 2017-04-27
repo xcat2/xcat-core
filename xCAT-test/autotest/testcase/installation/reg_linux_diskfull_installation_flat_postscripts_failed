@@ -1,4 +1,6 @@
-start:reg_linux_diskfull_installation_flat_postscripts
+start:reg_linux_diskfull_installation_flat_postscripts_failed
+description:This case is for postscripts failed the status will return failed during diskfull installation.
+attribute:$$CN-The operation object of diskfull installation.
 os:Linux
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi

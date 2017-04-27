@@ -1,4 +1,6 @@
-start:reg_linux_diskless_installation_flat_postscripts
+start:reg_linux_diskless_installation_flat_postscripts_failed
+description:This case is for postscripts failed the status will return failed during diskless installation.
+attribute:$$CN-The operation object of diskless installation.
 os:Linux
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
