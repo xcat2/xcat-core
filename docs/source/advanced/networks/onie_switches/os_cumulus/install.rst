@@ -109,4 +109,39 @@ In order to utilize ``xcatprobe switch_macmap``, snmp needs to be enabled.  To e
 
     updatenode frame01sw1 -P enablesnmp
 
+To configuring SNMPv3 after enable snmp,  set user, authentication and/or encryption for the switches: ::
+
+    chdef frame01sw1 snmpauth=sha snmpassword=xcatpassw0rd snmprivacy=DES snmusername=xcatadmin
+
+then execute the ``configonie`` command to add the snmp user for the switch:  ::
+
+    /opt/xcat/share/xcat/scripts/configonie --switches frame01sw1 --snmp
+
+To verify the SNMPv3 configuration, run ``xcatprobe switch_macmap`` command, will show following results:  ::
+
+    #xcatprobe switch_macmap frame01sw1 -V
+    <INFO>frame1sw1: Attempting to refresh switch information...
+    <INFO>frame1sw1: Generate SNMP session with parameter:
+                'UseNumeric' => '1'
+                'SecName' => 'xcatadmin'
+                'AuthPass' => 'xcatpassw0rd'
+                'Version' => '3'
+                'PrivProto' => 'DES'
+                'DestHost' => '172.21.253.102'
+                'SecLevel' => 'authPriv'
+                'AuthProto' => 'SHA'
+                'PrivPass' => 'xcatpassw0rd'
+    <INFO>frame1sw1: SNMP Session query OID:".1.3.6.1.2.1.31.1.1.1.1"
+    <INFO>frame1sw1: SNMP Session get data for OID:".1.3.6.1.2.1.31.1.1.1.1":
+                 '1' => 'lo'
+                 '2' => 'eth0'
+                 '3' => 'swp1'
+                 '4' => 'swp2'
+                 '5' => 'swp3'
+
+    ...........................more output.....................
+
+
+ 
+
 
