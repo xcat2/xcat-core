@@ -111,7 +111,7 @@ In order to utilize ``xcatprobe switch_macmap``, snmp needs to be enabled.  To e
 
 To configuring SNMPv3 after enable snmp,  set user, authentication and/or encryption for the switches: ::
 
-    chdef frame01sw1 snmpauth=sha snmpassword=xcatpassw0rd snmprivacy=DES snmusername=xcatadmin
+    chdef frame01sw1 snmpauth=sha snmppassword=xcatpassw0rd snmpprivacy=DES snmpusername=xcatadmin
 
 then execute the ``configonie`` command to add the snmp user for the switch:  ::
 
