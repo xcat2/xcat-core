@@ -365,13 +365,22 @@ sub getSNList
         return @servicenodes;
 
     }
-    
-    if($service){
-        @servicenodes = $servicenodetab->getAllAttribsWhere("$service = '1'",'node');
+   
+    if($options eq "ALL"){
+        if($service){
+            @servicenodes = $servicenodetab->getAllAttribsWhere("$service = '1'",'node');
+        }else{
+            @servicenodes = $servicenodetab->getAllAttribs(['node']);
+        }
     }else{
-        @servicenodes = $servicenodetab->getAllAttribs(['node']);
-    }
-  
+        my @whereclause;
+        if($service){
+            push @whereclause,"$service = '1'";
+        }
+        push @whereclause,"groups !~ '__mgmtnode'";
+        @servicenodes = $servicenodetab->getAllAttribsWhere(@servicenodes,'node');
+    } 
+
     return @servicenodes;
 }
 
