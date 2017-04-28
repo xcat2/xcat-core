@@ -378,7 +378,7 @@ sub getSNList
             push @whereclause,"$service = '1'";
         }
         push @whereclause,"groups !~ '__mgmtnode'";
-        @servicenodes = $servicenodetab->getAllAttribsWhere(@servicenodes,'node');
+        @servicenodes = $servicenodetab->getAllAttribsWhere(@whereclause,'node');
     } 
 
     return @servicenodes;
