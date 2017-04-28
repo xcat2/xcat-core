@@ -324,14 +324,14 @@ my %usage = (
       "Usage: 
     rflash [ -h|--help|-v|--version]
     PPC (with HMC) specific:
-	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
-	rflash <noderange> [--commit | --recover] [-V|--verbose]
+	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] [-V|--verbose] 
+	rflash <noderange> {--commit | --recover} [-V|--verbose]
     PPC (using Direct FSP Management) specific:
-	rflash <noderange> -p <rpm_directory> --activate <disruptive|deferred> [-d <data_directory>]
+	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
     PPC64LE (using BMC Management) specific:
-        rflash <noderange> [-c | --check] <hpm_file>",
+        rflash <noderange> [-c | --check] [--retry=<count>] [-V] <hpm_file>",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]
