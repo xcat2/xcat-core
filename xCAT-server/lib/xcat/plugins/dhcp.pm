@@ -1665,6 +1665,15 @@ sub process_request
                 next;
             }
 
+            # for redhat7 and centos7, the dhcpd6 file will not be used any more
+            my $osverify = xCAT::Utils->osver();
+            if ($osverify =~ /rh|centos/){
+                $osverify =~ s/[^0-9]*([0-9]+).*/$1/;
+                if ($osverify >= 7){
+                    delete($missingfiles{dhcpd6});
+                }
+            }
+
             # check the possible system config paths for the various Linux O/S
             my $syspath;
             foreach $syspath ("/etc/sysconfig", "/etc/default") {
