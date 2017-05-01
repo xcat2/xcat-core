@@ -24,6 +24,7 @@ my %needbladeinv;
 
 use POSIX qw(ceil floor);
 use Storable qw(nstore_fd retrieve_fd thaw freeze);
+use Scalar::Util qw(looks_like_number);
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::IMMUtils;
@@ -1857,15 +1858,27 @@ sub do_firmware_update {
         if ($opt =~ /buffersize=/) {
             my ($attribute, $buffer_value) = split(/=/, $opt);
             if ($buffer_value) {
-                # buffersize option was passed in, reset the default
-                $buffer_size = $buffer_value;
+                # buffersize option was passed in, reset the default if valid
+                if (looks_like_number($buffer_value) and $buffer_value > 0) {
+                    $buffer_size = $buffer_value;
+                }
+                else {
+                    $exit_with_error_func->($sessdata->{node}, $callback,
+                        "Invalid buffer size value $buffer_value");
+                }
             }
         }
         if ($opt =~ /retry=/) {
             my ($attribute, $retry_value) = split(/=/, $opt);
-            if ($retry_value) {
-                # retry option was passed in, reset the default
-                $retry = $retry_value;
+            if (defined $retry_value) {
+                # retry option was passed in, reset the default if valid
+                if (looks_like_number($retry_value) and $retry_value >= 0) {
+                    $retry = $retry_value;
+                }
+                else {
+                    $exit_with_error_func->($sessdata->{node}, $callback,
+                        "Invalid retry value $retry_value");
+                }
             }
         }
     }
@@ -1897,7 +1910,9 @@ RETRY_UPGRADE:
 
     # step 1 power off
     $cmd = $pre_cmd . " chassis power off";
-    xCAT::SvrUtils::sendmsg("Preparing to upgrade firmware, powering chassis off...", $callback, $sessdata->{node}, %allerrornodes);
+    if ($verbose) {
+        xCAT::SvrUtils::sendmsg("Preparing to upgrade firmware, powering chassis off...", $callback, $sessdata->{node}, %allerrornodes);
+    }
     $output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
         $exit_with_error_func->($sessdata->{node}, $callback,
@@ -1913,7 +1928,7 @@ RETRY_UPGRADE:
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 1, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 2, $sessdata, $verbose)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -1932,23 +1947,30 @@ RETRY_UPGRADE:
 
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
     $cmd .= " >".$rflash_log_file." 2>&1";
-    xCAT::SvrUtils::sendmsg([ 0,
+    if ($verbose) {
+        xCAT::SvrUtils::sendmsg([ 0,
             "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
-        $callback, $sessdata->{node});
+            $callback, $sessdata->{node});
+    }
 
     $output = xCAT::Utils->runcmd($cmd, -1);
     # if upgrade command failed and we exausted number of retries 
     # report an error, exit to the caller and leave node in powered off state
     # otherwise report an error, power on the node  and try upgrade again
     if ($::RUNCMD_RC != 0) {
+        # Since "hpm update" command in step 4 above redirects standard out and error to a log file,
+        # nothing gets returned from execution of the command. Here if RC is not zero, we
+        # extract all lines containing "Error" from that log file and display them in the sendmsg below
+        my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
+        $output = xCAT::Utils->runcmd($get_error_cmd, 0);
         if ($retry == 0) {
-            # No more retries left, report and error and exit
+            # No more retries left, report an error and exit
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Running ipmitool command $cmd failed: $output");
+                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
         }
         else {
             # Error upgrading, set a flag to attempt a retry
-            xCAT::SvrUtils::sendmsg("Running ipmitool command $cmd failed: $output", $callback, $sessdata->{node}, %allerrornodes);
+            xCAT::SvrUtils::sendmsg("Running attempt $retry of ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.", $callback, $sessdata->{node}, %allerrornodes);
             $failed_upgrade = 1;
             
         } 
@@ -1956,7 +1978,7 @@ RETRY_UPGRADE:
 
     # step 5 power on
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 15, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -1965,7 +1987,9 @@ RETRY_UPGRADE:
         xCAT::SvrUtils::sendmsg("Firmware update failed, powering chassis on for a retry. This can take several minutes. $retry retries left ...", $callback, $sessdata->{node}, %allerrornodes);
     }
     else {
-        xCAT::SvrUtils::sendmsg("Firmware updated, powering chassis on to populate FRU information...", $callback, $sessdata->{node}, %allerrornodes);
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg("Firmware updated, powering chassis on to populate FRU information...", $callback, $sessdata->{node}, %allerrornodes);
+        }
     }
 
     $cmd = $pre_cmd . " chassis power on";

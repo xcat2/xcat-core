@@ -46,7 +46,7 @@ sub process_request {
     @ARGV = @{ $request->{arg} } if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage: imgcapture <node> -t|--type diskless [-p | --profile <profile>] " .
+    my $usage = "Usage: imgcapture <node> -t|--type {diskless|sysclone} [-p | --profile <profile>] " .
                 "[-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] " .
                 "[-d | --device <devicesToCapture>] [-c | --compress <compressionLevel>] [-V | --verbose] \n\n" .
                 "imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n" .

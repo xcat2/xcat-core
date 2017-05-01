@@ -1,5 +1,6 @@
 start:rsetboot_hd_statcheck
 description:set the boot device from hd
+Attribute: $$CN-The operation object of rsetboot command.
 cmd:rsetboot $$CN hd
 check:rc==0
 check:output=~Hard Drive
@@ -10,6 +11,7 @@ end
  
 start:rsetboot_net_statcheck
 description:set the boot device from net
+Attribute: $$CN-The operation object of rsetboot command.
 cmd:rsetboot $$CN net
 check:rc==0
 check:output=~Network
@@ -20,6 +22,7 @@ end
 
 start:rsetboot_cd_statcheck
 description:set the boot device from CD/DVD
+Attribute: $$CN-The operation object of rsetboot command.
 cmd:rsetboot $$CN cd
 check:rc==0
 check:output=~CD/DVD
@@ -30,6 +33,7 @@ end
 
 start:rsetboot_default_statcheck
 description:set the boot device default
+Attribute: $$CN-The operation object of rsetboot command.
 cmd:rsetboot $$CN default
 check:rc==0
 check:output=~boot override inactive
@@ -38,3 +42,57 @@ check:rc==0
 check:output=~$$CN: boot override inactive
 end
 
+start:rsetboot_h
+description:get rsetboot help information
+cmd:rsetboot -h
+check:rc==0
+check:output=~Usage: rsetboot
+end
+
+start:rsetboot_help
+description:get rsetboot help information using rsetboot help
+cmd:rsetboot -help
+check:rc==0
+check:output=~Usage: rsetboot
+end
+
+start:rsetboot_v
+desription:get rsetboot version
+cmd:rsetboot -v
+check:rc==0
+check:output=~Version
+end
+
+start:rsetboot_node_invalidnode
+desription:rsetboot using invalidenode
+cmd:rsetboot testnode boot
+check:rc!=0
+check:output=~Error: Invalid nodes
+end
+
+start:rsetboot_noderange_net
+description:rsetboot noderange net
+Attribute: $$CN,$$BC-The operation object of rsetboot command.
+cmd:rsetboot $$CN,$$BC net
+check:output=~$$CN: Network
+cmd:rsetboot $$CN,$$BC stat
+check:output=~$$CN: Network
+check:output=~$$BC: Network
+end
+
+start:rsetboot_node_invalidaction
+description:rsetboot node using invalidaction
+Attribute: $$CN-The operation object of rsetboot command.
+cmd:rsetboot $$CN dsdf
+check:rc!=0
+check:output=~Error: unsupported command
+end
+
+start:rsetboot_group_net
+description:rsetboot group node 
+Attribute: $$CN-The operation object of rsetboot command.
+cmd:rsetboot __GETNODEATTR($$CN,groups)__ net
+check:output=~$$CN: Network
+cmd:rsetboot __GETNODEATTR($$CN,groups)__ stat
+check:output=~$$CN: Network
+end

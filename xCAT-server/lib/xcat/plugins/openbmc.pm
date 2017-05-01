@@ -15,17 +15,19 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
 
+use JSON;
 use HTTP::Async;
 use HTTP::Cookies;
+use File::Basename;
+use Data::Dumper;
+use Getopt::Long;
 use xCAT::OPENBMC;
 use xCAT::Utils;
 use xCAT::Table;
 use xCAT::Usage;
 use xCAT::SvrUtils;
-use File::Basename;
-use Data::Dumper;
-use Getopt::Long;
-use JSON;
+use xCAT::GlobalDef;
+use xCAT_monitoring::monitorctrl;
 
 sub unsupported {
     my $callback = shift;
@@ -158,6 +160,21 @@ my %status_info = (
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
     },
+    REVENTLOG_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/logging/enumerate",
+    },
+    REVENTLOG_RESPONSE => {
+        process        => \&reventlog_response,
+    },
+    REVENTLOG_CLEAR_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_url/records/events/action/clear",
+        data           => "",
+    },
+    REVENTLOG_CLEAR_RESPONSE => {
+        process        => \&reventlog_response,
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
@@ -279,15 +296,17 @@ sub process_request {
     parse_node_info($noderange);
     parse_command_status($command);
 
-    $cookie_jar = HTTP::Cookies->new({});
-    $async = HTTP::Async->new(
-        cookie_jar => $cookie_jar,
-        timeout => 10,
-        max_request_time => 60,
-        ssl_options => {
-            SSL_verify_mode => 0,
-        },
-    );    
+    if ($request->{command}->[0] ne "getopenbmccons") {
+        $cookie_jar = HTTP::Cookies->new({});
+        $async = HTTP::Async->new(
+            cookie_jar => $cookie_jar,
+            timeout => 10,
+            max_request_time => 60,
+            ssl_options => {
+                SSL_verify_mode => 0,
+            },
+        );    
+    }
 
     my $bmcip;
     my $login_url;
@@ -298,13 +317,17 @@ sub process_request {
 
     foreach my $node (keys %node_info) {
         $bmcip = $node_info{$node}{bmc};
-        $login_url = "$http_protocol://$bmcip/login";
-        $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
-        $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
-        $handle_id_node{$handle_id} = $node;
-        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-        print "$node: DEBUG POST $login_url -d $content\n";
-        push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
+
+        if ($request->{command}->[0] eq "getopenbmccons") {
+            push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
+        } else {
+            $login_url = "$http_protocol://$bmcip/login";
+            $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+            $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
+            $handle_id_node{$handle_id} = $node;
+            $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+            print "$node: DEBUG POST $login_url -d $content\n";
+        }
     }  
 
     #process rcons
@@ -340,7 +363,7 @@ sub parse_args {
     my $extrargs = shift;
     my $check = undef;
 
-    if (scalar(@ARGV) > 1 and $command ne "rsetboot") {
+    if (scalar(@ARGV) > 1 and $command ne "rsetboot" and $command ne "reventlog") {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
@@ -380,6 +403,16 @@ sub parse_args {
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } elsif ($command eq "reventlog") {
+        #
+        # disable function until fully tested
+        # 
+        $subcommand = "all" if (!defined($ARGV[0]));
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+
     } else {
         return ([ 1, "Command is not supported." ]);
     }
@@ -469,6 +502,30 @@ sub parse_command_status {
         }
         xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
         exit;
+    }
+
+    if ($command eq "reventlog") {
+        my $option_s = 0;
+        unless (GetOptions("s" => \$option_s,)) {
+            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            exit 1;
+        }
+
+        if (defined($ARGV[0])) {
+            $subcommand = $ARGV[0];
+        } else {
+            $subcommand = "all";
+        }
+
+        if ($subcommand eq "clear") {
+            $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
+            $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
+        } else {
+            $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
+            $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
+            $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
+            $status_info{REVENTLOG_RESPONSE}{argv} .= ",s" if ($option_s);
+        }
     }
 
     print Dumper(\%next_status) . "\n";
@@ -673,26 +730,32 @@ sub login_response {
 sub rpower_response {
     my $node = shift;
     my $response = shift;
+    my %new_status = ();
 
     my $response_info = decode_json $response->content;
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("on", $callback, $node);
+            $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     } 
 
     if ($node_info{$node}{cur_status} eq "RPOWER_OFF_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("off", $callback, $node);
+            $new_status{$::STATUS_POWERING_OFF} = [$node];
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("reset", $callback, $node);
+            $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     }
+
+    xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
         if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
@@ -885,6 +948,65 @@ sub rsetboot_response {
     }
 
     return;
+}
+
+#-------------------------------------------------------
+
+=head3  reventlog_response
+
+  Deal with response of reventlog command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub reventlog_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    if ($node_info{$node}{cur_status} eq "REVENTLOG_CLEAR_REQUEST") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("clear", $callback, $node);
+        }
+    } else {
+        my ($entry_string, $option_s) = split(",", $status_info{REVENTLOG_RESPONSE}{argv});
+        my $content_info; 
+        my %output_s = () if ($option_s);
+        my $entry_num = 0;
+        $entry_string = "all" if ($entry_string eq "0");
+        $entry_num = 0 + $entry_string if ($entry_string ne "all");
+
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+            my $id_num = 0 + $content{Id} if ($content{Id});
+            if (($entry_string eq "all" or ($id_num and ($entry_num ge $id_num))) and $content{Message}) {
+                my $content_info = $content{Timestamp} . " " . $content{Message}; 
+                if ($option_s) {
+                    $output_s{$id_num} = $content_info;
+                    $entry_num = $id_num if ($entry_num < $id_num);
+                } else {
+                    xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
+                }
+            }
+        }
+
+        if (%output_s) {
+            for (my $key = $entry_num; $key >= 1; $key--) {
+                xCAT::SvrUtils::sendmsg("$output_s{$key}", $callback, $node) if ($output_s{$key});
+            } 
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
 }
 
 1;
