@@ -1978,7 +1978,7 @@ sub do_firmware_update {
         }
         else {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Unable to determine firmware version currently installed.");
+                "Unable to determine firmware version currently installed. Verify that \"$cmd | grep OP8_v\" command returns a version.");
         }
 
         # Check what firmware version is specified in htm file
