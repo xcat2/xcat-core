@@ -181,6 +181,7 @@ sub new {
     my $self  = {};
     bless $self, $class;
     my %args = @_;
+    $self->init();
     unless ($ipmi2support) {
         $self->{ipmi15only} = 1;
     }
@@ -238,7 +239,6 @@ sub new {
     } else {
         $self->{peeraddr} = sockaddr_in($self->{port}, $bmc_n);
     }
-    $self->init();
     return $self;
 }
 
