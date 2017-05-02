@@ -883,6 +883,11 @@ sub setnetinfo {
     unless (defined($argument)) {
         return 0;
     }
+    my @arglist = split /,/, $argument;
+    if (scalar @arglist > 1) {
+	    $argument = $arglist[$sessdata->{bmcnum} - 1];
+    }
+
     if ($subcommand eq "thermprofile") {
         return idpxthermprofile($argument);
     }
