@@ -2830,13 +2830,16 @@ sub got_bios_date {
         my $fru = FRU->new();
         $fru->rec_type("bios,uefi,firmware");
         $fru->desc("UEFI Version");
-        my $pending = "";
-        if ($sessdata->{biosbuildpending}) {
-            $pending = " [PENDING: $sessdata->{biosbuildpending}]";
-        }
-        my $value = $sessdata->{biosbuildversion} . " (" . $sessdata->{biosbuildid} . " " . $sessdata->{biosbuilddate} . ")$pending";
+        my $value = $sessdata->{biosbuildversion} . " (" . $sessdata->{biosbuildid} . " " . $sessdata->{biosbuilddate} . ")";
         $fru->value($value);
         $sessdata->{fru_hash}->{uefi} = $fru;
+        if ($sessdata->{biosbuildpending}) {
+	    $fru = FRU->new();
+            $fru->rec_type("bios,uefi,firmware");
+            $fru->desc("Pending UEFI Version");
+	    $fru->value($sessdata->{biosbuildpending});
+            $sessdata->{fru_hash}->{pendinguefi} = $fru;
+        }
         get_imm_property(property => "/v2/fpga/build_id", callback => \&got_fpga_buildid, sessdata => $sessdata);
     } else {
         initfru_with_mprom($sessdata);
