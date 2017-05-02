@@ -230,6 +230,9 @@ sub gethostname()
        hostname
        Optional:
         GetNumber=>1 (return the address as a BigInt instead of readable string)
+        GetAllAddresses=>1 (return the )
+        OnlyV6=>1 ()
+        OnlyV4=> ()
     Returns: ip address
     Globals:
         cache: %::hostiphash
@@ -287,12 +290,16 @@ sub getipaddr
 #print "============================\n";
     #cache, do not lookup DNS each time
     if (
-        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetNumber}) and (not $extraarguments{GetAllAddresses})) 
-        and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
+        ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))  and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
     {
 #        print "YYYYYYYYYYYYYYYYYYY\n";
-
-        return $::hostiphash{$iporhost};
+        if($extraarguments{GetNumber} ) {
+            if($::hostiphash{$iporhost}{Number}){
+                return $::hostiphash{$iporhost}{Number};
+            }
+        } elsif($::hostiphash{$iporhost}{hostip}) {
+            return $::hostiphash{$iporhost}{hostip};
+        }
     }
     else
     {
@@ -315,10 +322,10 @@ sub getipaddr
             unless($reqfamily == AF_INET6){
                 if($isip){
                    if($name){
-                       $::hostiphash{$iporhost}=$name;
+                       $::hostiphash{$iporhost}{hostip}=$name;
                    }
                 }elsif($ip){
-                    $::hostiphash{$iporhost}=$ip;
+                    $::hostiphash{$iporhost}{hostip}=$ip;
                 }
             }
             while ($ip)
@@ -331,8 +338,10 @@ sub getipaddr
                         $bignumber->badd($_);
                     }
                     push(@returns, $bignumber);
+                    $::hostiphash{$iporhost}{Number}=$returns[0];
                 } else {
                     push @returns, (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                    $::hostiphash{$iporhost}{hostip}=$returns[0];
                 }
                 if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
                     ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
@@ -364,11 +373,13 @@ sub getipaddr
             my $myip=inet_ntoa($packed_ip);
             
             unless($isip) {
-                $::hostiphash{$iporhost}=$myip;
+                $::hostiphash{$iporhost}{hostip}=$myip;
             }
 
             if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
-                return Math::BigInt->new(unpack("N*", $packed_ip));
+                my $number=Math::BigInt->new(unpack("N*", $packed_ip));
+                $::hostiphash{$iporhost}{Number}=$number;
+                return $number;
             }
 
             return $myip;
