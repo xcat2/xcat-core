@@ -1,0 +1,22 @@
+start:xdcp_nonroot_user
+cmd:useradd -m xyzzy
+check:rc==0
+cmd:( cd ~ && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )
+check:rc==0
+cmd:chown -R xyzzy ~xyzzy/.xcat ~xyzzy/.ssh
+check:rc==0
+cmd:xdsh $$CN "useradd -m xyzzy"
+check:rc==0
+cmd:xdsh $$CN "( cd ~ && tar cf - .ssh ) | ( cd ~xyzzy && tar xf - )"
+check:rc==0
+cmd:xdsh $$CN "chown -R xyzzy ~xyzzy/.ssh"
+check:rc==0
+cmd:su -c "xdcp $$CN /etc/sysctl.conf /tmp/sysctl.conf" - xyzzy
+check:rc==0 
+cmd:xdsh $$CN "stat -c '%U' /tmp/sysctl.conf"
+check:output=~xyzzy
+cmd:xdsh $$CN "userdel xyzzy"
+check:rc==0
+cmd:userdel xyzzy
+check:rc==0
+end

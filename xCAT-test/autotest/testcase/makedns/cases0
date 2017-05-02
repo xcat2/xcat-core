@@ -1219,11 +1219,41 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 end
 
-
-
-
-
-
-
-
-
+start:makedns_n_noderange
+description:to verify makedns -n noderange works as design. add case for bug #2572. Test case bug number is #2826.
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:chdef -t node -o dnstestnode[1-10] groups=dnsnode  ip="|dnstestnode(\d+)|100.100.100.(\$1+0)|"
+check:rc==0
+cmd:cp -f /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:for i in {1..10}; do echo "100.100.100.$i  dnstestnode$i" >> /etc/hosts; done
+check:rc==0
+cmd:makedns -n dnstestnode[1-10]
+check:rc==0
+cmd:nslookup dnstestnode5 $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnstestnode[1-10]
+check:rc==0
+cmd:nslookup dnstestnode5 $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+cmd:makedns -n dnsnode
+check:rc==0
+cmd:nslookup dnstestnode5 $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnsnode 
+check:rc==0
+cmd:nslookup dnstestnode5 $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+cmd:rmdef -t node dnstestnode[1-10]
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cp -f /etc/hosts.testbak /etc/hosts
+end

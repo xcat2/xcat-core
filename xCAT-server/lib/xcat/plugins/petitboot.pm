@@ -545,21 +545,14 @@ sub process_request {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
         if ($do_dhcpsetup) {
-            foreach my $node (@normalnodeset) {
-                if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => [$node],
-                            arg => ['-l'] }, $callback);
-
-                    #arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
-                } else {
-                    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
-                    $sub_req->({ command => ['makedhcp'],
-                            node => [$node] }, $callback);
-
-                    #arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);
-                }
+            if ($::request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
+                $sub_req->({ command => ['makedhcp'], arg => ['-l'],
+                        node => \@normalnodeset }, $callback);
+            } else {
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
+                $sub_req->({ command => ['makedhcp'],
+                        node => \@normalnodeset }, $callback);
             }
         }
     }

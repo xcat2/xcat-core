@@ -1,3 +1,33 @@
+start:bmcdiscover_q
+os:linux
+decription:query usage for bmcdiscover
+cmd:bmcdiscover ?
+check:rc==0
+check:output=~bmcdiscover - Discover BMC
+check:output=~Usage
+check:output=~bmcdiscover \[-?|-h|--help\]
+check:output=~bmcdiscover \[-v|--version\]
+end
+
+start:bmcdiscover_help
+os:linux
+decription:show bmcdiscover help information 
+cmd:bmcdiscover help
+check:rc==0
+check:output=~bmcdiscover \- Discover BMC \(Baseboard Management Controller\) using the specified scan method
+check:output=~Usage:
+check:output=~bmcdiscover \[-?|-h|--help\]
+check:output=~bmcdiscover \[-v|--version\]
+end
+
+start:bmcdiscover_version
+os:linux
+description:show bmcdiscover version
+cmd:bmcdiscover --version
+check:rc==0
+check:output=~bmcdiscover - xCAT Version
+end
+
 start:bmcdiscover_h
 os:Linux
 decription:help
@@ -42,6 +72,12 @@ check:rc==0
 check:output=~bmc=$$bmcrange
 end
 
+start:bmcdiscover_range_u_p_i_ipsource
+description:check the bmcrange is which type address
+cmd:bmcdiscover -i  $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
+check:rc==0
+check:output=~IP Address Source       : Static Address
+end
 start:bmcdiscover_range_z
 cmd:bmcdiscover --range  $$bmcrange -u $$bmcusername -p $$bmcpasswd -z
 check:rc==0

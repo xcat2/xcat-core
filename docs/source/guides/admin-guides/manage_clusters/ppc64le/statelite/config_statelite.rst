@@ -90,6 +90,8 @@ This is the minimal list of files needed, you can add additional files to the li
     "ALL","/opt/xcat/","tmpfs",,
     "ALL","/xcatpost/","tmpfs",,
     "ALL","/root/.ssh/","tmpfs",,
+    "ALL","/etc/systemd/system/","tmpfs",,
+    "ALL","/etc/adjtime","tmpfs",,
 
 litetree table
 --------------

@@ -57,15 +57,23 @@ group Attributes:
  
 
 
-\ **bmc**\  (ipmi.bmc)
+\ **bmc**\  (ipmi.bmc, openbmc.bmc)
+ 
+ The hostname of the BMC adapter.
+ 
+ or
  
  The hostname of the BMC adapter.
  
 
 
-\ **bmcpassword**\  (ipmi.password)
+\ **bmcpassword**\  (ipmi.password, openbmc.password)
  
  The BMC password.  If not specified, the key=ipmi row in the passwd table is used as the default.
+ 
+ or
+ 
+ The BMC password.
  
 
 
@@ -115,9 +123,13 @@ group Attributes:
  
 
 
-\ **bmcusername**\  (ipmi.username)
+\ **bmcusername**\  (ipmi.username, openbmc.username)
  
  The BMC userid.  If not specified, the key=ipmi row in the passwd table is used as the default.
+ 
+ or
+ 
+ The BMC userid.
  
 
 
@@ -461,7 +473,7 @@ group Attributes:
 
 \ **mgt**\  (nodehm.mgt)
  
- The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.
+ The method to use to do general hardware management of the node.  This attribute is used as the default if power or getmac is not set.  Valid values: openbmc, ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm.  See the power attribute for more details.
  
 
 

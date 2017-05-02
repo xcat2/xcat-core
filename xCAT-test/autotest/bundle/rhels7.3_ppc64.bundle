@@ -4,8 +4,6 @@ go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
-makehosts_help
-makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -224,11 +222,14 @@ lsxcatd_null
 lsxcatd_h
 lsxcatd_d
 lsxcatd_a
+makehosts_help
+makehosts_n_noderange
 makehosts_h
 makehosts_null
 makehosts_l
 makehosts_d
 makehosts_n
+makehost_n_r
 xdcp_src_dst
 makedns_h
 makedns_d_node
@@ -250,7 +251,6 @@ confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
 confignics_config_multiple_port_withnicaliases_multiple_value
 confignics_disable_set_to_yes
 confignics_disable_set_to_1
-confignics_s
 copycds_iso
 copycds_a
 copycds_n_a

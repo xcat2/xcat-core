@@ -141,8 +141,22 @@ if [ -z "$install_disk" ]; then
         disk_wwn=$(echo $output_for_wwn | $utolcmd)
         output_for_path=$(IFS= ;echo $disk_info | grep DEVPATH | cut -d "=" -f2)
         disk_path=$(echo $output_for_path | $utolcmd)
-        disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
+
+        # Work around the issue Pegas running on Power9 installation hang in anaconda 
+        # with "TypeError: argument of type 'NoneType' is not iterable", 
+        # after running of "udevadm info --attribute-walk --name=/dev/sda" in %pre section of kickstart 
+        exec 42>&1
+        anaconda_version=$(anaconda --version 2>&1 >&42)
+        exec 42>&-
+        cpu_model=$(awk '/model/ { print $NF }' /proc/cpuinfo)
+        p9_bool=$(grep POWER9 /proc/cpuinfo|head -n 1|awk '{print $3}')
+        if [ "$anaconda_version" == "anaconda 21.48.22.93-1" -a \
+             "$cpu_model" == "0000000000000000" -a "$p9_bool" == "POWER9" ]; then
+            disk_driver=""
+        else
+            disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
                     \head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | $utolcmd)
+        fi
 
         echo "[get_install_disk]The disk $disk information: "
         echo "[get_install_disk]    disk_wwn=$disk_wwn"

@@ -1,6 +1,7 @@
 start:SN_setup_case
 os:Linux
-
+cmd:fdisk -l
+cmd:df -T
 cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
 check:rc==0
 
@@ -22,7 +23,6 @@ cmd:makedhcp -a
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
 check:output=~$$SN
-
 cmd:chdef -t node $$SN groups=service,all
 check:rc==0
 cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
@@ -59,6 +59,7 @@ cmd:rinstall $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-in
 check:rc==0
 check:output=~Provision node\(s\)\: $$SN
 
+cmd:if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/customize_sleep_for_sn __GETNODEATTR($$SN,os)__ __GETNODEATTR($$SN,arch)__
 
 cmd:ping $$SN -c 3

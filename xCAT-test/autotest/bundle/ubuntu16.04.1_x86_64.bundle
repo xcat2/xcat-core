@@ -1,6 +1,6 @@
 setup_vm
-Ubuntu_diskless_installation_flat_x86_vm
-Ubuntu_full_installation_flat_x86_vm
+reg_linux_diskless_installation_flat
+reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
 go_xcat_with_xcat-version-1
@@ -9,6 +9,7 @@ makehosts_h
 makehosts_help
 makehosts_n_noderange
 makehosts_n
+makehost_n_r
 chdef_null
 chdef_z
 chdef_t_o_error

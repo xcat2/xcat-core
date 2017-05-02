@@ -1,15 +1,11 @@
 setup_vm
-Diskless_installation_flat_p8_le
-Full_installation_flat_p8_le
+reg_linux_diskless_installation_flat
+reg_linux_diskfull_installation_flat
 go_xcat_local_repo_case7
 go_xcat_noinput
 go_xcat_with_x
 go_xcat_with_xcat-version-1
 go_xcat_online_repo_case6
-makehosts_h
-makehosts_help
-makehosts_n
-makehosts_n_noderange
 updatenode_h
 updatenode_v
 updatenode_diskful_syncfiles
@@ -156,13 +152,6 @@ rpower_reset
 rpower_noderange
 rpower_noderange_nodeps
 rpower_err_noderange
-rscan_noderange
-rscan_x
-rscan_z
-rscan_w
-rscan_x_w
-rscan_z_w
-rvitals_lcds
 rvitals_noderange_err
 tabdump_table
 tabdump_d
@@ -228,6 +217,7 @@ makehosts_l
 makehosts_d
 makehosts_n
 makehosts_n_noderange
+makehost_n_r
 xdcp_src_dst
 makedns_h
 makedns_d_node
@@ -249,7 +239,6 @@ confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
 confignics_config_multiple_port_withnicaliases_multiple_value
 confignics_disable_set_to_yes
 confignics_disable_set_to_1
-confignics_s
 xdsh_h
 xdsh_V
 xdsh_regular_command
