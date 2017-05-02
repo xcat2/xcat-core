@@ -1785,8 +1785,8 @@ sub wait_for_os_to_reboot {
         if ($verbose) {
             xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting to continue", $callback, $sessdata->{node}, %allerrornodes);
         }
-        sleep($initial_sleep); # sleep for this many min for node to reboot
-        # Start testing every 10 sec for node to be booted. Give up after 5 min.
+        sleep($initial_sleep); # sleep initially for $initial_sleep seconds for node to reboot
+        # Start testing every $interval sec for node to be booted. Give up after $retry times.
         foreach (1..$retry) {
             # Test node is booted in to OS
             $cmd = "nodestat $sessdata->{node} | /usr/bin/grep sshd";
@@ -1799,12 +1799,12 @@ sub wait_for_os_to_reboot {
                 return 1; #Node booted
             }
             else {
-                # Still not booted, wait for 10 sec and try again
+                # Still not booted, wait for $interval sec and try again
                 if ($verbose) {
                     $cmd = "nodestat $sessdata->{node}";
                     $output = xCAT::Utils->runcmd($cmd, -1);
                     my ($nodename, $state) = split(/:/, $output);
-                    xCAT::SvrUtils::sendmsg("($_) Node still not ready. Current state - $state, test again in 10 sec.", $callback, $sessdata->{node}, %allerrornodes);
+                    xCAT::SvrUtils::sendmsg("($_) Node still not ready. Current state - $state, test again in $interval sec.", $callback, $sessdata->{node}, %allerrornodes);
                 }
                 sleep($interval);
             }
@@ -2059,6 +2059,7 @@ RETRY_UPGRADE:
 
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
+    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
     if ($is_firestone and 
         (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
          ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
@@ -2068,7 +2069,6 @@ RETRY_UPGRADE:
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 0 force ";
         $cmd .= $verbose_opt;
 
-        my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
         $cmd .= " >".$rflash_log_file." 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
@@ -2092,7 +2092,6 @@ RETRY_UPGRADE:
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 1 force ";
         $cmd .= $verbose_opt;
 
-        my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
         $cmd .= " >>".$rflash_log_file." 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
@@ -2120,7 +2119,6 @@ RETRY_UPGRADE:
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 2 force ";
         $cmd .= $verbose_opt;
 
-        my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
         $cmd .= " >>".$rflash_log_file." 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
@@ -2143,7 +2141,6 @@ RETRY_UPGRADE:
         $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
         $cmd .= $verbose_opt;
 
-        my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
         $cmd .= " >".$rflash_log_file." 2>&1";
         if ($verbose) {
             xCAT::SvrUtils::sendmsg([ 0,
