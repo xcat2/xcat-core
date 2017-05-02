@@ -471,6 +471,11 @@ sub checksum {
 sub subcmd {
     my $self = shift;
     my %args = @_;
+    while ($self->{incommand}) {
+        $self->waitforrsp();
+    }
+    $self->{incommand} = 1;
+
     $self->{expectedcmd}   = $args{command};
     $self->{expectednetfn} = $args{netfn} + 1;
     if ($self->{onlogon_args}->{xcatdebugmode}) {
@@ -573,6 +578,7 @@ sub timedout {
         $self->{timeout} = $initialtimeout + (0.5 * rand());
         my $rsp = {};
         $rsp->{error} = "timeout";
+	$self->{incommand} = 0;
         $self->{ipmicallback}->($rsp, $self->{ipmicallback_args});
         $self->{nowait} = 0;
         return;
@@ -833,6 +839,7 @@ sub init {
       #if we should incur 7 bumps, clear the taboo list and continue on, hoping for best (pessimistically assuming the spec means seq number or that someone could at least interpret it that way)
       #I'll implement this later...
     $self->{'logged'} = 0;
+    $self->{'incommand'} = 0;
 }
 
 sub relog {
@@ -1008,6 +1015,7 @@ sub parse_ipmi_payload {
     $rsp->{code}     = shift @payload;
     $rsp->{data}     = \@payload;
     $self->{timeout} = $initialtimeout + (0.5 * rand());
+    $self->{incommand} = 0;
     $self->{ipmicallback}->($rsp, $self->{ipmicallback_args});
     return 0;
 }

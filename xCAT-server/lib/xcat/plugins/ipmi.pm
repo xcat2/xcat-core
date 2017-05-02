@@ -2301,6 +2301,8 @@ sub fpc_firmxfer_watch {
     }
 }
 
+my %fpcsessions;
+
 sub reseat_node {
     my $sessdata = shift;
     if (1) {    # TODO: FPC path checked for
@@ -2321,8 +2323,19 @@ sub reseat_node {
         my $nodeuser = $authdata->{$fpc}->{username};
         my $nodepass = $authdata->{$fpc}->{password};
         $sessdata->{slotnumber} = $mpent->{id};
-        $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
-        $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
+	if (exists $fpcsessions{$mpent->{mpa}}) {
+            $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}}; 
+	    until ($sessdata->{fpcipmisession}->{logged}) {
+                $sessdata->{fpcipmisession}->waitforrsp();
+            }
+	    $sessdata->{fpcipmisession}->subcmd(netfn => 0x32, command => 0xa4,
+		    data => [ $sessdata->{slotnumber}, 2 ],
+		    callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
+	} else {
+            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
+	    $fpcsessions{$mpent->{mpa}} = $sessdata->{fpcipmisession};
+            $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
+        }
     }
 }
 
