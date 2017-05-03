@@ -370,18 +370,18 @@ sub getSNList
         if($service){
             @servicenodes = $servicenodetab->getAllAttribsWhere("$service = '1'",'node');
         }else{
-            @servicenodes = $servicenodetab->getAllAttribs(['node']);
+            @servicenodes = $servicenodetab->getAllAttribs(('node'));
         }
     }else{
         my @whereclause;
         if($service){
-            push @whereclause,"$service = '1'";
+            push @whereclause,"$service==1";
         }
-        push @whereclause,"groups !~ '__mgmtnode'";
-        @servicenodes = $servicenodetab->getAllAttribsWhere(@whereclause,'node');
+        push @whereclause,"groups!~__mgmtnode";
+        @servicenodes = $servicenodetab->getAllAttribsWhere(\@whereclause,'node');
     } 
 
-    return @servicenodes;
+    return map {$_->{node}} @servicenodes;
 }
 
 sub getSNList_orig
@@ -424,7 +424,7 @@ sub getSNList_orig
     # if did not input "ALL" and there is a MN, remove it
     my @newservicenodes;
     if ((!defined($options)) || ($options ne "ALL")) {
-        my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+        my $mname = xCAT::Utils->noderangecontainsMn_orig(@servicenodes);
         if ($mname) {    # if there is a MN
             foreach my $nodes (@servicenodes) {
                 if ($mname ne ($nodes)) {
