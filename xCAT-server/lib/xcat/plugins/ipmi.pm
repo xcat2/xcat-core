@@ -1762,6 +1762,56 @@ sub check_bmc_status_with_ipmitool {
     return 0;
 }
 
+#----------------------------------------------------------------#
+# Wait for OS to reboot by checking "nodestat" to be "sshd" :
+#  Arguments:
+#        initial_sleep: seconds to sleep before checking loop start
+#        inteval:  inteval time to check
+#        retry:    max retry time
+#        sessdata: session data for display
+#        verbose:  verbose output
+#    Returns:
+#        1 when OS is up
+#        0 when no response of "sshd" from OS
+#----------------------------------------------------------------#
+sub wait_for_os_to_reboot {
+    my $initial_sleep = shift;
+    my $interval      = shift;
+    my $retry         = shift;
+    my $sessdata     = shift;
+    my $verbose      = shift;
+    my $cmd;
+    my $output;
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting to continue", $callback, $sessdata->{node}, %allerrornodes);
+        }
+        sleep($initial_sleep); # sleep initially for $initial_sleep seconds for node to reboot
+        # Start testing every $interval sec for node to be booted. Give up after $retry times.
+        foreach (1..$retry) {
+            # Test node is booted in to OS
+            $cmd = "nodestat $sessdata->{node} | /usr/bin/grep sshd";
+            $output = xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC == 0) {
+                # Node is ready to retry an upgrage
+                if ($verbose) {
+                    xCAT::SvrUtils::sendmsg("Detected node booted. Will retry upgrade", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                return 1; #Node booted
+            }
+            else {
+                # Still not booted, wait for $interval sec and try again
+                if ($verbose) {
+                    $cmd = "nodestat $sessdata->{node}";
+                    $output = xCAT::Utils->runcmd($cmd, -1);
+                    my ($nodename, $state) = split(/:/, $output);
+                    xCAT::SvrUtils::sendmsg("($_) Node still not ready. Current state - $state, test again in $interval sec.", $callback, $sessdata->{node}, %allerrornodes);
+                }
+                sleep($interval);
+            }
+        }
+    return 0; #Node did not boot after requested delay
+}
+
 sub do_firmware_update {
     my $sessdata = shift;
     my $ret;
@@ -1769,6 +1819,9 @@ sub do_firmware_update {
     my $verbose = 0;
     my $retry = 2;
     my $verbose_opt;
+    my $is_firestone = 0;
+    my $firestone_update_version;
+    my $htm_update_version;
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
@@ -1789,7 +1842,7 @@ sub do_firmware_update {
 
     my $exit_with_success_func = sub {
         my ($node, $callback, $message) = @_;
-        my $status = "success to update firmware";
+        my $status = "success updating firmware";
         my $nodelist_table = xCAT::Table->new('nodelist');
         if (!$nodelist_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodelist table, denying");
@@ -1883,8 +1936,6 @@ sub do_firmware_update {
         }
     }
 
-    xCAT::SvrUtils::sendmsg("rflash started, upgrade failure will be retried up to $retry times. Please wait...",
-        $callback, $sessdata->{node}, %allerrornodes);
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
@@ -1903,6 +1954,69 @@ sub do_firmware_update {
                     "Error: Current firmware level OP8v_$grs_version requires one-time manual update to at least version OP8v_1.7_2.55");
             }
         }
+
+    }
+    # For Firestone the update from 810 to 820 or from 820 to 810 needs to be done in 3 steps
+    # instead of usual one.
+    if ($output =~ /8335-GCA|8335-GTA/) {
+        $is_firestone = 1;
+        $cmd = $pre_cmd . " fru print 47";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
+        }
+        # Check what firmware version is currently running on the machine
+        if ($output =~ /OP8_v\d\.\d+_(\d+)\.\d+/) {
+            my $frs_version = $1;
+            if ($frs_version == 1) {
+                $firestone_update_version = "810";
+            }
+            if ($frs_version == 2) {
+                $firestone_update_version = "820";
+            }
+        }
+        else {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Unable to determine firmware version currently installed. Verify that \"$cmd | grep OP8_v\" command returns a version.");
+        }
+
+        # Check what firmware version is specified in htm file
+        $cmd = "/usr/bin/grep -a FW_DESC $hpm_file";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
+        }
+        # Parse out build date from the description string
+        if ($output =~ /FW_DESC=8335 \w+ \w+ \w+ (\w+)/) {
+            my $htm_date= $1;
+            # Parse out the year from "mmddyyyy" (skip 4 digits, grab last 4)
+            if ($htm_date =~ /\d{4}(\d+)/) {
+                my $htm_year = $1;
+                if ($htm_year == 2016) {
+                    $htm_update_version = "810";
+                }
+                if ($htm_year == 2017) {
+                    $htm_update_version = "820";
+                }
+            }
+        }
+        else {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Unable to determine firmware version of $hpm_file.");
+        }
+    }
+
+    if ($is_firestone and 
+        (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
+         ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
+       ) {
+        xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node}, %allerrornodes);
+        $retry = 0; # No retry support for 3 step update process
+    }
+    else {
+        xCAT::SvrUtils::sendmsg("rflash started, upgrade failure will be retried up to $retry times. Please wait...", $callback, $sessdata->{node}, %allerrornodes);
     }
 
 RETRY_UPGRADE:
@@ -1942,38 +2056,120 @@ RETRY_UPGRADE:
     }
 
     # step 4 upgrade firmware
-    $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
-    $cmd .= $verbose_opt;
 
+    # For firestone machines if updating from 810 to 820 version or from 820 to 810,
+    # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
-    $cmd .= " >".$rflash_log_file." 2>&1";
-    if ($verbose) {
-        xCAT::SvrUtils::sendmsg([ 0,
-            "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
-            $callback, $sessdata->{node});
-    }
+    if ($is_firestone and 
+        (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
+         ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
+       ) {
 
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    # if upgrade command failed and we exausted number of retries 
-    # report an error, exit to the caller and leave node in powered off state
-    # otherwise report an error, power on the node  and try upgrade again
-    if ($::RUNCMD_RC != 0) {
-        # Since "hpm update" command in step 4 above redirects standard out and error to a log file,
-        # nothing gets returned from execution of the command. Here if RC is not zero, we
-        # extract all lines containing "Error" from that log file and display them in the sendmsg below
-        my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
-        $output = xCAT::Utils->runcmd($get_error_cmd, 0);
-        if ($retry == 0) {
-            # No more retries left, report an error and exit
+        # Step 4.1
+        $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 0 force ";
+        $cmd .= $verbose_opt;
+
+        $cmd .= " >".$rflash_log_file." 2>&1";
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg([ 0,
+                "rflashing component 0, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                $callback, $sessdata->{node});
+        }
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            # Since "hpm update" command in step 4.1 above redirects standard out and error to a log file,
+            # nothing gets returned from execution of the command. Here if RC is not zero, we
+            # extract all lines containing "Error" from that log file and display them in the sendmsg below
+            my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
+            $output = xCAT::Utils->runcmd($get_error_cmd, 0);
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
         }
-        else {
-            # Error upgrading, set a flag to attempt a retry
-            xCAT::SvrUtils::sendmsg("Running attempt $retry of ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.", $callback, $sessdata->{node}, %allerrornodes);
-            $failed_upgrade = 1;
+
+        sleep(1); # Sleep for a second before next step
+
+        # Step 4.2
+        $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 1 force ";
+        $cmd .= $verbose_opt;
+
+        $cmd .= " >>".$rflash_log_file." 2>&1";
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg([ 0,
+                "rflashing component 1, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                $callback, $sessdata->{node});
+        }
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            # Since "hpm update" command in step 4.2 above redirects standard out and error to a log file,
+            # nothing gets returned from execution of the command. Here if RC is not zero, we
+            # extract all lines containing "Error" from that log file and display them in the sendmsg below
+            my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
+            $output = xCAT::Utils->runcmd($get_error_cmd, 0);
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+        }
+
+        # Wait for BMC to reboot before continuing to next step
+        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Timeout waiting for the bmc ready status. Firmware update suspended");
+        }
+
+        # Step 4.3
+        $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file component 2 force ";
+        $cmd .= $verbose_opt;
+
+        $cmd .= " >>".$rflash_log_file." 2>&1";
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg([ 0,
+                "rflashing component 2, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                $callback, $sessdata->{node});
+        }
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            # Since "hpm update" command in step 4.3 above redirects standard out and error to a log file,
+            # nothing gets returned from execution of the command. Here if RC is not zero, we
+            # extract all lines containing "Error" from that log file and display them in the sendmsg below
+            my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
+            $output = xCAT::Utils->runcmd($get_error_cmd, 0);
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+        }
+    }
+
+    else {
+        $cmd = $pre_cmd . " -z " . $buffer_size . " hpm upgrade $hpm_file force ";
+        $cmd .= $verbose_opt;
+
+        $cmd .= " >".$rflash_log_file." 2>&1";
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg([ 0,
+                "rflashing ... See the detail progress :\"tail -f $rflash_log_file\"" ],
+                $callback, $sessdata->{node});
+        }
+
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        # if upgrade command failed and we exausted number of retries 
+        # report an error, exit to the caller and leave node in powered off state
+        # otherwise report an error, power on the node  and try upgrade again
+        if ($::RUNCMD_RC != 0) {
+            # Since "hpm update" command in step 4 above redirects standard out and error to a log file,
+            # nothing gets returned from execution of the command. Here if RC is not zero, we
+            # extract all lines containing "Error" from that log file and display them in the sendmsg below
+            my $get_error_cmd = "/usr/bin/grep Error $rflash_log_file";
+            $output = xCAT::Utils->runcmd($get_error_cmd, 0);
+            if ($retry == 0) {
+                # No more retries left, report an error and exit
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Running ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.");
+            }
+            else {
+                # Error upgrading, set a flag to attempt a retry
+                xCAT::SvrUtils::sendmsg("Running attempt $retry of ipmitool command $cmd failed with rc=$::RUNCMD_RC and the following error messages:\n$output\nSee the $rflash_log_file for details.", $callback, $sessdata->{node}, %allerrornodes);
+                $failed_upgrade = 1;
             
-        } 
+            } 
+        }
     }
 
     # step 5 power on
@@ -1999,34 +2195,9 @@ RETRY_UPGRADE:
             "Running ipmitool command $cmd failed: $output");
     }
 
-    my $node_ready_for_retry = 0;
     if ($failed_upgrade) {
         # Update has failed in step 4. Wait for node to reboot and try again
-        if ($verbose) {
-            xCAT::SvrUtils::sendmsg("Sleeping for a few min waiting for node to power on before attempting a retry", $callback, $sessdata->{node}, %allerrornodes);
-        }
-        sleep(300); # sleep for 5 min for node to reboot
-        # Start testing every 10 sec for node to be booted. Give up after 5 min.
-        foreach (1..30) {
-            # Test node is booted in to OS
-            $cmd = "nodestat $sessdata->{node} | grep sshd";
-            $output = xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC == 0) {
-                # Node is ready to retry an upgrage
-                if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("Detected node booted. Will retry upgrade", $callback, $sessdata->{node}, %allerrornodes);
-                }
-                $node_ready_for_retry = 1;
-                last;
-            }
-            else {
-                # Still not booted, wait for 10 sec and try again
-                if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("Node still not ready, Test again in 10 sec.", $callback, $sessdata->{node}, %allerrornodes);
-                }
-                sleep(10);
-            }
-        }
+        my $node_ready_for_retry = wait_for_os_to_reboot(300,10,30,$sessdata,$verbose);
         if ($node_ready_for_retry) {
             $retry--;   # decrement number of retries left
             # Yes, it is a goto statement here. Ugly, but removes the need to restructure
