@@ -299,7 +299,7 @@ function isAuthenticated() {
  */
 function isRootAcess() {
     if (is_logged() && $_SESSION["xcatpassvalid"]) {
-        $testacc = docmd('tabdump', '', array('policy', '-w', "name==" . $_SESSION["username"]), array());
+        $testacc = docmd('tabdump', '', array('-w', "name==" . $_SESSION["username"],'policy' ), array());
         if (isset($testacc->{'xcatresponse'}->{'data'}->{1})) {
             $result = $testacc->{'xcatresponse'}->{'data'}->{1};
             $result = str_replace('"', '', $result);

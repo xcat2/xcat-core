@@ -2224,9 +2224,17 @@ sub osver
             $os = $id_like;
         }
 
+        if (!$os ) {
+            $os = "unknown";
+        }
+
         $verrel = $version;
         if (!$verrel and $version_id) {
             $verrel = $version_id;
+        }
+
+        if (!$verrel ) {
+            $verrel = "unknown";
         }
 
 
