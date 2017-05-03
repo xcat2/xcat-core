@@ -355,30 +355,24 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
+ 
+    # disable function until fully tested
+    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
 
-    if (scalar(@ARGV) > 1 and $command ne "rsetboot" and $command ne "reventlog" and $command ne "rspconfig") {
+    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig/) {
+        return ([ 1, "No option specified for $command" ]);
+    }
+
+    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot/)) {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
-        #
-        # disable function until fully tested 
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for rpower" ]);
-        }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
-        #
-        # disable function until fully tested 
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -386,41 +380,22 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         #command for openbmc rcons
     } elsif ($command eq "rsetboot") {
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for $command" ]);
-        }
-        #
-        # disable function until fully tested
-        #        
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
-        #
-        # disable function until fully tested
-        # 
         $subcommand = "all" if (!defined($ARGV[0]));
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rspconfig") {
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for $command" ]);
-        }
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$/);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^vlan$/);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -429,7 +404,7 @@ sub parse_args {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
                 }
                 $setorget = "set";
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
             } else {
@@ -1058,6 +1033,10 @@ sub rspconfig_response {
         if ($grep_string =~ "gateway") {
             $data = ""; # got data from response
             push @output, "BMC Gateway: $data";
+        }
+        if ($grep_string =~ "vlan") {
+            $data = ""; # got data from response
+            push @output, "BMC VLAN ID enabled: $data";
         }
 
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);

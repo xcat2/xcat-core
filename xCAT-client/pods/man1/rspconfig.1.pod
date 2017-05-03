@@ -22,6 +22,10 @@ B<rspconfig> I<noderange> {B<vlan>|B<ip>|B<netmask>|B<gateway>|B<backupgateway>|
 
 B<rspconfig> I<noderange> B<garp>=I<time>
 
+=head2 OpenBMC specific:
+
+B<rspconfig> I<noderange> {B<vlan>|B<ip>|B<netmask>|B<gateway>}
+
 =head2 MPA specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>|B<snmpcfg>|B<pd1>|B<pd2>|B<network>|B<swnet>|B<ntp>|B<textid>|B<frame>}
