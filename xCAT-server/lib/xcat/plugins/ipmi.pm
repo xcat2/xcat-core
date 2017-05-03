@@ -2164,7 +2164,7 @@ sub reseat_node {
 	if (exists $fpcsessions{$mpent->{mpa}}) {
             $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}}; 
 	    until ($sessdata->{fpcipmisession}->{logged}) {
-                $sessdata->{fpcipmisession}->waitforrsp();
+                $sessdata->{fpcipmisession}->waitforrsp(timeout=>1);
             }
 	    $sessdata->{fpcipmisession}->subcmd(netfn => 0x32, command => 0xa4,
 		    data => [ $sessdata->{slotnumber}, 2 ],

@@ -414,7 +414,7 @@ sub subcmd {
     my $self = shift;
     my %args = @_;
     while ($self->{incommand}) {
-        $self->waitforrsp();
+        $self->waitforrsp(timeout=>1);
     }
     $self->{incommand} = 1;
 
