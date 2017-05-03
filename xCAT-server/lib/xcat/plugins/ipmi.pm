@@ -2365,7 +2365,7 @@ sub power {
     my $text;
     my $code;
 
-    if (($sessdata->{subcommand} eq "suspend" or $sessdata->{subcommand} eq "wake") and isopenpower($sessdata)) {
+    if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
         xCAT::SvrUtils::sendmsg([ 1, "unsupported command power $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
