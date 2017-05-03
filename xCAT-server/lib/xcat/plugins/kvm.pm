@@ -2712,7 +2712,9 @@ sub promote_vm_to_master {
         $target = $sourcedir . "/" . $target;
     }
     unless ($target =~ /^nfs:\/\//) {
-        xCAT::SvrUtils::sendmsg([ 1, "KVM plugin only has nfs://<server>/<path>/<mastername> support for cloning at this moment" ], $callback, $node);
+        my $rsp;
+        push @{ $rsp->{data} }, "VM cloning is only supported for nfs server vmstorage attribute. Current setting is $target";
+        xCAT::MsgUtils->message('E', $rsp, $callback);
         return;
     }
     my $dom;
