@@ -114,9 +114,6 @@ cmd:ping $$CN -c 3
 check:rc==0
 check:output=~64 bytes from $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
-cmd:xdsh $$CN "echo "test"> /test.statelite"
-check:rc!=0
-cmd:output=$(xdsh $$CN ls -al / |grep test.statelite);if [[ $? -eq 0 ]];then  xdsh $$CN rm -rf /test.tatelite;fi
 cmd:rm -rf /tmp/image;mkdir /tmp/image
 check:rc==0
 cmd:imgexport __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute /tmp/image/image.tgz

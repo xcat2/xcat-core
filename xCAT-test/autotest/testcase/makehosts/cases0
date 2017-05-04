@@ -134,6 +134,7 @@ cmd:lsdef s01r1b01;if [ $? -eq 0 ]; then lsdef -l s01r1b01 -z >/tmp/s01r1b01.sta
 check:rc==0
 cmd:nodeadd s01 groups=service; chdef s01 ip=70.2.0.254;nodeadd s01r1b01 groups=compute; chdef s01r1b01 ip=80.2.0.254;makehosts
 check:rc==0
+cmd:sleep 20
 cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
 check:rc==0
 cmd:makehosts s01
