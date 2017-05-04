@@ -20,8 +20,7 @@ use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
 use Sys::Hostname;
-#use Data::Dumper;
-#use Data::Dumper;
+use Data::Dumper;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
@@ -292,98 +291,98 @@ sub getipaddr
     if (
         ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))  and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
     {
-#        print "YYYYYYYYYYYYYYYYYYY\n";
+
         if($extraarguments{GetNumber} ) {
             if($::hostiphash{$iporhost}{Number}){
+        #print "YYYYYYYYYY GetNumber Cache Hit!!!YYYYYYYYY\n";
                 return $::hostiphash{$iporhost}{Number};
             }
         } elsif($::hostiphash{$iporhost}{hostip}) {
+        #print "YYYYYYYYYY dns  Cache Hit!!!YYYYYYYYY\n";
             return $::hostiphash{$iporhost}{hostip};
         }
     }
+
+    if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
+    {
+        my @returns;
+        my $reqfamily = AF_UNSPEC;
+        if ($extraarguments{OnlyV6}) {
+            $reqfamily = AF_INET6;
+        } elsif ($extraarguments{OnlyV4}) {
+            $reqfamily = AF_INET;
+        }
+        my @addrinfo;
+        if($isip) {
+            @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6,Socket6::AI_NUMERICHOST());
+        }else{
+            @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
+        }  
+        my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
+        unless($reqfamily == AF_INET6){
+            if($isip){
+               if($name){
+                   $::hostiphash{$iporhost}{hostip}=$name;
+               }
+            }elsif($ip){
+                $::hostiphash{$iporhost}{hostip}=$ip;
+            }
+        }
+        while ($ip)
+        {
+            if ($extraarguments{GetNumber}) { #return a BigInt for compare, e.g. for comparing ip addresses for determining if they are in a common network or range
+                my $ip = (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                my $bignumber = Math::BigInt->new(0);
+                foreach (unpack("N*", Socket6::inet_pton($family, $ip))) { #if ipv4, loop will iterate once, for v6, will go 4 times
+                    $bignumber->blsft(32);
+                    $bignumber->badd($_);
+                }
+                push(@returns, $bignumber);
+                $::hostiphash{$iporhost}{Number}=$returns[0];
+            } else {
+                push @returns, (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                $::hostiphash{$iporhost}{hostip}=$returns[0];
+            }
+            if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
+                ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
+            } else {
+                $ip = 0;
+            }
+        }
+        unless ($extraarguments{GetAllAddresses}) {
+            return $returns[0];
+        }
+        return @returns;
+    }
     else
     {
-        if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
-        {
-            my @returns;
-            my $reqfamily = AF_UNSPEC;
-            if ($extraarguments{OnlyV6}) {
-                $reqfamily = AF_INET6;
-            } elsif ($extraarguments{OnlyV4}) {
-                $reqfamily = AF_INET;
-            }
-            my @addrinfo;
-            if($isip) {
-                @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6,Socket6::AI_NUMERICHOST());
-            }else{
-                @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
-            }  
-            my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
-            unless($reqfamily == AF_INET6){
-                if($isip){
-                   if($name){
-                       $::hostiphash{$iporhost}{hostip}=$name;
-                   }
-                }elsif($ip){
-                    $::hostiphash{$iporhost}{hostip}=$ip;
-                }
-            }
-            while ($ip)
-            {
-                if ($extraarguments{GetNumber}) { #return a BigInt for compare, e.g. for comparing ip addresses for determining if they are in a common network or range
-                    my $ip = (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
-                    my $bignumber = Math::BigInt->new(0);
-                    foreach (unpack("N*", Socket6::inet_pton($family, $ip))) { #if ipv4, loop will iterate once, for v6, will go 4 times
-                        $bignumber->blsft(32);
-                        $bignumber->badd($_);
-                    }
-                    push(@returns, $bignumber);
-                    $::hostiphash{$iporhost}{Number}=$returns[0];
-                } else {
-                    push @returns, (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
-                    $::hostiphash{$iporhost}{hostip}=$returns[0];
-                }
-                if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
-                    ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
-                } else {
-                    $ip = 0;
-                }
-            }
-            unless ($extraarguments{GetAllAddresses}) {
-                return $returns[0];
-            }
-            return @returns;
+        #return inet_ntoa(inet_aton($iporhost))
+        #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
+        if ($iporhost =~ /:/) {    #ipv6
+            return undef;
+
+            #die "Attempt to process IPv6 address, but system does not have requisite IPv6 perl support";
         }
-        else
+        my $packed_ip;
+        $iporhost and $packed_ip = inet_aton($iporhost);
+        if (!$packed_ip)
         {
-            #return inet_ntoa(inet_aton($iporhost))
-            #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
-            if ($iporhost =~ /:/) {    #ipv6
-                return undef;
-
-                #die "Attempt to process IPv6 address, but system does not have requisite IPv6 perl support";
-            }
-            my $packed_ip;
-            $iporhost and $packed_ip = inet_aton($iporhost);
-            if (!$packed_ip)
-            {
-                return undef;
-            }
-            
-            my $myip=inet_ntoa($packed_ip);
-            
-            unless($isip) {
-                $::hostiphash{$iporhost}{hostip}=$myip;
-            }
-
-            if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
-                my $number=Math::BigInt->new(unpack("N*", $packed_ip));
-                $::hostiphash{$iporhost}{Number}=$number;
-                return $number;
-            }
-
-            return $myip;
+            return undef;
         }
+        
+        my $myip=inet_ntoa($packed_ip);
+        
+        unless($isip) {
+            $::hostiphash{$iporhost}{hostip}=$myip;
+        }
+
+        if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
+            my $number=Math::BigInt->new(unpack("N*", $packed_ip));
+            $::hostiphash{$iporhost}{Number}=$number;
+            return $number;
+        }
+
+        return $myip;
     }
 }
 
