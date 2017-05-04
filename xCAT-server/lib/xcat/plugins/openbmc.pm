@@ -734,6 +734,11 @@ sub rpower_response {
 
     my $response_info = decode_json $response->content;
 
+    foreach my $key (keys %{$response_info->{data}}) {
+        # Debug, print out the Current and Transition States     
+        print "$node: DEBUG host_states $key=$response_info->{'data'}->{$key}\n";
+    }
+
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("on", $callback, $node);
