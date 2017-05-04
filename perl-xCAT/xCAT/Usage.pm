@@ -89,8 +89,10 @@ my %usage = (
        rinv [-h|--help|-v|--version]
     BMC specific:
        rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
-    OpenPOWER server specific:
+    OpenPOWER (using ipmi) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+    OpenPOWER (using openbmc) server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|cpu|dimm|all]
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
