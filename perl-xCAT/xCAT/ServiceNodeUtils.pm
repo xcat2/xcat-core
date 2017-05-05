@@ -14,7 +14,6 @@ if ($^O =~ /^aix/i) {
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
-use Data::Dumper;
 #-----------------------------------------------------------------------------
 
 =head3 readSNInfo
@@ -424,7 +423,7 @@ sub getSNList_orig
     # if did not input "ALL" and there is a MN, remove it
     my @newservicenodes;
     if ((!defined($options)) || ($options ne "ALL")) {
-        my $mname = xCAT::Utils->noderangecontainsMn_orig(@servicenodes);
+        my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
         if ($mname) {    # if there is a MN
             foreach my $nodes (@servicenodes) {
                 if ($mname ne ($nodes)) {
