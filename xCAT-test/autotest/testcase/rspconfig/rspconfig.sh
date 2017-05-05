@@ -28,7 +28,7 @@ function change_ip()
     ip4=`echo $1|awk -F. '{print $4}'`
     echo ip is $ip1.$ip2.$ip3.$ip4 
     ip=$ip4;
-    while [[ $ip != "10" ]]; do 
+    while [[ $ip != "254" ]]; do 
     ping $ip1.$ip2.$ip3.$ip -c 2 > /dev/null; 
     if [[ $? != 0 ]]; then 
         coutip="$ip1.$ip2.$ip3.$ip"
@@ -49,7 +49,7 @@ function change_ip()
 function check_result {
 
     a=0; while true;
-    do [ $a -eq 3 ] && exit 1;
+    do [ $a -eq 10 ] && exit 1;
     echo $a
     sleep 20
     output=$(rspconfig $1 $2 );
