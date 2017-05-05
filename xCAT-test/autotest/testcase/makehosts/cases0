@@ -134,43 +134,37 @@ cmd:lsdef s01r1b01;if [ $? -eq 0 ]; then lsdef -l s01r1b01 -z >/tmp/s01r1b01.sta
 check:rc==0
 cmd:nodeadd s01 groups=service; chdef s01 ip=70.2.0.254;nodeadd s01r1b01 groups=compute; chdef s01r1b01 ip=80.2.0.254;makehosts
 check:rc==0
-cmd:sleep 20
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if [[ $rc =~ "70.2.0.254 s01" ]] && [[ $rc =~ "80.2.0.254 s01r1b01" ]];then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
 cmd:makehosts s01
 check:rc==0
-cmd:sleep 20
 cmd:cat /etc/hosts
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if [[ $rc =~ "70.2.0.254 s01" ]] && [[ $rc =~ "80.2.0.254 s01r1b01" ]];then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
 cmd:makehosts service
 check:rc==0
-cmd:sleep 20
-cmd:cat /etc/hosts
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if [[ $rc =~ "70.2.0.254 s01" ]] && [[ $rc =~ "80.2.0.254 s01r1b01" ]];then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
+cmd:cat /etc/hosts
 cmd:makehosts -d s01
 check:rc==0
-cmd:sleep 20
-cmd:cat /etc/hosts
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 = "" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if !([[  $rc =~ "70.2.0.254 s01"  ]]) && [[  $rc =~ "80.2.0.254 s01r1b01" ]];then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
+cmd:cat /etc/hosts
 cmd:makehosts
 check:rc==0
 cmd:makehosts -d service 
 check:rc==0
-cmd:sleep 20
-cmd:cat /etc/hosts
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 = "" ]] && [[ $rc2 =~ "80.2.0.254 s01r1b01" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if !([[  $rc =~ "70.2.0.254 s01"  ]]) && [[  $rc =~ "80.2.0.254 s01r1b01" ]];then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
+cmd:cat /etc/hosts
 cmd:makehosts
 check:rc==0
 cmd:makehosts -d s01r1b01
 check:rc==0
-cmd:sleep 20
-cmd:cat /etc/hosts
-cmd:rc1=`cat /etc/hosts | grep "70.2.0.254" | grep s01`;rc2=`cat /etc/hosts | grep "80.2.0.254" | grep s01r1b01`;if [[ $rc1 =~ "70.2.0.254 s01" ]] && [[ $rc2 = "" ]];then exit 0;else exit 1;fi
+cmd:a=0;while true; do [ $a -eq 60 ] && exit 1;rc=`cat /etc/hosts`;if [[  $rc =~ "70.2.0.254 s01"  ]] && !([[  $rc =~ "80.2.0.254 s01r1b01" ]]);then exit 0;else a=$[$a+1];sleep 1;echo $a;fi;done
 check:rc==0
+cmd:cat /etc/hosts
 cmd:if [ -e /tmp/s01.standa ]; then rmdef s01; cat /tmp/s01.standa | mkdef -z; rm -rf /tmp/s01.standa; else rmdef s01;fi
 check:rc==0
 cmd:if [ -e /tmp/s01r1b01.standa ]; then rmdef s01r1b01; cat /tmp/s01r1b01.standa | mkdef -z; rm -rf /tmp/s01r1b01.standa;else rmdef s01r1b01; fi
