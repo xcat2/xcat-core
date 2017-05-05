@@ -404,18 +404,14 @@ sub process_request {
     #if not shared tftpdir, then filter, otherwise, set up everything
     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
         @nodes = ();
-        my $cur_xmaster;
-        my %managed = {};
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $cur_xmaster = pop @hostinfo;
+        xCAT::MsgUtils->trace(0, "d", "xnba: running on $cur_xmaster");
 
         # Get current server managed node list
         my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-        foreach my $nn (keys %$sn_hash) {
-            unless ( xCAT::NetworkUtils->thishostisnot($nn) ) {
-                $cur_xmaster = $nn;
-                foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
-                last;
-            }
-        }
+        my %managed = {};
+        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
 
         foreach (@rnodes) {
             if (xCAT::NetworkUtils->nodeonmynet($_)) {
