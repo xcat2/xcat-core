@@ -3306,7 +3306,22 @@ sub isSELINUX
 =cut
 
 #-------------------------------------------------------------------------------
+
+
 sub noderangecontainsMn
+{
+    my ($class, @noderange) = @_;
+
+    # check if any node in the noderange is the Management Node return the
+    # name
+    my @mnames;   # management node names in the database, members of __mgmtnode
+    my $tab = xCAT::Table->new('nodelist');
+    
+    my @nodelist = $tab->getAllAttribsWhere("node in ("."\'".join("\',\'", @noderange)."\'".") and groups like '%__mgmtnode%'",'node');
+    return map {$_->{node}} @nodelist;            # if no MN in the noderange, return nothing
+}
+
+sub noderangecontainsMn_orig
 {
     my ($class, @noderange) = @_;
 
