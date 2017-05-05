@@ -31,6 +31,7 @@ Requires: xCAT-server = 4:%{version}-%{release}
 Requires: xCAT-probe  = 4:%{version}-%{release}
 Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
 Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
+Requires: rsync
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
