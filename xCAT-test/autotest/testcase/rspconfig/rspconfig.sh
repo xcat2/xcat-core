@@ -88,9 +88,9 @@ function change_netmask {
 BMCIP=""
 BMCNETWORK=""
 BMCGATEWAY=""
-BMCIP=`rspconfig frame45cn07 ip |awk -F":" '{print $3}'`
-BMCGATEWAYE=`rspconfig  frame45cn07 gateway |awk -F":" '{print $3}'`
-BMCNETMASK=`rspconfig  frame45cn07 netmask |awk -F":" '{print $3}'`
+BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
+BMCGATEWAYE=`rspconfig  $2 gateway |awk -F":" '{print $3}'`
+BMCNETMASK=`rspconfig  $2 netmask |awk -F":" '{print $3}'`
 while [ "$#" -gt "0" ]
 do
 case $1 in
