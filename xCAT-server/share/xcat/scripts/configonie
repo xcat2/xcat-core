@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 #---------------------------------------------------------
-# Configure Ethnet BNT switches
+# Configure cumulus/onie switches
 #---------------------------------------------------------
 
 BEGIN
@@ -42,8 +42,6 @@ if (
                 'switches=s' => \$::SWITCH,  
                 'port=s'     => \$::PORT,  
                 'vlan=s'     => \$::VLAN,
-                'user=s'     => \$::USER,
-                'password=s' => \$::PASSWORD,
                 'snmp'       => \$::SNMP,
                 'ssh'        => \$::SSH,
                 'license=s'  => \$::LICENSE,
@@ -254,34 +252,11 @@ sub install_license {
 }
 
 
-#setup secure SNMP v3 
+#get snmp attributes from switches tabele and setup secure SNMP v3 
 sub config_snmp {
-    my $snmp_user;
-    my $snmp_passwd;
-    my @config_switches;
-    my $cmd;
 
-    print "start to config_snmp\n";
-    if ($::USER) {
-        $snmp_user = $::USER;
-    } else {
-        $snmp_user = "xcatadmin";
-    }
-    if ($::PASSWORD) {
-        $snmp_passwd = $::PASSWORD;
-    } else {
-        $snmp_passwd = "xcatpassw0rd";
-    }
-
-    my $file = "temp.txt";
-    open(FILE , ">$file")
-            or die "cannot open file $file\n";
-    print FILE "#xCAT modify following line\n";
-    print FILE "agentAddress udp:161,udp6:[::1]:161\n";
-    print FILE "rocommunity public default\n";
-    print FILE "rocommunity public  default    -V systemonly\n";
-    print FILE "createUser $snmp_user SHA $snmp_passwd\n";
-    print FILE "rwuser $snmp_user\n";
+    my $switchestab =  xCAT::Table->new('switches');
+    my $switches_hash = $switchestab->getNodesAttribs(\@nodes,['username','password','privacy','auth']);
 
     foreach my $switch (@nodes) {
         #check if xdsh works
@@ -291,29 +266,37 @@ sub config_snmp {
             xCAT::MsgUtils->message("E","xdsh command to $switch failed");
             next;
         }
-        my $cmd_line = "sed -i 's/^agentAddress/#agentAddress/g' /etc/snmp/snmpd.conf";
-        $cmd = "xdsh $switch $cmd_line";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
 
-        $cmd = "xdcp $switch $file";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "xdsh $switch 'cat $file  >> /etc/snmp/snmpd.conf;rm -fr $file;systemctl restart snmpd;systemctl enable snmpd' ";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
+        my $username = $switches_hash->{$switch}->[0]->{username};
+        my $password = $switches_hash->{$switch}->[0]->{password};
+        my $auth = $switches_hash->{$switch}->[0]->{auth};
+        my $privacy = $switches_hash->{$switch}->[0]->{privacy};
+        my $privpwd;
+        if (defined $privacy) {
+            $privpwd = $password;
+        }
+        
+        my $libconf = "/var/lib/snmp/snmpd.conf";
+        my $etcconf = "/etc/snmp/snmpd.conf";
+
+        my $cmd_prefix = "xdsh $switch ";
+        my $cmd;
+        $cmd = $cmd . "systemctl stop snmpd.service;";
+        $cmd = $cmd . "sed -i '/$username/d' $libconf;";
+        $cmd = $cmd . "sed -i '/$username/d' $etcconf;";
+        $cmd = $cmd . "echo 'createUser $username $auth $password $privacy $privpwd' >> $etcconf;";
+        $cmd = $cmd . "echo 'rwuser $username' >> $etcconf;";
+        $cmd = $cmd . "systemctl start snmpd.service;";
+
+        my $dshcmd = $cmd_prefix . " \"" . $cmd . "\"";
+
+        $rc= xCAT::Utils->runcmd($dshcmd, 0);
         if ($::RUNCMD_RC != 0) {
             xCAT::MsgUtils->message("E","Failed to update snmpd.conf for $switch");
             next;
         }
-        push (@config_switches, $switch);
+        print "Add username=$username, password=$password, privacy=$privacy, auth=$auth to snmp service for $switch \n";
     }
-    close FILE;
-    $cmd = `rm -rf $file`;
-    if (@config_switches) {
-        #update switch status
-        my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=snmp_configed snmpversion=3 snmpauth=sha snmpusername=$snmp_user snmppassword=$snmp_passwd";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
-    }
-
 }
 
 sub config_ntp {
@@ -387,7 +370,7 @@ sub usage
     configonie -h│--help 
     configonie --switches switchnames --ssh 
     configonie --switches switchnames --license filename  
-    configonie --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--group snmp_group]
+    configonie --switches switchnames --snmp
     configonie --switches switchnames --ntp 
 
     To set ssh, install license(license file: /root/license.txt), config snmp and ntp:
