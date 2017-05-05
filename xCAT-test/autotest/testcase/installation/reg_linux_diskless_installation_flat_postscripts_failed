@@ -28,7 +28,7 @@ cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/setup_postscript_f
 check:rc==0
 cmd:chmod 777 /install/postscripts/test
 check:rc==0
-cmd:chdef $$CN  postscripts=test
+cmd:chdef $$CN -p postscripts=test
 check:rc==0
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
 check:rc==0
