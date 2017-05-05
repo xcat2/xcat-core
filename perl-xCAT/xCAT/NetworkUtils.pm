@@ -20,7 +20,6 @@ use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
 use Sys::Hostname;
-use Data::Dumper;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
@@ -477,7 +476,13 @@ sub ishostinsubnet{
     }
 
     my $maskType=0;
-    if ($mask) {
+
+    #CIDR notation supported
+    if ($subnet && ($subnet =~ /\//)) {
+        ($subnet, $mask) = split /\//, $subnet, 2;
+        $subnet =~ s/\/.*$//;
+        $maskType=1;
+    }elsif ($mask) {
         if ($mask =~ /\//) {
             $mask =~ s/^\///;
             $maskType=1;
@@ -485,13 +490,6 @@ sub ishostinsubnet{
             $maskType=2;
         }
     } 
-
-    #CIDR notation supported
-    if ($subnet && ($subnet =~ /\//)) {
-        ($subnet, $mask) = split /\//, $subnet, 2;
-        $subnet =~ s/\/.*$//;
-        $maskType=1;
-    }
 
     my $ret=xCAT::NetworkUtils::isInSameSubnet( $ip, $subnet, $mask, $maskType);
     if(defined $ret and $ret==1){
