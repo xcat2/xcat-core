@@ -29,10 +29,17 @@ for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
 done
 BMCMAC=`ipmitool lan print $LANCHAN|grep ^MAC|awk '{print $4}'` #bmcconfig may opt to use DHCP, if so we need to feed up the mac address
 #TODO: need a way to get the DUID the service processor may use, perhaps reserve that for 'ibmsetup' since spec doesn't touch ipv6?
-
+IPMIMFG=`ipmitool mc info |grep "^Manufacturer ID"|awk  '{print $4}'`
+XPROD=`ipmitool mc info | grep "^Product ID"|awk '{print $4}'`
+if [ "$IPMIMFG" == "42817" -a "$XPROD" == "16975" ]; then
+    ISOPENBMC=1
+else
+    ISOPENBMC=0
+fi
 echo "<xcatrequest>
 <command>getbmcconfig</command>
 <callback_port>300</callback_port>
+<isopenbmc>$ISOPENBMC</isopenbmc>
 <bmcmac>$BMCMAC</bmcmac>
 </xcatrequest>" > /tmp/bmcreq.xml
 rm -f /tmp/ipmicfg.xml
