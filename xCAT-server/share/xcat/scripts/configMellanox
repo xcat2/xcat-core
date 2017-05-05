@@ -46,6 +46,9 @@ if (
                 'user=s'     => \$::USER,
                 'password=s' => \$::PASSWORD,
                 'auth=s'     => \$::AUTH,
+                'vlan=s'     => \$::VLAN,
+                'port=s'     => \$::PORT,
+                'mode=s'     => \$::MODE,
                 'all'        => \$::ALL,
     )
   )
@@ -93,6 +96,16 @@ my $user;
 my $cmd;
 my $rc;
 my $master;
+my $vlan;
+my $port;
+my $mode;
+
+#set community string for switch
+my $community = "public";
+my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+my $tmp    = $snmpcs[0];
+if (defined($tmp)) { $community = $tmp }
+
 
 if (($::IP) || ($::ALL)) {
     config_ip();
@@ -111,6 +124,9 @@ if (($::CONFIG) || ($::ALL)) {
     run_rspconfig();
 }
 
+if ($::VLAN) {
+    config_vlan();
+}
 
 sub config_ip {
     my @config_switches;
@@ -125,7 +141,6 @@ sub config_ip {
         @nets = $nettab->getAllAttribs('net','mask');
     }
     foreach my $switch (@nodes) {
-        print "change $switch to static ip address\n";
         my $dip= $nodehash->{$switch}->[0]->{otherinterfaces};
         if (!$dip) {
             print "Add otherinterfaces attribute for discover ip: chdef $switch otherinterfaces=x.x.x.x\n";
@@ -150,6 +165,7 @@ sub config_ip {
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
 
+
         # if hostnames are same, created different one for discovery name
         if ($dswitch eq $switch) {
             $dswitch="";
@@ -161,6 +177,7 @@ sub config_ip {
             $ip_str =~ s/\./\-/g;
             $dswitch = "switch-$ip_str";
         }
+      
         $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin nodetype=switch";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts $dswitch";
@@ -193,6 +210,8 @@ sub config_ip {
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ip_configed otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "makehosts $csw";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
     }
  
      if (@discover_switches) {
@@ -212,7 +231,6 @@ sub config_hostname {
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
-            print "switch ssh username is not defined, add default one\n";
             $cmd = "chdef $switch username=admin";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
@@ -244,7 +262,6 @@ sub config_snmp {
     foreach my $switch (@nodes) {
         my $user = $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
-            print "switch ssh username is not defined, add default one\n";
             $cmd = "chdef $switch username=admin";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
@@ -288,7 +305,6 @@ sub run_rspconfig {
     my $switchtab = xCAT::Table->new('switches');
     my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername']);
     $master = `hostname -i`;
-    print "master=$master\n";
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         #call rspconfig command to setup switch
@@ -317,6 +333,71 @@ sub run_rspconfig {
 
 }
 
+sub config_vlan {
+    # checking for port number, switches is checked earlier
+    if ($::PORT) {
+       $port = $::PORT;
+    } else {
+        xCAT::MsgUtils->message("E","Error - When setting vlan, a port must be provided.");
+        &usage;
+        exit(1);
+    }
+ 
+    #will default to trunk mode
+    if ($::MODE) {
+       $mode = $::MODE;
+       if (!($mode =~ m/(access|trunk|hybrid|access-dcb|dot1q-tunnel)/) )
+       {
+            xCAT::MsgUtils->message("E","Error - Please provided supported mode");
+            &usage;
+            exit(1);
+       }
+    } else {
+       $mode = "access";
+    }
+
+    $vlan = $::VLAN;
+
+    foreach my $switch (@nodes) {
+        my $devicetype;
+
+        # check if it is ethernet switch or ib switch
+        my $ccmd = "snmpwalk -Os -v1 -c $community $switch 1.3.6.1.2.1.1.1";
+        my $result = xCAT::Utils->runcmd($ccmd, 0);
+
+        # only supports MSX1410 and MSX1400 for Mellanox Ethernet switch now
+        if ( $result =~ /MSX14/ ) {
+            $devicetype = "EthSwitch::Mellanox";
+        }else {
+            xCAT::MsgUtils->message("E","Config IB switch vlan is not support yet");
+            $devicetype = "IBSwitch::Mellanox";
+            next;
+        }
+        
+        my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
+        my $cmd;
+
+        # Build up the commands for easier readability
+        $cmd = $cmd . "enable\;";
+        $cmd = $cmd . "configure terminal\;";
+        $cmd = $cmd . "vlan $vlan\;";
+        $cmd = $cmd . "exit\;";
+        $cmd = $cmd . "interface ethernet 1/$port\;";
+        $cmd = $cmd . "switchport mode $mode\;";
+        if ($mode =~ /access/) {
+            $cmd = $cmd . "switchport access vlan $vlan\;";
+        } else {
+            $cmd = $cmd . "switchport $mode allowed-vlan $vlan\;";
+        }
+        $cmd = $cmd . "exit\;exit\;exit\;";
+
+        my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
+
+        `$final_cmd`
+    }
+}
+
+
 #---------------------------------------------------------
 
 =head3    usage
@@ -339,6 +420,17 @@ sub usage
 
     To run rspconfig command: 
         configMellanox --switches switchnames --config  
+
+    To set Vlan for interface commmand (only for Mellanox Ethernet switch) :
+        configMellanox --switches switchnames --port port --vlan vlan --mode mode 
+
+     The following mode are supported for switchport:
+      * access        Only untagged ingress Ethernet packets are allowed
+      * trunk         Only tagged ingress Ethernet packets are allowed
+      * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
+      * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged
+      * dot1q-tunnel  Both tagged and untagged ingress Ethernet packets are allowed. Egress packets are tagged with a second VLAN (802.1Q) header 
+
     \n";
 }
 
