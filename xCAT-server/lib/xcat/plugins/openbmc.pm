@@ -356,9 +356,6 @@ sub parse_args {
     my $noderange = shift;
     my $check = undef;
  
-    # disable function until fully tested
-    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
     if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig/) {
         return ([ 1, "No option specified for $command" ]);
     }
@@ -369,10 +366,18 @@ sub parse_args {
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -380,15 +385,27 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         #command for openbmc rcons
     } elsif ($command eq "rsetboot") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rspconfig") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -473,7 +490,7 @@ sub parse_command_status {
     if ($command eq "rsetboot") {
         my $persistent = 0;
         unless (GetOptions("p" => \$persistent,)) {
-            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
             exit 1;
         }
 
@@ -495,7 +512,7 @@ sub parse_command_status {
     if ($command eq "reventlog") {
         my $option_s = 0;
         unless (GetOptions("s" => \$option_s,)) {
-            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
             exit 1;
         }
 
@@ -508,6 +525,8 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
+            xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
+            exit;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
@@ -538,6 +557,8 @@ sub parse_command_status {
             }
         }
         $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
+        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
+        exit;
     }
 
     print Dumper(\%next_status) . "\n";

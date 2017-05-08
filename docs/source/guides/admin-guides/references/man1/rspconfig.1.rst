@@ -38,7 +38,7 @@ BMC specific:
 =============
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **vlan | ip | netmask | gateway | backupgateway | garp**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp | vlan**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **garp**\ =\ *time*\ 
 
@@ -47,7 +47,7 @@ OpenBMC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **vlan | ip | netmask | gateway**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | vlan**\ }
 
 
 MPA specific:

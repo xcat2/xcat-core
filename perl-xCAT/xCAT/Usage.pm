@@ -132,11 +132,11 @@ my %usage = (
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
-       rspconfig <noderange> [vlan|ip|netmask|gateway|backupgateway|garp]
+       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    OpenBMC specific:
-       rspconfig <noderange> [vlan|ip|netmask|gateway]
+       rspconfig <noderange> [ip|netmask|gateway|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]

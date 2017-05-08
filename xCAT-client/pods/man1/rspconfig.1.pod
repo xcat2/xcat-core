@@ -18,13 +18,13 @@ B<rspconfig> I<noderange> B<community>={B<public> | I<string>}
 
 =head2 BMC specific:
 
-B<rspconfig> I<noderange> {B<vlan>|B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>}
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<backupgateway>|B<garp>|B<vlan>}
 
 B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<vlan>|B<ip>|B<netmask>|B<gateway>}
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<vlan>}
 
 =head2 MPA specific:
 
