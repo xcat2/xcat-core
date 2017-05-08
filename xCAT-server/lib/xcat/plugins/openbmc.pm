@@ -50,17 +50,17 @@ sub unsupported {
 #-------------------------------------------------------
 sub handled_commands {
     return {
-        rpower => 'nodehm:mgt',
-        rinv   => 'nodehm:mgt',
         getopenbmccons => 'nodehm:cons',
-        rsetboot       => 'nodehm:mgt',
-        rspconfig      => 'nodehm:mgt',
-        rvitals        => 'nodehm:mgt',
-        rflash         => 'nodehm:mgt',
-        reventlog      => 'nodehm:mgt',
-        rspreset       => 'nodehm:mgt',
         rbeacon        => 'nodehm:mgt',
         renergy        => 'nodehm:mgt',
+        reventlog      => 'nodehm:mgt',
+        rflash         => 'nodehm:mgt',
+        rinv           => 'nodehm:mgt',
+        rpower         => 'nodehm:mgt',
+        rsetboot       => 'nodehm:mgt',
+        rspconfig      => 'nodehm:mgt',
+        rspreset       => 'nodehm:mgt',
+        rvitals        => 'nodehm:mgt',
     };
 }
 
@@ -80,6 +80,30 @@ my %status_info = (
     },
     LOGIN_RESPONSE     => {
         process        => \&login_response,
+    },
+
+    REVENTLOG_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/logging/enumerate",
+    },
+    REVENTLOG_RESPONSE => {
+        process        => \&reventlog_response,
+    },
+    REVENTLOG_CLEAR_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_url/records/events/action/clear",
+        data           => "",
+    },
+    REVENTLOG_CLEAR_RESPONSE => {
+        process        => \&reventlog_response,
+    },
+
+    RINV_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/inventory/enumerate",
+    },
+    RINV_RESPONSE => {
+        process        => \&rinv_response,
     },
 
     RPOWER_ON_REQUEST  => {
@@ -114,43 +138,11 @@ my %status_info = (
         process        => \&rpower_response,
     },
 
-    RINV_REQUEST => {
-        method         => "GET",
-        init_url       => "$openbmc_project_url/inventory/enumerate",
-    },
-    RINV_RESPONSE => {
-        process        => \&rinv_response,
-    },
-    RSETBOOT_HD_REQUEST => {
+    RSETBOOT_SET_REQUEST => {
         method         => "PUT",
         init_url       => "",
-        data           => "", 
     },
-    RSETBOOT_HD_RESPONSE => {
-        process        => \&rsetboot_response,
-    },
-    RSETBOOT_NET_REQUEST => {
-        method         => "PUT",
-        init_url       => "",
-        data           => "",
-    },
-    RSETBOOT_NET_RESPONSE => {
-        process        => \&rsetboot_response,
-    },
-    RSETBOOT_CD_REQUEST => {
-        method         => "PUT",
-        init_url       => "",
-        data           => "",
-    },
-    RSETBOOT_CD_RESPONSE => {
-        process        => \&rsetboot_response,
-    },
-    RSETBOOT_DEF_REQUEST => {
-        method         => "PUT",
-        init_url       => "",
-        data           => "",
-    },
-    RSETBOOT_DEF_RESPONSE => {
+    RSETBOOT_SET_RESPONSE => {
         process        => \&rsetboot_response,
     },
     RSETBOOT_STATUS_REQUEST  => {
@@ -160,20 +152,21 @@ my %status_info = (
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
     },
-    REVENTLOG_REQUEST => {
+
+    RSPCONFIG_GET_REQUEST => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/logging/enumerate",
+        init_url       => "",
     },
-    REVENTLOG_RESPONSE => {
-        process        => \&reventlog_response,
+    RSPCONFIG_GET_RESPONSE => {
+        process        => \&rspconfig_response,
     },
-    REVENTLOG_CLEAR_REQUEST => {
+    RSPCONFIG_SET_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_url/records/events/action/clear",
+        init_url       => "",
         data           => "",
     },
-    REVENTLOG_CLEAR_RESPONSE => {
-        process        => \&reventlog_response,
+    RSPCONFIG_SET_RESPONSE => {
+        process        => \&rspconfig_response,
     },
 );
 
@@ -193,11 +186,10 @@ $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
           cur_status => "LOGIN_REQUEST",
           cur_url    => "",
           method     => "",
-          back_urls  => (),
       },
   );
 
-  'cur_url', 'method', 'back_urls' used for path has a trailing-slash
+  'cur_url', 'method' used for path has a trailing-slash
 
 =cut
 
@@ -260,7 +252,7 @@ sub preprocess_request {
         return;
     }
 
-    my $parse_result = parse_args($command, $extrargs);
+    my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
         $callback->({ errorcode => $parse_result->[0], data => $parse_result->[1] });
         $request = {};
@@ -361,31 +353,31 @@ sub process_request {
 sub parse_args {
     my $command  = shift;
     my $extrargs = shift;
+    my $noderange = shift;
     my $check = undef;
+ 
+    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig/) {
+        return ([ 1, "No option specified for $command" ]);
+    }
 
-    if (scalar(@ARGV) > 1 and $command ne "rsetboot" and $command ne "reventlog") {
+    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot/)) {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
         #
-        # disable function until fully tested 
+        # disable function until fully tested
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for rpower" ]);
-        }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
         #
-        # disable function until fully tested 
+        # disable function until fully tested
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -393,12 +385,9 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         #command for openbmc rcons
     } elsif ($command eq "rsetboot") {
-        if (!defined($extrargs)) {
-            return ([ 1, "No option specified for $command" ]);
-        }
         #
         # disable function until fully tested
-        #        
+        #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -406,13 +395,39 @@ sub parse_args {
     } elsif ($command eq "reventlog") {
         #
         # disable function until fully tested
-        # 
-        $subcommand = "all" if (!defined($ARGV[0]));
+        #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
+    } elsif ($command eq "rspconfig") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        my $setorget;
+        foreach $subcommand (@ARGV) {
+            if ($subcommand =~ /^(\w+)=(.*)/) {
+                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
+                my $key = $1;
+                my $value = $2;
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^vlan$/);
 
+                my $nodes_num = @$noderange;
+                return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
+                return ([ 1, "Invalid parameter for option $key: $value" ]) unless (xCAT::NetworkUtils->isIpaddr($value));
+                if ($key eq "ip") {
+                    return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
+                }
+                $setorget = "set";
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
+                return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
+                $setorget = "get";
+            } else {
+                return ([ 1, "Unsupported command: $command $subcommand" ]);
+            }
+        }  
     } else {
         return ([ 1, "Command is not supported." ]);
     }
@@ -475,27 +490,17 @@ sub parse_command_status {
     if ($command eq "rsetboot") {
         my $persistent = 0;
         unless (GetOptions("p" => \$persistent,)) {
-            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
             exit 1;
         }
 
         $subcommand = $ARGV[0];
-        if ($subcommand eq "hd") {
-            $next_status{LOGIN_RESPONSE} = "RSETBOOT_HD_REQUEST";
-            $next_status{RSETBOOT_HD_REQUEST} = "RSETBOOT_HD_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
-        } elsif ($subcommand eq "net") {
-            $next_status{LOGIN_RESPONSE} = "RSETBOOT_NET_REQUEST";
-            $next_status{RSETBOOT_NET_REQUEST} = "RSETBOOT_NET_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
-        } elsif ($subcommand eq "cd"){
-            $next_status{LOGIN_RESPONSE} = "RSETBOOT_CD_REQUEST";
-            $next_status{RSETBOOT_CD_REQUEST} = "RSETBOOT_CD_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
-        } elsif ($subcommand eq "default" or $subcommand eq "def") {
-            $next_status{LOGIN_RESPONSE} = "RSETBOOT_DEF_REQUEST";
-            $next_status{RSETBOOT_DEF_REQUEST} = "RSETBOOT_DEF_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data} if $persistent or $uefi
+        if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
+            $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
+            $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
+            # modify $status_info{RSETBOOT_SET_REQUEST}{data}
+            $next_status{RSETBOOT_SET_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
+            $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         } elsif ($subcommand eq "stat") {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
@@ -507,7 +512,7 @@ sub parse_command_status {
     if ($command eq "reventlog") {
         my $option_s = 0;
         unless (GetOptions("s" => \$option_s,)) {
-            xCAT::SvrUtils::sendmsg([ 1, "Error parsing arguments" ], $callback);
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
             exit 1;
         }
 
@@ -520,12 +525,40 @@ sub parse_command_status {
         if ($subcommand eq "clear") {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
+            xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
+            exit;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
             $status_info{REVENTLOG_RESPONSE}{argv} = "$subcommand";
             $status_info{REVENTLOG_RESPONSE}{argv} .= ",s" if ($option_s);
         }
+    }
+
+    if ($command eq "rspconfig") {
+        my @options = ();
+        foreach $subcommand (@ARGV) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$/) {
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+                push @options, $subcommand;
+            } elsif ($subcommand =~ /^(\w+)=(.+)/) {
+                my $key   = $1;
+                my $value = $2;
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
+                $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+                if ($key eq "ip") {
+                    $status_info{RSPCONFIG_SET_RESPONSE}{ip}  = $value;
+                }
+                $status_info{RSPCONFIG_SET_REQUEST}{data} = ""; # wait for interface, ip/netmask/gateway is $value
+                push @options, $key;
+            }
+        }
+        $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
+        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
+        exit;
     }
 
     print Dumper(\%next_status) . "\n";
@@ -912,32 +945,11 @@ sub rsetboot_response {
 
     my $response_info = decode_json $response->content;    
 
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_HD_RESPONSE") {
-        if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
-        }
-    }
-
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_NET_RESPONSE") {
-        if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("Network", $callback, $node);
-        }
-    }
-
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_CD_RESPONSE") {
-        if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
-        }
-    }
-
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_DEF_RESPONSE") {
-        if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node);
-        }
-    }
-
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
-        # wait for more information
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_GET_RESPONSE") {
+        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node); #if response data is hd
+        xCAT::SvrUtils::sendmsg("Network", $callback, $node); #if response data is net
+        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node); #if response data is net
+        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node); #if response data is def
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -1007,6 +1019,63 @@ sub reventlog_response {
     } else {
         $wait_node_num--;
     }
+}
+
+#-------------------------------------------------------
+
+=head3  rspconfig_response
+
+  Deal with response of rspconfig command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content; 
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
+        my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
+        my $data;
+        my @output;
+        if ($grep_string =~ "ip") {
+            $data = ""; # got data from response
+            push @output, "BMC IP: $data";
+        } 
+        if ($grep_string =~ "netmask") {
+            $data = ""; # got data from response
+            push @output, "BMC Netmask: $data"; 
+        } 
+        if ($grep_string =~ "gateway") {
+            $data = ""; # got data from response
+            push @output, "BMC Gateway: $data";
+        }
+        if ($grep_string =~ "vlan") {
+            $data = ""; # got data from response
+            push @output, "BMC VLAN ID enabled: $data";
+        }
+
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE" and $response_info->{'message'} eq $::RESPONSE_OK) {
+        if ($status_info{RSPCONFIG_SET_RESPONSE}{ip}) {
+            $node_info{$node}{bmc} = $status_info{RSPCONFIG_SET_RESPONSE}{ip};
+            print "$node: DEBUG BMC IP is $node_info{$node}{bmc}\n";
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    } 
 }
 
 1;
