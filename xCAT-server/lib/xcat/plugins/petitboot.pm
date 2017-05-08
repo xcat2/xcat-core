@@ -406,7 +406,7 @@ sub process_request {
         @nodes = ();
         my @hostinfo = xCAT::NetworkUtils->determinehostname();
         my $cur_xmaster = pop @hostinfo;
-        xCAT::MsgUtils->trace(0, "d", "xnba: running on $cur_xmaster");
+        xCAT::MsgUtils->trace(0, "d", "petitboot: running on $cur_xmaster");
 
         # Get current server managed node list
         my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
