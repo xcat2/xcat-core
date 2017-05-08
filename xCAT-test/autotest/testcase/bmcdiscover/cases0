@@ -49,19 +49,19 @@ checkout:output=~xCAT Version
 end
 
 start:bmcdiscover_check_paswd
-cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RD --check
+cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --check
 check:rc==0
 check:output=~Correct ADMINISTRATOR
 end
 
 start:bmcdiscover_check_passwd_wrong
-cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RDw --check
+cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --check
 check:rc!=0
 check:output=~Error: Wrong BMC password
 end
 
 start:bmcdiscover_get_ipsource
-cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RD --ipsource
+cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p $$bmcpasswd --ipsource
 check:rc==0
 check:output=~Static Address
 end
