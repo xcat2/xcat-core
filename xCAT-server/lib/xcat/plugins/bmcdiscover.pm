@@ -1020,10 +1020,9 @@ sub bmcdiscovery_openbmc{
     my $cjar_file = "/tmp/cjar_$ip";
     my $data = '{"data": [ "' . $bmc_user .'", "' . $bmc_pass . '" ] }';
 
-    my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;    
+    my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;
     
-    my $login_rsp = decode_json $output;
-    if ($login_rsp->{status} eq "ok") {
+    if ($output =~ /\"status\": \"ok\"/) {
         my $req_output = `curl -b $cjar_file -k https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard`;
         my $response = decode_json $req_output;
         my $mtm = $response->{data}->{Model};
@@ -1054,7 +1053,9 @@ sub bmcdiscovery_openbmc{
 
         unlink $cjar_file;
     } else {
-        xCAT::MsgUtils->message("E", { data => ["$login_rsp->{data}->{description}"] }, $::CALLBACK);
+        if ($output =~ /\"description\": \"Invalid username or password\"/) {
+            xCAT::MsgUtils->message("E", { data => ["BMC username/password is incorrect for $ip"] }, $::CALLBACK); 
+        }
         return 1;
     }
 
