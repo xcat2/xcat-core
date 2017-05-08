@@ -43,7 +43,7 @@ OPTIONS
 
 \ **-a|-**\ **-all**\ 
  
- Setup NTP servers for both management node and the service node.
+ Setup NTP servers for both management node and the service node. If management node is \ *ntpservers*\ , the sync timer for the service node will be delayed until management node timer is synced. Recommand to use the  \ **setupntp**\  postscript to set up NTP server for service nodes.
  
 
 
