@@ -586,6 +586,9 @@ sub scan_process {
                     } else {
                         bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                     }
+                } else {
+                    xCAT::MsgUtils->message("E", "Can not get status of 2200 port.", $::CALLBACK);
+                    exit 1;
                 }
 
                 exit 0;
@@ -683,7 +686,12 @@ sub write_to_xcatdb {
     my $request_command = shift;
     my $ret;
 
-    $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", "hwtype=$hwtype", "groups=all" ] }, $request_command, 0, 1);
+    $ret = xCAT::Utils->runxcmd({ command => ['chdef'], 
+                                  arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", 
+                                           "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", 
+                                           "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
+                                           "hwtype=$hwtype", "groups=all" ] },
+                                  $request_command, 0, 1);
     if ($::RUNCMD_RC != 0) {
         my $rsp = {};
         push @{ $rsp->{data} }, "create or modify node is failed.\n";
@@ -1020,9 +1028,12 @@ sub bmcdiscovery_openbmc{
         my $response = decode_json $req_output;
         my $mtm = $response->{data}->{Model};
         my $serial = $response->{data}->{SerialNumber}; 
+
+        # delete space before and after
         $mtm =~ s/^\s+|\s+$//g; 
         $serial =~ s/^\s+|\s+$//g;
 
+        # format ip string for format_stanza function
         $ip .= ",$mtm";
         $ip .= ",$serial";
         if ($::opt_P) {
@@ -1041,7 +1052,7 @@ sub bmcdiscovery_openbmc{
             $node =~ s/[\s:\._]/-/g;
         }
 
-        `rm -f $cjar_file`;
+        unlink $cjar_file;
     } else {
         xCAT::MsgUtils->message("E", { data => ["$login_rsp->{data}->{description}"] }, $::CALLBACK);
         return 1;
