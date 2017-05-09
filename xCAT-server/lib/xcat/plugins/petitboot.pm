@@ -203,8 +203,12 @@ sub setstate {
     } elsif ($kern and $kern->{kernel} and $cref and $cref->{currstate} ne "offline") {
 
         #It's time to set petitboot for this node to boot the kernel, but only if not offline directive
-        print $pcfg "default xCAT\n";
-        print $pcfg "label xCAT\n";
+        my $label = "xCAT";
+        if ($cref->{currstate} eq "shell") {
+            $label = "xCAT Genesis shell";
+        }
+        print $pcfg "default $label\n";
+        print $pcfg "label $label\n";
         print $pcfg "\tkernel $kern->{kernel}\n";
         if ($kern and $kern->{initrd}) {
             print $pcfg "\tinitrd " . $kern->{initrd} . "\n";
