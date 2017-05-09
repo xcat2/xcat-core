@@ -42,7 +42,7 @@ start:mkdef_regex_kvm
 description:The fourth example in xCAT document Using Regular Expressions in the xCAT Tables
 cmd:chtab node=kvms 'vm.host=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|' 'vm.storage=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|' vm.memory=3072 vm.cpus=2 vm.nics=virbr2 vm.nicmodel=virtio
 check:rc==0
-cmd:mkdef -t node -o c01f02x03v04 groups=kvms
+cmd:mkdef -t node -o c01f02x03v04 groups=kvms mgt=kvm
 check:rc==0
 cmd:chdef c910f02x03v04 -i vmcpus | grep 'vmcpus=2$'
 check:rc==0
