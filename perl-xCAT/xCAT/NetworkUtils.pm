@@ -286,6 +286,7 @@ sub getipaddr
 #print "iporhost=$iporhost";
 #print "\n";
 #print "============================\n";
+
     #cache, do not lookup DNS each time
     if (
         ((not $extraarguments{OnlyV6}) and (not $extraarguments{GetAllAddresses}))  and defined($::hostiphash{$iporhost}) and $::hostiphash{$iporhost})
