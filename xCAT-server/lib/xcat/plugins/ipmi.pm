@@ -2366,7 +2366,7 @@ sub power {
     my $code;
 
     if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
-        xCAT::SvrUtils::sendmsg([ 1, "unsupported command power $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
 
