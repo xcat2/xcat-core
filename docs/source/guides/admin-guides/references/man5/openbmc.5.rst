@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **openbmc Attributes:**\   \ *node*\ , \ *bmc*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\ 
+\ **openbmc Attributes:**\   \ *node*\ , \ *bmc*\ , \ *consport*\ , \ *taggedvlan*\ , \ *username*\ , \ *password*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -45,6 +45,18 @@ openbmc Attributes:
 \ **bmc**\ 
  
  The hostname of the BMC adapter.
+ 
+
+
+\ **consport**\ 
+ 
+ The console port for OpenBMC.
+ 
+
+
+\ **taggedvlan**\ 
+ 
+ bmcsetup script will configure the network interface of the BMC to be tagged to the VLAN specified.
  
 
 
