@@ -13,7 +13,7 @@ IBM OpenPower Servers
 
    configure/index.rst 
    discovery/index.rst
-   management.rst
+   management/index.rst
    diskful/index.rst
    diskless/index.rst
    statelite/index.rst
