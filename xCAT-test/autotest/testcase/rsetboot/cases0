@@ -9,7 +9,7 @@ check:output=~Hard Drive
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: Hard Drive
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
@@ -26,7 +26,7 @@ check:output=~Network
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: Network
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
@@ -43,7 +43,7 @@ check:output=~CD/DVD
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: CD/DVD
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
@@ -60,7 +60,7 @@ check:output=~boot override inactive
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: boot override inactive
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
@@ -107,11 +107,11 @@ check:output=~testnode: Error
 cmd:rsetboot $$CN,testnode stat
 check:output=~$$CN: Network
 check:output=~testnode: Error
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
-cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;else rmdef testnode;fi
+cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0
 end
 
@@ -138,12 +138,12 @@ cmd:rsetboot test net
 check:output=~$$CN: Network
 cmd:rsetboot test stat
 check:output=~$$CN: Network
-cmd:if [[ `cat /tmp/rsetboot.stat |grep CD` ]];then rsetboot $$CN cd;elif [[ `cat /tmp/rsetboot.stat |grep  Network ` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
 check:rc==0
 cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
 check:rc==0
 cmd:chdef -m -t node -o $$CN groups="test"
 check:rc==0
-cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;else rmdef testnode;fi
+cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0
 end

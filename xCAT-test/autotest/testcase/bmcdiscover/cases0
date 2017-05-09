@@ -57,7 +57,7 @@ end
 start:bmcdiscover_check_passwd_wrong
 cmd:bmcdiscover -i $$bmcrange -u $$bmcusername -p test$$bmcpasswd --check
 check:rc==0
-check:output=~Invalid username or password
+check:output=~Invalid username or password | Wrong BMC password
 end
 
 start:bmcdiscover_get_ipsource
