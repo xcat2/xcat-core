@@ -14,6 +14,10 @@ Configure passwords
 
 #. Configure the passwords for Management modules of the compute nodes.
 
+   * For OpenBMC managed systems: :: 
+
+         chtab key=openbmc passwd.username=root passwd.password=0penBmc
+
    * For IPMI/BMC managed systems: ::
 
          chtab key=ipmi passwd.username=ADMIN passwd.password=admin
