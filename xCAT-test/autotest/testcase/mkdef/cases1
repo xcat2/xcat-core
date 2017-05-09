@@ -9,3 +9,55 @@ check:rc==0
 cmd:rmdef mgt02
 cmd:rmdef -t group doubletrouble
 end
+
+start:mkdef_regex_bmc
+description:The second example in xCAT document Using Regular Expressions in the xCAT Tables
+cmd:chtab node=compute 'ipmi.bmc=/\z/-bmc/'
+check:rc==0
+cmd:mkdef com02 groups=compute mgt=ipmi
+check:rc==0
+cmd:lsdef com02 -i bmc | grep 'bmc=com02-bmc$'
+check:rc==0
+cmd:rmdef com02
+check:rc==0
+cmd:chtab -d node=compute ipmi
+check:rc==0
+end
+
+start:mkdef_regex_ip
+description:The third example in xCAT document Using Regular Expressions in the xCAT Tables
+cmd:chtab node=compute 'hosts.ip=|node(\d+)|10.0.0.($1+0)|'
+check:rc==0
+cmd:mkdef node254 groups=compute
+check:rc==0
+cmd:lsdef node254 -i ip | grep 'ip=10.0.0.254$'
+check:rc==0
+cmd:rmdef node254
+check:rc==0
+cmd:chtab -d node=compute hosts
+check:rc==0
+end
+
+start:mkdef_regex_kvm
+description:The fourth example in xCAT document Using Regular Expressions in the xCAT Tables
+cmd:chtab node=kvms 'vm.host=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|' 'vm.storage=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|' vm.memory=3072 vm.cpus=2 vm.nics=virbr2 vm.nicmodel=virtio
+check:rc==0
+cmd:mkdef -t node -o c01f02x03v04 groups=kvms
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmcpus | grep 'vmcpus=2$'
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmhost | grep 'vmhost=c01f02x03$'
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmmemory | grep 'vmmemory=3072$'
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmnicnicmodel | grep 'vmnicnicmodel=virtio$'
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmnics | grep 'vmnics=virbr2$'
+check:rc==0
+cmd:chdef c910f02x03v04 -i vmstorage | grep 'vmstorage=dir:///install/vms/vm4$'
+check:rc==0
+cmd:rmdef -t node c01f02x03v04
+check:rc==0
+cmd:chtab -d node=kvms vm
+check:rc==0
+end
