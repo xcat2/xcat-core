@@ -266,13 +266,13 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>dev/null
     fi
-elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then
+elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC
     ISOPENBMC=1
 fi
 
-if [ -z "$ISOPENBMC" ]; then
-    LAN_MED_TYPE="802.3"
-else 
+LAN_MED_TYPE="802.3"
+if [ ! -z "$ISOPENBMC" ]; then
+    # Overvide the default value for OpenBMC
     LAN_MED_TYPE="Other LAN"
 fi
 while [ -z "$LANCHAN" ]; do 
@@ -390,12 +390,11 @@ done
 # update the node status to 'bmcready' for openbmc, no more configuration is needed.
 if [ ! -z "$ISOPENBMC" ]; then
     # To enable network configuration for openbmc
-    let idev=0
     TRIES=0
     bmc_config_rc=0
     # Set Channel Access to apply network setting 
-    #while ! ipmitool -d $idev lan set $LANCHAN access on; do
-    while ! ipmitool -d $idev raw 0x06 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
+    #while ! ipmitool -d 0 lan set $LANCHAN access on; do
+    while ! ipmitool -d 0 raw 0x06 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
         snooze
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then 
