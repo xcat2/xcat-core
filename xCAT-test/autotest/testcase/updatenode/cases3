@@ -1,0 +1,15 @@
+start:updatenode_diskful_syncfiles_failing
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/ 
+check:rc==0
+cmd:echo "/tmp/non-existent -> /etc/motd" > /install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist 
+check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist
+check:rc==0
+cmd:updatenode $$CN -F >/tmp/updatenode.F.out
+check:rc!=0
+cmd:grep 'updatenode exited with code 1' /tmp/updatenode.F.out
+check:rc==0
+cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
+check:rc==0
+cmd:rm -f /install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist 
+end 
