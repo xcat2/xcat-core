@@ -52,7 +52,7 @@ end
 start:rsetboot_default_statcheck
 description:set the boot device default
 Attribute: $$CN-The operation object of rsetboot command.
-cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f mv /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
 check:rc==0
 cmd:rsetboot $$CN default
 check:rc==0
