@@ -283,7 +283,7 @@ sub outletpower {
 
     my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
     my $type = "INTEGER";
-    if ($session->newmib) {
+    if ($session->{newmib}) {
         $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
     }
 
@@ -334,7 +334,7 @@ sub outletstat {
     my $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.11";
     my $output;
     my $statstr;
-    if ($session->newmib) {
+    if ($session->{newmib}) {
         $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
     }
 
@@ -376,11 +376,11 @@ sub connectTopdu {
         xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
         return;
     }
-    $session->newmib = 0;
+    $session->{newmib} = 0;
     my $pduversion = $session->get(".1.3.6.1.4.1.2.6.223.7.3.0");
     if ($pduversion =~ /(\d+)\.(\d+)_(\d+)/) {
         if ($1 >= 1 and $2 >= 3 and $3 >= 3) {
-                $session->newmib = 1;
+                $session->{newmib} = 1;
         }
     }
 
