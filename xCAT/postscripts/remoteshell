@@ -486,7 +486,7 @@ else
     # sshd is not enabled on SLES 12 by default
     # does not hurt anything to re-enable if it is enabled already
     # and disable enable service for diskless and statelite
-    if [[ $NODESETSTATE == install ]]; then
+    if [ "$NODESETSTATE" == install ]; then
         enableservice sshd
     fi
     restartservice sshd
