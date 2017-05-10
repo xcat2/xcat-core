@@ -37,7 +37,7 @@ my %global_mac_identity = (
     "a8:97:dc" => "BNT G8052 switch",
     "6c:ae:8b" => "BNT G8264-T switch",
     "fc:cf:62" => "BNT G8124 switch",
-    "7c:fe:90" => "Mellanox IB switch",
+    "7c:fe:90" => "Mellanox switch",
     "8c:ea:1b" => "Edgecore Networks Switch"
 );
 

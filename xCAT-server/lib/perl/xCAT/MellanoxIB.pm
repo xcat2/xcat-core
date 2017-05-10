@@ -568,11 +568,13 @@ sub setSSHcfg {
     my $enable_cmd = "enable\r";
     my $config_cmd = "configure terminal\r";
     my $exit_cmd   = "exit\r";
+    my $init_cmd   = "no\r";
 
     my $pwd_prompt    = "Password: ";
     my $sw_prompt     = "^.*\] > ";
     my $enable_prompt = "^.*\] \#";
     my $config_prompt = "^.*\\\(config\\\) \#";
+    my $init_prompt   = "Do you want to use the wizard for initial configuration?";
 
 
     my $debug = 0;
@@ -661,6 +663,15 @@ sub setSSHcfg {
                         $mysw->send($passwd_cmd);
 
                         #print "$node: password sent\n";
+                        $mysw->exp_continue();
+                    }
+                ],
+                [
+                    "-re", $init_prompt,
+                    sub {
+                        #print "$node: sending command: $init_cmd\n";
+                        $mysw->clear_accum();
+                        $mysw->send($init_cmd);
                         $mysw->exp_continue();
                     }
                 ],

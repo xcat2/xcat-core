@@ -43,9 +43,6 @@ if (
                 'ip'         => \$::IP,
                 'name'       => \$::NAME,
                 'snmp'       => \$::SNMP,
-                'user=s'     => \$::USER,
-                'password=s' => \$::PASSWORD,
-                'auth=s'     => \$::AUTH,
                 'vlan=s'     => \$::VLAN,
                 'port=s'     => \$::PORT,
                 'mode=s'     => \$::MODE,
@@ -115,8 +112,7 @@ if (($::NAME) || ($::ALL)) {
     config_hostname();
 }
 
-if (($::SNMP) || ($::ALL))
-{
+if (($::SNMP) || ($::ALL)) {
     config_snmp();
 }
 
@@ -165,7 +161,6 @@ sub config_ip {
         #get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
 
-
         # if hostnames are same, created different one for discovery name
         if ($dswitch eq $switch) {
             $dswitch="";
@@ -177,17 +172,29 @@ sub config_ip {
             $ip_str =~ s/\./\-/g;
             $dswitch = "switch-$ip_str";
         }
-      
-        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin nodetype=switch";
+        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=Mellanox username=admin password=admin mgt=switch nodetype=switch";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts $dswitch";
         $rc= xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "makedns $dswitch";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+
+        $cmd="rspconfig $dswitch sshcfg=enable";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::MsgUtils->message("E"," Failed to config ssh passwordless for $dip");
+            print "Failed to config ssh passwordless for $dswitch, $dip\n";
+            push (@discover_switches, $dswitch);
+            next;
+        }
 
         # verify if xdsh works
         $cmd = "xdsh $dswitch -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;exit' ";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->message("E","Couldn't communicate with $dswitch, $dip");
+            xCAT::MsgUtils->message("E","Couldn't communicate with $dip");
+            print "$cmd failed, Couldn't communicate with $dswitch, $dip\n";
+            push (@discover_switches, $dswitch);
             next;
         }
         #get netmask
@@ -203,6 +210,7 @@ sub config_ip {
 
         push (@discover_switches, $dswitch);
         push (@config_switches, $switch);
+        print "changed $switch ip address to static ip $static_ip\n";
     }
 
     if (@config_switches) {
@@ -217,6 +225,8 @@ sub config_ip {
      if (@discover_switches) {
         my $dsw = join(",",@discover_switches);
         #remove discover switch from xCATdb and /etc/hosts
+        $cmd = "makedns -d $dsw";
+        $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts -d $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "rmdef $dsw";
@@ -231,6 +241,7 @@ sub config_hostname {
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
+            print "switch ssh username is not defined, add default one\n";
             $cmd = "chdef $switch username=admin";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
@@ -241,7 +252,8 @@ sub config_hostname {
             xCAT::MsgUtils->message("E","Failed to setup hostname for $switch");
             next;
         }
-         push (@config_switches, $switch);
+        push (@config_switches, $switch);
+        print "switch host name changed to $switch\n";
     }
     if (@config_switches) {
         #update switch status
@@ -258,45 +270,42 @@ sub config_snmp {
     my $snmp_auth;
 
     my $switchtab = xCAT::Table->new('switches');
-    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth']);
+    my $switchhash = $switchtab->getNodesAttribs(\@nodes,['sshusername','username','password','auth','privacy']);
     foreach my $switch (@nodes) {
         my $user = $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
+            print "switch ssh username is not defined, add default one\n";
             $cmd = "chdef $switch username=admin";
             $rc= xCAT::Utils->runcmd($cmd, 0);
             $user="admin";
         }
-        if ($::USER) {
-            $snmp_user = $::USER;
-        } elsif ($switchhash->{$switch}->[0]->{username}) {
-            $snmp_user = $switchhash->{$switch}->[0]->{username};
-        } else {
-            $snmp_user = "xcatadmin\r";
+        $snmp_user = $switchhash->{$switch}->[0]->{username};
+        if (!$snmp_user) {
+           print "no snmp user is defined for this switch $switch, not going to set up snmpv3\n";
+           next;
         }
-        if ($::PASSWORD) {
-            $snmp_passwd = $::PASSWORD;
-        } elsif ($switchhash->{$switch}->[0]->{password}) {
-            $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+        $snmp_passwd = $switchhash->{$switch}->[0]->{password};
+        $snmp_auth = $switchhash->{$switch}->[0]->{auth};
+        my $snmp_privacy = $switchhash->{$switch}->[0]->{privacy};
+
+        my $cmd_prefix = "xdsh $switch -l $user --devicetype IBSwitch::Mellanox";
+        my $cmd;
+        # Build up the commands for easier readability
+        $cmd = $cmd . "enable\;";
+        $cmd = $cmd . "configure terminal\;";
+        $cmd = $cmd . "snmp-server user $snmp_user v3 enable\;";
+        if ($snmp_privacy) {
+            $cmd = $cmd . "snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd priv $snmp_privacy $snmp_passwd\;";
         } else {
-            # Need a special character
-            $snmp_passwd = "passw0rd\r";
-        }
-        if ($::AUTH) {
-            $snmp_auth = $::AUTH;
-        } elsif ($switchhash->{$switch}->[0]->{auth}) {
-            $snmp_auth = $switchhash->{$switch}->[0]->{auth};
-        } else {
-            $snmp_auth = "sha\r";
+            $cmd = $cmd . "snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd\; no snmp-server user $snmp_user v3 require-privacy\;";
         }
 
-        $cmd = "xdsh $switch -l $user --devicetype IBSwitch::Mellanox 'enable;configure terminal;snmp-server user $snmp_user v3 enable;snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd;no snmp-server user $snmp_user v3 require-privacy;configuration write;exit' ";
-        $rc= xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            xCAT::MsgUtils->message("E","Failed to set snmpv3 for $switch");
-        } else {
-            $cmd = "chdef $switch status=snmp_configed snmpversion=3 snmpauth=$snmp_auth snmpusername=$snmp_user snmppassword=$snmp_passwd";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
-        }
+        print "snmpv3 configured for switch $switch\n";
+
+        $cmd = $cmd . "configuration write\;exit\;";
+        my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
+
+        `$final_cmd`
     }
 }
 
@@ -342,7 +351,7 @@ sub config_vlan {
         &usage;
         exit(1);
     }
- 
+
     #will default to trunk mode
     if ($::MODE) {
        $mode = $::MODE;
@@ -373,9 +382,11 @@ sub config_vlan {
             $devicetype = "IBSwitch::Mellanox";
             next;
         }
-        
+
         my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
         my $cmd;
+
+        print "Tagging VLAN=$vlan for $switch port $port\n";
 
         # Build up the commands for easier readability
         $cmd = $cmd . "enable\;";
@@ -390,10 +401,10 @@ sub config_vlan {
             $cmd = $cmd . "switchport $mode allowed-vlan $vlan\;";
         }
         $cmd = $cmd . "exit\;exit\;exit\;";
-
         my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
 
         `$final_cmd`
+
     }
 }
 
@@ -413,7 +424,7 @@ sub usage
     configMellanox -h│--help 
     configMellanox --switches switchnames --ip
     configMellanox --switches switchnames --name
-    configMellanox --switches switchnames --snmp [--user snmp_user] [--password snmp_password] [--auth snmp_auth]
+    configMellanox --switches switchnames --snmp 
     
     To set the ip address, hostname, config snmp and run rspconfig command:
         configMellanox --switches switchnames --all
@@ -422,14 +433,14 @@ sub usage
         configMellanox --switches switchnames --config  
 
     To set Vlan for interface commmand (only for Mellanox Ethernet switch) :
-        configMellanox --switches switchnames --port port --vlan vlan --mode mode 
+        configMellanox --switches switchnames --port port --vlan vlan --mode mode
 
-     The following mode are supported for switchport:
+    The following mode are supported for switchport:
       * access        Only untagged ingress Ethernet packets are allowed
       * trunk         Only tagged ingress Ethernet packets are allowed
       * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
       * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged
-      * dot1q-tunnel  Both tagged and untagged ingress Ethernet packets are allowed. Egress packets are tagged with a second VLAN (802.1Q) header 
+      * dot1q-tunnel  Both tagged and untagged ingress Ethernet packets are allowed. Egress packets are tagged with a second VLAN (802.1Q) header
 
     \n";
 }
