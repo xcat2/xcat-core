@@ -485,10 +485,12 @@ else
     #service sshd restart
     # sshd is not enabled on SLES 12 by default
     # does not hurt anything to re-enable if it is enabled already
-    enableservice sshd
+    # and disable enable service for diskless and statelite
+    if [[ $NODESETSTATE == install ]]; then
+        enableservice sshd
+    fi
     restartservice sshd
 fi
-
 #if the service restart with "service/systemctl" failed
 #try to kill the process and start
 if [ "$?" != "0" ];then
