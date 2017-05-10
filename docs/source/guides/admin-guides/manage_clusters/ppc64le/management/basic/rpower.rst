@@ -3,7 +3,7 @@
 
 See :doc:`rpower manpage </guides/admin-guides/references/man1/rpower.1>` for more information.
 
-Use the ``rpower`` command to remotely power on and off a single server or a range of server. ::
+Use the ``rpower`` command to remotely power on and off a single server or a range of servers. ::
 
     rpower <noderange> on
     rpower <noderange> off

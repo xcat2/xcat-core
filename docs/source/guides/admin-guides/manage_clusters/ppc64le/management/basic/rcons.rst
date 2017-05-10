@@ -19,7 +19,7 @@ Open a console to ``compute1``: ::
 
     rcons compute1
 
-**Note:** The keystroke ``ctrl+E C .`` will disconnect you from the console.
+**Note:** The keystroke ``ctrl+e c .`` will disconnect you from the console.
 
 
 Troubleshooting
@@ -45,7 +45,7 @@ The xCAT ``rcons`` command relies on conserver (http://www.conserver.com/).  The
    #. After this, try invoking the console again:  ``rcons <node>``
 
 
-OpenBMC Spcific
+OpenBMC Specific
 ```````````````
 
    #. For OpenBMC managed servers, the root user must be able to ssh passwordless to the BMC for the ``rcons`` function to work.  

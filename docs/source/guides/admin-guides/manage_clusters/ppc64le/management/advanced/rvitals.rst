@@ -1,13 +1,15 @@
 ``rvitals`` - Remote Hardware Vitals 
 ==================================== 
 
-Collect runtime information from running physical machine is also a big requirement for real life system administrators. This kind of information includes, temperature of CPU, internal voltage of particular socket, wattage with workload, speed of cooling fan, et al.
+See :doc:`rvitals manpage </guides/admin-guides/references/man1/rvitals.1>` for more information.
 
-In order to get such information, use ``rvitals`` command. This kind of information varies among different model types of the machine. Thus, check the actual output of the ``rvitals`` command against your machine, to verify which kinds of information can be extracted. The information may change after the firmware update of the machine.  ::
+Collecting runtime information from a running physical machine is an important part of system administration.  Data can be obtained from the service processor including temperature, voltage, cooling fans, etc. 
 
-    rvitals cn1 all
+Use the ``rvitals`` command to obtain this information.  ::
 
-As an example, get only the temperature information of a particular machine. ::
+    rvitals <noderange> all
 
-    rvitals cn1 temp
+To only get the temperature information of machines in a particular noderange: ::
+
+    rvitals <noderange> temp
 
