@@ -1,4 +1,4 @@
-#The cases in this bundle are used to test hardware control against P9 server and 2 kinds provision on P9 server.
+description:the cases in this bundle are used to test hardware control against P9 server and 2 kinds provision on P9 server.
 bmcdiscover_q
 bmcdiscover_help
 bmcdiscover_version
