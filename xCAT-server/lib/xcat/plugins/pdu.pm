@@ -131,7 +131,7 @@ sub process_request
         return powerstat($noderange, $callback);
     }elsif ($command eq "rpower") {
         my $subcmd = $exargs[0];
-        if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat')){
+        if(($subcmd eq 'on') || ($subcmd eq 'off') || ($subcmd eq 'stat') || ($subcmd eq 'reset')){
             #-------------------------------------------
             #there are 2 cases will enter this black
             #one is if node's mgt is pdu
