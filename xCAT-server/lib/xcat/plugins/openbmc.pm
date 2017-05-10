@@ -285,8 +285,9 @@ sub process_request {
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
 
-    parse_node_info($noderange);
-    parse_command_status($command);
+    my $check = parse_node_info($noderange);
+    my $rst = parse_command_status($command);
+    return if ($rst);
 
     if ($request->{command}->[0] ne "getopenbmccons") {
         $cookie_jar = HTTP::Cookies->new({});
@@ -330,7 +331,6 @@ sub process_request {
         return;
     }
 
-
     while (1) { 
         last unless ($wait_node_num);
         while (my ($response, $handle_id) = $async->wait_for_next_response) {
@@ -338,6 +338,7 @@ sub process_request {
         }
     } 
 
+    $callback->({ errorcode => $check }) if ($check);
     return;
 }
 
@@ -491,7 +492,7 @@ sub parse_command_status {
         my $persistent = 0;
         unless (GetOptions("p" => \$persistent,)) {
             xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            exit 1;
+            return 1;
         }
 
         $subcommand = $ARGV[0];
@@ -506,14 +507,14 @@ sub parse_command_status {
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         }
         xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        exit;
+        return 1;
     }
 
     if ($command eq "reventlog") {
         my $option_s = 0;
         unless (GetOptions("s" => \$option_s,)) {
             xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            exit 1;
+            return 1;
         }
 
         if (defined($ARGV[0])) {
@@ -526,7 +527,7 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_CLEAR_REQUEST";
             $next_status{REVENTLOG_CLEAR_REQUEST} = "REVENTLOG_CLEAR_RESPONSE";
             xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-            exit;
+            return 1;
         } else {
             $next_status{LOGIN_RESPONSE} = "REVENTLOG_REQUEST";
             $next_status{REVENTLOG_REQUEST} = "REVENTLOG_RESPONSE";
@@ -558,10 +559,11 @@ sub parse_command_status {
         }
         $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
         xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        exit;
+        return 1;
     }
 
     print Dumper(\%next_status) . "\n";
+    return;
 }
 
 #-------------------------------------------------------
@@ -575,6 +577,7 @@ sub parse_command_status {
 #-------------------------------------------------------
 sub parse_node_info {
     my $noderange = shift;
+    my $rst = 0;
 
     my $passwd_table = xCAT::Table->new('passwd');
     my $passwd_hash = $passwd_table->getAttribs({ 'key' => 'openbmc' }, qw(username password));
@@ -588,6 +591,7 @@ sub parse_node_info {
                 $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute bmc", $callback, $node);
+                $rst = 1;
                 next;
             }
 
@@ -598,6 +602,7 @@ sub parse_node_info {
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute username", $callback, $node);
                 delete $node_info{$node};
+                $rst = 1;
                 next;
             }
 
@@ -608,19 +613,21 @@ sub parse_node_info {
             } else {
                 xCAT::SvrUtils::sendmsg("Unable to get attribute password", $callback, $node);
                 delete $node_info{$node};
+                $rst = 1;
                 next;
             }
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
         } else {
             xCAT::SvrUtils::sendmsg("Unable to get information from openbmc table", $callback, $node);
+            $rst = 1;
             next;
         }
     }
 
     print Dumper(\%node_info) ."\n";
 
-    return;
+    return $rst;
 }
 
 #-------------------------------------------------------
