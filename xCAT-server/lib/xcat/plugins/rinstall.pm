@@ -333,7 +333,7 @@ sub rinstall {
         my @cmd = "Run command: nodeset @nodes @parameter";
         push @{ $rsp->{data} }, @cmd;
         push @{ $rsp->{data} }, @$res;
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+        xCAT::MsgUtils->message("D", $rsp, $callback);
     }
     unless ($rc == 0) {
 
@@ -408,7 +408,7 @@ sub rinstall {
                 my @cmd = "Run command: rnetboot @nodes";
                 push @{ $rsp->{data} }, @cmd;
                 push @{ $rsp->{data} }, @$res;
-                xCAT::MsgUtils->message("I", $rsp, $callback);
+                xCAT::MsgUtils->message("D", $rsp, $callback);
             }
             unless ($rc == 0) {
 
@@ -463,13 +463,14 @@ sub rinstall {
                     \%req,
                     $subreq, -1, 1);
 
+
                 $rc = $::RUNCMD_RC;
                 my $rsp = {};
                 if ($VERBOSE) {
                     my @cmd = "Run command: rsetboot @nodes @rsetbootarg";
                     push @{ $rsp->{data} }, @cmd;
                     push @{ $rsp->{data} }, @$res;
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    xCAT::MsgUtils->message("D", $rsp, $callback);
                 }
                 unless ($rc == 0) {
                     # We got an error with the rsetboot
@@ -527,7 +528,7 @@ sub rinstall {
                 my @cmd = "Run command: rpower @nodes @rpowerarg";
                 push @{ $rsp->{data} }, @cmd;
                 push @{ $rsp->{data} }, @$res;
-                xCAT::MsgUtils->message("I", $rsp, $callback);
+                xCAT::MsgUtils->message("D", $rsp, $callback);
             }
             unless ($rc == 0) {
                 # We got an error with the rpower
