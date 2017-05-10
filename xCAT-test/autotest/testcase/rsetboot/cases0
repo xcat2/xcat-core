@@ -1,45 +1,69 @@
 start:rsetboot_hd_statcheck
 description:set the boot device from hd
 Attribute: $$CN-The operation object of rsetboot command.
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
 cmd:rsetboot $$CN hd
 check:rc==0
 check:output=~Hard Drive
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: Hard Drive
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
 end
  
 start:rsetboot_net_statcheck
 description:set the boot device from net
 Attribute: $$CN-The operation object of rsetboot command.
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
 cmd:rsetboot $$CN net
 check:rc==0
 check:output=~Network
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: Network
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
 end
 
 start:rsetboot_cd_statcheck
 description:set the boot device from CD/DVD
 Attribute: $$CN-The operation object of rsetboot command.
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
 cmd:rsetboot $$CN cd
 check:rc==0
 check:output=~CD/DVD
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: CD/DVD
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
 end
 
 start:rsetboot_default_statcheck
 description:set the boot device default
 Attribute: $$CN-The operation object of rsetboot command.
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
 cmd:rsetboot $$CN default
 check:rc==0
 check:output=~boot override inactive
 cmd:rsetboot $$CN stat
 check:rc==0
 check:output=~$$CN: boot override inactive
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
 end
 
 start:rsetboot_h
@@ -62,22 +86,33 @@ cmd:rsetboot -v
 check:rc==0
 check:output=~Version
 end
-
 start:rsetboot_node_invalidnode
 desription:rsetboot using invalidenode
 cmd:rsetboot testnode boot
 check:rc!=0
-check:output=~Error: Invalid nodes
 end
 
 start:rsetboot_noderange_net
 description:rsetboot noderange net
-Attribute: $$CN,$$BC-The operation object of rsetboot command.
-cmd:rsetboot $$CN,$$BC net
+Attribute: $$CN-The operation object of rsetboot command.
+cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
+check:rc==0
+cmd:chdef testnode groups=test mgt=__GETNODEATTR($$CN,mgt)__
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
+cmd:rsetboot $$CN,testnode net
 check:output=~$$CN: Network
-cmd:rsetboot $$CN,$$BC stat
+check:output=~testnode: Error
+cmd:rsetboot $$CN,testnode stat
 check:output=~$$CN: Network
-check:output=~$$BC: Network
+check:output=~testnode: Error
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
+cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
+check:rc==0
 end
 
 start:rsetboot_node_invalidaction
@@ -91,8 +126,24 @@ end
 start:rsetboot_group_net
 description:rsetboot group node 
 Attribute: $$CN-The operation object of rsetboot command.
-cmd:rsetboot __GETNODEATTR($$CN,groups)__ net
+cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat ]];then mv -f /tmp/rsetboot.stat /tmp/rsetboot.stat.bak;fi; rsetboot $$CN state > /tmp/rsetboot.stat;
+check:rc==0
+cmd:chdef testnode groups=test mgt=__GETNODEATTR($$CN,mgt)__
+check:rc==0
+cmd:chdef -p -t node  -o $$CN  groups="test"
+check:rc==0
+cmd:rsetboot test net
 check:output=~$$CN: Network
-cmd:rsetboot __GETNODEATTR($$CN,groups)__ stat
+cmd:rsetboot test stat
 check:output=~$$CN: Network
+cmd:if [[ `grep CD /tmp/rsetboot.stat` ]];then rsetboot $$CN cd;elif [[ `grep  Network /tmp/rsetboot.stat` ]];then rsetboot $$CN  net;else  rsetboot $$CN hd;fi
+check:rc==0
+cmd:if [[ -f /tmp/rsetboot.stat.bak ]];then mv -f /tmp/rsetboot.stat.bak /tmp/rsetboot.stat;else rm -rf /tmp/rsetboot.stat;fi
+check:rc==0
+cmd:chdef -m -t node -o $$CN groups="test"
+check:rc==0
+cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
+check:rc==0
 end
