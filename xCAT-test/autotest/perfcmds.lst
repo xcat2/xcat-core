@@ -1,0 +1,13 @@
+#SERIES# 1,50,100,250,500,1000,2500,5000,10000
+lsdef #NODES#
+makehosts #NODES#
+makedns -n #NODES#
+makedhcp #NODES#
+makeknownhosts #NODES#
+nodech #NODES# groups,=group1
+nodels #NODES# noderes
+nodeset #NODES# osimage=rhels7.3-GA-ppc64le-install-compute
+chdef -t node -o #NODES# postscripts="fake" profile="install" netboot="grub2"
+rmdef -t node #PERFGRP#
+mkdef -z < #STANZ#
+noderm #PERFGRP#

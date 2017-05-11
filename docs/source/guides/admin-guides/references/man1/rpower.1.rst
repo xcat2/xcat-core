@@ -23,8 +23,8 @@ SYNOPSIS
 
 \ **rpower**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
-BMC (using IPMI) specific:
-==========================
+BMC (using IPMI):
+=================
 
 
 \ **rpower**\  \ *noderange*\  [\ **on | off | softoff | reset | boot | stat | state | status | wake | suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
@@ -32,8 +32,17 @@ BMC (using IPMI) specific:
 \ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat | pdureset**\ ]
 
 
-OpenBMC specific:
-=================
+OpenPower BMC (using IPMI):
+===========================
+
+
+\ **rpower**\  \ *noderange*\  [\ **on | off | reset | boot | stat | state | status**\ ]
+
+\ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat | pdureset**\ ]
+
+
+OpenPower OpenBMC:
+==================
 
 
 \ **rpower**\  \ *noderange*\  [\ **off | on | reset | boot | stat | state | status**\ ]
@@ -95,6 +104,13 @@ Blade specific:
 
 
 \ **rpower**\  \ *noderange*\  [\ **cycle | softoff**\ ]
+
+
+Lenovo High-Density Server specific:
+====================================
+
+
+\ **rpower**\  \ *noderange*\  [\ **on | off | reset | boot | reseat**\ ]
 
 
 zVM specific:
@@ -267,6 +283,12 @@ OPTIONS
 \ **cycle**\ 
  
  Power off, then on.
+ 
+
+
+\ **reseat**\ 
+ 
+ For Lenovo high-density servers, simulates unplugging and replugging the node into the chassis.
  
 
 

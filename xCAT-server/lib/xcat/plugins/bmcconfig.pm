@@ -96,20 +96,24 @@ sub process_request {
     my $request  = shift;
     my $callback = shift;
     my $node     = $request->{'_xcat_clienthost'}->[0];
+    my $bmc_mgmt_type = "ipmi";
+    if ($request->{isopenbmc}->[0]) {
+        $bmc_mgmt_type = "openbmc";
+    }
     unless (ok_with_node($node, 300)) {
         $callback->({ error => ["Unable to prove root on your IP approves of this request"], errorcode => [1] });
         return;
     }
 
     #my $sitetable = xCAT::Table->new('site');
-    my $ipmitable = xCAT::Table->new('ipmi');
+    my $ipmitable = xCAT::Table->new("$bmc_mgmt_type");
     my $tmphash;
     my $username;
     my $gennedpassword = 0;
     my $bmc;
     my $password;
     $tmphash = $ipmitable->getNodesAttribs([$node], [ 'bmc', 'username', 'bmcport', 'password', 'taggedvlan' ]);
-    my $authmap = xCAT::PasswordUtils::getIPMIAuth(noderange => [$node], ipmihash => $tmphash);
+    my $authmap = xCAT::PasswordUtils::getIPMIAuth(noderange => [$node], ipmihash => $tmphash, keytype => $bmc_mgmt_type);
 
     if ($::XCATSITEVALS{genpasswords} eq "1" or $::XCATSITEVALS{genpasswords} =~ /y(es)?/i) {
         $password       = genpassword(10) . "1cA!";

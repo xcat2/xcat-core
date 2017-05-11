@@ -26,7 +26,13 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
-     OpenBMC specific:
+     BMC (using IPMI):
+       rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPower BMC:
+       rpower noderange [on|off|reset|boot|stat|state|status]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPower OpenBMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
@@ -89,8 +95,10 @@ my %usage = (
        rinv [-h|--help|-v|--version]
     BMC specific:
        rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
-    OpenPOWER server specific:
-       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all]
+    OpenPOWER (using ipmi) server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+    OpenPOWER (using openbmc) server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|cpu|dimm|all
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
@@ -132,9 +140,11 @@ my %usage = (
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
+       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
+   OpenBMC specific:
+       rspconfig <noderange> [ip|netmask|gateway|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
