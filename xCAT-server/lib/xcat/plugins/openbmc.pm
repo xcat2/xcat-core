@@ -168,6 +168,13 @@ my %status_info = (
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RVITALS_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/sensors/enumerate",
+    },
+    RVITALS_RESPONSE => {
+        process        => \&rvitals_response,
+    },
 );
 
 $::RESPONSE_OK                  = "200 OK";
@@ -361,7 +368,7 @@ sub parse_args {
         return ([ 1, "No option specified for $command" ]);
     }
 
-    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot/)) {
+    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
@@ -429,6 +436,12 @@ sub parse_args {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
         }  
+    } elsif ($command eq "rvitals") {
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $subcommand = "all" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^leds$|^all$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
     } else {
         return ([ 1, "Command is not supported." ]);
     }
@@ -560,6 +573,18 @@ sub parse_command_status {
         $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
         xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
         return 1;
+    }
+
+    if ($command eq "rvitals") {
+        if (defined($ARGV[0])) {
+            $subcommand = $ARGV[0];
+        } else {
+            $subcommand = "all";
+        }
+
+        $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
+        $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
+        $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
     }
 
     print Dumper(\%next_status) . "\n";
@@ -1089,5 +1114,52 @@ sub rspconfig_response {
         $wait_node_num--;
     } 
 }
+
+#-------------------------------------------------------
+
+=head3  rvitals_response
+
+  Deal with response of rvitals command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rvitals_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    my $grep_string = $status_info{RVITALS_RESPONSE}{argv};
+    my $src;
+    my $content_info;
+    my $sensor_value;
+    
+    print "$node DEBUG Processing command: rvitals $grep_string \n";
+    print Dumper(%{$response_info->{data}}) . "\n";
+
+    foreach my $key_url (keys %{$response_info->{data}}) {
+        my %content = %{ ${ $response_info->{data} }{$key_url} };
+        print Dumper(%content) . "\n";
+        # $key_url is "/xyz/openbmc_project/sensors/xxx/yyy
+        # For now display xxx/yyy as a label
+        my ($junk, $label) = split("/sensors/", $key_url);
+        $sensor_value = $label . " " . $content{Value};
+        xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+
+    return;
+}
+
 
 1;
