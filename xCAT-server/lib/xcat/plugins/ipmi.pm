@@ -2535,6 +2535,12 @@ sub power {
     my $rc = 0;
     my $text;
     my $code;
+
+    if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
+        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
+        return;
+    }
+
     if ($sessdata->{subcommand} eq "reseat") {
         reseat_node($sessdata);
     } elsif (not $sessdata->{acpistate} and is_systemx($sessdata)) { #Only implemented for IBM servers
@@ -2681,6 +2687,7 @@ sub power_response {
         my $text = $codes{ $rsp->{code} };
         unless ($text) { $text = sprintf("Unknown response %02xh", $rsp->{code}); }
         xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
+        return;
     } else {
         my $command = $sessdata->{subcommand};
         my $status  = $sessdata->{powerstatus};
