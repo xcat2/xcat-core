@@ -501,7 +501,11 @@ sub process_request {
     if ($args[0] eq 'next') {
         $sub_req->({ command => ['rsetboot'],
                 node => \@nodes,
-                arg  => ['default'] });
+                arg  => ['default'],
+                #todo: do not need to pass the XCAT_OPENBMC_DEVEL after the openbmc dev work finish
+                #this does not hurt anything for other plugins
+                environment => {XCAT_OPENBMC_DEVEL=>"YES"}
+                });
         xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): @nodes boot device setting.");
     }
     my $chaintab = xCAT::Table->new('chain', -create => 1);
