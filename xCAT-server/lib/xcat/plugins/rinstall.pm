@@ -333,7 +333,7 @@ sub rinstall {
         my @cmd = "Run command: nodeset @nodes @parameter";
         push @{ $rsp->{data} }, @cmd;
         push @{ $rsp->{data} }, @$res;
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+        xCAT::MsgUtils->message("D", $rsp, $callback);
     }
     unless ($rc == 0) {
 
@@ -382,7 +382,7 @@ sub rinstall {
     foreach my $hmkey (keys %hmhash) {
         $::RUNCMD_RC = 0;
         my @nodes = @{ $hmhash{$hmkey} };
-        unless (($hmkey =~ /^ipmi$/) or ($hmkey =~ /^blade$/) or ($hmkey =~ /^hmc$/) or ($hmkey =~ /^ivm$/) or ($hmkey =~ /^fsp$/) or ($hmkey =~ /^kvm$/) or ($hmkey =~ /^esx$/) or ($hmkey =~ /^rhevm$/)) {
+        unless ($hmkey =~ /^(ipmi|blade|hmc|ivm|fsp|kvm|esx|rhevm|openbmc)$/)  {
             my $rsp = {};
             $rsp->{error}->[0] = "@nodes: rinstall only support nodehm.mgt type 'ipmi', 'blade', 'hmc', 'ivm', 'fsp', 'kvm', 'esx', 'rhevm'.";
             $rsp->{errorcode}->[0] = 1;
@@ -401,13 +401,14 @@ sub rinstall {
                 },
                 $subreq, -1, 1);
 
+
             $rc = $::RUNCMD_RC;
             my $rsp = {};
             if ($VERBOSE) {
                 my @cmd = "Run command: rnetboot @nodes";
                 push @{ $rsp->{data} }, @cmd;
                 push @{ $rsp->{data} }, @$res;
-                xCAT::MsgUtils->message("I", $rsp, $callback);
+                xCAT::MsgUtils->message("D", $rsp, $callback);
             }
             unless ($rc == 0) {
 
@@ -435,8 +436,8 @@ sub rinstall {
             }
         }
         else {
-            # Call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes
-            if ($hmkey =~ /^ipmi$/) {
+            # Call "rsetboot" to set the boot order of the nodehm.mgt=ipmi/openbmc nodes
+            if ($hmkey =~ /^(ipmi|openbmc)$/) {
                 %nodes = map { $_, 1 } @nodes;
 
                 # Run rsetboot $noderange net
@@ -445,14 +446,23 @@ sub rinstall {
                 if ($UEFIMODE) {
                     push @rsetbootarg, "-u";
                 }
-                my $res =
-                  xCAT::Utils->runxcmd(
-                    {
+
+                my %req=(
                         command => ["rsetboot"],
                         node    => \@nodes,
                         arg     => \@rsetbootarg
-                    },
+                    );
+
+                #TODO: When OPENBMC support is finished, this line should be removed     
+                if($hmkey =~ /^openbmc$/){
+                    $req{environment}{XCAT_OPENBMC_DEVEL}= "YES";    
+                }
+
+                my $res =
+                  xCAT::Utils->runxcmd(
+                    \%req,
                     $subreq, -1, 1);
+
 
                 $rc = $::RUNCMD_RC;
                 my $rsp = {};
@@ -460,10 +470,9 @@ sub rinstall {
                     my @cmd = "Run command: rsetboot @nodes @rsetbootarg";
                     push @{ $rsp->{data} }, @cmd;
                     push @{ $rsp->{data} }, @$res;
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                    xCAT::MsgUtils->message("D", $rsp, $callback);
                 }
                 unless ($rc == 0) {
-
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
@@ -497,13 +506,20 @@ sub rinstall {
             # Run rpower $noderange boot
             my @rpowerarg;
             push @rpowerarg, "boot";
-            my $res =
-              xCAT::Utils->runxcmd(
-                {
+            my %req=(
                     command => ["rpower"],
                     node    => \@nodes,
                     arg     => \@rpowerarg
-                },
+            );
+              
+            #TODO: When OPENBMC support is finished, this line should be removed     
+            if($hmkey =~ /^openbmc$/){
+                $req{environment}{XCAT_OPENBMC_DEVEL} = "YES";    
+            }
+
+            my $res =
+              xCAT::Utils->runxcmd(
+                \%req,
                 $subreq, -1, 1);
 
             $rc = $::RUNCMD_RC;
@@ -512,10 +528,9 @@ sub rinstall {
                 my @cmd = "Run command: rpower @nodes @rpowerarg";
                 push @{ $rsp->{data} }, @cmd;
                 push @{ $rsp->{data} }, @$res;
-                xCAT::MsgUtils->message("I", $rsp, $callback);
+                xCAT::MsgUtils->message("D", $rsp, $callback);
             }
             unless ($rc == 0) {
-
                 # We got an error with the rpower
                 my @failurenodes;
                 foreach my $line (@$res) {
