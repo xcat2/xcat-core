@@ -1138,13 +1138,16 @@ sub rvitals_response {
     my $content_info;
     my $sensor_value;
     
-    xCAT::SvrUtils::sendmsg("Processing command rvitals $grep_string", $callback, $node);
+    print "$node DEBUG Processing command: rvitals $grep_string \n";
+    print Dumper(%{$response_info->{data}}) . "\n";
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
-        #print Dumper(%{$response_info->{data}}) . "\n";
-        #print Dumper(%content) . "\n";
-        $sensor_value = $key_url . " " . $content{Value};
+        print Dumper(%content) . "\n";
+        # $key_url is "/xyz/openbmc_project/sensors/xxx/yyy
+        # For now display xxx/yyy as a label
+        my ($junk, $label) = split("/sensors/", $key_url);
+        $sensor_value = $label . " " . $content{Value};
         xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
     }
 
