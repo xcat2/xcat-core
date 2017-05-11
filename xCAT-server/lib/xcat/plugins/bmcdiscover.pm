@@ -389,7 +389,7 @@ sub get_bmc_ip_source {
             # all other errors
             push @{ $rsp->{data} }, "$error_msg";
         }
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
@@ -453,7 +453,7 @@ sub check_auth_process {
         else {
             push @{ $rsp->{data} }, "Unknown Error: $output";
         }
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
@@ -621,7 +621,7 @@ sub scan_process {
     {
         my $rsp = {};
         push @{ $rsp->{data} }, "No bmc found.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
