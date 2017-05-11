@@ -254,7 +254,7 @@ sub preprocess_request {
 
     my $parse_result = parse_args($command, $extrargs, $noderange);
     if (ref($parse_result) eq 'ARRAY') {
-        $callback->({ errorcode => $parse_result->[0], data => $parse_result->[1] });
+        $callback->({ errorcode => [$parse_result->[0]], data => [$parse_result->[1]] });
         $request = {};
         return;
     }
