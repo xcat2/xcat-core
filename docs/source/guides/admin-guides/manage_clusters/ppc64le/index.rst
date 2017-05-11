@@ -1,8 +1,11 @@
 IBM Power LE / OpenPOWER
 =========================
 
-The following sections documents the procedures in managing IBM Power LE (Little Endian) / OpenPOWER servers in an xCAT cluster.  
-These are machines use the IBM Power Architecture and is **IPMI** managed.
+Most of the content is general information for xCAT, the focus and examples are for management of IBM OpenPower servers.
+
+IBM OpenPower Servers
+  * based on Power8 Processor Technology is IPMI managed 
+  * based on Power9 Processor Technology is OpenBmc managed [**Alpha**]
 
 
 .. toctree::
@@ -10,7 +13,7 @@ These are machines use the IBM Power Architecture and is **IPMI** managed.
 
    configure/index.rst 
    discovery/index.rst
-   management.rst
+   management/index.rst
    diskful/index.rst
    diskless/index.rst
    statelite/index.rst
