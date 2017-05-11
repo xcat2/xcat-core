@@ -1,4 +1,5 @@
 start:updatenode_diskful_syncfiles_failing
+description: Test exit code when syncfiles failing.
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/ 
 check:rc==0
 cmd:echo "/tmp/non-existent -> /etc/motd" > /install/custom/install/__GETNODEATTR($$CN,os)__/booboo.synclist 
