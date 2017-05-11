@@ -28,11 +28,18 @@ BMC/MPA specific:
 \ **rinv**\  \ *noderange*\  {\ **pci | model | serial | asset | vpd | mprom | deviceid | guid | firm | diag | dimm | bios | mparom | mac | all**\ }
 
 
-OpenPOWER server specific:
-==========================
+OpenPOWER (using ipmi) server specific:
+=======================================
 
 
 \ **rinv**\  \ *noderange*\  {\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | all**\ }
+
+
+OpenPOWER (using openbmc) server specific:
+==========================================
+
+
+\ **rinv**\  \ *noderange*\  {\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | cpu | dimm | all**\ }
 
 
 PPC (with HMC) specific:
