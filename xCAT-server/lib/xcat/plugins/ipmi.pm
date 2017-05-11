@@ -4525,8 +4525,9 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $language = shift;
     my $data;
     if ($idx >= scalar @$area) {
-        xCAT::SvrUtils::sendmsg([ 1, "Error parsing FRU data from BMC" ], $callback);
-        return -1, undef, undef;
+        # The global_sessdata store the sessdata for a node when parsefru, and it is cleaned after parsefru
+        xCAT::SvrUtils::sendmsg([ 1, "Error encountered when parsing FRU data from BMC" ], $callback, $global_sessdata->{node}, %allerrornodes);
+        return 0, undef, undef;
     }
     my $size     = $area->[$idx] & 0b00111111;
     my $encoding = ($area->[$idx] & 0b11000000) >> 6;
