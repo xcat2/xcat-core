@@ -675,6 +675,7 @@ sub setobjdefs
     # update the tables a row at a time
     foreach my $objname (keys %objhash) {
 
+        my $obj_need_update = 0;
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
 
@@ -1023,6 +1024,7 @@ sub setobjdefs
                     $rsp->{data}->[0] =
 "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $objhash{$objname}{error} = 1;
                     next;
                 }
                 $lookup_table = $tabentry{'lookup_table'};
@@ -1075,18 +1077,25 @@ sub setobjdefs
                       split(/$delim/, $DBattrvals{$objname}{$attr_name});
                     my @minusList = split(/$delim/, $objhash{$objname}{$attr_name});
 
+                    my $operation_failed = 0;
                     foreach my $em (@minusList) {
                         if (!(grep { $_ eq $em } @currentList)) {
                             if (($::opt_t eq 'group') && ($DBattrvals{$objname}{'grouptype'} ne 'dynamic')) {
                                 my $rsp;
                                 $rsp->{data}->[0] = "$objname is not a member of \'$em\'.";
-                                xCAT::MsgUtils->message("W", $rsp, $::callback);
+                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                $operation_failed = 1;
                             } else {
                                 my $rsp;
                                 $rsp->{data}->[0] = "$em is not in the attribute of \'$attr_name\' for the \'$objname\' definition.";
-                                xCAT::MsgUtils->message("W", $rsp, $::callback);
+                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                $operation_failed = 1;
                             }
                         }
+                    }
+                    if ($operation_failed) {
+                        $objhash{$objname}{error} = 1;
+                        next;
                     }
 
                     # make a new list without the one specified
@@ -1106,6 +1115,12 @@ sub setobjdefs
                     }
                     $val = $newlist;
                 }
+                else {
+                    my $rsp;
+                    $rsp->{data}->[0] = "No value got for attribute \'$attr_name\' for the \'$objname\' definition.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
+                }
 
             } else {
 
@@ -1118,10 +1133,13 @@ sub setobjdefs
             # the key is 'tabattrs'
             $allupdates{$lookup_table}{$objname}{$attr_name}{'tabattrs'}{$::tabattr} = $val;
             $setattrs = 1;
-
+            $obj_need_update = 1;
             push(@setattrlist, $attr_name);
 
         }    # end - foreach attribute
+        if ($obj_need_update) {
+            $objhash{$objname}{updated} = 1;
+        }
 
         my $rsp;
         foreach my $att (keys %$invalidattr) {
