@@ -1750,11 +1750,8 @@ sub defmk
 
                 #  won't remove the old one unless the force option is used
                 my $rsp;
-                $rsp->{data}->[0] = "\nA definition for \'$obj\' already exists.";
-                $rsp->{data}->[1] = "To remove the old definition and replace it with \na new definition use the force \'-f\' option.";
-                $rsp->{data}->[2] = "To change the existing definition use the \'chdef\' command.";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                $error = 1;
+                $rsp->{data}->[0] = "A definition for \'$obj\' already exists. No changes will be made.  Run again with \'-f\' option to force replace.";
+                xCAT::MsgUtils->message("W", $rsp, $::callback);
                 delete $::FINALATTRS{$obj};
                 next;
 
@@ -2007,7 +2004,6 @@ sub defmk
 
             #  give results
             my $rsp;
-            $rsp->{data}->[0] = "The database was updated for the following objects:";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
@@ -2016,14 +2012,30 @@ sub defmk
                 $rsp->{data}->[$n] = "$o";
                 $n++;
             }
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            if ($n > 1) {
+                # Some objects were created ($n was increased), report as success
+                $rsp->{data}->[0] = "The database was updated for the following objects:";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else {
+                # No objects were created, report as error
+                $rsp->{data}->[0] = "The database was not updated.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
         }
         else
         {
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
             $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            if ($nodenum > 0) {
+                # Some objects were created, report as success
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else {
+                # No objects were created, report as error
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
         }
         return 0;
     }
