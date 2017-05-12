@@ -40,3 +40,56 @@ cmd:rspconfig __GETNODEATTR($$CN,hcp)__ sshcfg
 check:rc==0
 check:output=~__GETNODEATTR($$CN,hcp)__: \w+
 end
+
+start:rspconfig_ip
+description:rspconfig  change openbmc ip 
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -i $$CN
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -c $$CN ip
+check:rc==0
+end
+
+start:rspconfig_ip_invalid
+description:rspconfig could not change openbmc ip using invalid ip
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN ip=ddd
+check:rc!=0
+end
+
+start:rspconfig_ip_null
+description:rspconfig could not set ip to null
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN ip=
+check:rc!=0
+end
+
+start:rspconfig_netmask
+description:rspconfig change openbmc netmask
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -n $$CN netmask
+check:rc==0
+end
+
+start:rspconfig_netmask_invalid
+despcription:rspconfig could not change openbmc netmask using invalid netmask
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN netmask=ddd
+check:rc!=0
+end
+ 
+start:rspconfig_gateway
+description:rspconfig change openbmc gateway
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -g  $$CN gateway
+check:rc==0
+end
+ 
+start:rspconfig_gateway_invalid
+despcription:rspconfig could not change openbmc gatway using invalid gateway
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN gateway=ddd
+check:rc!=0
+end
+
+ 
