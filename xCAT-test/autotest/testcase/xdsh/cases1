@@ -1,4 +1,5 @@
 start:xdsh_permission_denied
+description: Test the exit code when command xdsh failed
 cmd:xdsh $$CN date
 check:rc==0
 cmd:mv /root/.ssh/id_rsa /root/.ssh/id_rsa.backup
