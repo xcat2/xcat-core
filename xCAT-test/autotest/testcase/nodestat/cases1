@@ -1,0 +1,5 @@
+start:nodestat_usage
+description: Test the exit code when no command line argument is passed to nodestat
+cmd:nodestat
+check:rc!=0
+end
