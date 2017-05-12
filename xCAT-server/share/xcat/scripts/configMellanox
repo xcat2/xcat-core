@@ -210,7 +210,7 @@ sub config_ip {
 
         push (@discover_switches, $dswitch);
         push (@config_switches, $switch);
-        print "changed $switch ip address to static ip $static_ip\n";
+        print "$switch: Changing IP address to static IP $static_ip\n";
     }
 
     if (@config_switches) {
@@ -253,7 +253,7 @@ sub config_hostname {
             next;
         }
         push (@config_switches, $switch);
-        print "switch host name changed to $switch\n";
+        print "$switch: Changing host name to $switch\n";
     }
     if (@config_switches) {
         #update switch status
@@ -274,14 +274,12 @@ sub config_snmp {
     foreach my $switch (@nodes) {
         my $user = $switchhash->{$switch}->[0]->{sshusername};
         if (!$user) {
-            print "switch ssh username is not defined, add default one\n";
-            $cmd = "chdef $switch username=admin";
-            $rc= xCAT::Utils->runcmd($cmd, 0);
+            print "switch ssh username is not defined, use default one\n";
             $user="admin";
         }
         $snmp_user = $switchhash->{$switch}->[0]->{username};
         if (!$snmp_user) {
-           print "no snmp user is defined for this switch $switch, not going to set up snmpv3\n";
+           print "No snmp user defined for switch $switch. Will not configure snmpv3\n";
            next;
         }
         $snmp_passwd = $switchhash->{$switch}->[0]->{password};
@@ -300,7 +298,7 @@ sub config_snmp {
             $cmd = $cmd . "snmp-server user $snmp_user v3 auth $snmp_auth $snmp_passwd\; no snmp-server user $snmp_user v3 require-privacy\;";
         }
 
-        print "snmpv3 configured for switch $switch\n";
+        print "$switch: snmpv3 configured\n";
 
         $cmd = $cmd . "configuration write\;exit\;";
         my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
@@ -347,7 +345,7 @@ sub config_vlan {
     if ($::PORT) {
        $port = $::PORT;
     } else {
-        xCAT::MsgUtils->message("E","Error - When setting vlan, a port must be provided.");
+        xCAT::MsgUtils->message("E","Error - When configuring VLAN, a port must be provided.");
         &usage;
         exit(1);
     }
@@ -378,7 +376,7 @@ sub config_vlan {
         if ( $result =~ /MSX14/ ) {
             $devicetype = "EthSwitch::Mellanox";
         }else {
-            xCAT::MsgUtils->message("E","Config IB switch vlan is not support yet");
+            xCAT::MsgUtils->message("E","Config IB switch VLAN is not support yet");
             $devicetype = "IBSwitch::Mellanox";
             next;
         }
@@ -432,15 +430,15 @@ sub usage
     To run rspconfig command: 
         configMellanox --switches switchnames --config  
 
-    To set Vlan for interface commmand (only for Mellanox Ethernet switch) :
+    To configure VLAN on a specified port (Mellanox Ethernet switch ONLY):
         configMellanox --switches switchnames --port port --vlan vlan --mode mode
 
-    The following mode are supported for switchport:
-      * access        Only untagged ingress Ethernet packets are allowed
-      * trunk         Only tagged ingress Ethernet packets are allowed
-      * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
-      * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged
-      * dot1q-tunnel  Both tagged and untagged ingress Ethernet packets are allowed. Egress packets are tagged with a second VLAN (802.1Q) header
+            The following mode are supported for switchport:
+                * access        Only untagged ingress Ethernet packets are allowed
+                * trunk         Only tagged ingress Ethernet packets are allowed
+                * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
+                * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged
+                * dot1q-tunnel  Both tagged and untagged ingress Ethernet packets are allowed. Egress packets are tagged with a second VLAN (802.1Q) header
 
     \n";
 }

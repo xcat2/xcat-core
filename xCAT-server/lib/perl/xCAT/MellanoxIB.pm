@@ -669,7 +669,6 @@ sub setSSHcfg {
                 [
                     "-re", $init_prompt,
                     sub {
-                        #print "$node: sending command: $init_cmd\n";
                         $mysw->clear_accum();
                         $mysw->send($init_cmd);
                         $mysw->exp_continue();
