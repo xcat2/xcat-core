@@ -41,6 +41,8 @@ if ($tempstring =~ /debian/ || $tempstring =~ /ubuntu/) {
 my $parent_fd;
 my $bmc_user;
 my $bmc_pass;
+my $openbmc_user;
+my $openbmc_pass;
 
 #-------------------------------------------------------
 
@@ -211,10 +213,11 @@ sub bmcdiscovery_processargs {
     # Get the default bmc account from passwd table, 
     # this is only done for the discovery process
     ############################################
-    ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+    ($bmc_user, $bmc_pass, $openbmc_user, $openbmc_pass) = bmcaccount_from_passwd();
     # overwrite the default user and password if one is provided
     if ($::opt_U) {
         $bmc_user = $::opt_U;
+        $openbmc_user = $::opt_U;
     } elsif ($::opt_P) {
         # If password is provided, but no user, set the user to blank
         # Support older FSP and Tuletta machines
@@ -222,6 +225,7 @@ sub bmcdiscovery_processargs {
     }
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
+        $openbmc_pass = $::opt_P;
     }
 
     #########################################
@@ -868,12 +872,16 @@ sub bmcdiscovery {
 sub bmcaccount_from_passwd {
     my $bmcusername = "ADMIN";
     my $bmcpassword = "admin";
+    my $openbmcusername = "root";
+    my $openbmcpassword = "0penBmc";
     my $passwdtab   = xCAT::Table->new("passwd", -create => 0);
     if ($passwdtab) {
         my $bmcentry = $passwdtab->getAttribs({ 'key' => 'ipmi' }, 'username', 'password');
         if (defined($bmcentry)) {
             $bmcusername = $bmcentry->{'username'};
             $bmcpassword = $bmcentry->{'password'};
+
+            # if username or password is undef or empty in passwd table, bmcusername or bmcpassword is empty
             unless ($bmcusername) {
                 $bmcusername = '';
             }
@@ -881,8 +889,21 @@ sub bmcaccount_from_passwd {
                 $bmcpassword = '';
             }
         }
+
+        my $openbmcentry = $passwdtab->getAttribs({ 'key' => 'openbmc' }, 'username', 'password');
+        if (defined($openbmcentry)) {
+            $openbmcusername = $openbmcentry->{'username'};
+            $openbmcpassword = $openbmcentry->{'password'};
+            # if username or password is undef or empty in passwd table, openbmcusername or openbmcpassword is empty
+            unless ($openbmcusername) {
+                $openbmcusername = '';
+            }
+            unless ($openbmcpassword) {
+                $openbmcpassword = '';
+            }
+        }
     }
-    return ($bmcusername, $bmcpassword);
+    return ($bmcusername, $bmcpassword, $openbmcusername, $openbmcpassword);
 }
 
 #----------------------------------------------------------------------------
@@ -1020,7 +1041,7 @@ sub bmcdiscovery_openbmc{
 
     my $node_data = $ip;
     my $cjar_file = "/tmp/cjar_$ip";
-    my $data = '{"data": [ "' . $bmc_user .'", "' . $bmc_pass . '" ] }';
+    my $data = '{"data": [ "' . $openbmc_user .'", "' . $openbmc_pass . '" ] }';
 
     my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;
     
