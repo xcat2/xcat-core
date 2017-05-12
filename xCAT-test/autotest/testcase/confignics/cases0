@@ -264,3 +264,20 @@ check:rc==0
 cmd:if [ -e /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv ]; then tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv; rm -f /opt/xcat/share/xcat/tools/autotest/testcase/confignics/networks.csv*; fi
 check:rc==0
 end
+start:chdef_nicips
+description:nicip could be set to null
+Attribute: $$CN-The operation object of chdef command
+cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100
+check:rc==0
+cmd:lsdef $$CN -i nicips
+check:output=~nicips.$$SECONDNIC=100.1.0.100
+cmd:chdef $$CN nicips.$$SECONDNIC=""
+check:rc==0
+cmd:lsdef $$CN -i nicips
+check:output!~100.1.0.100
+cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
+check:rc==0
+end
+
