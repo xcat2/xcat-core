@@ -92,4 +92,13 @@ cmd:rspconfig $$CN gateway=ddd
 check:rc!=0
 end
 
+start:rspconfig_node_invalid
+despcription:rspconfig could not do any action  using invalid node
+cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
+check:rc==0
+cmd:rspconfig testnode ip
+check:rc!=0
+cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
+check:rc==0
+end
  
