@@ -2503,6 +2503,7 @@ sub judge_node
         nicsattr value, like niccsips=eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
         node name, like frame10node10
         nicnames: only return the value for specific nics, like "eth0,eth1"
+        is_group: bool value indicates whether the type of object is group
     Returns:
         expanded format, like:
         nicsips.eth0=1.1.1.1|2.1.1.1
@@ -2524,8 +2525,7 @@ sub expandnicsattr()
     if (($nicstr) && ($nicstr =~ /xCAT::/)) {
         $nicstr = shift;
     }
-    my $node = shift;
-    my $nicnames = shift;
+    my ($node, $nicnames, $is_group) = @_;
     my $ret;
 
     $nicstr =~ /^(.*?)=(.*?)$/;
@@ -2574,8 +2574,10 @@ sub expandnicsattr()
                 }
             }
         }
-
-        $nicv[1]= xCAT::Table::transRegexAttrs($node, $nicv[1]);
+        # print group attributes in original format
+        if (!$is_group) {
+            $nicv[1]= xCAT::Table::transRegexAttrs($node, $nicv[1]);
+        }
         # ignore the line that does not have nicname or value
         if ($nicv[0] && $nicv[1]) {
             $ret .= "    $nicattr.$nicv[0]=$nicv[1]\n";
