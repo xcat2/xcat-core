@@ -3862,13 +3862,14 @@ sub defls
                                             $nicnames = join(',', @{ $::NicsAttrHash{$showattr} });
                                         }
                                         my $nicsstr;
+                                        my $is_group = $defhash{$obj}{'objtype'} eq 'group';
                                         if ($nicnames)
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, $nicnames);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, $nicnames, $is_group);
                                         }
                                         else
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, undef, $is_group);
                                         }
 
                                         # Compress mode, format the output
@@ -3921,7 +3922,8 @@ sub defls
                                     if ($showattr =~ /^nic/)
                                     {
                                         my $nicval = "$showattr=$attrval";
-                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj);
+                                        my $is_group = $defhash{$obj}{'objtype'} eq 'group';
+                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, undef, $is_group);
                                         if ($nicsstr)
                                         {
                                             push(@{ $rsp_info->{data} }, "$nicsstr");
