@@ -1936,7 +1936,6 @@ sub do_firmware_update {
         }
     }
 
-
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
         $cmd = $pre_cmd . " fru print 47";
@@ -2056,7 +2055,6 @@ RETRY_UPGRADE:
     }
 
     # step 4 upgrade firmware
-
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
