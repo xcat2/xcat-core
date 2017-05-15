@@ -30,10 +30,14 @@ sub getIPMIAuth {
     my $noderange = $args{noderange};
     my $ipmihash  = $args{ipmihash};
     my $mphash    = $args{mphash};
+    my $key       = $args{keytype};
+    unless($key) {
+        $key = "ipmi";
+    }
     my $tmp;
     my %authmap;
     unless ($ipmihash) { #in the event that calling code does not pass us a prefetched set of values, pull it ourselves
-        my $ipmitab = xCAT::Table->new('ipmi', -create => 0);
+        my $ipmitab = xCAT::Table->new("$key", -create => 0);
         if ($ipmitab) { $ipmihash = $ipmitab->getNodesAttribs($noderange, [ 'username', 'password' ]); }
     }
     unless ($mphash) {
@@ -42,7 +46,7 @@ sub getIPMIAuth {
     }
     my $passtab = xCAT::Table->new('passwd');
     if ($passtab) {
-        ($tmp) = $passtab->getAttribs({ 'key' => 'ipmi' }, 'username', 'password');
+        ($tmp) = $passtab->getAttribs({ 'key' => "$key" }, 'username', 'password');
         if (defined($tmp)) {
             $ipmiuser = $tmp->{username};
             $ipmipass = $tmp->{password};

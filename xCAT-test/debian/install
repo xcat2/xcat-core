@@ -1,4 +1,5 @@
 xcattest opt/xcat/bin
+bin/xcatperftest opt/xcat/bin
 share/man/man1/* opt/xcat/share/man/man1
 share/doc/man1/* opt/xcat/share/doc/man1
 autotest opt/xcat/share/xcat/tools

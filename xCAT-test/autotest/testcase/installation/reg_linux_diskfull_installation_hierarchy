@@ -1,6 +1,13 @@
 start:reg_linux_diskfull_installation_hierarchy
 os:Linux
-
+cmd:xdsh $$SN fdisk -l
+cmd:xdsh $$SN df -T
+cmd:xdsh $$SN "echo "test"> /test.hierarchy"
+check:rc==0
+cmd:xdsh $$SN cat /test.hierarchy
+check:rc==0
+check:output=~test
+cmd:output=$(xdsh $$SN ls -al / |grep test.hierarchy);if [[ $? -eq 0 ]];then  xdsh $$SN rm -rf /test.hierarchy;fi
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
 cmd:chdef -t node $$SN groups=service,all
@@ -26,13 +33,18 @@ cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? 
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-
+cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
+cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/test.synclist
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
 cmd:updatenode $$CN -f
 check:rc==0
 cmd:rinstall $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
 
+cmd:xdsh $$SN "if [[ -f /var/lib/dhcp/db/dhcpd.leases ]]; then cat /var/lib/dhcp/db/dhcpd.leases; elif [[ -f /var/lib/dhcpd/dhcpd.leases ]];then cat /var/lib/dhcpd/dhcpd.leases;elif [[ -f /var/lib/dhcp/dhcpd.leases ]];then cat /var/lib/dhcp/dhcpd.leases; fi"
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi
 
 #cmd:lsdef -l $$CN | grep status
@@ -53,4 +65,8 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
+cmd:xdsh $$CN "cat /test.synclist"
+check:rc==0
+cmd:if [[ -f /test.synclist.bak ]] ;then mv -f /test.synclist.bak /test.synclist;else rm -rf /test.synclist;fi
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
 end

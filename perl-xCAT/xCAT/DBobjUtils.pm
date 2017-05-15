@@ -488,7 +488,9 @@ sub getobjdefs
                     foreach my $lookup_attr (keys %{ $tabentry{'lookup_attrs'} }) {
                         # Check whether the attribute is already in %tabhash
                         # The %tabhash is for performance considerations
-                        if (($lookup_attr eq 'node') && ($objtype eq 'node')) {
+                        my $tabspec = $xCAT::Schema::tabspec{$lookup_table};
+                        my $nodecol = $tabspec->{'nodecol'} if defined($tabspec->{'nodecol'});
+                        if (($lookup_attr eq 'node' && $objtype eq 'node') || (defined($nodecol) && $objtype eq 'node' && $lookup_table ne 'ppcdirect')) {
                             if (defined($tabhash{$lookup_table}{$objname}{$tabattr})) {
                                 if ($verbose == 1) {
                                     $objhash{$objname}{$attr} = "$tabhash{$lookup_table}{$objname}{$tabattr}\t(Table:$lookup_table - Key:$lookup_attr - Column:$tabattr)";
@@ -2501,6 +2503,7 @@ sub judge_node
         nicsattr value, like niccsips=eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
         node name, like frame10node10
         nicnames: only return the value for specific nics, like "eth0,eth1"
+        is_group: bool value indicates whether the type of object is group
     Returns:
         expanded format, like:
         nicsips.eth0=1.1.1.1|2.1.1.1
@@ -2522,8 +2525,7 @@ sub expandnicsattr()
     if (($nicstr) && ($nicstr =~ /xCAT::/)) {
         $nicstr = shift;
     }
-    my $node = shift;
-    my $nicnames = shift;
+    my ($node, $nicnames, $is_group) = @_;
     my $ret;
 
     $nicstr =~ /^(.*?)=(.*?)$/;
@@ -2572,8 +2574,10 @@ sub expandnicsattr()
                 }
             }
         }
-
-        $nicv[1]= xCAT::Table::transRegexAttrs($node, $nicv[1]);
+        # print group attributes in original format
+        if (!$is_group) {
+            $nicv[1]= xCAT::Table::transRegexAttrs($node, $nicv[1]);
+        }
         # ignore the line that does not have nicname or value
         if ($nicv[0] && $nicv[1]) {
             $ret .= "    $nicattr.$nicv[0]=$nicv[1]\n";

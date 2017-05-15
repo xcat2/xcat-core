@@ -466,7 +466,6 @@ fi
 
 # start up the sshd for syncfiles postscript to do the sync work
 logger -t xcat -p local4.info "start up sshd"
-
 if [[ $OSVER == ubuntu* || $OSVER == debian* ]]
 then
     if [ ! -d /var/run/sshd ];then
@@ -485,10 +484,12 @@ else
     #service sshd restart
     # sshd is not enabled on SLES 12 by default
     # does not hurt anything to re-enable if it is enabled already
-    enableservice sshd
+    # and disable enable service for diskless and statelite
+    if [[ "$NODESETSTATE" != netboot && "$NODESETSTATE" != statelite ]]; then
+        enableservice sshd
+    fi
     restartservice sshd
 fi
-
 #if the service restart with "service/systemctl" failed
 #try to kill the process and start
 if [ "$?" != "0" ];then
@@ -496,5 +497,4 @@ if [ "$?" != "0" ];then
    [ -n "$PIDLIST" ] && kill 9 $PIDLIST
    /usr/sbin/sshd  
 fi
-
 kill -9 $CREDPID

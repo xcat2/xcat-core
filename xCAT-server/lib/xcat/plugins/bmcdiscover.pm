@@ -29,6 +29,7 @@ use Data::Dumper;
 use File::Basename;
 use File::Path;
 use Cwd;
+use JSON;
 
 my $nmap_path;
 
@@ -388,7 +389,7 @@ sub get_bmc_ip_source {
             # all other errors
             push @{ $rsp->{data} }, "$error_msg";
         }
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
@@ -452,7 +453,7 @@ sub check_auth_process {
         else {
             push @{ $rsp->{data} }, "Unknown Error: $output";
         }
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
@@ -575,7 +576,21 @@ sub scan_process {
 
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
-                bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+
+                my $nmap_cmd = "nmap ${$live_ip}[$i] -p 2200 -Pn";
+                my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
+                if ($nmap_output =~ /2200\/tcp (\w+)/) {
+                    my $port_stat = $1;
+                    if ($port_stat eq "open") {
+                        bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
+                    } else {
+                        bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
+                    }
+                } else {
+                    xCAT::MsgUtils->message("E", "Can not get status of 2200 port.", $::CALLBACK);
+                    exit 1;
+                }
+
                 exit 0;
             } else {
 
@@ -606,7 +621,7 @@ sub scan_process {
     {
         my $rsp = {};
         push @{ $rsp->{data} }, "No bmc found.\n";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
         return 2;
     }
 }
@@ -625,14 +640,15 @@ sub scan_process {
 sub format_stanza {
     my $node = shift;
     my $data = shift;
+    my $mgt_type = shift;
     my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
     my $result;
     if (defined($bmcip)) {
         $result .= "$node:\n\tobjtype=node\n";
         $result .= "\tgroups=all\n";
         $result .= "\tbmc=$bmcip\n";
-        $result .= "\tcons=ipmi\n";
-        $result .= "\tmgt=ipmi\n";
+        $result .= "\tcons=$mgt_type\n";
+        $result .= "\tmgt=$mgt_type\n";
         if ($bmcmtm) {
             $result .= "\tmtm=$bmcmtm\n";
         }
@@ -665,11 +681,17 @@ sub format_stanza {
 sub write_to_xcatdb {
     my $node = shift;
     my $data = shift;
+    my $mgt_type = shift;
     my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
     my $request_command = shift;
     my $ret;
 
-    $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=ipmi", "mgt=ipmi", "mtm=$bmcmtm", "serial=$bmcserial", "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", "hwtype=$hwtype", "groups=all" ] }, $request_command, 0, 1);
+    $ret = xCAT::Utils->runxcmd({ command => ['chdef'], 
+                                  arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", 
+                                           "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", 
+                                           "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
+                                           "hwtype=$hwtype", "groups=all" ] },
+                                  $request_command, 0, 1);
     if ($::RUNCMD_RC != 0) {
         my $rsp = {};
         push @{ $rsp->{data} }, "create or modify node is failed.\n";
@@ -696,7 +718,6 @@ sub write_to_xcatdb {
 
 sub send_rep {
     my $resp = shift;
-
     unless ($resp) { return; }
     store_fd($resp, $parent_fd);
 }
@@ -892,13 +913,15 @@ sub bmcdiscovery_ipmi {
     if ($bmc_pass) {
         $bmcpassword = "-P $bmc_pass";
     }
+
+    my $node_data = $ip;
     my $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus $bmcusername $bmcpassword -H $ip chassis status ";
     my $output = xCAT::Utils->runcmd("$icmd", -1);
     if ($output =~ $bmcstr) {
 
         if ($output =~ /RAKP 2 message indicates an error : (.+)\nError: (.+)/) {
-            xCAT::MsgUtils->message("E", { data => ["$2: $1 for $ip"] }, $::CALLBACK);
-            return 1;
+            xCAT::MsgUtils->message("W", { data => ["$2: $1 for $ip"] }, $::CALLBACK);
+            return;
         }
 
         # The output contains System Power indicated the username/password is correct, then try to get MTMS
@@ -936,43 +959,124 @@ sub bmcdiscovery_ipmi {
                 }
             }
 
-            $ip .= ",$mtm";
-            $ip .= ",$serial";
+            $node_data .= ",$mtm";
+            $node_data .= ",$serial";
             if ($::opt_P) {
                 if ($::opt_U) {
-                    $ip .= ",$::opt_U,$::opt_P";
+                    $node_data .= ",$::opt_U,$::opt_P";
                 } else {
-                    $ip .= ",,$::opt_P";
+                    $node_data .= ",,$::opt_P";
                 }
             } else {
-                $ip .= ",,";
+                $node_data .= ",,";
             }
-            $ip .= ",mp,bmc";
+            $node_data .= ",mp,bmc";
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
                 $node =~ s/[\s:\._]/-/g;
             }
         } elsif ($output =~ /error : unauthorized name/) {
-            xCAT::MsgUtils->message("E", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
-            return 1;
+            xCAT::MsgUtils->message("W", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
+            return;
         } elsif ($output =~ /RAKP \S* \S* is invalid/) {
-            xCAT::MsgUtils->message("E", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
-            return 1;
+            xCAT::MsgUtils->message("W", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
+            return;
         }
         if (defined($opz) || defined($opw))
         {
-            format_stanza($node, $ip);
+            format_stanza($node, $node_data, "ipmi");
             if (defined($opw))
             {
-                write_to_xcatdb($node, $ip, $request_command);
+                write_to_xcatdb($node, $node_data, "ipmi", $request_command);
             }
         }
         else {
             my $rsp = {};
-            push @{ $rsp->{data} }, "$ip";
+            push @{ $rsp->{data} }, "$node_data";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
+    }
+}
+
+#-----------------------------------------------------------------------------
+
+=head3  bmcdiscovery_openbmc
+
+        Support for discovering bmc using openbmc
+        Returns:
+              if it is openbmc, it returns bmc ip or host;
+              if it is not openbmc, it returns nothing;
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub bmcdiscovery_openbmc{
+    my $ip              = shift;
+    my $opz             = shift;
+    my $opw             = shift;
+    my $request_command = shift;
+    my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
+
+    my $node_data = $ip;
+    my $cjar_file = "/tmp/cjar_$ip";
+    my $data = '{"data": [ "' . $bmc_user .'", "' . $bmc_pass . '" ] }';
+
+    my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;
+    
+    if ($output =~ /\"status\": \"ok\"/) {
+        my $req_output = `curl -b $cjar_file -k https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard`;
+        my $response = decode_json $req_output;
+        my $mtm;
+        my $serial;
+
+        if (defined($response->{data}) and defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
+            $mtm = $response->{data}->{Model};
+            $serial = $response->{data}->{SerialNumber}; 
+        } else {
+            return;
+        }
+
+        # delete space before and after
+        $mtm =~ s/^\s+|\s+$//g; 
+        $serial =~ s/^\s+|\s+$//g;
+
+        # format info string for format_stanza function
+        $node_data .= ",$mtm";
+        $node_data .= ",$serial";
+        if ($::opt_P) {
+            if ($::opt_U) {
+                $node_data .= ",$::opt_U,$::opt_P";
+            } else {
+                $node_data .= ",,$::opt_P";
+            }
+        } else {
+            $node_data .= ",,";
+        }
+        $node_data .= ",mp,bmc";
+        if ($mtm and $serial) {
+            $node = "node-$mtm-$serial";
+            $node =~ s/(.*)/\L$1/g;
+            $node =~ s/[\s:\._]/-/g;
+        }
+
+        unlink $cjar_file;
+    } else {
+        if ($output =~ /\"description\": \"Invalid username or password\"/) {
+            xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
+        }
+        return;
+    }
+
+    if (defined($opz) || defined($opw)) {
+        format_stanza($node, $node_data, "openbmc");
+        if (defined($opw)) {
+            write_to_xcatdb($node, $node_data, "openbmc", $request_command);
+        }
+    } else {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$node_data";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
     }
 }
 

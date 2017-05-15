@@ -25,7 +25,7 @@ check:output=~Usage
 end
 
 
-start;xcatsnap_v
+start:xcatsnap_v
 description:xcatsnap -v and --version
 cmd:xcatsnap -v
 check:output=~version|Version

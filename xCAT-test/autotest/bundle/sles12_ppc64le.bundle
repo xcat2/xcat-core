@@ -1,6 +1,6 @@
 setup_vm
-Diskless_installation_flat_p8_le
-Full_installation_flat_p8_le
+reg_linux_diskless_installation_flat
+reg_linux_diskfull_installation_flat
 makehosts_h
 makehosts_help
 makehosts_n

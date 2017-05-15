@@ -26,7 +26,13 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
-     OpenBMC specific:
+     BMC (using IPMI):
+       rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPower BMC:
+       rpower noderange [on|off|reset|boot|stat|state|status]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPower OpenBMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
@@ -76,7 +82,7 @@ my %usage = (
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
   OpenPOWER server specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|all]
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>
@@ -89,8 +95,10 @@ my %usage = (
        rinv [-h|--help|-v|--version]
     BMC specific:
        rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
-    OpenPOWER server specific:
+    OpenPOWER (using ipmi) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+    OpenPOWER (using openbmc) server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|cpu|dimm|all]
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
@@ -132,9 +140,11 @@ my %usage = (
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
+       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
+   OpenBMC specific:
+       rspconfig <noderange> [ip|netmask|gateway|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -324,14 +334,14 @@ my %usage = (
       "Usage: 
     rflash [ -h|--help|-v|--version]
     PPC (with HMC) specific:
-	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
-	rflash <noderange> [--commit | --recover] [-V|--verbose]
+	rflash <noderange> -p <rpm_directory> [--activate {concurrent | disruptive}] [-V|--verbose] 
+	rflash <noderange> {--commit | --recover} [-V|--verbose]
     PPC (using Direct FSP Management) specific:
-	rflash <noderange> -p <rpm_directory> --activate <disruptive|deferred> [-d <data_directory>]
+	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
     PPC64LE (using BMC Management) specific:
-        rflash <noderange> [-c | --check] <hpm_file>",
+        rflash <noderange> [-c | --check] [--retry=<count>] [-V] <hpm_file>",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

@@ -312,6 +312,7 @@ function query_nicnetworks_nic {
 function query_nicnetworks_net {
     query_nicnetworks fkey=1 vkey=$1 fval=2
 }
+
 #######################################################################################
 #
 # get network attribute from NETWORKS_LINEX
@@ -419,6 +420,7 @@ function create_persistent_ifcfg {
     local xcatnet=""
     local _ipaddr=""
     local _netmask=""
+    local _mtu=""
     local inattrs=""
 
     # parser input arguments
@@ -430,6 +432,7 @@ function create_persistent_ifcfg {
            [ "$key" = "xcatnet" ] || \
            [ "$key" = "_ipaddr" ] || \
            [ "$key" = "_netmask" ] || \
+           [ "$key" = "_mtu" ] || \
            [ "$key" = "inattrs" ]; then
             eval "$1"
         fi
@@ -452,6 +455,12 @@ function create_persistent_ifcfg {
         if [ -z "$_netmask" ]; then
             _netmask=`get_network_attr $xcatnet mask`
         fi
+
+        # Query mtu value from "networks" table
+        if [ -z "$_mtu" ]; then
+            _mtu=`get_network_attr $xcatnet mtu`
+        fi
+
     fi
     local attrs=""
     attrs=${attrs}${attrs:+,}"DEVICE=$ifname"
@@ -460,6 +469,8 @@ function create_persistent_ifcfg {
     attrs=${attrs}${attrs:+,}"IPADDR=$_ipaddr"
     [ -n "$_netmask" ] && \
     attrs=${attrs}${attrs:+,}"NETMASK=$_netmask"
+    [ -n "$_mtu" ] && \
+    attrs=${attrs}${attrs:+,}"MTU=$_mtu"
 
     # NetworkManager attributes
     attrs=${attrs}${attrs:+,}"NAME=$ifname"
@@ -817,6 +828,11 @@ function create_bridge_interface {
         log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"." 
     fi
 
+    # Query mtu value from "networks" table
+    if [ -z "$_mtu" ]; then
+        _mtu=`get_network_attr $xcatnet mtu`
+    fi
+
     if [ x$_pretype == "xethernet" ]; then 
         create_raw_ethernet_for_br \
             ifname=$_port \
@@ -933,6 +949,11 @@ function create_ethernet_interface {
         return 1
     fi
 
+    # Query mtu value from "networks" table
+    if [ -z "$_mtu" ]; then
+        _mtu=`get_network_attr $xcatnet mtu`
+    fi
+
     # define and bring up interface
     cfg=""
     cfg="${cfg}${cfg:+,}ONBOOT=yes"
@@ -1013,6 +1034,11 @@ function create_vlan_interface {
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" -a -n "$vlanid" ]; then
         xcatnet=`query_nicnetworks_net $ifname.$vlanid`
         log_info "Pickup xcatnet, \"$xcatnet\", from NICNETWORKS for interface \"$ifname\"." 
+    fi
+
+    # Query mtu value from "networks" table
+    if [ -z "$_mtu" ]; then
+        _mtu=`get_network_attr $xcatnet mtu`
     fi
 
 
@@ -1186,7 +1212,12 @@ function create_bond_interface {
     if [ -n "$_bonding_opts" ]; then
         _bonding_opts=`echo "$_bonding_opts" | $sed -e 's/,/ /g'`
     fi
-    
+
+    # Query mtu value from "networks" table   
+    if [ -z "$_mtu" ]; then
+        _mtu=`get_network_attr $xcatnet mtu`
+    fi
+ 
     ##############################
     # Create target bond interface
     # if target bond device was already exists, assume succ.

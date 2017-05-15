@@ -4,7 +4,7 @@ B<imgcapture> - Captures an image from a Linux diskful node and create a diskles
 
 =head1 SYNOPSIS
 
-B<imgcapture> I<node> B<-t>|B<--type> {B<diskless>|B<sysclone>} B<-o>|B<--osimage> I<osimage> [B<-V>|B<--verbose>]
+B<imgcapture> I<node> B<-t>|B<--type> {B<diskless>|B<sysclone>} B<-o>|B<--osimage> I<osimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-V>|B<--verbose>]
 
 B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
 
@@ -12,9 +12,9 @@ B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
 
 The B<imgcapture> command will capture an image from one running diskful Linux node and create a diskless or diskful image for later use.
 
-The B<node> should be one diskful Linux node, managed by the xCAT MN, and the remote shell between MN and the B<node> should have been configured. AIX is not supported. 
+The B<node> should be one diskful Linux node, managed by the xCAT MN, and the remote shell between MN and the B<node> should have been configured. AIX is not supported. VMs are not supported.
 
-The B<imgcapture> command supports two image types: B<diskless> and B<sysclone>. For the B<diskless> type, it will capture an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial rmadisks for the B<liteimg>/B<packimage> command to generate the statelite/stateless rootimg. For the B<sysclone> type, it will capture an image from one running diskful Linux node, create an osimage which can be used to clone other diskful Linux nodes.
+The B<imgcapture> command supports two image types: B<diskless> and B<sysclone>. For the B<diskless> type, it will capture an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial ramdisks for the B<liteimg>/B<packimage> command to generate the statelite/stateless rootimg. For the B<sysclone> type, it will capture an image from one running diskful Linux node, create an osimage which can be used to clone other diskful Linux nodes.
 
 The B<diskless> type:
 
@@ -52,13 +52,11 @@ The osimage name.
 
 The network interface the diskless node will boot over (e.g. eth0), which is used by the B<genimage> command to generate initial ramdisks.
 
-This is optional.
-
 =item B<-n> I<nodenetdrivers>
 
 The driver modules needed for the network interface, which is used by the B<genimage> command to generate initial ramdisks.
 
-This is optional. By default, the B<genimage> command can provide drivers for the following network interfaces:
+By default, the B<genimage> command can provide drivers for the following network interfaces:
 
 For x86 or x86_64 platform:
 

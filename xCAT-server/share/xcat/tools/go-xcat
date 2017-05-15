@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.15
+# Version 1.0.19
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -517,8 +517,9 @@ function check_repo_version_zypper()
 	do
 		name+=("${name}")
 		ver+=("${ver}")
-	done < <(zypper --no-gpg-checks -n search -s --match-exact "$@" \
-		2>/dev/null | awk -F ' *\\| *' '/ package / { print $2, $4 }')
+	done < <(zypper --no-gpg-checks -n search --match-exact -C -t package \
+		-s "$@" 2>/dev/null |
+		awk -F ' +\\| +' '/ package / { if ("(" != substr($6, 0, 1)) print $2, $4 }')
 	local -i i
 	while [[ -n "$1" ]]
 	do
@@ -592,6 +593,7 @@ function get_package_list_yum()
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
+
 #       $1      repo id
 function get_package_list_zypper()
 {
@@ -599,7 +601,7 @@ function get_package_list_zypper()
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	zypper --no-gpg-checks -n search -r "${repo_id}" 2>/dev/null |
-		awk -F ' *\\| *' '/ package$/ { print $2 }'
+		awk -F ' +\\| +' '/ package$/ { print $2 }'
 }
 
 #       $1      repo id
@@ -955,6 +957,7 @@ function remove_repo_yum()
 	# This is a quick and dirty method.
 	rm -f $(grep -l "^\[${repo_id}\]$" "/etc/yum.repos.d/"*".repo" 2>/dev/null)
 	yum clean metadata
+	:
 }
 
 #       $1      repo id
@@ -1179,7 +1182,7 @@ function install_packages_zypper()
 	type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-n") && shift
-	zypper --no-gpg-checks "${yes[@]}" install "$@"
+	zypper --no-gpg-checks "${yes[@]}" install --force-resolution "$@"
 }
 
 function install_packages_apt()

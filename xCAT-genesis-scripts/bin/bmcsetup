@@ -112,6 +112,13 @@ fi
 # Add ipmi_devintf module to allow the ipmitool operation in-band
 modprobe ipmi_devintf
 
+for parm in `cat /proc/cmdline`; do
+    key=`echo $parm|awk -F= '{print $1}'`
+    if [ "$key" = "xcatd" ]; then
+        XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+    fi
+done
+
 allowcred.awk &
 CREDPID=$!
 sleep 5
@@ -161,6 +168,7 @@ logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG, XPRO
 #
 # IPMIMFG=2 = IBM
 # IPMIMFG=0 = OpenPower 
+# IPMIMFG=42817 and XPROD=16975 = OpenBMC
 #
 if [ "$IPMIMFG" == 2 ]; then #IBM
     if [ "$XPROD" == "220" ]; then
@@ -258,13 +266,20 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
         ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
         ipmitool delloem lan set shared with failover all loms &>dev/null
     fi
+elif [ "$IPMIMFG" = "42817" -a "$XPROD" = "16975" ]; then # IBM OpenPOWER servers with OpenBMC
+    ISOPENBMC=1
 fi
 
+LAN_MED_TYPE="802.3"
+if [ ! -z "$ISOPENBMC" ]; then
+    # Overvide the default value for OpenBMC
+    LAN_MED_TYPE="Other LAN"
+fi
 while [ -z "$LANCHAN" ]; do 
     logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
     for TLANCHAN in {1..16}; do
         # Try to get the channel information; then get the MAC which is used for the channel
-        if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
+        if ipmitool channel info $TLANCHAN 2> /dev/null | grep "$LAN_MED_TYPE" > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
             LANCHAN=$TLANCHAN
             break; 
         fi; 
@@ -279,6 +294,9 @@ logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
         
 let idev=NUMBMCS
 if [ $IPCFGMETHOD="static" ]; then
+    if [ ! -z "$ISOPENBMC" ]; then
+        let idev=0
+    fi
     while [ $idev -gt 0 ]; do
         let idev=idev-1
         TRIES=0
@@ -334,7 +352,11 @@ if [ $IPCFGMETHOD="static" ]; then
         done
     fi
 else
-    let idev=NUMBMCS
+    if [ -z "$ISOPENBMC" ];then
+        let idev=NUMBMCS
+    else 
+        let idev=0
+    fi
     while [ $idev -gt 0 ]; do
         let idev=idev-1
         TRIES=0
@@ -363,6 +385,37 @@ for b in $BMCVLAN; do
     let idev=idev+1
 done
 
+
+
+# update the node status to 'bmcready' for openbmc, no more configuration is needed.
+if [ ! -z "$ISOPENBMC" ]; then
+    # To enable network configuration for openbmc
+    TRIES=0
+    bmc_config_rc=0
+    # Set Channel Access to apply network setting 
+    #while ! ipmitool -d 0 lan set $LANCHAN access on; do
+    while ! ipmitool -d 0 raw 0x06 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
+        snooze
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then 
+            bmc_config_rc=1
+            break;
+        fi
+    done
+
+    # update the node status to 'bmcready'
+    if [ ! -z "$XCATMASTER" ]; then
+        if [ "$bmc_config_rc" = "0" ]; then
+            # Wait for some time for the new network setting is ready 
+            snooze
+            updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
+        else 
+            updateflag.awk $XCATMASTER 3002 "installstatus failed"
+        fi
+    fi 
+    rm -f /tmp/ipmicfg.xml
+    exit $bmc_config_rc
+fi
 # After network commands are issued, pause to allow the BMC to apply (OpenPower)
 snooze 
 
@@ -587,12 +640,6 @@ while [ $idev -gt 0 ]; do
     cold_reset_bmc
 
     # update the node status to 'bmcready'
-    for parm in `cat /proc/cmdline`; do
-        key=`echo $parm|awk -F= '{print $1}'`
-        if [ "$key" = "xcatd" ]; then
-            XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
-        fi
-    done
     if [ ! -z "$XCATMASTER" ]; then
         updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
     fi
