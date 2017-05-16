@@ -830,6 +830,8 @@ sub rpower_response {
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
         if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
             xCAT::SvrUtils::sendmsg("off", $callback, $node);
+        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Quiesced$/) {
+            xCAT::SvrUtils::sendmsg("quiesced", $callback, $node);
         } else {
             xCAT::SvrUtils::sendmsg("on", $callback, $node);
         }
