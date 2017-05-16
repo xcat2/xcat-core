@@ -32,14 +32,14 @@ OpenPOWER (using ipmi) server specific:
 =======================================
 
 
-\ **rinv**\  \ *noderange*\  {\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | all**\ }
+\ **rinv**\  \ *noderange*\  [\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | all**\ ]
 
 
 OpenPOWER (using openbmc) server specific:
 ==========================================
 
 
-\ **rinv**\  \ *noderange*\  {\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | cpu | dimm | all**\ }
+\ **rinv**\  \ *noderange*\  [\ **model | serial | deviceid | uuid | guid | vpd | mprom | firm | cpu | dimm | all**\ ]
 
 
 PPC (with HMC) specific:
