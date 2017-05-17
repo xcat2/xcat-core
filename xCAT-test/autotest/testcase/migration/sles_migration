@@ -2,9 +2,9 @@ start:sles_migration1
 os:Linux
 description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
 
-#cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
-#cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
-#check:rc==0
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -105,9 +105,9 @@ start:sles_migration2
 os:Linux
 description:update xCAT from $$MIGRATION22VERSION to latest version, these two global parameter defined in config file
 
-#cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
-#cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
-#check:rc==0
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
