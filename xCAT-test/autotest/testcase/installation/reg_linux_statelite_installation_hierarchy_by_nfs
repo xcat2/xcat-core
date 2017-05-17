@@ -1,4 +1,4 @@
-start:reg_linux_statelite_installation_hierarchy_by_nfs
+start:reg_linux_statelite_installation_hierarchy_by_nfs:stop:yes
 os:Linux
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T

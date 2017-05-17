@@ -1,4 +1,4 @@
-start:reg_linux_statelite_installation_flat
+start:reg_linux_statelite_installation_flat:stop:yes
 os:Linux
 cmd:fdisk -l
 cmd:df -T

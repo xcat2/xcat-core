@@ -1,4 +1,4 @@
-start:reg_linux_diskless_installation_hierarchy
+start:reg_linux_diskless_installation_hierarchy:stop:yes
 os:Linux
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T

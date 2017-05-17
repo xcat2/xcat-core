@@ -1,4 +1,4 @@
-start:SN_setup_case
+start:SN_setup_case:stop:yes
 os:Linux
 cmd:fdisk -l
 cmd:df -T
