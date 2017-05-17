@@ -1,4 +1,4 @@
-start:reg_linux_diskfull_installation_hierarchy
+start:reg_linux_diskfull_installation_hierarchy:stop:yes
 os:Linux
 stop:yes
 cmd:xdsh $$SN fdisk -l
