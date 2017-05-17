@@ -893,23 +893,23 @@ sub rinv_response {
             next if ($grep_string eq "serial");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "mprom")) {
-            xCAT::SvrUtils::sendmsg("No information can be obtained for $grep_string", $callback, $node);
-            last;
+        if (($grep_string eq "vpd" or $grep_string eq "mprom") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No mprom information is available", $callback, $node);
+            next if ($grep_string eq "mprom");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "deviceid")) {
-            xCAT::SvrUtils::sendmsg("No information can be obtained for $grep_string", $callback, $node);
-            last;
+        if (($grep_string eq "vpd" or $grep_string eq "deviceid") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No deviceid information is available", $callback, $node);
+            next if ($grep_string eq "deviceid");
         } 
 
         if ($grep_string eq "uuid") {
-            xCAT::SvrUtils::sendmsg("No information can be obtained for $grep_string", $callback, $node);
+            xCAT::SvrUtils::sendmsg("No uuid information is available", $callback, $node);
             last;
         } 
 
         if ($grep_string eq "guid") {
-            xCAT::SvrUtils::sendmsg("No information can be obtained for $grep_string", $callback, $node);
+            xCAT::SvrUtils::sendmsg("No guid information is available", $callback, $node);
             last;
         } 
 
