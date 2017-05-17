@@ -1,5 +1,6 @@
-start:reg_linux_diskfull_installation_hierarchy:stop:yes
+start:reg_linux_diskfull_installation_hierarchy
 os:Linux
+stop:yes
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T
 cmd:xdsh $$SN "echo "test"> /test.hierarchy"
