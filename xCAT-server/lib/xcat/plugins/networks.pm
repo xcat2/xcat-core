@@ -372,8 +372,10 @@ sub donets
         # For Linux systems
         my @ip6table = split /\n/, `/sbin/ip -6 route`;
         my @rtable   = split /\n/, `/bin/netstat -rn`;
+        my @mtable   = split /\n/, `/bin/netstat -i`;  
 
         splice @rtable, 0, 2;
+        splice @mtable, 0, 2;
 
         my %netgw = ();
         foreach my $rtent (@rtable)
@@ -517,6 +519,15 @@ sub donets
                     }
                 }
 
+                # get mtu value
+                my $mtu;
+                my @rowm;
+                foreach (grep /\s*$mgtifname\b/, @mtable)
+                {
+                    @rowm = split(/\s+/, $_);
+                    $mtu = $rowm[1];
+                }
+
                 if ($::DISPLAY) {
                     push @{ $rsp->{data} }, "\n#From $host.";
                     push @{ $rsp->{data} }, "$netname:";
@@ -528,9 +539,13 @@ sub donets
                         push @{ $rsp->{data} }, "    gateway=$gw";
                     }
                     push @{ $rsp->{data} }, "    mgtifname=$mgtifname";
+                    if ($mtu)
+                    {
+                        push @{ $rsp->{data} }, "    mtu=$mtu";                      
+                    }
                 } else {
                     if (!$foundmatch) {
-                        $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { 'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw });
+                        $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { 'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw, 'mtu' => $mtu });
                     }
                 }
 
