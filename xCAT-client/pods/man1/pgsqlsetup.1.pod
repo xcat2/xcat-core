@@ -9,7 +9,7 @@ B<pgsqlsetup> {B<-h> | B<--help>}
 
 B<pgsqlsetup> {B<-v> | B<--version>}
 
-B<pgsqlsetup> {B<-i> | B<--init>} [B<-N> | B<--nostart>] [B<-P> | B<--PCM>] [B<-o> | B<--odbc>] [B<-V> | B<--verbose>]
+B<pgsqlsetup> {B<-i> | B<--init>} [B<-N> | B<--nostart>] [B<--listen> | B<-l> I<address>] [B<-P> | B<--PCM>] [B<-o> | B<--odbc>] [B<-V> | B<--verbose>]
 
 B<pgsqlsetup> {B<-o> | B<--setupODBC>} [B<-V> | B<--verbose>] 
 
@@ -46,10 +46,13 @@ For more documentation see:Setting_Up_PostgreSQL_as_the_xCAT_DB
 
 This option with the -i flag will create the database, but will not backup and restore xCAT tables into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT PostgreSQL database during or before install.
 
+=item B<-l|--listen> I<address>
+
+This option is used to specify additional IP addresses on which the PostgreSQL database will listen.  Without it, only localhost (on Linux) and the management node's main IP (on Linux and AIX) will be configured.  This option can be specified multiple times.
+
 =item B<-P|--PCM>
 
 This option sets up PostgreSQL database to be used with xCAT running with PCM.
-
 
 =item B<-o|--odbc>
 

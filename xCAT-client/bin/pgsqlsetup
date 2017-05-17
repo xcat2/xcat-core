@@ -72,6 +72,7 @@ $::pgcmddir       = "/usr/bin";                   # pg cmds location
 $::debiancfgdir   = "/etc/postgresql/9.1/main";
 my $INIT;
 my $SETUPODBC;
+my @LISTENADDRS;
 my $NOSTART;
 my $SETUPPCM;
 my $HELP;
@@ -83,6 +84,7 @@ if (
     !GetOptions(
         'i|init'    => \$INIT,
         'o|odbc'    => \$SETUPODBC,
+        'l|listen=s'=> \@LISTENADDRS,
         'N|nostart' => \$NOSTART,
         'P|PCM'     => \$SETUPPCM,
         'h|help'    => \$HELP,
@@ -126,6 +128,13 @@ if ((!($INIT)) && ($SETUPODBC))
 {
     $odbconly = 1;
 
+}
+
+# create comma-separated list of additional listen addresses
+my $listenaddrs = undef;
+if (@LISTENADDRS)
+{
+   $listenaddrs = join ',', @LISTENADDRS;  
 }
 
 #
@@ -428,7 +437,7 @@ sub usage
 "Usage:\npgsqlsetup - Performs the setup of PostgreSQL for xCAT to use as its database. See man pgsqlsetup for more information."
     );
     my $msg =
-"pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-N|--nostart] [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
+"pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-N|--nostart] [-l|--listen address] [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -789,6 +798,10 @@ sub initpgdb
         if ($::osname eq 'Linux')
         {
             $cmd = qq~ echo listen_addresses = \\'localhost,$::MN\\' >> $pgconf~;
+            if ($::listenaddrs) 
+            {
+                $cmd = qq~ echo listen_addresses = \\'localhost,$::MN,$::listenaddrs\\' >> $pgconf~;
+            }
             `$cmd`;
         }
 
@@ -796,6 +809,9 @@ sub initpgdb
         if ($::osname eq 'AIX')
         {
             $cmd = qq~ echo listen_addresses = \\'$::MN\\' >> $pgconf~;
+            if ($::listenaddrs)
+            {
+                $cmd = qq~ echo listen_addresses = \\'$::MN,$::listenaddrs\\' >> $pgconf~;
             `$cmd`;
             $cmd = qq~echo logging_collector = on >> $pgconf~;
             `$cmd`;
