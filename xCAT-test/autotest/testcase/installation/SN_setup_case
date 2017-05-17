@@ -1,5 +1,6 @@
 start:SN_setup_case
 os:Linux
+stop:yes
 cmd:fdisk -l
 cmd:df -T
 cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__

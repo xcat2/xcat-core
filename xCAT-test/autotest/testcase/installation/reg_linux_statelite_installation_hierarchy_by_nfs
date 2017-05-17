@@ -1,5 +1,6 @@
 start:reg_linux_statelite_installation_hierarchy_by_nfs
 os:Linux
+stop:yes
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T
 cmd:xdsh $$SN "echo "test"> /test.hierarchy"
