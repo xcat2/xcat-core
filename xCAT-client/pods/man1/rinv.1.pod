@@ -12,11 +12,11 @@ B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<devic
 
 =head2 OpenPOWER (using ipmi) server specific:
   
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>} 
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>] 
 
 =head2 OpenPOWER (using openbmc) server specific:
 
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<cpu>|B<dimm>|B<all>}
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<cpu>|B<dimm>|B<all>]
 
 =head2 PPC (with HMC) specific:
 

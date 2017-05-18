@@ -876,6 +876,7 @@ sub rinv_response {
     my $grep_string = $status_info{RINV_RESPONSE}{argv};
     my $src;
     my $content_info;
+    my @sorted_output;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -892,20 +893,24 @@ sub rinv_response {
             next if ($grep_string eq "serial");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "mprom")) {
-            # wait for interface
+        if (($grep_string eq "vpd" or $grep_string eq "mprom") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No mprom information is available", $callback, $node);
+            next if ($grep_string eq "mprom");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "deviceid")) {
-            # wait for interface      
+        if (($grep_string eq "vpd" or $grep_string eq "deviceid") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No deviceid information is available", $callback, $node);
+            next if ($grep_string eq "deviceid");
         } 
 
         if ($grep_string eq "uuid") {
-            # wait for interface 
+            xCAT::SvrUtils::sendmsg("No uuid information is available", $callback, $node);
+            last;
         } 
 
         if ($grep_string eq "guid") {
-            # wait for interface
+            xCAT::SvrUtils::sendmsg("No guid information is available", $callback, $node);
+            last;
         } 
 
         if ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
@@ -923,9 +928,15 @@ sub rinv_response {
 
             foreach my $key (keys %content) {
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-                xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
+                push (@sorted_output, $node . ": ". $content_info); #Save output in array
             }
         }
+     }
+     # If sorted array has any contents, sort it and print it
+     if (scalar @sorted_output > 0) {
+         @sorted_output = sort @sorted_output; #Sort all output
+         my $result = join "\n", @sorted_output; #Join into a single string for easier display
+         xCAT::SvrUtils::sendmsg("$result", $callback);
      }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
