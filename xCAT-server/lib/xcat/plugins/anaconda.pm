@@ -1412,6 +1412,7 @@ sub mkinstall
                     $donetftp{"$os|$arch|$profile|$tftpdir"} = 1;
                 }
             }
+	    my $ddad;
 
             if ($docopy) {
                 mkpath("$tftppath");
@@ -1421,7 +1422,7 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy($kernpath,   "$tftppath");
                         copy($initrdpath, "$tftppath/initrd.img");
-                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        $ddad = insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
                 xCAT::MsgUtils->trace($verbose_on_off, "d", "anaconda->mkinstall: copy initrd.img and vmlinuz to $tftppath");
@@ -1472,6 +1473,9 @@ sub mkinstall
             }
             if ($maxmem) {
                 $kcmdline .= " mem=$maxmem";
+            }
+	    if ($ddad) {
+		$kcmdline .= $ddad;
             }
 
 
@@ -3390,12 +3394,14 @@ EOMS
 
         copy("$dd_dir/initrd.img", $img);
     }
+    my $kerneladd = "";
 
     # dracut + driver disk, just append the driver disk to the initrd
     if (<$install_dir/$os/$arch/Packages/dracut*> && @dd_list) { #new style, skip the fanagling, copy over the dds and append them...
         mkpath("$dd_dir/dd");
         if (scalar(@dd_list) == 1) {    #only one, just append it..
             copy($dd_list[0], "$dd_dir/dd/dd.img");
+	    $kerneladd = " dd=file:///dd.img ";
         } elsif (scalar(@dd_list) > 1) {
             unless (-x "/usr/bin/createrepo" and -x "/usr/bin/mkisofs") {
                 my $rsp;
@@ -3467,7 +3473,7 @@ EOMS
 
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
-    return @inserted_dd;
+    return $kerneladd; # @inserted_dd;
 }
 
 1;
