@@ -26,6 +26,17 @@ isNumber()
   expr $1 + 0 &>/dev/null
 }
 
+# Used for prerequiste checking
+preChecking()
+{
+  local val=""
+  for cmd in brctl ifconfig; do
+    which $cmd  > /dev/null 2>&1
+    [  $? -ne 0 ] && val="$cmd,$val"
+  done
+  echo $val | sed s/,$//
+}
+
 # Give a simple usage
 if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "[PERF_DRYRUN=y] [PERF_NOCREATE=y] $0 <total> [command-list-file]"
@@ -43,6 +54,12 @@ if [ -z $XCATROOT ]; then
   if [ -r /etc/profile.d/xcat.sh ]; then
     . /etc/profile.d/xcat.sh
   fi
+fi
+
+pass=$(preChecking)
+if [ ! -z "$pass" ]; then
+  echo "Error: Missing required tools: $pass"
+  [ -z $PERF_DRYRUN ] && exit -1
 fi
 
 # Mandatory, to specify the number of total fake nodes which will be created for testing
@@ -73,6 +90,18 @@ if [ -z $FAKE_NETWORK_BMC ]; then
   FAKE_NETWORK_BMC='192.169'
 fi
 
+# Optional, The network mask for the fake network object.
+# By default, it is '255.255.0.0' but it could be changed when you set environment variable `FAKE_NETWORK_MASK`
+if [ -z $FAKE_NETWORK_MASK ]; then
+  FAKE_NETWORK_MASK='255.255.0.0'
+fi
+
+# Optional, The bridge device name for the temporary interface which is required on MN as nodeset/makedhcp will check if the MN and CN in same subnet.
+# By default, it is 'perfvirbr0' but it could be changed when you set environment variable `FAKE_NETWORK_INTF`
+if [ -z $FAKE_NETWORK_INTF ]; then
+  FAKE_NETWORK_INTF='perfvirbr0'
+fi
+
 # Optional, The node template name used for generating fake nodes.
 # By default, it is '<arch>-template' but it could be changed when you set environment variable `FAKE_NODE_GROUP`
 if [ -z $PERF_NODETEMPL ]; then
@@ -81,11 +110,14 @@ fi
 
 # IP address assinged to node will be in [1-250]
 NODE_PER_ROW=250
+MYSUFFIX=`date +"%Y%m%d%H%M%S"`
 
-PERFORMANCE_DIR=/tmp/xcat-performance
-PERFORMANCE_NODE_TMPL=$PERFORMANCE_DIR/node.tmpl
-PERFORMANCE_REPORT=$PERFORMANCE_DIR/report-$FAKE_NODE_TOTAL.$$
-PERFORMANCE_STANZ=$PERFORMANCE_DIR/stanz-$FAKE_NODE_TOTAL.$$
+if [ -z $PERFORMANCE_DIR ]; then
+  PERFORMANCE_DIR=$XCATROOT/share/xcat/tools/autotest/result
+fi
+PERFORMANCE_NODE_TMPL=$PERFORMANCE_DIR/perf-node.tmpl
+PERFORMANCE_REPORT=$PERFORMANCE_DIR/perfreport-$FAKE_NODE_TOTAL.log.$MYSUFFIX
+PERFORMANCE_STANZ=$PERFORMANCE_DIR/perfstanz-$FAKE_NODE_TOTAL.$MYSUFFIX
 
 # If the command list file is not specified, the tool will only create the stanz file for fake nodes.
 # If it is specified but not exists, the tool will exit with error.
@@ -135,6 +167,45 @@ fakeNode()
   #                bmc=$FAKE_NETWORK_BMC.$2.$3 bmcpassword=fake bmcusername=fake groups=all,performance > /dev/null 2>&1
 }
 
+# Create a fake xCAT network definition
+fakeNetwork()
+{
+    lsdef -t network -o net-$FAKE_NODE_PREFIX > /dev/null 2>&1
+    if [ 0 != $? ]; then
+      mkdef -t network net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
+    else
+      chdef -t network -o net-$FAKE_NODE_PREFIX net=$FAKE_NETWORK_PRO.0.0 mask=$FAKE_NETWORK_MASK > /dev/null
+    fi
+}
+
+# Create a fake xCAT network definition
+fakeInterface()
+{
+  result=`ifconfig $1 2>/dev/null`
+  if [ -z "$2" ]; then
+    [  -z "$result" ] && brctl addbr $1
+    ifconfig $1 $FAKE_NETWORK_PRO.251.254 netmask $FAKE_NETWORK_MASK || echo "$1 is not configured successfully"
+  elif [ ! -z "$result" ]; then
+    ifconfig $1 down
+    brctl delbr $1 || echo "$1 is not removed successfully, you may need to clean up manually."
+  fi
+}
+
+getOSimage()
+{
+  # The OS image name used in nodeset to replace the MACRO Variable `#OSIMAGE#`.
+  # By default, it could be detectd automatically according to the arch
+  if [ -z $PERF_OSIMAGE ]; then
+    
+    # covert it to an array
+    osimage_array=($(lsdef -t osimage 2>/dev/null| grep `arch`|awk '/compute/ {print $1}'))
+    index=`expr $RANDOM % ${#osimage_array[@]} 2>/dev/null`
+    echo ${osimage_array[$index]}
+  else
+    echo $PERF_OSIMAGE
+  fi
+}
+
 # Create batch fake nodes stanz file for testing
 bootstrap()
 {
@@ -164,6 +235,7 @@ runTest()
 {
 
   cmd=$1
+  [ -z $osimage ] || cmd="${cmd/\#OSIMAGE\#/$osimage}"
   if [[ $cmd =~ '#STANZ#' ]]; then
     #mkdef -z
     execCmd "${cmd/\#STANZ\#/$PERFORMANCE_STANZ}" "$FAKE_NODE_TOTAL"
@@ -179,7 +251,7 @@ runTest()
       do
         isNumber $num || continue
         if [[ $num -le $FAKE_NODE_TOTAL ]]; then
-          cmd=$1
+          #cmd=$1
           execCmd "${cmd/\#NODES\#/$FAKE_NODE_PREFIX[1-$num]}" "$num"
         fi
       done
@@ -195,10 +267,11 @@ runTest()
 # Output performance result for each command.
 printResult()
 {
-  cmd=`echo "$1" | awk '{print $1}'`
+  #TODO,  more clear short desc for this command
+  desc=`echo "$1" | awk '{print $1}'`
   result=$([[ $4 = 0 ]] && echo "SUCESS" || echo "FAIL")
   # TOTAL, CMD, NODERANGE, TIME, SUCESS, FULL COMMAND
-  echo "$FAKE_NODE_TOTAL", "$cmd", "$2", "$3", $result, \"$1\" >> $PERFORMANCE_REPORT
+  echo "$FAKE_NODE_TOTAL; $desc; $2; $3; $result; \"$1\"" | tee -a $PERFORMANCE_REPORT
 }
 
 # Executing each command and print the result to report file
@@ -222,19 +295,21 @@ execCmd()
 #################################################
 # Main Loop of the performance baseline testing #
 #################################################
-lsxcatd -a
+version=`lsxcatd -a 2>/dev/null | grep Version`
 if [ 0 != $? ]; then
-    echo "ERROR: xCAT daemon is not running"
-    #exit 99
+    echo "ERROR: xCAT daemon is not running. Start 'xcatd' and rerun this tool."
+    exit 99
 fi
 
-mkdir -p /tmp/xcat-performance
+mkdir -p $PERFORMANCE_DIR
 
 lsdef -t node --template $PERF_NODETEMPL > $PERFORMANCE_NODE_TMPL 2>/dev/null
 if [ 0 != $? ]; then
-    echo "ERROR: Cannot find the default template for `arch`, make sure it exists and rerun the script."
+    echo "ERROR: Cannot find the default template for `arch`, make sure it exists and rerun this tool."
     exit 99
 fi
+#Get available OS image, it will be used for nodeset if possible
+osimage=$(getOSimage)
 
 rack=$(expr $FAKE_NODE_TOTAL / $NODE_PER_ROW)
 
@@ -257,12 +332,23 @@ if [ -z $RUN_CMD_LIST ]; then
 fi
 
 echo "Continue the performance testing for commands in $RUN_CMD_LIST "
+if [ -z "$osimage" ]; then
+  echo "WARN: Cannot determine the OS image, the commands which defined with #OSIMAGE# will be failed."
+fi
+
+echo $version | tee $PERFORMANCE_REPORT
 echo "=================================================="
 
 # Initial Populate the fake nodes into DB
 if [ -z $PERF_NOCREATE ]; then
+  #create fake network for makedns, makedhcp etc...
+  fakeNetwork
   execCmd "mkdef -z -f < $PERFORMANCE_STANZ" "$FAKE_NODE_TOTAL"
 fi
+
+# fake interface is required for topology with service nodes as it will determine if then Mn/Sn are
+# in the same subnet with CNs
+fakeInterface $FAKE_NETWORK_INTF
 
 series=`grep '^#SERIES#' $RUN_CMD_LIST | awk  '{print $2}'`
 if [ ! -z $series ]; then
@@ -287,6 +373,7 @@ IFS_BAK=
 
 rm -f $PERFORMANCE_NODE_TMPL
 rm -f $PERFORMANCE_STANZ
+fakeInterface $FAKE_NETWORK_INTF del
 
 if [ -z $PERF_DRYRUN ]; then
   echo

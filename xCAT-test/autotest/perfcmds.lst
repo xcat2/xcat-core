@@ -6,7 +6,7 @@ makedhcp #NODES#
 makeknownhosts #NODES#
 nodech #NODES# groups,=group1
 nodels #NODES# noderes
-nodeset #NODES# osimage=rhels7.3-GA-ppc64le-install-compute
+nodeset #NODES# osimage=#OSIMAGE#
 chdef -t node -o #NODES# postscripts="fake" profile="install" netboot="grub2"
 rmdef -t node #PERFGRP#
 mkdef -z < #STANZ#

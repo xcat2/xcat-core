@@ -1,0 +1,18 @@
+start:perftest_5000
+description:Default performance testing on 5000 fake nodes
+os:Linux
+cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
+cmd:copycds $$ISO
+check:rc==0
+cmd:xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+check:rc==0
+end
+
+start:perftest_5000_without_conf
+description:Default performance testing on 5000 fake nodes without extra configuraiton on MN
+os:Linux
+cmd:which yum &>/dev/null && yum install -y bridge-utils || apt install -y bridge-utils
+check:rc==0
+cmd:xcatperftest 5000 /opt/xcat/share/xcat/tools/autotest/perfcmds.lst
+check:rc==0
+end
