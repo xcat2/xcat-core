@@ -341,9 +341,22 @@ sub run_rspconfig {
 }
 
 sub config_vlan {
+    my @ports;
+    my $port_input;
     # checking for port number, switches is checked earlier
     if ($::PORT) {
-       $port = $::PORT;
+       $port_input = $::PORT;
+       foreach my $num_str (split /,/, $port_input) {
+           if ($num_str =~ /-/) {
+               my ($min, $max) = split (/-/,$num_str);
+               while ($min < $max) {
+                   push (@ports,$min);
+                   $min++;
+               }
+           } else {
+               push (@ports,$num_str);
+           }
+       }
     } else {
         xCAT::MsgUtils->message("E","Error - When configuring VLAN, a port must be provided.");
         &usage;
@@ -381,28 +394,29 @@ sub config_vlan {
             next;
         }
 
+        print "Tagging VLAN=$vlan for $switch port $port_input\n";
+
+        #create vlan
+        my $vlan_cmd = `xdsh $switch --devicetype $devicetype "enable;configure terminal;vlan $vlan;exit;exit" `;
+
         my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
-        my $cmd;
+        foreach my $port (@ports) {
+            my $cmd;
+            # Build up the commands for easier readability
+            $cmd = $cmd . "enable\;";
+            $cmd = $cmd . "configure terminal\;";
+            $cmd = $cmd . "interface ethernet 1/$port\;";
+            $cmd = $cmd . "switchport mode $mode\;";
+            if ($mode =~ /access/) {
+                $cmd = $cmd . "switchport access vlan $vlan\;";
+            } else {
+                $cmd = $cmd . "switchport $mode allowed-vlan $vlan\;";
+            }
+            $cmd = $cmd . "exit\;exit\;exit\;";
+            my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
 
-        print "Tagging VLAN=$vlan for $switch port $port\n";
-
-        # Build up the commands for easier readability
-        $cmd = $cmd . "enable\;";
-        $cmd = $cmd . "configure terminal\;";
-        $cmd = $cmd . "vlan $vlan\;";
-        $cmd = $cmd . "exit\;";
-        $cmd = $cmd . "interface ethernet 1/$port\;";
-        $cmd = $cmd . "switchport mode $mode\;";
-        if ($mode =~ /access/) {
-            $cmd = $cmd . "switchport access vlan $vlan\;";
-        } else {
-            $cmd = $cmd . "switchport $mode allowed-vlan $vlan\;";
+            `$final_cmd`
         }
-        $cmd = $cmd . "exit\;exit\;exit\;";
-        my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
-
-        `$final_cmd`
-
     }
 }
 
