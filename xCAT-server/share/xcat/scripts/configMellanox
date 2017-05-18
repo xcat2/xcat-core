@@ -349,7 +349,7 @@ sub config_vlan {
        foreach my $num_str (split /,/, $port_input) {
            if ($num_str =~ /-/) {
                my ($min, $max) = split (/-/,$num_str);
-               while ($min < $max) {
+               while ($min <= $max) {
                    push (@ports,$min);
                    $min++;
                }
