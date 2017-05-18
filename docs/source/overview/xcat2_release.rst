@@ -14,11 +14,19 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.13.3                    |- RHEL 6.9     |             |- rpower for OpenBMC(experimental)|
-|| 2017/4/7                       |               |             |- Add -C for rmdef to run nodeset |
-||                                |               |             |  nodeset offline                 |
-| `2.13.3 Release Notes <https:// |               |             |                                  |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+|| xCAT 2.13.4                    |- RHV 4.1      |             |- OpenBMC support(experimental):  |
+|| 2017/5/19                      |               |             |                                  |
+||                                |               |             |  rinv                            |
+| `2.13.4 Release Notes <https:// |               |             |  rinstall                        |
+| github.com/xcat2/xcat-core/wiki |               |             |  bmcdiscover                     |
+| /XCAT_2.13.4_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.3                    |- RHEL 6.9     |             |- OpenBMC support(experimental):  |
+|| 2017/4/14                      |               |             |                                  |
+||                                |               |             |  rpower rcons                    |
+| `2.13.3 Release Notes <https:// |               |             |- Add -C for rmdef to run         |
+| github.com/xcat2/xcat-core/wiki |               |             |  `nodeset offline`               |
 | /XCAT_2.13.3_Release_Notes>`_   |               |             |                                  |
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
