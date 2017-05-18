@@ -52,7 +52,7 @@ my $RUN   = 1;
 
 #----------global logs attributes---------------
 my $running_log_fd     = undef
-  my $running_log_name = undef;
+my $running_log_name = undef;
 my $failed_log_name      = undef;
 my $performance_log_name = undef;
 
@@ -71,35 +71,33 @@ $::USAGE = "Usage:
 To get help:
     $program_name -h
 
-To list the information of all cases shipped by xcat test package  
-    $program_name -l <caselist|caseinfo|casenum>
-To list the information of all bunldes shipped by xcat test package
+To list the information about all cases shipped by xcat test package  
+    $program_name -l {caselist|caseinfo|casenum}
+To list the information about all bunldes shipped by xcat test package
     $program_name -l bundleinfo 
-To list the information of cases in specific bundles
-    $program_name -l <caselist|caseinfo|casenum> -b <bundle_list>
-To list the information of cases related specific commands
-    $program_name -l <caselist|caseinfo|casenum> -c <command_list> 
-To list the information of cases related specific test cases 
-    $program_name -l <caselist|caseinfo|casenum> -t <case_list>
+To list the information about cases in specific bundles
+    $program_name -l {caselist|caseinfo|casenum} -b <bundle_list>
+To list the information about cases related to specific commands
+    $program_name -l {caselist|caseinfo|casenum} -c <command_list> 
+To list the information about specific cases  
+    $program_name -l {caselist|caseinfo|casenum} -t <case_list>
 
 To run test cases in specific bundles 
-    $program_name [-f <configure_file|configure_file:System>] -b <bundle_list>  [-r] [-q]
+    $program_name [-f {configure_file|configure_file:System}] -b <bundle_list>  [-r] [-q]
 To run specific test cases 
-    $program_name [-f <configure_file|configure_file:System>] -t <case_list>  [-r] [-q]
-To run all cases related specific commands 
-    $program_name [-f <configure_file|configure_file:System>] -c <command_list> [-r] [-q]
+    $program_name [-f {configure_file|configure_file:System}] -t <case_list>  [-r] [-q]
+To run all cases related to specific commands 
+    $program_name [-f {configure_file|configure_file:System}] -c <command_list> [-r] [-q]
 
 Options:
-    -h : Get usage information of $program_name
-    -l : list specific information. The valid option are caselist,caseinfo,casenum,bundleinfo
-    -f : indicate the configuration file. With 'System' label means just load 'System' section in the configuration file.
-         Not to define current test environment by setting in 'Table', 'Object' and so on sections in the configuration file. 
-         Without 'System' label means define current test environment by setting in 'Table', 'Object' and so on sections in the configuration file.
-    -c : Comma separated list of command name which will be handle
-    -t : Comma separated list of test case name which will be handle
-    -b : Comma separated list of bundle name. If the bunld name without path, will search bundle under $bundledir 
-    -r : Back up the origin environment settings before running test, and restore them after running test.
-    -q : Just recode all the output of $program_name into log file, not print to STDOUT. Print to STDOUT by default. 
+    -h : Get $program_name usage information. 
+    -l : list specific information. The valid options are caselist,caseinfo,casenum,bundleinfo
+    -f : specify the configuration file. If 'System' tag is used, only [System] section in the configuration file will be used. If 'System' is not used all other sections of the configuration file will be used, like [Table], [Object], etc.
+    -c : Comma separated list of command names to test. 
+    -t : Comma separated list of test case names to test.
+    -b : Comma separated list of bundle names to test. If a bundle name is specified without an absolute path, bundles under $bundledir will be searched
+    -r : Back up the original environment settings before running test, and restore them after running test.
+    -q : Just record all the output of $program_name into log file under $resultdir, not print to STDOUT. Print to STDOUT by default. 
 ";
 
 #==============================================================================================
