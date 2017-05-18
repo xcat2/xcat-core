@@ -38,7 +38,7 @@ rspconfig_ip_invalid
 rspconfig_netmask
 rspconfig_netmask_invalid
 rspconfig_gateway
-rspconfig_gateway_invalid 
+rspconfig_gateway_invalid
 rspconfig_node_invalid
 rspconfig_ip_null
 reg_linux_diskfull_installation_flat
