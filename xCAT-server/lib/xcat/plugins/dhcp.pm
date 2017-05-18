@@ -2594,7 +2594,7 @@ sub addnet
             }
         }
         #for cumulus ZTP process
-        push @netent, "    option cumulus-provision-url \"http://$tftp/install/postscripts/onieztp\";\n";
+        push @netent, "    option cumulus-provision-url \"http://$tftp/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;

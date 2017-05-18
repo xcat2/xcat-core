@@ -1,12 +1,4 @@
 #!/bin/bash
-
-# this postscripts will fetched from ZTP process for cumulus switch
-# To enable the ZTP process on cumulus switch with OS and licenses already installed
-#   ssh -l cumulus cumulus_switch
-#   sudo ztp -R
-#   sudo reboot
-# the MN will get DHCP request after reboot, and will send DHCP responds with this script.
-
 function error() {
   echo -e "\e[0;33mERROR: The Zero Touch Provisioning script failed while running the command $BASH_COMMAND at line $BASH_LINENO.\e[0m" >&2
   exit 1
@@ -20,18 +12,21 @@ trap error ERR
 #Add Debian Repositories
 echo "deb http://http.us.debian.org/debian jessie main" >> /etc/apt/sources.list
 echo "deb http://security.debian.org/ jessie/updates main" >> /etc/apt/sources.list
+
+#get ip address for server node
+server_ip=`grep cumulus-provision-url /var/lib/dhcp/dhclient.eth0.leases | tail -1 | awk -F/ '{print $3}'`
  
 #push root ssh keys, config passwordless
 echo "CumulusLinux!" | sudo -S mkdir -p /root/.ssh
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /root/.ssh/authorized_keys http://172.21.253.27/install/postscripts/_ssh/authorized_keys
+echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /root/.ssh/authorized_keys http://$server_ip/install/postscripts/_ssh/authorized_keys
  
 #enable and config snmpd
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/enablesnmp http://172.21.253.27/install/postscripts/enablesnmp
+echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/enablesnmp http://$server_ip/install/postscripts/enablesnmp
 sudo chmod +x /home/cumulus/enablesnmp
 sudo /home/cumulus/enablesnmp
 
 #config base interface
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/configinterface http://172.21.253.27/install/postscripts/configinterface
+echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/configinterface http://$server_ip/install/postscripts/configinterface
 sudo chmod +x /home/cumulus/configinterface
 sudo /home/cumulus/configinterface
 
