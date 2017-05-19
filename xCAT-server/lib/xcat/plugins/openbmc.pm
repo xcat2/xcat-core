@@ -106,6 +106,14 @@ my %status_info = (
         process        => \&rinv_response,
     },
 
+    RINV_FIRM_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RINV_FIRM_RESPONSE => {
+        process        => \&rinv_response,
+    },
+
     RPOWER_ON_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
@@ -322,7 +330,7 @@ sub process_request {
             push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
         } else {
             $login_url = "$http_protocol://$bmcip/login";
-            $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+            $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
@@ -496,9 +504,20 @@ sub parse_command_status {
             $subcommand = "all";
         }
 
-        $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
-        $next_status{RINV_REQUEST} = "RINV_RESPONSE";
-        $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+        if ($subcommand eq "firm") {
+            $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        } elsif ($subcommand eq "all") {
+            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+            $next_status{RINV_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        } else {
+            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+        }
     }
 
     if ($command eq "rsetboot") {
@@ -552,7 +571,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@ARGV) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -873,13 +892,27 @@ sub rinv_response {
 
     my $response_info = decode_json $response->content;
 
-    my $grep_string = $status_info{RINV_RESPONSE}{argv};
+    my $grep_string;
+    if ($node_info{$node}{cur_status} eq "RINV_FIRM_RESPONSE") {
+         $grep_string = "firm";
+     } else {
+         $grep_string = $status_info{RINV_RESPONSE}{argv};
+     }
+
     my $src;
     my $content_info;
     my @sorted_output;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+        if ($grep_string eq "firm") {
+            if (defined($content{Version}) and $content{Version}) {
+                my $firm_ver = "System Firmware Product Version: " . "$content{Version}";
+                xCAT::SvrUtils::sendmsg("$firm_ver", $callback, $node);
+                next;
+            }
+        }
 
         if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
             my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
@@ -919,7 +952,7 @@ sub rinv_response {
             next;
         } 
 
-        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/ or ($grep_string eq "firm" and defined($content{Name}) and $content{Name} eq "OpenPOWER Firmware")) {
+        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
@@ -1030,7 +1063,7 @@ sub reventlog_response {
 
     my $response_info = decode_json $response->content;
 
-    if ($node_info{$node}{cur_status} eq "REVENTLOG_CLEAR_REQUEST") {
+    if ($node_info{$node}{cur_status} eq "REVENTLOG_CLEAR_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("clear", $callback, $node);
         }
