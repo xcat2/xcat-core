@@ -1016,7 +1016,7 @@ sub load_case {
                 }
             }
             log_this($running_log_fd, "To run:", @new_cases_to_be_run);
-            @{$cases_to_be_run_ref} = @new_cases_to_be_run;
+            #@{$cases_to_be_run_ref} = @new_cases_to_be_run;
         }
     }
     return $caseerror;
