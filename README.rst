@@ -8,7 +8,7 @@ Documentation
 
 xCAT documentation is available at: http://xcat-docs.readthedocs.io/en/latest/
 
-|docs_latest| |docs_2134||docs_2133| |docs_2132| |docs_2131| |docs_2130| |docs_212|
+|docs_latest| |docs_2134| |docs_2133| |docs_2132| |docs_2131| |docs_2130| |docs_212|
 
 Open Source License
 -------------------
