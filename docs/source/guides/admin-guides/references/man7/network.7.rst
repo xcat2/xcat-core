@@ -89,7 +89,7 @@ network Attributes:
 
 \ **mtu**\  (networks.mtu)
  
- The default MTU for the network
+ The default MTU for the network, If multiple networks are applied to the same nic on the SN and/or CN, the MTU shall be the same for those networks.
  
 
 
