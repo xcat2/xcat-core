@@ -4255,6 +4255,9 @@ sub preprocess_request {
     foreach my $node (@$noderange) {
         my $ent = $mptabhash->{$node}->[0]; #$mptab->getNodeAttribs($node,['mpa', 'id']);
         my $mpaent;
+        if ($request->{command}->[0] eq 'findme' and $ent->{nodetype} ne 'blade') {
+            next;
+        }
         if (defined($ent->{mpa})) {
             push @{ $mpa_hash{ $ent->{mpa} }{nodes} }, $node;
             unless ($mpatype{ $ent->{mpa} }) {
