@@ -772,7 +772,6 @@ sub refresh_switch {
             xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
             return;
         }
-
         # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2');
         my $mactoindexmap = walkoid($session, '.1.3.6.1.2.1.17.7.1.2.2.1.2', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
         unless (defined($mactoindexmap)) { #if no qbridge defined, try bridge mib, probably cisco
@@ -782,6 +781,21 @@ sub refresh_switch {
         if (not ref $mactoindexmap or !keys %{$mactoindexmap}) {
             xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
             return;
+        }
+        my $bridgeifvalid = 0;
+        foreach (keys %$mactoindexmap) {
+            my $index     = $mactoindexmap->{$_};
+            if (defined($bridgetoifmap->{$index})) {
+                $bridgeifvalid = 1;
+                last;
+            }
+        }
+        unless ($bridgeifvalid) {
+            # create a dummy bridgetoifmap to cover switches that thing it should go straight to ifindex
+            $bridgetoifmap = {};
+            foreach (keys %$namemap) {
+                $bridgetoifmap->{$_} = $_;
+            }
         }
         if (defined($self->{collect_mac_info})) {
             my %index_to_mac = ();
