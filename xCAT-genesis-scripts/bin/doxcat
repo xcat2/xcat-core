@@ -237,7 +237,7 @@ else
 	    #chances that we'll perform a partial discovery
 	    #in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
 	    dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
-	    NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+	    NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|awk -F: '{print $2}'`
 	    export NICSTOBRINGUP
 	    for nic in $NICSTOBRINGUP; do
 		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
