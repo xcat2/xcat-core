@@ -18,7 +18,7 @@ Following sections show how to use ``diskdiscover`` and ``configraid``, we assum
 Discovering disk devices
 ------------------------
 
-Command ``diskdiscover`` scans disk devices, it can get the overview of disks and RAID arrays information from compute node; The outputs contain useful information for ``configraid`` to configure RAID arrays, user can get ``pci_id``, ``pci_slot_name``, ``disk names``, ``RAID arrays`` and other informations from the outputs. It should be ran in xcat genesis system. It can be executed without input parameter or with pci_id, pci_id includes PCI vendor and device ID. For example, power8 SAS adapter pci_id is ``1014:034a``, ``1014`` is vendor info, ``034a`` is PCI-E IPR SAS Adapter, more info about pci_id refer to ``http://pci-ids.ucw.cz/read/PC/1014/``.
+Command ``diskdiscover`` scans disk devices, it can get the overview of disks and RAID arrays information from compute node; The outputs contain useful information for ``configraid`` to configure RAID arrays, user can get ``pci_id``, ``pci_slot_name``, ``disk names``, ``RAID arrays`` and other information from the outputs. It should be ran in xcat genesis system. It can be executed without input parameter or with pci_id, pci_id includes PCI vendor and device ID. For example, power8 SAS adapter pci_id is ``1014:034a``, ``1014`` is vendor info, ``034a`` is PCI-E IPR SAS Adapter, more info about pci_id refer to ``http://pci-ids.ucw.cz/read/PC/1014/``.
 
 Here are steps to use ``diskdiscover``:
 

@@ -49,7 +49,7 @@ Kit Framework
 
 With time, the implementation of the xCAT Software Kit support may change.  
 
-In order to process a kit successfully, the kit must be conpatiable with the level of xCAT code that was used to build the kit.  The xCAT kit commands and software kits contain the framework version and compatiable supported versions. 
+In order to process a kit successfully, the kit must be compatible with the level of xCAT code that was used to build the kit.  The xCAT kit commands and software kits contain the framework version and compatible supported versions. 
 
 To view the framework version, use the ``-v | --version`` option on :doc:`addkit </guides/admin-guides/references/man1/addkit.1>`  ::
 
@@ -59,7 +59,7 @@ To view the framework version, use the ``-v | --version`` option on :doc:`addkit
             compatible_frameworks = 0,1,2
 
 
-If the commands in the xCAT installation is not compatiable with the Software Kit obtained, update xCAT to a more recent release. 
+If the commands in the xCAT installation is not compatible with the Software Kit obtained, update xCAT to a more recent release. 
 
 
 .. [#] PCM is IBM Platform Cluster Manager 

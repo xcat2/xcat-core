@@ -77,7 +77,7 @@ The following software kits will be used to install the IBM HPC software stack o
 
        The ESSL software kit has an *external dependency* to the ``libxlf`` which is provided in the XLF software kit.  Since it's already added in the above step, there is no action needed here.
 
-       If CUDA toolkit is being used, ESSL has a runtime dependency on the CUDA rpms.  The adminstrator needs to create the repository for the CUDA 7.5 toolkit or a runtime error will occur when provisioning the node.  See the :doc:`/advanced/gpu/nvidia/repo/index` section for more details about setting up the CUDA repository on the xCAT management node. ::
+       If CUDA toolkit is being used, ESSL has a runtime dependency on the CUDA rpms.  The administrator needs to create the repository for the CUDA 7.5 toolkit or a runtime error will occur when provisioning the node.  See the :doc:`/advanced/gpu/nvidia/repo/index` section for more details about setting up the CUDA repository on the xCAT management node. ::
 
         #
         # Assuming that the cuda repo has been configured at:
@@ -101,7 +101,7 @@ The following software kits will be used to install the IBM HPC software stack o
         addkitcomp -a -i rhels7.2-ppc64le-install-compute \
             essl-computenode-3264rtecuda-5.4.0-0-rhels-7.2-ppc64le
 
-      If the system doesn't have GPU and the CUDA toolkit is not needed,  the adminstrator should not add the following kit components that requires the CUDA packages: ``essl-loginnode-5.4.0-0-rhels-7.2-ppc64le``, ``essl-computenode-3264rte-5.4.0-0-rhels-7.2-ppc64le`` and ``essl-computenode-3264rtecuda-5.4.0-0-rhels-7.2-ppc64le``.  Check the ESSL installation guide: http://www.ibm.com/support/knowledgecenter/SSFHY8_5.4.0/com.ibm.cluster.essl.v5r4.essl300.doc/am5il_xcatinstall.htm 
+      If the system doesn't have GPU and the CUDA toolkit is not needed,  the administrator should not add the following kit components that requires the CUDA packages: ``essl-loginnode-5.4.0-0-rhels-7.2-ppc64le``, ``essl-computenode-3264rte-5.4.0-0-rhels-7.2-ppc64le`` and ``essl-computenode-3264rtecuda-5.4.0-0-rhels-7.2-ppc64le``.  Check the ESSL installation guide: http://www.ibm.com/support/knowledgecenter/SSFHY8_5.4.0/com.ibm.cluster.essl.v5r4.essl300.doc/am5il_xcatinstall.htm 
 
     #. Add the **Parallel ESSL** kitcomponents to osimage.  
 

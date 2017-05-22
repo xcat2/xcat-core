@@ -220,4 +220,4 @@ If you install systemimager RPMs on CentOS 6.5 node using **yum**, you may exper
 Kernel panic at times when install target node with rhels7.0 in Power 7 server
 ``````````````````````````````````````````````````````````````````````````````
 
-When you clone rhels7.0 image to target node which is Power 7 server lpar, you may hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without a resulution. For now, we recommend you try again. 
+When you clone rhels7.0 image to target node which is Power 7 server lpar, you may hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without a resolution. For now, we recommend you try again. 

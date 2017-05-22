@@ -33,4 +33,4 @@ Restart PostgreSQL after editing the file: ::
 
 
 For more information about changing the ``pg_hab.conf`` file and ``postgresql.conf`` files, see the following documentation: 
-`Setup the PostgreSQL Configuraion Files <https://sourceforge.net/p/xcat/wiki/Setting_Up_PostgreSQL_as_the_xCAT_DB/#setup-the-postgresql-configuration-files>`_
+`Setup the PostgreSQL Configuration Files <https://sourceforge.net/p/xcat/wiki/Setting_Up_PostgreSQL_as_the_xCAT_DB/#setup-the-postgresql-configuration-files>`_

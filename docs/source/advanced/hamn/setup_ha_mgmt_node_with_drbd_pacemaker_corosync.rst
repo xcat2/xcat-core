@@ -31,7 +31,7 @@ Configuration Requirements
 
 #. Since the management node needs to provide IP services through broadcast such as DHCP to the compute nodes, the primary management node and standby management node should be in the same subnet to ensure the network services will work correctly after failover.
 
-#. Network connections between the two management nodes: there are several networks defined in the general cluster configuration strucutre, like cluster network, management network and service network; the two management nodes should be in all of these networks(if exist at all). Besides that, it is recommended, though not strictly required, to use a direct, back-to-back, Gigabit Ethernet or higher bandwidth connection for the DRBD, Pacemaker and Corosync communication between the two management nodes. If the connection is run over switches, use of redundant components and the bonding driver (in active-backup mode) is recommended.
+#. Network connections between the two management nodes: there are several networks defined in the general cluster configuration structure, like cluster network, management network and service network; the two management nodes should be in all of these networks(if exist at all). Besides that, it is recommended, though not strictly required, to use a direct, back-to-back, Gigabit Ethernet or higher bandwidth connection for the DRBD, Pacemaker and Corosync communication between the two management nodes. If the connection is run over switches, use of redundant components and the bonding driver (in active-backup mode) is recommended.
 
 ``Note``: A crossover Ethernet cable is required to setup the direct, back-to-back, Ethernet connection between the two management nodes, but with most of the current hardware, a normal Ethernet cable can also work, the Ethernet adapters will internally handle the crossover bit. Hard disk for DRBD: DRBD device can be setup on a partition of the disk that the operating system runs on, but it is recommended to use a separate standalone disk or RAID/Multipath disk for DRBD configuration.
 
@@ -63,7 +63,7 @@ You have several options to get the RPM packages for ``DRBD``, ``drbdlinks``, ``
 
 #. Compile from source code: if none of the options work for some specific applications, you will have to compile RPMs from the source code. You can compile these packages on one of the management node or on a separate build machine with the same arch and operating system with the management nodes. Here are the instructions for compiling the RPM packages from source code:
 
-Before compiling the RPM packages, you need to install some compling tools like gcc, make, glibc, rpm-build. ::
+Before compiling the RPM packages, you need to install some compiling tools like gcc, make, glibc, rpm-build. ::
 
     yum groupinstall "Development tools"
     yum install libxslt libxslt-devel
@@ -402,13 +402,13 @@ Configure DRBD
            [>....................] sync'ed:  0.5% (101932/102400)M
            finish: 2:29:06 speed: 11,644 (11,444) K/sec
 
-   If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the syncronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html.  ::
+   If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the synchronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html.  ::
 
      drbdadm disk-options --resync-rate=110M xCAT
 
 #. Create file system on DRBD device and mount the file system
 
-   Even while the DRBD sync is taking place, you can go ahead and create a filesystem on the DRBD device, but it is recommended to wait for the inital full synchronization is finished before creating the file system.
+   Even while the DRBD sync is taking place, you can go ahead and create a filesystem on the DRBD device, but it is recommended to wait for the initial full synchronization is finished before creating the file system.
 
    After the initial full synchronization is finished, you can take the DRBD device as a normal disk partition to create file system and mount it to some directory. The DRDB device name is set in the ``/etc/drbd.d/xcat.res`` created in the previous step. In this doc, the DRBD device name is ``/dev/drbd1``. ::
 
@@ -964,7 +964,7 @@ At this point, the HA MN Setup is complete, and customer workloads and system ad
 Failover
 ========
 
-There are two kinds of failover, planned failover and unplanned failover. The planned failover can be useful for updating the management nodes or any scheduled maintainance activities; the unplanned failover covers the unexpected hardware or software failures.
+There are two kinds of failover, planned failover and unplanned failover. The planned failover can be useful for updating the management nodes or any scheduled maintenance activities; the unplanned failover covers the unexpected hardware or software failures.
 
 In a planned failover, you can do necessary cleanup work on the previous primary management node before failover to the previous standby management node. In a unplanned failover, the previous management node probably is not functioning at all, you can simply shutdown the system.
 
@@ -1009,7 +1009,7 @@ To avoid this, run the following command to set the autostart for the corosync s
 Backup working Pacemaker configuration (Optional)
 =================================================
 
-It is a good practice to backup the working ``pacemaker`` configuration, the backup could be in both plain text format or XML format, the plain text is more easily editable and can be modified and used chunk by chunk, the xml can be used to do a full replacement restore. It will be very useful to make such a backup everytime before you make a change.
+It is a good practice to backup the working ``pacemaker`` configuration, the backup could be in both plain text format or XML format, the plain text is more easily editable and can be modified and used chunk by chunk, the xml can be used to do a full replacement restore. It will be very useful to make such a backup every time before you make a change.
 
 To backup in the plain text format, run the following command: ::
 
@@ -1182,7 +1182,7 @@ Trouble shooting and debug tips
 Disable HA MN
 =============
 
-For whatever reason, the user might want to disable HA MN, here is the procedur of disabling HA MN:
+For whatever reason, the user might want to disable HA MN, here is the procedure of disabling HA MN:
 
 * Shut down standby management node
 
@@ -1245,7 +1245,7 @@ Finally we commit the changes that are in xcat_cfg into the live system: ::
 
      pcs cluster push cib xcat_cfg
 
-We then need to make sure that the ``/xCATdrbd/etc/drbdlinks.xCAT.conf`` file has the systemimager portion uncommented, and re-do the initialisation of drbdlinks as they have been done earlier in the documentation
+We then need to make sure that the ``/xCATdrbd/etc/drbdlinks.xCAT.conf`` file has the systemimager portion uncommented, and re-do the initialization of drbdlinks as they have been done earlier in the documentation
 
 Appendix A
 ==========
@@ -1428,7 +1428,7 @@ Finally we commit the changes that are in xcat_cfg into the live system: ::
 
      pcs cluster cib-push xcat_cfg
 
-Once the changes have been commited, we can view the config, by running the command below: ::
+Once the changes have been committed, we can view the config, by running the command below: ::
 
      pcs config
 
@@ -1640,7 +1640,7 @@ Finally we commit the changes that are in xcat_cfg into the live system: ::
 
      pcs cluster cib-push xcat_cfg
 
-Once the changes have been commited, we can view the config, by running the command below: ::
+Once the changes have been committed, we can view the config, by running the command below: ::
 
      pcs config
 

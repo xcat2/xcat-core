@@ -155,7 +155,7 @@ These two config files are located in the **/opt/xcat/share/xcat/scripts** direc
 Switch Status
 ~~~~~~~~~~~~~
 
-During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configed** status on node definition if discovery process succefully finished.  
+During the switch-based switch discovery process, there are four states displayed.  User may only see **switch_configed** status on node definition if discovery process successfully finished.  
 
 **Matched** --- Discovered switch is matched to predefine switch, **otherinterfaces** attribute is updated to dhcp IP address, and mac address, **switch type** and **usercomment** also updated with vendor information for the predefined switch.
 
