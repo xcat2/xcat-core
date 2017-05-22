@@ -819,6 +819,7 @@ sub load_case {
     my $fd          = undef;
 
     my %invalidcases;
+    my %case_name_index_map_bak;
     foreach my $file (@files) {
         if (!open($fd, "<$file")) {
             $$error_ref = "Can't open $file: $!";
@@ -839,6 +840,9 @@ sub load_case {
                         $case_ref->[$i]                    = {};
                         $case_ref->[$i]->{name}            = $name;
                         $case_ref->[$i]->{filename}        = $file;
+                        if(exists($$case_name_index_map_ref{"$name"})){
+                            $case_name_index_map_bak{"$name"}=$$case_name_index_map_ref{"$name"};
+                        }
                         $$case_name_index_map_ref{"$name"} = $i;
                         $newcmdstart                       = 0;
                     } else {
@@ -856,6 +860,9 @@ sub load_case {
                             $case_ref->[$i]                    = {};
                             $case_ref->[$i]->{name}            = $name;
                             $case_ref->[$i]->{filename}        = $file;
+                            if(exists($$case_name_index_map_ref{"$name"})){
+                                $case_name_index_map_bak{"$name"}=$$case_name_index_map_ref{"$name"};
+                            }
                             $$case_name_index_map_ref{"$name"} = $i;
                             $newcmdstart                       = 0;
                         } else {
@@ -890,7 +897,12 @@ sub load_case {
                         }
                     }
                     unless ($valid) {
-                        $skip = 1;
+                        #$skip = 1;
+                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
+                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
+                        }else{
+                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                        }
                         push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
                     }
                 }
@@ -1099,8 +1111,8 @@ sub run_case {
         my $case_start_time     = timelocal(localtime());
         my $case_start_time_str = scalar(localtime());
 
-        log_this($running_log_fd, "------START:$cases_ref->[$case_name_index_map_ref->{$case}]->{name}::Time:$case_start_time_str------\n");
-        push @caselog, "------START:$cases_ref->[$case_name_index_map_ref->{$case}]->{name}::Time:$case_start_time_str------\n";
+        log_this($running_log_fd, "------START::$cases_ref->[$case_name_index_map_ref->{$case}]->{name}::Time:$case_start_time_str------\n");
+        push @caselog, "------START::$cases_ref->[$case_name_index_map_ref->{$case}]->{name}::Time:$case_start_time_str------\n";
         push @caselog, "FILENAME:$cases_ref->[$case_name_index_map_ref->{$case}]->{filename}\n";
 
         foreach my $cmd (@{ $cases_ref->[ $case_name_index_map_ref->{$case} ]->{cmd} }) {
