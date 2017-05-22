@@ -32,10 +32,9 @@ use xCAT_monitoring::monitorctrl;
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset XCAT_OPENBMC_DEVEL to disable.",  $callback);
         return;
     } else {
-        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport XCAT_OPENBMC_DEVEL=YES" ]);
+        return ([ 1, "This openbmc related function is not yet supported. Please contact xCAT development team." ]);
     }
 }
 
@@ -382,24 +381,16 @@ sub parse_args {
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
-        #command for openbmc rcons
+        # command for openbmc rcons
     } elsif ($command eq "rsetboot") {
         #
         # disable function until fully tested
@@ -754,7 +745,7 @@ sub deal_with_response {
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
         if ($response->status_line eq $::RESPONSE_SERVICE_UNAVAILABLE) {
-            $error = "Service Unavailable";
+            $error = $::RESPONSE_SERVICE_UNAVAILABLE;
         } else {
             my $response_info = decode_json $response->content;
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
