@@ -287,11 +287,11 @@ sub powerpduoutlet {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             my $session = connectTopdu($pdu,$callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1],error => "$node: Couldn't connect to $pdu"});
                 next;
             }
             if ($outlet > $pdunodes->{$pdu}->{outlet} ) {
-                $callback->({ errorcode => [1],error => "outlet number $outlet is invalid for $pdu"});
+                $callback->({ error => "$node: $pdu outlet number $outlet is invalid"});
                 next;
             }
             my $cmd;
@@ -314,7 +314,7 @@ sub powerpduoutlet {
             } 
     
             if ($session->{ErrorStr}) { 
-                $callback->({ errorcode => [1],error => "$session->{ErrorStr} for $pdu outlet $outlet"});
+                $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
             } else {
                 $output = "$pdu outlet $outlet is $statstr"; 
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -341,7 +341,8 @@ sub outletpower {
     my $type = "INTEGER";
     if ($session->{newmib}) {
         $oid = ".1.3.6.1.4.1.2.6.223.8.2.2.1.13";
-    }
+    }    
+
 
     my $varbind = new SNMP::Varbind([ $oid, $outlet, $value, $type ]);
     return $session->set($varbind);
@@ -425,6 +426,7 @@ sub connectTopdu {
     my $community = "public";
     my $session;
     my $msg = "connectTopdu";
+    my $versionoid = ".1.3.6.1.4.1.2.6.223.7.3.0";
 
     $session = new SNMP::Session(
         DestHost       => $pdu,
@@ -435,20 +437,21 @@ sub connectTopdu {
     unless ($session) {
         return;
     }
-    $session->{newmib} = 0;
-    my $pduversion = $session->get(".1.3.6.1.4.1.2.6.223.7.3.0");
-    if ($pduversion =~ /(\d+)\.(\d+)_(\d+)/) {
-        if ($1 >= 1 and $2 >= 3 and $3 >= 3) {
-                $session->{newmib} = 1;
-        }
+
+    my $varbind = new SNMP::Varbind([ $versionoid, '' ]);
+    my $pduversion = $session->get($varbind);
+    if ($session->{ErrorStr}) {
+        return;
     }
 
+    $session->{newmib} = 0;
+    if ($pduversion =~ /sLEN/) {
+        $session->{newmib} = 1;
+    }
 
     return $session;
 
 }
-
-
 
 
 
