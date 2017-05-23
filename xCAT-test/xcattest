@@ -882,7 +882,7 @@ sub load_case {
                     my @newvalidoslist = ();
                     foreach my $validos (@validoslist) {
                         if ($validos =~ /linux/i) {
-                            push(@newvalidoslist, ("rhel", "sles", "ubnutu"));
+                            push(@newvalidoslist, ("rhel", "sles", "ubuntu"));
                         } else {
                             push(@newvalidoslist, $validos);
                         }
