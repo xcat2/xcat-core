@@ -364,9 +364,11 @@ sub rinstall {
             }
         }
         my $rsp = {};
-        $rsp->{error}->[0] = "failed to run 'nodeset' against the following nodes: @failurenodes";
-        $rsp->{errorcode}->[0] = 1;
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        if (0+@failurenodes > 0) { 
+            $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
+            $rsp->{errorcode}->[0] = 1;
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
         @nodes = @successnodes;
     }
 
@@ -430,9 +432,11 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                $rsp->{error}->[0] = "failed to run 'rnetboot' against the following nodes: @failurenodes";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                if (0+@failurenodes > 0) { 
+                    $rsp->{error}->[0] = "Failed to run 'rnetboot' against the following nodes: @failurenodes";
+                    $rsp->{errorcode}->[0] = 1;
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
             }
         }
         else {
@@ -493,9 +497,11 @@ sub rinstall {
                         }
                     }
                     my $rsp = {};
-                    $rsp->{error}->[0] = "failed to run 'rsetboot' against the following nodes: @failurenodes";
-                    $rsp->{errorcode}->[0] = 1;
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    if (0+@failurenodes > 0) { 
+                        $rsp->{error}->[0] = "Failed to run 'rsetboot' against the following nodes: @failurenodes";
+                        $rsp->{errorcode}->[0] = 1;
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
                     @nodes = @successnodes;
                 }
             }
@@ -549,9 +555,11 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                $rsp->{error}->[0] = "failed to run 'rpower' against the following nodes: @failurenodes";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                if (0+@failurenodes > 0) { 
+                    $rsp->{error}->[0] = "Failed to run 'rpower' against the following nodes: @failurenodes";
+                    $rsp->{errorcode}->[0] = 1;
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
             }
         }
     }
