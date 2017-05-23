@@ -1049,13 +1049,14 @@ sub bmcdiscovery_openbmc{
     my $url = "https://$ip/login";
     my $data = '{"data": [ "' . $openbmc_user .'", "' . $openbmc_pass . '" ] }';
     $brower->cookie_jar($cookie_jar);
-    my $request = HTTP::Request->new( 'POST', $url, $header, $data );
-    my $response = $brower->request($request);
+    my $login_request = HTTP::Request->new( 'POST', $url, $header, $data );
+    my $login_response = $brower->request($login_request);
     
-    if ($response->is_success) {
+    if ($login_response->is_success) {
         my $req_url = "https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard";
-        my $get_req = HTTP::Request->new('GET', $req_url, $header);
-        my $req_output = $brower->request($get_req);
+        my $req = HTTP::Request->new('GET', $req_url, $header);
+        my $req_output = $brower->request($req);
+        return if ($req_output->is_error); 
         my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
@@ -1090,7 +1091,7 @@ sub bmcdiscovery_openbmc{
             $node =~ s/[\s:\._]/-/g;
         }
     } else {
-        if ($response->content =~ /\"description\": \"Invalid username or password\"/) {
+        if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
         }
         return;
