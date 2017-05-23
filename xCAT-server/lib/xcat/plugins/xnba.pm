@@ -116,7 +116,7 @@ sub setstate {
             #Implement the kcmdline append here for
             #most generic, least code duplication
 
-###hack start
+        ###hack start
             # This is my comment. There are many others like it, but this one is mine.
             # My comment is my best friend. It is my life. I must master it as I must master my life.
             # Without me, my comment is useless. Without my comment, I am useless.
@@ -166,7 +166,7 @@ sub setstate {
 
             #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
             $kern->{kcmdline} .= " " . $kcmdlinehack;
-###hack end
+        ###hack end
 
         }
     }
@@ -242,7 +242,7 @@ sub setstate {
                 if ($kern->{kernel} =~ /esxi[56]/) {  #Make uefi boot provisions
                     my $ucfg;
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
-                    if ($kern->{kcmdline} =~ / xcat\/netboot/) {
+                    if ($kern->{kcmdline} =~ /xcat\/netboot/) {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
@@ -404,10 +404,10 @@ sub preprocess_request {
             return [$req];
         }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope($req, @_);
+            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
         }
     }
-    return [$req];
+    return xCAT::Scope->get_parallel_scope($req);
 }
 
 sub process_request {
@@ -541,9 +541,10 @@ sub process_request {
     my $inittime = 0;
     if (exists($::XNBA_request->{inittime})) { $inittime = $::XNBA_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
-    $errored = 0;
+
     my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+        $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
@@ -551,9 +552,11 @@ sub process_request {
                 arg      => \@args ,
                 bootparams => \%bphash},
                 \&pass_along);
+        if ($errored) { 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.  Processing will not continue.");
+            return; 
+        }
     }
-
-    if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');

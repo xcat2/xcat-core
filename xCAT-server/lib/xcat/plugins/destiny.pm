@@ -76,15 +76,24 @@ sub process_request {
 
 sub relay_response {
     my $resp = shift;
+    my $failure = 0;
     $callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
-        $errored = 1;
+        $failure = 1;
     }
-    foreach (@{ $resp->{node} }) {
-        if ($_->{error} or $_->{errorcode}) {
-            $errored = 1;
+    # quick return when detect failure.
+    unless ( $failure ) {
+        foreach (@{ $resp->{node} }) {
+            if ($_->{error} or $_->{errorcode}) {
+                $failure = 1;
+                last;
+            }
         }
     }
+    if ( $failure ) {
+        $errored = $failure;
+    }
+
 }
 
 sub setdestiny {
@@ -401,6 +410,7 @@ sub setdestiny {
                     bootparams => \$bphash}, \&relay_response);
             if ($errored) {
                 # The error messeage for mkinstall/mknetboot/mkstatelite had been output within relay_response function above, don't need to output more
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "destiny->process_request: Failed in processing mk$tempstate.  Processing will not continue.");
                 return;
             }
 
