@@ -29,6 +29,9 @@ use Data::Dumper;
 use File::Basename;
 use File::Path;
 use Cwd;
+use LWP;
+use HTTP::Cookies;
+use HTTP::Response;
 use JSON;
 
 my $nmap_path;
@@ -1040,14 +1043,21 @@ sub bmcdiscovery_openbmc{
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
     my $node_data = $ip;
-    my $cjar_file = "/tmp/cjar_$ip";
+    my $brower = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 }, );
+    my $cookie_jar = HTTP::Cookies->new();
+    my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+    my $url = "https://$ip/login";
     my $data = '{"data": [ "' . $openbmc_user .'", "' . $openbmc_pass . '" ] }';
-
-    my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;
+    $brower->cookie_jar($cookie_jar);
+    my $login_request = HTTP::Request->new( 'POST', $url, $header, $data );
+    my $login_response = $brower->request($login_request);
     
-    if ($output =~ /\"status\": \"ok\"/) {
-        my $req_output = `curl -b $cjar_file -k https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard`;
-        my $response = decode_json $req_output;
+    if ($login_response->is_success) {
+        my $req_url = "https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard";
+        my $req = HTTP::Request->new('GET', $req_url, $header);
+        my $req_output = $brower->request($req);
+        return if ($req_output->is_error); 
+        my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
 
@@ -1080,10 +1090,8 @@ sub bmcdiscovery_openbmc{
             $node =~ s/(.*)/\L$1/g;
             $node =~ s/[\s:\._]/-/g;
         }
-
-        unlink $cjar_file;
     } else {
-        if ($output =~ /\"description\": \"Invalid username or password\"/) {
+        if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
         }
         return;
