@@ -1220,7 +1220,14 @@ sub rvitals_response {
         # $key_url is "/xyz/openbmc_project/sensors/xxx/yyy
         # For now display xxx/yyy as a label
         my ($junk, $label) = split("/sensors/", $key_url);
-        $sensor_value = $label . ": " . $content{Value} . " " . $sensor_units{ $content{Unit} };
+        #
+        # Calculate the value based on the scale
+        #  
+        my $calc_value = $content{Value};
+        if ( $content{Scale} != 0 ) { 
+            $calc_value = ($content{Value} * (10 ** $content{Scale}));
+        } 
+        $sensor_value = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
         xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
     }
 
