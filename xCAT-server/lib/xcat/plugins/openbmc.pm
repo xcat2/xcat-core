@@ -360,7 +360,7 @@ sub process_request {
         }
     } 
 
-    $callback->({ errorcode => $check }) if ($check);
+    $callback->({ errorcode => [$check] }) if ($check);
     return;
 }
 
@@ -864,10 +864,9 @@ sub rpower_response {
             else {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
             }
-        }
-        else {
-                my $unexpected_state = $response_info->{'data'}->{CurrentHostState};
-                xCAT::SvrUtils::sendmsg("Unexpected state - $unexpected_state", $callback, $node);
+        } else {
+            my $unexpected_state = $response_info->{'data'}->{CurrentHostState};
+            xCAT::SvrUtils::sendmsg("Unexpected state - $unexpected_state", $callback, $node);
         }
     }
 
