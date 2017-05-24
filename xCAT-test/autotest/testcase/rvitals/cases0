@@ -1,40 +1,97 @@
+start:rvitals_h
+cmd:rvitals -h 
+check:rc==0
+check:output=~Usage:
+check:output=~rvitals
+end
+
+start:rvitals_v
+cmd:rvitals -v
+check:rc==0
+check:output=~Version
+end
+
 start:rvitals_temp
 cmd:rvitals $$CN temp
 check:rc==0
-check:output=~System Temperature
+check:output=~System Temperature|Ambient Temp|temperature
 end
+
+start:rvitals_disktemp
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN disktemp
+check:rc==0
+check:output=~Ambient Temp
+end
+
+start:rvitals_cputemp
+arch:ppc64le
+hcp:ipmi
+cmd:rvitals $$CN cputemp
+check:rc==0
+check:output=~Ambient Temp
+end
+
 start:rvitals_voltage
 hcp:hmc,ivm,fsp,ipmi
 cmd:rvitals $$CN voltage
 check:rc==0
-check:output=~Frame Voltages
+check:output=~Frame Voltages|CPU VDD Volt|SysBrd
 end
+
 start:rvitals_power
 cmd:rvitals $$CN power
 check:rc==0
-check:output=~Current Power Status:\s*(on|off)
+check:output=~Current Power Status:\s*(on|off)|Power Status:\s*(on|off)
 end
+
 start:rvitals_state
 cmd:rvitals $$CN state
 check:rc==0
 check:output=~System State:
 end
+
 start:rvitals_lcds
 hcp:hmc,ivm,fsp,ipmi
 cmd:rvitals $$CN lcds
 check:rc==0
 check:output=~Current LCD
 end
+
 start:rvitals_all
 cmd:rvitals $$CN all
 check:rc==0
-check:output=~System Temperature
-check:output=~Frame Voltages
-check:output=~Current Power Status:\s*(on|off)
-check:output=~System State:
+check:output=~System Temperature|Ambient Temp
+check:output=~Frame Voltages|CPU VDD Volt|SysBrd
+check:output=~Current Power Status:\s*(on|off)|Power Status:\s*(on|off)
+check:output=~ System State:|System Event:|NMI State
+end
+
+start:rvitals_leds
+cmd:rvitals $$CN  leds
+check:rc==0
+check:output=~LED
+end
+
+start:rvitals_fanspeed
+cmd:rvitals $$CN fanspeed
+check:rc==0
+check:output=~Fan|Fan\s*\d:\s*\w+\s*RPM
+end
+start:rvitals_wattage
+cmd:rvitals $$CN wattage
+check:rc==0
+check:output=~12V Sense|AC Avg Power
+check:output=~Mem Cache Power|MEM Avg Power
 end
 start:rvitals_noderange_err
 cmd:rvitals testnode 
 check:rc!=0
 check:output=~Error
+end
+start:rvitals_errorcommand
+cmd: rvitals $$CN errorcommand
+check:rc!=0
+check:output=~Unrecognized rvitals arguments
 end
