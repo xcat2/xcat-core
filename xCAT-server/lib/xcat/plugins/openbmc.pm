@@ -71,6 +71,18 @@ sub handled_commands {
     };
 }
 
+my $prefix = "xyz.openbmc_project";
+
+my %sensor_units = (
+    "$prefix.Sensor.Value.Unit.DegreesC" => "C",
+    "$prefix.Sensor.Value.Unit.RPMS" => "RPMS",
+    "$prefix.Sensor.Value.Unit.Volts" => "Volts",
+    "$prefix.Sensor.Value.Unit.Meters" => "Meters",
+    "$prefix.Sensor.Value.Unit.Amperes" => "Amps",
+    "$prefix.Sensor.Value.Unit.Watts" => "Watts",
+    "$prefix.Sensor.Value.Unit.Joules" => "Joules"
+); 
+
 my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
 my $openbmc_project_url = "/xyz/openbmc_project";
@@ -1199,7 +1211,7 @@ sub rvitals_response {
     my $content_info;
     my $sensor_value;
     
-    print "$node DEBUG Processing command: rvitals $grep_string \n";
+    print "$node: DEBUG Processing command: rvitals $grep_string \n";
     print Dumper(%{$response_info->{data}}) . "\n";
 
     foreach my $key_url (keys %{$response_info->{data}}) {
@@ -1208,7 +1220,7 @@ sub rvitals_response {
         # $key_url is "/xyz/openbmc_project/sensors/xxx/yyy
         # For now display xxx/yyy as a label
         my ($junk, $label) = split("/sensors/", $key_url);
-        $sensor_value = $label . " " . $content{Value};
+        $sensor_value = $label . ": " . $content{Value} . " " . $sensor_units{ $content{Unit} };
         xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
     }
 
