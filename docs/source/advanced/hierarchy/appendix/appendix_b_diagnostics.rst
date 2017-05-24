@@ -15,4 +15,4 @@ Appendix B: Diagnostics
 
 * **Errors running hierarchical commands such as xdsh** -- xCAT has a number of commands that run hierarchically. That is, the commands are sent from xcatd on the management node to the correct service node xcatd, which in turn processes the command and sends the results back to xcatd on the management node. If a hierarchical command such as xcatd fails with something like "Error: Permission denied for request", check ``/var/log/messages`` on the management node for errors. One error might be "Request matched no policy rule". This may mean you will need to add policy table entries for your xCAT management node and service node.
 
-* **/install is not mounted on service node from managemen mode** -- If service node does not have ``/install`` directory mounted from management node, run ``lsdef -t site clustersite -i installloc`` and verify ``installloc="/install"``
+* **/install is not mounted on service node from management mode** -- If service node does not have ``/install`` directory mounted from management node, run ``lsdef -t site clustersite -i installloc`` and verify ``installloc="/install"``

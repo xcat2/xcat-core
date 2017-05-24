@@ -25,7 +25,7 @@ Remove Old Provision Environment
 Change Definition
 -----------------
 
-#. Change netwoks table definitions ::
+#. Change networks table definitions ::
 
       lsdef -t network -l
 

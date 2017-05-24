@@ -14,7 +14,7 @@ To check if a kitcomponent is valid for an existing OS image definition run the 
 
   chkkitcomp -i <osimage> <kitcompname>
 
-If the kit component is compatible then add the kitcomponent to the OS image defintion using the addkitcomp command.  ::
+If the kit component is compatible then add the kitcomponent to the OS image definition using the addkitcomp command.  ::
 
   addkitcomp -a -i <osimage> <kitcompname>
 
@@ -34,7 +34,7 @@ The contents of the kit component may be listed by using the lskitcomponent comm
 Adding Multiple Versions of the Same Kit Component to an OS Image Definition
 `````````````````````````````````````````````````````````````````````````````
 
-xCAT allows to have multiple versions/releases of a product software kit available in the cluster. Typically, different OS image definitions corresponding to the different versions/releases of a product software stack.  However, in some instances, may need mulitple versions/releases of the same product available within a single OS image. This is only feasible if the software product supports the install of multiple versions or releases of its product within an OS image.
+xCAT allows to have multiple versions/releases of a product software kit available in the cluster. Typically, different OS image definitions corresponding to the different versions/releases of a product software stack.  However, in some instances, may need multiple versions/releases of the same product available within a single OS image. This is only feasible if the software product supports the install of multiple versions or releases of its product within an OS image.
 
 Currently, it is not possible to install multiple versions of a product into an OS image using xCAT commands. xCAT uses yum on RedHat and zypper on SLES to install product rpms. These package managers do not provide an interface to install different versions of the same package, and will always force an upgrade of the package. We are investigating different ways to accomplish this function for future xCAT releases.
 

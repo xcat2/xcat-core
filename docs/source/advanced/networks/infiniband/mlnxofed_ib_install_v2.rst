@@ -1,7 +1,7 @@
 Mellanox OFED Installation Script
 =================================
 
-Mellanox provides a tested and packaged version of the OpenFabrics Enterprise Distribution (OFED) driver, named Mellanox OFED (MLNX_OFED).  To assist with the installation of the MLNX_OFED driver, xCAT provids a sample postscript: ``mlnxofed_ib_install.v2``. 
+Mellanox provides a tested and packaged version of the OpenFabrics Enterprise Distribution (OFED) driver, named Mellanox OFED (MLNX_OFED).  To assist with the installation of the MLNX_OFED driver, xCAT provides a sample postscript: ``mlnxofed_ib_install.v2``. 
 
 .. toctree::
    :maxdepth: 2

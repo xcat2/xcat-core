@@ -11,7 +11,7 @@ The new support only addresses the way we generate and distribute root's ssh RSA
 
 In the past, the setup allowed compute nodes to be able to ssh to the SN's without a password. Using zones, will no longer allow this to happen. Using zones only allows compute nodes to ssh without password to compute node, unless you add the service node into the zone which is not considered a good idea.
 
-But add service node into a zone is not a good idea. Beacuse:
+But add service node into a zone is not a good idea. Because:
 
 * IF you put the service node in a zone, it will no longer be able to ssh to the other servicenodes with being prompted for a password.
 * Allowing the compute node to ssh to the service node, could allow the service node to be compromised, by anyone who gained access to the compute node.

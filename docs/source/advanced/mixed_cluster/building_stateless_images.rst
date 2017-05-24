@@ -1,7 +1,7 @@
 Building Stateless/Diskless Images
 ==================================
 
-A **stateless**, or **diskless**, provisioned nodes is one where the operating system image is deployed and loaded into memory.  The Operating System (OS) does not store its files directly onto persistent storage (i.e hard disk drive, shared drive, usb, etc) and so subsequent rebooting of the machine results in loss of any state changes that happened while the machine was running.
+A **stateless**, or **diskless**, provisioned nodes is one where the operating system image is deployed and loaded into memory.  The Operating System (OS) does not store its files directly onto persistent storage (i.e. hard disk drive, shared drive, usb, etc) and so subsequent rebooting of the machine results in loss of any state changes that happened while the machine was running.
 
 To deploy stateless compute nodes, you must first create a stateless image.  The "netboot" osimages created from ``copycds`` in the **osimage** table are sample osimage definitions that can be used for deploying stateless nodes. 
 

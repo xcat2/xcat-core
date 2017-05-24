@@ -18,9 +18,9 @@ The nfs service on the primary management node or the primary management node it
 What is Shared Data
 ====================
 
-The term ``Shared Data`` means that the two management nodes use a single copy of xCAT data, no matter which management node is the primary MN, the cluster management capability is running on top of the single data copy. The acess to the data could be done through various ways like shared storage, NAS, NFS, samba etc. Based on the protocol being used, the data might be accessable only on one management node at a time or be accessable on both management nodes in parellel. If the data could only be accessed from one management node, the failover process need to take care of the data access transition; if the data could be accessed on both management nodes, the failover does not need to consider the data access transition, it usually means the failover process could be faster.
+The term ``Shared Data`` means that the two management nodes use a single copy of xCAT data, no matter which management node is the primary MN, the cluster management capability is running on top of the single data copy. The access to the data could be done through various ways like shared storage, NAS, NFS, samba etc. Based on the protocol being used, the data might be accessible only on one management node at a time or be accessible on both management nodes in parallel. If the data could only be accessed from one management node, the failover process need to take care of the data access transition; if the data could be accessed on both management nodes, the failover does not need to consider the data access transition, it usually means the failover process could be faster.
 
-``Warning``: Running database through network file system has a lot of potential problems and is not practical, however, most of the database system provides database replication feature that can be used to synronize the database between the two management nodes
+``Warning``: Running database through network file system has a lot of potential problems and is not practical, however, most of the database system provides database replication feature that can be used to synchronize the database between the two management nodes
 
 Configuration Requirements
 ==========================
@@ -248,7 +248,7 @@ Besides the files mentioned above, there may be some additional customization fi
 
 ``Note``:
 If the IBM HPC software stack is configured in your environment, execute additional steps required to copy additional data or configuration files for HAMN setup.
-The dhcpsd.cnf should be syncronized between the primary management node and standby management node only when the DHCP configuration on the two management nodes are exactly the same.
+The dhcpsd.cnf should be synchronized between the primary management node and standby management node only when the DHCP configuration on the two management nodes are exactly the same.
 
 Cluster Maintenance Considerations
 ==================================
@@ -268,7 +268,7 @@ At this point, the HA MN Setup is complete, and customer workloads and system ad
 Failover
 ========
 
-There are two kinds of failover, planned failover and unplanned failover. The planned failover can be useful for updating the management nodes or any scheduled maintainance activities; the unplanned failover covers the unexpected hardware or software failures.
+There are two kinds of failover, planned failover and unplanned failover. The planned failover can be useful for updating the management nodes or any scheduled maintenance activities; the unplanned failover covers the unexpected hardware or software failures.
 
 In a planned failover, you can do necessary cleanup work on the previous primary management node before failover to the previous standby management node. In a unplanned failover, the previous management node probably is not functioning at all, you can simply shutdown the system.
 
@@ -367,7 +367,7 @@ On the new primary management node:
 
    **DNS**: run ``makedns``. Verify dns services working for node resolution. Make sure the line ``nameserver=<virtual ip>`` is in ``/etc/resolv.conf``.
 
-   **DHCP**: if the dhcpd.leases is not syncronized between the primary management node and standby management node, run ``makedhcp -a`` to setup the DHCP leases. Verify dhcp is operational.
+   **DHCP**: if the dhcpd.leases is not synchronized between the primary management node and standby management node, run ``makedhcp -a`` to setup the DHCP leases. Verify dhcp is operational.
 
    **conserver**: run makeconservercf. This will recreate the ``/etc/conserver.cf`` config files for all the nodes.
 

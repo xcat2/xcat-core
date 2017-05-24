@@ -15,7 +15,7 @@ POST - Create a token.
 
 **Example:** 
 
-Aquire a token for user 'root'. :: 
+Acquire a token for user 'root'. :: 
 
 
     #curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"userName":"root","userPW":"cluster"}'
@@ -62,8 +62,8 @@ Get all the node names from xCAT database. ::
 [URI:/nodes/{noderange}] - The node resource
 --------------------------------------------
 
-GET - Get all the attibutes for the node {noderange}.
-`````````````````````````````````````````````````````
+GET - Get all the attributes for the node {noderange}.
+``````````````````````````````````````````````````````
 
 The keyword ALLRESOURCES can be used as {noderange} which means to get node attributes for all the nodes.
 
@@ -75,7 +75,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Example:** 
 
-Get all the attibutes for node 'node1'. :: 
+Get all the attributes for node 'node1'. :: 
 
 
     #curl -X GET -k 'https://127.0.0.1/xcatws/nodes/node1?userName=root&userPW=cluster&pretty=1'
@@ -90,8 +90,8 @@ Get all the attibutes for node 'node1'. ::
        }
     }
 
-PUT - Change the attibutes for the node {noderange}.
-````````````````````````````````````````````````````
+PUT - Change the attributes for the node {noderange}.
+`````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
@@ -101,7 +101,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -122,7 +122,7 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -138,7 +138,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -184,7 +184,7 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -204,7 +204,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -219,7 +219,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -237,7 +237,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -252,7 +252,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -356,7 +356,7 @@ Refer to the man page: :doc:`rpower </guides/admin-guides/references/man1/rpower
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -401,7 +401,7 @@ Refer to the man page: :doc:`renergy </guides/admin-guides/references/man1/rener
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -469,7 +469,7 @@ Refer to the man page: :doc:`rspconfig </guides/admin-guides/references/man1/rsp
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -512,7 +512,7 @@ Refer to the man page: :doc:`rsetboot </guides/admin-guides/references/man1/rset
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -555,7 +555,7 @@ Refer to the man page: :doc:`nodeset </guides/admin-guides/references/man1/nimno
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -566,7 +566,7 @@ Set the next boot state for the node1. ::
 [URI:/nodes/{noderange}/vitals] - The vitals resources for the node {noderange}
 -------------------------------------------------------------------------------
 
-GET - Get all the vitals attibutes.
+GET - Get all the vitals attributes.
 ```````````````````````````````````
 
 Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvitals.1>`
@@ -597,7 +597,7 @@ Get all the vitails attributes for the node1. ::
 [URI:/nodes/{noderange}/vitals/{temp|voltage|wattage|fanspeed|power|leds...}] - The specific vital attributes for the node {noderange}
 --------------------------------------------------------------------------------------------------------------------------------------
 
-GET - Get the specific vitals attibutes.
+GET - Get the specific vitals attributes.
 ````````````````````````````````````````
 
 Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvitals.1>`
@@ -628,7 +628,7 @@ Get the 'fanspeed' vitals attribute. ::
 [URI:/nodes/{noderange}/inventory] - The inventory attributes for the node {noderange}
 --------------------------------------------------------------------------------------
 
-GET - Get all the inventory attibutes.
+GET - Get all the inventory attributes.
 ``````````````````````````````````````
 
 Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
@@ -659,7 +659,7 @@ Get all the inventory attributes for node1. ::
 [URI:/nodes/{noderange}/inventory/{pci|model...}] - The specific inventory attributes for the node {noderange}
 --------------------------------------------------------------------------------------------------------------
 
-GET - Get the specific inventory attibutes.
+GET - Get the specific inventory attributes.
 ```````````````````````````````````````````
 
 Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
@@ -714,7 +714,7 @@ Refer to the man page: :doc:`reventlog </guides/admin-guides/references/man1/rev
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -745,7 +745,7 @@ Refer to the man page: :doc:`rbeacon </guides/admin-guides/references/man1/rbeac
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -918,7 +918,7 @@ Refer to the man page: :doc:`xdcp </guides/admin-guides/references/man1/xdcp.1>`
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -947,7 +947,7 @@ Refer to the man page: :doc:`chvm </guides/admin-guides/references/man1/chvm.1>`
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example1:** 
 
@@ -982,7 +982,7 @@ Refer to the man page: :doc:`mkvm </guides/admin-guides/references/man1/mkvm.1>`
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1003,7 +1003,7 @@ Refer to the man page: :doc:`rmvm </guides/admin-guides/references/man1/rmvm.1>`
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1112,7 +1112,7 @@ Refer to the man page: :doc:`copycds </guides/admin-guides/references/man8/copyc
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example1:** 
 
@@ -1129,7 +1129,7 @@ Create osimage resources based on an xCAT image or configuration file ::
 [URI:/osimages/{imgname}] - The osimage resource
 ------------------------------------------------
 
-GET - Get all the attibutes for the osimage {imgname}.
+GET - Get all the attributes for the osimage {imgname}.
 ``````````````````````````````````````````````````````
 
 The keyword ALLRESOURCES can be used as {imgname} which means to get image attributes for all the osimages.
@@ -1162,7 +1162,7 @@ Get the attributes for the specified osimage. ::
        }
     }
 
-PUT - Change the attibutes for the osimage {imgname}.
+PUT - Change the attributes for the osimage {imgname}.
 `````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
@@ -1173,7 +1173,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1192,7 +1192,7 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1207,7 +1207,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1257,7 +1257,7 @@ Refer to the man page: :doc:` </guides/admin-guides/references/>`
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example1:** 
 
@@ -1284,7 +1284,7 @@ Refer to the man page: :doc:`rmimage </guides/admin-guides/references/man1/rmima
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1336,7 +1336,7 @@ Refer to the man page: :doc:`makenetworks </guides/admin-guides/references/man8/
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1347,7 +1347,7 @@ Create the networks resources base on the network configuration on xCAT MN. ::
 [URI:/networks/{netname}] - The network resource
 ------------------------------------------------
 
-GET - Get all the attibutes for the network {netname}.
+GET - Get all the attributes for the network {netname}.
 ``````````````````````````````````````````````````````
 
 The keyword ALLRESOURCES can be used as {netname} which means to get network attributes for all the networks.
@@ -1360,7 +1360,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Example:** 
 
-Get all the attibutes for network 'network1'. :: 
+Get all the attributes for network 'network1'. :: 
 
     #curl -X GET -k 'https://127.0.0.1/xcatws/networks/network1?userName=root&userPW=cluster&pretty=1'
     {
@@ -1374,7 +1374,7 @@ Get all the attibutes for network 'network1'. ::
        }
     }
 
-PUT - Change the attibutes for the network {netname}.
+PUT - Change the attributes for the network {netname}.
 `````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
@@ -1385,7 +1385,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1404,7 +1404,7 @@ Refer to the man page: :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1419,7 +1419,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1487,7 +1487,7 @@ Get all the policy objects. ::
 [URI:/policy/{policy_priority}] - The policy resource
 -----------------------------------------------------
 
-GET - Get all the attibutes for a policy {policy_priority}.
+GET - Get all the attributes for a policy {policy_priority}.
 ```````````````````````````````````````````````````````````
 
 It will display all the policy attributes for one policy resource.
@@ -1512,7 +1512,7 @@ Get all the attribute for policy 1. ::
        }
     }
 
-PUT - Change the attibutes for the policy {policy_priority}.
+PUT - Change the attributes for the policy {policy_priority}.
 ````````````````````````````````````````````````````````````
 
 It will change one or more attributes for a policy.
@@ -1525,7 +1525,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1547,7 +1547,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1564,7 +1564,7 @@ Refer to the man page: :doc:`rmdef </guides/admin-guides/references/man1/rmdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1637,7 +1637,7 @@ Get all the group names from xCAT database. ::
 [URI:/groups/{groupname}] - The group resource
 ----------------------------------------------
 
-GET - Get all the attibutes for the group {groupname}.
+GET - Get all the attributes for the group {groupname}.
 ``````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1>`
@@ -1648,7 +1648,7 @@ Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1
 
 **Example:** 
 
-Get all the attibutes for group 'all'. :: 
+Get all the attributes for group 'all'. :: 
 
     #curl -X GET -k 'https://127.0.0.1/xcatws/groups/all?userName=root&userPW=cluster&pretty=1'
     {
@@ -1657,7 +1657,7 @@ Get all the attibutes for group 'all'. ::
        }
     }
 
-PUT - Change the attibutes for the group {groupname}.
+PUT - Change the attributes for the group {groupname}.
 `````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
@@ -1668,7 +1668,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1776,7 +1776,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1793,7 +1793,7 @@ Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1816,7 +1816,7 @@ Refer to the man page: :doc:`makedns </guides/admin-guides/references/man8/maked
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1834,7 +1834,7 @@ Refer to the man page: :doc:`makedhcp </guides/admin-guides/references/man8/make
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1852,7 +1852,7 @@ Refer to the man page: :doc:`makehosts </guides/admin-guides/references/man8/mak
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -1954,7 +1954,7 @@ URI list which can be used to create, query, change table entries.
 
 For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.
 
-GET - Get attibutes of tables for a noderange.
+GET - Get attributes of tables for a noderange.
 ``````````````````````````````````````````````
 
 **Returns:**
@@ -2025,7 +2025,7 @@ Get all the columns from tables nodetype and noderes for node1 and node2. ::
        ]
     }
 
-PUT - Change the node table attibutes for {noderange}.
+PUT - Change the node table attributes for {noderange}.
 ``````````````````````````````````````````````````````
 
 **Parameters:**
@@ -2034,7 +2034,7 @@ PUT - Change the node table attibutes for {noderange}.
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -2047,7 +2047,7 @@ Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2. :
 
 For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.
 
-GET - Get table attibutes for a noderange.
+GET - Get table attributes for a noderange.
 ``````````````````````````````````````````
 
 **Returns:**
@@ -2078,7 +2078,7 @@ Get OS and ARCH attributes from nodetype table for node1 and node2. ::
 [URI:/tables/{tablelist}/rows] - The non-node table resource
 ------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
 GET - Get all rows from non-node tables.
 ````````````````````````````````````````
@@ -2115,11 +2115,11 @@ Get all rows from networks table. ::
 [URI:/tables/{tablelist}/rows/{keys}] - The non-node table rows resource
 ------------------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
 {keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.
 
-GET - Get attibutes for rows from non-node tables.
+GET - Get attributes for rows from non-node tables.
 ``````````````````````````````````````````````````
 
 **Returns:**
@@ -2146,8 +2146,8 @@ Get row which net=192.168.1.0,mask=255.255.255.0 from networks table. ::
        ]
     }
 
-PUT - Change the non-node table attibutes for the row that matches the {keys}.
-``````````````````````````````````````````````````````````````````````````````
+PUT - Change the non-node table attributes for the row that matches the {keys}.
+```````````````````````````````````````````````````````````````````````````````
 
 **Parameters:**
 
@@ -2155,7 +2155,7 @@ PUT - Change the non-node table attibutes for the row that matches the {keys}.
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -2168,7 +2168,7 @@ DELETE - Delete rows from a non-node table that have the attribute values specif
 
 **Returns:**
 
-* No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
+* No output when execution is successful. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}.
 
 **Example:** 
 
@@ -2179,10 +2179,10 @@ Delete a route row which routename=privnet in the routes table. ::
 [URI:/tables/{tablelist}/rows/{keys}/{attrlist}] - The non-node table attributes resource
 -----------------------------------------------------------------------------------------
 
-Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.
+Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
-GET - Get specific attibutes for rows from non-node tables.
-```````````````````````````````````````````````````````````
+GET - Get specific attributes for rows from non-node tables.
+````````````````````````````````````````````````````````````
 
 **Returns:**
 
