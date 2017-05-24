@@ -910,10 +910,59 @@ sub load_case {
             } elsif ($line =~ /^arch\s*:\s*(\w[\w\,]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{arch} = $1;
+
+                if ($run_case_flag) {
+                    #To judge whether need to skip the current case
+                    my $case_arch = $case_ref->[$i]->{arch};
+                    if($case_arch =~ /ppc/i && $case_arch !~ /le|el/i){
+                        $case_arch="ppc";
+                    }elsif($case_arch =~ /ppc/i && $case_arch =~ /le|el/i){
+                        $case_arch="ppc64le";
+                    }elsif($case_arch =~ /x86/i){
+                        $case_arch="x86";
+                    }
+
+                    my $env_arch = $config{var}{ARCH};
+                    if($env_arch =~ /ppc/i && $env_arch !~ /le|el/i){
+                        $env_arch="ppc";
+                    }elsif($env_arch =~ /ppc/i && $env_arch =~ /le|el/i){
+                        $env_arch="ppc64le";
+                    }elsif($env_arch =~ /x86/i){
+                        $env_arch="x86";
+                    }
+                
+                    my $valid     = 0;
+                    if ($case_arch eq $env_arch) {
+                        $valid = 1;
+                    }
+                    unless ($valid) {
+                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
+                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
+                        }else{
+                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                        }
+                        push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                    }
+                }
                 $newcmdstart = 0;
             } elsif ($line =~ /^hcp\s*:\s*(\w[\w\,]+)/) {
                 next if $skip;
                 $case_ref->[$i]->{hcp} = $1;
+                if ($run_case_flag) {
+                    #To judge whether need to skip the current case
+                    my $valid     = 0;
+                    if ($case_ref->[$i]->{hcp} =~ /$config{var}{HCP}/i) {
+                        $valid = 1;
+                    }
+                    unless ($valid) {
+                        if(exists($case_name_index_map_bak{$case_ref->[$i]->{name}})){
+                            $$case_name_index_map_ref{$case_ref->[$i]->{name}}=$case_name_index_map_bak{$case_ref->[$i]->{name}};
+                        }else{
+                            delete $$case_name_index_map_ref{$case_ref->[$i]->{name}};
+                        }
+                        push @{ $invalidcases{"noruncases"} }, $case_ref->[$i]->{name};
+                    }
+                }
                 $newcmdstart = 0;
             } elsif ($line =~ /^type\s*:\s*(\w[\w\,-]+)/) {
                 next if $skip;
