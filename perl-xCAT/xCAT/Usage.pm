@@ -81,8 +81,10 @@ my %usage = (
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
-  OpenPOWER server specific:
+  OpenPOWER (IPMI) specific:
       rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|all]
+  OpenPOWER (OpenBMC) specific:
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|length|all]
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>

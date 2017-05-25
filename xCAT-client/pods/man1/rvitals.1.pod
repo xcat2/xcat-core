@@ -26,13 +26,17 @@ B<rvitals> I<noderange> {B<temp>|B<wattage>|B<fanspeed>|B<leds>|B<summary>|B<all
 
 B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>}
 
-=head2 OpenPOWER server specific:
+=head2 OpenPOWER (IPMI) specific:
 
 B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>]
 
+=head2 OpenPOWER (OpenBMC) specific:
+
+B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<length>|B<all>]
+
 =head1 B<Description>
 
-B<rvitals>  retrieves hardware vital information from the on-board Service
+B<rvitals>  Retrieves hardware vital information from the on-board Service
 Processor for a single or range of nodes and groups.
 
 =head1 B<Options>
@@ -74,6 +78,10 @@ Retrieves rack environmentals.
 =item B<leds>
 
 Retrieves LEDs status.
+
+=item B<length>
+
+Retrieves length related attributes.
 
 =item B<power>
 

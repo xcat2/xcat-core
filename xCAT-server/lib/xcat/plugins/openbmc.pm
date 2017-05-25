@@ -458,7 +458,7 @@ sub parse_args {
     } elsif ($command eq "rvitals") {
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^leds$|^all$/) {
+        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^length$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } else {
@@ -1216,17 +1216,42 @@ sub rvitals_response {
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
-        print Dumper(%content) . "\n";
-        # $key_url is "/xyz/openbmc_project/sensors/xxx/yyy
-        # For now display xxx/yyy as a label
-        my ($junk, $label) = split("/sensors/", $key_url);
+
         #
-        # Calculate the value based on the scale
+        # Skip over attributes that are not asked to be printed
+        #
+        if ($grep_string =~ "temp") {
+            unless ( $content{Unit} =~ "DegreesC") { next; } 
+        } 
+        if ($grep_string =~ "voltage") {
+            unless ( $content{Unit} =~ "Volts") { next; } 
+        } 
+        if ($grep_string =~ "wattage") {
+            unless ( $content{Unit} =~ "Watts") { next; } 
+        } 
+        if ($grep_string =~ "fanspeed") {
+            unless ( $content{Unit} =~ "RPMS") { next; } 
+        } 
+        if ($grep_string =~ "power") {
+            unless ( $content{Unit} =~ "Amperes" || $content{Unit} =~ "Joules" || $content{Unit} =~ "Watts" ) { next; } 
+        } 
+        if ($grep_string =~ "length") {
+            unless ( $content{Unit} =~ "Meters" ) { next; }
+        } 
+        #
+        # $key_url is in the format: "/xyz/openbmc_project/sensors/xxx/yyy
+        # For now display xxx/yyy as a label
+        #
+        my ($junk, $label) = split("/sensors/", $key_url);
+
+        #
+        # Calculate the adjusted value based on the scale attribute
         #  
         my $calc_value = $content{Value};
         if ( $content{Scale} != 0 ) { 
             $calc_value = ($content{Value} * (10 ** $content{Scale}));
         } 
+
         $sensor_value = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
         xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
     }

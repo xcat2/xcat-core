@@ -56,11 +56,18 @@ BMC specific:
 \ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | all**\ }
 
 
-OpenPOWER server specific:
+OpenPOWER (IPMI) specific:
 ==========================
 
 
 \ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | all**\ ]
+
+
+OpenPOWER (OpenBMC) specific:
+=============================
+
+
+\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | length | all**\ ]
 
 
 
@@ -69,7 +76,7 @@ OpenPOWER server specific:
 *******************
 
 
-\ **rvitals**\   retrieves hardware vital information from the on-board Service
+\ **rvitals**\   Retrieves hardware vital information from the on-board Service
 Processor for a single or range of nodes and groups.
 
 
@@ -130,6 +137,12 @@ Processor for a single or range of nodes and groups.
 \ **leds**\ 
  
  Retrieves LEDs status.
+ 
+
+
+\ **length**\ 
+ 
+ Retrieves length related attributes.
  
 
 
