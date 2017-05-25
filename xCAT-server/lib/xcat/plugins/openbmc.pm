@@ -456,7 +456,6 @@ sub parse_args {
             }
         }  
     } elsif ($command eq "rvitals") {
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^leds$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
