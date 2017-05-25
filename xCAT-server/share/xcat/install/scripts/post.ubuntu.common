@@ -45,3 +45,5 @@ for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
 	echo "nameserver $i"
 done >>/etc/resolv.conf
+
+grep "install/ubuntu" /etc/apt/sources.list && sed -i '/install\/ubuntu/d' /etc/apt/sources.list
