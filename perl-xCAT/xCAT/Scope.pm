@@ -1,5 +1,5 @@
 package xCAT::Scope;
-use POSIX;
+
 use xCAT::Utils;
 use xCAT::Table;
 use xCAT::ServiceNodeUtils qw(getSNList);
@@ -35,7 +35,9 @@ sub split_node_array {
  
     my @dest = {};
     my $total = $#{$source} + 1;
-    my $n_sub = POSIX::ceil($total / $capacity);
+    my $n_sub = int ($total / $capacity);
+    unless ($n_sub * $capacity == $total) { $n_sub++;} #POSIX::ceil
+
     if ( $n_sub <= 1 ) {
         $dest[0] = $source;
 
@@ -126,8 +128,7 @@ sub get_parallel_scope {
 
     Arguments:
        Reference of request
-       Callback: Optional, default is 5
-       Default element capacity in each subset: Optional, default is 250
+       Callback: TODO, Optional, the Callback will be used to filter the nodes
     Returns: An array of requests
     Error:
         none
@@ -149,7 +150,7 @@ sub get_broadcast_scope_with_parallel {
     foreach (xCAT::ServiceNodeUtils->getSNList()) {
         if (xCAT::NetworkUtils->thishostisnot($_)) {
             my $xcatdest = $_;
-            foreach ($reqs) {
+            foreach (@$reqs) {
                 my $reqcopy = {%$_};
                 $reqcopy->{'_xcatdest'} = $xcatdest;
                 $reqcopy->{_xcatpreprocessed}->[0] = 1;
