@@ -922,10 +922,10 @@ sub rinv_response {
 
     my $grep_string;
     if ($node_info{$node}{cur_status} eq "RINV_FIRM_RESPONSE") {
-         $grep_string = "firm";
-     } else {
-         $grep_string = $status_info{RINV_RESPONSE}{argv};
-     }
+        $grep_string = "firm";
+    } else {
+        $grep_string = $status_info{RINV_RESPONSE}{argv};
+    }
 
     my $src;
     my $content_info;
@@ -1000,13 +1000,13 @@ sub rinv_response {
                 push (@sorted_output, $node . ": ". $content_info); #Save output in array
             }
         }
-     }
-     # If sorted array has any contents, sort it and print it
-     if (scalar @sorted_output > 0) {
-         @sorted_output = sort @sorted_output; #Sort all output
-         my $result = join "\n", @sorted_output; #Join into a single string for easier display
-         xCAT::SvrUtils::sendmsg("$result", $callback);
-     }
+    }
+    # If sorted array has any contents, sort it and print it
+    if (scalar @sorted_output > 0) {
+        @sorted_output = sort @sorted_output; #Sort all output
+        my $result = join "\n", @sorted_output; #Join into a single string for easier display
+        xCAT::SvrUtils::sendmsg("$result", $callback);
+    }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
