@@ -46,8 +46,7 @@ ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
 
-cp -f /xcatpost/xcatinstallpost /opt/xcat/xcatinstallpost
-cat >> /opt/xcat/xcatinstallpost << EOF
+cat > /opt/xcat/xcatinstallpost << EOF
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
@@ -55,6 +54,7 @@ if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
     chkconfig xcatpostinit1 off
 fi
 EOF
+cat /xcatpost/xcatinstallpost >> /opt/xcat/xcatinstallpost
 chmod 755 /opt/xcat/xcatinstallpost
 
 ls /etc | grep -i suse

@@ -13,7 +13,7 @@ The data synchronization is important for any high availability configuration. W
 * The configuration files for the services that are required by xCAT, like named, DHCP, apache, nfs, ssh, etc. 
 * The operating systems images repository and users customization data repository, the ``/install`` directory contains these repositories in most cases. 
 
-There are a lot of ways for data synchronization, but considering the specific xCAT HAMN requirements, only several of the data synchronziation options are practical for xCAT HAMN. 
+There are a lot of ways for data synchronization, but considering the specific xCAT HAMN requirements, only several of the data synchronization options are practical for xCAT HAMN. 
 
 **1\. Move physical disks between the two management nodes**: if we could physically move the hard disks from the failed management node to the backup management node, and bring up the backup management node, then both the operating system and xCAT data will be identical between the new management node and the failed management node. RAID1 or disk mirroring could be used to avoid the disk be a single point of failure. 
 
@@ -40,7 +40,7 @@ The configuration for the high availability applications is usually complex, it 
 
 **3\. Maintenance effort**
 
-The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, trouble shooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs.
+The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, troubleshooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs.
 
 Configuration Options
 =====================

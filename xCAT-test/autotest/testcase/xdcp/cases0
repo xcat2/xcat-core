@@ -10,7 +10,6 @@ check:output=~Version
 end
 
 start:xdcp_src_dst
-stop:yes
 cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:xdcp $$CN /etc/hosts /tmp/hosts
 check:rc==0

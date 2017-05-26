@@ -36,7 +36,7 @@ while true; do
 
     if [ $RETRY -eq 90 ];then
        #timeout, complain and exit
-       msgutil_r "$MASTER_IP" "err" "`date`: xcatinstallpost: the network between the node and $MASTER_IP is not ready, please check..." "/var/log/xcat/xcat.log"
+       msgutil_r "$MASTER_IP" "err" "`date`: xcatinstallpost: the network between the node and $MASTER_IP is not ready, please check[retry=$RETRY]..." "/var/log/xcat/xcat.log"
        exit 1
     fi
     

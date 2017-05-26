@@ -43,7 +43,7 @@ OPTIONS
 
 \ **-a|-**\ **-all**\ 
  
- Setup NTP servers for both management node and the service node.
+ Setup NTP servers for both management node and the service node. If management node has SLES installed and used as \ *ntpservers*\ , it is recommanded to use the \ **setupntp**\  postscript to set up NTP server for service nodes.
  
 
 

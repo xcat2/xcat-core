@@ -264,7 +264,7 @@ running commands, are terminated (SIGTERM).
  xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
  install image.  No other xdsh flags, environment variables apply with 
  this input.  A noderange is not accepted. Only runs on the local host, 
- normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that xdsh hangs.
+ normally the Management Node. The command you run must not prompt for input, the prompt will not be returned to you, and it will appear that \ **xdsh**\  hangs.
  
 
 
@@ -381,8 +381,8 @@ running commands, are terminated (SIGTERM).
  displays an error and terminates execution for the remote
  targets  that  failed to respond. If \ *timeout*\  is not specified,
  \ **xdsh**\  waits indefinitely to continue processing output  from
- all  remote  targets. The exception is the -K flag which defaults 
- to  10 seconds.
+ all  remote  targets. The exception is the \ **-K**\  flag which defaults 
+ to 10 seconds.
  
 
 
@@ -512,22 +512,28 @@ running commands, are terminated (SIGTERM).
  
  If \ **DSH_REMOTE_PASSWORD**\  is set to the password of the
  userid (usually root) that will ssh to the node, then when
- you use the -K flag, you will  not be prompted for a password.
+ you use the \ **-K**\  flag, you will not be prompted for a password.
  
 
 
 \ **DSH_SYNTAX**\ 
  
  Specifies the shell syntax to use on remote targets; \ **ksh**\  or
- \ **csh**\ . If not specified, the  \ **ksh**\   syntax  is  assumed.  This
+ \ **csh**\ . If not specified, the  \ **ksh**\   syntax is assumed.  This
  variable is overridden by the \ **-S**\  flag.
  
 
 
 \ **DSH_TIMEOUT**\ 
  
- Specifies  the  time,  in  seconds, to wait for output from
- each remote target. This variable is overridden by  the  \ **-t**\  flag.
+ Specifies the time, in seconds, to wait for output from
+ each remote target. This variable is overridden by the \ **-t**\  flag.
+ 
+
+
+\ **DSH_VERIFY**\ 
+ 
+ Verifies each target before executing any remote commands on the target. If a target is not responding, execution of remote commands for the target is canceled. This variable is overridden by the \ **-v**\  flag.
  
 
 
@@ -537,10 +543,10 @@ running commands, are terminated (SIGTERM).
 **********************************
 
 
-To provide backward compatibility for scripts written using dsh in
+To provide backward compatibility for scripts written using \ **dsh**\  in
 AIX and CSM, a tool has been provided \ **groupfiles4dsh**\ ,
 which will build node group files from the
-xCAT database that can be used by dsh. See \ **man groupfiles4dsh**\ .
+xCAT database that can be used by \ **dsh**\ . See \ **man groupfiles4dsh**\ .
 
 
 ****************
@@ -566,7 +572,7 @@ userdefined.
 *******************
 
 
-The dsh command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal dsh errors occur or the remote shell commands do not complete successfully, the dsh command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
+The \ **xdsh**\  command exit code is 0 if the command executed without errors and all remote shell commands finished with exit codes of 0. If internal dsh errors occur or the remote shell commands do not complete successfully, the dsh command exit value is greater than 0. The exit value is increased by 1 for each successive instance of an unsuccessful remote command execution.  If the remotely issued command is run in the background, the exit code of the remotely issued command is 0.
 
 
 ****************
@@ -662,7 +668,7 @@ on the service node fedora9 diskless image, enter:
  
  To define the QLogic IB switch as a node and to set up the SSH keys for IB switch 
  \ **qswitch**\  with device configuration file
- \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , Enter
+ \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , enter
  
  
  .. code-block:: perl
@@ -674,7 +680,7 @@ on the service node fedora9 diskless image, enter:
  
 
 
-10. To define the Management Node  in the database so you can use xdsh, Enter
+10. To define the Management Node  in the database so you can use \ **xdsh**\ , enter
  
  
  .. code-block:: perl
@@ -685,7 +691,7 @@ on the service node fedora9 diskless image, enter:
 
 
 11. To define the Mellanox switch as a node and run a command to show the ssh keys. 
-\ **mswitch**\  with and user name \ **username**\ , Enter
+\ **mswitch**\  with and user name \ **username**\ , enter
  
  
  .. code-block:: perl
@@ -723,7 +729,7 @@ on the service node fedora9 diskless image, enter:
 
 13.
  
- To run xdsh with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
+ To run \ **xdsh**\  with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
  
  
  .. code-block:: perl

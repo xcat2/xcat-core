@@ -14,6 +14,22 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.4                    |- RHV 4.1      |             |- OpenBMC support(experimental):  |
+|| 2017/5/19                      |               |             |                                  |
+||                                |               |             |  rinv                            |
+| `2.13.4 Release Notes <https:// |               |             |  rinstall                        |
+| github.com/xcat2/xcat-core/wiki |               |             |  bmcdiscover                     |
+| /XCAT_2.13.4_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.3                    |- RHEL 6.9     |             |- OpenBMC support(experimental):  |
+|| 2017/4/14                      |               |             |                                  |
+||                                |               |             |  rpower rcons                    |
+| `2.13.3 Release Notes <https:// |               |             |- Add -C for rmdef to run         |
+| github.com/xcat2/xcat-core/wiki |               |             |  `nodeset offline`               |
+| /XCAT_2.13.3_Release_Notes>`_   |               |             |                                  |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.2                    |               |             |- Refine ONIE switch support doc  |
 || 2017/2/24                      |               |             |- Add -p for xcatprobe osdeploy   |
 ||                                |               |             |  to support performance calculate|

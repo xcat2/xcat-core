@@ -235,7 +235,7 @@ sub process_command {
         if ($command eq 'rpower') { $subcommand = $request->{op}; }
 
         #pdu commands will be handled in the pdu plugin
-        if(($subcommand eq 'pduoff') || ($subcommand eq 'pduon') || ($subcommand eq 'pdustat')){
+        if(($subcommand eq 'pduoff') || ($subcommand eq 'pduon') || ($subcommand eq 'pdustat') || ($subcommand eq 'pdureset')){
              return 0;
         }
 

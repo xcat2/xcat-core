@@ -2271,6 +2271,7 @@ sub addnet6
             push @netent, "    option domain-search  $domainstring;\n";
         }
     }
+    
 
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
@@ -2574,6 +2575,7 @@ sub addnet
             push @netent, "    option interface-mtu $mtu;\n";
         }
 
+
         #  add domain-search if not sles10 or rh5
         my $osv = xCAT::Utils->osver();
         unless (($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/)) {
@@ -2591,6 +2593,8 @@ sub addnet
                 push @netent, "    option domain-search  $domainstring;\n";
             }
         }
+        #for cumulus ZTP process
+        push @netent, "    option cumulus-provision-url \"http://$tftp/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2928,6 +2932,7 @@ sub newconfig
     }
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
     push @dhcpconf, "option www-server code 114 = string;\n";
+    push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";

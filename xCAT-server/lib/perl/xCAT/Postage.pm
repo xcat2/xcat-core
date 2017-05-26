@@ -1986,12 +1986,16 @@ sub getPostScripts
         {
             $nodecfg = "$tftpdir/pxelinux.cfg/$node";
 
+        } elsif($netboot eq "petitboot"){
+            $nodecfg = "$tftpdir/petitboot/$node";
         }
 
-        my $rc = system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
-        if ($rc == 0)
-        {
-            $result .= "disableconsistentNICrename\n";
+        if( -f "$nodecfg"){
+            my $rc = system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
+            if ($rc == 0)
+            {
+                $result .= "disableconsistentNICrename\n";
+            }
         }
     }
 

@@ -56,15 +56,15 @@ DESCRIPTION
 ***********
 
 
-The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
+The \ **lsvm**\  command lists all partition profiles defined for the partitions specified in \ *noderange*\ . If \ *noderange*\  is a CEC, all the partitions associated with that CEC are displayed.
 
 For PPC (using Direct FSP Management):
 ======================================
 
 
-For Power 775(use option \ *--p775*\  to specify), lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
+For Power 775 (use option \ **-**\ **-p775**\  to specify), \ **lsvm**\  lists all partition I/O slots information for the partitions specified in \ *noderange*\ . If \ *noderange*\  is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
 
-For DFM-managed (short for Direct FSP Management mode) normal power machine, lsvm lists the processor, memory, physical I/O slots, hugepage and BSR info for the specified partitions or CEC.
+For DFM-managed (short for Direct FSP Management mode) normal power machine, \ **lsvm**\  lists the processor, memory, physical I/O slots, hugepage and BSR info for the specified partitions or CEC.
 
 The pump mode value has the valid options:
   1 - Node Pump Mode
@@ -83,9 +83,9 @@ For KVM and VMware
 ==================
 
 
-The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  can only be hypervisor.
+If \ *noderange*\  is a hypervisor, virtual machines defined on that hypervisor will be displayed. If \ *noderange*\  is a VM, details for that VM will be displayed.
 
-Note: Only the virtual machine which is in power on state can be listed by lsvm command.
+Note: Only the virtual machine which is in power on state can be listed by \ **lsvm**\  command.
 
 
 For zVM:
@@ -107,7 +107,7 @@ Display usage message.
 
 \ **-v**\ 
 
-Command Version.
+Command version.
 
 \ **-V**\ 
 
@@ -157,7 +157,7 @@ Output is similar to:
   lpar3: name=lpar3,lpar_name=lpar3,lpar_id=4,lpar_env=aixlinux,all_resources=0,min_mem=512, desired_mem=2048, max_mem=3072,min_num_huge_pages=0,desired_num_huge_pages=0,max_num_huge_pages=0,proc_mode=shared, min_proc_units=0.5,desired_proc_units=0.5,max_proc_units=0.5,min_procs=1,desired_procs=1,max_procs=1, sharing_mode=uncap,uncap_weight=128,shared_proc_pool_id=0,shared_proc_pool_name=DefaultPool,io_slots=none, lpar_io_pool_ids=none,max_virtual_slots=10, "virtual_serial_adapters=1/server/1/any//any/1,0/server/1/any//any/1", virtual_scsi_adapters=2/client/1/p6vios/4/1,virtual_eth_adapters=3/0/1//0/1,hca_adapters=none,boot_mode=norm,conn_monitoring=0,auto_start=0,power_ctrl_lpar_ids=none,work_group_id=none,redundant_err_path_reporting=0, bsr_arrays=0,lhea_logical_ports=none,lhea_capabilities=none,lpar_proc_compat_mode=default,electronic_err_reporting=null
 
 
-2.To list all IVM-managed partitions associated with CEC cec01, enter:
+2. To list all IVM-managed partitions associated with CEC cec01, enter:
 
 
 .. code-block:: perl
@@ -252,7 +252,7 @@ Output is similar to:
   OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
 
 
-6.To list the lparname of lpars, enter:
+6. To list the lparname of lpars, enter:
 
 
 .. code-block:: perl
@@ -360,9 +360,9 @@ Output is similar to:
    Available BSR array:  256
 
 
-Note: The lines list in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicate a physical I/O resource in normal power machine.
+Note: The lines listed in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicates a physical I/O resource in a normal power machine.
 
-9.For DFM-managed partition on normal power machine, list out the detailed information:
+9. For DFM-managed partition on normal power machine, list out the detailed information:
 
 
 .. code-block:: perl

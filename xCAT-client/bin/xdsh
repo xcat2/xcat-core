@@ -190,6 +190,11 @@ if ($ENV{'DSH_ENVIRONMENT'})
     push(@{ $cmdref->{env} }, "DSH_ENVIRONMENT=$ENV{'DSH_ENVIRONMENT'}");
 }
 
+if ($ENV{'DSH_VERIFY'})
+{
+    push(@{ $cmdref->{env} }, "DSH_VERIFY=$ENV{'DSH_VERIFY'}");
+}
+
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
 

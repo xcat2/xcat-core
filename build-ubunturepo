@@ -178,6 +178,7 @@ then
         build_time=`date`
         build_machine=`hostname`
         commit_id=`git rev-parse --short HEAD`
+        commit_id_long=`git rev-parse HEAD`
 
         package_dir_name=debs$REL
         #TODO: define the core path and tarball name
@@ -362,14 +363,15 @@ __EOF__
     chmod 775 mklocalrepo.sh
 
     #
-    # Add a buildinfo file under xcat-core to track information about the build
+    # Add a buildinfo file into the tar.bz2 file to track information about the build 
     #
-    buildinfo=$local_core_repo_path/buildinfo
-    echo "VERSION=$ver" > $buildinfo
-    echo "RELEASE=$xcat_release" >> $buildinfo
-    echo "BUILD_TIME=$build_time" >> $buildinfo
-    echo "BUILD_MACHINE=$build_machine" >> $buildinfo
-    echo "COMMIT_ID=$commit_id" >> $buildinfo
+    BUILDINFO=$local_core_repo_path/buildinfo
+    echo "VERSION=$ver" > $BUILDINFO
+    echo "RELEASE=$xcat_release" >> $BUILDINFO
+    echo "BUILD_TIME=$build_time" >> $BUILDINFO
+    echo "BUILD_MACHINE=$build_machine" >> $BUILDINFO
+    echo "COMMIT_ID=$commit_id" >> $BUILDINFO
+    echo "COMMIT_ID_LONG=$commit_id_long" >> $BUILDINFO
 
     #create the xcat-core.list file
 

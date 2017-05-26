@@ -112,7 +112,7 @@ minor version can be support following format: ::
 **kitpackage** --- This stanza defines Kit Package (ie. RPM). There can be zero or more kitpackage stanzas.  For multiple package supports,  need to 
 
   #. Define one kitpackage section per supported OS.  or
-  #. Define one kitpacakge stanza which contains multiple kitrepoid lines. For the RPM packages, users need to responsible for createing an RPM spec file that can run on multiple OSes.  
+  #. Define one kitpacakge stanza which contains multiple kitrepoid lines. For the RPM packages, users need to responsible for creating an RPM spec file that can run on multiple OSes.  
 
 ::
 

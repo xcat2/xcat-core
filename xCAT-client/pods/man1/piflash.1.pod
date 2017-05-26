@@ -1,0 +1,13 @@
+
+=head1 NAME
+
+B<piflash> - Remotely applies firmware updates to servers.
+
+=head1 SYNOPSIS
+
+B<piflash> <noderange> --package <filename>
+
+
+=head1 DESCRIPTION
+
+B<piflash> Remotely applies firmware updates to servers.

@@ -9,12 +9,16 @@ my $distname;
 my $arch;
 my $installpfx;
 
+my $distrepopfx="/install/postscripts/repos";
+
 sub localize_yumrepo {
     my $self        = shift;
     my $pkgdir = shift;
     $distname=shift;
     $arch=shift;
-    open($yumrepofile, ">", "$pkgdir/local-repository.tmpl");
+    
+    mkpath("$distrepopfx/$pkgdir");
+    open($yumrepofile, ">", "$distrepopfx/$pkgdir/local-repository.tmpl");
     my %options = (
         wanted      => \&check_tofix,
         follow_fast => 1
@@ -27,7 +31,7 @@ sub localize_yumrepo {
 sub remove_yumrepo {
     my $self        = shift;
     my $pkgdir = shift;
-    rmtree("$pkgdir/local-repository.tmpl");
+    rmtree("$distrepopfx/$pkgdir/local-repository.tmpl");
 }
 
 sub check_tofix {
@@ -50,8 +54,9 @@ sub generate_repo
     my $dirlocation = shift;
     my @dircomps    = File::Spec->splitdir($dirlocation);
     pop(@dircomps);
+    my $reponame = join("-",@dircomps);
     my $yumurl = File::Spec->catdir(@dircomps);
-    my $reponame = $dircomps[$#dircomps];
+
     print $yumrepofile "[local-$distname-$arch-$reponame]\n";
     print $yumrepofile "name=xCAT configured yum repository for $yumurl\n";
     print $yumrepofile "baseurl=$yumurl\n";
