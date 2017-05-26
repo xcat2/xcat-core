@@ -77,7 +77,7 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 			if [ $? -eq 0 ]; then
 				m=`echo "$FRU" | awk -F': ' '/Product Manufacturer/ {print $2}'`
 				n=`echo "$FRU" | awk -F': ' '/Product Name/ {print $2}'`
-				if [ -z "$n" ]; then
+				if [ -z "$n" -o "$n" == "NONE" ]; then
 					n=`echo "$FRU" | awk -F': ' '/Product Part Number/ {print $2}'`
 				fi
 			else
