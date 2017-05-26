@@ -1209,10 +1209,10 @@ sub rvitals_response {
     my $grep_string = $status_info{RVITALS_RESPONSE}{argv};
     my $src;
     my $content_info;
-    my $sensor_value;
+    my @sorted_output;
     
     print "$node: DEBUG Processing command: rvitals $grep_string \n";
-    print Dumper(%{$response_info->{data}}) . "\n";
+    print Dumper(%{$response_info->{data}});
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -1238,11 +1238,12 @@ sub rvitals_response {
         if ($grep_string =~ "length") {
             unless ( $content{Unit} =~ "Meters" ) { next; }
         } 
-        #
-        # $key_url is in the format: "/xyz/openbmc_project/sensors/xxx/yyy
-        # For now display xxx/yyy as a label
-        #
-        my ($junk, $label) = split("/sensors/", $key_url);
+
+        my $label = (split(/\//, $key_url))[ -1 ];
+
+        # replace underscore with space, uppercase the first letter 
+        $label =~ s/_/ /g;
+        $label =~ s/\b(\w)/\U$1/g;
 
         #
         # Calculate the adjusted value based on the scale attribute
@@ -1252,8 +1253,15 @@ sub rvitals_response {
             $calc_value = ($content{Value} * (10 ** $content{Scale}));
         } 
 
-        $sensor_value = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
-        xCAT::SvrUtils::sendmsg("$sensor_value", $callback, $node);
+        $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+        push (@sorted_output, $content_info); #Save output in array
+    }
+    # If sorted array has any contents, sort it and print it
+    if (scalar @sorted_output > 0) {
+        # Sort the output, alpha, then numeric
+        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
