@@ -12,7 +12,6 @@ use Getopt::Long;
 use Sys::Hostname;
 use xCAT::SvrUtils;
 use Confluent::Client;
-use Data::Dumper;
 
 use strict;
 my %termservers;    #list of noted termservers
