@@ -12,6 +12,7 @@ use Getopt::Long;
 use Sys::Hostname;
 use xCAT::SvrUtils;
 use Confluent::Client;
+use Data::Dumper;
 
 use strict;
 my %termservers;    #list of noted termservers
@@ -334,10 +335,11 @@ sub makeconfluentcfg {
         # remove nodes that arent for this SN or type of node doesnt have console
         foreach (@cfgents) {
             my $keepdoing = 0;
-            if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} })) {
-                $keepdoing = 1; #only hanlde the nodes that use this SN as the conserver
-            }
-            if (!$isSN) { $keepdoing = 1; }    #handle all for MN
+            #if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} })) {
+            #    $keepdoing = 1; #only hanlde the nodes that use this SN as the conserver
+            #}
+            if ($isSN) { $keepdoing = 1; }    #handle all for MN
+            #if (!$isSN) { $keepdoing = 1; }    #handle all for MN
             if ($keepdoing) {
                 if ($_->{termserver} and not $termservers{ $_->{termserver} }) {
                     die "confluent does not currently support termserver";
@@ -383,13 +385,32 @@ sub donodeent {
     my %currnodes;
     $confluent->read('/nodes/');
     my $listitem = $confluent->next_result();
+    my @toconfignodes = keys %{$cfgenthash};
+    my @toremove; #define array for unneded consoles
     while ($listitem) {
         if (exists $listitem->{item}) {
             my $name = $listitem->{item}->{href};
             $name =~ s/\/$//;
             $currnodes{$name} = 1;
+		if ( !grep( /^$name$/, @toconfignodes ) ) {
+    			push @toremove, $name;
+		}
         }
         $listitem = $confluent->next_result();
+    }
+    if (scalar @toremove >0) {
+	my $confluent_del_node = Confluent::Client->new();
+	unless ($confluent_del_node) {
+        	# unable to get a connection to confluent
+        	my $rsp;
+        	$rsp->{data}->[0] = "Unable to open a connection to confluent(delete unneded node), verify that confluent is running.";
+        	xCAT::MsgUtils->message("E", $rsp, $cb);
+        	return;
+    	}
+    	foreach (@toremove) { 
+		my $nodetodel = $_;
+ 		$confluent_del_node->delete('/nodes/' . $nodetodel);
+    	} 
     }
     if ($delmode) {
         foreach my $confnode (keys %currnodes) {
@@ -399,7 +420,6 @@ sub donodeent {
         }
         return;
     }
-    my @toconfignodes = keys %{$cfgenthash};
     my $ipmitab       = xCAT::Table->new('ipmi', -create => 0);
     my $ipmientries   = {};
     if ($ipmitab) {
@@ -463,7 +483,7 @@ sub donodeent {
              }
         }
         if (defined($cfgent->{consoleondemand})) {
-            if ($cfgent->{consoleondemand}) {
+            if ($cfgent->{consoleondemand} == 'yes') {
                 $parameters{'console.logging'} = 'none';
             }
             else {
@@ -471,6 +491,9 @@ sub donodeent {
             }
         } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
             $parameters{'console.logging'} = 'none';
+        }
+	elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} == 'no') {
+            $parameters{'console.logging'} = 'full';
         }
 
         # ok, now for nodepos...
