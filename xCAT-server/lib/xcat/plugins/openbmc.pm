@@ -935,9 +935,17 @@ sub rinv_response {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
         if ($grep_string eq "firm") {
+            # This handles the data from the /xyz/openbmc_project/Software endpoint.
+            #
+            # Handle printing out all posssible Software values in a generic format: 
+            #    node: <Purpose> Software: <version> (<Activation>)
+            #
             if (defined($content{Version}) and $content{Version}) {
-                my $firm_ver = "System Firmware Product Version: " . "$content{Version}";
-                xCAT::SvrUtils::sendmsg("$firm_ver", $callback, $node);
+                # TODO: In future, if we want to support ExtendedVersion, we should enable Verbose output.
+                my $purpose_value = (split(/\./, $content{Purpose}))[-1];
+                my $activation_value = (split(/\./, $content{Activation}))[-1];
+                my $software_str = "$purpose_value Software: $content{Version} (Activation=$activation_value)";
+                xCAT::SvrUtils::sendmsg("$software_str", $callback, $node);
                 next;
             }
         }
