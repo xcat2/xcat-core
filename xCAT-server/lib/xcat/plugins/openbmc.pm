@@ -942,14 +942,27 @@ sub rinv_response {
             #
             if (defined($content{Version}) and $content{Version}) {
                 # TODO: In future, if we want to support ExtendedVersion, we should enable Verbose output.
-                my $purpose_value = (split(/\./, $content{Purpose}))[-1];
+                my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
-                my $software_str = "$purpose_value Software: $content{Version} (Activation=$activation_value)";
-                xCAT::SvrUtils::sendmsg("$software_str", $callback, $node);
+                my $content_info = "$purpose_value SOFTWARE: $content{Version} ($activation_value)";
+                xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
                 next;
             }
         }
 
+        if (! defined $content{Present}) {
+            # This should never happen, but if we find this, contact firmware team to fix...
+            xCAT::SvrUtils::sendmsg("ERROR: Invalid data for $key_url, contact firmware team!", $callback, $node);
+            next; 
+        }
+
+        # If the item is not found on the server, do not bother printing it out 
+        if ($content{Present} eq 0) { next; }
+
+        #
+        # Need to re-visit this code, commenting out for now...
+        #
+=for comment 
         if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
             my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
             xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
@@ -987,6 +1000,7 @@ sub rinv_response {
             xCAT::SvrUtils::sendmsg("$macaddress", $callback, $node);
             next;
         } 
+=cut
 
         if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
@@ -997,15 +1011,16 @@ sub rinv_response {
 
             foreach my $key (keys %content) {
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-                push (@sorted_output, $node . ": ". $content_info); #Save output in array
+                push (@sorted_output, $content_info); #Save output in array
             }
         }
     }
     # If sorted array has any contents, sort it and print it
     if (scalar @sorted_output > 0) {
-        @sorted_output = sort @sorted_output; #Sort all output
-        my $result = join "\n", @sorted_output; #Join into a single string for easier display
-        xCAT::SvrUtils::sendmsg("$result", $callback);
+        # sort alpha, then numeric 
+        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
