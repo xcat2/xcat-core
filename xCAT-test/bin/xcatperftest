@@ -198,7 +198,7 @@ getOSimage()
   if [ -z $PERF_OSIMAGE ]; then
     
     # covert it to an array
-    osimage_array=($(lsdef -t osimage 2>/dev/null| grep `arch`|awk '/compute/ {print $1}'))
+    osimage_array=($(lsdef -t osimage 2>/dev/null| grep `arch`|grep 'install'|awk '/compute/ {print $1}'))
     index=`expr $RANDOM % ${#osimage_array[@]} 2>/dev/null`
     echo ${osimage_array[$index]}
   else
