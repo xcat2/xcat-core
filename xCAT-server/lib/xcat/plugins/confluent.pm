@@ -334,11 +334,10 @@ sub makeconfluentcfg {
         # remove nodes that arent for this SN or type of node doesnt have console
         foreach (@cfgents) {
             my $keepdoing = 0;
-            #if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} })) {
-            #    $keepdoing = 1; #only hanlde the nodes that use this SN as the conserver
-            #}
-            if ($isSN) { $keepdoing = 1; }    #handle all for MN
-            #if (!$isSN) { $keepdoing = 1; }    #handle all for MN
+            if ($isSN && $_->{conserver} && exists($iphash{ $_->{conserver} })) {
+                $keepdoing = 1; #only hanlde the nodes that use this SN as the conserver
+            }
+            if (!$isSN) { $keepdoing = 1; }    #handle all for MN
             if ($keepdoing) {
                 if ($_->{termserver} and not $termservers{ $_->{termserver} }) {
                     die "confluent does not currently support termserver";
