@@ -1,0 +1,298 @@
+start:encrypted_passwd_md5_diskfull
+description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=md5
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:grep '\$1\$' /install/autoinst/$$CN
+check:rc==0 
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod
+end
+
+start:encrypted_passwd_md5_diskless
+description: this case is to test when  cryptmethod=md5 in passwd table, the password is encryped with the md5 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=md5
+check:rc==0
+#config CN to do diskless provision
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 900
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:scp $$CN:/etc/shadow /tmp
+check:rc==0
+cmd:grep 'root:\$1\$' /tmp/shadow
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
+end
+
+start:encrypted_passwd_sha256_diskfull
+description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=sha256
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:grep '\$5\$' /install/autoinst/$$CN
+check:rc==0
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod
+end
+
+start:encrypted_passwd_sha256_diskless
+description: this case is to test when  cryptmethod=sha256 in passwd table, the password is encryped with the sha256 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=sha256
+check:rc==0
+#config CN to do diskless provision
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 900
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:scp $$CN:/etc/shadow /tmp
+check:rc==0
+cmd:grep 'root:\$5\$' /tmp/shadow
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
+end
+
+start:encrypted_passwd_sha512_diskfull
+description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=sha512
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:grep '\$6\$' /install/autoinst/$$CN
+check:rc==0
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod
+end
+
+start:encrypted_passwd_sha512_diskless
+description: this case is to test when  cryptmethod=sha512 in passwd table, the password is encryped with the sha512 method. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:chtab key=system passwd.cryptmethod=sha512
+check:rc==0
+#config CN to do diskless provision
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 900
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:scp $$CN:/etc/shadow /tmp
+check:rc==0
+cmd:grep 'root:\$6\$' /tmp/shadow
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod /tmp/shadow
+end
+
+
+start:encrypted_passwd_openssl_diskfull
+description: this case is to test when password is encrypted with openssl, the password is encryped in password table. When compute node is diskfull provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:gettab key=system passwd.password > /tmp/tmppassword
+check:rc==0
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+check:rc==0
+cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd 
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd
+check:rc==0
+cmd:diff /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
+check:rc==0
+cmd:oldpassword=`cat /tmp/tmppassword |sed 's/\"//g'`;oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.password=$oldpassword passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod /tmp/tmppassword /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
+end
+
+start:encrypted_passwd_openssl_diskless
+description: this case is to test when password is encrypted with openssl, the password is encryped in password table. When compute node is diskless provisioned, users can login node with correct password. This case should be run when node is correctly defined.
+cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
+check:rc==0
+cmd:gettab key=system passwd.password > /tmp/tmppassword
+check:rc==0
+cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc123`
+check:rc==0
+cmd:gettab key=system passwd.password |grep '\$1\$'
+check:rc==0
+#config CN to do diskless provision
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:a=0;while true; do [ $a -eq 100 ] && exit 1;output=$(makedhcp -q $$CN);[ $? -ne 0 ] && exit 1;echo $output|grep $$CN 2>/dev/null && exit 0;a=$[$a+1];sleep 1;done
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak -f;fi
+check:rc==0
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 900
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:scp $$CN:/etc/shadow /tmp
+check:rc==0
+cmd:grep 'root:\$1\$' /tmp/shadow
+check:rc==0
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+cmd:oldpassword=`cat /tmp/tmppassword |sed 's/\"//g'`;oldcryptmethod=`cat /tmp/tmpcryptmethod |sed 's/\"//g'`;chtab key=system passwd.password=$oldpassword passwd.cryptmethod=$oldcryptmethod
+check:rc==0
+cmd:rm -rf /tmp/tmpcryptmethod  /tmp/tmppassword /tmp/shadow
+end

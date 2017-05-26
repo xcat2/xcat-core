@@ -304,66 +304,16 @@ sub deploy_genesis {
         my ($node, $node_desc_ptr, $callback, $subreq) = @_;
         my $outref = xCAT::Utils->runxcmd(
             {
-                command => ['nodeset'],
+                command => ['rinstall'],
                 node    => ["$node"],
                 arg     => ['runcmd=getadapter'],
             },
             $subreq, 0, 1);
         if ($::RUNCMD_RC != 0) {
-            $callback->({ error => "failed to run command: nodeset $node runcmd=getadapter", errorcode => 1 });
-            return 1;
-        }
-
-        # TODO: use rinstall to replace the following code when rinstall is ready.
-        if ($node_desc_ptr->{mgt} eq "ipmi") {
-            $outref = xCAT::Utils->runxcmd(
-                {
-                    command => ["rsetboot"],
-                    node    => ["$node"],
-                    arg     => ['net'],
-                },
-                $subreq, 0, 1);
-            if ($::RUNCMD_RC != 0) {
-                $callback->({ error => "failed to run command: rsetboot $node net", errorcode => 1 });
-                return 1;
+            foreach my $out (@$outref) {
+                $callback->({data => "$out"})
             }
-            $outref = xCAT::Utils->runxcmd(
-                {
-                    command => ['rpower'],
-                    node    => ["$node"],
-                    arg     => ['reset'],
-                },
-                $subreq, 0, 1);
-            if ($::RUNCMD_RC != 0) {
-                $callback->({ error => "failed to run command: rpower $node reset", errorcode => 1 });
-                return 1;
-            }
-        } elsif ($node_desc_ptr->{mgt} eq "kvm") {
-            $outref = xCAT::Utils->runxcmd(
-                {
-                    command => ['rpower'],
-                    node    => ["$node"],
-                    arg     => ['reset'],
-                },
-                $subreq, 0, 1);
-            if ($::RUNCMD_RC != 0) {
-                $callback->({ error => "failed to run command: rpower $node reset", errorcode => 1 });
-                return 1;
-            }
-        } elsif ($node_desc_ptr->{mgt} eq "hmc") {
-            $outref = xCAT::Utils->runxcmd(
-                {
-                    command => ["rnetboot"],
-                    node    => ["$node"],
-                },
-                $subreq, 0, 1);
-            if ($::RUNCMD_RC != 0) {
-                $callback->({ error => "failed to run command: rnetboot $node", errorcode => 1 });
-                return 1;
-            }
-        } else {
-            $callback->({ error => "$node: The mgt configuration is not supported by getadapter.",
-                    errorcode => 1 });
+            $callback->({ error => "failed to run command: rinstall $node runcmd=getadapter", errorcode => 1 });
             return 1;
         }
         $callback->({ data => "$node: Booting into genesis, this could take several minutes..." });
@@ -495,8 +445,8 @@ sub update_adapter_result {
     }
     $callback->({ data => "$output" });
     if (!$has_nic) {
-        $callback->({ data => "$node: Couldn't find interface name information detected by udevadm,"
-                  . " the nics table will not be updated." });
+        $callback->({ data => "$node: nics talbe will not be updated as not any ".
+                    "useful information could be found with udevadm command." });
         return 0;
     }
     my $nics_table = xCAT::Table->new('nics');

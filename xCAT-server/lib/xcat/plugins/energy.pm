@@ -151,6 +151,8 @@ sub parse_args {
         if ($::VERBOSE) {
             $opt->{verbose} = 1;
         }
+    } else {
+        return (1, &usage());
     }
 
     # if the request has node range

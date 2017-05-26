@@ -326,6 +326,9 @@ function sort_nics_device_order {
 ###################################################################################
 function configure_nicdevice {
     nics_pair=$*
+    #nictypes support capital letters, for example, Ethernet and ethernet
+    #use $utolcmd to transform capital to lower case
+    utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
     #configure nic and its device pair one by one   
     num=1
     max=`echo "$nics_pair"|wc -l`
@@ -344,10 +347,10 @@ function configure_nicdevice {
                 base_temp_nic=$base_nic_dev
             fi
         
-            base_nic_type=`find_nic_type "$base_temp_nic"`
+            base_nic_type=`find_nic_type "$base_temp_nic" | $utolcmd`
         fi
         nic_dev=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $1}'`
-        nic_dev_type=`find_nic_type "$nic_dev"`
+        nic_dev_type=`find_nic_type "$nic_dev" | $utolcmd`
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"

@@ -50,7 +50,7 @@ our @dsh_valid_env = (
     'DSH_REMOTE_PASSWORD', 'DSH_TO_USERID',
     'DSH_FROM_USERID',     'DEVICETYPE',
     'RSYNCSN',             'DSH_RSYNC_FILE',
-    'RSYNCSNONLY',
+    'RSYNCSNONLY',         'DSH_VERIFY',
 );
 select(STDERR);
 $| = 1;
@@ -2489,6 +2489,12 @@ sub config_dsh
     $$options{'timeout'} = $$options{'timeout'} || $ENV{'DSH_TIMEOUT'} || undef;
     my $rsp = {};
     $rsp->{data}->[0] = "TRACE: Timeout value is $$options{'timeout'} ";
+    $dsh_trace
+      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+    $$options{'verify'} = $$options{'verify'} || $ENV{'DSH_VERIFY'} || undef;
+    my $rsp = {};
+    $rsp->{data}->[0] = "TRACE: Verify value is $$options{'verify'} ";
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 

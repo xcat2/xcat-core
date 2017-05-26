@@ -12,7 +12,7 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
 
    The mac address of the switch management port is required for xCAT to configure the DHCP information and send over the OS to install on the switch. 
 
-   **[small clusters]** If you know the mac address of the management port on the switch, create the pre-defined switch defintion providing the mac address. ::
+   **[small clusters]** If you know the mac address of the management port on the switch, create the pre-defined switch definition providing the mac address. ::
 
        mkdef frame01sw1 --template onieswitch arch=armv71 \
            ip=192.168.1.1 mac="aa:bb:cc:dd:ee:ff"
@@ -32,7 +32,7 @@ xCAT provides support for detecting and installing the Cumulus Linux OS into ONI
              ip=192.168.4.1 switch=coresw1 switchport=4
          ... 
   
-    #. Leverage ``switchdiscover`` over the DHCP range to automatically detect the MAC address and write them into the predefined swtiches above. ::
+    #. Leverage ``switchdiscover`` over the DHCP range to automatically detect the MAC address and write them into the predefined switches above. ::
 
          switchdiscover --range <IP range>
 
@@ -108,5 +108,40 @@ Enable SNMP
 In order to utilize ``xcatprobe switch_macmap``, snmp needs to be enabled.  To enable, run the ``enablesnmp`` postscript on the switch: ::
 
     updatenode frame01sw1 -P enablesnmp
+
+To configuring SNMPv3 after enable snmp,  set user, authentication and/or encryption for the switches: ::
+
+    chdef frame01sw1 snmpauth=sha snmppassword=xcatpassw0rd snmpprivacy=DES snmpusername=xcatadmin
+
+then execute the ``configonie`` command to add the snmp user for the switch:  ::
+
+    /opt/xcat/share/xcat/scripts/configonie --switches frame01sw1 --snmp
+
+To verify the SNMPv3 configuration, run ``xcatprobe switch_macmap`` command, will show following results:  ::
+
+    #xcatprobe switch_macmap frame01sw1 -V
+    <INFO>frame1sw1: Attempting to refresh switch information...
+    <INFO>frame1sw1: Generate SNMP session with parameter:
+                'UseNumeric' => '1'
+                'SecName' => 'xcatadmin'
+                'AuthPass' => 'xcatpassw0rd'
+                'Version' => '3'
+                'PrivProto' => 'DES'
+                'DestHost' => '172.21.253.102'
+                'SecLevel' => 'authPriv'
+                'AuthProto' => 'SHA'
+                'PrivPass' => 'xcatpassw0rd'
+    <INFO>frame1sw1: SNMP Session query OID:".1.3.6.1.2.1.31.1.1.1.1"
+    <INFO>frame1sw1: SNMP Session get data for OID:".1.3.6.1.2.1.31.1.1.1.1":
+                 '1' => 'lo'
+                 '2' => 'eth0'
+                 '3' => 'swp1'
+                 '4' => 'swp2'
+                 '5' => 'swp3'
+
+    ...........................more output.....................
+
+
+ 
 
 

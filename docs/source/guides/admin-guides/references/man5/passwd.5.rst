@@ -50,13 +50,13 @@ passwd Attributes:
 
 \ **password**\ 
  
- The default password for this type of component
+ The default password for this type of component. On Linux, a crypted form could be provided. Hashes starting with $1$, $5$ and $6$ (md5, sha256 and sha512 respectively) are supported.
  
 
 
 \ **cryptmethod**\ 
  
- Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod can be set to md5, sha256 or sha512. If not set, sha256 will be used as default.
+ Indicates the method to use to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the password attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryptmethod can be set to md5, sha256 or sha512. If not set, sha256 will be used as default to encrypt plain-text passwords.
  
 
 

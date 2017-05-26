@@ -132,6 +132,7 @@ sub context_properties {
       || $ENV{'DSH_REPORTS_DIRECTORY'};
     $properties{'DSH_SYNTAX'}  = $ENV{'DSH_SYNTAX'};
     $properties{'DSH_TIMEOUT'} = $ENV{'DSH_TIMEOUT'};
+    $properties{'DSH_VERIFY'} = $ENV{'DSH_VERIFY'};
     $properties{'RSYNC_RSH'}   = $ENV{'RSYNC_RSH'};
 
     if ($ENV{'DSH_ON_HMC'}) {

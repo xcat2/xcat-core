@@ -1,7 +1,7 @@
 MLNX_OFED Support Matrix
 ========================
 
-The following ISO images and attributs have been verified by the xCAT Team. 
+The following ISO images and attributes have been verified by the xCAT Team. 
 
 **RedHat Enterprise Linux**
 

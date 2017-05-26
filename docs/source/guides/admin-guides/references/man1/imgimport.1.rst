@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The imgimport command will import an image that has been exported by \ *imgexport*\  from xCAT.  This is the easiest way to transfer/backup/, change or share images created by xCAT whether they be stateless or stateful. The bundle file will be unpacked in the current working directory. The xCAT configuration such as \ *osimage*\  and \ *linuximage*\  tables will then be updated.
+The \ **imgimport**\  command will import an image that has been exported by \ **imgexport**\  from xCAT.  This is the easiest way to transfer, backup, change or share images created by xCAT whether they be stateless or stateful. The bundle file will be unpacked in the current working directory. The xCAT configuration such as \ *osimage*\  and \ *linuximage*\  tables will then be updated.
 
 For stateful, the following files will be copied to the appropriate directories.
   x.pkglist
@@ -61,15 +61,15 @@ For statelite, the following files will be copied to the appropriate directories
 
 where x is the profile name.
 
-Any extra files, included by --extra flag in the imgexport command, will also be copied to the appropriate directories.
+Any extra files, included by \ **-**\ **-extra**\  flag in the \ **imgexport**\  command, will also be copied to the appropriate directories.
 
 For statelite, the litefile table will be updated for the image. The litetree and statelite tables are not imported.
 
-If -p flag is specified, the \ *postscripts*\  table will be updated with the postscripts and the postbootscripts names from the image for the nodes given by this flag.
+If \ **-p**\  flag is specified, the \ *postscripts*\  table will be updated with the postscripts and the postbootscripts names from the image for the nodes given by this flag.
 
-If -f flag is not specified, all the files will be copied to the same directories as the source. If it is specified, the old profile name x will be changed to the new and the files will be copied to the appropriate directores for the new profiles. For example, \ */opt/xcat/share/xcat/netboot/sles/x.pkglist*\  will be copied to \ */install/custom/netboot/sles/compute_new.pkglist*\  and \ */install/netboot/sles11/ppc64/x/kernel*\  will be copied to \ */install/netboot/sles11/ppc64/compute_new/kernel*\ . This flag is commonly used when you want to copy the image on the same xCAT mn so you can make modification on the new one.
+If \ **-f**\  flag is not specified, all the files will be copied to the same directories as the source. If it is specified, the old profile name x will be changed to the new and the files will be copied to the appropriate directores for the new profiles. For example, \ */opt/xcat/share/xcat/netboot/sles/x.pkglist*\  will be copied to \ */install/custom/netboot/sles/compute_new.pkglist*\  and \ */install/netboot/sles11/ppc64/x/kernel*\  will be copied to \ */install/netboot/sles11/ppc64/compute_new/kernel*\ . This flag is commonly used when you want to copy the image on the same xCAT mn so you can make modification on the new one.
 
-After this command, you can run the \ *nodeset*\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node depolyment.
+After this command, you can run the \ **nodeset**\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node depolyment.
 
 For stateful:
   nodeset
@@ -90,13 +90,30 @@ OPTIONS
 *******
 
 
-\ **-f|-**\ **-profile**\  \ *new_prof*\       Import the image with a new profile name.
 
-\ **-h|-**\ **-help**\                      Display usage message.
+\ **-f|-**\ **-profile**\  \ *new_profile*\ 
+ 
+ Import the image with a new profile name.
+ 
 
-\ **-p|-**\ **-postscripts**\  \ *nodelist*\   Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
 
-\ **-v|-**\ **-verbose**\                   Verbose output.
+\ **-h|-**\ **-help**\ 
+ 
+ Display usage message.
+ 
+
+
+\ **-p|-**\ **-postscripts**\  \ *nodelist*\ 
+ 
+ Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
+ 
+
+
+\ **-v|-**\ **-verbose**\ 
+ 
+ Verbose output.
+ 
+
 
 
 ************
