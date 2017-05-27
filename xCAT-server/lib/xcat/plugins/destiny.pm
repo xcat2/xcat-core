@@ -187,8 +187,15 @@ sub setdestiny {
         chomp($state);
         my $target;
         my $action;
+        my $rawstate=$state;
         if ($state =~ /=/) {
             ($state, $target) = split '=', $state, 2;
+
+            if(!$target){
+                $callback->({ error => "invalid argument: \"$rawstate\"", errorcode => [1] });
+                return;
+            }
+ 
             if ($target =~ /:/) {
                 ($target, $action) = split ':', $target, 2;
             }
