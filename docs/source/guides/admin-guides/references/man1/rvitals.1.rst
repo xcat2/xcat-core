@@ -67,7 +67,7 @@ OpenPOWER (OpenBMC) specific:
 =============================
 
 
-\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | length | all**\ ]
+\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | altitude | all**\ ]
 
 
 
@@ -140,9 +140,9 @@ Processor for a single or range of nodes and groups.
  
 
 
-\ **length**\ 
+\ **altitude**\ 
  
- Retrieves length related attributes.
+ Retrieves altitude related attributes.
  
 
 

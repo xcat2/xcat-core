@@ -32,7 +32,7 @@ B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<le
 
 =head2 OpenPOWER (OpenBMC) specific:
 
-B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<length>|B<all>]
+B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<altitude>|B<all>]
 
 =head1 B<Description>
 
@@ -79,9 +79,9 @@ Retrieves rack environmentals.
 
 Retrieves LEDs status.
 
-=item B<length>
+=item B<altitude>
 
-Retrieves length related attributes.
+Retrieves altitude related attributes.
 
 =item B<power>
 

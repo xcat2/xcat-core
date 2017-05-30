@@ -37,6 +37,8 @@ $::POWER_STATE_POWERING_ON="powering-on";
 $::POWER_STATE_QUIESCED="quiesced";
 $::POWER_STATE_RESET="reset";
 
+$::NO_ATTRIBUTES_RETURNED="No attributes returned from the BMC.";
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
@@ -458,7 +460,7 @@ sub parse_args {
     } elsif ($command eq "rvitals") {
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^length$|^all$/) {
+        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } else {
@@ -1235,7 +1237,7 @@ sub rvitals_response {
         if ($grep_string =~ "power") {
             unless ( $content{Unit} =~ "Amperes" || $content{Unit} =~ "Joules" || $content{Unit} =~ "Watts" ) { next; } 
         } 
-        if ($grep_string =~ "length") {
+        if ($grep_string =~ "altitude") {
             unless ( $content{Unit} =~ "Meters" ) { next; }
         } 
 
@@ -1262,6 +1264,8 @@ sub rvitals_response {
         my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
             grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+    } else {
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
