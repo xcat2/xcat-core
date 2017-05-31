@@ -18,6 +18,7 @@ require xCAT::Utils;
 require xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Table;
+use xCAT::Usage;
 
 use Data::Dumper;
 use Getopt::Long;
@@ -96,6 +97,16 @@ sub rinstall {
     }
 
     if (($command =~ /rinstall/) or ($command =~ /winstall/)) {
+        my $ret=xCAT::Usage->validateArgs($command,@ARGV);
+        if ($ret->[0]!=0) {
+             my $rsp={};
+             $rsp->{error}->[0] = $ret->[1];
+             $rsp->{errorcode}->[0] = $ret->[0];
+             xCAT::MsgUtils->message("E", $rsp, $callback);
+             &usage($command,$callback);
+             return;
+        }
+
         my $state = $ARGV[0];
         my $reststates;
         ($state, $reststates) = split(/,/, $state, 2);
