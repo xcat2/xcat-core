@@ -355,6 +355,14 @@ sub process_request {
         xCAT::Utils->runcmd("mkdir $rootimg_dir/.statebackup", 0, 1);
     }
 
+    #delete useless dracut.* files
+    #copy many dracut.* files cost too much time in liteimg
+    if ( !`ls $rootimg_dir/tmp/dracut.* >/dev/null  2>&1` ) {
+        $verbose && $callback->({ info => ["rm -f $rootimg_dir/tmp/dracut.*"] });
+        xCAT::Utils->runcmd("rm -f $rootimg_dir/tmp/dracut.*", 0, 1);
+    }
+
+
     # recovery the files in litefile.save if necessary
     foreach my $line (keys %hashSaved) {
         my @oldentry = split(/\s+/, $line);
