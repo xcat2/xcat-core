@@ -11,6 +11,7 @@ use Getopt::Long;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::Usage;
 
 my $dhcpconf = "/etc/dhcpd.conf";
 
@@ -367,11 +368,14 @@ sub preprocess_request {
         return;
     }
 
-    if (@ARGV == 0) {
-        if ($usage{$command}) {
-            my %rsp;
-            $rsp{data}->[0] = $usage{$command};
-            $callback1->(\%rsp);
+    my $ret=xCAT::Usage->validateArgs($command,@ARGV);
+    if ($ret->[0]!=0) {
+         if ($usage{$command}) {
+             my %rsp;
+             $rsp{error}->[0] = $ret->[1];
+             $rsp{data}->[1] = $usage{$command};
+             $rsp{errorcode}->[0] = $ret->[0];
+             $callback1->(\%rsp);
         }
         return;
     }

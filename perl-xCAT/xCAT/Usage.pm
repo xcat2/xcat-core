@@ -620,3 +620,41 @@ sub parseCommand {
     return "";
 }
 
+#------------------------------------------------------------------------------
+
+=head3   validateArgs
+    This function validates the arguments of the specified command
+    Arguments:
+        command
+        arguments(array @)
+    Returns:
+        $ref:         a reference to array of [$retcode(integer),$info(string)]
+        $ref->[0]=0 : validation passed
+        $ret->[0]!=0: validation failed, the error info is returned in $ref->[1]
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub validateArgs {
+    my $command=shift; 
+    if ($command =~ /xCAT::Usage/) { $command = shift; }
+  
+    my $count=0; 
+    my @extrargs=@_;
+    if($command =~ m/^(nodeset|rinstall|winstall)$/ ){
+        #suppose that argument like "-p foo" have been processed and 
+        #filtered by GetOpt subroutine 
+        #fortunately the commands in this branch does not have such options
+        foreach(@extrargs){
+            if($_ !~ m/^-[-]?\S+/){
+                $count+=1;
+            }
+        }
+        if ($count!=1) {
+           return [1,"Invalid argument: '".join(" ",@extrargs)."'"];
+        }
+    }
+
+    return [0]; 
+}
