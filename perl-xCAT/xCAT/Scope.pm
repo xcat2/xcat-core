@@ -33,16 +33,17 @@ sub split_node_array {
 
     if ($max_sub < 2) {return [$source];}
  
-    my @dest = {};
+    my @dest = ();
     my $total = $#{$source} + 1;
     my $n_sub = int ($total / $capacity);
     unless ($n_sub * $capacity == $total) { $n_sub++;} #POSIX::ceil
 
     if ( $n_sub <= 1 ) {
+        # Only 1 subset is enough
         $dest[0] = $source;
 
     } elsif ( $n_sub > $max_sub ) {
-
+        # Caculate how many subsets is required.
         $capacity = int ($total / $max_sub);
         if ( $total % $max_sub > 0 ) {
             $capacity += 1;
@@ -50,8 +51,8 @@ sub split_node_array {
         my $start = $end = 0;
         for (1..$max_sub) {
             $end = $start + $capacity - 1;
-            if ( $end > $total -1 ) {
-                $end = $total -1
+            if ( $end > $total - 1 ) {
+                $end = $total - 1
             }
 
             my @temp = @$source[$start..$end];
@@ -60,12 +61,12 @@ sub split_node_array {
         }
 
     } else {
-        # Only require $n_sub subset.
+        # Exceed, only return maximum subsets which has more elements inside.
         my $start = $end = 0;
         for (1..$n_sub) {
             $end = $start + $capacity - 1;
-            if ( $end > $total -1 ) {
-                $end = $total -1
+            if ( $end > $total - 1 ) {
+                $end = $total - 1
             }
             #print "subset #$_: $start to $end";
             my @temp = @$source[$start..$end];
@@ -106,7 +107,7 @@ sub get_parallel_scope {
     unless ($max_sub) { $max_sub = 5; }
     unless ($capacity) { $capacity = 250; }
 
-    my $subsets = split_node_array(\@{ $req->{node} }, $max_sub, $capacity);
+    my $subsets = split_node_array(\@{$req->{node}}, $max_sub, $capacity);
     # Just return the origin one if node range is not big enough.
     if ($#{$subsets} < 1) { return [$req]; }
 
@@ -145,16 +146,21 @@ sub get_broadcast_scope_with_parallel {
     #Exit if the packet has been preprocessed in its history
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    my $reqs = get_parallel_scope($req); #Prepare for parallel execution according to node range.
+    #Handle the one for current management/service node
+    my $reqs = get_parallel_scope($req); 
     my @requests = @$reqs;
+
+    #Broadcast the request to other management/service nodes
     foreach (xCAT::ServiceNodeUtils->getSNList()) {
         if (xCAT::NetworkUtils->thishostisnot($_)) {
             my $xcatdest = $_;
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $_;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            #Apply callback to filter the node range in future.
+            $reqs = get_parallel_scope($reqcopy);
             foreach (@$reqs) {
-                my $reqcopy = {%$_};
-                $reqcopy->{'_xcatdest'} = $xcatdest;
-                $reqcopy->{_xcatpreprocessed}->[0] = 1;
-                push @requests, $reqcopy;
+                push @requests, {%$_};
             }
         }
     }
