@@ -1173,13 +1173,13 @@ sub run_case {
             my $rc          = 0;
             if ($cmdlen == 1) {
 
-                #to run singal line command
+                #to run single line command
 
-                $cmd    = getfunc($cmd->[0]);
-                @output = &runcmd($cmd);
+                $cmd->[0]    = getfunc($cmd->[0]);
+                @output = &runcmd($cmd->[0]);
                 $rc     = $::RUNCMD_RC;
-                log_this($running_log_fd, "RUN:$cmd [$runstartstr]");
-                push(@caselog, "RUN:$cmd [$runstartstr]");
+                log_this($running_log_fd, "RUN:$cmd->[0] [$runstartstr]");
+                push(@caselog, "RUN:$cmd->[0] [$runstartstr]");
             } else {
 
                 #to run multiple lines command
@@ -1275,7 +1275,8 @@ sub run_case {
                 if ($cmdcheck) {
                     &runcmd($cmdcheck);
                     $rc = $::RUNCMD_RC;
-                    if ($rc == 1) {
+                    if ($rc != 0 ) {
+                        $failflag = 1;
                         log_this($running_log_fd, "CHECK:output $cmdcheck\t[Failed]");
                         push(@caselog, "CHECK:output $cmdcheck\t[Failed]");
                     } elsif ($rc == 0) {
