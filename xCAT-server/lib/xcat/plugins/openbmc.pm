@@ -408,7 +408,7 @@ sub parse_args {
         }
     } elsif ($command eq "rinv") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
+        unless ($subcommand =~ /^model$|^serial$|^firm$|^cpu$|^dimm$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
@@ -956,60 +956,20 @@ sub rinv_response {
             next; 
         }
 
-        #
-        # Need to re-visit this code, commenting out for now...
-        #
-=for comment 
-        if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
-            my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
-            xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
-            next if ($grep_string eq "model");
-        } 
+        if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
+            $src = "$1 $2";
+        } else {
+            $src = basename $key_url;
+        }
 
-        if (($grep_string eq "vpd" or $grep_string eq "serial") and $key_url =~ /\/motherboard$/) {
-            my $serialnumber = "BOARD Serial Number: " . "$content{SerialNumber}";
-            xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
-            next if ($grep_string eq "serial");
-        } 
-
-        if (($grep_string eq "vpd" or $grep_string eq "mprom") and $key_url =~ /\/motherboard$/) {
-            xCAT::SvrUtils::sendmsg("No mprom information is available", $callback, $node);
-            next if ($grep_string eq "mprom");
-        } 
-
-        if (($grep_string eq "vpd" or $grep_string eq "deviceid") and $key_url =~ /\/motherboard$/) {
-            xCAT::SvrUtils::sendmsg("No deviceid information is available", $callback, $node);
-            next if ($grep_string eq "deviceid");
-        } 
-
-        if ($grep_string eq "uuid") {
-            xCAT::SvrUtils::sendmsg("No uuid information is available", $callback, $node);
-            last;
-        } 
-
-        if ($grep_string eq "guid") {
-            xCAT::SvrUtils::sendmsg("No guid information is available", $callback, $node);
-            last;
-        } 
-
-        if ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
-            my $macaddress = "MAC: " . $content{MACAddress};
-            xCAT::SvrUtils::sendmsg("$macaddress", $callback, $node);
-            next;
-        } 
-=cut
-
-        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
-            if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
-                $src = "$1 $2";
-            } else {
-                $src = basename $key_url;
+        foreach my $key (keys %content) {
+            # If not all options is specified, check whether the key string contains
+            # the keyword option.  If so, add it to the return data
+            if ($grep_string ne "all" and lc($key) !~ m/$grep_string/i ) {
+                next;
             }
-
-            foreach my $key (keys %content) {
-                $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-                push (@sorted_output, $content_info); #Save output in array
-            }
+            $content_info = uc ($src) . " " . $key . " : " . $content{$key};
+            push (@sorted_output, $content_info); #Save output in array
         }
     }
     # If sorted array has any contents, sort it and print it
