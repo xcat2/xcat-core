@@ -1173,7 +1173,7 @@ sub run_case {
             my $rc          = 0;
             if ($cmdlen == 1) {
 
-                #to run singal line command
+                #to run single line command
 
                 $cmd->[0]    = getfunc($cmd->[0]);
                 @output = &runcmd($cmd->[0]);
