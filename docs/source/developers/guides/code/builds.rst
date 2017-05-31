@@ -37,7 +37,7 @@ The following steps will help configure ``pod2rst`` and be able to generate the 
         make
         make install
     
-    * **[as non-root]** Extrat and build the Perl module using PREFIX to specify a directory that you have write permission ::
+    * **[as non-root]** Extract and build the Perl module using PREFIX to specify a directory that you have write permission ::
     
         mkdir ~/perllib
         perl Makefile.PL PREFIX=~/perllib
