@@ -956,9 +956,6 @@ sub rinv_response {
             next; 
         }
 
-        # If the item is not found on the server, do not bother printing it out 
-        if ($content{Present} eq 0) { next; }
-
         #
         # Need to re-visit this code, commenting out for now...
         #
