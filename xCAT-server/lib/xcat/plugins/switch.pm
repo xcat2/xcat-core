@@ -251,7 +251,7 @@ sub process_request {
                     $cb->({ node => [ { name => $switch, data => ["PASS"] } ] });
                     next;
                 }
-                foreach my $port (sort keys %{ $macinfo->{$switch} }) {
+                foreach my $port (sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0]} keys %{ $macinfo->{$switch} }) {
                     my $node = '';
                     if (defined($macinfo->{$switch}->{$port}->{Node})) {
                         $node = $macinfo->{$switch}->{$port}->{Node};
