@@ -978,6 +978,8 @@ sub rinv_response {
         my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
             grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+    } else {
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
