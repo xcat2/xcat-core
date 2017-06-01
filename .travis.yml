@@ -1,2 +1,10 @@
 os: linux
+before_install: 
+- sudo apt-get install ruby
+- gem install sinatra
+- gem install json
+- gem install activesupport
+#- ruby ./travis.rb
+- curl -i https://api.github.com/repos/DengShuaiSimon/Xcat/pulls
+
 script: perl -c ./perl-xCAT/*
