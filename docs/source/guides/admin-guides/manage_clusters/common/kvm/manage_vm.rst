@@ -2,7 +2,7 @@ Manage Virtual Machine (VM)
 ============================
 
 
-Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create,remove and clone VMs.
+Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
 
 Create Virtual Machine
 ----------------------
@@ -117,7 +117,7 @@ Now a VM "vm1" is created, it can be provisioned like any other nodes in xCAT. T
 
   rpower vm1 on
 
-If "vm1" is powered on successfully,  the VM status can be obtained by running the following command on management node ::
+If "vm1" is powered on successfully, the VM status can be obtained by running the following command on management node ::
 
   rpower vm1 status
 

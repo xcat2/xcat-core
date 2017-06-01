@@ -40,7 +40,7 @@ The ``postinstall`` scripts are executed in step b).
 Do ``postinstall`` scripts execute in chroot mode under ``rootimgdir`` directory?
 `````````````````````````````````````````````````````````````````````````````````
 
-No. Unlike postscripts and postbootscripts, the ``postinstall`` scripts are run in non-chroot environment, directly on the management node. In the postinstall scripts, all the paths of the directories and files are based on  ``/`` of the managememnt node. To reference inside the ``rootimgdir``, use the ``$IMG_ROOTIMGDIR`` environment variable, exported by ``genimage``.
+No. Unlike postscripts and postbootscripts, the ``postinstall`` scripts are run in non-chroot environment, directly on the management node. In the postinstall scripts, all the paths of the directories and files are based on  ``/`` of the management node. To reference inside the ``rootimgdir``, use the ``$IMG_ROOTIMGDIR`` environment variable, exported by ``genimage``.
 
 What are some of the environment variables available to my customized ``postinstall`` scripts?
 ``````````````````````````````````````````````````````````````````````````````````````````````
