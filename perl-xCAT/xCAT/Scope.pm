@@ -43,7 +43,7 @@ sub split_node_array {
         $dest[0] = $source;
 
     } elsif ( $n_sub > $max_sub ) {
-        # Caculate how many subsets is required.
+        # Exceed, then to recaculate the capacity of each subset as we only allow max_sub
         $capacity = int ($total / $max_sub);
         if ( $total % $max_sub > 0 ) {
             $capacity += 1;
@@ -61,7 +61,7 @@ sub split_node_array {
         }
 
     } else {
-        # Exceed, only return maximum subsets which has more elements inside.
+        # Only n_sub subsets are required, split the noderange into each subset
         my $start = $end = 0;
         for (1..$n_sub) {
             $end = $start + $capacity - 1;
