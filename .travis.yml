@@ -1,3 +1,2 @@
 os: linux
-script: 
-- perl -c ./perl-xCAT/*
+script: perl -c ./perl-xCAT/*
