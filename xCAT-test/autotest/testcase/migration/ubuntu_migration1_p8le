@@ -118,6 +118,8 @@ cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;rmdef node0001"
 check:rc==0
 cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
 check:output!~node0001
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
+check:rc==0
 cmd:xdsh $$CN "diff /oldxcat/old_version /newxcat/new_version"
 check:rc!=0
 

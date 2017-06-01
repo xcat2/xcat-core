@@ -99,6 +99,8 @@ cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
 check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
+check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
 cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
@@ -208,6 +210,8 @@ check:output=~running
 cmd:xdsh $$CN "lsdef"
 check:output=~node0001
 cmd:xdsh $$CN "noderm node0001"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
