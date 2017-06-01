@@ -1,0 +1,8 @@
+start:setup_openbmc_simulator
+cmd:git clone git@github.com:xuweibj/openbmc_simulator.git
+check:rc==0
+cmd:/root/openbmc_simulator/simulator &
+check:rc==0
+cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/setup_simulator/change_ip.sh -s $$MN $$CN
+check:rc==0
+end
