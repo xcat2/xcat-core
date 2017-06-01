@@ -1,4 +1,5 @@
 start:clear_openbmc_simulator
-cmd:sh /opt/xcat/share/xcat/tools/autotest/testcase/setup_simulator/change_ip.sh -c $$MN $$CN
+description:clear evironment
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/setup_simulator/change_ip.sh -c $$MN $$CN
 check:rc==0
 end
