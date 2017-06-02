@@ -393,7 +393,7 @@ sub parse_args {
     my $noderange = shift;
     my $check = undef;
  
-    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig/) {
+    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     }
 
@@ -461,6 +461,27 @@ sub parse_args {
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rflash") {
+        my $filename_passed = 0;
+        foreach my $opt (@$extrargs) {
+            # Only files ending on .tar are allowed
+            if ($opt =~ /.*\.tar$/i) {
+                $filename_passed = 1;
+                next;
+            }
+            if ($filename_passed) {
+                # Filename was passed, check flags allowed with file
+                if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
+                    return ([ 1, "Unsupported file command option: $opt" ]);
+                }
+            }
+            else {
+                # Filename was not passed, check flags allowed without file
+                if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
+                    return ([ 1, "Unsupported no file command command option: $opt" ]);
+                }
+            }
         }
     } else {
         return ([ 1, "Command is not supported." ]);
@@ -616,6 +637,69 @@ sub parse_command_status {
         $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
         $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
         $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+    }
+
+    if ($command eq "rflash") {
+        my $check_version = 0;
+        my $list = 0;
+        my $delete = 0;
+        my $upload = 0;
+        unless (GetOptions(
+            'c|check'  => \$check_version,
+            'l|list'   => \$list,
+            'd|delete' => \$delete,
+            'u|upload' => \$upload,
+        )) {
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
+            return 1;
+        }
+
+        my $update_file = $ARGV[0]; 
+        my $filename = undef;
+        my $file_id = undef;
+        my $grep_cmd = "/usr/bin/grep -a";
+        my $version_tag = '"version=IBM"';
+        my $purpose_tag = '"purpose="';
+        if (defined $update_file) {
+            # Filename or file id was specified 
+            if ($update_file =~ /.*\.tar$/) {
+                # Filename ending on .tar was specified
+                $filename = $update_file;
+                if ($check_version) {
+                    # Display firmware version of the specified .tar file
+                    my $firmware_version_in_file = `$grep_cmd $version_tag $filename`;
+                    my $purpose_version_in_file = `$grep_cmd $purpose_tag $filename`;
+                    chomp($firmware_version_in_file);
+                    chomp($purpose_version_in_file);
+                    my ($purpose_string,$purpose_value) = split("=", $purpose_version_in_file); 
+                    my ($version_string,$version_value) = split("=", $firmware_version_in_file); 
+                    if ($purpose_value =~ /host/) {
+                        $purpose_value = "Host";
+                    } 
+                    xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
+                }
+            }
+            else {
+                #TODO Process file id passed in
+            }
+        }
+        if ($check_version) {
+            #Display firmware version on BMC
+            $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        }
+        if ($list) {
+            xCAT::SvrUtils::sendmsg("List option is not yet supported.", $callback);
+            return 1;
+        }
+        if ($delete) {
+            xCAT::SvrUtils::sendmsg("Delete option is not yet supported.", $callback);
+            return 1;
+        }
+        if ($upload) {
+            xCAT::SvrUtils::sendmsg("Upload option is not yet supported.", $callback);
+            return 1;
+        }
     }
 
     print Dumper(\%next_status) . "\n";
