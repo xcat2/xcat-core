@@ -79,10 +79,12 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;chdef -t node -o node0001  nodetype=osi groups=linux"
-check:rc==0
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
-check:output=~node0001
+cmd:lsdef $$SN -z | ssh $$CN "/opt/xcat/bin/mkdef -z"
+cmd:ssh $$CN "/opt/xcat/bin/chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
+cmd:makedhcp -d $$SN
+cmd:scp $$ISO $$CN:/tmp/foobar.iso
+cmd:ssh $$CN "/opt/xcat/sbin/copycds /tmp/foobar.iso"
+cmd:ssh $$CN "/opt/xcat/sbin/makedhcp -n"
 cmd:xdsh $$CN "rm -rf /newxcat"
 cmd:xdsh $$CN "mkdir -p /newxcat"
 check:rc==0
@@ -113,10 +115,15 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;rmdef node0001"
+cmd:ssh $$CN "/opt/xcat/bin/rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
 check:rc==0
-cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
-check:output!~node0001
+cmd:sleep 300
+cmd:ssh $$CN "a=0; while ! `/opt/xcat/bin/lsdef -l $$SN | grep status | grep booted >/dev/null`; do ((++a > 90)) && exit 99; sleep 20; done"
+check:rc==0
+cmd:ssh $$CN "/opt/xcat/bin/xdsh $$SN date"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
+check:rc==0
 cmd:xdsh $$CN "diff /oldxcat/old_version /newxcat/new_version"
 check:rc!=0
 end
