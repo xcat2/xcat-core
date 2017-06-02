@@ -976,7 +976,7 @@ sub rinv_response {
             foreach my $key (keys %content) {
                 # If not all options is specified, check whether the key string contains
                 # the keyword option.  If so, add it to the return data
-                if ($grep_string ne "all" and lc($key) !~ m/$grep_string/i ) {
+                if ($grep_string ne "all" and ((lc($key) !~ m/$grep_string/i) and ($key_url !~ m/$grep_string/i)) ) {
                     next;
                 }
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
