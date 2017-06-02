@@ -941,35 +941,47 @@ sub rinv_response {
             #    node: <Purpose> Software: <version> (<Activation>)
             #
             if (defined($content{Version}) and $content{Version}) {
-                # TODO: In future, if we want to support ExtendedVersion, we should enable Verbose output.
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
-                my $content_info = "$purpose_value SOFTWARE: $content{Version} ($activation_value)";
-                xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
+                #
+                # The space below between "SOFTWARE:" and $content{Version} is intentional
+                # to cause the sorting of this line before any additional info lines 
+                #
+                $content_info = "$purpose_value SOFTWARE:   $content{Version} ($activation_value)";
+                push (@sorted_output, $content_info); 
+
+                if ($content{ExtendedVersion} ne "") { 
+                    # ExtendedVersion is going to be a comma separated list of additional software
+                    my @versions = split(',', $content{ExtendedVersion});
+                    foreach my $ver (@versions) { 
+                        $content_info = "$purpose_value SOFTWARE: -- additional info: $ver";
+                        push (@sorted_output, $content_info);
+                    }
+                }
                 next;
             }
-        }
-
-        if (! defined $content{Present}) {
-            # This should never happen, but if we find this, contact firmware team to fix...
-            xCAT::SvrUtils::sendmsg("ERROR: Invalid data for $key_url, contact firmware team!", $callback, $node);
-            next; 
-        }
-
-        if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
-            $src = "$1 $2";
         } else {
-            $src = basename $key_url;
-        }
-
-        foreach my $key (keys %content) {
-            # If not all options is specified, check whether the key string contains
-            # the keyword option.  If so, add it to the return data
-            if ($grep_string ne "all" and lc($key) !~ m/$grep_string/i ) {
-                next;
+            if (! defined $content{Present}) {
+                # This should never happen, but if we find this, contact firmware team to fix...
+                xCAT::SvrUtils::sendmsg("ERROR: Invalid data for $key_url, contact firmware team!", $callback, $node);
+                next; 
             }
-            $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-            push (@sorted_output, $content_info); #Save output in array
+
+            if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
+                $src = "$1 $2";
+            } else {
+                $src = basename $key_url;
+            }
+
+            foreach my $key (keys %content) {
+                # If not all options is specified, check whether the key string contains
+                # the keyword option.  If so, add it to the return data
+                if ($grep_string ne "all" and lc($key) !~ m/$grep_string/i ) {
+                    next;
+                }
+                $content_info = uc ($src) . " " . $key . " : " . $content{$key};
+                push (@sorted_output, $content_info); #Save output in array
+            }
         }
     }
     # If sorted array has any contents, sort it and print it
