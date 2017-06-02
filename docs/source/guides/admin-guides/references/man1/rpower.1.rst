@@ -32,7 +32,7 @@ BMC (using IPMI):
 \ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat | pdureset**\ ]
 
 
-OpenPower BMC (using IPMI):
+OpenPOWER BMC (using IPMI):
 ===========================
 
 
@@ -41,7 +41,7 @@ OpenPower BMC (using IPMI):
 \ **rpower**\  \ *noderange*\  [\ **pduon | pduoff | pdustat | pdureset**\ ]
 
 
-OpenPower OpenBMC:
+OpenPOWER OpenBMC:
 ==================
 
 

@@ -1,10 +1,10 @@
-OpenPower Nodes
+OpenPOWER Nodes
 ===============
 
 
 When compute nodes are physically replaced in the frame, leverage xCAT to re-discover the compute nodes.  The following guide can be used for:
 
-  * IBM OpenPower S822LC for HPC 
+  * IBM OpenPOWER S822LC for HPC 
 
 
 #. Identify the machine(s) to be replaced: ``frame10cn02``.

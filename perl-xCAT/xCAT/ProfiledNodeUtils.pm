@@ -1365,7 +1365,7 @@ sub gen_chain_for_profiles {
 
     #run bmcsetups.
     #PowerNV nodes can't use 'runcmd=bmcsetup' to set BMC.
-    #But OpenPower need to support bmcsetup
+    #But OpenPOWER need to support bmcsetup
     my $nodehmtab       = xCAT::Table->new('nodehm');
     my $comments        = "";
     my $nodehmtab_entry = $nodehmtab->getNodeAttribs($hwprofile, ['comments']);
