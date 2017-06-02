@@ -357,7 +357,7 @@ sub process_request {
 
     #delete useless rootimg/tmp/dracut.* files
     #fix copy many dracut.* files cost too much time in liteimg
-    $verbose && $callback->({ info => ["unlink glob \"$rootimg_dir/tmp/dracut.*\""] });
+    $verbose && $callback->({ info => ["removing \"$rootimg_dir/tmp/dracut.*\""] });
     unlink glob "$rootimg_dir/tmp/dracut.*"; 
         
     # recovery the files in litefile.save if necessary
