@@ -446,7 +446,7 @@ passed as argument rather than by table value',
     openbmc => {
         cols => [qw(node bmc consport taggedvlan username password comments disable)],
         keys => [qw(node)],
-        table_desc => 'Setting for nodes that are controlled by an on-board OpenBmc.',
+        table_desc => 'Setting for nodes that are controlled by an on-board OpenBMC.',
         descriptions => {
             node => 'The node name or group name.',
             bmc => 'The hostname of the BMC adapter.',
