@@ -65,13 +65,14 @@ sub process_request
     if   ($request && $request->{arg}) { @ARGV = @{ $request->{arg} }; }
     else                               { @ARGV = (); }
 
-    my $usage = "Usage: makeknownhosts <noderange> [-r] [-V]\n       makeknownhosts -h";
+    my $usage = "Usage: makeknownhosts <noderange> [-r|-d] [-V]\n       makeknownhosts -h";
 
     # print "argv=@ARGV\n";
     if (!GetOptions(
             'h|help'    => \$::opt_h,
             'V|verbose' => \$::opt_V,
             'r|remove'  => \$::opt_r
+            'd|delete'  => \$::opt_d
         ))
     {
         my $rsp = {};
@@ -81,23 +82,22 @@ sub process_request
     }
 
     # display the usage if -h
-    if ($::opt_h)
-    {
+    if ($::opt_h) {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
         xCAT::MsgUtils->message("I", $rsp, $callback, 1);
         return 0;
     }
-    if ($nodes eq "")
-    {    # no noderange
+    if ($nodes eq "") {
+        # no noderange
         my $rsp = {};
         $rsp->{data}->[0] = "The Noderange is missing.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
     my $hostkey = "/etc/xcat/hostkeys/ssh_host_rsa_key.pub";
-    if (!(-e $hostkey))
-    {    # the key is missing, cannot create known_hosts
+    if (!(-e $hostkey)) {
+        # the key is missing, cannot create known_hosts
         my $rsp = {};
         $rsp->{data}->[0] =
 "The keyfile:$hostkey is missing. Cannot create the known_hosts file.";
@@ -107,35 +107,28 @@ sub process_request
 
     # Backup the existing known_hosts file to known_hosts.backup
     $rc = backup_known_hosts_file($callback);
-    if ($rc != 0)
-    {
+    if ($rc != 0) {
         my $rsp = {};
         $rsp->{data}->[0] = "Error backing up known_hosts file.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
-
     }
 
     # Remove the nodes from knownhosts file
     $rc = remove_nodes_from_knownhosts($callback, $nodes);
-    if ($rc != 0)
-    {
+    if ($rc != 0) {
         my $rsp = {};
         $rsp->{data}->[0] = "Error backing up known_hosts file.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
-
     }
 
     # if -r flag is not specified, adding the nodes back to known_hosts file
-    if (!$::opt_r)
-    {
+    if (!($::opt_r or $::opt_d)) {
         my @nodelist = @$nodes;
-        foreach my $node (@nodelist)
-        {
+        foreach my $node (@nodelist) {
             $rc = add_known_host($node, $callback);
-            if ($rc != 0)
-            {
+            if ($rc != 0) {
                 my $rsp = {};
                 $rsp->{data}->[0] = "Error building known_hosts file.";
                 xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -152,8 +145,6 @@ sub process_request
 
   Backs up the old known_hosts file in roots  .ssh directory,
   if it exists. 
-
-
 
 =cut
 
