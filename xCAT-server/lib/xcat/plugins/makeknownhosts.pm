@@ -71,7 +71,7 @@ sub process_request
     if (!GetOptions(
             'h|help'    => \$::opt_h,
             'V|verbose' => \$::opt_V,
-            'r|remove'  => \$::opt_r
+            'r|remove'  => \$::opt_r,
             'd|delete'  => \$::opt_d
         ))
     {
