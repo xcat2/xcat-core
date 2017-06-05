@@ -457,17 +457,18 @@ enable_network_service
 
 #sort nics device pair based on nicdevice type
 sorted_nicdevice_list=`sort_nics_device_order "$new_nicdevice"`
-log_info "All valid nics and device list:"
-echo "$sorted_nicdevice_list" |log_lines info
 
 #If there is invalid nics pair, errorcode is 1
-echo "$sorted_nicdevice_list" | grep "Error" > /dev/null
+invalid_nicdevice_pair=`echo "$sorted_nicdevice_list" | grep "Error"`
 if [ $? -eq 0 ]; then
+log_error $invalid_nicdevice_pair
 errorcode=1
 fi
 
 #delete invalid nics device pair based on Error
 valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d'` 
+log_info "All valid nics and device list:"
+echo "$valid_sorted_nicdevice_list" |log_lines info
 
 #config nics and ifcfg files
 configure_nicdevice "$valid_sorted_nicdevice_list"
