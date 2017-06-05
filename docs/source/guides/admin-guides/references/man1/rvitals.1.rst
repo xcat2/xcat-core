@@ -60,7 +60,7 @@ OpenPOWER (IPMI) specific:
 ==========================
 
 
-\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | all**\ ]
+\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | chassis | all**\ ]
 
 
 OpenPOWER (OpenBMC) specific:
@@ -137,6 +137,12 @@ Processor for a single or range of nodes and groups.
 \ **leds**\ 
  
  Retrieves LEDs status.
+ 
+
+
+\ **chassis**\ 
+ 
+ Retrieves chassis status.
  
 
 

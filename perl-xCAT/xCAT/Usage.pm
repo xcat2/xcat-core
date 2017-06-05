@@ -82,7 +82,7 @@ my %usage = (
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
   OpenPOWER (IPMI) specific:
-      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|all]
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
   OpenPOWER (OpenBMC) specific:
       rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
