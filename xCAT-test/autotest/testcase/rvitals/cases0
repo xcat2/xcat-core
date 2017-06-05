@@ -46,7 +46,6 @@ end
 start:rvitals_voltage
 description:Retrieves power supply and VRM voltage readings
 Attribute: $$CN-The operation object of rvitals command
-hcp:hmc,ivm,fsp,ipmi
 cmd:rvitals $$CN voltage
 check:rc==0
 check:output=~Frame Voltages|CPU VDD Volt|SysBrd
