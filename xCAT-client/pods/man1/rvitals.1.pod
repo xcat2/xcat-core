@@ -28,7 +28,7 @@ B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<le
 
 =head2 OpenPOWER (IPMI) specific:
 
-B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>]
+B<rvitals> I<noderange> [B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<chassis>|B<all>]
 
 =head2 OpenPOWER (OpenBMC) specific:
 
@@ -78,6 +78,10 @@ Retrieves rack environmentals.
 =item B<leds>
 
 Retrieves LEDs status.
+
+=item B<chassis>
+
+Retrieves chassis status.
 
 =item B<altitude>
 
