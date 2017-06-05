@@ -28,6 +28,18 @@ check:rc!=0
 check:output!~$$CN
 end
 
+start:makeknownhosts_node_d
+description:delete known node entry from $ROOTHOME/.ssh
+cmd:makeknownhosts $$CN 
+cmd:cat ~/.ssh/known_hosts|grep $$CN
+check:output=~$$CN
+cmd:makeknownhosts $$CN -d
+check:rc==0
+cmd:cat ~/.ssh/known_hosts|grep $$CN
+check:rc!=0
+check:output!~$$CN
+end
+
 start:makeknownhosts_node_v
 description:verbose
 cmd:makeknownhosts $$CN -V
