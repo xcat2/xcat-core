@@ -1653,10 +1653,11 @@ case "${GO_XCAT_ACTION}" in
 		If this is the very first time xCAT has been installed, run the following
 		commands to set environment variables into your PATH:
 
-		    for sh,
-		        \`source /etc/profile.d/xcat.sh'
-		    or csh,
-		        \`source /etc/profile.d/xcat.csh'
+		For sh: 
+			source /etc/profile.d/xcat.sh
+
+		For csh: 
+			source /etc/profile.d/xcat.csh
 		EOF
 		;;
 	"update")
