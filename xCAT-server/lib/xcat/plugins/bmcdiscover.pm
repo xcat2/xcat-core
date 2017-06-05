@@ -982,6 +982,10 @@ sub bmcdiscovery_ipmi {
 
                 }
             }
+            if ($mtm eq '' or $serial eq '') {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+                return;
+            }
 
             $node_data .= ",$mtm";
             $node_data .= ",$serial";
@@ -1043,7 +1047,7 @@ sub bmcdiscovery_openbmc{
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
     my $node_data = $ip;
-    my $brower = LWP::UserAgent->new( ssl_opts => { verify_hostname => 0 }, );
+    my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
     my $cookie_jar = HTTP::Cookies->new();
     my $header = HTTP::Headers->new('Content-Type' => 'application/json');
     my $url = "https://$ip/login";
@@ -1065,6 +1069,7 @@ sub bmcdiscovery_openbmc{
             $mtm = $response->{data}->{Model};
             $serial = $response->{data}->{SerialNumber}; 
         } else {
+            xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
             return;
         }
 
@@ -1093,6 +1098,8 @@ sub bmcdiscovery_openbmc{
     } else {
         if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
+        } else {
+            xCAT::MsgUtils->message("W", { data => ["$login_response->status_line for $ip"] }, $::CALLBACK);
         }
         return;
     }
