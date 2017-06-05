@@ -1567,14 +1567,22 @@ case "${GO_XCAT_ACTION}" in
 	then
 		echo
 		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
-		read -r -p "Continue? [y/n] "
-		case "${REPLY}" in
-		"Y"*|"y"*)
-			;;
-		*)
-			echo "Aborting ..."
-			exit 0
-		esac
+		while true; do
+
+			read -r -p "Continue? [y/n] "
+			case "${REPLY}" in
+			"Y"*|"y"*)
+				break	
+				;;
+			"N"*|"n"*)
+				echo "Good-bye!"
+				exit 0
+				;;
+			*)
+				echo "Invalid response!"
+				;;
+			esac
+		done
 	fi
 	# Use `-y' here. Since the STDOUT is redirect to tee.
 	# `yum' does not display the prompt message properly when
