@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **makeknownhosts**\  \ *noderange*\  [\ **-r | -**\ **-remove**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **makeknownhosts**\  \ *noderange*\  [\ **-r | -d | -**\ **-remove**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **makeknownhosts**\  [\ **-h | -**\ **-help**\ ]
 
@@ -53,7 +53,7 @@ OPTIONS
  
 
 
-\ **-r|-**\ **-remove**\ 
+\ **-r| -d| -**\ **-remove**\ 
  
  Only removes the entries for the nodes from the known_hosts file.
  
@@ -98,6 +98,10 @@ EXAMPLES
  .. code-block:: perl
  
    makeknownhosts node02 -r
+
+   or
+
+   makeknownhosts node02 -d
  
  
 
