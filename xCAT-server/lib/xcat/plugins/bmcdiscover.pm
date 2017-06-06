@@ -594,7 +594,9 @@ sub scan_process {
                         bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                     }
                 } else {
-                    xCAT::MsgUtils->message("E", "Can not get status of 2200 port.", $::CALLBACK);
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "Can not get status of 2200 port for ip ${$live_ip}[$i].\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     exit 1;
                 }
 
