@@ -1056,9 +1056,9 @@ sub load_case {
             #log_this($running_log_fd, "Miss attribute:", @{$invalidcases{"missattr"}});
             $$error_ref = "Miss attribute: " . join(",", @{ $invalidcases{"missattr"} });
             foreach my $line (@{ $invalidcases{"missattr"} }) {
-                my $name = split(" ", $line);
-                if (!(grep /$name/, @wrong_cases)) {
-                    push @wrong_cases, $name;
+                my @name = split(" ", $line);
+                if (!(grep /$name[0]/, @wrong_cases)) {
+                    push @wrong_cases, $name[0];
                 }
             }
             $caseerror = 1;
