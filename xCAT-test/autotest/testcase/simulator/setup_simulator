@@ -3,12 +3,12 @@ description:install dependent packaages, setup and start openbmc simulator
 cmd:#!/bin/bash
 os=`cat /etc/*release*`
 if [[ "$os" =~ "Red Hat" ]] || [[ "$os" =~ "suse" ]]; then
-    yum install git
+    yum install git -y
     if [ $? != 0 ]; then
         exit 1
     fi
 elif [[ "$os" =~ "ubuntu" ]]; then
-    apt-get install git
+    apt-get install git -y
     if [ $? != 0 ]; then
         exit 1
     fi
