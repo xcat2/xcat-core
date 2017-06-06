@@ -38,6 +38,15 @@ my %global_mac_identity = (
     "6c:ae:8b" => "BNT G8264-T switch",
     "fc:cf:62" => "BNT G8124 switch",
     "7c:fe:90" => "Mellanox switch",
+    "e4:1d:2d" => "Mellanox switch",
+    "24:8a:07" => "Mellanox switch",
+    "00:25:8b" => "Mellanox switch",
+    "00:02:c9" => "Mellanox switch",
+    "f4:52:14" => "Mellanox switch",
+    "ec:0d:9a" => "Mellanox switch",
+    "cc:37:ab" => "Edgecore Networks Switch",
+    "a8:2b:b5" => "Edgecore Networks Switch",
+    "70:72:cf" => "Edgecore Networks Switch",
     "8c:ea:1b" => "Edgecore Networks Switch"
 );
 
@@ -54,6 +63,8 @@ my %global_switch_type = (
     mellanox => "Mellanox",
     MLNX => "Mellanox",
     MELLAN => "Mellanox",
+    Cumulus => "onie",
+    cumulus => "onie",
     Edgecore => "onie"
 );
 
