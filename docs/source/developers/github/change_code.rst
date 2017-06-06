@@ -25,7 +25,7 @@ Creating additional branches will allow you to work on different tasks/enhanceme
 
 
 Committing code and pushing to remote branch
--------------------------------------------
+--------------------------------------------
 
 Once your code is ready....
 

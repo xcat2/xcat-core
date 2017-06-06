@@ -32,7 +32,7 @@ The nodes to be removed.
 
 0  The command completed successfully.
 
-1  An error has occured.
+1  An error has occurred.
 
 =head1 EXAMPLES
 

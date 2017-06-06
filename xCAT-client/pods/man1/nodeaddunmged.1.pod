@@ -34,7 +34,7 @@ Sets the IP address of the unmanaged node, where I<ip-address> is the IP address
 
 0  The command completed successfully.
 
-1  An error has occured.
+1  An error has occurred.
 
 =head1 EXAMPLES
 

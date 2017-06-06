@@ -114,10 +114,10 @@ zVM specific:
 *******************
 
 
-\ **rinv**\   retrieves  hardware  configuration  information from the on-board
+\ **rinv**\  retrieves hardware configuration information from the on-board
 Service Processor for a single or range of nodes and groups.
 
-Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
+Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
 
 
 ***************
@@ -140,7 +140,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
 
 \ **config**\ 
  
- Retrieves number of processors, speed, total  memory,  and  DIMM
+ Retrieves number of processors, speed, total memory, and DIMM
  locations.
  
 

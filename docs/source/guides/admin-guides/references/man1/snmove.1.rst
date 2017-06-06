@@ -59,7 +59,7 @@ node is second.  The \ **xcatmaster**\  attribute must be set to the
 hostname of the primary service node as it is known by the node.
 
 When the \ **snmove**\  command is run it modifies the xCAT database to
-switch the the primary server to the backup server.
+switch the primary server to the backup server.
 
 It will also check the other services that are being used for the
 node (tftpserver, monserver, nfsserver, conserver), and if they were set 
@@ -114,13 +114,13 @@ OPTIONS
 
 \ **-l|-**\ **-liteonly**\ 
  
- Use this option to ONLY synchronize any AIX statelite files from the primary server to the backup server for the nodes. It will not do the actual moving of thre nodes the the backup servers.
+ Use this option to ONLY synchronize any AIX statelite files from the primary server to the backup server for the nodes. It will not do the actual moving of the nodes to the backup servers.
  
 
 
 \ **-P|-**\ **-postscripts**\ 
  
- Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If \ **all**\  is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
+ Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new service node. If \ **all**\  is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
  
 
 

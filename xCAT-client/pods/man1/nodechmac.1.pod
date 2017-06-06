@@ -36,7 +36,7 @@ Sets the new MAC address for the NIC used by the provisioning node, where <mac-a
 
 0  The command completed successfully.
 
-1  An error has occured.
+1  An error has occurred.
 
 =head1 EXAMPLES
 

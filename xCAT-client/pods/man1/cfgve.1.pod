@@ -81,7 +81,7 @@ The NFS export directory must be configured for read write access and must
 be owned by vdsm:kvm.
 B<localfs>: "/data/images/rhev" is set by default.
 
-B<virtsd.host> - A host must be specified for a storage doamin as SPM 
+B<virtsd.host> - A host must be specified for a storage domain as SPM 
 (Storage Pool Manager) when initialize the storage domain. The role of SPM 
 may be migrated to other host by rhev-m during the running of the datacenter 
 (For example, when the current SPM encountered issue or going to maintenance 

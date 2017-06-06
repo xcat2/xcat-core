@@ -567,7 +567,7 @@ Set the next boot state for the node1. ::
 -------------------------------------------------------------------------------
 
 GET - Get all the vitals attributes.
-```````````````````````````````````
+````````````````````````````````````
 
 Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvitals.1>`
 
@@ -598,7 +598,7 @@ Get all the vitails attributes for the node1. ::
 --------------------------------------------------------------------------------------------------------------------------------------
 
 GET - Get the specific vitals attributes.
-````````````````````````````````````````
+`````````````````````````````````````````
 
 Refer to the man page: :doc:`rvitals </guides/admin-guides/references/man1/rvitals.1>`
 
@@ -629,7 +629,7 @@ Get the 'fanspeed' vitals attribute. ::
 --------------------------------------------------------------------------------------
 
 GET - Get all the inventory attributes.
-``````````````````````````````````````
+```````````````````````````````````````
 
 Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
@@ -660,7 +660,7 @@ Get all the inventory attributes for node1. ::
 --------------------------------------------------------------------------------------------------------------
 
 GET - Get the specific inventory attributes.
-```````````````````````````````````````````
+````````````````````````````````````````````
 
 Refer to the man page: :doc:`rinv </guides/admin-guides/references/man1/rinv.1>`
 
@@ -1130,7 +1130,7 @@ Create osimage resources based on an xCAT image or configuration file ::
 ------------------------------------------------
 
 GET - Get all the attributes for the osimage {imgname}.
-``````````````````````````````````````````````````````
+```````````````````````````````````````````````````````
 
 The keyword ALLRESOURCES can be used as {imgname} which means to get image attributes for all the osimages.
 
@@ -1163,7 +1163,7 @@ Get the attributes for the specified osimage. ::
     }
 
 PUT - Change the attributes for the osimage {imgname}.
-`````````````````````````````````````````````````````
+``````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
@@ -1348,7 +1348,7 @@ Create the networks resources base on the network configuration on xCAT MN. ::
 ------------------------------------------------
 
 GET - Get all the attributes for the network {netname}.
-``````````````````````````````````````````````````````
+```````````````````````````````````````````````````````
 
 The keyword ALLRESOURCES can be used as {netname} which means to get network attributes for all the networks.
 
@@ -1375,7 +1375,7 @@ Get all the attributes for network 'network1'. ::
     }
 
 PUT - Change the attributes for the network {netname}.
-`````````````````````````````````````````````````````
+``````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
@@ -1488,7 +1488,7 @@ Get all the policy objects. ::
 -----------------------------------------------------
 
 GET - Get all the attributes for a policy {policy_priority}.
-```````````````````````````````````````````````````````````
+````````````````````````````````````````````````````````````
 
 It will display all the policy attributes for one policy resource.
 
@@ -1513,7 +1513,7 @@ Get all the attribute for policy 1. ::
     }
 
 PUT - Change the attributes for the policy {policy_priority}.
-````````````````````````````````````````````````````````````
+`````````````````````````````````````````````````````````````
 
 It will change one or more attributes for a policy.
 
@@ -1638,7 +1638,7 @@ Get all the group names from xCAT database. ::
 ----------------------------------------------
 
 GET - Get all the attributes for the group {groupname}.
-``````````````````````````````````````````````````````
+```````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`lsdef </guides/admin-guides/references/man1/lsdef.1>`
 
@@ -1658,7 +1658,7 @@ Get all the attributes for group 'all'. ::
     }
 
 PUT - Change the attributes for the group {groupname}.
-`````````````````````````````````````````````````````
+``````````````````````````````````````````````````````
 
 Refer to the man page: :doc:`chdef </guides/admin-guides/references/man1/chdef.1>`
 
@@ -1955,7 +1955,7 @@ URI list which can be used to create, query, change table entries.
 For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.
 
 GET - Get attributes of tables for a noderange.
-``````````````````````````````````````````````
+```````````````````````````````````````````````
 
 **Returns:**
 
@@ -2026,7 +2026,7 @@ Get all the columns from tables nodetype and noderes for node1 and node2. ::
     }
 
 PUT - Change the node table attributes for {noderange}.
-``````````````````````````````````````````````````````
+```````````````````````````````````````````````````````
 
 **Parameters:**
 
@@ -2048,7 +2048,7 @@ Change the nodetype.arch and noderes.netboot attributes for nodes node1,node2. :
 For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.
 
 GET - Get table attributes for a noderange.
-``````````````````````````````````````````
+```````````````````````````````````````````
 
 **Returns:**
 
@@ -2120,7 +2120,7 @@ Use this for tables that don't have node name as the key of the table, for examp
 {keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.
 
 GET - Get attributes for rows from non-node tables.
-``````````````````````````````````````````````````
+```````````````````````````````````````````````````
 
 **Returns:**
 

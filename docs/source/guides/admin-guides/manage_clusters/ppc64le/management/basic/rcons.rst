@@ -46,7 +46,7 @@ The xCAT ``rcons`` command relies on conserver (http://www.conserver.com/).  The
 
 
 OpenBMC Specific
-```````````````
+````````````````
 
    #. For OpenBMC managed servers, the root user must be able to ssh passwordless to the BMC for the ``rcons`` function to work.  
 

@@ -109,7 +109,7 @@ OPTIONS
 
 \ **-b|-**\ **-blame**\ 
  
- For values inherited from groups, display which groups provided the inheritence
+ For values inherited from groups, display which groups provided the inheritance
  
 
 

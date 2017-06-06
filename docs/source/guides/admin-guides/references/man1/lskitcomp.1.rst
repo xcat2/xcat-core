@@ -89,7 +89,7 @@ OPTIONS
     </data>
  
  
- Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
+ Each <kitinfo> tag contains info for a group of kit components belonging to the same kit. The info inside <kitinfo> is structured as follows:
  
  
  .. code-block:: perl

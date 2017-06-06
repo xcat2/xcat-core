@@ -88,7 +88,7 @@ zVM specific:
 
 
 \ **vm**\  table -
-Table governing VM paramaters.  See vm(5)|vm.5 for further details.
+Table governing VM parameters.  See vm(5)|vm.5 for further details.
 This is used to determine the current host to migrate from.
 
 
