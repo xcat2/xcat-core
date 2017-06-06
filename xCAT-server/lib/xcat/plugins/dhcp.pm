@@ -2457,10 +2457,11 @@ sub addnet
             {
                 $tftp = $ent->{tftpserver};
             }
-            else
-            {    #presume myself to be it, dhcp no longer does this for us
+            if (!$tftp || ($tftp eq '<xcatmaster>'))
+            {
                 $tftp = $myip;
             }
+
             if ($ent and $ent->{gateway})
             {
                 $gateway = $ent->{gateway};
