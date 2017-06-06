@@ -65,7 +65,7 @@ Enumerated List
 Include another file
 --------------------
 
-To add contents of a document file inside another file, use ``.. include::``. This is usefull when a common information needs to be displayed in multiple files, whithout the use of a hyperlink.
+To add contents of a document file inside another file, use ``.. include::``. This is useful when a common information needs to be displayed in multiple files, without the use of a hyperlink.
 ::
 
  .. include:: config_common.rst
@@ -76,14 +76,14 @@ To add contents of a document file inside another file, use ``.. include::``. Th
 Index file
 ----------
 
-Index.rst files contain the ``.. toctree::`` tag. Files listed under that tag will have links to them displayed in the left side navigation area. If a documentation file does not wish to be accessbile from the navigation area, do not list it under the ``.. toctree::``.
+Index.rst files contain the ``.. toctree::`` tag. Files listed under that tag will have links to them displayed in the left side navigation area. If a documentation file does not wish to be accessible from the navigation area, do not list it under the ``.. toctree::``.
 
 ``Note:`` If a file is not listed under the ``.. toctree::`` it might generate a warning during the documentation build ``WARNING: document isn't included in any toctree``. To eliminate such warning, add the file to the ``exclude_patterns`` list in the ``docs/source/conf.py`` file. However, do not add a file to the ``exclude_patterns`` list if it contains a customized link target, such as ``.. _my_link_taget:``. This link target will not be visible to other files and a ``WARNING: undefined label:`` will be displayed during the documentation build.
 
 Hyperlinks -> Internal Links -> External Links
 ----------------------------------------------
 
-Add links to refer other web page  is a very common way in writting document, it's very helpful to reduce the doc duplication and make docs easy to understand. Following are several ways to add a link in the xCAT documentation.
+Add links to refer other web page  is a very common way in writing document, it's very helpful to reduce the doc duplication and make docs easy to understand. Following are several ways to add a link in the xCAT documentation.
 
 * **Add an Internal Link to ``Customized Link Target``**
 

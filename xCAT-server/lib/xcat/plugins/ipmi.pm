@@ -1936,7 +1936,6 @@ sub do_firmware_update {
         }
     }
 
-
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
         $cmd = $pre_cmd . " fru print 47";
@@ -2056,7 +2055,6 @@ RETRY_UPGRADE:
     }
 
     # step 4 upgrade firmware
-
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
@@ -2535,6 +2533,12 @@ sub power {
     my $rc = 0;
     my $text;
     my $code;
+
+    if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
+        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPOWER" ], $callback, $sessdata->{node}, %allerrornodes);
+        return;
+    }
+
     if ($sessdata->{subcommand} eq "reseat") {
         reseat_node($sessdata);
     } elsif (not $sessdata->{acpistate} and is_systemx($sessdata)) { #Only implemented for IBM servers
@@ -2681,6 +2685,7 @@ sub power_response {
         my $text = $codes{ $rsp->{code} };
         unless ($text) { $text = sprintf("Unknown response %02xh", $rsp->{code}); }
         xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
+        return;
     } else {
         my $command = $sessdata->{subcommand};
         my $status  = $sessdata->{powerstatus};
@@ -4525,8 +4530,9 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $language = shift;
     my $data;
     if ($idx >= scalar @$area) {
-        xCAT::SvrUtils::sendmsg([ 1, "Error parsing FRU data from BMC" ], $callback);
-        return -1, undef, undef;
+        # The global_sessdata store the sessdata for a node when parsefru, and it is cleaned after parsefru
+        xCAT::SvrUtils::sendmsg([ 1, "Error encountered when parsing FRU data from BMC" ], $callback, $global_sessdata->{node}, %allerrornodes);
+        return 0, undef, undef;
     }
     my $size     = $area->[$idx] & 0b00111111;
     my $encoding = ($area->[$idx] & 0b11000000) >> 6;
@@ -6500,30 +6506,30 @@ sub vitals {
         $sensor_filters{leds}    = 1;
         $doall                   = 1;
     }
-    if (grep /temp/, @textfilters) {
+    if (grep /^temp$/, @textfilters) {
         $sensor_filters{0x01} = 1;
     }
-    if (grep /volt/, @textfilters) {
+    if (grep /^voltage$/, @textfilters) {
         $sensor_filters{0x02} = 1;
     }
-    if (grep /watt/, @textfilters) {
+    if (grep /^wattage$/, @textfilters) {
         $sensor_filters{watt} = 1;
     }
-    if (grep /fan/, @textfilters) {
+    if (grep /^fanspeed$/, @textfilters) {
         $sensor_filters{0x04} = 1;
     }
-    if (grep /power/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
+    if (grep /^power$/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
         $sensor_filters{0x03}       = 1;
         $sensor_filters{powerstate} = 1;
         $sensor_filters{energy}     = 1;
     }
-    if (grep /energy/, @textfilters) {
+    if (grep /^energy$/, @textfilters) {
         $sensor_filters{energy} = 1;
     }
-    if (grep /led/, @textfilters) {
+    if (grep /^leds$/, @textfilters) {
         $sensor_filters{leds} = 1;
     }
-    if (grep /chassis/, @textfilters) {
+    if (grep /^chassis$/, @textfilters) {
         $sensor_filters{chassis} = 1;
     }
     unless (keys %sensor_filters) {

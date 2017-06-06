@@ -76,7 +76,7 @@ When all the nodes complete provisioning, the probe will exit and display output
     All nodes provisioned successfully                                                                                [ OK ]
 
     
-If there is something wrong when provisioning, this probe will exit when timeout is reachedd or ``Ctrl+C`` is pressed by user. The maximum time can be set by using ``-t`` as below(default 30 minutes) ::
+If there is something wrong when provisioning, this probe will exit when timeout is reached or ``Ctrl+C`` is pressed by user. The maximum time can be set by using ``-t`` as below(default 30 minutes) ::
 
 
     xcatprobe osdeploy -n cn1 -t 30

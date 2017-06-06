@@ -1,14 +1,14 @@
 Accelerating the diskless initrd and rootimg generating
 ========================================================
 
-Generating diskless initrd with ``genimage`` and compressed rootimg with ``packimage`` and ``liteimg`` is a time-comsuming process, it can be accelerated by enabling paralell compression tool ``pigz`` on the management node with multiple processors and cores. See :ref:`Appendix <pigz_example>` for an example on ``packimage`` performance optimized with ``pigz`` enabled.
+Generating diskless initrd with ``genimage`` and compressed rootimg with ``packimage`` and ``liteimg`` is a time-consuming process, it can be accelerated by enabling parallel compression tool ``pigz`` on the management node with multiple processors and cores. See :ref:`Appendix <pigz_example>` for an example on ``packimage`` performance optimized with ``pigz`` enabled.
 
 
 
 Enabling the ``pigz`` for diskless initrd and rootimg generating
 ----------------------------------------------------------------
 
-The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` package on the management server or diskless rootimg. Depending on the method of generating the initrd and compressed rootimg, the steps differ in different Linux distributions. 
+The parallel compression tool ``pigz`` can be enabled by installing ``pigz`` package on the management server or diskless rootimg. Depending on the method of generating the initrd and compressed rootimg, the steps differ in different Linux distributions. 
 
 * **[RHEL]** 
 
@@ -24,7 +24,7 @@ The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` pac
   
      ``pigz`` should be installed in the diskless rootimg. Download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then customize the diskless osimage to install ``pigz`` as the additional packages, see :doc:`Install Additional Other Packages</guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/additional_pkg>` for more details.
   
-  2) Enabeling the ``pigz`` in ``packimage``
+  2) Enabling the ``pigz`` in ``packimage``
   
      ``pigz`` should be installed on the management server. Download ``pigz`` package from https://dl.fedoraproject.org/pub/epel/ , then install the ``pigz`` with  ``yum`` or ``rpm``.
 

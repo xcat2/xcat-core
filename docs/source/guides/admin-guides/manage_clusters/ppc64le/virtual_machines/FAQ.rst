@@ -88,7 +88,7 @@ Fail to ping the installed VM
 
        ADDRCONF(NETDEV_UP): eth0 link is not ready.
 
-   **Solutoin**: 
+   **Solution**: 
      Usually caused by the incorrect VM NIC model. Try the following steps to specify "virtio": :: 
 
        rmvm vm1

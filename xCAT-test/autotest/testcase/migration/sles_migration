@@ -1,10 +1,12 @@
 start:sles_migration1
 os:Linux
 description:update xCAT from $$MIGRATION1_VERSION to latest version, these two global parameter defined in config file
-
-#cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
-#cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
-#check:rc==0
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,groups)__" =~ "service" ]];then chdef $$SN -m groups=service;echo "servicelabel" >/tmp/servicelabel;fi
+check:rc==0
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -72,10 +74,12 @@ check:output=~$$MIGRATION1_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "chdef -t node -o node0001  nodetype=osi groups=linux"
-check:rc==0
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
+cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
+cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
+cmd:makedhcp -d $$SN
+cmd:scp $$ISO $$CN:/tmp/foobar.iso
+cmd:ssh $$CN "copycds /tmp/foobar.iso"
+cmd:ssh $$CN "makedhcp -n"
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/xcat-dep*.tar.bz2 /"
@@ -93,11 +97,20 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
-cmd:xdsh $$CN "noderm node0001"
+cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
+check:rc==0
+cmd:sleep 300
+cmd:ssh $$CN "a=0; while ! `lsdef -l $$SN | grep status | grep booted >/dev/null`; do ((++a > 90)) && exit 99; sleep 20; done"
+check:rc==0
+cmd:ssh $$CN "xdsh $$SN date"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
+check:rc==0
+cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
+check:rc==0
+cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
 check:rc==0
 end
 
@@ -105,9 +118,12 @@ start:sles_migration2
 os:Linux
 description:update xCAT from $$MIGRATION22VERSION to latest version, these two global parameter defined in config file
 
-#cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
-#cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
-#check:rc==0
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;echo "poweroffsn">/tmp/poweroffsn;fi
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,groups)__" =~ "service" ]];then chdef $$SN -m groups=service;echo "servicelabel" >/tmp/servicelabel;fi
+check:rc==0
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
 cmd:makedns -n
@@ -175,10 +191,12 @@ check:output=~$$MIGRATION2_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "chdef -t node -o node0001  nodetype=osi groups=linux"
-check:rc==0
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
+cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
+cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
+cmd:makedhcp -d $$SN
+cmd:scp $$ISO $$CN:/tmp/foobar.iso
+cmd:ssh $$CN "copycds /tmp/foobar.iso"
+cmd:ssh $$CN "makedhcp -n"
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/xcat-dep*.tar.bz2 /"
@@ -196,11 +214,20 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
-cmd:xdsh $$CN "noderm node0001"
+cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
+check:rc==0
+cmd:sleep 300
+cmd:ssh $$CN "a=0; while ! `lsdef -l $$SN | grep status | grep booted >/dev/null`; do ((++a > 90)) && exit 99; sleep 20; done"
+check:rc==0
+cmd:ssh $$CN "xdsh $$SN date"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
+check:rc==0
+cmd:if [[ -f /tmp/servicelabel ]];then chdef $$SN -p groups=service;rm -rf /tmp/servicelabel;fi
+check:rc==0
+cmd:if [[ -f /tmp/poweroffsn ]];then rpower $$SN on > /dev/null;rm -rf /tmp/poweroffsn;fi
 check:rc==0
 end
 

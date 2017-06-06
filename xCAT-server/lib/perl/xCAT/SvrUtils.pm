@@ -1266,7 +1266,7 @@ sub get_mac_by_arp ()
                 } else {
                     ($ip, $mac) = (undef, undef);
                 }
-                if (@$IP[1] !~ $ip) {
+                if (@$IP[1] ne $ip) {
                     ($ip, $mac) = (undef, undef);
                 } else {
                     last;

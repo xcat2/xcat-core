@@ -11,6 +11,7 @@ use Getopt::Long;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::Usage;
 
 my $dhcpconf = "/etc/dhcpd.conf";
 
@@ -116,7 +117,7 @@ sub setstate {
             #Implement the kcmdline append here for
             #most generic, least code duplication
 
-###hack start
+        ###hack start
             # This is my comment. There are many others like it, but this one is mine.
             # My comment is my best friend. It is my life. I must master it as I must master my life.
             # Without me, my comment is useless. Without my comment, I am useless.
@@ -166,7 +167,7 @@ sub setstate {
 
             #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
             $kern->{kcmdline} .= " " . $kcmdlinehack;
-###hack end
+        ###hack end
 
         }
     }
@@ -242,7 +243,7 @@ sub setstate {
                 if ($kern->{kernel} =~ /esxi[56]/) {  #Make uefi boot provisions
                     my $ucfg;
                     open($ucfg, '>', $tftpdir . "/xcat/xnba/nodes/" . $node . ".uefi");
-                    if ($kern->{kcmdline} =~ / xcat\/netboot/) {
+                    if ($kern->{kcmdline} =~ /xcat\/netboot/) {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
@@ -367,11 +368,14 @@ sub preprocess_request {
         return;
     }
 
-    if (@ARGV == 0) {
-        if ($usage{$command}) {
-            my %rsp;
-            $rsp{data}->[0] = $usage{$command};
-            $callback1->(\%rsp);
+    my $ret=xCAT::Usage->validateArgs($command,@ARGV);
+    if ($ret->[0]!=0) {
+         if ($usage{$command}) {
+             my %rsp;
+             $rsp{error}->[0] = $ret->[1];
+             $rsp{data}->[1] = $usage{$command};
+             $rsp{errorcode}->[0] = $ret->[0];
+             $callback1->(\%rsp);
         }
         return;
     }
@@ -404,10 +408,10 @@ sub preprocess_request {
             return [$req];
         }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope($req, @_);
+            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
         }
     }
-    return [$req];
+    return xCAT::Scope->get_parallel_scope($req);
 }
 
 sub process_request {
@@ -449,11 +453,33 @@ sub process_request {
     #if not shared, then help sync up
     if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
         @nodes = ();
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $cur_xmaster = pop @hostinfo;
+        xCAT::MsgUtils->trace(0, "d", "xnba: running on $cur_xmaster");
+        
+        # Get current server managed node list
+        my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
+        my %managed = {};
+        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
+
+        # Whatever the node managed by this xcatmaster explicitly, if the node in same subnet, we need to handle its boot configuration files
         foreach (@rnodes) {
             if (xCAT::NetworkUtils->nodeonmynet($_)) {
                 push @nodes, $_;
             } else {
-                xCAT::MsgUtils->message("S", "$_: xnba netboot: stop configuration because of none sharedtftp and not on same network with its xcatmaster.");
+                my $msg = "xnba configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
+                if ( $cur_xmaster ) { 
+                    $msg .= ": $cur_xmaster"; 
+                }
+                if ( exists( $managed{$_} ) ) {
+                    # report error when it is under my control but I cannot handle it.
+                    my $rsp;
+                    $rsp->{data}->[0] = $msg;
+                    xCAT::MsgUtils->message("E", $rsp, $::XNBA_callback);
+                } else {
+                    xCAT::MsgUtils->message("S", $msg);
+                }
+
             }
         }
     } else {
@@ -519,9 +545,10 @@ sub process_request {
     my $inittime = 0;
     if (exists($::XNBA_request->{inittime})) { $inittime = $::XNBA_request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
-    $errored = 0;
+
     my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+        $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
@@ -529,9 +556,11 @@ sub process_request {
                 arg      => \@args ,
                 bootparams => \%bphash},
                 \&pass_along);
+        if ($errored) { 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Failed in processing setdestiny.  Processing will not continue.");
+            return; 
+        }
     }
-
-    if ($errored) { return; }
 
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
