@@ -1046,30 +1046,42 @@ sub bmcdiscovery_openbmc{
     my $request_command = shift;
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
+    my $http_protocol="https";
+    my $openbmc_project_url = "xyz/openbmc_project";
+    my $login_endpoint = "login";
+    my $system_endpoint = "inventory/system";
+
     my $node_data = $ip;
     my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
     my $cookie_jar = HTTP::Cookies->new();
     my $header = HTTP::Headers->new('Content-Type' => 'application/json');
-    my $url = "https://$ip/login";
     my $data = '{"data": [ "' . $openbmc_user .'", "' . $openbmc_pass . '" ] }';
     $brower->cookie_jar($cookie_jar);
+
+    my $url = "$http_protocol://$ip/$login_endpoint";
     my $login_request = HTTP::Request->new( 'POST', $url, $header, $data );
     my $login_response = $brower->request($login_request);
     
     if ($login_response->is_success) {
-        my $req_url = "https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard";
-        my $req = HTTP::Request->new('GET', $req_url, $header);
+        $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
+        my $req = HTTP::Request->new('GET', $url, $header);
         my $req_output = $brower->request($req);
         return if ($req_output->is_error); 
         my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
 
-        if (defined($response->{data}) and defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
-            $mtm = $response->{data}->{Model};
-            $serial = $response->{data}->{SerialNumber}; 
-        } else {
-            xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+        if (defined($response->{data})) {
+            if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
+                $mtm = $response->{data}->{Model};
+                $serial = $response->{data}->{SerialNumber}; 
+            } else {
+                xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
+                return;
+            }
+ 
+        } else { 
+            xCAT::MsgUtils->message("E", { data => ["Unable to connect to REST server at $ip"] }, $::CALLBACK);
             return;
         }
 
