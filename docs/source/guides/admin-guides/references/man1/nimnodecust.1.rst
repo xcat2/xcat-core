@@ -57,9 +57,9 @@ To create a NIM installp_bundle definition you can use the "nim -o define" opera
   nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages
 
 
-See the AIX documantation for more information on using installp_bundle files.
+See the AIX documentation for more information on using installp_bundle files.
 
-The xCAT nimnodecust command will automatically handle the distribution of the packages to AIX service nodes when using an xCAT hierachical environment.
+The xCAT nimnodecust command will automatically handle the distribution of the packages to AIX service nodes when using an xCAT hierarchical environment.
 
 
 *******

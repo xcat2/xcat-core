@@ -50,7 +50,7 @@ If B<-p> flag is specified, the I<postscripts> table will be updated with the po
 
 If B<-f> flag is not specified, all the files will be copied to the same directories as the source. If it is specified, the old profile name x will be changed to the new and the files will be copied to the appropriate directores for the new profiles. For example, I</opt/xcat/share/xcat/netboot/sles/x.pkglist> will be copied to I</install/custom/netboot/sles/compute_new.pkglist> and I</install/netboot/sles11/ppc64/x/kernel> will be copied to I</install/netboot/sles11/ppc64/compute_new/kernel>. This flag is commonly used when you want to copy the image on the same xCAT mn so you can make modification on the new one. 
 
-After this command, you can run the B<nodeset> command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node depolyment. 
+After this command, you can run the B<nodeset> command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node deployment. 
 
 For stateful:
   nodeset

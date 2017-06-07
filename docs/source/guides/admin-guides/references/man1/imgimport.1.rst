@@ -69,7 +69,7 @@ If \ **-p**\  flag is specified, the \ *postscripts*\  table will be updated wit
 
 If \ **-f**\  flag is not specified, all the files will be copied to the same directories as the source. If it is specified, the old profile name x will be changed to the new and the files will be copied to the appropriate directores for the new profiles. For example, \ */opt/xcat/share/xcat/netboot/sles/x.pkglist*\  will be copied to \ */install/custom/netboot/sles/compute_new.pkglist*\  and \ */install/netboot/sles11/ppc64/x/kernel*\  will be copied to \ */install/netboot/sles11/ppc64/compute_new/kernel*\ . This flag is commonly used when you want to copy the image on the same xCAT mn so you can make modification on the new one.
 
-After this command, you can run the \ **nodeset**\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node depolyment.
+After this command, you can run the \ **nodeset**\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node deployment.
 
 For stateful:
   nodeset

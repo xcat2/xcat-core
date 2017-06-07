@@ -66,11 +66,11 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 \ **-r**\ 
 
-specify the number of retries that the monitoring process will perform before declare the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
+specify the number of retries that the monitoring process will perform before declaring the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
 
 \ **-t**\ 
 
-Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
+Specify the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
 \ **-V|-**\ **-verbose**\ 
 

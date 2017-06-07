@@ -137,7 +137,7 @@ Output is similar to:
      host01c01: Pull image ubuntu start
      host01c01: Pull image ubuntu done
      host01c01: Remove default network connection
-     host01c01: Connecting customzied network 'mynet0'
+     host01c01: Connecting customized network 'mynet0'
      host01c01: success
 
 
@@ -155,7 +155,7 @@ Output is similar to:
 .. code-block:: perl
 
      host01c01: Remove default network connection
-     host01c01: Connecting customzied network 'mynet0'
+     host01c01: Connecting customized network 'mynet0'
      host01c01: success
 
 

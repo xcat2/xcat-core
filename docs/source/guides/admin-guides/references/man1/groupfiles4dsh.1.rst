@@ -33,7 +33,7 @@ This tool will build a directory of files, one for each defined
 nodegroup in xCAT.  The file will be named the nodegroup name and
 contain a list of nodes that belong to the nodegroup.
 The file can be used as input to the AIX dsh command.
-The purpose of this tool is to allow backward compatiblity with scripts
+The purpose of this tool is to allow backward compatibility with scripts
 that were created using the AIX or CSM dsh command
 
 Reference: man dsh.

@@ -59,7 +59,7 @@ OPTIONS
 
 \ **-a**\ 	specifies a comma-separated list of attributes or metrics names. The default is all.
 
-\ **-w**\ 	specify one or multiple selection string that can be used to select events. The operators ==, !=, =,!,>,<,>=,<= are available.  Wildcards % and _ are supported in the pattern string. % allows you to match any string of any length(including zero length) and _ allows you to match on a single character. The valid attributes are eventtype, monitor, monnode, application, component, id, serverity, message, rawdata, comments. Valid severity are: Informational, Warning, Critical.
+\ **-w**\ 	specify one or multiple selection string that can be used to select events. The operators ==, !=, =,!,>,<,>=,<= are available.  Wildcards % and _ are supported in the pattern string. % allows you to match any string of any length(including zero length) and _ allows you to match on a single character. The valid attributes are eventtype, monitor, monnode, application, component, id, severity, message, rawdata, comments. Valid severity are: Informational, Warning, Critical.
 
 Operator descriptions:
 

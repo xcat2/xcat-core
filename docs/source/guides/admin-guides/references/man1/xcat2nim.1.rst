@@ -153,7 +153,7 @@ EXAMPLES
   xcat2nim -l -t node clstrn02
 
 
-7. To re-create a NIM machine definiton and display verbose output.
+7. To re-create a NIM machine definition and display verbose output.
 
 
 .. code-block:: perl
