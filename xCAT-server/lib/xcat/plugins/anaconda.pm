@@ -1051,6 +1051,7 @@ sub mkinstall
             }
         }
     }
+    my $ddad;
     foreach $node (@nodes)
     {
         my $os;
@@ -1412,7 +1413,6 @@ sub mkinstall
                     $donetftp{"$os|$arch|$profile|$tftpdir"} = 1;
                 }
             }
-	    my $ddad;
 
             if ($docopy) {
                 mkpath("$tftppath");
