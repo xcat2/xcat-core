@@ -1708,9 +1708,9 @@ sub using_dracut
 {
     my $rootimgdir = shift;
     if ( -f "$rootimgdir/rootimg/etc/dracut.conf" ) {
-        return 0;
-    } else {
         return 1;
+    } else {
+        return 0;
     }
 }
 
