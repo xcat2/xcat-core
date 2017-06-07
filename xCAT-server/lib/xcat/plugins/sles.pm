@@ -1707,9 +1707,7 @@ erver, if so, stop it first and try again" ],
 sub using_dracut
 {
     my $rootimgdir = shift;
-    my $chkcmd = "chroot $rootimgdir/rootimg dracut --list-modules";
-    my $rc = system($chkcmd);
-    if ($rc) {
+    if ( -f "$rootimgdir/rootimg/etc/dracut.conf" ) {
         return 0;
     } else {
         return 1;
