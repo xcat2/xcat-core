@@ -72,11 +72,10 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
-cmd:ssh $$CN "rscan __GETNODEATTR($$SN,hcp)__ -w"
 cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
 cmd:makedhcp -d $$SN
 cmd:scp $$ISO $$CN:/tmp/foobar.iso
-cmd:ssh $$CN "copycds -n __GETNODEATTR($$CN,os)__ /tmp/foobar.iso"
+cmd:ssh $$CN "copycds /tmp/foobar.iso"
 cmd:ssh $$CN "makedhcp -n"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
@@ -97,8 +96,6 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
-check:rc==0
-cmd:ssh $$CN "lsdef -t osimage osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
 check:rc==0
 cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
 check:rc==0
@@ -187,11 +184,10 @@ cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
 cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
-cmd:ssh $$CN "rscan __GETNODEATTR($$SN,hcp)__ -w"
 cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
 cmd:makedhcp -d $$SN
 cmd:scp $$ISO $$CN:/tmp/foobar.iso
-cmd:ssh $$CN "copycds -n __GETNODEATTR($$CN,os)__ /tmp/foobar.iso"
+cmd:ssh $$CN "copycds /tmp/foobar.iso"
 cmd:ssh $$CN "makedhcp -n"
 cmd:check==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
@@ -211,8 +207,6 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:ssh $$CN "lsdef -t osimage osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
-check:rc==0
 cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
 check:rc==0
 cmd:sleep 300
