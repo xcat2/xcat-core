@@ -53,6 +53,7 @@ sub process_request {
     my $profile;
     my $osver;
     my $rootlimit;
+    my $rootfsoption;
     my $tmplimit;
     my $kerneldir;
     my $kernelver = "";
@@ -82,6 +83,7 @@ sub process_request {
         'i=s'             => \$prinic,
         'r=s'             => \$othernics,
         'l=s'             => \$rootlimit,
+        'rootfsoption=s'  => \$rootfsoption,
         't=s'             => \$tmplimit,
         'k=s'             => \$kernelver,
         'g=s'             => \$krpmver,
@@ -310,6 +312,7 @@ sub process_request {
     if ($prinic)      { $cmd .= " -i $prinic"; }
     if ($othernics)   { $cmd .= " -r $othernics"; }
     if ($rootlimit)   { $cmd .= " -l $rootlimit"; }
+    if ($rootfsoption)   { $cmd .= " --rootfsoption $rootfsoption"; }
     if ($tmplimit)    { $cmd .= " -t $tmplimit"; }
     if ($kernelver)   { $cmd .= " -k $kernelver"; }
     if ($krpmver)     { $cmd .= " -g $krpmver"; }
