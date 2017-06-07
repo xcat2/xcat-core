@@ -13,7 +13,9 @@ elif [ $flag = "-c" ]; then
     cnip=`cat /tmp/simulator`
     chdef $cnhn bmc=$cnip
     process=`ps aux | grep "simulator" | grep "python" | awk -F ' ' '{print $2}'`
-    kill $process
+    if [ $process ]; then
+        kill $process
+    fi
     rm -rf "openbmc_simulator"
 fi
 exit $?
