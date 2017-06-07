@@ -26,7 +26,13 @@ my %usage = (
     "rpower" =>
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
-     OpenBMC specific:
+     BMC (using IPMI):
+       rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPOWER BMC:
+       rpower noderange [on|off|reset|boot|stat|state|status]
+       rpower noderange [pduon|pduoff|pdustat]
+     OpenPOWER OpenBMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
@@ -75,8 +81,10 @@ my %usage = (
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
-  OpenPOWER server specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
+  OpenPOWER (IPMI) specific:
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
+  OpenPOWER (OpenBMC) specific:
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>
@@ -89,8 +97,10 @@ my %usage = (
        rinv [-h|--help|-v|--version]
     BMC specific:
        rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
-    OpenPOWER server specific:
+    OpenPOWER (using ipmi) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
+    OpenPOWER (using openbmc) server specific:
+       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|cpu|dimm|all]
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
@@ -132,9 +142,11 @@ my %usage = (
        rspconfig <noderange> [snmpdest|alert|community] [-V|--verbose]
        rspconfig <noderange> [snmpdest=<dest ip address>|alert=<on|off|en|dis|enable|disable>|community=<string>]
    BMC specific:
-       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
+       rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp|vlan]
        rspconfig <noderange> [garp=<number of 1/2 second>]
        rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
+   OpenBMC specific:
+       rspconfig <noderange> [ip|netmask|gateway|vlan]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -610,3 +622,41 @@ sub parseCommand {
     return "";
 }
 
+#------------------------------------------------------------------------------
+
+=head3   validateArgs
+    This function validates the arguments of the specified command
+    Arguments:
+        command
+        arguments(array @)
+    Returns:
+        $ref:         a reference to array of [$retcode(integer),$info(string)]
+        $ref->[0]=0 : validation passed
+        $ret->[0]!=0: validation failed, the error info is returned in $ref->[1]
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub validateArgs {
+    my $command=shift; 
+    if ($command =~ /xCAT::Usage/) { $command = shift; }
+  
+    my $count=0; 
+    my @extrargs=@_;
+    if($command =~ m/^(nodeset|rinstall|winstall)$/ ){
+        #suppose that argument like "-p foo" have been processed and 
+        #filtered by GetOpt subroutine 
+        #fortunately the commands in this branch does not have such options
+        foreach(@extrargs){
+            if($_ !~ m/^-[-]?\S+/){
+                $count+=1;
+            }
+        }
+        if ($count!=1) {
+           return [1,"Invalid argument: '".join(" ",@extrargs)."'"];
+        }
+    }
+
+    return [0]; 
+}

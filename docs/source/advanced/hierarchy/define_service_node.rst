@@ -179,7 +179,7 @@ compute node is rebooted or the compute node is explicitly moved to another SN
 using the `snmove <http://localhost/fake_todo>`_  command.
 
 To use Service Node pools, you need to architect your network such that all of 
-the compute nodes and service nodes in a partcular pool are on the same flat 
+the compute nodes and service nodes in a particular pool are on the same flat 
 network. If you don't want the management node to respond to manage some of
 the compute nodes, it shouldn't be on that same flat network. The 
 site, dhcpinterfaces attribute should be set such that the SNs' DHCP daemon

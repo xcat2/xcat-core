@@ -293,15 +293,19 @@ sub process_request {
             #discovery working.  Food for thought.
             return;
         }
+        my $discoverswitch = 0;
+        if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'switch') {
+            $discoverswitch = 1;
+        }
         my $firstpass = 1;
         if ($mac) {
-            $node = $macmap->find_mac($mac, $req->{cacheonly}->[0]);
+            $node = $macmap->find_mac($mac, $req->{cacheonly}->[0], $discoverswitch);
             $firstpass = 0;
         }
         if (not $node) {    # and $req->{checkallmacs}->[0]) {
             foreach (@{ $req->{mac} }) {
                 /.*\|.*\|([\dABCDEFabcdef:]+)(\||$)/;
-                $node = $macmap->find_mac($1, $firstpass);
+                $node = $macmap->find_mac($1, $firstpass, $discoverswitch);
                 $firstpass = 0;
                 if ($node) { last; }
             }

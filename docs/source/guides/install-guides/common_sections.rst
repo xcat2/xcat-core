@@ -37,11 +37,11 @@ xCAT consists of two software packages: ``xcat-core`` and ``xcat-dep``
 
      * **Latest Release (Stable) Builds**
 
-         *This is the latest GA (Generally Availability) build that has been tested throughly*
+         *This is the latest GA (Generally Availability) build that has been tested thoroughly*
 
      * **Latest Snapshot Builds**
 
-         *This is the latest snapshot of the GA version build that may contain bug fixes but has not yet been tested throughly*
+         *This is the latest snapshot of the GA version build that may contain bug fixes but has not yet been tested thoroughly*
 
      * **Development Builds**
 

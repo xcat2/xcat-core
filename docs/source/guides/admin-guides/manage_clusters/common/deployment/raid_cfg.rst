@@ -185,7 +185,7 @@ Here is the RAID1 partitioning section in service.raid1.sles11.tmpl: ::
 
 The samples above created one 24MB PReP partition on each disk, one 2GB mirrored swap partition and one mirrored ``/`` partition uses all the disk space. If you want to use different partitioning scheme in your cluster, modify this RAID1 section in the autoyast template file accordingly.
 
-Since the PReP partition can not be mirrored between the two disks, some additional postinstall commands should be run to make the second disk bootable, here the the commands needed to make the second disk bootable: ::
+Since the PReP partition can not be mirrored between the two disks, some additional postinstall commands should be run to make the second disk bootable, here the commands needed to make the second disk bootable: ::
 
      # Set the second disk to be bootable for RAID1 setup
      parted -s /dev/sdb mkfs 1 fat16
@@ -230,7 +230,7 @@ The command mdadm can query the detailed configuration for the RAID partitions: 
 Disk Replacement Procedure
 --------------------------
 
-If any one disk fails in the RAID1 arrary, do not panic. Follow the procedure listed below to replace the failed disk and you will be fine.
+If any one disk fails in the RAID1 array, do not panic. Follow the procedure listed below to replace the failed disk and you will be fine.
 
 Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``: ::
 
@@ -250,7 +250,7 @@ Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``: :
 
 We can see that the first disk is broken because all the RAID partitions on this disk are marked as (F).
 
-Remove the failed disk from RAID arrary
+Remove the failed disk from RAID array
 ---------------------------------------
 
 ``mdadm`` is the command that can be used to query and manage the RAID arrays on Linux. To remove the failed disk from RAID array, use the command: ::
