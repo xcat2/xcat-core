@@ -26,13 +26,13 @@ use xCAT::MsgUtils;
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
-#global variables
+# global variables
 my @nodes;
 my @filternodes;
 
 
 #---------------------------------------------------------
-#Main
+# Main
 
 # parse the options
 if (
@@ -97,7 +97,7 @@ my $vlan;
 my $port;
 my $mode;
 
-#set community string for switch
+# set community string for switch
 my $community = "public";
 my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
 my $tmp    = $snmpcs[0];
@@ -143,7 +143,7 @@ sub config_ip {
             next;
         }
 
-        #Validate if this IP is reachable 
+        # Validate if this IP is reachable 
         my $p = Net::Ping->new();
         if (!$p->ping($dip)) {
             print "$dip is not reachable\n";
@@ -158,7 +158,7 @@ sub config_ip {
             next;
         }
 
-        #get hostname
+        # get hostname
         my $dswitch = xCAT::NetworkUtils->gethostname($dip);
 
         # if hostnames are same, created different one for discovery name
@@ -166,7 +166,7 @@ sub config_ip {
             $dswitch="";
         }
 
-        #if not defined, need to create one for xdsh to use
+        # if not defined, need to create one for xdsh to use
         if (!$dswitch) {
             my $ip_str = $dip;
             $ip_str =~ s/\./\-/g;
@@ -197,7 +197,7 @@ sub config_ip {
             push (@discover_switches, $dswitch);
             next;
         }
-        #get netmask
+        # get netmask
         my $mask;
         foreach my $net (@nets) {
             if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $static_ip, $net->{'mask'}, 0)) {
@@ -214,7 +214,7 @@ sub config_ip {
     }
 
     if (@config_switches) {
-        #update switch status
+        # update switch status
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=ip_configed otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -224,7 +224,7 @@ sub config_ip {
  
      if (@discover_switches) {
         my $dsw = join(",",@discover_switches);
-        #remove discover switch from xCATdb and /etc/hosts
+        # remove discover switch from xCATdb and /etc/hosts
         $cmd = "makedns -d $dsw";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts -d $dsw";
@@ -256,14 +256,14 @@ sub config_hostname {
         print "$switch: Changing host name to $switch\n";
     }
     if (@config_switches) {
-        #update switch status
+        # update switch status
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=hostname_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 }
 
-#setup secure SNMP v3
+# setup secure SNMP v3
 sub config_snmp {
     my $snmp_user;
     my $snmp_passwd;
@@ -314,25 +314,25 @@ sub run_rspconfig {
     $master = `hostname -i`;
     foreach my $switch (@nodes) {
         my $user= $switchhash->{$switch}->[0]->{sshusername};
-        #call rspconfig command to setup switch
-        #enable ssh
+        # call rspconfig command to setup switch
+        # enable ssh
         $cmd=`rspconfig $switch sshcfg=enable`;
 
-        #enable snmp function on the switch
+        # enable snmp function on the switch
         $cmd=`rspconfig $switch snmpcfg=enable`;
 
-        #enable the snmp trap
+        # enable the snmp trap
         $cmd=`rspconfig $switch alert=enable`;
 
-        #Logging destination:
+        # Logging destination:
         $cmd=`rspconfig $switch logdest=$master`;
 
-        #config ntp
+        # config ntp
         $cmd = `xdsh $switch -l $user --devicetype IBSwitch::Mellanox "enable;configure terminal;ntp enable;ntpdate $master; ntp server $master;configuration write;show ntp" `;
         push (@config_switches, $switch);
     }
     if (@config_switches) {
-        #update switch status
+        # update switch status
         my $csw = join(",",@config_switches);
         $cmd = "chdef $csw status=switch_configed" ;
         $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -358,17 +358,17 @@ sub config_vlan {
            }
        }
     } else {
-        xCAT::MsgUtils->message("E","Error - When configuring VLAN, a port must be provided.");
+        xCAT::MsgUtils->message("E"," When configuring VLAN, a port must be provided.");
         &usage;
         exit(1);
     }
 
-    #will default to trunk mode
+    # will default to trunk mode
     if ($::MODE) {
        $mode = $::MODE;
        if (!($mode =~ m/(access|trunk|hybrid|access-dcb|dot1q-tunnel)/) )
        {
-            xCAT::MsgUtils->message("E","Error - Please provided supported mode");
+            xCAT::MsgUtils->message("E"," Please provided supported mode");
             &usage;
             exit(1);
        }
@@ -396,7 +396,7 @@ sub config_vlan {
 
         print "Tagging VLAN=$vlan for $switch port $port_input\n";
 
-        #create vlan
+        # create vlan
         my $vlan_cmd = `xdsh $switch --devicetype $devicetype "enable;configure terminal;vlan $vlan;exit;exit" `;
 
         my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
