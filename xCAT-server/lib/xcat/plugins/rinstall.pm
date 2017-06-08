@@ -351,7 +351,9 @@ sub rinstall {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
-        foreach my $line (@$res) {
+        # copy into a temporary variable to avoid of circular reference
+        my @lines = @$res;
+        foreach my $line (@lines) {
             $rsp->{data}->[0] = $line;
             if (($line =~ /: install/) or ($line =~ /: netboot/)) {
                 my $successnode;
@@ -414,7 +416,6 @@ sub rinstall {
                 },
                 $subreq, -1, 1);
 
-
             $rc = $::RUNCMD_RC;
             my $rsp = {};
             if ($VERBOSE) {
@@ -427,7 +428,9 @@ sub rinstall {
 
                 # We got an error with the rnetboot
                 my @failurenodes;
-                foreach my $line (@$res) {
+                # copy into a temporary variable to avoid of circular reference
+                my @lines = @$res;
+                foreach my $line (@lines) {
                     $rsp->{data}->[0] = $line;
                     if ($line =~ /: Success/) {
                         my $successnode;
@@ -491,7 +494,9 @@ sub rinstall {
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
-                    foreach my $line (@$res) {
+                    # copy into a temporary variable to avoid of circular reference
+                    my @lines = @$res;
+                    foreach my $line (@lines) {
                         $rsp->{data}->[0] = $line;
                         if ($line =~ /: Network/) {
                             my $successnode;
@@ -550,7 +555,9 @@ sub rinstall {
             unless ($rc == 0) {
                 # We got an error with the rpower
                 my @failurenodes;
-                foreach my $line (@$res) {
+                # copy into a temporary variable to avoid of circular reference
+                my @lines = @$res;
+                foreach my $line (@lines) {
                     $rsp->{data}->[0] = $line;
                     if (($line =~ /: on reset/) or ($line =~ /: off on/)) {
                         my $successnode;
