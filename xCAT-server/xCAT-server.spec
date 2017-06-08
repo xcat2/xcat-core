@@ -309,8 +309,11 @@ cp lib/xcat/shfunctions $RPM_BUILD_ROOT/%{prefix}/lib
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/shfunctions
 %if %fsm
 %else
-mkdir -p $RPM_BUILD_ROOT/etc/init.d
-cp etc/init.d/xcatd $RPM_BUILD_ROOT/etc/init.d
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/etc/init.d
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/etc/systemd
+cp etc/init.d/xcatd $RPM_BUILD_ROOT/%{prefix}/etc/init.d
+cp etc/systemd/xcatd.service $RPM_BUILD_ROOT/%{prefix}/etc/systemd
+
 %endif
 #TODO: the next has to me moved to postscript, to detect /etc/xcat vs /etc/opt/xcat
 mkdir -p $RPM_BUILD_ROOT/etc/xcat
@@ -365,7 +368,6 @@ rm -rf $RPM_BUILD_ROOT
 /etc/xcat
 %if %fsm
 %else
-/etc/init.d/xcatd
 #/etc/xcat/conf.orig/xcat-ws.conf.apache24
 #/etc/xcat/conf.orig/xcat-ws.conf.apache22
 /etc/apache2/conf.d/xcat-ws.conf
@@ -406,20 +408,42 @@ fi
 %post
 %ifos linux
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
+ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatctl /usr/sbin/xcatctl
+
+if [ -d "/usr/lib/systemd/system" ]; then   # Systemd
+    UNIT_PATH=/usr/lib/systemd/system
+elif [ -d "/lib/systemd/system" ]; then
+    UNIT_PATH=/lib/systemd/system
+fi
+if [ -z "$UNIT_PATH" ]; then
+    ln -sf $RPM_INSTALL_PREFIX0/etc/init.d/xcatd /etc/init.d/xcatd
+else
+    ln -sf $RPM_INSTALL_PREFIX0/etc/systemd/xcatd.service $UNIT_PATH/xcatd.service
+    systemctl daemon-reload >/dev/null 2>&1
+fi
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
-   if [ -x /sbin/chkconfig ]; then
-       /sbin/chkconfig --add xcatd
-   elif [ -x /usr/lib/lsb/install_initd ]; then
-       /usr/lib/lsb/install_initd /etc/init.d/xcatd
-   else
-     echo "Unable to register init scripts on this system"
-   fi
+    if [ -z "$UNIT_PATH" ]; then
+        if [ -x /sbin/chkconfig ]; then
+            /sbin/chkconfig --add xcatd
+        elif [ -x /usr/lib/lsb/remove_initd ]; then
+            /usr/lib/lsb/install_initd /etc/init.d/xcatd
+        else
+            echo "Unable to register init scripts on this system"
+        fi
+    else  # Systemd
+        systemctl enable xcatd.service >/dev/null 2>&1
+    fi
 fi
 
 if [ "$1" -gt "1" ]; then #only on upgrade...
   #migration issue for monitoring
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
+
+  #In case to cover the upgrade from no systemd supporting version
+  if [ ! -z "$UNIT_PATH" ]; then
+      systemctl is-enabled xcatd.service >/dev/null 2>&1 || systemctl enable xcatd.service >/dev/null 2>&1
+  fi
 fi
 
 %else
@@ -454,17 +478,32 @@ exit 0
 %preun
 %ifos linux
 if [ $1 == 0 ]; then  #This means only on -e
-	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-  		/etc/init.d/xcatd stop
-  	fi
+    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+        [ -f $RPM_INSTALL_PREFIX0/sbin/xcatctl ] && $RPM_INSTALL_PREFIX0/sbin/xcatctl stop
+    fi
 
-  if [ -x /sbin/chkconfig ]; then
-      /sbin/chkconfig --del xcatd
-  elif [ -x /usr/lib/lsb/remove_initd ]; then
-      /usr/lib/lsb/remove_initd /etc/init.d/xcatd
-  fi
-  rm -f /usr/sbin/xcatd  #remove the symbolic
+    if [ -d "/usr/lib/systemd/system" ]; then   # Systemd
+        UNIT_PATH=/usr/lib/systemd/system
+    elif [ -d "/lib/systemd/system" ]; then
+        UNIT_PATH=/lib/systemd/system
+    fi
 
+    if [ -z "$UNIT_PATH" ]; then   # SysV init
+        if [ -x /sbin/chkconfig ]; then
+            /sbin/chkconfig --del xcatd
+        elif [ -x /usr/lib/lsb/remove_initd ]; then
+            /usr/lib/lsb/remove_initd /etc/init.d/xcatd
+        fi
+        rm -f /etc/init.d/xcatd
+    else  # Systemd
+        systemctl --no-reload disable xcat.service >/dev/null 2>&1
+        rm -f $UNIT_PATH/xcatd.service
+        systemctl daemon-reload >/dev/null 2>&1
+    fi
+
+    #remove the symbolic links
+    rm -f /usr/sbin/xcatd
+    rm -f /usr/sbin/xcatctl
 fi
 %endif
 

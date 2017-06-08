@@ -1,0 +1,14 @@
+[Unit]
+Description=xCAT management service
+After=network.target syslog.service
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/xcat
+Type=forking
+PIDFile=/var/run/xcatd.pid
+ExecStart=/usr/sbin/xcatctl start
+ExecStop=/usr/sbin/xcatctl stop
+ExecReload=/bin/sh -c "echo Not support reload action in systemd, run \'xcatctl reload\' instead.; exit -1"
+
+[Install]
+WantedBy=multi-user.target

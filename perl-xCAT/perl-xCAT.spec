@@ -136,14 +136,6 @@ fi
 %endif
 
 %post
-%ifos linux
-if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
-   if [ -x /etc/init.d/xcatd ] && [ -f "/proc/cmdline" ]; then
-      . /etc/profile.d/xcat.sh
-   fi
-fi
-%endif
-exit 0
 
 %changelog
 * Wed May 2 2007 - Norm Nott nott@us.ibm.com

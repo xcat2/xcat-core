@@ -21,9 +21,7 @@ set -e
 case "$1" in
     configure)
         if [ -f "/proc/cmdline" ];then
-            if [ -f "/opt/xcat/sbin/xcatd" ];then
-                /etc/init.d/xcatd reload
-            fi
+            [ -f "/usr/sbin/xcatctl" ] && /usr/sbin/xcatctl reload
         fi
     ;;
 

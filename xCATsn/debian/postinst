@@ -57,7 +57,7 @@ case "$1" in
       update-rc.d $apachedaemon enable
 
       if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-       	 XCATROOT=/opt/xcat /etc/init.d/xcatd start
+       	 XCATROOT=/opt/xcat $XCATROOT/sbin/xcatctl start
  	 /etc/init.d/$apachedaemon reload 
       fi
       echo "xCATsn is now installed"

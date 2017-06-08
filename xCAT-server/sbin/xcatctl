@@ -1,0 +1,130 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+#
+###################################################################
+#
+# Description:
+#     This internal routine controls the xcatd daemon (Linux Only). 
+#
+# Syntax:
+#       xcatctl start|stop|restart|reload|status
+#
+###################################################################
+
+if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "$0 start|stop|restart|reload|status"
+  exit
+fi
+
+ACTION="$1"
+OS_TYPE=`uname -s | tr 'A-Z' 'a-z'`
+if [ "$OS_TYPE" != "linux" ];then
+  # TODO, to support AIX later
+  echo "Error: This command should only be run on Linux."
+  exit -1
+fi
+
+# This avoids the perl locale warnings
+if [ -z $LC_ALL ]; then
+  export LC_ALL=C
+fi
+
+if [ -r /etc/sysconfig/xcat ]; then
+  . /etc/sysconfig/xcat
+fi
+if [ -r /etc/profile.d/xcat.sh ]; then
+  . /etc/profile.d/xcat.sh
+fi
+
+if [ -z $XCATROOT ]; then
+  echo "Error: Environment variable XCATROOT is not set."
+  exit -1
+fi
+
+XCATdStatus()
+{
+  PID=`cat /var/run/xcatd.pid 2>/dev/null`
+  if [ ! -z "$PID" ]; then
+    ps $PID | grep xcatd: > /dev/null 2>&1
+    if [ "$?" = "0" ]; then
+      return
+    fi
+  fi
+  return 3
+}
+
+# Main
+case $ACTION in
+status)
+  XCATdStatus
+  if [ "$?" != "0" ]; then
+    echo "xcatd service is not running "
+    exit -1
+  fi
+  echo "xcatd service is running "
+  ;;
+
+restart)
+  exec xcatd -p /var/run/xcatd.pid
+  ;;
+
+reload)
+  export XCATRELOAD=yes
+  exec xcatd -p /var/run/xcatd.pid
+  ;;
+
+stop)
+  XCATdStatus
+  if [ "$?" != "0" ]; then
+    echo "xcatd is not running, not stopping "
+    exit
+  fi
+
+  kill -TERM `cat /var/run/xcatd.pid` > /dev/null 2>&1
+  i=0;
+  while XCATdStatus && [ $i -lt 30 ]; do
+    sleep .1
+    i=$((i+1))
+  done
+
+  XCATdStatus
+  if [ "$?" = "0" ]; then
+    kill -KILL -`cat /var/run/xcatd.pid` > /dev/null 2>&1
+    i=0
+    while XCATdStatus && [ $i -lt 30 ]; do
+      sleep .1
+      i=$((i+1))
+    done
+  fi
+
+  XCATdStatus
+  if [ "$?" = "0" ]; then
+    # daemon is still running, return with error.
+    exit 99
+  fi
+
+  rm -f /var/run/xcatd.pid 2>/dev/null
+  ;;
+
+start)
+  XCATdStatus
+  if [ "$?" = "0" ]; then
+    echo "xcatd already running "
+    exit
+  fi
+  #/var/run/ is a symlink on /run and that's just a tmpfs mount created on boot on ubuntu.
+  #if there is not this directory, create first
+  if [ ! -d /var/run/xcat ];then
+    mkdir -p /var/run/xcat
+  fi
+
+  exec xcatd -p /var/run/xcatd.pid
+  ;;
+
+*)
+  echo "Not supported action "
+  exit -1
+  ;;
+
+esac
