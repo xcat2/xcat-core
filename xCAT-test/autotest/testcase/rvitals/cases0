@@ -110,6 +110,12 @@ check:rc==0
 check:output=~12V Sense|AC Avg Power
 check:output=~Mem Cache Power|MEM Avg Power
 end
+start:rvitals_altitude
+description:Retrieves altitude readings.
+Attribute: $$CN-The operation object of rvitals command
+cmd:rvitals $$CN altitude
+check:rc==0
+end
 start:rvitals_noderange_err
 description:using not defined node
 cmd:rvitals testnode 
