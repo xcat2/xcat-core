@@ -383,13 +383,32 @@ sub donodeent {
     my %currnodes;
     $confluent->read('/nodes/');
     my $listitem = $confluent->next_result();
+    my @toconfignodes = keys %{$cfgenthash};
+    my @toremove; #define array for unneded consoles
     while ($listitem) {
         if (exists $listitem->{item}) {
             my $name = $listitem->{item}->{href};
             $name =~ s/\/$//;
             $currnodes{$name} = 1;
+		if ( !grep( /^$name$/, @toconfignodes ) ) {
+    			push @toremove, $name;
+		}
         }
         $listitem = $confluent->next_result();
+    }
+    if (scalar @toremove >0) {
+	my $confluent_del_node = Confluent::Client->new();
+	unless ($confluent_del_node) {
+        	# unable to get a connection to confluent
+        	my $rsp;
+        	$rsp->{data}->[0] = "Unable to open a connection to confluent(delete unneded node), verify that confluent is running.";
+        	xCAT::MsgUtils->message("E", $rsp, $cb);
+        	return;
+    	}
+    	foreach (@toremove) { 
+		my $nodetodel = $_;
+ 		$confluent_del_node->delete('/nodes/' . $nodetodel);
+    	} 
     }
     if ($delmode) {
         foreach my $confnode (keys %currnodes) {
@@ -399,7 +418,6 @@ sub donodeent {
         }
         return;
     }
-    my @toconfignodes = keys %{$cfgenthash};
     my $ipmitab       = xCAT::Table->new('ipmi', -create => 0);
     my $ipmientries   = {};
     if ($ipmitab) {
