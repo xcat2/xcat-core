@@ -39,7 +39,7 @@ OpenPOWER (OpenBMC) server specific:
 ====================================
 
 
-\ **rinv**\  \ *noderange*\  [\ **model | serial | mprom | firm | cpu | dimm | all**\ ]
+\ **rinv**\  \ *noderange*\  [\ **model | serial | firm | cpu | dimm | all**\ ]
 
 
 PPC (with HMC) specific:
