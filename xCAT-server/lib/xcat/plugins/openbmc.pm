@@ -119,6 +119,14 @@ my %status_info = (
         process        => \&reventlog_response,
     },
 
+    RFLASH_LIST_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RFLASH_LIST_RESPONSE => {
+        process        => \&rflash_response,
+    },
+
     RINV_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/inventory/enumerate",
@@ -203,13 +211,6 @@ my %status_info = (
     },
     RVITALS_RESPONSE => {
         process        => \&rvitals_response,
-    },
-    RFLASH_LIST_REQUEST  => {
-        method         => "GET",
-        init_url       => "$openbmc_project_url/software/enumerate",
-    },
-    RFLASH_LIST_RESPONSE => {
-        process        => \&rflash_response,
     },
 );
 
@@ -484,13 +485,13 @@ sub parse_args {
             if ($filename_passed) {
                 # Filename was passed, check flags allowed with file
                 if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
-                    return ([ 1, "Unsupported file command option: $opt" ]);
+                    return ([ 1, "Invalid option specified when a file is provided: $opt" ]);
                 }
             }
             else {
                 # Filename was not passed, check flags allowed without file
                 if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
-                    return ([ 1, "Unsupported no file command option: $opt" ]);
+                    return ([ 1, "Invalid option specified: $opt" ]);
                 }
             }
         }
@@ -691,16 +692,16 @@ sub parse_command_status {
                 }
             }
             else {
-                #TODO Process file id passed in
+                # TODO Process file id passed in
             }
         }
         if ($check_version) {
-            #Display firmware version on BMC
+            # Display firmware version on BMC
             $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
             $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
         }
         if ($list) {
-            #Display firmware update files uploaded to BMC
+            # Display firmware update files uploaded to BMC
             $next_status{LOGIN_RESPONSE} = "RFLASH_LIST_REQUEST";
             $next_status{RFLASH_LIST_REQUEST} = "RFLASH_LIST_RESPONSE";
         }
