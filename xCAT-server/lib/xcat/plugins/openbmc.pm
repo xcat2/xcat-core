@@ -119,6 +119,14 @@ my %status_info = (
         process        => \&reventlog_response,
     },
 
+    RFLASH_LIST_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RFLASH_LIST_RESPONSE => {
+        process        => \&rflash_response,
+    },
+
     RINV_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/inventory/enumerate",
@@ -477,13 +485,13 @@ sub parse_args {
             if ($filename_passed) {
                 # Filename was passed, check flags allowed with file
                 if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
-                    return ([ 1, "Unsupported file command option: $opt" ]);
+                    return ([ 1, "Invalid option specified when a file is provided: $opt" ]);
                 }
             }
             else {
                 # Filename was not passed, check flags allowed without file
                 if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
-                    return ([ 1, "Unsupported no file command command option: $opt" ]);
+                    return ([ 1, "Invalid option specified: $opt" ]);
                 }
             }
         }
@@ -684,17 +692,18 @@ sub parse_command_status {
                 }
             }
             else {
-                #TODO Process file id passed in
+                # TODO Process file id passed in
             }
         }
         if ($check_version) {
-            #Display firmware version on BMC
+            # Display firmware version on BMC
             $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
             $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
         }
         if ($list) {
-            xCAT::SvrUtils::sendmsg("List option is not yet supported.", $callback);
-            return 1;
+            # Display firmware update files uploaded to BMC
+            $next_status{LOGIN_RESPONSE} = "RFLASH_LIST_REQUEST";
+            $next_status{RFLASH_LIST_REQUEST} = "RFLASH_LIST_RESPONSE";
         }
         if ($delete) {
             xCAT::SvrUtils::sendmsg("Delete option is not yet supported.", $callback);
@@ -1364,5 +1373,60 @@ sub rvitals_response {
     return;
 }
 
+#-------------------------------------------------------
 
+=head3  rflash_response
+
+  Deal with response of rflash command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rflash_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    print Dumper(%{$response_info->{data}});
+
+    my $update_id;
+    my $update_activation;
+    my $update_purpose;
+    my $update_version;
+
+    if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
+        # Display "list" option header and data
+        xCAT::SvrUtils::sendmsg("ID       Purpose State    Version", $callback, $node);
+        xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
+
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+            $update_id = (split(/\//, $key_url))[ -1 ];
+            if (defined($content{Version}) and $content{Version}) {
+                $update_version = $content{Version};
+            }
+            if (defined($content{Activation}) and $content{Activation}) {
+                $update_activation = (split(/\./, $content{Activation}))[ -1 ];
+            }
+            if (defined($content{Purpose}) and $content{Purpose}) {
+                $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
+            }
+            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-8s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+        }
+        xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+    return;
+}
 1;
