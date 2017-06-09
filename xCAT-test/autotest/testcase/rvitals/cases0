@@ -115,6 +115,7 @@ description:Retrieves altitude readings.
 Attribute: $$CN-The operation object of rvitals command
 cmd:rvitals $$CN altitude
 check:rc==0
+check:output=~No attributes returned from the BMC
 end
 start:rvitals_noderange_err
 description:using not defined node
