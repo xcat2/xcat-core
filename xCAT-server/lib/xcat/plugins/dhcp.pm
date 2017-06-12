@@ -531,9 +531,7 @@ sub addnode
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
                     $node_server = $nrent->{xcatmaster};
-                } elsif ($nrent->{servicenode}) {
-                    $node_server = $nrent->{servicenode};
-                }
+                } 
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
