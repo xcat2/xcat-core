@@ -48,21 +48,22 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
         #p result
         resultArr.push(result)
       end
-      
-      #p result
-      #puts "   \033[31mRed (31)\033[0m\n"  
+
       puts "\n"
     end
   end
   
 end 
+
 puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
-#`cat perl_out.log`
 #puts "\033[31m#{resultArr}\033[0m\n"
-#resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
 raise "There is a syntax error on the above file. Fix it!"
+
+
+
+
 
 if(event_type == "pull_request")
   #pull_number = system('echo $TRAVIS_PULL_REQUEST')
