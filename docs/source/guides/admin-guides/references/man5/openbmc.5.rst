@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-Setting for nodes that are controlled by an on-board OpenBmc.
+Setting for nodes that are controlled by an on-board OpenBMC.
 
 
 *******************

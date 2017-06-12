@@ -1,7 +1,7 @@
 Configure Additional Network Interfaces - confignics
 ====================================================
 
-The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (mutltiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
+The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (multiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
 
 The way the confignics postscript decides what IP address to give the secondary adapter is by checking the nics table, in which the nic configuration information is stored.
 
@@ -78,7 +78,7 @@ By default, confignics does not configure the install nic. if need, using flag "
 
     chdef cn1 -p prostscripts="confignics -s"
 
-Option "-s" writes the install nic's information into configuration file for persistance. All install nic's data defined in nics table will be written also.
+Option "-s" writes the install nic's information into configuration file for persistence. All install nic's data defined in nics table will be written also.
 
 
 Add network object into the networks table

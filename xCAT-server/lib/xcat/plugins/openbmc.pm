@@ -29,13 +29,22 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 
+# String constants for rpower states
+$::POWER_STATE_OFF="off";
+$::POWER_STATE_ON="on";
+$::POWER_STATE_POWERING_OFF="powering-off";
+$::POWER_STATE_POWERING_ON="powering-on";
+$::POWER_STATE_QUIESCED="quiesced";
+$::POWER_STATE_RESET="reset";
+
+$::NO_ATTRIBUTES_RETURNED="No attributes returned from the BMC.";
+
 sub unsupported {
     my $callback = shift;
     if (defined($::OPENBMC_DEVEL) && ($::OPENBMC_DEVEL eq "YES")) {
-        xCAT::SvrUtils::sendmsg("Warning: Currently running development code, use at your own risk.  Unset XCAT_OPENBMC_DEVEL to disable.",  $callback);
         return;
     } else {
-        return ([ 1, "This openbmc related function is unsupported and disabled. To bypass, run the following: \n\texport XCAT_OPENBMC_DEVEL=YES" ]);
+        return ([ 1, "This openbmc related function is not yet supported. Please contact xCAT development team." ]);
     }
 }
 
@@ -63,6 +72,18 @@ sub handled_commands {
         rvitals        => 'nodehm:mgt',
     };
 }
+
+my $prefix = "xyz.openbmc_project";
+
+my %sensor_units = (
+    "$prefix.Sensor.Value.Unit.DegreesC" => "C",
+    "$prefix.Sensor.Value.Unit.RPMS" => "RPMS",
+    "$prefix.Sensor.Value.Unit.Volts" => "Volts",
+    "$prefix.Sensor.Value.Unit.Meters" => "Meters",
+    "$prefix.Sensor.Value.Unit.Amperes" => "Amps",
+    "$prefix.Sensor.Value.Unit.Watts" => "Watts",
+    "$prefix.Sensor.Value.Unit.Joules" => "Joules"
+); 
 
 my $http_protocol="https";
 my $openbmc_url = "/org/openbmc";
@@ -98,11 +119,27 @@ my %status_info = (
         process        => \&reventlog_response,
     },
 
+    RFLASH_LIST_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RFLASH_LIST_RESPONSE => {
+        process        => \&rflash_response,
+    },
+
     RINV_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/inventory/enumerate",
     },
     RINV_RESPONSE => {
+        process        => \&rinv_response,
+    },
+
+    RINV_FIRM_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RINV_FIRM_RESPONSE => {
         process        => \&rinv_response,
     },
 
@@ -167,6 +204,13 @@ my %status_info = (
     },
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
+    },
+    RVITALS_REQUEST => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/sensors/enumerate",
+    },
+    RVITALS_RESPONSE => {
+        process        => \&rvitals_response,
     },
 );
 
@@ -315,7 +359,7 @@ sub process_request {
             push @donargs, [ $node,$bmcip,$node_info{$node}{username}, $node_info{$node}{password}];
         } else {
             $login_url = "$http_protocol://$bmcip/login";
-            $content = '{"data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
+            $content = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
@@ -338,7 +382,7 @@ sub process_request {
         }
     } 
 
-    $callback->({ errorcode => $check }) if ($check);
+    $callback->({ errorcode => [$check] }) if ($check);
     return;
 }
 
@@ -357,34 +401,26 @@ sub parse_args {
     my $noderange = shift;
     my $check = undef;
  
-    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig/) {
+    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     }
 
-    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot/)) {
+    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time" ]);
     }
 
     my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
-        #command for openbmc rcons
+        # command for openbmc rcons
     } elsif ($command eq "rsetboot") {
         #
         # disable function until fully tested
@@ -429,6 +465,36 @@ sub parse_args {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
         }  
+    } elsif ($command eq "rvitals") {
+        $subcommand = "all" if (!defined($ARGV[0]));
+        unless ($subcommand =~ /^temp$|^voltage$|^wattage$|^fanspeed$|^power$|^altitude$|^all$/) {
+            return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rflash") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        my $filename_passed = 0;
+        foreach my $opt (@$extrargs) {
+            # Only files ending on .tar are allowed
+            if ($opt =~ /.*\.tar$/i) {
+                $filename_passed = 1;
+                next;
+            }
+            if ($filename_passed) {
+                # Filename was passed, check flags allowed with file
+                if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
+                    return ([ 1, "Invalid option specified when a file is provided: $opt" ]);
+                }
+            }
+            else {
+                # Filename was not passed, check flags allowed without file
+                if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
+                    return ([ 1, "Invalid option specified: $opt" ]);
+                }
+            }
+        }
     } else {
         return ([ 1, "Command is not supported." ]);
     }
@@ -483,9 +549,20 @@ sub parse_command_status {
             $subcommand = "all";
         }
 
-        $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
-        $next_status{RINV_REQUEST} = "RINV_RESPONSE";
-        $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+        if ($subcommand eq "firm") {
+            $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        } elsif ($subcommand eq "all") {
+            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+            $next_status{RINV_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        } else {
+            $next_status{LOGIN_RESPONSE} = "RINV_REQUEST";
+            $next_status{RINV_REQUEST} = "RINV_RESPONSE";
+            $status_info{RINV_RESPONSE}{argv} = "$subcommand";
+        }
     }
 
     if ($command eq "rsetboot") {
@@ -539,7 +616,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@ARGV) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -560,6 +637,82 @@ sub parse_command_status {
         $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
         xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
         return 1;
+    }
+
+    if ($command eq "rvitals") {
+        if (defined($ARGV[0])) {
+            $subcommand = $ARGV[0];
+        } else {
+            $subcommand = "all";
+        }
+
+        $next_status{LOGIN_RESPONSE} = "RVITALS_REQUEST";
+        $next_status{RVITALS_REQUEST} = "RVITALS_RESPONSE";
+        $status_info{RVITALS_RESPONSE}{argv} = "$subcommand";
+    }
+
+    if ($command eq "rflash") {
+        my $check_version = 0;
+        my $list = 0;
+        my $delete = 0;
+        my $upload = 0;
+        unless (GetOptions(
+            'c|check'  => \$check_version,
+            'l|list'   => \$list,
+            'd|delete' => \$delete,
+            'u|upload' => \$upload,
+        )) {
+            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
+            return 1;
+        }
+
+        my $update_file = $ARGV[0]; 
+        my $filename = undef;
+        my $file_id = undef;
+        my $grep_cmd = "/usr/bin/grep -a";
+        my $version_tag = '"version=IBM"';
+        my $purpose_tag = '"purpose="';
+        if (defined $update_file) {
+            # Filename or file id was specified 
+            if ($update_file =~ /.*\.tar$/) {
+                # Filename ending on .tar was specified
+                $filename = $update_file;
+                if ($check_version) {
+                    # Display firmware version of the specified .tar file
+                    my $firmware_version_in_file = `$grep_cmd $version_tag $filename`;
+                    my $purpose_version_in_file = `$grep_cmd $purpose_tag $filename`;
+                    chomp($firmware_version_in_file);
+                    chomp($purpose_version_in_file);
+                    my ($purpose_string,$purpose_value) = split("=", $purpose_version_in_file); 
+                    my ($version_string,$version_value) = split("=", $firmware_version_in_file); 
+                    if ($purpose_value =~ /host/) {
+                        $purpose_value = "Host";
+                    } 
+                    xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
+                }
+            }
+            else {
+                # TODO Process file id passed in
+            }
+        }
+        if ($check_version) {
+            # Display firmware version on BMC
+            $next_status{LOGIN_RESPONSE} = "RINV_FIRM_REQUEST";
+            $next_status{RINV_FIRM_REQUEST} = "RINV_FIRM_RESPONSE";
+        }
+        if ($list) {
+            # Display firmware update files uploaded to BMC
+            $next_status{LOGIN_RESPONSE} = "RFLASH_LIST_REQUEST";
+            $next_status{RFLASH_LIST_REQUEST} = "RFLASH_LIST_RESPONSE";
+        }
+        if ($delete) {
+            xCAT::SvrUtils::sendmsg("Delete option is not yet supported.", $callback);
+            return 1;
+        }
+        if ($upload) {
+            xCAT::SvrUtils::sendmsg("Upload option is not yet supported.", $callback);
+            return 1;
+        }
     }
 
     print Dumper(\%next_status) . "\n";
@@ -710,7 +863,7 @@ sub deal_with_response {
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
         if ($response->status_line eq $::RESPONSE_SERVICE_UNAVAILABLE) {
-            $error = "Service Unavailable";
+            $error = $::RESPONSE_SERVICE_UNAVAILABLE;
         } else {
             my $response_info = decode_json $response->content;
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
@@ -781,21 +934,21 @@ sub rpower_response {
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("on", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     } 
 
     if ($node_info{$node}{cur_status} eq "RPOWER_OFF_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("off", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
             $new_status{$::STATUS_POWERING_OFF} = [$node];
         }
     }
 
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("reset", $callback, $node);
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     }
@@ -804,9 +957,26 @@ sub rpower_response {
 
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
         if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
-            xCAT::SvrUtils::sendmsg("off", $callback, $node);
+            # State is off, but check if it is transitioning
+            if ($response_info->{'data'}->{RequestedHostTransition} =~ /On$/) {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+            }
+        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Quiesced$/) {
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
+        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Running$/) {
+            # State is on, but check if it is transitioning
+            if ($response_info->{'data'}->{RequestedHostTransition} =~ /Off$/) {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
+            }
+            else {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+            }
         } else {
-            xCAT::SvrUtils::sendmsg("on", $callback, $node);
+            my $unexpected_state = $response_info->{'data'}->{CurrentHostState};
+            xCAT::SvrUtils::sendmsg("Unexpected state - $unexpected_state", $callback, $node);
         }
     }
 
@@ -846,12 +1016,27 @@ sub rinv_response {
 
     my $response_info = decode_json $response->content;
 
-    my $grep_string = $status_info{RINV_RESPONSE}{argv};
+    my $grep_string;
+    if ($node_info{$node}{cur_status} eq "RINV_FIRM_RESPONSE") {
+         $grep_string = "firm";
+     } else {
+         $grep_string = $status_info{RINV_RESPONSE}{argv};
+     }
+
     my $src;
     my $content_info;
+    my @sorted_output;
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+        if ($grep_string eq "firm") {
+            if (defined($content{Version}) and $content{Version}) {
+                my $firm_ver = "System Firmware Product Version: " . "$content{Version}";
+                xCAT::SvrUtils::sendmsg("$firm_ver", $callback, $node);
+                next;
+            }
+        }
 
         if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
             my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
@@ -865,20 +1050,24 @@ sub rinv_response {
             next if ($grep_string eq "serial");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "mprom")) {
-            # wait for interface
+        if (($grep_string eq "vpd" or $grep_string eq "mprom") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No mprom information is available", $callback, $node);
+            next if ($grep_string eq "mprom");
         } 
 
-        if (($grep_string eq "vpd" or $grep_string eq "deviceid")) {
-            # wait for interface      
+        if (($grep_string eq "vpd" or $grep_string eq "deviceid") and $key_url =~ /\/motherboard$/) {
+            xCAT::SvrUtils::sendmsg("No deviceid information is available", $callback, $node);
+            next if ($grep_string eq "deviceid");
         } 
 
         if ($grep_string eq "uuid") {
-            # wait for interface 
+            xCAT::SvrUtils::sendmsg("No uuid information is available", $callback, $node);
+            last;
         } 
 
         if ($grep_string eq "guid") {
-            # wait for interface
+            xCAT::SvrUtils::sendmsg("No guid information is available", $callback, $node);
+            last;
         } 
 
         if ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
@@ -887,7 +1076,7 @@ sub rinv_response {
             next;
         } 
 
-        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/ or ($grep_string eq "firm" and defined($content{Name}) and $content{Name} eq "OpenPOWER Firmware")) {
+        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
@@ -896,9 +1085,15 @@ sub rinv_response {
 
             foreach my $key (keys %content) {
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-                xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
+                push (@sorted_output, $node . ": ". $content_info); #Save output in array
             }
         }
+     }
+     # If sorted array has any contents, sort it and print it
+     if (scalar @sorted_output > 0) {
+         @sorted_output = sort @sorted_output; #Sort all output
+         my $result = join "\n", @sorted_output; #Join into a single string for easier display
+         xCAT::SvrUtils::sendmsg("$result", $callback);
      }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -992,7 +1187,7 @@ sub reventlog_response {
 
     my $response_info = decode_json $response->content;
 
-    if ($node_info{$node}{cur_status} eq "REVENTLOG_CLEAR_REQUEST") {
+    if ($node_info{$node}{cur_status} eq "REVENTLOG_CLEAR_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("clear", $callback, $node);
         }
@@ -1090,4 +1285,148 @@ sub rspconfig_response {
     } 
 }
 
+#-------------------------------------------------------
+
+=head3  rvitals_response
+
+  Deal with response of rvitals command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rvitals_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    my $grep_string = $status_info{RVITALS_RESPONSE}{argv};
+    my $src;
+    my $content_info;
+    my @sorted_output;
+    
+    print "$node: DEBUG Processing command: rvitals $grep_string \n";
+    print Dumper(%{$response_info->{data}});
+
+    foreach my $key_url (keys %{$response_info->{data}}) {
+        my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+        #
+        # Skip over attributes that are not asked to be printed
+        #
+        if ($grep_string =~ "temp") {
+            unless ( $content{Unit} =~ "DegreesC") { next; } 
+        } 
+        if ($grep_string =~ "voltage") {
+            unless ( $content{Unit} =~ "Volts") { next; } 
+        } 
+        if ($grep_string =~ "wattage") {
+            unless ( $content{Unit} =~ "Watts") { next; } 
+        } 
+        if ($grep_string =~ "fanspeed") {
+            unless ( $content{Unit} =~ "RPMS") { next; } 
+        } 
+        if ($grep_string =~ "power") {
+            unless ( $content{Unit} =~ "Amperes" || $content{Unit} =~ "Joules" || $content{Unit} =~ "Watts" ) { next; } 
+        } 
+        if ($grep_string =~ "altitude") {
+            unless ( $content{Unit} =~ "Meters" ) { next; }
+        } 
+
+        my $label = (split(/\//, $key_url))[ -1 ];
+
+        # replace underscore with space, uppercase the first letter 
+        $label =~ s/_/ /g;
+        $label =~ s/\b(\w)/\U$1/g;
+
+        #
+        # Calculate the adjusted value based on the scale attribute
+        #  
+        my $calc_value = $content{Value};
+        if ( $content{Scale} != 0 ) { 
+            $calc_value = ($content{Value} * (10 ** $content{Scale}));
+        } 
+
+        $content_info = $label . ": " . $calc_value . " " . $sensor_units{ $content{Unit} };
+        push (@sorted_output, $content_info); #Save output in array
+    }
+    # If sorted array has any contents, sort it and print it
+    if (scalar @sorted_output > 0) {
+        # Sort the output, alpha, then numeric
+        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+    } else {
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3  rflash_response
+
+  Deal with response of rflash command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rflash_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    print Dumper(%{$response_info->{data}});
+
+    my $update_id;
+    my $update_activation;
+    my $update_purpose;
+    my $update_version;
+
+    if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
+        # Display "list" option header and data
+        xCAT::SvrUtils::sendmsg("ID       Purpose State    Version", $callback, $node);
+        xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
+
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+            $update_id = (split(/\//, $key_url))[ -1 ];
+            if (defined($content{Version}) and $content{Version}) {
+                $update_version = $content{Version};
+            }
+            if (defined($content{Activation}) and $content{Activation}) {
+                $update_activation = (split(/\./, $content{Activation}))[ -1 ];
+            }
+            if (defined($content{Purpose}) and $content{Purpose}) {
+                $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
+            }
+            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-8s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+        }
+        xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+    return;
+}
 1;

@@ -39,11 +39,11 @@ If the node you are trying to remove is currently running the \ **rmdsklsnode**\
 
 \ **Removing alternate NIM client definitions**\ 
 
-If you used the "-n" option when you created the NIM client definitions with the \ **mkdsklsnode**\  command then the NIM client machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used using the "-i" option.
+If you used the "-n" option when you created the NIM client definitions with the \ **mkdsklsnode**\  command then the NIM client machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions, you must provide the name of the osimage that was used using the "-i" option.
 
-In most cases you would most likely want to remove the old client definitions without disturbing the nodes that you just booted with the new alternate client definition. The \ **rmdsklsnode -r**\  option can be used to remove the old alternate client defintions without stopping the running node.
+In most cases you would most likely want to remove the old client definitions without disturbing the nodes that you just booted with the new alternate client definition. The \ **rmdsklsnode -r**\  option can be used to remove the old alternate client definitions without stopping the running node.
 
-However, if you have NIM dump resources assign to your nodes be aware that when the old NIM alternate client definitions are removed it will leave the nodes unable to produce a system dump.  This is a current limitation in the NIM support for alternate client definitions.  For this reason it is recommended that you wait to do this cleanup until right before you do your next upgrade.
+However, if you have NIM dump resources assign to your nodes be aware that when the old NIM alternate client definitions are removed it will leave the nodes unable to produce a system dump.  This is a current limitation in the NIM support for alternate client definitions.  For this reason, it is recommended that you wait to do this cleanup until right before you do your next upgrade.
 
 
 *******
@@ -60,8 +60,7 @@ OPTIONS
 
 \ **-b |-**\ **-backupSN**\ 
  
- When using backup service nodes only update the backup.  The default is to updat
- e both the primary and backup service nodes.
+ When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
  
 
 
@@ -85,8 +84,7 @@ OPTIONS
 
 \ **-p|-**\ **-primarySN**\ 
  
- When using backup service nodes only update the primary.  The default is to upda
- te both the primary and backup service nodes.
+ When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
  
 
 

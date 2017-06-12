@@ -35,8 +35,8 @@ Traditionally, network interfaces in Linux are enumerated as eth[0123...], but t
 
 \ **getadapter**\  For each node within the <noderange>, follows below scheme:
 
-If the target node is scaned for the first time, \ **getadapter**\  will trigger genesis to collect information then save the information at the \ **nicsadapter**\  column of nics table.
-If the target node has ever been scaned,  \ **getadapter**\  will use the information from nics table first.
+If the target node is scanned for the first time, \ **getadapter**\  will trigger genesis to collect information then save the information at the \ **nicsadapter**\  column of nics table.
+If the target node has ever been scanned,  \ **getadapter**\  will use the information from nics table first.
 If user hopes to scan the adapter information for the node but these information already exist, \ **-f**\  option can be used to start rescan process.
 
 \ **getadapter**\  tries to collect more information for the  target network device,  but doesn't guarantee collect same much information for every network device.

@@ -51,7 +51,7 @@ These are described in more details in the following sections.
 RPM Names
 ''''''''''
 
-A simple .pkglist file just contains the the name of the rpm file without the version numbers.
+A simple .pkglist file just contains the name of the rpm file without the version numbers.
 
 For example  ::
 

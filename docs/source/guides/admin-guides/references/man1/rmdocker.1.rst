@@ -48,7 +48,7 @@ EXAMPLES
 .. code-block:: perl
 
      rmdocker host01c01
-     host01c01: Disconnect customzied network 'mynet0' done
+     host01c01: Disconnect customized network 'mynet0' done
      host01c01: success
 
 

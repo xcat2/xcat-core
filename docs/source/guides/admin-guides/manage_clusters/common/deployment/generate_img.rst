@@ -1,7 +1,7 @@
 Generate Diskless Image
 =======================
 
-The ``copycds`` command copies the contents of the Linux media to ``/install/<os>/<arch>`` so that it will be available for installing nodes or creating diskless images.  After executing ``copycds``, there are serveral ``osimage`` definitions created by default.  Run ``tabdump osimage`` to view these images: ::
+The ``copycds`` command copies the contents of the Linux media to ``/install/<os>/<arch>`` so that it will be available for installing nodes or creating diskless images.  After executing ``copycds``, there are several ``osimage`` definitions created by default.  Run ``tabdump osimage`` to view these images: ::
 
         tabdump osimage 
    
@@ -18,7 +18,7 @@ The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc
 
 Before packing the diskless image, you have the opportunity to change any files in the image by changing to the ``rootimgdir`` and making modifications.  (e.g. ``/install/netboot/rhels7.1/ppc64le/compute/rootimg``). 
 
-However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable.Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
+However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable. Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
 
 
 Pack Diskless Image
@@ -102,7 +102,7 @@ Skip this section if you want to use the image as is.
 
 1, The use can modify the image to fit his/her own need. The following can be modified.
 
-* Modify .pkglist file to add or remove packges that are from the os distro
+* Modify .pkglist file to add or remove packages that are from the os distro
 
 * Modify .otherpkgs.pkglist to add or remove packages from other sources. Refer to ``Using_Updatenode`` for details 
 

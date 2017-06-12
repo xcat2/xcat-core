@@ -215,93 +215,94 @@ function find_nic_and_device_list {
 #
 ###############################################################################
 function sort_nics_device_order {
+
     all_nics_list=$*
     eth_slot=""
     bond_slot=""
     vlan_slot=""
     num=1
-
     alone_nics=`echo "$all_nics_list"|awk '{if(0<NF&&NF<2) print $0}'`
     nics_list=`echo "$all_nics_list"|awk '{if(NF>1) print $0}'`
-
+ 
     #find stand alone nic
     num1=1
     max1=`echo "$alone_nics"|wc -l`
     ((max1+=1))
     while [ $num1 -lt $max1 ];
     do
-        alonenic=`echo "$alone_nics"|sed -n "${num1}p"`
+        alonenic=`echo "$alone_nics"|sed -n "${num1}p"|sed "s/ //g"`
         echo "$nics_list"| grep "$alonenic" >/dev/null
         if [ $? -ne 0 ]; then
             echo $alonenic
         fi
         ((num1+=1))
     done
-
     #
-    num=1
-    max=`echo "$nics_list"|wc -l`
-    ((max+=1))
-    while [ $num -lt $max ];
-    do
-        #for each nic and nicdevice : nic_dev base_nic_dev
-        #find nic type as nic_dev_type
-        #find nicdevice type as base_nic_type
-        base_nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $2}'`
-        if echo "$base_nic_dev"|grep "@" >/dev/null; then
-            for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
-            do
-                temp_base_nic_type=`find_nic_type "$i"`
-                if [ x"$temp_base_nic_type_one" = x ]; then
-                    temp_base_nic_type_one=$temp_base_nic_type
-                elif [ x"$temp_base_nic_type" != x"$temp_base_nic_type_one" ]; then
-                    log_error "different nic device types in $base_nic_dev."
-                    break 2
-                fi
-            done
-        else
-            temp_base_nic_dev=$base_nic_dev
-            temp_base_nic_type=`find_nic_type "$temp_base_nic_dev"`
-        fi
+    if [ -n "$nics_list" ]; then 
+        num=1
+        max=`echo "$nics_list"|wc -l`
+        ((max+=1))
+        while [ $num -lt $max ];
+        do
+            #for each nic and nicdevice : nic_dev base_nic_dev
+            #find nic type as nic_dev_type
+            #find nicdevice type as base_nic_type
+            base_nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $2}'`
+            if echo "$base_nic_dev"|grep "@" >/dev/null; then
+                for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
+                do
+                    temp_base_nic_type=`find_nic_type "$i" | $utolcmd`
+                    if [ x"$temp_base_nic_type_one" = x ]; then
+                        temp_base_nic_type_one=$temp_base_nic_type
+                    elif [ x"$temp_base_nic_type" != x"$temp_base_nic_type_one" ]; then
+                        log_error "different nic device types in $base_nic_dev."
+                        break 2
+                    fi
+                done
+            else
+                temp_base_nic_dev=$base_nic_dev
+                temp_base_nic_type=`find_nic_type "$temp_base_nic_dev" | $utolcmd`
+            fi
 
-        base_nic_type=$temp_base_nic_type
-        nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $1}'`
-        nic_dev_type=`find_nic_type "$nic_dev"`
+            base_nic_type=$temp_base_nic_type
+            nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $1}'`
+            nic_dev_type=`find_nic_type "$nic_dev" | $utolcmd`
 
-        #valid nic_dev and base_nic_dev pair as  bond-ethernet or vlan-ethernet or bridge-ethernet
-        if [ x"$base_nic_type" = "xethernet" ]&& \
-           [ x"$nic_dev_type" = "xbond" -o x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
+            #valid nic_dev and base_nic_dev pair as  bond-ethernet or vlan-ethernet or bridge-ethernet
+            if [ x"$base_nic_type" = "xethernet" ]&& \
+               [ x"$nic_dev_type" = "xbond" -o x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
             
-            if [ x"$eth_slot" = x ]; then
-                eth_slot=$num
+                if [ x"$eth_slot" = x ]; then
+                    eth_slot=$num
+                else
+                    eth_slot=$eth_slot" "$num
+                fi
+
+            #valid nic_dev and base_nic_dev pair as vlan-bond or bridge-bond
+            elif [ x"$base_nic_type" = "xbond" ]&& \
+                [ x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
+
+                if [ x"$bond_slot" = x ]; then
+                     bond_slot=$num
+                else
+                     bond_slot=$bond_slot" "$num
+                fi
+
+            #valid nic_dev and base_nic_dev pair as bridge-vlan
+            elif [ x"$base_nic_type" = "xvlan" ]&& \
+                [ x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
+
+                if [ x"$vlan_slot" = x ]; then
+                    vlan_slot=$num
+                else
+                    vlan_slot=$vlan_slot" "$num
+                fi
             else
-                eth_slot=$eth_slot" "$num
+                echo "Error: $nic_dev $base_nic_dev pair is invalid nic and nicdevice pair."
             fi
-
-        #valid nic_dev and base_nic_dev pair as vlan-bond or bridge-bond
-        elif [ x"$base_nic_type" = "xbond" ]&& \
-            [ x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
-
-            if [ x"$bond_slot" = x ]; then
-                bond_slot=$num
-            else
-                bond_slot=$bond_slot" "$num
-            fi
-
-        #valid nic_dev and base_nic_dev pair as bridge-vlan
-        elif [ x"$base_nic_type" = "xvlan" ]&& \
-            [ x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
-
-            if [ x"$vlan_slot" = x ]; then
-                vlan_slot=$num
-            else
-                vlan_slot=$vlan_slot" "$num
-            fi
-        else
-            log_error "Error: $nic_dev $base_nic_dev pair is invalid nic and nicdevice pair."
-        fi
-        ((num+=1))
-    done
+            ((num+=1))
+        done
+    fi
     new_order=$eth_slot" "$bond_slot" "$vlan_slot
     new_order_list=""
     if [ -n "$new_order" ]; then
@@ -312,7 +313,6 @@ function sort_nics_device_order {
             echo "$nics_list" |sed -n "${i}p"
         done`
     fi
-
     echo "$new_order_list" 
 }
 
@@ -332,6 +332,7 @@ function configure_nicdevice {
     base_temp_nic=""
     base_nic_for_bond=""
     line_num=""
+    noip=1
     ((max+=1))
     while [ $num -lt $max ];
     do
@@ -344,29 +345,32 @@ function configure_nicdevice {
                 base_temp_nic=$base_nic_dev
             fi
         
-            base_nic_type=`find_nic_type "$base_temp_nic"`
+            base_nic_type=`find_nic_type "$base_temp_nic" | $utolcmd`
         fi
         nic_dev=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $1}'`
-        nic_dev_type=`find_nic_type "$nic_dev"`
+        nic_dev_type=`find_nic_type "$nic_dev" | $utolcmd`
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
-
         #configure standalone ethernet nic
         if [ x"$nic_dev_type" = "xethernet" ]; then
-
+            
             ipaddr=`find_nic_ips $nic_dev|awk -F"|" '{print $1}'`
             if [ -n "$ipaddr" ]; then
                 create_ethernet_interface ifname=$nic_dev _ipaddr=$ipaddr
             else
-                log_error "There is no ip for $nic_dev."
+                log_warn "There is no ip for $nic_dev."
+                ((noip+=1))
             fi
-
+            #All Ethernet nics have no nicips
+            if [ $noip -eq $max ]; then
+                log_error "There is no any ip configured for any nic. Check nicips in nics table first."
+                errorcode=1
+            fi 
         #configure bridge
         #linux bridge type is bridge
         #openvswitch bridge type is bridge_ovs
         elif [ x"$nic_dev_type" = "xbridge_ovs" -o x"$nic_dev_type" = "xbridge" ]; then
-
             create_bridge_interface ifname=$nic_dev _brtype=$nic_dev_type _port=$base_nic_dev _pretype=$base_nic_type
      
         #configure vlan 
@@ -385,10 +389,12 @@ function configure_nicdevice {
             create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
         else
             log_error "Error : please check nictypes for $nic_pair."
+            errorcode=1
         fi 
 
         ((num+=1))
     done
+    return $errorcode
 }
 
 ############################################################################
@@ -416,6 +422,11 @@ function enable_network_service {
 # Main process
 #
 ############################################################################
+
+errorcode=0
+
+#nictypes should support capital letters, for example, Ethernet and ethernet
+utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
 #replace | with "@", for example, eth1|eth2  ---->   eth1@eth2
 nicdevice=`echo "$NICDEVICES" | sed 's/|/@/g'`
@@ -446,10 +457,19 @@ enable_network_service
 
 #sort nics device pair based on nicdevice type
 sorted_nicdevice_list=`sort_nics_device_order "$new_nicdevice"`
+
+#If there is invalid nics pair, errorcode is 1
+invalid_nicdevice_pair=`echo "$sorted_nicdevice_list" | grep "Error"`
+if [ $? -eq 0 ]; then
+log_error $invalid_nicdevice_pair
+errorcode=1
+fi
+
+#delete invalid nics device pair based on Error
+valid_sorted_nicdevice_list=`echo "$sorted_nicdevice_list" | sed '/Error/d'` 
 log_info "All valid nics and device list:"
-echo "$sorted_nicdevice_list" |log_lines info
-
-
+echo "$valid_sorted_nicdevice_list" |log_lines info
 
 #config nics and ifcfg files
-configure_nicdevice "$sorted_nicdevice_list"
+configure_nicdevice "$valid_sorted_nicdevice_list"
+exit $errorcode

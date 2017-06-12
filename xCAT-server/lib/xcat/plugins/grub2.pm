@@ -12,7 +12,7 @@ use File::Path;
 use Socket;
 use Getopt::Long;
 use xCAT::Table;
-
+use xCAT::Usage;
 my $request;
 my %breaknetbootnodes;
 our %normalnodes;
@@ -426,10 +426,13 @@ sub preprocess_request {
         return;
     }
 
-    if (@ARGV == 0) {
+   my $ret=xCAT::Usage->validateArgs($command,@ARGV);
+   if ($ret->[0]!=0) {
         if ($usage{$command}) {
             my %rsp;
-            $rsp{data}->[0] = $usage{$command};
+            $rsp{error}->[0] = $ret->[1];
+            $rsp{data}->[1] = $usage{$command};
+            $rsp{errorcode}->[0] = $ret->[0];
             $callback1->(\%rsp);
         }
         return;
@@ -465,10 +468,10 @@ sub preprocess_request {
             return [$req];
         }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope($req, @_);
+            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
         }
     }
-    return [$req];
+    return xCAT::Scope->get_parallel_scope($req);
 }
 
 sub process_request {
@@ -589,9 +592,10 @@ sub process_request {
     my $inittime = 0;
     if (exists($request->{inittime})) { $inittime = $request->{inittime}->[0]; }
     if (!$inittime) { $inittime = 0; }
-    $errored = 0;
+
     my %bphash;
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+        $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
                 node     => \@nodes,
@@ -599,8 +603,11 @@ sub process_request {
                 arg      => \@args,
                 bootparams => \%bphash
                 }, \&pass_along);
+        if ($errored) { 
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: Failed in processing setdestiny.  Processing will not continue.");
+            return; 
+        }
     }
-    if ($errored) { return; }
 
     my $chaintab = xCAT::Table->new('chain', -create => 1);
     my $chainhash = $chaintab->getNodesAttribs(\@nodes, ['currstate']);

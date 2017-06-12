@@ -70,7 +70,7 @@ These are described in more details in the following sections.
 RPM Names
 '''''''''
 
-A simple otherpkgs.pkglist file just contains the the name of the rpm file without the version numbers.
+A simple otherpkgs.pkglist file just contains the name of the rpm file without the version numbers.
 
 For example, if you put the following three rpms under **/install/post/otherpkgs/<os>/<arch>/** directory, ::
 

@@ -375,7 +375,6 @@ sub rackenv {
                 push @result, [ $name, $td, $Rc ];
                 if (!exists($request->{verbose})) {
 
-                    #if( $td =~ /^Rack altitude in meters/ ) {
                     if ($td =~ /^BPA-B total output in watts/) {
                         last;
                     }

@@ -51,7 +51,7 @@ The content above presents some syntax supported in exlist file:
 
     +./usr/share/locale/C*
 
-  It is useful to include files following an exclude entry to qiuckly remove a larger set of files using a wildcard and then adding back the few necessary files using the + sign. In the above example, all the files and sub-directories matching the pattern ``/usr/share/locale/C*`` will be included in the ``rootimg.gz`` file.
+  It is useful to include files following an exclude entry to quickly remove a larger set of files using a wildcard and then adding back the few necessary files using the + sign. In the above example, all the files and sub-directories matching the pattern ``/usr/share/locale/C*`` will be included in the ``rootimg.gz`` file.
 
 
 Customize the ``exlist`` file and the osimage definition 
@@ -77,4 +77,4 @@ If you want to customize the osimage ``sles12.1-ppc64le-netboot-compute`` with y
 
 .. [1]  The ``exlist`` file entry should not end with a slash ``/``, For example, this entry will never match anything: ``./usr/lib/perl[0-9]/[0-9.]*/ppc64le-linux-thread-multi/Encode/``.
 
-.. [2] Pattern match test applies to the whole file name,starting from one of the start points specified in the ``exlist`` file entry. The regex syntax should comply with the regex syntax of system command ``find -path``, refer to its doc for details.
+.. [2] Pattern match test applies to the whole file name, starting from one of the start points specified in the ``exlist`` file entry. The regex syntax should comply with the regex syntax of system command ``find -path``, refer to its doc for details.

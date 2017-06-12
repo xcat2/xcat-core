@@ -12,11 +12,11 @@ B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<devic
 
 =head2 OpenPOWER (using ipmi) server specific:
   
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>} 
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>] 
 
 =head2 OpenPOWER (using openbmc) server specific:
 
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<cpu>|B<dimm>|B<all>}
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<cpu>|B<dimm>|B<all>]
 
 =head2 PPC (with HMC) specific:
 
@@ -69,10 +69,10 @@ B<rinv> I<noderange> [B<--zfcppoolnames>]
 
 =head1 B<Description>
 
-B<rinv>  retrieves  hardware  configuration  information from the on-board
+B<rinv> retrieves hardware configuration information from the on-board
 Service Processor for a single or range of nodes and groups.
 
-Calling B<rinv> for VMware will display the UUID/GUID, nuumber of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
+Calling B<rinv> for VMware will display the UUID/GUID, number of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
 
 =head1 B<Options>
 
@@ -88,7 +88,7 @@ List all buses for each I/O slot.
 
 =item B<config>
 
-Retrieves number of processors, speed, total  memory,  and  DIMM
+Retrieves number of processors, speed, total memory, and DIMM
 locations.
 
 =item B<model>

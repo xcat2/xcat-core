@@ -18,6 +18,7 @@ require xCAT::Utils;
 require xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Table;
+use xCAT::Usage;
 
 use Data::Dumper;
 use Getopt::Long;
@@ -96,6 +97,16 @@ sub rinstall {
     }
 
     if (($command =~ /rinstall/) or ($command =~ /winstall/)) {
+        my $ret=xCAT::Usage->validateArgs($command,@ARGV);
+        if ($ret->[0]!=0) {
+             my $rsp={};
+             $rsp->{error}->[0] = $ret->[1];
+             $rsp->{errorcode}->[0] = $ret->[0];
+             xCAT::MsgUtils->message("E", $rsp, $callback);
+             &usage($command,$callback);
+             return;
+        }
+
         my $state = $ARGV[0];
         my $reststates;
         ($state, $reststates) = split(/,/, $state, 2);
@@ -340,7 +351,9 @@ sub rinstall {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
-        foreach my $line (@$res) {
+        # copy into a temporary variable to avoid of circular reference
+        my @lines = @$res;
+        foreach my $line (@lines) {
             $rsp->{data}->[0] = $line;
             if (($line =~ /: install/) or ($line =~ /: netboot/)) {
                 my $successnode;
@@ -364,9 +377,11 @@ sub rinstall {
             }
         }
         my $rsp = {};
-        $rsp->{error}->[0] = "failed to run 'nodeset' against the following nodes: @failurenodes";
-        $rsp->{errorcode}->[0] = 1;
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+        if (0+@failurenodes > 0) { 
+            $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
+            $rsp->{errorcode}->[0] = 1;
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
         @nodes = @successnodes;
     }
 
@@ -401,7 +416,6 @@ sub rinstall {
                 },
                 $subreq, -1, 1);
 
-
             $rc = $::RUNCMD_RC;
             my $rsp = {};
             if ($VERBOSE) {
@@ -414,7 +428,9 @@ sub rinstall {
 
                 # We got an error with the rnetboot
                 my @failurenodes;
-                foreach my $line (@$res) {
+                # copy into a temporary variable to avoid of circular reference
+                my @lines = @$res;
+                foreach my $line (@lines) {
                     $rsp->{data}->[0] = $line;
                     if ($line =~ /: Success/) {
                         my $successnode;
@@ -430,9 +446,11 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                $rsp->{error}->[0] = "failed to run 'rnetboot' against the following nodes: @failurenodes";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                if (0+@failurenodes > 0) { 
+                    $rsp->{error}->[0] = "Failed to run 'rnetboot' against the following nodes: @failurenodes";
+                    $rsp->{errorcode}->[0] = 1;
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
             }
         }
         else {
@@ -476,7 +494,9 @@ sub rinstall {
                     # We got an error with the rsetboot
                     my @successnodes;
                     my @failurenodes;
-                    foreach my $line (@$res) {
+                    # copy into a temporary variable to avoid of circular reference
+                    my @lines = @$res;
+                    foreach my $line (@lines) {
                         $rsp->{data}->[0] = $line;
                         if ($line =~ /: Network/) {
                             my $successnode;
@@ -493,9 +513,11 @@ sub rinstall {
                         }
                     }
                     my $rsp = {};
-                    $rsp->{error}->[0] = "failed to run 'rsetboot' against the following nodes: @failurenodes";
-                    $rsp->{errorcode}->[0] = 1;
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    if (0+@failurenodes > 0) { 
+                        $rsp->{error}->[0] = "Failed to run 'rsetboot' against the following nodes: @failurenodes";
+                        $rsp->{errorcode}->[0] = 1;
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
                     @nodes = @successnodes;
                 }
             }
@@ -533,7 +555,9 @@ sub rinstall {
             unless ($rc == 0) {
                 # We got an error with the rpower
                 my @failurenodes;
-                foreach my $line (@$res) {
+                # copy into a temporary variable to avoid of circular reference
+                my @lines = @$res;
+                foreach my $line (@lines) {
                     $rsp->{data}->[0] = $line;
                     if (($line =~ /: on reset/) or ($line =~ /: off on/)) {
                         my $successnode;
@@ -549,9 +573,11 @@ sub rinstall {
                     }
                 }
                 my $rsp = {};
-                $rsp->{error}->[0] = "failed to run 'rpower' against the following nodes: @failurenodes";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                if (0+@failurenodes > 0) { 
+                    $rsp->{error}->[0] = "Failed to run 'rpower' against the following nodes: @failurenodes";
+                    $rsp->{errorcode}->[0] = 1;
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                }
             }
         }
     }

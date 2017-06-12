@@ -98,7 +98,7 @@ OPTIONS
  be owned by vdsm:kvm.
  \ **localfs**\ : "/data/images/rhev" is set by default.
  
- \ **virtsd.host**\  - A host must be specified for a storage doamin as SPM 
+ \ **virtsd.host**\  - A host must be specified for a storage domain as SPM 
  (Storage Pool Manager) when initialize the storage domain. The role of SPM 
  may be migrated to other host by rhev-m during the running of the datacenter 
  (For example, when the current SPM encountered issue or going to maintenance 

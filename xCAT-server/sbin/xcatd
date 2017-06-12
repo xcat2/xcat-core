@@ -221,6 +221,20 @@ my $cmdlog_alllog = "====================================================\n";
 my $cmdlog_starttime=undef;
 
 # ----used for command log end---------
+my $enable_perf = $sitetab->getAttribs({'key'=>'enableperf'},'value');
+if($enable_perf) {
+    # Enabled by user, check whether nytperf library is enabled
+    if (!defined(&DB::disable_profile)) {
+        xCAT::MsgUtils->message("S", "Perf is enabled in sitetable, but can not load the library.");
+        $enable_perf = 0;
+    } else {
+        if ($enable_perf) {
+            xCAT::MsgUtils->perf_log_info("start profiling");
+            DB::enable_profile();
+        }
+    }
+}
+
 
 $sitetab->close;
 
@@ -926,7 +940,9 @@ unless ($foreground) {
 }
 
 $dbmaster = xCAT::Table::init_dbworker;
-
+if ($enable_perf) {
+    xCAT::MsgUtils->perf_log_process( "db", undef, "dbprocess", $dbmaster );
+}
 # Make sure DB process is ready.
 wait_db_process();
 my $CHILDPID = 0;    # Global for reapers
@@ -1026,7 +1042,9 @@ $SIG{TERM} = $SIG{INT} = sub {
     if ($cmdlog_svrpid) {
         kill 'INT', $cmdlog_svrpid;
     }
-
+    if ($enable_perf) {
+#        DB::finish_profile();
+    }
     # ----used for command log end---------
 };
 
@@ -1525,6 +1543,10 @@ until ($quit) {
     if ($sslfudgefactor) { $sslfudgefactor -= 1; }
     $sslclients++;    # THROTTLE
     $cnnection->close();
+    if ($enable_perf) {
+        xCAT::MsgUtils->perf_log_info("stop profiling");
+#        DB::disable_profile();
+    }
 }
 if (open($mainpidfile, "<", "/var/run/xcat/mainservice.pid")) {
     my $pid = <$mainpidfile>;
@@ -1949,6 +1971,9 @@ sub plugin_command {
                             }
                         }
                         $$progname = $oldprogname;
+                        if ($enable_perf) {
+                            xCAT::MsgUtils->perf_log_process('plugin', $req, "modname:$modname");
+                        }
                         $parent_fd = $org_parent_fd;
                         if ($sock) {
                             close($parent_fd);
@@ -2689,6 +2714,9 @@ sub service_connection {
             $req = get_request($sock, $globalencode, $line);
             unless ($req) { last; }
 
+            if ($enable_perf) {
+                xCAT::MsgUtils->perf_log_process('immediate', $req);
+            }
             # ----used for command log start----------
             $cmdlog_starttime = time();
             my ($sec, $min, $hour, $mday, $mon, $year) = localtime($cmdlog_starttime);

@@ -148,7 +148,7 @@ OPTIONS
 
 \ **vmcpus=**\  \ *value*\  \ **vmmemory=**\  \ *value*\  \ **vmphyslots=**\  \ *value*\  \ **vmothersetting=**\  \ *value*\  \ **vmnics=**\  \ *value*\  \ **vmstorage=**\  \ *value*\  [\ **-**\ **-vios**\ ]
  
- To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
+ To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessary, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
  
  The option \ *vios*\  is used to specify the partition that will be created is a VIOS partition. If specified, the value for \ *vmstorage*\  shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for \ *vmphyslots*\ , all the physical slot of the power machine will be asigned to VIOS partition. If not specified, it shall be in form of \ *vios_name:server_slotid*\  to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
  
@@ -392,7 +392,7 @@ First, define a node object:
   mkdef -t node -o lpar1 mgt=fsp cons=fsp nodetype=ppc,osi id=1 hcp=cec parent=cec hwtype=lpar groups=lpar,all
 
 
-Then, create the partion on the specified cec.
+Then, create the partition on the specified cec.
 
 
 .. code-block:: perl
@@ -515,7 +515,7 @@ The output is similar to:
   mkvm viosnode vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmnics=vlan1 vmstorage=5 --vios
 
 
-The resouces for the node is similar to:
+The resources for the node is similar to:
 
 
 .. code-block:: perl

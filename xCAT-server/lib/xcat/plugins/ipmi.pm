@@ -1936,7 +1936,6 @@ sub do_firmware_update {
         }
     }
 
-
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
     if ($output =~ /8335-GTB/) {
         $cmd = $pre_cmd . " fru print 47";
@@ -2056,7 +2055,6 @@ RETRY_UPGRADE:
     }
 
     # step 4 upgrade firmware
-
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
     my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
@@ -2537,7 +2535,7 @@ sub power {
     my $code;
 
     if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
-        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPOWER" ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
 
@@ -6508,30 +6506,30 @@ sub vitals {
         $sensor_filters{leds}    = 1;
         $doall                   = 1;
     }
-    if (grep /temp/, @textfilters) {
+    if (grep /^temp$/, @textfilters) {
         $sensor_filters{0x01} = 1;
     }
-    if (grep /volt/, @textfilters) {
+    if (grep /^voltage$/, @textfilters) {
         $sensor_filters{0x02} = 1;
     }
-    if (grep /watt/, @textfilters) {
+    if (grep /^wattage$/, @textfilters) {
         $sensor_filters{watt} = 1;
     }
-    if (grep /fan/, @textfilters) {
+    if (grep /^fanspeed$/, @textfilters) {
         $sensor_filters{0x04} = 1;
     }
-    if (grep /power/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
+    if (grep /^power$/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
         $sensor_filters{0x03}       = 1;
         $sensor_filters{powerstate} = 1;
         $sensor_filters{energy}     = 1;
     }
-    if (grep /energy/, @textfilters) {
+    if (grep /^energy$/, @textfilters) {
         $sensor_filters{energy} = 1;
     }
-    if (grep /led/, @textfilters) {
+    if (grep /^leds$/, @textfilters) {
         $sensor_filters{leds} = 1;
     }
-    if (grep /chassis/, @textfilters) {
+    if (grep /^chassis$/, @textfilters) {
         $sensor_filters{chassis} = 1;
     }
     unless (keys %sensor_filters) {

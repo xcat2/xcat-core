@@ -4,7 +4,7 @@ B<makeknownhosts> - Make a known_hosts file under $ROOTHOME/.ssh for input noder
 
 =head1 SYNOPSIS
 
-B<makeknownhosts> I<noderange> [B<-r>|B<--remove>] [B<-V>|B<--verbose>]
+B<makeknownhosts> I<noderange> [B<-r>|B<--remove>|B<-d>|B<--delete>] [B<-V>|B<--verbose>]
 
 B<makeknownhosts> [B<-h>|B<--help>]
 
@@ -29,9 +29,13 @@ The file should be distributed using B<xdcp> to all the nodes, if you want node 
 A set of comma delimited node names and/or group names.
 See the I<noderange> man page for details on supported formats.
 
-=item B<-r|--remove>
+=item B<-d|--delete>
 
 Only removes the entries for the nodes from the known_hosts file.
+
+=item B<-r|--remove>
+
+Synonymous to B<-d|--delete>.
 
 =item B<-V|--verbose>
 
@@ -56,7 +60,7 @@ To build the known_hosts entry for the nodes in the lpars and service groups
 =item 3.
 To remove the known_hosts entry for node02
 
- makeknownhosts node02 -r
+ makeknownhosts node02 -d
 
 =back
 

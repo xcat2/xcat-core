@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The csm2xcat command must be run on the Management Server of the CSM system that you want to migrate to xCAT.  The commmand will build  two xCAT stanza files that can update the xCAT database with the chdef command.
+The csm2xcat command must be run on the Management Server of the CSM system that you want to migrate to xCAT.  The command will build  two xCAT stanza files that can update the xCAT database with the chdef command.
 
 Copy the csm2xcat command to the CSM Management Server.  Run the command, indicating where you want your stanza files saved with the \ **-**\ **-dir**\  parameter.  Check the stanza files to see if the information is what you want put in the xCAT database. Copy the two stanza files: node.stanza, device.stanza back to your xCAT Management node, and run the chdef command to input into the xCAT database.
 
