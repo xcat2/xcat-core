@@ -58,7 +58,8 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
 end 
 puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
 #`cat perl_out.log`
-puts "\033[31m#{resultArr}\033[0m\n"
+#puts "\033[31m#{resultArr}\033[0m\n"
+resultArr.each{|x| puts "\033[31m#{x}\033[0m\n","\n"}
 puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
 
 
