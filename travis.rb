@@ -41,15 +41,16 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
       #`export VAR=$(perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1)`
       result = %x[perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
       #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
-      puts "result[-2] : #{result[-3..-2]}"
+      puts result
+      puts "result[-3..-2] : #{result[-3..-2]}"
 
       if(result[-3..-2]!="OK")
-        p result
-        resultArr.push(result)
+        #p result
+        resultArr.push("#{result}\n")
       end
       
       #p result
-      puts "   \033[31mRed (31)\033[0m\n"  
+      #puts "   \033[31mRed (31)\033[0m\n"  
       puts "\n"
     end
   end
@@ -57,7 +58,7 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
 end 
 puts "------------------------------------------------------------------------------------------------------------------------"
 #`cat perl_out.log`
-puts resultArr
+puts "   \033[31m#{resultArr}\033[0m\n"
 puts "------------------------------------------------------------------------------------------------------------------------"
 
 
