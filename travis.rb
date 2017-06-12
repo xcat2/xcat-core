@@ -19,6 +19,7 @@ event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
 
 
+resultArr = Array.new
 #print all path at current path
 puts "work path : #{Dir.pwd}"
 Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
@@ -40,6 +41,7 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
       #`export VAR=$(perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1)`
       result = %x[perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
       #result = `perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
+      resultArr.push(result)
       p result
       puts "   \033[31mRed (31)\033[0m\n"  
       puts "\n"
@@ -49,7 +51,7 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
 end 
 puts "------------------------------------------------------------------------------------------------------------------------"
 #`cat perl_out.log`
-#`cat output.txt`
+puts resultArr
 puts "------------------------------------------------------------------------------------------------------------------------"
 
 
