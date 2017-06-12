@@ -46,7 +46,7 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
 
       if(result[-3..-2]!="OK")
         #p result
-        resultArr.push("#{result}\n")
+        resultArr.push(result)
       end
       
       #p result
@@ -56,10 +56,10 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
   end
   
 end 
-puts "------------------------------------------------------------------------------------------------------------------------"
+puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
 #`cat perl_out.log`
-puts "   \033[31m#{resultArr}\033[0m\n"
-puts "------------------------------------------------------------------------------------------------------------------------"
+puts "\033[31m#{resultArr}\033[0m\n"
+puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
 
 
 if(event_type == "pull_request")
