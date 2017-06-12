@@ -34,8 +34,7 @@ before_install:
 - gem install net
 #- gem install travis
 - ruby ./travis.rb
-- export var=$(ls -a)
-- echo "$var"
+
 
 script: 
 #- curl -o pulls.html https://api.github.com/repos/DengShuaiSimon/TravisTest/events
