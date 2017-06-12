@@ -1,0 +1,66 @@
+os: linux
+language: ruby
+dist: trusty
+sudo: required
+before_install: 
+- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server rpm ubuntu-keyring ubuntu-extras-keyring debian-archive-keyring debian-keyring;
+#- yum clean metadata
+#- yum install -y rpm-sign expect  chkconfig openssh-server git net-tools rpm-build  createrepo perl-DBI perl-Sys-Syslog perl-Data-Dumper
+- ls -a /usr/bin
+- perl -v
+#- echo yes > perl -MCPAN -e shell
+#- install Crypt::Rijndael Confluent::Client Confluent::TLV Expect HTTP::Async HTTP::Headers IO::Socket::SSL JSON LWP LWP::Simple Net::Telnet Net::SSLeay Net::DNS probe_global_constant probe_utils SOAP::Lite SNMP XML::Simple
+#- sudo su
+#- echo "install Crypt::Rijndael" | perl -MCPAN -e 'shell'
+#- echo "install Confluent::Client" | perl -MCPAN -e 'shell'
+#- echo "install Confluent::TLV" | perl -MCPAN -e 'shell'
+#- echo "install Expect" | perl -MCPAN -e 'shell'
+#- echo "install HTTP::Async" | perl -MCPAN -e 'shell'
+#- echo "install HTTP::Headers" | perl -MCPAN -e 'shell'
+#- echo "install IO::Socket::SSL" | perl -MCPAN -e 'shell'
+#- echo "install JSON" | perl -MCPAN -e 'shell'
+#- echo "install LWP" | perl -MCPAN -e 'shell'
+#- echo "install LWP::Simple" | perl -MCPAN -e 'shell'
+#- echo "install Net::Telnet" | perl -MCPAN -e 'shell'
+#- echo "install Net::SSLeay" | perl -MCPAN -e 'shell'
+#- echo "install Net::DNS" | perl -MCPAN -e 'shell'
+#- echo "install probe_global_constant" | perl -MCPAN -e 'shell'
+#- echo "install probe_utils" | perl -MCPAN -e 'shell'
+#- echo "install SOAP::Lite" | perl -MCPAN -e 'shell'
+#- echo "install SNMP" | perl -MCPAN -e 'shell'
+#- echo "install XML::Simple" | perl -MCPAN -e 'shell'
+#- quit
+#- sudo apt-get install ruby
+- gem install sinatra
+- gem install json
+- gem install activesupport
+- gem install net
+#- gem install travis
+- ruby ./travis.rb
+- export var=$(ls -a)
+- echo "$var"
+
+script: 
+#- curl -o pulls.html https://api.github.com/repos/DengShuaiSimon/TravisTest/events
+#- cat /home/travis/.travis/job_stages
+- echo $TRAVIS_BUILD_ID
+- echo $TRAVIS_EVENT_TYPE
+- echo $TRAVIS_BUILD_NUMBER
+- echo $TRAVIS_BUILD_DIR
+- echo $TRAVIS_COMMIT
+- echo $TRAVIS_COMMIT_MESSAGE
+- echo $TRAVIS_COMMIT_RANGE
+- echo $TRAVIS_JOB_ID
+- echo $TRAVIS_JOB_NUMBER
+- echo $TRAVIS_BRANCH
+- echo $TRAVIS_COMMIT_MESSAGE
+#- curl -i https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/9/comments
+- git log --pretty=format:"%s %b" -2
+#- git log --pretty=format:"%s" -1
+#- git log --pretty=format:"%b" -1
+#- git log --format=%s -n 3
+#- git log --format=%B -n 3
+#- curl -d "body='successful'" "https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/24/comments" 
+- perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
+- gpg --list-keys
+- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
