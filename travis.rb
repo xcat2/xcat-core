@@ -60,8 +60,7 @@ puts "\033[31m error begin------------------------------------------------------
 #`cat perl_out.log`
 #puts "\033[31m#{resultArr}\033[0m\n"
 #resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
-puts "\033[31m#{resultArr[0]}\033[0m"
-resultArr.each{|x| puts "\033[31m#{x}"}
+resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
 
 
