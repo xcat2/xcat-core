@@ -60,4 +60,5 @@ script:
 - perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
 - gpg --list-keys
 - sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+- ls
 
