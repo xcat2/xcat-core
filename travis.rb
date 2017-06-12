@@ -62,7 +62,7 @@ puts "\033[31m error begin------------------------------------------------------
 #resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
-
+raise "There is a syntax error on the above file. Fix it!"
 
 if(event_type == "pull_request")
   #pull_number = system('echo $TRAVIS_PULL_REQUEST')
