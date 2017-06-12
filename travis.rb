@@ -42,7 +42,7 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
       result = %x[perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
       #result = `perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
       puts "result[-1] : #{result[-1]}"
-      puts "result[-2] : #{result[-2]}"
+      puts "result[-2] : #{result[-3..-2]}"
 
       if(result[-1]!="OK")
         p result
