@@ -65,3 +65,5 @@ script:
 - ls -a
 - cd ..
 - ls -a
+- cd debsHEAD
+- ls -a 
