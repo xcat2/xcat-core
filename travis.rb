@@ -17,6 +17,8 @@ puts "branch : #{branch}"
 #event_type = system('echo $TRAVIS_EVENT_TYPE')
 event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
+token = ENV["GITHUB_TOKEN"]
+puts "token : #{token}"
 
 #build
 #`gpg --gen-key`
@@ -72,12 +74,12 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 ####################comments########################## 
-number=1
+number= "1"
 `curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
 #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
 post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
 puts post_url
-token = b36d780bd85249a040de01731d6cc97e231ec128
+token = "b36d780bd85249a040de01731d6cc97e231ec128"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
 `curl -X POST \
      -u #{token}:x-oauth-basic \
