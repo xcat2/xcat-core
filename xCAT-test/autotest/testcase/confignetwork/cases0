@@ -429,6 +429,7 @@ cmd:mv -f /etc/hosts.bak /etc/hosts
 end
 
 start:confignetwork_help
+description:this case is to verify if help information is provided
 cmd:confignetworks -h
 check:rc==0
 #TODO help information is printed
