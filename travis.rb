@@ -77,8 +77,10 @@ number=1
 #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
 post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
 puts post_url
-`curl -d '{"body":"successful"}' "#{post_url}"`
+token = b36d780bd85249a040de01731d6cc97e231ec128
+#`curl -d '{"body":"successful"}' "#{post_url}"`
 `curl -X POST \
+     -u #{token}:x-oauth-basic \
      -H "Content-Type: application/json" \
      -d "{\"body\": \"successful!\"}" \
      #{post_url}`
