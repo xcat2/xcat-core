@@ -3,7 +3,8 @@ require 'rubygems'
 #require 'open-uri'
 require 'json'
 require 'net/http'
-#require 'travis'
+require 'uri'
+require 'pry'
 require 'find'
 
 #repo =Travis::Repository.current
@@ -80,30 +81,27 @@ number= "1"
 post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
 puts post_url
 token = "b36d780bd85249a040de01731d6cc97e231ec128"
-#`curl -d '{"body":"successful"}' "#{post_url}"`
-`curl -X POST \
-     -u #{token}:x-oauth-basic \
-     -H "Content-Type: application/json" \
-     -d "{\"body\": \"successful!\"}" \
-     https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
-#     -u $token:x-oauth-basic \
+
 
 #echo "Add comment in issue $number"
-#curl -X POST \
-#     -u $token:x-oauth-basic \
+#`curl -d '{"body":"successful"}' "#{post_url}"`
+#`curl -X POST \
+#     -u #{token}:x-oauth-basic \
 #     -H "Content-Type: application/json" \
-#     -d "{\"body\": \"@hubot says: implemented in commit $commit_link by @$worker !\"}" \
-#     https://api.github.com/repos/$owner/$repo/issues/$number/comments
+#     -d "{\"body\": \"successful!\"}" \
+#     https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
 
 
 
-  #system('curl -u "DengShuaiSimon" https://api.github.com')
-  #post_uri = URI.parse(post_url)
-  #params = {} 
-  #params["body"] = 'successful'
-  #res = Net::HTTP.post_form(post_uri, params)  
-  #puts res.header['set-cookie'] 
-  #puts res.body
+
+`curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
+ #system('curl -u "DengShuaiSimon" https://api.github.com')
+ post_uri = URI.parse(post_url)
+ params = {} 
+ params["body"] = "successful"
+ res = Net::HTTP.post_form(post_uri, params)  
+ puts res.header['set-cookie'] 
+ puts res.body
 
 
 
