@@ -3,7 +3,7 @@ language: ruby
 dist: trusty
 sudo: required
 before_install: 
-- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server rpm ubuntu-keyring ubuntu-extras-keyring debian-archive-keyring debian-keyring;
+- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server rpm gnupg  ubuntu-keyring ubuntu-extras-keyring debian-archive-keyring debian-keyring;
 - perl -v
 #- echo yes > perl -MCPAN -e shell
 #- install Crypt::Rijndael Confluent::Client Confluent::TLV Expect HTTP::Async HTTP::Headers IO::Socket::SSL JSON LWP LWP::Simple Net::Telnet Net::SSLeay Net::DNS probe_global_constant probe_utils SOAP::Lite SNMP XML::Simple
