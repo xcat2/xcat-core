@@ -46,8 +46,6 @@ Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path|
     #puts "\n"
     if(file_type[1] == ".pm")
       puts "path : #{path}"
-      #system "perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path}"
-      #`export VAR=$(perl -I perl-xCAT/ -I perl-xCAT/ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1)`
       result = %x[perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
       #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
       puts result
@@ -121,7 +119,7 @@ if(event_type == "pull_request")
     
     
   #comments  
-  curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
+  #curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
   puts post_url
