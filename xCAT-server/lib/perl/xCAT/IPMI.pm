@@ -194,7 +194,6 @@ sub login {
     $self->{onlogon}      = $args{callback};
     $self->{onlogon_args} = $args{callback_args};
     $self->{logontries}   = 5;
-    $self->{nowait} = 1;
     $self->get_channel_auth_cap();
 }
 
@@ -344,7 +343,6 @@ sub admin_level_set {
         $self->{onlogon}->($errtxt, $self->{onlogon_args});
     } else {
         $self->{logged} = 1;
-        $self->{nowait} = 0;
         $self->{onlogon}->("SUCCESS", $self->{onlogon_args});
     }
 }
@@ -1059,7 +1057,7 @@ sub sendpayload {
             #push integrity data
         }
     }
-    unless ($args{nowait} or $self->{nowait}) { #if nowait indicated, the packet will be sent regardless of maxpending
+    unless ($args{nowait} or $self->{nowait} or $self->{neverwait}) { #if nowait indicated, the packet will be sent regardless of maxpending
          #primary use case would be retries that should represent no delta to pending sessions in aggregate and therefore couldn't exceed maxpending anywy
          #if we did do this on timedout, waitforrsp may recurse, which is a complicated issue.  Theoretically, if waitforrsp protected itself, it
          #would act the same, but best be explicit about nowait if practice does not match theory

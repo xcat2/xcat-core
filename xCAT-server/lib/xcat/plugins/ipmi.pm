@@ -2170,7 +2170,7 @@ sub reseat_node {
 		    data => [ $sessdata->{slotnumber}, 2 ],
 		    callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
 	} else {
-            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
+            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass, neverwait => 1);
 	    $fpcsessions{$mpent->{mpa}} = $sessdata->{fpcipmisession};
             $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
         }
