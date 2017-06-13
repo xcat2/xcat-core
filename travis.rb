@@ -72,12 +72,27 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 ####################comments########################## 
+number=1
+`curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
+#post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+puts post_url
+`curl -d '{"body":"successful"}' "#{post_url}"`
+`curl -X POST \
+     -H "Content-Type: application/json" \
+     -d "{\"body\": \"successful!\"}" \
+     #{post_url}`
+#     -u $token:x-oauth-basic \
 
-  `curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
-  puts post_url
-  `curl -d '{"body":"successful"}' "#{post_url}"`
+#echo "Add comment in issue $number"
+#curl -X POST \
+#     -u $token:x-oauth-basic \
+#     -H "Content-Type: application/json" \
+#     -d "{\"body\": \"@hubot says: implemented in commit $commit_link by @$worker !\"}" \
+#     https://api.github.com/repos/$owner/$repo/issues/$number/comments
+
+
+
   #system('curl -u "DengShuaiSimon" https://api.github.com')
   #post_uri = URI.parse(post_url)
   #params = {} 
