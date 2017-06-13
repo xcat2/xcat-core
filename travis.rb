@@ -18,8 +18,8 @@ puts "branch : #{branch}"
 #event_type = system('echo $TRAVIS_EVENT_TYPE')
 event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
-#token = ENV["GITHUB_TOKEN"]
-#puts "token : #{token}"
+token = ENV["GITHUB_TOKEN"]
+puts "token : #{token}"
 
 #build
 #`gpg --gen-key`
@@ -81,9 +81,9 @@ number= "1"
 post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
 puts post_url
 #token = "b36d780bd85249a040de01731d6cc97e231ec128"
-token = "ds18811031107"
+#token = "ds18811031107"
 
-`curl -u "denfshuaishuai@icloud.com:#{token}" -X POST -d '{"body":"hope this work"}'  #{post_url}`
+`curl -u "denfshuaishuai@icloud.com:#{token}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
 #echo "Add comment in issue $number"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
 #`curl -X POST -s -u "Authorization: token #{token}" -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
