@@ -535,8 +535,8 @@ sub configBMC {
                 $ret_val = 1;
                 $ret_text .= "Converting to IP: $ptmp->[1]\n";
             } else {
-                print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1]\n";
-                my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] 2>&1`;
+                print "XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] community=public\n";
+                my $result2 = `XCATBYPASS=Y rspconfig $nr2 snmpdest=$ptmp->[1] community=public 2>&1`;
                 if ($?) {
                     $ret_val = 1;
                     xCAT::MsgUtils->message('S', "[mon]: Changing SNMP destination for IPMI nodes $nr2:\n  $result2\n");
