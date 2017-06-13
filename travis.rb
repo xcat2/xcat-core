@@ -77,7 +77,7 @@ puts "\033[31m error   end------------------------------------------------------
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
   puts post_url
-  `curl -d "body=successful" "#{post_url}"`
+  `curl -d "body='successful'" "#{post_url}"`
   #system('curl -u "DengShuaiSimon" https://api.github.com')
   #post_uri = URI.parse(post_url)
   #params = {} 
