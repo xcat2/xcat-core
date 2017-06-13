@@ -85,7 +85,7 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
 
 #echo "Add comment in issue $number"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
-`curl -X POST -u #{token}:x-oauth-basic -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
+`curl -X POST -s -u "Authorization: token #{token}" -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
 #`curl -X POST \
 #     -u #{token}:x-oauth-basic \
 #     -H "Content-Type: application/json" \
