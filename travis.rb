@@ -73,12 +73,13 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 
-####################comments##########################  
-  curl -i https://api.github.com -u DengShuaiSimon:ds18811031107
+####################comments########################## 
+
+  `curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
   puts post_url
-  #system('curl -H "Authorization: token 247bbee4e75c21b55f272aa64a89aa804efd9126" https://api.github.com')
+  
   #system('curl -u "DengShuaiSimon" https://api.github.com')
   post_uri = URI.parse(post_url)
   params = {} 
