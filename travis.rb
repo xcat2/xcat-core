@@ -96,9 +96,12 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
 
 `curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
  #system('curl -u "DengShuaiSimon" https://api.github.com')
- post_uri = URI.parse(post_url)
+ #post_uri = URI.parse(post_url)
+ post_uri = URI(post_url)
  params = {} 
  params["body"] = "successful"
+ params["Authentication"] = "b36d780bd85249a040de01731d6cc97e231ec128"
+#headers = {"Authentication" =>  ENV["GITHUB_TOKEN"]}
  res = Net::HTTP.post_form(post_uri, params)  
  puts res.header['set-cookie'] 
  puts res.body
