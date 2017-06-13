@@ -73,7 +73,26 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 
+####################comments##########################  
+  curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
+  puts post_url
+  #system('curl -H "Authorization: token 247bbee4e75c21b55f272aa64a89aa804efd9126" https://api.github.com')
+  #system('curl -u "DengShuaiSimon" https://api.github.com')
+  post_uri = URI.parse(post_url)
+  params = {} 
+  params["body"] = 'successful'
+  res = Net::HTTP.post_form(post_uri, params)  
+  puts res.header['set-cookie'] 
+  puts res.body
 
+
+
+
+
+
+#################pull_request format check##################
 if(event_type == "pull_request")
   #pull_number = system('echo $TRAVIS_PULL_REQUEST')
   pull_number = ENV['TRAVIS_PULL_REQUEST']
@@ -100,17 +119,18 @@ if(event_type == "pull_request")
  
     
     
-    
-    
+  #comments  
+  curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  #puts post_url
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
+  puts post_url
   #system('curl -H "Authorization: token 247bbee4e75c21b55f272aa64a89aa804efd9126" https://api.github.com')
   #system('curl -u "DengShuaiSimon" https://api.github.com')
-  #post_uri = URI.parse(post_url)
-  #params = {} 
-  #params["body"] = 'successful'
-  #res = Net::HTTP.post_form(post_uri, params)  
-  #puts res.header['set-cookie'] 
-  #puts res.body
+  post_uri = URI.parse(post_url)
+  params = {} 
+  params["body"] = 'successful'
+  res = Net::HTTP.post_form(post_uri, params)  
+  puts res.header['set-cookie'] 
+  puts res.body
   
 end
