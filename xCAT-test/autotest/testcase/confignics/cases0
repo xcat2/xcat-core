@@ -163,11 +163,11 @@ cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Eth
 check:rc==0
 cmd:makehosts $$CN
 check:rc==0
-cmd:cat /etc/hosts
-check:output=~aliases1-1
-check:output=~aliases1-2
-check:output=~aliases2-1
-check:output=~aliases2-2
+#cmd:cat /etc/hosts
+#check:output=~aliases1-1
+#check:output=~aliases1-2
+#check:output=~aliases2-1
+#check:output=~aliases2-2
 cmd:updatenode $$CN -P confignics
 check:rc==0
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
