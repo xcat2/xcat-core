@@ -85,6 +85,7 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
 
 #echo "Add comment in issue $number"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
+`curl -X POST -u #{token}:x-oauth-basic -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
 #`curl -X POST \
 #     -u #{token}:x-oauth-basic \
 #     -H "Content-Type: application/json" \
@@ -93,7 +94,7 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
 
 
 
-
+=begin
 `curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
  #system('curl -u "DengShuaiSimon" https://api.github.com')
  #post_uri = URI.parse(post_url)
@@ -105,7 +106,7 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
  res = Net::HTTP.post_form(post_uri, params)  
  puts res.header['set-cookie'] 
  puts res.body
-
+=end
 
 
 
