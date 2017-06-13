@@ -33,7 +33,6 @@ before_install:
 - gem install activesupport
 - gem install net
 - gem install pry
-- gem install uri
 - ruby ./travis.rb
 
 
