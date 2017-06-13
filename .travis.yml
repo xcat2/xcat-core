@@ -61,4 +61,7 @@ script:
 - gpg --list-keys
 - sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
 - ls
-
+- cd ..
+- ls -a
+- cd ..
+- ls -a
