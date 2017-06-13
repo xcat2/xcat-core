@@ -4,7 +4,7 @@ require 'rubygems'
 require 'json'
 require 'net/http'
 require 'uri'
-require 'pry'
+#require 'pry'
 require 'find'
 
 #repo =Travis::Repository.current
