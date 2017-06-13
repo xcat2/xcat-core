@@ -74,7 +74,7 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 ####################comments##########################  
-  curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
+  curl -i https://api.github.com -u DengShuaiSimon:ds18811031107
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
   puts post_url
