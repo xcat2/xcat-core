@@ -88,7 +88,7 @@ puts post_url
 
 #echo "Add comment in issue $number"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
-`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" #{post_url}`
+`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
 #`curl -X POST \
 #     -u #{token}:x-oauth-basic \
 #     -H "Content-Type: application/json" \
