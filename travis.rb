@@ -68,7 +68,7 @@ puts "\033[31m error begin------------------------------------------------------
 #puts "\033[31m#{resultArr}\033[0m\n"
 resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
 puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
-raise "There is a syntax error on the above file. Fix it!"
+#raise "There is a syntax error on the above file. Fix it!"
 
 
 
