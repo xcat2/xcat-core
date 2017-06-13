@@ -20,7 +20,7 @@ puts "event_type : #{event_type}"
 
 #build
 `gpg --list-keys`
-`gpg --gen-key`
+`echo 1 | gpg --gen-key`
 `sudo ./build-ubunturepo -c UP=0 BUILDALL=1;`
 
 
