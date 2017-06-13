@@ -85,7 +85,7 @@ token = "b36d780bd85249a040de01731d6cc97e231ec128"
      -u #{token}:x-oauth-basic \
      -H "Content-Type: application/json" \
      -d "{\"body\": \"successful!\"}" \
-     #{post_url} &> /dev/null`
+     https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
 #     -u $token:x-oauth-basic \
 
 #echo "Add comment in issue $number"
