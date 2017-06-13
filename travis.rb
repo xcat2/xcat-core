@@ -18,6 +18,10 @@ puts "branch : #{branch}"
 event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
 
+#build
+`gpg --list-keys`
+`sudo ./build-ubunturepo -c UP=0 BUILDALL=1;`
+
 
 resultArr = Array.new
 #print all path at current path
