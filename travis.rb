@@ -19,11 +19,15 @@ event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
 
 #build
-`gpg --list-keys`
-`echo 1 | gpg --gen-key`
+#`gpg --gen-key`
 `sudo ./build-ubunturepo -c UP=0 BUILDALL=1;`
+`gpg --list-keys`
+`gpg --gen-key`
 
 
+
+
+#check syntax
 resultArr = Array.new
 #print all path at current path
 puts "work path : #{Dir.pwd}"
