@@ -194,6 +194,7 @@ sub login {
     $self->{onlogon}      = $args{callback};
     $self->{onlogon_args} = $args{callback_args};
     $self->{logontries}   = 5;
+    $self->{nowait} = 1;
     $self->get_channel_auth_cap();
 }
 
@@ -343,6 +344,7 @@ sub admin_level_set {
         $self->{onlogon}->($errtxt, $self->{onlogon_args});
     } else {
         $self->{logged} = 1;
+        $self->{nowait} = 0;
         $self->{onlogon}->("SUCCESS", $self->{onlogon_args});
     }
 }
