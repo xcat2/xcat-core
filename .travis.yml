@@ -58,7 +58,7 @@ script:
 #- git log --format=%B -n 3
 #- curl -d "body='successful'" "https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/24/comments" 
 - perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
-#- gpg --list-keys
-#- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+- gpg --list-keys
+- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
 - ls
 
