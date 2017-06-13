@@ -20,6 +20,10 @@ event_type = ENV['TRAVIS_EVENT_TYPE']
 puts "event_type : #{event_type}"
 token = ENV["GITHUB_TOKEN"]
 puts "token : #{token}"
+username = ENV['USERNAME']
+puts "username : #{username}"
+password = ENV["PASSWORD"]
+puts "password : #{password}"
 
 #build
 #`gpg --gen-key`
@@ -30,7 +34,7 @@ puts "token : #{token}"
 
 
 
-#check syntax
+######################################  check syntax  ################################################
 resultArr = Array.new
 #print all path at current path
 puts "work path : #{Dir.pwd}"
@@ -74,16 +78,14 @@ puts "\033[31m error   end------------------------------------------------------
 
 
 
-####################comments########################## 
+####################   add comments  ########################## 
 number= "1"
-#`curl -u "DengShuaiSimon:b36d780bd85249a040de01731d6cc97e231ec128" https://api.github.com/repos/DengShuaiSimon/xcat-core`
 #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
 post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
 puts post_url
-#token = "b36d780bd85249a040de01731d6cc97e231ec128"
-#token = "ds18811031107"
 
-`curl -u "denfshuaishuai@icloud.com:#{token}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
+`curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
+
 #echo "Add comment in issue $number"
 #`curl -d '{"body":"successful"}' "#{post_url}"`
 #`curl -X POST -s -u "Authorization: token #{token}" -H "Content-Type: application/json" -d "{\"body\": \"successful!\"}" https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
@@ -113,7 +115,7 @@ puts post_url
 
 
 
-#################pull_request format check##################
+##########################     pull_request format check   ####################
 if(event_type == "pull_request")
   #pull_number = system('echo $TRAVIS_PULL_REQUEST')
   pull_number = ENV['TRAVIS_PULL_REQUEST']
@@ -140,13 +142,9 @@ if(event_type == "pull_request")
  
     
     
-  #comments  
-  #curl -i https://api.github.com -u "DengShuaiSimon":"ds18811031107"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/1/comments"
+  ########################   add  comments   ###########################  
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   puts post_url
-  #system('curl -H "Authorization: token 247bbee4e75c21b55f272aa64a89aa804efd9126" https://api.github.com')
-  #system('curl -u "DengShuaiSimon" https://api.github.com')
   post_uri = URI.parse(post_url)
   params = {} 
   params["body"] = 'successful'
