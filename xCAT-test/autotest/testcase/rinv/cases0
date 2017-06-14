@@ -76,12 +76,21 @@ Attribute: $$CN-The operation object of rinv command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN uuid
 check:rc==0
 end
+start:rinv_vpd
+description:get vpd information
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN vpd
+check:rc==0
+end
+
 start:rinv_noderange_err
 cmd:rinv testnode
 check:rc!=0
 check:output=~Error
 end
 start:rinv_mixnode
+description:get mixnode information,one is invalid node
+Attribute: $$CN-The operation object of rinv command
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:chdef testnode groups=test mgt=__GETNODEATTR($$CN,mgt)__
@@ -98,6 +107,8 @@ cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stan
 check:rc==0
 end
 start:rinv_wrongbmcpasswd
+description:get right return if bmc's passwd wrong
+Attribute: $$CN-The operation object of rinv command
 cmd:lsdef -l $$CN -z >/tmp/testnode.stanza
 check:rc==0
 cmd:chdef $$CN bmcpassword=test
