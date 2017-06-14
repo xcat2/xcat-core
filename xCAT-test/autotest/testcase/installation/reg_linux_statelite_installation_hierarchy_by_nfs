@@ -95,6 +95,9 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
+cmd:xdsh $$CN hostname
+check:rc==0
+check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
