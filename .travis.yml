@@ -71,4 +71,5 @@ script:
 - sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo apt-get update
-- echo "yes" | sudo apt-get install xCAT
+- sudo apt-get install xCAT --force-yes -y
+- lsxcatd -v
