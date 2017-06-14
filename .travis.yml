@@ -3,6 +3,7 @@ language: ruby
 dist: trusty
 sudo: required
 before_install: 
+- sudo su
 - sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server rpm gnupg  ubuntu-keyring ubuntu-extras-keyring debian-archive-keyring debian-keyring nginx;
 - perl -v
 #- echo yes > perl -MCPAN -e shell
