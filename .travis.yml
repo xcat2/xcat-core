@@ -76,5 +76,5 @@ script:
 - sudo apt-get update
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
-- echo "y" | sudo apt-get install xCAT 
+- sudo apt-get install xCAT --force-yes
 - lsxcatd -v
