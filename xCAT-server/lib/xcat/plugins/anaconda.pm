@@ -2151,12 +2151,8 @@ sub copycd
     my $installroot = "/install";
     my $sitetab     = xCAT::Table->new('site');
 
-
     require xCAT::data::discinfo;
 
-    #if ($sitetab)
-    #{
-    #    (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
     my @ents     = xCAT::TableUtils->get_site_attribute("installdir");
     my $site_ent = $ents[0];
     if (defined($site_ent))
@@ -2182,9 +2178,9 @@ sub copycd
         'o'   => \$noosimage,
         'w'   => \$nonoverwrite,
     );
+
     unless ($mntpath)
     {
-
         #this plugin needs $mntpath...
         return;
     }
@@ -2341,7 +2337,6 @@ sub copycd
         return;
     }
 
-
     #tranverse the directory structure of the os media and get the fingerprint
     my @filelist = ();
     find(
@@ -2389,8 +2384,6 @@ sub copycd
         }
     }
     $tabosdistro->close();
-
-
 
     $callback->({ data => "Copying media to $path" });
     my $omask = umask 0022;
@@ -2460,8 +2453,6 @@ sub copycd
         }
     }
 
-    #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
-    #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$path";
 
     #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in
@@ -2495,15 +2486,9 @@ sub copycd
             }
 
             #hiding the messages about this not being found, since it may be intentional
-
             my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname);
-
             my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname);
-
-            #if ($ret[0] != 0) {
-            #$callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
-            #}
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
         }
     }
 }
