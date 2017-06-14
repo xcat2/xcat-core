@@ -67,7 +67,7 @@ script:
 - ls -a
 - cd xcat-core
 - sudo ./mklocalrepo.sh
-- chmod 777 /etc/apt/sources.list
+- sudo chmod 777 /etc/apt/sources.list
 - sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo apt-get update
