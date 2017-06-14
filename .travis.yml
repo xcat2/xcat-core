@@ -65,5 +65,9 @@ script:
 - ls -a
 - cd ..
 - ls -a
-- cd debsHEAD
-- ls -a 
+- cd xcat-core
+- sudo ./mklocalrepo.sh
+- sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+- sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+- sudo apt-get update
+- echo "yes" | sudo apt-get install xCAT
