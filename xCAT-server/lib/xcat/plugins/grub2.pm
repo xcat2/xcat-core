@@ -218,21 +218,36 @@ sub setstate {
         } elsif (defined($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'xcatmaster'}) {
             $tftpserver = $nrhash{$node}->[0]->{'xcatmaster'};
         } else {
-            my @master = xCAT::TableUtils->get_site_attribute("master");
-            $tftpserver = $master[0];
-        }
-        my $serverip;
-        if (defined($tftpserverip{$tftpserver})) {
-            $serverip = $tftpserverip{$tftpserver};
-        } else {
-            $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
-            unless ($serverip) {
-                syslog("local1|err", "xCAT unable to resolve $tftpserver");
-                return;
-            }
-            $tftpserverip{$tftpserver} = $serverip;
+            $tftpserver = "<xcatmaster>";
         }
 
+        my $serverip;
+
+        if($tftpserver eq "<xcatmaster>"){
+            my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
+            unless ($nxtsrvd[0]) { 
+                $serverip = $nxtsrvd[1]; 
+            } else { 
+                $callback->({ error => [ $nxtsrvd[1] ], errorcode => [1] }); 
+                return;
+            }
+        }else{
+            if (defined($tftpserverip{$tftpserver})) {
+                $serverip = $tftpserverip{$tftpserver};
+            } else {
+                $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
+                unless ($serverip) {
+                    syslog("local1|err", "xCAT unable to resolve $tftpserver");
+                    return;
+                }
+                $tftpserverip{$tftpserver} = $serverip;
+            }
+        }
+
+        unless($serverip){
+            $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1] });
+            return;
+        }
         my $grub2protocol = "tftp";
         if (defined($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'netboot'}
             && ($nrhash{$node}->[0]->{'netboot'} =~ /grub2-(.*)/)) {

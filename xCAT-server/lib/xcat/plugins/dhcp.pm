@@ -502,7 +502,7 @@ sub addnode
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
-        if ($nrent and $nrent->{tftpserver})
+        if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>')
         {
             #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
             #the value of inet_ntoa() will be "undef", which will cause fatal error
@@ -531,9 +531,7 @@ sub addnode
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
                     $node_server = $nrent->{xcatmaster};
-                } elsif ($nrent->{servicenode}) {
-                    $node_server = $nrent->{servicenode};
-                }
+                } 
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
