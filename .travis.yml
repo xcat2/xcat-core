@@ -33,7 +33,7 @@ before_install:
 - gem install activesupport
 - gem install net
 - gem install pry
-- ruby ./travis.rb
+#- ruby ./travis.rb
 
 
 script: 
@@ -70,7 +70,9 @@ script:
 - sudo chmod 777 /etc/apt/sources.list
 - sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+- sudo cat /etc/apt/sources.list
 - sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | apt-key add -
+- sudo apt-get install software-properties-common
 - sudo apt-get update
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
