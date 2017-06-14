@@ -11,8 +11,9 @@ require Exporter;
 @EXPORT    = qw();
 @EXPORT_OK = qw(distnames numdiscs);
 
+use strict;
 
-my %distnames = (
+our %distnames = (
     "1480943823.812754" => "centos7.3",     #x86_64
     "1450147276.351714" => "centos7.2",     #ppc64le
     "1449699925.561114" => "centos7.2",     #x86_64
@@ -135,7 +136,7 @@ my %distnames = (
     "1394111947.452332" => "pkvm2.1",       # ppc64, PowerKVM
     "1413749127.352649" => "pkvm2.1.1",     # ppc64, PowerKVM
 );
-my %numdiscs = (
+our %numdiscs = (
     "1156364963.862322" => 4,
     "1178480581.024704" => 3
 );
