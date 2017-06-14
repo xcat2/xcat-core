@@ -2160,6 +2160,8 @@ sub copycd
         $installroot = $site_ent;
     }
 
+    # user specified name
+    my $userdistname = undef;
     my $distname;
     my $arch;
     my $path;
@@ -2170,7 +2172,7 @@ sub copycd
 
     @ARGV = @{ $request->{arg} };
     GetOptions(
-        'n=s' => \$distname,
+        'n=s' => \$userdistname,
         'a=s' => \$arch,
         'p=s' => \$path,
         'm=s' => \$mntpath,
@@ -2184,13 +2186,13 @@ sub copycd
         #this plugin needs $mntpath...
         return;
     }
-    if ($distname
-        and $distname !~ /^centos/
-        and $distname !~ /^fedora/
-        and $distname !~ /^SL/
-        and $distname !~ /^ol/
-        and $distname !~ /^pkvm/
-        and $distname !~ /^rh/)
+    if ($userdistname
+        and $userdistname !~ /^centos/
+        and $userdistname !~ /^fedora/
+        and $userdistname !~ /^SL/
+        and $userdistname !~ /^ol/
+        and $userdistname !~ /^pkvm/
+        and $userdistname !~ /^rh/)
     {
 
         #If they say to call it something unidentifiable, give up?
@@ -2216,6 +2218,7 @@ sub copycd
         $darch = "x86";
     }
     close($dinfo);
+
     if ($xCAT::data::discinfo::distnames{$did})
     {
         unless ($distname)
@@ -2282,6 +2285,13 @@ sub copycd
             return;    #Do nothing, not ours..
         }
     }
+
+    unless ($userdistname) 
+    {
+        # If not userdefined, set to detected distname.
+        $userdistname = $distname;
+    }
+
     if ($darch)
     {
         unless ($arch)
@@ -2320,7 +2330,7 @@ sub copycd
     my $disccopiedin = 0;
     my $osdistroname = $distname . "-" . $arch;
 
-    my $defaultpath = "$installroot/$distname/$arch";
+    my $defaultpath = "$installroot/$userdistname/$arch";
     unless ($path)
     {
         $path = $defaultpath;
