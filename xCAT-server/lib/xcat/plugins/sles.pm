@@ -1730,19 +1730,11 @@ sub copycd
     my $nonoverwrite = undef;
 
     $installroot = "/install";
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab)
-    #{
-    #(my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
-    #print Dumper($ref);
     my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
     if (defined($t_entry)) {
         $installroot = $t_entry;
     }
-
-    #}
 
     @ARGV = @{ $request->{arg} };
     GetOptions(
@@ -2082,13 +2074,8 @@ sub copycd
             exit(1);
         }
     }
-
-    #  system(
-    #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/$discnumber/"
-    #    );
     chmod 0755, "$path";
     chmod 0755, "$ospkgpath";
-
 
     #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in
     unless ($disccopiedin)
