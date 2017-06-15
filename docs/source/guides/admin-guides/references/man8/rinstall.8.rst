@@ -19,9 +19,9 @@ Name
 ****************
 
 
-\ **rinstall**\  \ *noderange*\  \ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\  [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\ ] [\ **runimage=**\ \ *task*\ ] [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  \ *noderange*\  \ **osimage**\ =\ *imagename*\  | [\ **-O**\ ] \ *imagename*\  [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **rinstall**\  \ *noderange*\  [\ **osimage**\ =\ *imagename*\  | \ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **rinstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -31,11 +31,11 @@ Name
 *******************
 
 
-\ **rinstall**\  is a convenience command to begin OS provision on a noderange(support nodes with "nodetype.mgt=ipmi,blade,hmc,ivm,fsp,kvm,esx,rhevm").
+\ **rinstall**\  is a convenience command to begin OS provision on a noderange.
 
-If \ **osimage**\ =\ *imagename*\  | \ **-O**\  \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
+If \ **osimage**\ =\ *imagename*\  | \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
 
-If -c is specified, it will then run rcons on the node. This is allowed only if one node in the noderange.   If need consoles on multiple nodes , see winstall(8)|winstall.8.
+If \ **-c**\  is specified, it will then run rcons on the node. This is allowed only if one node in the noderange. If need consoles on multiple nodes, see winstall(8)|winstall.8.
 
 
 ***************
@@ -50,9 +50,9 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
 
 
-\ **osimage | osimage=**\ \ *imagename*\ |\ **-O**\ \ *imagename*\ 
+\ *imagename*\  | \ **osimage=**\ \ *imagename*\ 
  
- Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the \ *imagename*\  is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
  
 
 
@@ -62,7 +62,7 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
 
 
-\ **runimage**\ =\ *task*\ 
+\ **runimage=**\ \ *task*\ 
  
  If you would like to run a task after deployment, you can define that task with this attribute.
  
@@ -70,14 +70,13 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
 
 \ **runcmd=bmcsetup**\ 
  
- This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
- for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
  
 
 
 \ **shell**\ 
  
- This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+ This instructs the node to boot to the xCAT genesis environment, and present a shell prompt on console.
  The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
  
 
@@ -100,7 +99,7 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose output.
  
