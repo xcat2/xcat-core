@@ -2,7 +2,7 @@ start:nodeset_shell
 description: verify could log in genesis shell
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -s 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -s ;if [[ $? -eq 0 ]];then exit 0 ;else cat /var/log/consoles/$$CN; cat /tmp/genesistestlog/*;exit 1;fi
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c
 check:rc==0
@@ -12,7 +12,7 @@ start:nodeset_cmdline
 description:verify could run cmdline successfully
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -d
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -d;if [[ $? -eq 0 ]];then exit 0 ;else cat /var/log/consoles/$$CN;cat /tmp/genesistestlog/*;exit 1;fi
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c 
 check:rc==0
@@ -22,7 +22,7 @@ start:nodeset_runimg
 description:verify runimg could work
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN  -g
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -i 
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -i;if [[ $? -eq 0 ]];then exit 0 ;else cat /var/log/consoles/$$CN;cat /tmp/genesistestlog/*;exit 1;fi 
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -c
 check:rc==0
