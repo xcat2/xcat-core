@@ -1,0 +1,4 @@
+#INCLUDE:hdctrl_general.bundle#
+rinv_bus
+rinv_config
+rvitals_lcds
