@@ -79,4 +79,6 @@ script:
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
 - sudo apt-get install xCAT --force-yes
+- source /etc/profile.d/xcat.sh
 - lsxcatd -v
+- tabdump site
