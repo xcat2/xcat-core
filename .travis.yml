@@ -84,6 +84,7 @@ script:
 - sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
 - sudo echo "$USER"
 - sudo echo "`whoami`"
-- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh &lt;travis&gt;
+#- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh &lt;travis&gt;
+- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - tabdump site
