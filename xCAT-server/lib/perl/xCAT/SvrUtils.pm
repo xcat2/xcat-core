@@ -587,11 +587,13 @@ sub update_tables_with_templates
         }
     }
 
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
         $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
 
@@ -785,11 +787,13 @@ sub update_tables_with_mgt_image
         return 0;
     }
 
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
         $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
     #if the osver does not match the osver of MN, return
@@ -984,11 +988,13 @@ sub update_tables_with_diskless_image
         }
     }
 
-    #for rhels5.1  genos=rhel5
+    # Set genos to hold the major version
     my $genos = $osver;
     $genos =~ s/\..*//;
     if ($genos =~ /rh.*s(\d*)/) {
         $genos = "rhels$1";
+    } elsif ($genos =~ /sles(\d*)/) {
+        $genos = "sles$1";
     }
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
