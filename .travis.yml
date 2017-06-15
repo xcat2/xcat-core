@@ -72,7 +72,7 @@ script:
 - sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo cat /etc/apt/sources.list
-#- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
+- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
 - sudo apt-get  install software-properties-common
 #- sudo apt-get clean all
 - sudo apt-get -qq update
@@ -84,7 +84,7 @@ script:
 - sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
 - sudo echo "$USER"
 - sudo echo "`whoami`"
-#- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh &lt;travis&gt;
-- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
+- echo "y" | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh &lt;travis&gt;
+- echo "y" | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - tabdump site
