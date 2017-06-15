@@ -2159,28 +2159,28 @@ sub copycd
     {
         $callback->({ data => "Media copy operation successful" });
 
-        my @ret = xCAT::SvrUtils->update_osdistro_table($userdistname, $arch, $path, $osdistroname);
+        my @ret = xCAT::SvrUtils->update_osdistro_table($distname, $arch, $path, $osdistroname, $userdistname);
         if ($ret[0] != 0) {
             $callback->({ data => "Error when updating the osdistro tables: " . $ret[1] });
         }
 
         #if --noosimage option is not specified, create the relevant osimage and linuximage entris
         unless ($noosimage) {
-            my @ret = xCAT::SvrUtils->update_tables_with_templates($userdistname, $arch, $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables: " . $ret[1] });
             }
 
-            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($userdistname, $arch, $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_mgt_image($distname, $arch, $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for management node " . $ret[1] });
             }
 
-            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($userdistname, $arch, undef, "netboot", $path, $osdistroname);
+            my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot", $path, $osdistroname, $userdistname);
             if ($ret[0] != 0) {
                 $callback->({ data => "Error when updating the osimage tables for stateless: " . $ret[1] });
             }
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($userdistname, $arch, undef, "statelite",$path,$osdistroname);
+            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname, $userdistname);
             if ($ret[0] != 0) {
               $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
             }

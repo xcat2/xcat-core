@@ -565,6 +565,7 @@ sub update_tables_with_templates
     my $arch         = shift;    #like ppc64, x86, x86_64
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
     my %args         = @_;
 
     my $osname    = $osver;;     #like sles, rh, centos, windows
@@ -597,7 +598,7 @@ sub update_tables_with_templates
     }
 
 
-    print "update_tables_with_templates() osver=$osver, arch=$arch, ospkgdir=$ospkgdir, osdistroname=$osdistroname, osname=$osname, genos=$genos\n";
+    print "update_tables_with_templates() osver=$osver, arch=$arch, ospkgdir=$ospkgdir, osdistroname=$osdistroname, osname=$osname, genos=$genos userdistname=$userdistname\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
@@ -684,7 +685,7 @@ sub update_tables_with_templates
                         }
                     }
                 }
-                my $imagename = $osver . "-" . $arch . "-install-" . $profile;
+                my $imagename = $userdistname . "-" . $arch . "-install-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
@@ -759,6 +760,7 @@ sub update_tables_with_mgt_image
     my $arch         = shift;    #like ppc64, x86, x86_64
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
 
     my $osname    = $osver;;     #like sles, rh, centos, windows
     my $ostype    = "Linux";     #like Linux, Windows
@@ -839,7 +841,7 @@ sub update_tables_with_mgt_image
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
-    my $imagename = $osver . "-" . $arch . "-stateful" . "-mgmtnode";
+    my $imagename = $userdistname . "-" . $arch . "-stateful" . "-mgmtnode";
     foreach my $profile (keys %profiles) {
         #get template file
         my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
@@ -968,6 +970,7 @@ sub update_tables_with_diskless_image
     my $mode         = shift;
     my $ospkgdir     = shift;
     my $osdistroname = shift;
+    my $userdistname = shift;
 
     my $provm = "netboot";
     if ($mode) { $provm = $mode; }
@@ -1077,7 +1080,7 @@ sub update_tables_with_diskless_image
                     print "The image is already in the db.\n";
                 }
 
-                my $imagename = $osver . "-" . $arch . "-$provm-" . $profile;
+                my $imagename = $userdistname . "-" . $arch . "-$provm-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
