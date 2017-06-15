@@ -81,7 +81,7 @@ script:
 - sudo apt-get install xCAT --force-yes
 - source /etc/profile.d/xcat.sh
 - sudo echo "$USER"
-- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
+- su /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - tabdump site
 - service xcatd start
