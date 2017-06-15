@@ -73,13 +73,15 @@ script:
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo cat /etc/apt/sources.list
 - sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
-- sudo apt-get -qq install software-properties-common
+- sudo apt-get  install software-properties-common
 - sudo apt-get clean all
 - sudo apt-get -qq update
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
 - sudo apt-get -qq install xCAT --force-yes
 - source /etc/profile.d/xcat.sh
-- echo "y" | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
+- lsxcatd -v
+- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
+- echo "y" | echo "y" | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - tabdump site
