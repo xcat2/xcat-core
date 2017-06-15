@@ -78,10 +78,10 @@ script:
 - sudo apt-get -qq update
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
-- sudo apt-get -qq install xCAT --force-yes
+- sudo apt-get install xCAT -y
 - source /etc/profile.d/xcat.sh
 - lsxcatd -v
 - sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
-- echo "y" | echo "y" | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
+- echo y | sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - tabdump site
