@@ -83,8 +83,8 @@ script:
 - sudo echo "$USER"
 - sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
 - lsxcatd -v
-- opt/xcat/sbin/tabdump policy
-#- opt/xcat/sbin/tabdump site
+- /opt/xcat/sbin/tabdump policy
+- /opt/xcat/sbin/tabdump site
 - ls /opt/xcat/sbin
 - ls /opt/xcat
 - service xcatd start
