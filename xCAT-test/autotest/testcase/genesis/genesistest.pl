@@ -1,10 +1,5 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-}
-use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings;
 use Getopt::Long;
@@ -71,7 +66,6 @@ if (!defined($noderange)) {
     exit 1;
 }
 my $os = &get_os;
-print "os is $os\n";
 if ($check_genesis_file) {
     send_msg(2, "[$$]:Check genesis file...............");
     &check_genesis_file(&get_arch);
@@ -171,7 +165,7 @@ sub check_genesis_file {
 sub rungenesiscmd {
     my $runcmd_script    = "/tmp/cmdtest";
     my $result           = "/tmp/testresult";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     my $genesis_bin_dir;
     my $value = 0;
     my $arch  = shift;
@@ -211,7 +205,7 @@ sub rungenesiscmd {
 sub rungenesisimg {
     my $runimg_script    = "/tmp/imgtest";
     my $result           = "/tmp/testresult";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     my $genesis_bin_dir;
     my $value = 0;
     mkdir("/install/my_image");
@@ -237,7 +231,6 @@ sub rungenesisimg {
     chmod 0755, "/install/my_image/runme.sh";
     `tar -zcvf /tmp/my_image.tgz -C /install/my_image .`;
     copy("/tmp/my_image.tgz", "/install/my_image") or die "Copy failed: $!";
-    print "master is $master\n";
     `rinstall $noderange "runimage=http://$master/install/my_image/my_image.tgz",shell`;
     if ($?) {
         send_msg(0, "rinstall noderange failed for runimg");
@@ -266,7 +259,7 @@ sub testxdsh {
     if (($value == 1) || ($value == 2) || ($value == 3)) {
         `xdsh $noderange -t 2 cat $checkfile |grep $checkstring`;
         if ($?) {
-            foreach (1 .. 15) {
+            foreach (1 .. 1500) {
                 `xdsh $noderange -t 2 cat $checkfile | grep $checkstring`;
                 last if ($? == 0);
             }
@@ -285,7 +278,7 @@ sub clearenv {
     my $runmetar            = "/install/my_image/my_image.tgz";
     my $runmetar_tmp         = "/tmp/my_image.tgz";
     my $runmedir         = "/install/my_image";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     if (-e "$runimg_script") {
         unlink("$runme");
         unlink("$runmetar_tmp");
