@@ -33,6 +33,102 @@ puts "password : #{password}"
 
 
 
+
+
+##########################     pull_request format check   ####################
+if(event_type == "pull_request")
+  #pull_number = system('echo $TRAVIS_PULL_REQUEST')
+  pull_number = ENV['TRAVIS_PULL_REQUEST']
+  puts "pull_number : #{pull_number}"
+  uri = "https://api.github.com/repos/#{ower_repo}/pulls/#{pull_number}"
+  puts "pull_request_url : #{uri}"
+  resp = Net::HTTP.get_response(URI.parse(uri))
+  jresp = JSON.parse(resp.body)
+  #puts "jresp: #{jresp}"
+  title = jresp['title']
+  puts "pull_request title : #{title}"
+  body = jresp['body']
+  puts "pull_request body : #{body}"
+  
+  # Remove digits
+  #title = title.gsub!(/\D/, "")
+  
+  if(!(title =~ /^Add|Refine test case|cases for issue|feature(.*)/))
+    raise "The title of this pull_request have a wrong format. Fix it!"
+  end
+  if(!(body =~ (/Add|Refine \d case|cases in this pull request(.*)/m))||!(body =~ (/This|These case|cases is|are added|refined for issue|feature(.*)/m))||!(body =~ (/This pull request is for task(.*)/m)))
+    raise "The description of this pull_request have a wrong format. Fix it!"
+  end
+ 
+  
+  ######################################  check syntax  ################################################
+  resultArr = Array.new
+  #print all path at current path
+  puts "work path : #{Dir.pwd}"
+  Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
+    #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
+    #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
+    if(File.file?(path))
+      #puts "path : #{path}"
+      #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
+    
+      base_name = File.basename(path,".*")
+      #puts "notype_basename : #{base_name}"
+      file_type = path.split(base_name)
+      #puts "file type : #{file_type[1]}"
+    
+      #puts "\n"
+      if(file_type[1] == ".pm")
+        puts "path : #{path}"
+        result = %x[perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
+        #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
+        puts result
+        puts "result[-3..-2] : #{result[-3..-2]}"
+
+        if(result[-3..-2]!="OK")
+          #p result
+          resultArr.push(result)
+        end
+
+        puts "\n"
+      end
+    end
+  
+  end #find ... do
+  
+    
+  ####################   add comments  ########################## 
+  number= "1"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  puts post_url
+  
+  #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : \n #{resultArr}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
+  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
+ 
+  ####################    stop and print error in travis (red color)   #######################
+  puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
+  #puts "\033[31m#{resultArr}\033[0m\n"
+  resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
+  puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
+  #raise "There is a syntax error on the above file. Fix it!"
+  
+  
+  ############################        build         #########################
+  
+  
+  
+end#if
+
+
+
+
+
+
+
+
 =begin
 ######################################  check syntax  ################################################
 resultArr = Array.new
@@ -96,86 +192,3 @@ puts post_url
 #     https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/1/comments`
 
 =end
-
-
-##########################     pull_request format check   ####################
-if(event_type == "pull_request")
-  #pull_number = system('echo $TRAVIS_PULL_REQUEST')
-  pull_number = ENV['TRAVIS_PULL_REQUEST']
-  puts "pull_number : #{pull_number}"
-  uri = "https://api.github.com/repos/#{ower_repo}/pulls/#{pull_number}"
-  puts "pull_request_url : #{uri}"
-  resp = Net::HTTP.get_response(URI.parse(uri))
-  jresp = JSON.parse(resp.body)
-  #puts "jresp: #{jresp}"
-  title = jresp['title']
-  puts "pull_request title : #{title}"
-  body = jresp['body']
-  puts "pull_request body : #{body}"
-  
-  # Remove digits
-  #title = title.gsub!(/\D/, "")
-  
-  if(!(title =~ /^Add|Refine test case|cases for issue|feature(.*)/))
-    raise "The title of this pull_request have a wrong format. Fix it!"
-  end
-  if(!(body =~ (/Add|Refine \d case|cases in this pull request(.*)/m))||!(body =~ (/This|These case|cases is|are added|refined for issue|feature(.*)/m))||!(body =~ (/This pull request is for task(.*)/m)))
-    raise "The description of this pull_request have a wrong format. Fix it!"
-  end
- 
-  
-  ######################################  check syntax  ################################################
-  resultArr = Array.new
-  #print all path at current path
-  puts "work path : #{Dir.pwd}"
-  Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
-    #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
-    #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
-    if(File.file?(path))
-      #puts "path : #{path}"
-      #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
-    
-      base_name = File.basename(path,".*")
-      #puts "notype_basename : #{base_name}"
-      file_type = path.split(base_name)
-      #puts "file type : #{file_type[1]}"
-    
-      #puts "\n"
-      if(file_type[1] == ".pm")
-        puts "path : #{path}"
-        result = %x[perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
-        #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
-        puts result
-        puts "result[-3..-2] : #{result[-3..-2]}"
-
-        if(result[-3..-2]!="OK")
-          #p result
-          resultArr.push(result)
-        end
-
-        puts "\n"
-      end
-    end
-  
-  end #find ... do
-
-  puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
-  #puts "\033[31m#{resultArr}\033[0m\n"
-  resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
-  puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
-  #raise "There is a syntax error on the above file. Fix it!"
-  
-    
-  ####################   add comments  ########################## 
-  number= "1"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
-  puts post_url
-  
-  resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
-  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
- 
- 
-  
-end#if
