@@ -225,8 +225,6 @@ sub get_nodeset_state
 
     if (defined($boottype))
     {
-        #my $boottype = $ent->{netboot};
-
         #get nodeset state from corresponding files
         if ($boottype eq "pxe")
         {
@@ -628,14 +626,6 @@ sub update_tables_with_templates
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab) {
-    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-    #	if ($ref and $ref->{value}) {
-    #       $installroot = $ref->{value};
-    #	}
-    #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
     if (defined($tmp)) {
@@ -658,8 +648,6 @@ sub update_tables_with_templates
         }
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-
-        #print "$tmpf\n";
         $profiles{$tmpf} = 1;
     }
     @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
@@ -689,8 +677,6 @@ sub update_tables_with_templates
         }
     }
     foreach my $profile (keys %profiles) {
-
-        #print "profile=$profile\n";
         #get template file
         my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
         if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
@@ -713,7 +699,6 @@ sub update_tables_with_templates
         }
 
         if ($osimagetab) {
-
             #check if the image is already in the table
             if ($osimagetab) {
                 my $found = 0;
@@ -726,9 +711,6 @@ sub update_tables_with_templates
                         }
                     }
                 }
-
-                #		if ($found) { next; }
-
                 my $imagename = $osver . "-" . $arch . "-install-" . $profile;
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
@@ -832,7 +814,6 @@ sub update_tables_with_mgt_image
         return 0;
     }
 
-
     #for rhels5.1  genos=rhel5
     my $genos = $osver;
     $genos =~ s/\..*//;
@@ -865,8 +846,6 @@ sub update_tables_with_mgt_image
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
         $tmpf =~ /^([^\.]*)\..*$/;
         $tmpf = $1;
-
-        #print "$tmpf\n";
         $profiles{$tmpf} = 1;
     }
     @tmplfiles = glob($defpath . "/{compute,service}.*tmpl");
@@ -886,8 +865,6 @@ sub update_tables_with_mgt_image
     my $linuximagetab;
     my $imagename = $osver . "-" . $arch . "-stateful" . "-mgmtnode";
     foreach my $profile (keys %profiles) {
-
-        #print "profile=$profile\n";
         #get template file
         my $tmplfile = get_tmpl_file_name($cuspath, $profile, $osver, $arch, $genos);
         if (!$tmplfile) { $tmplfile = get_tmpl_file_name($defpath, $profile, $osver, $arch, $genos); }
@@ -911,7 +888,6 @@ sub update_tables_with_mgt_image
 
 
         if ($osimagetab) {
-
             #check if the image is already in the table
             if ($osimagetab) {
                 my $found = 0;
@@ -924,9 +900,6 @@ sub update_tables_with_mgt_image
                         }
                     }
                 }
-
-                #               if ($found) { next; }
-
 
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
@@ -1048,14 +1021,6 @@ sub update_tables_with_diskless_image
 
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
     my $installroot = xCAT::TableUtils->getInstallDir();
-
-    #my $sitetab = xCAT::Table->new('site');
-    #if ($sitetab) {
-    #	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
-    #	if ($ref and $ref->{value}) {
-    #	    $installroot = $ref->{value};
-    #	}
-    #}
     my @installdirs = xCAT::TableUtils->get_site_attribute("installdir");
     my $tmp         = $installdirs[0];
     if (defined($tmp)) {
@@ -1090,12 +1055,9 @@ sub update_tables_with_diskless_image
         }
     }
     foreach my $profile (keys %profiles) {
-
         #get the pkglist file
         my $pkglistfile = get_pkglist_file_name($cuspath, $profile, $osver, $arch);
         if (!$pkglistfile) { $pkglistfile = get_pkglist_file_name($defpath, $profile, $osver, $arch); }
-
-        #print "pkglistfile=$pkglistfile\n";
         if (!$pkglistfile) { next; }
 
         #get otherpkgs.pkglist file
@@ -1112,7 +1074,6 @@ sub update_tables_with_diskless_image
         #get postinstall script file name
         my $postfile = get_postinstall_file_name($cuspath, $profile, $osver, $arch);
         if (!$postfile) { $postfile = get_postinstall_file_name($defpath, $profile, $osver, $arch); }
-
 
         #now update the db
         if (!$osimagetab) {
@@ -1135,8 +1096,6 @@ sub update_tables_with_diskless_image
                 }
                 if ($found) {
                     print "The image is already in the db.\n";
-
-                    #                         next;
                 }
 
                 my $imagename = $osver . "-" . $arch . "-$provm-" . $profile;
@@ -1367,12 +1326,10 @@ sub subVars {
             foreach my $part (split('\$', $p)) {
                 if ($part eq '') { next; }
 
-                #$callback->({error=>["part is $part"],errorcode=>[1]});
                 # check if p is just the node name:
                 if ($part eq 'node') {
 
                     # it is so, just return the node.
-                    #$fdir .= "/$pre$node$suf";
                     push @fParts, $node;
                 } else {
 
@@ -1387,9 +1344,6 @@ sub subVars {
                     my $ent;
                     my $val;
                     if ($table eq 'site') {
-
-                        #$val = $tab->getAttribs( { key => "$col" }, 'value' );
-                        #$val = $val->{'value'};
                         my @vals = xCAT::TableUtils->get_site_attribute($col);
                         $val = $vals[0];
                     } else {
@@ -1397,7 +1351,6 @@ sub subVars {
                         $val = $ent->{$col};
                     }
                     unless ($val) {
-
                         # couldn't find the value!!
                         $val = "UNDEFINED"
                     }
@@ -1411,7 +1364,6 @@ sub subVars {
                 $fdir .= $pre . $val . $suf;
             }
         } else {
-
             # no substitution here
             $fdir .= "/$p";
         }
@@ -1426,11 +1378,9 @@ sub subVars {
                 $p =~ s/CMD=//;
                 my $cmd = $p;
 
-                #$callback->({info=>[$p]});
                 $p = `$p 2>&1`;
                 chomp($p);
 
-                #$callback->({info=>[$p]});
                 unless ($p) {
                     $p = "#CMD=$p did not return output#";
                 }
@@ -1478,7 +1428,6 @@ sub setupNFSTree {
             shift @entries;
             if (grep /\Q$nfsdirectory\E/, @entries) {
                 $callback->({ data => ["$nfsdirectory has been exported already!"] });
-
                 # nothing to do
             } else {
                 $cmd = "/usr/sbin/exportfs :$nfsdirectory";
@@ -1593,11 +1542,6 @@ sub sendmsg {
         $curptr = $curptr->{data}->[0];
         if ($descr) { $curptr->{desc} = [$descr]; }
     }
-
-    #        print $outfd freeze([$msg]);
-    #        print $outfd "\nENDOFFREEZE6sK4ci\n";
-    #        yield;
-    #        waitforack($outfd);
     $callback->($msg);
 }
 
@@ -1636,7 +1580,6 @@ sub build_deps()
         return undef;
     }
     foreach my $node (@$nodes) {
-
         # Delete the nodes without dependencies from the hash
         if (!defined($depset->{$node}[0])) {
             delete($depset->{$node});
