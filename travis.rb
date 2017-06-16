@@ -61,13 +61,16 @@ puts "password : #{password}"
   `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo cat /etc/apt/sources.list`
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
-  `sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -`
+  system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
+  puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
   `sudo apt-get  install software-properties-common`
   #`sudo apt-get clean all`
+  puts "\033[42m sudo apt-get -qq update \033[0m\n"
   `sudo apt-get -qq update`
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   `sudo apt-get install xCAT --force-yes`
+  puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
   `sudo echo "$USER"`
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
