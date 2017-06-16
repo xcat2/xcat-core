@@ -86,6 +86,7 @@ script:
 #- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
 - sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis
+- sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow
 - lsxcatd -v
 - tabdump policy
 - tabdump site
