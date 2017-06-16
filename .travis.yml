@@ -83,7 +83,7 @@ script:
 - sudo echo "$USER"
 #- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
-- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
+- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis
 - lsxcatd -v
 - tabdump policy
 - tabdump site
