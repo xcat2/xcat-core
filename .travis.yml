@@ -66,7 +66,9 @@ script:
 
 ############## install ############
 - pwd
-- cd ../../xcat-core
+- cd ..
+- cd ..
+- cd xcat-core
 - ls -a
 - sudo ./mklocalrepo.sh
 - sudo chmod 777 /etc/apt/sources.list
