@@ -58,7 +58,7 @@ puts "password : #{password}"
   `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo cat /etc/apt/sources.list`
-  puts "\033[42m sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add - \033[0m\n"
+  puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   `sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -`
   `sudo apt-get  install software-properties-common`
   #`sudo apt-get clean all`
