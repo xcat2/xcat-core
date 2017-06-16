@@ -84,7 +84,10 @@ script:
 - sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
 - sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
 - lsxcatd -v
-- sudo chmod 777 /opt/xcat/sbin/tabdump
+#- sudo chmod 777 /opt/xcat/sbin/tabdump
+- tabdump policy
+- /opt/xcat/sbin/tabdump policy
+- /opt/xcat/sbin/tabdump site
 - sudo -s /opt/xcat/sbin/tabdump policy
 - sudo -s /opt/xcat/sbin/tabdump site
 - ls /opt/xcat/sbin
