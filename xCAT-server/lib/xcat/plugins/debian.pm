@@ -187,6 +187,7 @@ sub copycd
     my $installroot;
     my $arch;
     my $path;
+    my $mntpath = undef;
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
 
@@ -205,15 +206,15 @@ sub copycd
     GetOptions(
         'n=s' => \$userdistname,
         'a=s' => \$arch,
-        'p=s' => \$copypath,
-        'm=s' => \$path,
+        'p=s' => \$path,
+        'm=s' => \$mntpath,
         'i'   => \$inspection,
         'o'   => \$noosimage,
         'w'   => \$nonoverwrite,
     );
-    unless ($path)
+    unless ($mntpath)
     {
-        #this plugin needs $path...
+        #this plugin needs $mntpath...
         return;
     }
     if ($userdistname
@@ -224,20 +225,20 @@ sub copycd
         return;
     }
 
-    unless (-r $path . "/.disk/info")
+    unless (-r $mntpath . "/.disk/info")
     {
         #xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
         return;
     }
 
-    if ($copypath || $nonoverwrite)
+    if ($path || $nonoverwrite)
     {
         $callback->({ info => ["copycds on Ubuntu/Debian does not support -p or -w option."] });
         return;
     }
 
     my $dinfo;
-    open($dinfo, $path . "/.disk/info");
+    open($dinfo, $mntpath . "/.disk/info");
     my $line = <$dinfo>;
     chomp($line);
     my @line2 = split(/ /, $line);
@@ -280,13 +281,12 @@ sub copycd
             $distname = "ubuntu" . $ver;
         }
         $detdistname = "ubuntu" . $ver;
-        $discno = `cat $path/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
+        $discno = `cat $mntpath/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
     }
     else
     {
         return;
     }
-    print "VKHU_DEBUG - info picked out... prod=$prod, ver=$ver, darch=$darch\n";
     unless ($userdistname)
     {
         # if not userdefined, set to the detected distname
@@ -357,13 +357,13 @@ sub copycd
         foreach (@cpiopid) {
             kill 2, $_;
         }
-        if ($path) {
+        if ($mntpath) {
             chdir("/");
-            system("umount $path");
+            system("umount $mntpath");
         }
     };
     my $kid;
-    chdir $path;
+    chdir $mntpath;
     my $numFiles = `find . -print | wc -l`;
     my $child = open($kid, "|-");
     unless (defined $child) {
