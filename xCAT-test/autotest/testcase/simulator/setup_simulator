@@ -1,24 +1,23 @@
 start:setup_openbmc_simulator
 description:install dependent packaages, setup and start openbmc simulator
-cmd:#!/bin/bash
-os=`cat /etc/*release*`
-if [[ "$os" =~ "Red Hat" ]] || [[ "$os" =~ "suse" ]]; then
-    yum install git -y
-    if [ $? != 0 ]; then
-        exit 1
-    fi
-elif [[ "$os" =~ "ubuntu" ]]; then
-    apt-get install git -y
-    if [ $? != 0 ]; then
-        exit 1
-    fi
-fi
-exit 0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN
 check:rc==0
-cmd:cd /root/ && git clone git@github.com:xuweibj/openbmc_simulator.git
+end
+
+start:setup_openbmc_simulator_multiple_100
+description:install dependent packaages, setup and start 100 openbmc simulator
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 100
 check:rc==0
-cmd:/root/openbmc_simulator/simulator &
+end
+
+start:setup_openbmc_simulator_multiple_1000
+description:install dependent packaages, setup and start 1000 openbmc simulator
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 1000
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/change_ip.sh -s $$MN $$CN
+end
+
+start:setup_openbmc_simulator_multiple_5000
+description:install dependent packaages, setup and start 5000 openbmc simulator
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -s $$MN $$CN $$bmcusername $$bmcpasswd 5000
 check:rc==0
 end
