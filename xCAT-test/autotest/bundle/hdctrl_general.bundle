@@ -24,3 +24,7 @@ rvitals_temp
 rvitals_voltage
 rvitals_all
 rvitals_noderange_err
+reventlog_null
+reventlog_all
+reventlog_clear
+reventlog_numofentries
