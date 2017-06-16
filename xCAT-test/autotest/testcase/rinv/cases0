@@ -99,7 +99,6 @@ cmd:chdef -p -t node  -o $$CN  groups="test"
 check:rc==0
 cmd:rinv test all
 check:rc==1
-check:output=~testnode: Error
 check:output=~$$CN: SYSTEM
 cmd:chdef -m -t node -o $$CN groups="test"
 check:rc==0

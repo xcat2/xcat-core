@@ -17,7 +17,7 @@ if [[ $1 ]]&&[[ $2 ]]&&[[ $3 ]];then
                   if [[ $i == $2 ]];then 
                       node_number=1;
                   else
-                     echo no than more node checkeid
+                     echo no than more node checked
                      node_number=2;
                   fi
              done
