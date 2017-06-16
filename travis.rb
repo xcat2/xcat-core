@@ -39,13 +39,13 @@ puts "password : #{password}"
 
  ############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
-  `gpg --list-keys`
+  %x[gpg --list-keys]
   puts "\033[42m sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1 \033[0m\n"
-  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1`
+  buildresult = %x[sudo ./build-ubunturepo -c UP=0 BUILDALL=1;]
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   buildresulterror = buildresult[-20..-1]
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{buildresulterror}"}'  #{post_url}`
+  %x[curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{buildresulterror}"}'  #{post_url}]
   
   ############################       install        ###########################
   system("cd ..")
@@ -89,12 +89,12 @@ puts "password : #{password}"
   puts tabdumpresult
   puts "\033[42m tabdump site \033[0m\n"
   system("tabdump site")
-  `ls /opt/xcat/sbin`
-  `ls /opt/xcat`
+  %x[ls /opt/xcat/sbin]
+  %x[ls /opt/xcat]
   puts "\033[42m service xcatd start \033[0m\n"
-  `service xcatd start`
+  %x[service xcatd start]
   puts "\033[42m service xcatd status \033[0m\n"
-  `service xcatd status`
+  %x[service xcatd status]
 
 
 
