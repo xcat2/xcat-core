@@ -39,7 +39,7 @@ puts "password : #{password}"
 
  ############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
-  %x[gpg --list-keys]
+  system("gpg --list-keys")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
   system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
   #puts "buildresult : #{buildresult}"
@@ -51,15 +51,15 @@ puts "password : #{password}"
   system("cd ..")
   system("cd ..")
   #`cd ..`
-  puts "\033[42m ls -a \033[0m\n"
+  puts "\033[42mls -a \033[0m\n"
   system("ls -a")
   system("cd xcat-core")
-  puts "\033[42m sudo ./mklocalrepo.sh \033[0m\n"
+  puts "\033[42msudo ./mklocalrepo.sh\033[0m\n"
   system("sudo ./mklocalrepo.sh")
-  %x[sudo chmod 777 /etc/apt/sources.list]
-  %x[sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list]
-  %x[sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list]
-  %x[sudo cat /etc/apt/sources.list]
+  system("sudo chmod 777 /etc/apt/sources.list")
+  system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
+  system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
+  system("sudo cat /etc/apt/sources.list")
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
   puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
@@ -72,29 +72,33 @@ puts "password : #{password}"
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   system("sudo apt-get install xCAT --force-yes")
   #puts "installresult : #{installresult}"
+
+
+###########################    Verify xCAT Installation   ##################################
   puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
-  %x[sudo echo "$USER"]
+  system("sudo echo $USER")
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
   #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
   system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis")
+  system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow")
   puts "\033[42m lsxcatd -v \033[0m\n"
   system("lsxcatd -v")
   #puts lsxcatedresult
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
   puts "\033[42m tabdump policy \033[0m\n"
-  tabdumpresult = %x[tabdump policy]
-  puts tabdumpresult
+  system("tabdump policy")
+ 
   puts "\033[42m tabdump site \033[0m\n"
   system("tabdump site")
-  %x[ls /opt/xcat/sbin]
-  %x[ls /opt/xcat]
+  system("ls /opt/xcat/sbin")
+  system("ls /opt/xcat")
   puts "\033[42m service xcatd start \033[0m\n"
-  %x[service xcatd start]
+  system("service xcatd start")
   puts "\033[42m service xcatd status \033[0m\n"
-  %x[service xcatd status]
+  system("service xcatd status")
 
 
 
