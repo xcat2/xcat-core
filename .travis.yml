@@ -72,21 +72,22 @@ script:
 - sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
 - sudo cat /etc/apt/sources.list
-- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
+- sudo -s wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo -s apt-key add -
 - sudo apt-get  install software-properties-common
 #- sudo apt-get clean all
 - sudo apt-get -qq update
 #- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh
 #- sudo apt-get install xCAT --force-yes -y
-- sudo apt-get install xCAT --force-yes
+- sudo -s apt-get install xCAT --force-yes
 - source /etc/profile.d/xcat.sh
 - sudo echo "$USER"
 - sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
-- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+#- sudo /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
 - sudo chmod 777 /opt/xcat/sbin/tabdump
-- /opt/xcat/sbin/tabdump policy
-- /opt/xcat/sbin/tabdump site
+- sudo -s/opt/xcat/sbin/tabdump policy
+- sudo -s /opt/xcat/sbin/tabdump site
 - ls /opt/xcat/sbin
 - ls /opt/xcat
 - service xcatd start
