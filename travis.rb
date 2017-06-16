@@ -52,8 +52,8 @@ puts "password : #{password}"
   system("cd ..")
   #`cd ..`
   puts "\033[42m ls -a \033[0m\n"
-  `ls -a`
-  `cd xcat-core`
+  system("ls -a")
+  system("cd xcat-core")
   puts "\033[42m sudo ./mklocalrepo.sh \033[0m\n"
   `sudo ./mklocalrepo.sh`
   `sudo chmod 777 /etc/apt/sources.list`
