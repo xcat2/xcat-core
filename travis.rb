@@ -40,7 +40,7 @@ puts "password : #{password}"
  ############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
   %x[gpg --list-keys]
-  puts "\033[42m sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1 \033[0m\n"
+  puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
   system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
@@ -63,15 +63,15 @@ puts "password : #{password}"
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
   puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
-  %[sudo apt-get  install software-properties-common]
+  system("sudo apt-get  install software-properties-common")
   #`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
-  updateresult = %x[sudo apt-get -qq update]
-  puts updateresult
+  system("sudo apt-get -qq update")
+  #puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  installresult = %x[sudo apt-get install xCAT --force-yes]
-  puts "installresult : #{installresult}"
+  system("sudo apt-get install xCAT --force-yes")
+  #puts "installresult : #{installresult}"
   puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
   %x[sudo echo "$USER"]
@@ -80,8 +80,8 @@ puts "password : #{password}"
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
   system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis")
   puts "\033[42m lsxcatd -v \033[0m\n"
-  lsxcatdresult = %x[lsxcatd -v]
-  puts lsxcatedresult
+  system("lsxcatd -v")
+  #puts lsxcatedresult
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
   puts "\033[42m tabdump policy \033[0m\n"
