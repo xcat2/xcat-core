@@ -56,25 +56,25 @@ puts "password : #{password}"
   system("cd xcat-core")
   puts "\033[42m sudo ./mklocalrepo.sh \033[0m\n"
   system("sudo ./mklocalrepo.sh")
-  `sudo chmod 777 /etc/apt/sources.list`
-  `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
-  `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
-  `sudo cat /etc/apt/sources.list`
+  %x[sudo chmod 777 /etc/apt/sources.list]
+  %x[sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list]
+  %x[sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list]
+  %x[sudo cat /etc/apt/sources.list]
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
   puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
-  `sudo apt-get  install software-properties-common`
+  %[sudo apt-get  install software-properties-common]
   #`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
-  updateresult = `sudo apt-get -qq update`
+  updateresult = %x[sudo apt-get -qq update]
   puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  installresult = `sudo apt-get install xCAT --force-yes`
+  installresult = %x[sudo apt-get install xCAT --force-yes]
   puts "installresult : #{installresult}"
   puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
-  `sudo echo "$USER"`
+  %x[sudo echo "$USER"]
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
   #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
