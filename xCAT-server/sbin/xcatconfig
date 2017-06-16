@@ -1329,9 +1329,7 @@ sub initDB
         else    # linux
         {
             $chtabcmds =
-"$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";  
-            $chtabcmds .=
-"$::XCATROOT/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow;";
+"$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";             
             if (defined($MNname)) {
                 $chtabcmds .=
 "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
