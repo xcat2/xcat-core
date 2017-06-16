@@ -31,9 +31,16 @@ puts "password : #{password}"
 #`gpg --list-keys`
 #`gpg --gen-key`
 
+ ############################        set post_rul  ########################
+  number= "1"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  puts "post_url : #{post_url}"
 
  ############################        build         #########################
+  puts "\033[42m gpg --list-keys\033[0m\n"
   `gpg --list-keys`
+  puts "\033[42m sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1 \033[0m\n"
   buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1`
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
@@ -42,32 +49,42 @@ puts "password : #{password}"
   
   ############################       install        ###########################
   `cd ../..`
+  puts "\033[42m ls -a \033[0m\n"
   `ls -a`
   `cd xcat-core`
+  puts "\033[42m sudo ./mklocalrepo.sh \033[0m\n"
   `sudo ./mklocalrepo.sh`
   `sudo chmod 777 /etc/apt/sources.list`
   `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo cat /etc/apt/sources.list`
+  puts "\033[42m sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add - \033[0m\n"
   `sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -`
   `sudo apt-get  install software-properties-common`
   #`sudo apt-get clean all`
   `sudo apt-get -qq update`
   #`sudo apt-get install xCAT --force-yes -y`
+  puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   `sudo apt-get install xCAT --force-yes`
   `source /etc/profile.d/xcat.sh`
   `sudo echo "$USER"`
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
   #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
+  puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
   `sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis`
+  puts "\033[42m lsxcatd -v \033[0m\n"
   `lsxcatd -v`
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
+  puts "\033[42m tabdump policy \033[0m\n"
   `tabdump policy`
+  puts "\033[42m tabdump site \033[0m\n"
   `tabdump site`
   `ls /opt/xcat/sbin`
   `ls /opt/xcat`
+  puts "\033[42m service xcatd start \033[0m\n"
   `service xcatd start`
+  puts "\033[42m service xcatd status \033[0m\n"
   `service xcatd status`
 
 
@@ -138,10 +155,11 @@ if(event_type == "pull_request")
   
     
   ####################   add comments  ########################## 
-  number= "1"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
-  puts post_url
+  #####follow code is added in <set post_rul >###
+  #number= "1"
+  ##post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  #puts post_url
   
   #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : \n #{resultArr}"}'  #{post_url}`
