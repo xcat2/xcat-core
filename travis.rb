@@ -83,15 +83,16 @@ puts "password : #{password}"
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
   system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis")
   system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow")
-  puts "\033[42m lsxcatd -v \033[0m\n"
+  puts "\033[42mlsxcatd -v\033[0m\n"
   system("lsxcatd -v")
   #puts lsxcatedresult
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
-  puts "\033[42m tabdump policy \033[0m\n"
-  system("tabdump policy")
+  puts "\033[42mtabdump policy\033[0m\n"
+  tabdumpresult = %x[tabdump policy]
+  puts "tabdump policy : #{tabdumpresult}"
  
-  puts "\033[42m tabdump site \033[0m\n"
+  puts "\033[42mtabdump site\033[0m\n"
   system("tabdump site")
   system("ls /opt/xcat/sbin")
   system("ls /opt/xcat")
