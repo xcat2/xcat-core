@@ -31,7 +31,7 @@ puts "password : #{password}"
 #`gpg --list-keys`
 #`gpg --gen-key`
 
- ############################        set post_rul  ########################
+ ############################        set post_url  ########################
   number= "1"
   #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
@@ -41,7 +41,7 @@ puts "password : #{password}"
   puts "\033[42m gpg --list-keys\033[0m\n"
   %x[gpg --list-keys]
   puts "\033[42m sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1 \033[0m\n"
-  system"sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
+  system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
