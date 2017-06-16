@@ -81,15 +81,14 @@ script:
 - sudo apt-get install xCAT --force-yes
 - source /etc/profile.d/xcat.sh
 - sudo echo "$USER"
-- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
-- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+#- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
+#- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis
 - lsxcatd -v
-#- sudo chmod 777 /opt/xcat/sbin/tabdump
 - tabdump policy
-- /opt/xcat/sbin/tabdump policy
-- /opt/xcat/sbin/tabdump site
-- sudo -s /opt/xcat/sbin/tabdump policy
-- sudo -s /opt/xcat/sbin/tabdump site
+- tabdump site
+#- /opt/xcat/sbin/tabdump policy
+#- /opt/xcat/sbin/tabdump site
 - ls /opt/xcat/sbin
 - ls /opt/xcat
 - service xcatd start
