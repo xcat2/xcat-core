@@ -34,7 +34,7 @@ B<nodeset> only sets the next boot state, but does not reboot.
 B<nodeset>  is  called  by B<rinstall> and B<winstall> and is also called by the
 installation process remotely to set the boot state back to "boot".
 
-A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of I<prescripts> table. You can run 'tabdump -d prescripts' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
+A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called B<prescripts>. They should be copied to /install/prescripts directory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of I<prescripts> table. You can run 'tabdump -d prescripts' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at a time. If it is not specified, the script will be invoked once for all the nodes.
 
 
 =head1 B<Options>
@@ -77,7 +77,7 @@ for basic remote access.  This causes the IP, netmask, gateway, username, and pa
 
 =item B<shell>
 
-This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+This instructs the node to boot to the xCAT genesis environment, and present a shell prompt on console.
 The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
 
 =item B<shutdown>
