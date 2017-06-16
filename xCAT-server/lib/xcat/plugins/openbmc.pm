@@ -967,6 +967,13 @@ sub rinv_response {
                 next; 
             }
 
+            # SPECIAL CASE: If 'serial' or 'model' is specified, only return the system level information
+            if ($grep_string eq "serial" or $grep_string eq "model") {
+                if ($key_url ne "$openbmc_project_url/inventory/system") {
+                    next;
+                }
+            }
+
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
