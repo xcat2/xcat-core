@@ -35,10 +35,10 @@ puts "password : #{password}"
  ############################        build         #########################
   `gpg --list-keys`
   buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1`
-  puts "buildresult : #{buildresult}"
+  #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
-  
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{resultArr}"}'  #{post_url}`
+  buildresulterror = buildresult[-20..-1]
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{buildresulterror}"}'  #{post_url}`
   
   ############################       install        ###########################
   `cd ../..`
