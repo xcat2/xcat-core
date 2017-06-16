@@ -1,3 +1,4 @@
+description:the cases in this bundle is to verify xCAT hardware control functions. This is the basic bundle for all hardware types.
 rpower_off
 rpower_stat
 rpower_status

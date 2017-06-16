@@ -1,3 +1,4 @@
+description:the cases in this bundle is to used to verify xCAT hardware control funtions on HMC managed servers.
 #INCLUDE:hdctrl_general.bundle#
 rinv_bus
 rinv_config
