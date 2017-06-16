@@ -4,14 +4,30 @@
 #check:rc!=0
 #check:output=~Usage
 #end
+start:rinv_h
+description:show help information for rinv
+cmd:rinv -h
+check:rc==0
+check:output=~Usage
+check:output=~rinv
+end
+start:rinv_v
+description:show version for Version
+cmd:rinv -v
+check:rc==0
+check:output=~Version
+end
+
 start:rinv_bus
-arch:ppc
+description:rinv list all buses for each I/O slot 
+Attribute: $$CN-The operation object of rinv command
 cmd:rinv $$CN bus
 check:rc==0
 check:output=~I/O Bus Information
 end
 start:rinv_config
-arch:ppc
+description:Retrieves number of processors, speed, total memory, and DIMM locations. 
+Attribute: $$CN-The operation object of rinv command
 cmd:rinv $$CN config
 check:rc==0
 check:output=~Machine Configuration Info
@@ -19,38 +35,86 @@ check:output=~Number of Processors:\s*\d+
 check:output=~Total Memory \(\w+\):\s*\d+
 end
 start:rinv_serial
-arch:ppc
-cmd:rinv $$CN serial
+description:Retrieves serial number.
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN serial
 check:rc==0
-check:output=~Serial Number:\s*\w{7}
 end
 start:rinv_model
-arch:ppc
-cmd:rinv $$CN model
+description:Retrieves serial number.
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN model
 check:rc==0
-check:output=~Machine Type/Model\s*:\s*\w{4}-\w{3}
 end
 start:rinv_firm
-arch:ppc
-cmd:rinv $$CN firm
+description:Retrieves firmware versions.
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN firm
 check:rc==0
-check:output=~Release Level\s*:\s*\w+
 end
 start:rinv_all
-arch:ppc
-cmd:rinv $$CN all
+description:get serial,model
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN all
 check:rc==0
-check:output=~I/O Bus Information
-check:output=~Machine Configuration Info
-check:output=~Number of Processors:\s*\d+
-check:output=~Total Memory \(\w+\):\s*\d+
-check:output=~Serial Number:\s*\w{7}
-check:output=~Machine Type/Model\s*:\s*\w{4}-\w{3}
-check:output=~Release Level\s*:\s*\w+
 end
+start:rinv_cpu
+description:get cpu information
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN cpu
+check:rc==0
+end
+start:rinv_dimm
+description:get dimm information
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN dimm
+check:rc==0
+end
+start:rinv_uuid
+description:get uuid information
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN uuid
+check:rc==0
+end
+start:rinv_vpd
+description:get vpd information
+Attribute: $$CN-The operation object of rinv command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rinv $$CN vpd
+check:rc==0
+end
+
 start:rinv_noderange_err
 cmd:rinv testnode
 check:rc!=0
 check:output=~Error
 end
-
+start:rinv_mixnode
+description:get mixnode information,one is invalid node
+Attribute: $$CN-The operation object of rinv command
+cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
+check:rc==0
+cmd:chdef testnode groups=test mgt=__GETNODEATTR($$CN,mgt)__
+check:rc==0
+cmd:chdef -p -t node  -o $$CN  groups="test"
+check:rc==0
+cmd:rinv test all
+check:rc==1
+check:output=~$$CN: SYSTEM
+cmd:chdef -m -t node -o $$CN groups="test"
+check:rc==0
+cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
+check:rc==0
+end
+start:rinv_wrongbmcpasswd
+description:get right return if bmc's passwd wrong
+Attribute: $$CN-The operation object of rinv command
+cmd:lsdef -l $$CN -z >/tmp/testnode.stanza
+check:rc==0
+cmd:chdef $$CN bmcpassword=test
+check:rc==0
+cmd:rinv $$CN all
+check:rc==1
+check:output=~$$CN: Error: Invalid username or password
+cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza 
+check:rc==0
+end
