@@ -66,23 +66,27 @@ puts "password : #{password}"
   `sudo apt-get  install software-properties-common`
   #`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
-  `sudo apt-get -qq update`
+  updateresult = `sudo apt-get -qq update`
+  puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  `sudo apt-get install xCAT --force-yes`
+  installresult = `sudo apt-get install xCAT --force-yes`
+  puts {installresult : #{installresult}"
   puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
   `sudo echo "$USER"`
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
   #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
-  `sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis`
+  system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis")
   puts "\033[42m lsxcatd -v \033[0m\n"
-  system("lsxcatd -v")
+  lsxcatdresult = %x[lsxcatd -v]
+  puts lsxcatedresult
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
   puts "\033[42m tabdump policy \033[0m\n"
-  `tabdump policy`
+  tabdumpresult = %x[tabdump policy]
+  puts tabdumpresult
   puts "\033[42m tabdump site \033[0m\n"
   system("tabdump site")
   `ls /opt/xcat/sbin`
