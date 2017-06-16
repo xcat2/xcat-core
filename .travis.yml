@@ -61,8 +61,8 @@ script:
 #- perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
 
 ###############  build  ###########
-#- gpg --list-keys
-#- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+- gpg --list-keys
+- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
 
 ############## install ############
 - pwd
