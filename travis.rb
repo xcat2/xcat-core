@@ -55,7 +55,7 @@ puts "password : #{password}"
   system("ls -a")
   system("cd xcat-core")
   puts "\033[42m sudo ./mklocalrepo.sh \033[0m\n"
-  `sudo ./mklocalrepo.sh`
+  system("sudo ./mklocalrepo.sh")
   `sudo chmod 777 /etc/apt/sources.list`
   `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
   `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
@@ -68,20 +68,20 @@ puts "password : #{password}"
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   `sudo apt-get install xCAT --force-yes`
-  `source /etc/profile.d/xcat.sh`
+  system("source /etc/profile.d/xcat.sh")
   `sudo echo "$USER"`
   #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
   #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
   puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
   `sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis`
   puts "\033[42m lsxcatd -v \033[0m\n"
-  `lsxcatd -v`
+  system("lsxcatd -v")
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
   puts "\033[42m tabdump policy \033[0m\n"
   `tabdump policy`
   puts "\033[42m tabdump site \033[0m\n"
-  `tabdump site`
+  system("tabdump site")
   `ls /opt/xcat/sbin`
   `ls /opt/xcat`
   puts "\033[42m service xcatd start \033[0m\n"
