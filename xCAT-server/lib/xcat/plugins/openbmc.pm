@@ -687,6 +687,11 @@ sub parse_command_status {
                 # Filename ending on .tar was specified
                 $filename = $update_file;
                 $::UPLOAD_FILE = $update_file; # Save filename to upload
+                # Verify file exists and is readable
+                unless (-r $filename) {
+                    xCAT::SvrUtils::sendmsg("Error accessing update file $filename", $callback);
+                    return 1;
+                }
                 if ($check_version) {
                     # Display firmware version of the specified .tar file
                     my $firmware_version_in_file = `$grep_cmd $version_tag $filename`;
@@ -1452,16 +1457,14 @@ sub rflash_response {
         # If that happens, just call the curl commands for now. 
         # TODO remove this block when proper request can be generated
         if ($::UPLOAD_FILE) {
-            my $request_url_login  = "$http_protocol://" . $node_info{$node}{bmc} .  "/login";
-            my $request_url_logout = "$http_protocol://" . $node_info{$node}{bmc} .  "/logout";
-            my $request_url_upload = "$http_protocol://" . $node_info{$node}{bmc} .  "/upload/image/";
+            my $request_url = "$http_protocol://" . $node_info{$node}{bmc};
             my $content_login = '{ "data": [ "' . $node_info{$node}{username} .'", "' . $node_info{$node}{password} . '" ] }';
             my $content_logout = '{ "data": [ ] }';
 
             # curl commands
-            my $curl_login_cmd  = "curl -c cjar -k -H 'Content-Type: application/json' -X POST $request_url_login -d '" . $content_login . "'";
-            my $curl_logout_cmd = "curl -b cjar -k -H 'Content-Type: application/json' -X POST $request_url_logout -d '" . $content_logout . "'";
-            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T $::UPLOAD_FILE $request_url_upload";
+            my $curl_login_cmd  = "curl -c cjar -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
+            my $curl_logout_cmd = "curl -b cjar -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
+            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T $::UPLOAD_FILE $request_url/upload/image/";
 
             # Try to login
             my $curl_login_result = `$curl_login_cmd`;
