@@ -60,39 +60,43 @@ script:
 #- curl -d "body='successful'" "https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/24/comments" 
 #- perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
 
+
+
+- ruby ./travis.rb
+
 ###############  build  ###########
-- gpg --list-keys
-- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+#- gpg --list-keys
+#- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
 
 ############## install ############
-- pwd
-- cd ..
-- cd ..
-- cd xcat-core
-- ls -a
-- sudo ./mklocalrepo.sh
-- sudo chmod 777 /etc/apt/sources.list
-- sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
-- sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
-- sudo cat /etc/apt/sources.list
-- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
-- sudo apt-get  install software-properties-common
-#- sudo apt-get clean all
-- sudo apt-get -qq update
-#- sudo apt-get install xCAT --force-yes -y
-- sudo apt-get install xCAT --force-yes
-- source /etc/profile.d/xcat.sh
-- sudo echo "$USER"
-#- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
-#- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
-- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis
-- sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow
-- lsxcatd -v
-- tabdump policy
-- tabdump site
-#- /opt/xcat/sbin/tabdump policy
-#- /opt/xcat/sbin/tabdump site
-- ls /opt/xcat/sbin
-- ls /opt/xcat
-- service xcatd start
-- service xcatd status
+#- pwd
+#- cd ..
+#- cd ..
+#- cd xcat-core
+#- ls -a
+#- sudo ./mklocalrepo.sh
+#- sudo chmod 777 /etc/apt/sources.list
+#- sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+#- sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+#- sudo cat /etc/apt/sources.list
+#- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
+#- sudo apt-get  install software-properties-common
+##- sudo apt-get clean all
+#- sudo apt-get -qq update
+##- sudo apt-get install xCAT --force-yes -y
+#- sudo apt-get install xCAT --force-yes
+#- source /etc/profile.d/xcat.sh
+#- sudo echo "$USER"
+##- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
+##- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+#- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis
+#- sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow
+#- lsxcatd -v
+#- tabdump policy
+#- tabdump site
+##- /opt/xcat/sbin/tabdump policy
+##- /opt/xcat/sbin/tabdump site
+#- ls /opt/xcat/sbin
+#- ls /opt/xcat
+#- service xcatd start
+#- service xcatd status
