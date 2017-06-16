@@ -71,7 +71,7 @@ puts "password : #{password}"
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   installresult = `sudo apt-get install xCAT --force-yes`
-  puts {installresult : #{installresult}"
+  puts "installresult : #{installresult}"
   puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
   system("source /etc/profile.d/xcat.sh")
   `sudo echo "$USER"`
