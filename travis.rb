@@ -92,7 +92,7 @@ puts "password : #{password}"
   system("tabdump policy")
  
   puts "\033[42mtabdump site\033[0m\n"
-  `tabdump site`
+  system("tabdump site")
   system("ls /opt/xcat/sbin")
   system("ls /opt/xcat")
   puts "\033[42m service xcatd start \033[0m\n"
