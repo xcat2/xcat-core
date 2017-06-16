@@ -1,9 +1,11 @@
 #!/bin/bash
 
-flag=$1
-mnhn=$2
-cnhn=$3
-nodes=$4
+flag=$1  # -s:setup simulator -c:clear simulator env
+mnhn=$2  # MN hostname
+cnhn=$3  # CN hostname
+username=$4  # bmcusername
+password=$5  # bmcpassword
+nodes=$6  # number of IPs want to config
 
 mnip=`ping $mnhn -c 1 | grep "64 bytes from" |awk -F'(' '{print $2}'|awk -F')' '{print $1}'`
 if [ $nodes ]; then
@@ -14,27 +16,37 @@ if [ $nodes ]; then
     elif [ $nodes = "5000" ]; then
         range=`echo $(echo 10.100.{1..50}.{1..100})`
     else
-        range=`echo $(echo 10.100.{1..10}.{1..10})`
+        range=`echo $(echo 10.100.1.{1..100})`
     fi
 fi
 
 if [ $flag = "-s" ]; then
+    os=`cat /etc/*release*`
+    if [[ "$os" =~ "Red Hat" ]] || [[ "$os" =~ "suse" ]]; then
+        yum install git -y
+        if [ $? != 0 ]; then
+            echo "Install git Failed"
+            exit 1
+        fi
+    elif [[ "$os" =~ "ubuntu" ]]; then
+        apt-get install git -y
+        if [ $? != 0 ]; then
+            echo "Install git Failed"
+            exit 1
+        fi
+    fi
+
+    cd /root/ && git clone git@github.com:xuweibj/openbmc_simulator.git
+
     if [ $nodes ]; then
         lsdef $cnhn -z > /tmp/$cnhn.stanza
         rmdef $cnhn
 
         /root/openbmc_simulator/simulator -n $nic -r $range 
 
-        if [ $nodes = "1000" ]; then
-            chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=root bmcpassword=0penBmc
-            chdef simulator_test_[0-999] groups=$cnhn
-        elif [ $nodes = "5000" ]; then
-            chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=root bmcpassword=0penBmc
-            chdef simulator_test_[0-4999] groups=$cnhn
-        else 
-            chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/10)).((\$1)%10+1)|" bmcusername=root bmcpassword=0penBmc
-            chdef simulator_test_[0-99] groups=$cnhn
-        fi
+        node_end=$[nodes-1]
+        chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=$username bmcpassword=$password
+        chdef simulator_test_[0-$node_end] groups=$cnhn  # use CN hostname as group, so when run command against CN will rpower against all nodes added here
     else 
         cnip=`lsdef $cnhn -i bmc -c | awk -F '=' '{print $2}'`
         echo $cnip > "/tmp/simulator"
