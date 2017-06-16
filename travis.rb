@@ -32,6 +32,46 @@ puts "password : #{password}"
 #`gpg --gen-key`
 
 
+ ############################        build         #########################
+  `gpg --list-keys`
+  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1`
+  puts "buildresult : #{buildresult}"
+  #####  TODO  get build error information#####
+  
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{resultArr}"}'  #{post_url}`
+  
+  ############################       install        ###########################
+  `cd ../..`
+  `ls -a`
+  `cd xcat-core`
+  `sudo ./mklocalrepo.sh`
+  `sudo chmod 777 /etc/apt/sources.list`
+  `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
+  `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
+  `sudo cat /etc/apt/sources.list`
+  `sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -`
+  `sudo apt-get  install software-properties-common`
+  #`sudo apt-get clean all`
+  `sudo apt-get -qq update`
+  #`sudo apt-get install xCAT --force-yes -y`
+  `sudo apt-get install xCAT --force-yes`
+  `source /etc/profile.d/xcat.sh`
+  `sudo echo "$USER"`
+  #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
+  #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
+  `sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis`
+  `lsxcatd -v`
+  #`sudo -s /opt/xcat/sbin/tabdump policy`
+  #`sudo -s /opt/xcat/sbin/tabdump site`
+  `tabdump policy`
+  `tabdump site`
+  `ls /opt/xcat/sbin`
+  `ls /opt/xcat`
+  `service xcatd start`
+  `service xcatd status`
+
+
+
 
 
 
