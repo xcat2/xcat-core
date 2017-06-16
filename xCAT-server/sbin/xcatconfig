@@ -1330,6 +1330,9 @@ sub initDB
         {
             $chtabcmds =
 "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
+            #for travis CI
+            $chtabcmds =
+"$::XCATROOT/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow;";
             if (defined($MNname)) {
                 $chtabcmds .=
 "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
