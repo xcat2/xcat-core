@@ -70,7 +70,7 @@ puts "password : #{password}"
   #puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  system("sudo apt-get install xCAT --force-yes")
+  `sudo apt-get install xCAT --force-yes`
   #puts "installresult : #{installresult}"
 
 
@@ -89,11 +89,10 @@ puts "password : #{password}"
   #`sudo -s /opt/xcat/sbin/tabdump policy`
   #`sudo -s /opt/xcat/sbin/tabdump site`
   puts "\033[42mtabdump policy\033[0m\n"
-  tabdumpresult = %x[tabdump policy]
-  puts "tabdump policy : #{tabdumpresult}"
+  system("tabdump policy")
  
   puts "\033[42mtabdump site\033[0m\n"
-  system("tabdump site")
+  `tabdump site`
   system("ls /opt/xcat/sbin")
   system("ls /opt/xcat")
   puts "\033[42m service xcatd start \033[0m\n"
