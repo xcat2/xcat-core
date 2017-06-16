@@ -48,7 +48,8 @@ puts "password : #{password}"
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{buildresulterror}"}'  #{post_url}`
   
   ############################       install        ###########################
-  `cd ../..`
+  `cd ..`
+  `cd ..`
   puts "\033[42m ls -a \033[0m\n"
   `ls -a`
   `cd xcat-core`
