@@ -7,17 +7,21 @@ username=$4  # bmcusername
 password=$5  # bmcpassword
 nodes=$6  # number of IPs want to config
 
+if [ $nodes -gt 10000 ]; then
+    echo "Unsupported number of nodes: $nodes"
+    exit 1
+fi
+
 mnip=`ping $mnhn -c 1 | grep "64 bytes from" |awk -F'(' '{print $2}'|awk -F')' '{print $1}'`
 if [ $nodes ]; then
     nic=`ip -4 -o a | grep $mnip | awk -F ' ' '{print $2}'`
 
-    if [ $nodes = "1000" ]; then
-        range=`echo $(echo 10.100.{1..10}.{1..100})`
-    elif [ $nodes = "5000" ]; then
-        range=`echo $(echo 10.100.{1..50}.{1..100})`
-    else
-        range=`echo $(echo 10.100.1.{1..100})`
+    ((a=$nodes/100))
+    ((b=$nodes%100))
+    if [ $b -eq 0 ]; then
+        b=100
     fi
+    range=`for((i=1;i<=$a;i++)); do for((m=1;m<=$b;m++)); do echo -n "10.100.$i.$m ";done; done`
 fi
 
 if [ $flag = "-s" ]; then
