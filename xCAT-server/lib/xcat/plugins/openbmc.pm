@@ -689,7 +689,7 @@ sub parse_command_status {
                 $::UPLOAD_FILE = $update_file; # Save filename to upload
                 # Verify file exists and is readable
                 unless (-r $filename) {
-                    xCAT::SvrUtils::sendmsg("Error accessing update file $filename", $callback);
+                    xCAT::SvrUtils::sendmsg([1,"Cannot access $filename"], $callback);
                     return 1;
                 }
                 if ($check_version) {
