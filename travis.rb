@@ -51,7 +51,7 @@ puts "password : #{password}"
   buildresult.delete!('\'')
   buildresult.delete!('\"')
   buildresult.delete!('\:')
-  buildresult.gtub!('\n','')
+  buildresult.gsub!('\n','')
   p buildresult
   test = "test\n"
   p test
