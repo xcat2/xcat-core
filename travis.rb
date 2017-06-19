@@ -55,8 +55,8 @@ puts "password : #{password}"
   p buildresult
   test = "test"
   p test 
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}"}'  #{post_url}`
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR:**  :  #{buildresult}"}'  #{post_url}`  
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala\r\n#{test}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
 
   ############################       install        ###########################
   #system("cd ..")
