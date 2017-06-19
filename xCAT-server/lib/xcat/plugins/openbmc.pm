@@ -1036,25 +1036,31 @@ sub rinv_response {
             # Handle printing out all posssible Software values in a generic format: 
             #    node: <Purpose> Software: <version> (<Activation>)
             #
+            my $sw_id = (split(/\//, $key_url))[-1];
             if (defined($content{Version}) and $content{Version}) {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
                 #
-                # The space below between "SOFTWARE:" and $content{Version} is intentional
-                # to cause the sorting of this line before any additional info lines 
+                # For 'rinv firm', only print Active software.  'rflash list' will handle others
                 #
-                $content_info = "$purpose_value SOFTWARE:   $content{Version} ($activation_value)";
-                push (@sorted_output, $content_info); 
-
-                if ($content{ExtendedVersion} ne "") { 
-                    # ExtendedVersion is going to be a comma separated list of additional software
-                    my @versions = split(',', $content{ExtendedVersion});
-                    foreach my $ver (@versions) { 
-                        $content_info = "$purpose_value SOFTWARE: -- additional info: $ver";
-                        push (@sorted_output, $content_info);
+                if ($activation_value =~ "Active") {
+                    #
+                    # The space below between "SOFTWARE:" and $content{Version} is intentional
+                    # to cause the sorting of this line before any additional info lines 
+                    #
+                    $content_info = "$purpose_value SOFTWARE[$sw_id]:   $content{Version} ($activation_value)";
+                    push (@sorted_output, $content_info); 
+    
+                    if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
+                        # ExtendedVersion is going to be a comma separated list of additional software
+                        my @versions = split(',', $content{ExtendedVersion});
+                        foreach my $ver (@versions) { 
+                            $content_info = "$purpose_value SOFTWARE[$sw_id]: -- additional info: $ver";
+                            push (@sorted_output, $content_info);
+                        }
                     }
+                    next;
                 }
-                next;
             }
         } else {
             if (! defined $content{Present}) {
