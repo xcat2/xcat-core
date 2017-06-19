@@ -51,11 +51,11 @@ puts "password : #{password}"
   buildresult.delete!('\'')
   buildresult.delete!('\"')
   buildresult.delete!('\:')
-  buildresult.delete!('\\n')
+  buildresult.gsub
   p buildresult
   test = "test"
   p test 
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}\n"}'  #{post_url}`
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{buildresult}"}'  #{post_url}`  
 
   ############################       install        ###########################
