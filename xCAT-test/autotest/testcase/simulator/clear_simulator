@@ -1,5 +1,23 @@
 start:clear_openbmc_simulator
 description:clear evironment
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/change_ip.sh -c $$MN $$CN
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -c $$MN $$CN
+check:rc==0
+end
+
+start:clear_openbmc_simulator_multiple_100
+description:clear evironment that simulate 100 OpenBMCs
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -c $$MN $$CN $$bmcusername $$bmcpasswd 100
+check:rc==0
+end
+
+start:clear_openbmc_simulator_multiple_1000
+description:clear evironment that simulate 1000 OpenBMCs
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -c $$MN $$CN $$bmcusername $$bmcpasswd 1000
+check:rc==0
+end
+
+start:clear_openbmc_simulator_multiple_5000
+description:clear evironment that simulate 5000 OpenBMCs
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/simulator/config_simulator.sh -c $$MN $$CN $$bmcusername $$bmcpasswd 5000
 check:rc==0
 end

@@ -35,7 +35,7 @@ DESCRIPTION
 ***********
 
 
-The \ **makeroutes**\  command adds or deletes routes on the management node or any given nodes. The \ **noderange**\  specifies the nodes where the routes are to be added or removed. When the \ *noderange*\  is omitted, the action will be done on the management node. The \ **-r**\  option specifies the name of routes. The details of the routes are defined in the \ **routes**\  table which contians the route name, subnet, net mask and gateway. If -r option is omitted, the names of the routes found on \ **noderes.routenames**\  for the nodes or on \ **site.mnroutenames**\  for the management node will be used.
+The \ **makeroutes**\  command adds or deletes routes on the management node or any given nodes. The \ **noderange**\  specifies the nodes where the routes are to be added or removed. When the \ *noderange*\  is omitted, the action will be done on the management node. The \ **-r**\  option specifies the name of routes. The details of the routes are defined in the \ **routes**\  table which contains the route name, subnet, net mask and gateway. If -r option is omitted, the names of the routes found on \ **noderes.routenames**\  for the nodes or on \ **site.mnroutenames**\  for the management node will be used.
 
 If you want the routes be automatically setup during node deployment, first put a list of route names to \ **noderes.routenames**\  and then add \ *setroute*\  script name to the \ **postscripts.postbootscripts**\  for the nodes.
 

@@ -72,6 +72,12 @@ my $switchhash;
 my $passwdtab;
 my @passwd_ent;
 
+#set community string for switch
+my $community = "public";
+my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+my $tmp    = $snmpcs[0];
+if (defined($tmp)) { $community = $tmp }
+
 if ($::SWITCH) {
     my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
     if (nodesmissed) {
@@ -80,7 +86,7 @@ if ($::SWITCH) {
     }
     # check switch attributes
     $switchestab =  xCAT::Table->new('switches');
-    $switchhash = $switchestab->getNodesAttribs(\@filternodes,['switchtype','sshusername','sshpassword','protocol']);
+    $switchhash = $switchestab->getNodesAttribs(\@filternodes,['switchtype','sshusername','sshpassword','protocol','password','snmpversion']);
 
     # get switch username and password from passwd
     $passwdtab = xCAT::Table->new('passwd');
@@ -97,6 +103,9 @@ if ($::SWITCH) {
                 if (defined($passwd_ent[0]->{password})) {
                    $switchhash->{$fsw}->[0]->{sshpassword} = $passwd_ent[0]->{password};
                 }
+            }
+            if (!defined($switchhash->{$fsw}->[0]->{password})) {
+                $switchhash->{$fsw}->[0]->{password} = $community;
             }
             push @nodes, $fsw;
         } else {
@@ -116,12 +125,6 @@ if ($::SWITCH) {
 #get mac address for the switches
 my $mactab = xCAT::Table->new("mac");
 my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
-
-#set community string for switch
-my $community = "public";
-my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
-my $tmp    = $snmpcs[0];
-if (defined($tmp)) { $community = $tmp }
 
 my $switches = join(",",@nodes);
 my $cmd;
@@ -330,12 +333,20 @@ sub config_snmp {
         my $username;
         my $passwd;
         my $protocol;
+        my $snmppass;
+        my $snmpversion;
 
         my $login_cmd;
 
         $username = $switchhash->{$switch}->[0]->{sshusername};
         $passwd = $switchhash->{$switch}->[0]->{sshpassword};
         $protocol = $switchhash->{$switch}->[0]->{protocol};
+        if ($switchhash->{$switch}->[0]->{snmpversion} =~ /3/) {
+            $snmppass=$community;
+        } else {
+            $snmppass = $switchhash->{$switch}->[0]->{password};
+        }
+
         if ($protocol =~ /telnet/) {
             $login_cmd = "telnet $switch\r";
         } else {
@@ -343,7 +354,7 @@ sub config_snmp {
         }
 
         #get hostname on the switch in case hostname is different 
-        my $ccmd = "snmpwalk -Os -v1 -c $community $switch 1.3.6.1.2.1.1.5";
+        my $ccmd = "snmpwalk -Os -v1 -c $snmppass $switch 1.3.6.1.2.1.1.5";
         my $result = xCAT::Utils->runcmd($ccmd, 0);
         my ($desc,$switchhost) = split /: /, $result;
         if (!$switchhost) {

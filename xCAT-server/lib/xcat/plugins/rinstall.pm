@@ -622,8 +622,8 @@ sub usage {
     my $callback = shift;
     my $rsp      = {};
     $rsp->{data}->[0] = "Usage:";
-    $rsp->{data}->[1] = "   $command <noderange> boot | shell | runcmd=bmcsetup [-c|--console] [-u|--uefimode] [-V|--verbose]";
-    $rsp->{data}->[2] = "   $command <noderange> osimage=<imagename> | -O <imagename> [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[1] = "   $command <noderange> [boot | shell | runcmd=bmcsetup] [runimage=<task>] [-c|--console] [-u|--uefimode] [-V|--verbose]";
+    $rsp->{data}->[2] = "   $command <noderange> [osimage=<imagename> | <imagename>] [--ignorekernelchk] [-c|--console] [-u|--uefimode] [-V|--verbose]";
     $rsp->{data}->[3] = "   $command [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 }

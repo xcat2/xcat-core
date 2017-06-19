@@ -18,9 +18,8 @@ end
 start:rvitals_temp
 description:Retrieves temperatures
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN temp
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN temp
 check:rc==0
-check:output=~System Temperature|Ambient Temp|temperature
 end
 
 start:rvitals_disktemp
@@ -46,17 +45,15 @@ end
 start:rvitals_voltage
 description:Retrieves power supply and VRM voltage readings
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN voltage
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN voltage
 check:rc==0
-check:output=~Frame Voltages|CPU VDD Volt|SysBrd
 end
 
 start:rvitals_power
 description:Retrieves power status
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN power
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN power
 check:rc==0
-check:output=~Current Power Status:\s*(on|off)|Power Status:\s*(on|off)
 end
 
 start:rvitals_state
@@ -79,12 +76,8 @@ end
 start:rvitals_all
 description:Retrieves all status
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN all
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN all
 check:rc==0
-check:output=~System Temperature|Ambient Temp
-check:output=~Frame Voltages|CPU VDD Volt|SysBrd
-check:output=~Current Power Status:\s*(on|off)|Power Status:\s*(on|off)
-check:output=~ System State:|System Event:|NMI State
 end
 
 start:rvitals_leds
@@ -98,27 +91,28 @@ end
 start:rvitals_fanspeed
 description:Retrieves fan speeds.
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN fanspeed
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN fanspeed
 check:rc==0
-check:output=~Fan|Fan\s*\d:\s*\w+\s*RPM
 end
 start:rvitals_wattage
 description:Retrieves wattage readings.
 Attribute: $$CN-The operation object of rvitals command
-cmd:rvitals $$CN wattage
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN wattage
 check:rc==0
-check:output=~12V Sense|AC Avg Power
-check:output=~Mem Cache Power|MEM Avg Power
+end
+start:rvitals_altitude
+description:Retrieves altitude readings.
+Attribute: $$CN-The operation object of rvitals command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN altitude
+check:rc==0
 end
 start:rvitals_noderange_err
 description:using not defined node
-cmd:rvitals testnode 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals testnode 
 check:rc!=0
-check:output=~Error
 end
 start:rvitals_errorcommand
 description:using wrong command
-cmd: rvitals $$CN errorcommand
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rvitals/openbmctest.sh rvitals $$CN errorcommand
 check:rc!=0
-check:output=~Unrecognized rvitals arguments
 end

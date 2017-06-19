@@ -416,7 +416,7 @@ sub parse_args {
         }
     } elsif ($command eq "rinv") {
         $subcommand = "all" if (!defined($ARGV[0]));
-        unless ($subcommand =~ /^cpu$|^dimm$|^model$|^serial$|^firm$|^mac$|^vpd$|^mprom$|^deviceid$|^guid$|^uuid$|^all$/) {
+        unless ($subcommand =~ /^model$|^serial$|^firm$|^cpu$|^dimm$|^all$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "getopenbmccons") {
@@ -1018,10 +1018,10 @@ sub rinv_response {
 
     my $grep_string;
     if ($node_info{$node}{cur_status} eq "RINV_FIRM_RESPONSE") {
-         $grep_string = "firm";
-     } else {
-         $grep_string = $status_info{RINV_RESPONSE}{argv};
-     }
+        $grep_string = "firm";
+    } else {
+        $grep_string = $status_info{RINV_RESPONSE}{argv};
+    }
 
     my $src;
     my $content_info;
@@ -1031,52 +1031,45 @@ sub rinv_response {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
 
         if ($grep_string eq "firm") {
+            # This handles the data from the /xyz/openbmc_project/Software endpoint.
+            #
+            # Handle printing out all posssible Software values in a generic format: 
+            #    node: <Purpose> Software: <version> (<Activation>)
+            #
             if (defined($content{Version}) and $content{Version}) {
-                my $firm_ver = "System Firmware Product Version: " . "$content{Version}";
-                xCAT::SvrUtils::sendmsg("$firm_ver", $callback, $node);
+                my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
+                my $activation_value = (split(/\./, $content{Activation}))[-1];
+                #
+                # The space below between "SOFTWARE:" and $content{Version} is intentional
+                # to cause the sorting of this line before any additional info lines 
+                #
+                $content_info = "$purpose_value SOFTWARE:   $content{Version} ($activation_value)";
+                push (@sorted_output, $content_info); 
+
+                if ($content{ExtendedVersion} ne "") { 
+                    # ExtendedVersion is going to be a comma separated list of additional software
+                    my @versions = split(',', $content{ExtendedVersion});
+                    foreach my $ver (@versions) { 
+                        $content_info = "$purpose_value SOFTWARE: -- additional info: $ver";
+                        push (@sorted_output, $content_info);
+                    }
+                }
                 next;
             }
-        }
+        } else {
+            if (! defined $content{Present}) {
+                # This should never happen, but if we find this, contact firmware team to fix...
+                xCAT::SvrUtils::sendmsg("ERROR: Invalid data for $key_url, contact firmware team!", $callback, $node);
+                next; 
+            }
 
-        if (($grep_string eq "vpd" or $grep_string eq "model") and $key_url =~ /\/motherboard$/) {
-            my $partnumber = "BOARD Part Number: " . "$content{PartNumber}";
-            xCAT::SvrUtils::sendmsg("$partnumber", $callback, $node);
-            next if ($grep_string eq "model");
-        } 
+            # SPECIAL CASE: If 'serial' or 'model' is specified, only return the system level information
+            if ($grep_string eq "serial" or $grep_string eq "model") {
+                if ($key_url ne "$openbmc_project_url/inventory/system") {
+                    next;
+                }
+            }
 
-        if (($grep_string eq "vpd" or $grep_string eq "serial") and $key_url =~ /\/motherboard$/) {
-            my $serialnumber = "BOARD Serial Number: " . "$content{SerialNumber}";
-            xCAT::SvrUtils::sendmsg("$serialnumber", $callback, $node);
-            next if ($grep_string eq "serial");
-        } 
-
-        if (($grep_string eq "vpd" or $grep_string eq "mprom") and $key_url =~ /\/motherboard$/) {
-            xCAT::SvrUtils::sendmsg("No mprom information is available", $callback, $node);
-            next if ($grep_string eq "mprom");
-        } 
-
-        if (($grep_string eq "vpd" or $grep_string eq "deviceid") and $key_url =~ /\/motherboard$/) {
-            xCAT::SvrUtils::sendmsg("No deviceid information is available", $callback, $node);
-            next if ($grep_string eq "deviceid");
-        } 
-
-        if ($grep_string eq "uuid") {
-            xCAT::SvrUtils::sendmsg("No uuid information is available", $callback, $node);
-            last;
-        } 
-
-        if ($grep_string eq "guid") {
-            xCAT::SvrUtils::sendmsg("No guid information is available", $callback, $node);
-            last;
-        } 
-
-        if ($grep_string eq "mac" and $key_url =~ /\/ethernet/) {
-            my $macaddress = "MAC: " . $content{MACAddress};
-            xCAT::SvrUtils::sendmsg("$macaddress", $callback, $node);
-            next;
-        } 
-
-        if ($grep_string eq "all" or $key_url =~ /\/$grep_string/) {
             if ($key_url =~ /\/(cpu\d*)\/(\w+)/) {
                 $src = "$1 $2";
             } else {
@@ -1084,17 +1077,25 @@ sub rinv_response {
             }
 
             foreach my $key (keys %content) {
+                # If not all options is specified, check whether the key string contains
+                # the keyword option.  If so, add it to the return data
+                if ($grep_string ne "all" and ((lc($key) !~ m/$grep_string/i) and ($key_url !~ m/$grep_string/i)) ) {
+                    next;
+                }
                 $content_info = uc ($src) . " " . $key . " : " . $content{$key};
-                push (@sorted_output, $node . ": ". $content_info); #Save output in array
+                push (@sorted_output, $content_info); #Save output in array
             }
         }
-     }
-     # If sorted array has any contents, sort it and print it
-     if (scalar @sorted_output > 0) {
-         @sorted_output = sort @sorted_output; #Sort all output
-         my $result = join "\n", @sorted_output; #Join into a single string for easier display
-         xCAT::SvrUtils::sendmsg("$result", $callback);
-     }
+    }
+    # If sorted array has any contents, sort it and print it
+    if (scalar @sorted_output > 0) {
+        # sort alpha, then numeric 
+        my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
+            grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+    } else {
+        xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
+    }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
