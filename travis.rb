@@ -43,7 +43,7 @@ puts "password : #{password}"
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
   #system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
   buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
-  puts "buildresult :---------------------------------------------------------------------------- #{buildreslut}"
+  puts "buildresult :---------------------------------------------------------------------------- #{buildresult}"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
