@@ -48,10 +48,10 @@ puts "password : #{password}"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
-  buildresult.delete "\'"
-  buildresult.delete "\""
-  buildresult.delete "\n"
-  puts buildresult
+  buildresult.delete!('\'')
+  buildresult.delete!('\"')
+  buildresult.delete!('\n')
+  p buildresult
   test = "test"
   p test
   `curl -u "#{username}:#{password}" -X POST -d "{\"body\":\"#{buildresult}\"}"  #{post_url}`
