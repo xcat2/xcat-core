@@ -48,7 +48,7 @@ puts "password : #{password}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
   test  = "test"
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":">**builderror**\r\n#{test}"}'  #{post_url}`
   
   ############################       install        ###########################
   #system("cd ..")
