@@ -42,12 +42,12 @@ puts "password : #{password}"
   system("gpg --list-keys")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
   #system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
-  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
+  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>`
   puts "buildresult :begin:---------------------------------------------------------------------------- #{buildresult}-------------end"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
-  test  = "test"
+  buildresult.gsub(/\'|\"/,'')
   `curl -u "#{username}:#{password}" -X POST -d '{"body":">**builderror**\r\n#{test}"}'  #{post_url}`
   
   ############################       install        ###########################
