@@ -54,7 +54,7 @@ puts "password : #{password}"
   buildresult.delete!('\\n')
   p buildresult
   test = "test"
-  p test
+  p test 
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}"}'  #{post_url}`
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{buildresult}"}'  #{post_url}`  
 
