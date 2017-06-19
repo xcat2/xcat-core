@@ -48,7 +48,8 @@ puts "password : #{password}"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
-  buildresult.gsub(/\'|\"/,'')
+  buildresult.gsub('\'','')
+  buildresult.gsub('\"','')
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"buildresult #{buildresult}"}'  #{post_url}`
   
   ############################       install        ###########################
