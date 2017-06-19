@@ -48,8 +48,9 @@ puts "password : #{password}"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
-  buildresult.gsub('\'','')
-  buildresult.gsub('\"','')
+  buildresult.delete "\'"
+  buildresult.delete "\""
+  buildresult.delete "\n"
   puts buildresult
   test = "test"
   p test
