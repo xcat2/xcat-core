@@ -51,10 +51,11 @@ puts "password : #{password}"
   buildresult.delete!('\'')
   buildresult.delete!('\"')
   buildresult.delete!('\:')
+  buildresult.stub!('\n','')
   p buildresult
-  test = "test"
+  test = "test\n"
   p test
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{buildresult}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{test}"}'  #{post_url}`
   
   ############################       install        ###########################
   #system("cd ..")
