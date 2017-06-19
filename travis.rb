@@ -50,8 +50,10 @@ puts "password : #{password}"
   #buildresulterror = buildresult[-20..-1]
   buildresult.gsub('\'','')
   buildresult.gsub('\"','')
-  p buildresult
-  `curl -u "#{username}:#{password}" -X POST -d '{\"body\":\"#{buildresult}\"}'  #{post_url}`
+  puts buildresult
+  test = "test"
+  p test
+  `curl -u "#{username}:#{password}" -X POST -d "{\"body\":\"#{buildresult}\"}"  #{post_url}`
   
   ############################       install        ###########################
   #system("cd ..")
