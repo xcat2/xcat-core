@@ -41,7 +41,9 @@ puts "password : #{password}"
   puts "\033[42m gpg --list-keys\033[0m\n"
   system("gpg --list-keys")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
-  system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
+  #system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
+  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
+  puts "buildresult :---------------------------------------------------------------------------- #{buildreslut}"
   #puts "buildresult : #{buildresult}"
   #####  TODO  get build error information#####
   #buildresulterror = buildresult[-20..-1]
