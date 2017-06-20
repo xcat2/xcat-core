@@ -51,7 +51,7 @@ puts "password : #{password}"
     p bLastLine
     bLastLine.delete!('\'')
     bLastLine.delete!('\"')
-    bLastLine.delete!('\:')
+    #bLastLine.delete!('\:')
     bLastLine.chomp!
     p bLastLine
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
@@ -103,7 +103,7 @@ puts "password : #{password}"
     p lastLine
     lastLine.delete!('\'')
     lastLine.delete!('\"')
-    lastLine.delete!('\:')
+    #lastLine.delete!('\:')
     lastLine.chomp!
     p lastLine
      `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
@@ -139,6 +139,10 @@ puts "password : #{password}"
   system("service xcatd status")
 
 
+###################    test   -------------------------------
+  currentPath = `pwd`
+  puts "currentPath ---------\n"
+  p currentPath
 
 
 
@@ -170,6 +174,48 @@ if(event_type == "pull_request")
  
   
   ######################################  check syntax  ################################################
+  libFiles = {"/build-perl-lib/Confluent/"=>"Client.pm",
+              "/build-perl-lib/Confluent/"=>"TLV.pm",
+                  "/build-perl-lib/Crypt/"=>"CBC.pm",
+                  "/build-perl-lib/Crypt/"=>"Rijndael.pm",
+                   "/build-perl-lib/HTTP/"=>"Async.pm",
+                   "/build-perl-lib/HTTP/"=>"Headers.pm",
+              "/build-perl-lib/IO/Socket/"=>"SSL.pm",
+                    "/build-perl-lib/LWP/"=>"Simple.pm",
+                    "/build-perl-lib/Net/"=>"DNS.pm",
+                    "/build-perl-lib/Net/"=>"SSLeay.pm",
+                    "/build-perl-lib/Net/"=>"Telnet.pm",
+                   "/build-perl-lib/SOAP/"=>"Lite.pm",
+                    "/build-perl-lib/XML/"=>"LibXML.pm",
+                    "/build-perl-lib/XML/"=>"Simple.pm",
+                   "/build-perl-lib/xCAT/"=>"SwitchHandler.pm",
+        "/build-perl-lib/xCAT_monitoring/"=>"monitorctrl.pm",
+        "/build-perl-lib/xCAT_monitoring/"=>"montbhandler.pm",
+        "/build-perl-lib/xCAT_monitoring/"=>"rmcmetrix.pm",
+        "/build-perl-lib/xCAT_monitoring/"=>"rrdutil.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"blade.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"bmcconfig.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"conserver.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"dhcp.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"hmc.pm",
+            "/build-perl-lib/xCAT_plugin/"=>"notification.pm",
+                        "/build-perl-lib/"=>"Expect.pm",
+                        "/build-perl-lib/"=>"JSON.pm",
+                        "/build-perl-lib/"=>"LWP.pm",
+                        "/build-perl-lib/"=>"SNMP.pm",
+                        "/build-perl-lib/"=>"probe_global_constant.pm",
+                        "/build-perl-lib/"=>"probe_utils.pm"}
+  currentPath = `pwd`
+  puts "currentPath ---------\n"
+  p currentPath
+  libFiles.each do |key,value|
+	  	f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
+ 	  f.puts("1;")
+  end
+ 
+ 
+ 
+ 
   resultArr = Array.new
   #print all path at current path
   puts "work path : #{Dir.pwd}"
