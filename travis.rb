@@ -31,14 +31,16 @@ puts "password : #{password}"
 #`gpg --list-keys`
 #`gpg --gen-key`
 
- ############################        set post_url  ########################
-  number= "1"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
-  puts "post_url : #{post_url}"
 
 
 =begin
+ ############################        set post_url  ########################
+  number= "1"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  puts "post_url : #{post_url}"
+
+
  ############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
   system("gpg --list-keys")
@@ -168,7 +170,9 @@ if(event_type == "pull_request")
   puts "pull_request title : #{title}"
   body = jresp['body']
   puts "pull_request body : #{body}"
-  
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  puts "post_url : #{post_url}"	
+	
   # Remove digits
   #title = title.gsub!(/\D/, "")
   
