@@ -41,29 +41,33 @@ puts "password : #{password}"
   puts "\033[42m gpg --list-keys\033[0m\n"
   system("gpg --list-keys")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
-  #system("sudo -s ./build-ubunturepo -c UP=0 BUILDALL=1")
-  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
-  #puts "buildresult :begin:---------------------------------------------------------------------------- #{buildresult}-------------end"
-  p buildresult
-  #puts "buildresult : #{buildresult}"
-  #####  TODO  get build error information#####
-  #buildresulterror = buildresult[-20..-1]
-  buildresult.delete!('\'')
-  buildresult.delete!('\"')
-  buildresult.delete!('\:')
-  buildresult.chomp!
-  ##buildresult.gsub!(/\s/,'')
-  #p buildresult
+  #buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
+  buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1")
+  if(!buildresult)
+    bLogLines = IO.readlines("/tmp/build-log")
+    bLastIndex = bLogLines.size-1
+    bLastLine = logLinesArr[bLastIndex]
+    puts "lastline : -------------------\n"
+    p bLastLine
+    bLastLine.delete!('\'')
+    bLastLine.delete!('\"')
+    #bLastLine.delete!('\:')
+    bLastLine.chomp!
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
+  else
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
+  end
+  
+
+=begin
   if(buildresult.include?("ERROR")||buildresult.include?("error"))
     errorindex = buildresult.rindex("ERROR")
     puts "errorindex : #{errorindex}"
     puts "error: #{buildresult}"
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
   end
-  test = "test"
-  p test 
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{test}"}'  #{post_url}`
-  #`curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
+=end
+
 
   ############################       install        ###########################
   #system("cd ..")
@@ -100,7 +104,9 @@ puts "password : #{password}"
     lastLine.delete!('\"')
     #lastLine.delete!('\:')
     lastLine.chomp!
-     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{lastLine}"}'  #{post_url}`
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
+  else
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
   end
 
 
