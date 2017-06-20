@@ -51,8 +51,9 @@ puts "password : #{password}"
     p bLastLine
     bLastLine.delete!('\'')
     bLastLine.delete!('\"')
-    #bLastLine.delete!('\:')
+    bLastLine.delete!('\:')
     bLastLine.chomp!
+    p bLastLine
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
   else
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
@@ -102,8 +103,9 @@ puts "password : #{password}"
     p lastLine
     lastLine.delete!('\'')
     lastLine.delete!('\"')
-    #lastLine.delete!('\:')
+    lastLine.delete!('\:')
     lastLine.chomp!
+    p lastLine
      `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
   else
      `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
