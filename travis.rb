@@ -90,6 +90,18 @@ puts "password : #{password}"
   installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1")
   puts "installresult : #{installresult}"
   system("cat /tmp/install-log")
+  if(!installresult)
+    logLinesArr = IO.readlines("/tmp/install-log")
+    lastIndex = logLinesArr.size-1
+    lastLine = logLinesArr[lastIndex]
+    puts "lastline : -------------------\n"
+    p lastLine
+    lastLine.delete!('\'')
+    lastLine.delete!('\"')
+    lastLine.delete!('\:')
+    lastLine.chomp!
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{lastline}"}'  #{post_url}`
+  end
 
 
 ###########################    Verify xCAT Installation   ##################################
