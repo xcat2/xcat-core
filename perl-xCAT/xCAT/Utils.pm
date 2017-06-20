@@ -638,7 +638,7 @@ sub calc_conserver_version
 {
     my $ver_str = shift;
     my @vers = split(/\./, $ver_str);
-    return ord($vers[2]) + ord($vers[1]) * 10000 + ord($vers[0]) * 100000000;
+    return int($vers[2]) + int($vers[1]) * 10000 + int($vers[0]) * 100000000;
 }
 
 
