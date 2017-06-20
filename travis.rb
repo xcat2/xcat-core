@@ -223,12 +223,13 @@ if(event_type == "pull_request")
   libFiles.each{|value|
 	#f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
  	#f.puts("1;")
-	f=File.new("#{value}","r+")
-	if f
-		f.syswrite("1;")
-        else
-                puts "Unable to open file!"
-        end
+	#f=File.new("#{value}","r+")
+	#if f
+	#	f.syswrite("1;")
+        #else
+        #        puts "Unable to open file!"
+        #end
+	system("echo "1;" > #{value}")
 }
  
  
