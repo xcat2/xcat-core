@@ -130,6 +130,13 @@ rm -f $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/getxcatdocs.1.html
 rm -f $RPM_BUILD_ROOT/%{prefix}/share/man/man1/getxcatdocs.1
 %endif
 
+# Only zVM needs scripts below. These scripts also need Capture::Tiny
+%if %nots390x
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatCopyCloneList.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatexport.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatimport.pl
+%endif
+
 # These links get made in the RPM_BUILD_ROOT/prefix area
 ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rpower
 ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rscan
