@@ -88,8 +88,8 @@ puts "password : #{password}"
   #puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  `sudo apt-get install xCAT --force-yes`
-  #puts "installresult : #{installresult}"
+  installresult = `sudo apt-get install xCAT --force-yes 2>&1`
+  puts "installresult : #{installresult}"
 
 
 ###########################    Verify xCAT Installation   ##################################
@@ -159,7 +159,18 @@ if(event_type == "pull_request")
     if(File.file?(path))
       #puts "path : #{path}"
       #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
-    
+      
+#=begin
+     #--------file command test----------
+     fileType = `file #{path} 2>&1`
+     puts "fileReturn : #{fileType}"
+     if(fileType.include?("shell"))
+           puts "shell"
+     else if(fileType.include?("Perl"))
+           puts "Perl"
+     end
+#=end
+     
       base_name = File.basename(path,".*")
       #puts "notype_basename : #{base_name}"
       file_type = path.split(base_name)
