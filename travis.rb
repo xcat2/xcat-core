@@ -142,7 +142,11 @@ puts "password : #{password}"
 ###################    test   -------------------------------
   currentPath = `pwd`
   puts "currentPath ---------\n"
+  lpath = "/build-perl-lib/Confluent/"
+  allpath = "#{currentPath}#{lpath}"
   p currentPath
+  p lpath
+  puts allpath
 
 
 
