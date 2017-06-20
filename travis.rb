@@ -52,10 +52,10 @@ puts "password : #{password}"
   buildresult.delete!('\"')
   buildresult.delete!('\:')
   buildresult.chomp!
-  buildresult.gsub!(/\s/,'')
+  #buildresult.gsub!(/\s/,'')
   p buildresult
   if(buildresult.include?("ERROR")||buildresult.include?("error"))
-    errorindex = buildresult.reindex("error")
+    errorindex = buildresult.rindex("error")
     puts "errorindex : #{errorindex}"
     puts "error: #{buildresult}"
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
@@ -63,7 +63,7 @@ puts "password : #{password}"
   test = "test"
   p test 
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala\r\n#{test}"}'  #{post_url}`
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
+  #`curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
 
   ############################       install        ###########################
   #system("cd ..")
