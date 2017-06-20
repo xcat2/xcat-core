@@ -185,51 +185,51 @@ if(event_type == "pull_request")
  
   
   ######################################  check syntax  ################################################
-  libFiles = {"/check-perl-lib/Confluent/"=>"Client.pm",
-              "/check-perl-lib/Confluent/"=>"TLV.pm",
-                  "/check-perl-lib/Crypt/"=>"CBC.pm",
-                  "/check-perl-lib/Crypt/"=>"Rijndael.pm",
-                   "/check-perl-lib/HTTP/"=>"Async.pm",
-                   "/check-perl-lib/HTTP/"=>"Headers.pm",
-              "/check-perl-lib/IO/Socket/"=>"SSL.pm",
-                    "/check-perl-lib/LWP/"=>"Simple.pm",
-                    "/check-perl-lib/Net/"=>"DNS.pm",
-                    "/check-perl-lib/Net/"=>"SSLeay.pm",
-                    "/check-perl-lib/Net/"=>"Telnet.pm",
-                   "/check-perl-lib/SOAP/"=>"Lite.pm",
-                    "/check-perl-lib/XML/"=>"LibXML.pm",
-                    "/check-perl-lib/XML/"=>"Simple.pm",
-                   "/check-perl-lib/xCAT/"=>"SwitchHandler.pm",
-        "/check-perl-lib/xCAT_monitoring/"=>"monitorctrl.pm",
-        "/check-perl-lib/xCAT_monitoring/"=>"montbhandler.pm",
-        "/check-perl-lib/xCAT_monitoring/"=>"rmcmetrix.pm",
-        "/check-perl-lib/xCAT_monitoring/"=>"rrdutil.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"blade.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"bmcconfig.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"conserver.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"dhcp.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"hmc.pm",
-            "/check-perl-lib/xCAT_plugin/"=>"notification.pm",
-                        "/check-perl-lib/"=>"Expect.pm",
-                        "/check-perl-lib/"=>"JSON.pm",
-                        "/check-perl-lib/"=>"LWP.pm",
-                        "/check-perl-lib/"=>"SNMP.pm",
-                        "/check-perl-lib/"=>"probe_global_constant.pm",
-                        "/check-perl-lib/"=>"probe_utils.pm"}
+  libFiles = ["/check-perl-lib/Confluent/Client.pm",
+              "/check-perl-lib/Confluent/TLV.pm",
+                  "/check-perl-lib/Crypt/CBC.pm",
+                  "/check-perl-lib/Crypt/Rijndael.pm",
+                   "/check-perl-lib/HTTP/Async.pm",
+                   "/check-perl-lib/HTTP/Headers.pm",
+              "/check-perl-lib/IO/Socket/SSL.pm",
+                    "/check-perl-lib/LWP/Simple.pm",
+                    "/check-perl-lib/Net/DNS.pm",
+                    "/check-perl-lib/Net/SSLeay.pm",
+                    "/check-perl-lib/Net/Telnet.pm",
+                   "/check-perl-lib/SOAP/Lite.pm",
+                    "/check-perl-lib/XML/LibXML.pm",
+                    "/check-perl-lib/XML/Simple.pm",
+                   "/check-perl-lib/xCAT/SwitchHandler.pm",
+        "/check-perl-lib/xCAT_monitoring/monitorctrl.pm",
+        "/check-perl-lib/xCAT_monitoring/montbhandler.pm",
+        "/check-perl-lib/xCAT_monitoring/rmcmetrix.pm",
+        "/check-perl-lib/xCAT_monitoring/rrdutil.pm",
+            "/check-perl-lib/xCAT_plugin/blade.pm",
+            "/check-perl-lib/xCAT_plugin/bmcconfig.pm",
+            "/check-perl-lib/xCAT_plugin/conserver.pm",
+            "/check-perl-lib/xCAT_plugin/dhcp.pm",
+            "/check-perl-lib/xCAT_plugin/hmc.pm",
+            "/check-perl-lib/xCAT_plugin/notification.pm",
+                        "/check-perl-lib/Expect.pm",
+                        "/check-perl-lib/JSON.pm",
+                        "/check-perl-lib/LWP.pm",
+                        "/check-perl-lib/SNMP.pm",
+                        "/check-perl-lib/probe_global_constant.pm",
+                        "/check-perl-lib/probe_utils.pm"]
   currentPath = `pwd`
   puts "currentPath ---------\n"
   currentPath.chomp!
   p currentPath
-  libFiles.each do |key,value|
+  libFiles.each{|value|
 	#f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
  	#f.puts("1;")
-	f=File.new("#{currentPath}#{key}#{value}","r+")
+	f=File.new("#{value}","r+")
 	if f
 		f.syswrite("1;")
         else
                 puts "Unable to open file!"
         end
-  end
+}
  
  
  
