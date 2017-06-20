@@ -56,7 +56,9 @@ puts "password : #{password}"
   p buildresult
   if(buildresult.include?("ERROR")||buildresult.include?("error"))
     errorindex = buildresult.reindex("error")
-    puts "error: #{buildresult[#{errorindex}..-2]}"
+    puts "errorindex : #{errorindex}"
+    puts "error: #{buildresult}"
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
   end
   test = "test"
   p test 
