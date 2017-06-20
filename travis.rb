@@ -88,7 +88,7 @@ puts "password : #{password}"
   #puts updateresult
   #`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  installresult = `sudo apt-get install xCAT --force-yes 2>&1`
+  installresult = `sudo apt-get install xCAT --force-yes`
   puts "installresult : #{installresult}"
 
 
