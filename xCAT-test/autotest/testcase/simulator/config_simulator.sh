@@ -47,6 +47,10 @@ if [ $flag = "-s" ]; then
         rmdef $cnhn
 
         /root/openbmc_simulator/simulator -n $nic -r $range 
+        if [ $? != 0 ]; then
+            echo "Start simulator Failed"
+            exit 1
+        fi
 
         node_end=$[nodes-1]
         chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=$username bmcpassword=$password
