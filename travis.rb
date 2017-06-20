@@ -33,11 +33,264 @@ puts "password : #{password}"
 
  ############################        set post_url  ########################
   number= "1"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
   puts "post_url : #{post_url}"
 
+
+=begin
  ############################        build         #########################
+  puts "\033[42m gpg --list-keys\033[0m\n"
+  system("gpg --list-keys")
+  puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
+  #buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
+  buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1")
+  if(!buildresult)
+    bLogLines = IO.readlines("/tmp/build-log")
+    bLastIndex = bLogLines.size-1
+    bLastLine = logLinesArr[bLastIndex]
+    puts "lastline : -------------------\n"
+    p bLastLine
+    bLastLine.delete!('\'')
+    bLastLine.delete!('\"')
+    #bLastLine.delete!('\:')
+    bLastLine.chomp!
+    p bLastLine
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
+  else
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
+  end
+  
+
+#=begin
+  if(buildresult.include?("ERROR")||buildresult.include?("error"))
+    errorindex = buildresult.rindex("ERROR")
+    puts "errorindex : #{errorindex}"
+    puts "error: #{buildresult}"
+    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
+  end
+#=end
+
+
+  ############################       install        ###########################
+  #system("cd ..")
+  #system("cd ..")
+  #`cd ..`
+  puts "\033[42mls -a \033[0m\n"
+  system("ls -a")
+  #system("cd xcat-core")
+  puts "\033[42msudo ./mklocalrepo.sh\033[0m\n"
+  system("sudo ./../../xcat-core/mklocalrepo.sh")
+  #system("sudo chmod 777 /etc/apt/sources.list")
+  system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
+  system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
+  #system("sudo cat /etc/apt/sources.list")
+  puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
+  system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
+  puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
+  #system("sudo apt-get  install software-properties-common")
+  ##`sudo apt-get clean all`
+  puts "\033[42m sudo apt-get -qq update \033[0m\n"
+  system("sudo apt-get -qq update")
+  ##`sudo apt-get install xCAT --force-yes -y`
+  puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
+  installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1")
+  puts "installresult : #{installresult}"
+  system("cat /tmp/install-log")
+  if(!installresult)
+    logLinesArr = IO.readlines("/tmp/install-log")
+    lastIndex = logLinesArr.size-1
+    lastLine = logLinesArr[lastIndex]
+    puts "lastline : -------------------\n"
+    p lastLine
+    lastLine.delete!('\'')
+    lastLine.delete!('\"')
+    #lastLine.delete!('\:')
+    lastLine.chomp!
+    p lastLine
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
+  else
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
+  end
+
+
+###########################    Verify xCAT Installation   ##################################
+  puts "\033[42msource /etc/profile.d/xcat.sh\033[0m\n"
+  system("source /etc/profile.d/xcat.sh")
+  system("sudo echo $USER")
+  #`sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
+  #`sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
+  puts "\033[42m sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis \033[0m\n"
+  system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis")
+  system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow")
+  puts "\033[42mlsxcatd -v\033[0m\n"
+  system("lsxcatd -v")
+  #puts lsxcatedresult
+  #`sudo -s /opt/xcat/sbin/tabdump policy`
+  #`sudo -s /opt/xcat/sbin/tabdump site`
+  puts "\033[42mtabdump policy\033[0m\n"
+  system("tabdump policy")
+ 
+  puts "\033[42mtabdump site\033[0m\n"
+  system("tabdump site")
+  system("ls /opt/xcat/sbin")
+  system("ls /opt/xcat")
+  puts "\033[42m service xcatd start \033[0m\n"
+  system("service xcatd start")
+  puts "\033[42m service xcatd status \033[0m\n"
+  system("service xcatd status")
+
+
+###################    test   -------------------------------
+  currentPath = `pwd`
+  puts "currentPath ---------\n"
+  currentPath.chomp!
+  lpath = "/build-perl-lib/Confluent/"
+  allpath = "#{currentPath}#{lpath}"
+  p currentPath
+  p lpath
+  puts allpath
+=end
+
+
+
+##########################     pull_request format check   ####################
+if(event_type == "pull_request")
+  #pull_number = system('echo $TRAVIS_PULL_REQUEST')
+  pull_number = ENV['TRAVIS_PULL_REQUEST']
+  puts "pull_number : #{pull_number}"
+  uri = "https://api.github.com/repos/#{ower_repo}/pulls/#{pull_number}"
+  puts "pull_request_url : #{uri}"
+  resp = Net::HTTP.get_response(URI.parse(uri))
+  jresp = JSON.parse(resp.body)
+  #puts "jresp: #{jresp}"
+  title = jresp['title']
+  puts "pull_request title : #{title}"
+  body = jresp['body']
+  puts "pull_request body : #{body}"
+  
+  # Remove digits
+  #title = title.gsub!(/\D/, "")
+  
+  if(!(title =~ /^Add|Refine test case|cases for issue|feature(.*)/))
+    raise "The title of this pull_request have a wrong format. Fix it!"
+  end
+  if(!(body =~ (/Add|Refine \d case|cases in this pull request(.*)/m))||!(body =~ (/This|These case|cases is|are added|refined for issue|feature(.*)/m))||!(body =~ (/This pull request is for task(.*)/m)))
+    raise "The description of this pull_request have a wrong format. Fix it!"
+  end
+ 
+  
+  ######################################  check syntax  ################################################
+  libFiles = {"/check-perl-lib/Confluent/"=>"Client.pm",
+              "/check-perl-lib/Confluent/"=>"TLV.pm",
+                  "/check-perl-lib/Crypt/"=>"CBC.pm",
+                  "/check-perl-lib/Crypt/"=>"Rijndael.pm",
+                   "/check-perl-lib/HTTP/"=>"Async.pm",
+                   "/check-perl-lib/HTTP/"=>"Headers.pm",
+              "/check-perl-lib/IO/Socket/"=>"SSL.pm",
+                    "/check-perl-lib/LWP/"=>"Simple.pm",
+                    "/check-perl-lib/Net/"=>"DNS.pm",
+                    "/check-perl-lib/Net/"=>"SSLeay.pm",
+                    "/check-perl-lib/Net/"=>"Telnet.pm",
+                   "/check-perl-lib/SOAP/"=>"Lite.pm",
+                    "/check-perl-lib/XML/"=>"LibXML.pm",
+                    "/check-perl-lib/XML/"=>"Simple.pm",
+                   "/check-perl-lib/xCAT/"=>"SwitchHandler.pm",
+        "/check-perl-lib/xCAT_monitoring/"=>"monitorctrl.pm",
+        "/check-perl-lib/xCAT_monitoring/"=>"montbhandler.pm",
+        "/check-perl-lib/xCAT_monitoring/"=>"rmcmetrix.pm",
+        "/check-perl-lib/xCAT_monitoring/"=>"rrdutil.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"blade.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"bmcconfig.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"conserver.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"dhcp.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"hmc.pm",
+            "/check-perl-lib/xCAT_plugin/"=>"notification.pm",
+                        "/check-perl-lib/"=>"Expect.pm",
+                        "/check-perl-lib/"=>"JSON.pm",
+                        "/check-perl-lib/"=>"LWP.pm",
+                        "/check-perl-lib/"=>"SNMP.pm",
+                        "/check-perl-lib/"=>"probe_global_constant.pm",
+                        "/check-perl-lib/"=>"probe_utils.pm"}
+  currentPath = `pwd`
+  puts "currentPath ---------\n"
+  currentPath.chomp!
+  p currentPath
+  libFiles.each do |key,value|
+	f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
+ 	f.puts("1;")
+  end
+ 
+ 
+ 
+ 
+  resultArr = Array.new
+  #print all path at current path
+  puts "work path : #{Dir.pwd}"
+  Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
+    #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
+    #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
+    if(File.file?(path))
+      #puts "path : #{path}"
+      #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
+      
+#=begin
+     #--------file command test----------
+     fileType = `file #{path} 2>&1`
+     puts "fileReturn : #{fileType}"
+     if(fileType.include?("shell"))
+           puts "shell"
+     elsif(fileType.include?("Perl"))
+           puts "Perl"
+     end
+#=end
+     
+      base_name = File.basename(path,".*")
+      #puts "notype_basename : #{base_name}"
+      file_type = path.split(base_name)
+      #puts "file type : #{file_type[1]}"
+    
+      #puts "\n"
+      if(file_type[1] == ".pm")
+        puts "path : #{path}"
+        result = %x[perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
+        #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
+        puts result
+        puts "result[-3..-2] : #{result[-3..-2]}"
+
+        if(result[-3..-2]!="OK")
+          #p result
+          resultArr.push(result)
+        end
+
+        puts "\n"
+      end
+    end
+  
+  end #find ... do
+  
+    
+  ####################   add comments  ########################## 
+  #####follow code is added in <set post_rul >###
+  #number= "1"
+  ##post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
+  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
+  #puts post_url
+  
+  #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : #{resultArr}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
+  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
+ 
+  ####################    stop and print error in travis (red color)   #######################
+  puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
+  #puts "\033[31m#{resultArr}\033[0m\n"
+  resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
+  puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
+  #raise "There is a syntax error on the above file. Fix it!"
+  
+  
+  #############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
   system("gpg --list-keys")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
@@ -137,190 +390,6 @@ puts "password : #{password}"
   system("service xcatd start")
   puts "\033[42m service xcatd status \033[0m\n"
   system("service xcatd status")
-
-
-###################    test   -------------------------------
-  currentPath = `pwd`
-  puts "currentPath ---------\n"
-  currentPath.chomp!
-  lpath = "/build-perl-lib/Confluent/"
-  allpath = "#{currentPath}#{lpath}"
-  p currentPath
-  p lpath
-  puts allpath
-
-
-
-
-##########################     pull_request format check   ####################
-if(event_type == "pull_request")
-  #pull_number = system('echo $TRAVIS_PULL_REQUEST')
-  pull_number = ENV['TRAVIS_PULL_REQUEST']
-  puts "pull_number : #{pull_number}"
-  uri = "https://api.github.com/repos/#{ower_repo}/pulls/#{pull_number}"
-  puts "pull_request_url : #{uri}"
-  resp = Net::HTTP.get_response(URI.parse(uri))
-  jresp = JSON.parse(resp.body)
-  #puts "jresp: #{jresp}"
-  title = jresp['title']
-  puts "pull_request title : #{title}"
-  body = jresp['body']
-  puts "pull_request body : #{body}"
-  
-  # Remove digits
-  #title = title.gsub!(/\D/, "")
-  
-  if(!(title =~ /^Add|Refine test case|cases for issue|feature(.*)/))
-    raise "The title of this pull_request have a wrong format. Fix it!"
-  end
-  if(!(body =~ (/Add|Refine \d case|cases in this pull request(.*)/m))||!(body =~ (/This|These case|cases is|are added|refined for issue|feature(.*)/m))||!(body =~ (/This pull request is for task(.*)/m)))
-    raise "The description of this pull_request have a wrong format. Fix it!"
-  end
- 
-  
-  ######################################  check syntax  ################################################
-  libFiles = {"/build-perl-lib/Confluent/"=>"Client.pm",
-              "/build-perl-lib/Confluent/"=>"TLV.pm",
-                  "/build-perl-lib/Crypt/"=>"CBC.pm",
-                  "/build-perl-lib/Crypt/"=>"Rijndael.pm",
-                   "/build-perl-lib/HTTP/"=>"Async.pm",
-                   "/build-perl-lib/HTTP/"=>"Headers.pm",
-              "/build-perl-lib/IO/Socket/"=>"SSL.pm",
-                    "/build-perl-lib/LWP/"=>"Simple.pm",
-                    "/build-perl-lib/Net/"=>"DNS.pm",
-                    "/build-perl-lib/Net/"=>"SSLeay.pm",
-                    "/build-perl-lib/Net/"=>"Telnet.pm",
-                   "/build-perl-lib/SOAP/"=>"Lite.pm",
-                    "/build-perl-lib/XML/"=>"LibXML.pm",
-                    "/build-perl-lib/XML/"=>"Simple.pm",
-                   "/build-perl-lib/xCAT/"=>"SwitchHandler.pm",
-        "/build-perl-lib/xCAT_monitoring/"=>"monitorctrl.pm",
-        "/build-perl-lib/xCAT_monitoring/"=>"montbhandler.pm",
-        "/build-perl-lib/xCAT_monitoring/"=>"rmcmetrix.pm",
-        "/build-perl-lib/xCAT_monitoring/"=>"rrdutil.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"blade.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"bmcconfig.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"conserver.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"dhcp.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"hmc.pm",
-            "/build-perl-lib/xCAT_plugin/"=>"notification.pm",
-                        "/build-perl-lib/"=>"Expect.pm",
-                        "/build-perl-lib/"=>"JSON.pm",
-                        "/build-perl-lib/"=>"LWP.pm",
-                        "/build-perl-lib/"=>"SNMP.pm",
-                        "/build-perl-lib/"=>"probe_global_constant.pm",
-                        "/build-perl-lib/"=>"probe_utils.pm"}
-  currentPath = `pwd`
-  puts "currentPath ---------\n"
-  p currentPath
-  libFiles.each do |key,value|
-	  	f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
- 	  f.puts("1;")
-  end
- 
- 
- 
- 
-  resultArr = Array.new
-  #print all path at current path
-  puts "work path : #{Dir.pwd}"
-  Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
-    #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
-    #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
-    if(File.file?(path))
-      #puts "path : #{path}"
-      #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
-      
-#=begin
-     #--------file command test----------
-     fileType = `file #{path} 2>&1`
-     puts "fileReturn : #{fileType}"
-     if(fileType.include?("shell"))
-           puts "shell"
-     elsif(fileType.include?("Perl"))
-           puts "Perl"
-     end
-#=end
-     
-      base_name = File.basename(path,".*")
-      #puts "notype_basename : #{base_name}"
-      file_type = path.split(base_name)
-      #puts "file type : #{file_type[1]}"
-    
-      #puts "\n"
-      if(file_type[1] == ".pm")
-        puts "path : #{path}"
-        result = %x[perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
-        #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
-        puts result
-        puts "result[-3..-2] : #{result[-3..-2]}"
-
-        if(result[-3..-2]!="OK")
-          #p result
-          resultArr.push(result)
-        end
-
-        puts "\n"
-      end
-    end
-  
-  end #find ... do
-  
-    
-  ####################   add comments  ########################## 
-  #####follow code is added in <set post_rul >###
-  #number= "1"
-  ##post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
-  #puts post_url
-  
-  #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : \n #{resultArr}"}'  #{post_url}`
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
-  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
- 
-  ####################    stop and print error in travis (red color)   #######################
-  puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
-  #puts "\033[31m#{resultArr}\033[0m\n"
-  resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
-  puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
-  #raise "There is a syntax error on the above file. Fix it!"
-  
-  
-  ############################        build         #########################
-  `gpg --list-keys`
-  buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1; 2>&1`
-  puts "buildresult : #{buildresult}"
-  #####  TODO  get build error information#####
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"build error : \n #{resultArr}"}'  #{post_url}`
-  
-  ############################       install        ###########################
-  `cd ../..`
-  `ls -a`
-  `cd xcat-core`
-  `sudo ./mklocalrepo.sh`
-  `sudo chmod 777 /etc/apt/sources.list`
-  `sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
-  `sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list`
-  `sudo cat /etc/apt/sources.list`
-  `sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo -s apt-key add -`
-  `sudo apt-get  install software-properties-common`
-  #`sudo apt-get clean all`
-  `sudo apt-get -qq update`
-  #`sudo apt-get install xCAT --force-yes -y`
-  `sudo apt-get install xCAT --force-yes`
-  `source /etc/profile.d/xcat.sh`
-  `sudo echo "$USER"`
-  `sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh`
-  `sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f`
-  `lsxcatd -v`
-  `sudo chmod 777 /opt/xcat/sbin/tabdump`
-  `sudo -s /opt/xcat/sbin/tabdump policy`
-  `sudo -s /opt/xcat/sbin/tabdump site`
-  `ls /opt/xcat/sbin`
-  `ls /opt/xcat`
-  `service xcatd start`
-  `service xcatd status`
   
 end  #pull_request if
 
