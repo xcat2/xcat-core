@@ -46,6 +46,7 @@ my $bmc_user;
 my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
+my $openbmc_port = 2200;
 
 #-------------------------------------------------------
 
@@ -584,9 +585,9 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
-                my $nmap_cmd = "nmap ${$live_ip}[$i] -p 2200 -Pn";
+                my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
                 my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /2200\/tcp (\w+)/) {
+                if ($nmap_output =~ /$openbmc_port\/tcp (\w+)/) {
                     my $port_stat = $1;
                     if ($port_stat eq "open") {
                         bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
@@ -1048,6 +1049,7 @@ sub bmcdiscovery_openbmc{
     my $request_command = shift;
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
+    print "$ip: Detected openbmc, attempting to obtain system information...\n";
     my $http_protocol="https";
     my $openbmc_project_url = "xyz/openbmc_project";
     my $login_endpoint = "login";
@@ -1068,7 +1070,10 @@ sub bmcdiscovery_openbmc{
         $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
         my $req = HTTP::Request->new('GET', $url, $header);
         my $req_output = $brower->request($req);
-        return if ($req_output->is_error); 
+        if ($req_output->is_error) {
+            xCAT::MsgUtils->message("W", { data => ["$ip: Could not obtain system information from BMC. Verify firmware levels are up-to-date."] }, $::CALLBACK);
+            return;
+        }
         my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
