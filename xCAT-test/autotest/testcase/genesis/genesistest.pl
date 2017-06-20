@@ -195,7 +195,7 @@ sub rungenesiscmd {
     }
     `rinstall $noderange "runcmd=cmdtest,shell"`;
     if ($?) {
-      send_msg(0, "nodeset noderange shell failed for runcmd test");
+      send_msg(0, "rinstall noderange shell failed for runcmd test");
     }
     return $value;
 }
