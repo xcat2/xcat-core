@@ -177,10 +177,10 @@ if(event_type == "pull_request")
   #title = title.gsub!(/\D/, "")
   
   if(!(title =~ /^Add|Refine test case|cases for issue|feature(.*)/))
-    raise "The title of this pull_request have a wrong format. Fix it!"
+    #raise "The title of this pull_request have a wrong format. Fix it!"
   end
   if(!(body =~ (/Add|Refine \d case|cases in this pull request(.*)/m))||!(body =~ (/This|These case|cases is|are added|refined for issue|feature(.*)/m))||!(body =~ (/This pull request is for task(.*)/m)))
-    raise "The description of this pull_request have a wrong format. Fix it!"
+    #raise "The description of this pull_request have a wrong format. Fix it!"
   end
  
   
