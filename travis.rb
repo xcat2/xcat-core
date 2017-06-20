@@ -55,14 +55,14 @@ puts "password : #{password}"
   #buildresult.gsub!(/\s/,'')
   p buildresult
   if(buildresult.include?("ERROR")||buildresult.include?("error"))
-    errorindex = buildresult.rindex("error")
+    errorindex = buildresult.rindex("ERROR")
     puts "errorindex : #{errorindex}"
     puts "error: #{buildresult}"
     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
   end
   test = "test"
   p test 
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala\r\n#{test}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{test}"}'  #{post_url}`
   #`curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILDERROR**  :  #{buildresult}"}'  #{post_url}`  
 
   ############################       install        ###########################
