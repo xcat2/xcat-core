@@ -195,7 +195,7 @@ sub rungenesiscmd {
     }
     `rinstall $noderange "runcmd=cmdtest,shell"`;
     if ($?) {
-        send_msg(0, "rinstall noderange shell failed for runcmd test");
+      send_msg(0, "nodeset noderange shell failed for runcmd test");
     }
     return $value;
 }
@@ -257,10 +257,12 @@ sub testxdsh {
         $checkfile   = "/proc/cmdline";
     }
     if (($value == 1) || ($value == 2) || ($value == 3)) {
-        `xdsh $noderange -t 2 cat $checkfile |grep $checkstring`;
+        `xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring `;
         if ($?) {
-            foreach (1 .. 1500) {
-                `xdsh $noderange -t 2 cat $checkfile | grep $checkstring`;
+            foreach (1 .. 10) {
+                `sleep 300`;
+                send_msg(1,"try to run xdsh to check the results again");
+                `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
                 last if ($? == 0);
             }
         }
