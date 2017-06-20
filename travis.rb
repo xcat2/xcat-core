@@ -166,7 +166,7 @@ if(event_type == "pull_request")
      puts "fileReturn : #{fileType}"
      if(fileType.include?("shell"))
            puts "shell"
-     else if(fileType.include?("Perl"))
+     elsif(fileType.include?("Perl"))
            puts "Perl"
      end
 #=end
