@@ -981,6 +981,11 @@ sub bmcdiscovery_ipmi {
                         $serial = $3;
                         last;
                     }
+                    if (($fru_output =~ /Board Serial\s+:\s+(\S*).*Board Part Number\s+:\s+(\S*)/)) {
+                        $mtm    = $1;
+                        $serial = $2;
+                        last;
+                    }
 
                 }
             }
