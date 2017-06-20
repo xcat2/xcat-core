@@ -125,3 +125,30 @@ cmd:rpower testnode stat
 check:rc!=0
 check:output=~Error
 end
+
+start:rpower_softoff
+description:This case is to test softoff option could remote shutdown nodes 
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~Running|on
+cmd:rpower $$CN softoff
+check:rc==0
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:output=~Not Activated|off
+end
+
+start:rpower_onstandby
+description:This case is to test onstandby option could bring server to standby state 
+Attribute: $$CN-The operation object of rpower command
+arch:ppc64
+cmd:rpower $$CN off
+check:rc==0
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:output=~Not Activated|off
+cmd:rpower $$CN onstandby
+cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~standby|Standby
+end
