@@ -229,7 +229,7 @@ if(event_type == "pull_request")
         #else
         #        puts "Unable to open file!"
         #end
-	system("echo "1;" > #{value}")
+	system('echo "1;" > #{value}')
 }
  
  
