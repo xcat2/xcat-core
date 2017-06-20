@@ -52,8 +52,8 @@ puts "password : #{password}"
   buildresult.delete!('\"')
   buildresult.delete!('\:')
   buildresult.chomp!
-  #buildresult.gsub!(/\s/,'')
-  p buildresult
+  ##buildresult.gsub!(/\s/,'')
+  #p buildresult
   if(buildresult.include?("ERROR")||buildresult.include?("error"))
     errorindex = buildresult.rindex("ERROR")
     puts "errorindex : #{errorindex}"
@@ -77,16 +77,15 @@ puts "password : #{password}"
   system("sudo chmod 777 /etc/apt/sources.list")
   system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
   system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
-  system("sudo cat /etc/apt/sources.list")
+  #system("sudo cat /etc/apt/sources.list")
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
   puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
-  system("sudo apt-get  install software-properties-common")
-  #`sudo apt-get clean all`
+  #system("sudo apt-get  install software-properties-common")
+  ##`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
   system("sudo apt-get -qq update")
-  #puts updateresult
-  #`sudo apt-get install xCAT --force-yes -y`
+  ##`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
   installresult = `sudo apt-get install xCAT --force-yes 2>&1`
   puts "installresult : #{installresult}"
