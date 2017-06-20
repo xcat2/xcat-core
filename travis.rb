@@ -87,8 +87,9 @@ puts "password : #{password}"
   system("sudo apt-get -qq update")
   ##`sudo apt-get install xCAT --force-yes -y`
   puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
-  installresult = system("sudo apt-get install xCAT --force-yes")
+  installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1")
   puts "installresult : #{installresult}"
+  system("cat /tmp/install-log")
 
 
 ###########################    Verify xCAT Installation   ##################################
