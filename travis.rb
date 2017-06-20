@@ -98,9 +98,9 @@ puts "password : #{password}"
     p lastLine
     lastLine.delete!('\'')
     lastLine.delete!('\"')
-    lastLine.delete!('\:')
+    #lastLine.delete!('\:')
     lastLine.chomp!
-     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{lastline}"}'  #{post_url}`
+     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> lalala#{lastLine}"}'  #{post_url}`
   end
 
 
