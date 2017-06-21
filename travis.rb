@@ -246,7 +246,7 @@ if(event_type == "pull_request")
       #puts "path : #{path}"
       #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
       
-#=begin
+=begin
      #--------file command test----------
      fileType = `file #{path} 2>&1`
      puts "fileReturn : #{fileType}"
@@ -255,7 +255,7 @@ if(event_type == "pull_request")
      elsif(fileType.include?("Perl"))
            puts "Perl"
      end
-#=end
+=end
      
       base_name = File.basename(path,".*")
       #puts "notype_basename : #{base_name}"
