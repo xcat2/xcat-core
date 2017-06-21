@@ -1083,30 +1083,27 @@ sub rinv_response {
 
         if ($grep_string eq "firm") {
             # This handles the data from the /xyz/openbmc_project/Software endpoint.
-            #
-            # Handle printing out all posssible Software values in a generic format: 
-            #    node: <Purpose> Software: <version> (<Activation>)
-            #
             my $sw_id = (split(/\//, $key_url))[-1];
             if (defined($content{Version}) and $content{Version}) {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
+                $purpose_value = "[$sw_id]$purpose_value";
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
                 #
-                # For 'rinv firm', only print Active software.  'rflash list' will handle others
+                # For 'rinv firm', only print Active software, unless verbose is specified
                 #
-                if ($activation_value =~ "Active") {
+                if ($activation_value =~ "Active" or $::VERBOSE) {
                     #
-                    # The space below between "SOFTWARE:" and $content{Version} is intentional
+                    # The space below between "Firmware Product Version:" and $content{Version} is intentional
                     # to cause the sorting of this line before any additional info lines 
                     #
-                    $content_info = "$purpose_value SOFTWARE[$sw_id]:   $content{Version} ($activation_value)";
+                    $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
                     push (@sorted_output, $content_info); 
     
                     if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
                         # ExtendedVersion is going to be a comma separated list of additional software
                         my @versions = split(',', $content{ExtendedVersion});
                         foreach my $ver (@versions) { 
-                            $content_info = "$purpose_value SOFTWARE[$sw_id]: -- additional info: $ver";
+                            $content_info = "$purpose_value Firmware Product: -- additional info: $ver";
                             push (@sorted_output, $content_info);
                         }
                     }
@@ -1149,7 +1146,14 @@ sub rinv_response {
         # sort alpha, then numeric 
         my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
             grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+        foreach (@sorted_output) { 
+            #
+            # The firmware output requires the ID to be part of the string to sort correctly.
+            # Remove this ID from the output to the user
+            #
+            $_ =~ s/\[.*?\]//;
+            xCAT::SvrUtils::sendmsg("$_", $callback, $node);
+        }
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
