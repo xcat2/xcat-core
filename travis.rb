@@ -258,6 +258,7 @@ if(event_type == "pull_request")
   resultArr = Array.new
   #print all path at current path
   puts "work path : #{Dir.pwd}"
+  i = 1
   Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
     #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
     #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
@@ -282,7 +283,6 @@ if(event_type == "pull_request")
       #puts "file type : #{file_type[1]}"
     
       #puts "\n" 
-      i = 1
       if(file_type[1] == ".pm")
         puts "path : #{path}"
         result = %x[perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
@@ -309,7 +309,7 @@ if(event_type == "pull_request")
     end
   
   end #find ... do
-  resultArr1 = resultArr.join(";     ")
+  resultArr1 = resultArr.join("****")
   puts "resultArr : #{resultArr1}"
    
   ####################   add comments  ########################## 
