@@ -307,7 +307,7 @@ if(event_type == "pull_request")
   
   end #find ... do
   resultArr1 = resultArr.join("********")
-  puts "resultArr : #{resultArr}"
+  puts "resultArr : #{resultArr1}"
    
   ####################   add comments  ########################## 
   #####follow code is added in <set post_rul >###
