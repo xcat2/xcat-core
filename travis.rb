@@ -30,8 +30,10 @@ puts "password : #{password}"
 #`sudo ./build-ubunturepo -c UP=0 BUILDALL=1;`
 #`gpg --list-keys`
 #`gpg --gen-key`
-
-
+tmppath = "./lalala/lala"
+system("mkdir -p #{tmppath}")
+system("echo \"1;\" > #{tmppath}/1.txt")
+cat "#{tmppath}/1.txt"
 
 =begin
  ############################        set post_url  ########################
@@ -247,7 +249,7 @@ if(event_type == "pull_request")
         #        puts "Unable to open file!"
         #end
 	allpath = "#{currentPath}#{value}"
-	system('echo "1;" > #{allpath}')
+	system("echo \"1;\" > #{allpath}")
 }
  
  
