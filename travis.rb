@@ -167,7 +167,7 @@ if(event_type == "pull_request")
         puts "path : #{path}"
         result = %x[perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
         #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
-        #puts result
+        puts result
         puts "result[-3..-2] : #{result[-3..-2]}"
 
         if(result[-3..-2]!="OK")
