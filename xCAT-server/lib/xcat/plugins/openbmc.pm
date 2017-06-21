@@ -156,6 +156,14 @@ my %status_info = (
     RFLASH_FILE_UPLOAD_RESPONSE => {
         process        => \&rflash_response,
     },
+    RFLASH_UPDATE_ACTIVATE_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/software",
+        data           => "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
+    },
+    RFLASH_UPDATE_ACTIVATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
 
     RINV_REQUEST => {
         method         => "GET",
@@ -564,10 +572,19 @@ sub parse_args {
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $filename_passed = 0;
+        my $updateid_passed = 0;
         foreach my $opt (@$extrargs) {
+            print "Examening $opt \n";
             # Only files ending on .tar are allowed
             if ($opt =~ /.*\.tar$/i) {
                 $filename_passed = 1;
+                print "Opt matches filename ending on .tar \n";
+                next;
+            }
+            # Check if hex number for the updateid is passed
+            if ($opt =~ /^[[:xdigit:]]+$/i) {
+                $updateid_passed = 1;
+                print "Opt matches hex fileid \n";
                 next;
             }
             if ($filename_passed) {
@@ -577,9 +594,17 @@ sub parse_args {
                 }
             }
             else {
-                # Filename was not passed, check flags allowed without file
-                if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
-                    return ([ 1, "Invalid option specified: $opt" ]);
+                if ($updateid_passed) {
+                    # Updateid was passed, check flags allowed with update id
+                    if ($opt !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
+                        return ([ 1, "Invalid option specified when an update id is provided: $opt" ]);
+                    }
+                }
+                else {
+                   # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
+                   if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
+                       return ([ 1, "Invalid option specified: $opt" ]);
+                   }
                 }
             }
         }
@@ -772,9 +797,11 @@ sub parse_command_status {
 
     if ($command eq "rflash") {
         my $check_version = 0;
+<<<<<<< HEAD
         my $list = 0;
         my $delete = 0;
         my $upload = 0;
+        my $activate = 0;
 
         if ($$subcommands[-1] =~ /c|check/) {
             $check_version = 1;
@@ -787,6 +814,9 @@ sub parse_command_status {
             pop(@$subcommands);
         } elsif ($$subcommands[-1] =~ /u|upload/) {
             $upload = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /a|activate/) {
+            $activate = 1;
             pop(@$subcommands);
         }
 
@@ -822,7 +852,11 @@ sub parse_command_status {
                 }
             }
             else {
-                # TODO Process file id passed in
+                # Check if hex number for the updateid is passed
+                if ($update_file =~ /^[[:xdigit:]]+$/i) {
+                    # Update init_url to include the id of the update to activate
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
+                }
             }
         }
         if ($check_version) {
@@ -843,6 +877,14 @@ sub parse_command_status {
             # Upload specified update file to  BMC
             $next_status{LOGIN_RESPONSE} = "RFLASH_FILE_UPLOAD_REQUEST";
             $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
+        }
+        if ($activate) {
+            # MG
+            print "Current value of activate request $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} \n";
+            $next_status{LOGIN_RESPONSE} = "RFLASH_UPDATE_ACTIVATE_REQUEST";
+            $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+            #xCAT::SvrUtils::sendmsg("Activate option is not yet supported.", $callback);
+            #return 1;
         }
     }
 
@@ -1796,6 +1838,9 @@ sub rflash_response {
                 xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
             }
         }
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        print "Update activatiion response\n";
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
