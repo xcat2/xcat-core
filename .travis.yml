@@ -64,6 +64,8 @@ script:
 
 - ruby ./travis.rb
 - ls -a ./check-perl-lib
+- echo "1;" > ./check-perl-lib/probe_utils.pm
+- cat ./check-perl-lib/probe_utils.pm
 ###############  build  ###########
 #- gpg --list-keys
 #- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
