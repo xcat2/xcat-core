@@ -321,9 +321,9 @@ if(event_type == "pull_request")
   
   #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work"}'  #{post_url}`
   #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
  
+	
   ####################    stop and print error in travis (red color)   #######################
   puts "\033[31m error begin---------------------------------------------------------------------------------------------------------\033[0m\n"
   #puts "\033[31m#{resultArr}\033[0m\n"
