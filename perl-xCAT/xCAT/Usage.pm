@@ -95,14 +95,12 @@ my %usage = (
     Common:
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
-    BMC specific:
-       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
+    BMC/MPA specific:
+       rinv <noderange> [model|serial|asset|vpd|deviceid|guid|firm|dimm|mprom|all]
     OpenPOWER (IPMI) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
     OpenPOWER (OpenBMC) server specific:
        rinv <noderange> [model|serial|firm|cpu|dimm|all]
-    MPA specific:
-       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
     PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
