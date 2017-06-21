@@ -61,6 +61,9 @@ if(event_type == "pull_request")
   syntaxId = ""
   buildId = ""
   installId = ""
+  syntaxUrl = ""
+  buildUrl = ""
+  installUrl = ""
 	
   # Remove digits
   #title = title.gsub!(/\D/, "")
@@ -82,13 +85,17 @@ if(event_type == "pull_request")
 	if(commentBody.include?("> **SYNTAX"))
 		issyntax = true
 		syntaxId = postJson['id']
+		syntaxUrl = "https://api.github.com/repos/#{ower_repo}/issues/comments/#{syntaxId}"
 	end
 	if(commentBody.include?("> **BUILD"))
-		issyntax = true
+		isbuild = true
 		buildId = postJson['id']
+		buildUrl = "https://api.github.com/repos/#{ower_repo}/issues/comments/#{buildId}"
 	end
 	if(commentBody.include?("> **INSTALL"))
-		issyntax = true
+		isinstall = true
+		installId = postJson['id']
+		installUrl = "https://api.github.com/repos/#{ower_repo}/issues/comments/#{installId}"
 	end 
     }
   end
@@ -166,12 +173,8 @@ if(event_type == "pull_request")
   puts "work path : #{Dir.pwd}"
   i = 1
   Find.find('/home/travis/build/DengShuaiSimon/xcat-core') do |path| 
-    #puts path unless FileTest.directory?(path)  #if the path is not a directory,print it.
-    #puts File.ftype(File.basename(path)) unless FileTest.directory?(path)
     if(File.file?(path))
-      #puts "path : #{path}"
-      #puts "file type : #{File.basename(path)[/\.[^\.]+$/]}"
-      
+	    
 =begin
      #--------file command test----------
      fileType = `file #{path} 2>&1`
@@ -192,7 +195,6 @@ if(event_type == "pull_request")
       if(file_type[1] == ".pm")
         puts "path : #{path}"
         result = %x[perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
-        #result = `perl -I perl-xCAT/ -I ds-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1`
         puts result
         puts "result[-3..-2] : #{result[-3..-2]}"
 
@@ -219,15 +221,14 @@ if(event_type == "pull_request")
   puts "resultArr : #{resultArr1}"
    
   ####################   add comments  ########################## 
-  #####follow code is added in <set post_rul >###
-  #number= "1"
-  ##post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
-  #post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{number}/comments"
-  #puts post_url
+  #####follow code is added in <set post_url >###
+  #PATCH /repos/:owner/:repo/issues/comments/:id
+  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`	
+  if(issyntax)
+  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{syntaxUrl}`
+  else `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
+  end
   
-  #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
-  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
  
 	
   ####################    stop and print error in travis (red color)   #######################
@@ -258,9 +259,16 @@ if(event_type == "pull_request")
     #bLastLine.delete!('\:')
     bLastLine.chomp!
     p bLastLine
-    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
-  else
-    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
+    if(isbuild)
+           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{build_url}`
+    else   `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
+    end
+  else{
+    if(isbuild)
+           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{build_url}`
+    else   `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
+    end
+      }
   end
   
 
@@ -310,9 +318,16 @@ if(event_type == "pull_request")
     #lastLine.delete!('\:')
     lastLine.chomp!
     p lastLine
-     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
-  else
-     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
+    if(isinstall)
+           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{install_url}`
+    else   `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
+    end
+  else{
+     if(isinstall)
+           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{install_url}`
+     else  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
+     end
+     }
   end
 
 
