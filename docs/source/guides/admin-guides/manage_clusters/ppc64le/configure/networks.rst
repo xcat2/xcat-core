@@ -45,6 +45,10 @@ Configure DHCP to listen on different network interfaces [**Optional**]
 
    To set "eth1" and "eth3" on the management node and "bond0" on all nodes in the nodegroup="service", set ``dhcpinterfaces`` using: ::
 
+      chdef -t site dhcpinterfaces="eth1,eth3;service|bond0"
+
+   or, to explicitly identify the management node with hostname ``xcatmn``: ::
+
       chdef -t site dhcpinterfaces="xcatmn|eth1,eth3;service|bond0"
 
 **noboot**

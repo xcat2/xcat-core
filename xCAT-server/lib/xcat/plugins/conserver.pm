@@ -207,7 +207,16 @@ sub docfheaders {
         {
             push @newheaders, "config * {\n";
             push @newheaders, "  sslrequired yes;\n";
-            push @newheaders, "  sslauthority /etc/xcat/cert/ca.pem;\n";
+            my $version = xCAT::Utils::get_conserver_version();
+            if (!$version) {
+                xCAT::SvrUtils::sendmsg([ 1, "Failed to get conserver version" ], $cb);
+                return;
+            }
+            if (xCAT::Utils::calc_conserver_version($version) < xCAT::Utils::calc_conserver_version("8.1.19")) {
+                push @newheaders, "  sslauthority /etc/xcat/cert/ca.pem;\n";
+            } else {
+                push @newheaders, "  sslcacertificatefile /etc/xcat/cert/ca.pem;\n";
+            }
             push @newheaders, "  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
             push @newheaders, "}\n";
         }

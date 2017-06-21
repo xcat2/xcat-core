@@ -35,7 +35,7 @@ The \ **makenetworks**\  command can be used to gather network information from 
 
 Every network that will be used to install a cluster node must be defined in the xCAT database.
 
-The default behavior is to gather network information from the managment node, and any configured xCAT service nodes, and automatically save this information in the xCAT database.
+The default behavior is to gather network information from the management node, and any configured xCAT service nodes, and automatically save this information in the xCAT database.
 
 You can use the "-d" option to display the network information without writing it to the database.
 

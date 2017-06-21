@@ -581,6 +581,69 @@ sub Version
 
 #-------------------------------------------------------------------------------
 
+=head3    get_conserver_version
+    Returns:
+       consever version number like 8.1.16, undef if error happens
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $version=xCAT::Utils->get_conserver_version();
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_conserver_version
+{
+    my $cmd = "/usr/sbin/conserver -V";
+    # output format:
+    # conserver: conserver.com version 8.2.1
+    # conserver: default access type `r'
+    my @out  = xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0 || @out < 1) {
+        return undef;
+    }
+    my @parts = split(' ',$out[0]);
+    if (@parts < 4) {
+        return undef;
+    }
+    my @count = $parts[3] =~ /\./g;
+    if (@count < 2) {
+        return undef;
+    }
+    return $parts[3];
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    calc_conserver_version
+    Arguments:
+        version in string format
+    Returns:
+        version number
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         $version=xCAT::Utils->calc_conserver_version("8.2.1");
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub calc_conserver_version
+{
+    my $ver_str = shift;
+    my @vers = split(/\./, $ver_str);
+    return int($vers[2]) + int($vers[1]) * 10000 + int($vers[0]) * 100000000;
+}
+
+
+#-------------------------------------------------------------------------------
+
 =head3    make_node_list_file
 
         Makes a node list file.

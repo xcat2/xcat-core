@@ -1,0 +1,19 @@
+description:the cases in this bundle is to used to verify xCAT hardware control funtions on BMC managed servers.
+#INCLUDE:hdctrl_general.bundle#
+rinv_mprom
+rinv_guid
+rinv_dimm
+rvitals_wattage
+rvitals_fanspeed
+rvitals_power
+rvitals_leds
+rsetboot_net_statcheck
+rsetboot_cd_statcheck
+rsetboot_default_statcheck
+rsetboot_h
+rsetboot_help
+rsetboot_v
+rsetboot_node_invalidnode
+rsetboot_noderange_net
+rsetboot_node_invalidaction
+rsetboot_group_net
