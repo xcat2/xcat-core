@@ -63,7 +63,7 @@ script:
 
 
 - ruby ./travis.rb
-
+- ls -a ./check-perl-lib
 ###############  build  ###########
 #- gpg --list-keys
 #- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
