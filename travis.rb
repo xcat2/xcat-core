@@ -293,7 +293,7 @@ if(event_type == "pull_request")
           #p result
 	  result.delete!('\'')
 	  result.delete!('\"')
-          #bLastLine.delete!('\:')
+          result.delete!('\\')
 	  result.gsub!("\n"," ")
 	  result.gsub!("\r"," ")
           result.gsub!("\t"," ")
@@ -306,7 +306,7 @@ if(event_type == "pull_request")
     end
   
   end #find ... do
-  resultArr = resultArr.join(";---")
+  resultArr1 = resultArr.join("********")
   puts "resultArr : #{resultArr}"
    
   ####################   add comments  ########################## 
@@ -317,8 +317,8 @@ if(event_type == "pull_request")
   #puts post_url
   
   #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr}"}'  #{post_url}`
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work"}'  #{post_url}`
   #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
  
   ####################    stop and print error in travis (red color)   #######################
