@@ -29,6 +29,7 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 
+$::VERBOSE = 0;
 # String constants for rpower states
 $::POWER_STATE_OFF="off";
 $::POWER_STATE_ON="on";
@@ -409,16 +410,27 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
- 
+
     if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     }
 
-    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
+    my $subcommand = undef;
+    if (scalar(@ARGV) > 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time" ]);
+    } elsif (scalar(@ARGV) == 2) {
+        # Check if one is calling for Verbose output
+        foreach (@ARGV) {
+           if ($_ =~ /V|verbose/) {
+              $::VERBOSE=1;
+           } else {
+               $subcommand = $_
+           }
+        }
+    } else { 
+         $subcommand = $ARGV[0]
     }
 
-    my $subcommand = $ARGV[0];
     if ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -525,6 +537,14 @@ sub parse_command_status {
     my $subcommand;
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
+
+    my $verbose = undef;
+    unless (GetOptions(
+        'V|verbose'  => \$verbose,
+    )) {
+        xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
+        return 1;
+    }
 
     if ($command eq "rpower") {
         $subcommand = $ARGV[0];
