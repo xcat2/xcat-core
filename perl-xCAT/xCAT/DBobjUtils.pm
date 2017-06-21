@@ -780,6 +780,7 @@ sub setobjdefs
 
             $montable->commit;
             $monsettable->commit;
+            $objhash{$objname}{updated} = 1;
             next;
         }    #if ($type eq 'monitoring')
 
@@ -869,6 +870,9 @@ sub setobjdefs
                     }
                 }
 
+            }
+            unless ($ret) {
+                $objhash{$objname}{updated} = 1;
             }
 
             $thistable->commit;
