@@ -294,8 +294,9 @@ if(event_type == "pull_request")
 	  result.delete!('\'')
 	  result.delete!('\"')
           #bLastLine.delete!('\:')
-	  result.gsub("\n","")
-	  result.gsub("\r","")
+	  result.gsub!("\n","")
+	  result.gsub!("\r","")
+          result.gsub!("\t","")
           result.chomp!
 	  p result
           resultArr.push(result)
