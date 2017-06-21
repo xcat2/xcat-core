@@ -6,6 +6,7 @@
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
+   . $str_dir_name/nicutils.sh
 fi
 
 function configipv4(){
@@ -354,16 +355,16 @@ fi
 
 
 logger -t xcat -p local4.err "configeth: os type: $str_os_type"
-echo "configeth on $NODE: os type: $str_os_type"
+log_info "configeth on $NODE: os type: $str_os_type"
 if [ "$1" = "-r" ];then
     if [ $# -ne 2 ];then
         logger -t xcat -p local4.err "configeth: remove nic, but the nic name is missed"
-        echo "configeth on $NODE: remove nic, but the nic name is missed"
+        log_error "configeth on $NODE: remove nic, but the nic name is missed"
         exit 1
     fi
     str_nic_name=$2
     logger -t xcat -p local4.err "configeth: remove nic $str_nic_name"
-    echo "configeth on $NODE: remove nic $str_nic_name"
+    log_info "configeth on $NODE: remove nic $str_nic_name"
 
     if [ "$str_os_type" = "aix" ];then
         old_ifs=$IFS
@@ -392,7 +393,7 @@ if [ "$1" = "-r" ];then
             fi
         done
         logger -t xcat -p local4.err "configeth run command: chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down"
-        echo "configeth on $NODE run command: chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down"
+        log_info "configeth on $NODE run command: chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down"
         chdev -l $str_nic_name -a netaddr='' -a netmask='' -a netaddr6='' -a prefixlen='' -a state=down
     else
         #shut down the nic if it is on 
@@ -412,7 +413,7 @@ if [ "$1" = "-r" ];then
 elif [ "$1" = "-s" ];then
     if [ $# -lt 2 ];then
         logger -t xcat -p local4.err "configeth: config install nic, but the nic name is missed"
-        echo "configeth on $NODE: config install nic, but the nic name is missed"
+        log_error "configeth on $NODE: config install nic, but the nic name is missed"
         exit 1
     fi
     str_inst_nic=$2
@@ -423,8 +424,8 @@ elif [ "$1" = "-s" ];then
 
     if [ "$str_os_type" = "aix" ];then
         logger -t xcat -p local4.err "configeth: aix does not support -s flag"
-        echo "configeth on $NODE: aix does not support -s flag"
-        exit 0
+        log_error "configeth on $NODE: aix does not support -s flag"
+        exit 1
     elif [ -f "/etc/debian_version" ];then
         str_lease_file="/var/lib/dhcp/dhclient."$str_inst_nic".leases"
         if [ -e "$str_lease_file" ];then
@@ -502,7 +503,7 @@ elif [ "$1" = "-s" ];then
 
     if [ -z "$str_inst_ip" -o -z "$str_inst_mask" ];then
         logger -t xcat -p local4.err "configeth: config install nic, can not find the information from lease file, return."
-        echo "configeth on $NODE: config install nic, can not find information from dhcp lease file, return."
+        log_info "configeth on $NODE: config install nic, can not find information from dhcp lease file, return."
         exit 0
     fi
 
@@ -648,7 +649,7 @@ fi
 #3. on linux modify the configuration files
 if [ $# -ne 3 ];then
     logger -t xcat -p local4.err "configeth: paramters error currently is $@"
-    echo "configeth on $NODE: paramters error currently is $@"
+    log_error "configeth on $NODE: paramters error currently is $@"
     exit 1
 fi
 str_nic_name=$1
@@ -706,7 +707,7 @@ while [ $num_index -le $NETWORKS_LINES ];do
 done
 
 logger -t xcat -p local4.err "configeth: new configuration"
-echo "configeth on $NODE: new configuration"
+log_info "configeth on $NODE: new configuration"
 num_index=0
 str_ipv6_gateway=''
 while [ $num_index -lt ${#array_nic_ips[*]} ];do
@@ -715,7 +716,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     str_netname=${array_nic_networks[$num_index]}
     if [ ! $str_netname ];then
         logger -t xcat -p local4.err "configeth: Network name is not defined on $str_nic_name for $str_ip."
-        echo "configeth on $NODE: Network name is not defined on $str_nic_name for $str_ip."
+        log_error "configeth on $NODE: Network name is not defined on $str_nic_name for $str_ip."
         num_index=$((num_index+1))
         continue
     fi
@@ -724,7 +725,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     str_line=${array_nic_network_config[$num_index]}
     if [ ! $str_line ];then
         logger -t xcat -p local4.err "configeth: Network object $str_netname is not defined."
-        echo "configeth on $NODE: Network object $str_netname is not defined."
+        log_error "configeth on $NODE: Network object $str_netname is not defined."
         num_index=$((num_index+1))
         continue
     fi
@@ -737,7 +738,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
  
     if [ ! $str_subnet -o ! $str_netmask ];then
         logger -t xcat -p local4.err "configeth: subnet or netmask is not defined in network object $str_netname."
-        echo "configeth on $NODE: subnet or netmask is not defined in network object $str_netname."
+        log_error "configeth on $NODE: subnet or netmask is not defined in network object $str_netname."
         num_index=$((num_index+1))
         continue
     fi
@@ -768,7 +769,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
         str_ip_mask_pair=$str_ip_mask_pair"${str_ip}_${str_netmask} "
     else
         logger -t xcat -p local4.err "configeth: the ipaddress( $str_ip ) for $str_nic_name is invalid."
-        echo "configeth on $NODE: the ipaddress( $str_ip ) for $str_nic_name is invalid."
+        log_error "configeth on $NODE: the ipaddress( $str_ip ) for $str_nic_name is invalid."
     fi
     num_index=$((num_index+1))
 done
@@ -788,7 +789,7 @@ if [ "$str_os_type" = "aix" ];then
         else
             chdev -l $str_nic_name -a netaddr='' -a netmask=''
             logger -t xcat -p local4.err "configeth: delete undefined ip address $str_old_ip"
-            echo "configeth on $NODE: delete undefined ip address $str_old_ip"
+            log_error "configeth on $NODE: delete undefined ip address $str_old_ip"
         fi
     fi
 
@@ -856,7 +857,7 @@ if [ "$str_os_type" = "aix" ];then
         str_ip_status=$(hashget hash_new_config $str_new_ip)
         if [ "$str_ip_status" = "new" ];then
             logger -t xcat -p local4.err "configeth: add $str_new_ip for $str_nic_name temporary."
-            echo "configeth on $NODE: add $str_new_ip for $str_nic_name temporary."
+            log_info "configeth on $NODE: add $str_new_ip for $str_nic_name temporary."
             add_ip_temporary $str_new_ip $str_nic_name
         fi
     done
@@ -891,7 +892,7 @@ else
                     else
                         bool_modify_flag=1
                         logger -t xcat -p local4.err "configeth: delete $str_old_ip for $str_nic_name temporary."
-                        echo "configeth on $NODE: delete $str_old_ip for $str_nic_name temporary."
+                        log_info "configeth on $NODE: delete $str_old_ip for $str_nic_name temporary."
                         str_old_ip=`echo $str_old_ip | tr '_' '/'`
                         ip addr del $str_old_ip dev $str_nic_name
                     fi
@@ -929,7 +930,7 @@ else
                 bool_modify_flag=1
                 if [ $bool_restart_flag -eq 0 ];then
                     logger -t xcat -p local4.err "configeth: add $str_new_ip for $str_nic_name temporary."
-                    echo "configeth on $NODE: add $str_new_ip for $str_nic_name temporary."
+                    log_info "configeth on $NODE: add $str_new_ip for $str_nic_name temporary."
                     add_ip_temporary $str_new_ip $str_nic_name
                 fi
             fi
@@ -940,7 +941,7 @@ else
         ip -6 route | grep default | grep $str_ipv6_gateway
         if [ $? -ne 0 ];then
             logger -t xcat -p local4.err "configeth: the default ipv6 route changes to $str_ipv6_gateway."
-            echo "configeth on $NODE: the default ipv6 route changes to $str_ipv6_gateway."
+            log_info "configeth on $NODE: the default ipv6 route changes to $str_ipv6_gateway."
             ip -6 route del default
             ip -6 route add default $str_ipv6_gateway dev $str_dev_name
         fi
@@ -963,7 +964,7 @@ else
             done
         fi
         logger -t xcat -p local4.err "configeth: $str_nic_name changed, modify the configuration files"
-        echo "configeth on $NODE: $str_nic_name changed, modify the configuration files"
+        log_info "configeth on $NODE: $str_nic_name changed, modify the configuration files"
         num_ipv4_index=0
         num_ipv6_index=0
         num_index=0
@@ -1020,7 +1021,7 @@ else
         done
     else
         logger -t xcat -p local4.err "configeth: $str_nic_name no changed, return directly."
-        echo "configeth on $NODE: $str_nic_name no changed, return directly."
+        log_warn "configeth on $NODE: $str_nic_name no changed, return directly."
     fi
 
     #restart the nic
