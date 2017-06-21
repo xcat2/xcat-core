@@ -77,6 +77,7 @@ if ($check_genesis_file) {
 }
 my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
 if (!$master) { $master=hostname(); }
+chomp($master);
 print "master is $master\n"; 
 
 ####################################
@@ -260,7 +261,7 @@ sub testxdsh {
         `xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring `;
         if ($?) {
             foreach (1 .. 10) {
-                `sleep 300`;
+                sleep 300;
                 send_msg(1,"try to run xdsh to check the results again");
                 `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
                 last if ($? == 0);
