@@ -54,6 +54,13 @@ if(event_type == "pull_request")
   puts "pull_request body : #{body}"
   post_url = "https://api.github.com/repos/#{ower_repo}/issues/#{pull_number}/comments"
   puts "post_url : #{post_url}"	
+  
+  issyntax = false
+  isbuild = false
+  isinstall =false
+  syntaxId = ""
+  buildId = ""
+  installId = ""
 	
   # Remove digits
   #title = title.gsub!(/\D/, "")
@@ -65,7 +72,26 @@ if(event_type == "pull_request")
     #raise "The description of this pull_request have a wrong format. Fix it!"
   end
  
-  
+  postresp = Net::HTTP.get_response(URI.parse(post_url))
+  postJsonArr = Array.new
+  postJsonArr = JSON.parse(postresp.body)
+  pusts "postJsonArr : #{postJsonArr}"
+  if(postJsonArr.length != 0)
+     postJsonArr.each{|postJson| 
+	commentBody = postJson['body']
+	if(commentBody.include?("> **SYNTAX"))
+		issyntax = true
+		syntaxId = postJson['id']
+	end
+	if(commentBody.include?("> **BUILD"))
+		issyntax = true
+		buildId = postJson['id']
+	end
+	if(commentBody.include?("> **INSTALL"))
+		issyntax = true
+	end 
+    }
+  end
   ######################################  check syntax  ################################################
   currentPath = `pwd`
   puts "currentPath ---------\n"
