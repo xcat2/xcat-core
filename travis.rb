@@ -294,6 +294,8 @@ if(event_type == "pull_request")
 	  result.delete!('\'')
 	  result.delete!('\"')
           #bLastLine.delete!('\:')
+	  result.gsub("\n","")
+	  result.gsub("\r","")
           result.chomp!
 	  p result
           resultArr.push(result)
@@ -314,7 +316,7 @@ if(event_type == "pull_request")
   #puts post_url
   
   #resultArr.each{|x| `curl -u "#{username}:#{password}" -X POST -d '{"body":"#{x}"}'  #{post_url}`,""}
-  `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : #{resultArr}"}'  #{post_url}`
+  `curl -u "#{username}:#{password}" -X POST -d '{"body":"syntax error : #{resultArr[-1]}"}'  #{post_url}`
   `curl -u "#{username}:#{password}" -X POST -d '{"body":"hope this work2"}'  #{post_url}`
   #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
  
