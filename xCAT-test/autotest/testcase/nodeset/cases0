@@ -191,14 +191,14 @@ cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1
 check:rc==0
 cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1.elilo
 check:rc==0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc==0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc==0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/xcat/xnba/nodes/testnode1
 check:rc!=0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc!=0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:getent hosts testnode1 | grep testnode1
@@ -233,14 +233,14 @@ cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg-e6-d4-d2-3a-ad-06
 check:rc==0
 cmd:grep "debug" /tftpboot/boot/grub2/grub.cfg.0a0101c8
 check:rc==0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc==0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc==0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/boot/grub2/testnode1
 check:rc!=0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc!=0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:getent hosts testnode1 | grep testnode1
@@ -263,7 +263,7 @@ cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
 cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
 cmd:makedns -n
 check:rc==0
-cmd:chdef testnode1 netboot=petitboot addkcmdline=debug
+Gcmd:chdef testnode1 netboot=petitboot addkcmdline=debug
 check:rc==0
 cmd: mkdef "__GETNODEATTR($$CN,os)__-ppc64le-install-compute" -u profile=compute provmethod=install osvers=__GETNODEATTR($$CN,os)__
 check:rc==0
@@ -271,14 +271,14 @@ cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-ppc64le-install-compute
 check:rc==0
 cmd:grep "debug" /tftpboot/petitboot/testnode1
 check:rc==0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc==0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc==0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/petitboot/testnode1
 check:rc!=0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc!=0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:getent hosts testnode1 | grep testnode1
@@ -309,14 +309,14 @@ cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-ppc64-install-compute
 check:rc==0
 cmd:grep "debug" /tftpboot/yaboot.conf-e6-d4-d2-3a-ad-06
 check:rc==0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc==0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc==0
 cmd:nodeset testnode1 offline
 check:rc==0
 cmd:grep "debug" /tftpboot/yaboot.conf-e6-d4-d2-3a-ad-06
 check:rc!=0
-cmd:makedhcp -q testnode1 | grep ^testnode1:
-check:rc!=0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc!=0
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:getent hosts testnode1 | grep testnode1
