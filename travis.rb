@@ -291,6 +291,11 @@ if(event_type == "pull_request")
 
         if(result[-3..-2]!="OK")
           #p result
+	  result.delete!('\'')
+	  result.delete!('\"')
+          #bLastLine.delete!('\:')
+          result.chomp!
+	  p result
           resultArr.push(result)
         end
 
@@ -319,7 +324,9 @@ if(event_type == "pull_request")
   resultArr.each{|x| puts "\033[31m#{x}\033[0m\n",""}
   puts "\033[31m error   end---------------------------------------------------------------------------------------------------------\033[0m\n"
   #raise "There is a syntax error on the above file. Fix it!"
-  
+  puts "resultArr: #{resultArr}"
+	
+	
   
   #############################        build         #########################
   puts "\033[42m gpg --list-keys\033[0m\n"
@@ -327,6 +334,7 @@ if(event_type == "pull_request")
   puts "\033[42msudo -s ./build-ubunturepo -c UP=0 BUILDALL=1;\033[0m\n"
   #buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
   buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1")
+  puts "buildresult: #{buildresult}"
   if(!buildresult)
     bLogLines = IO.readlines("/tmp/build-log")
     bLastIndex = bLogLines.size-1
