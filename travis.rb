@@ -33,7 +33,7 @@ puts "password : #{password}"
 tmppath = "./lalala/lala"
 system("mkdir -p #{tmppath}")
 system("echo \"1;\" > #{tmppath}/1.txt")
-cat "#{tmppath}/1.txt"
+system("cat #{tmppath}/1.txt")
 
 =begin
  ############################        set post_url  ########################
