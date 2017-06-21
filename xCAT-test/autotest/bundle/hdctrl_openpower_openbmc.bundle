@@ -19,3 +19,11 @@ rsetboot_node_invalidnode
 rsetboot_noderange_net
 rsetboot_node_invalidaction
 rsetboot_group_net
+rspconfig_ip
+rspconfig_ip_invalid
+rspconfig_ip_null
+rspconfig_netmask
+rspconfig_netmask_invalid
+rspconfig_gateway
+rspconfig_gateway_invalid
+rspconfig_node_invalid
