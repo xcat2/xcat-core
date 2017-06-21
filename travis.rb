@@ -281,7 +281,8 @@ if(event_type == "pull_request")
       file_type = path.split(base_name)
       #puts "file type : #{file_type[1]}"
     
-      #puts "\n"
+      #puts "\n" 
+      i = 1
       if(file_type[1] == ".pm")
         puts "path : #{path}"
         result = %x[perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c #{path} 2>&1]
@@ -298,7 +299,9 @@ if(event_type == "pull_request")
 	  result.gsub!("\r"," ")
           result.gsub!("\t"," ")
           result.chomp!
+	  result = "(#{i}) #{result}"
           resultArr.push(result)
+	  i = i+1
         end
 
         puts "\n"
@@ -306,7 +309,7 @@ if(event_type == "pull_request")
     end
   
   end #find ... do
-  resultArr1 = resultArr.join("********")
+  resultArr1 = resultArr.join(";     ")
   puts "resultArr : #{resultArr1}"
    
   ####################   add comments  ########################## 
