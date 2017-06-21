@@ -1279,7 +1279,7 @@ sub setup_HTTP
 #-----------------------------------------------------------------------------
 sub stop_TFTP
 {
-    my $distro;
+    my $distro=xCAT::Utils->osver();
     # Check whether the tftp-hpa has been installed, the ubuntu tftpd-hpa configure file is under /etc/default
     unless (-x "/usr/sbin/in.tftpd" and (-e "/etc/xinetd.d/tftp" or -e "/etc/default/tftpd-hpa")) {
         xCAT::MsgUtils->message("S", "ERROR: The tftpd was not installed, enable the tftp failed.");

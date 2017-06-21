@@ -482,7 +482,7 @@ sub donodeent {
              }
         }
         if (defined($cfgent->{consoleondemand})) {
-            if ($cfgent->{consoleondemand}) {
+            if ($cfgent->{consoleondemand} == 'yes') {
                 $parameters{'console.logging'} = 'none';
             }
             else {
@@ -490,6 +490,9 @@ sub donodeent {
             }
         } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
             $parameters{'console.logging'} = 'none';
+        }
+	elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} == 'no') {
+            $parameters{'console.logging'} = 'full';
         }
 
         # ok, now for nodepos...

@@ -449,11 +449,33 @@ sub process_request {
     #if not shared, then help sync up
     if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
         @nodes = ();
+        my @hostinfo = xCAT::NetworkUtils->determinehostname();
+        my $cur_xmaster = pop @hostinfo;
+        xCAT::MsgUtils->trace(0, "d", "xnba: running on $cur_xmaster");
+        
+        # Get current server managed node list
+        my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
+        my %managed = {};
+        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
+
+        # Whatever the node managed by this xcatmaster explicitly, if the node in same subnet, we need to handle its boot configuration files
         foreach (@rnodes) {
             if (xCAT::NetworkUtils->nodeonmynet($_)) {
                 push @nodes, $_;
             } else {
-                xCAT::MsgUtils->message("S", "$_: xnba netboot: stop configuration because of none sharedtftp and not on same network with its xcatmaster.");
+                my $msg = "xnba configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
+                if ( $cur_xmaster ) { 
+                    $msg .= ": $cur_xmaster"; 
+                }
+                if ( exists( $managed{$_} ) ) {
+                    # report error when it is under my control but I cannot handle it.
+                    my $rsp;
+                    $rsp->{data}->[0] = $msg;
+                    xCAT::MsgUtils->message("E", $rsp, $::XNBA_callback);
+                } else {
+                    xCAT::MsgUtils->message("S", $msg);
+                }
+
             }
         }
     } else {

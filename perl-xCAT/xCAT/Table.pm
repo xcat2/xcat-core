@@ -2299,6 +2299,95 @@ $evalcpt->permit('require');
 
 #--------------------------------------------------------------------------
 
+=head3 transRegexAttrs
+
+    Description: Transform the regular expression attribute to the target value
+                 based on the node name.
+
+    Arguments:
+            Node
+            Attribute value (may have regular expression)
+    Returns:
+            Attribute value
+            undef
+    Globals:
+
+    Error:
+
+    Example:
+           if (defined($retval = transRegexAttrs($node, $datum->{$attrib}))) {
+                $datum->{$attrib} = $retval;
+           } else {
+                delete $datum->{$attrib};
+           }
+
+    Comments:
+        none
+
+=cut
+
+#---------------------------------------------------------------------------
+sub transRegexAttrs
+{
+    my ($node, $attr) = @_;
+    my $retval = $attr;
+    if ($attr =~ /^\/[^\/]*\/[^\/]*\/$/) {
+        my $exp = substr($attr, 1);
+        chop $exp;
+        my @parts = split('/', $exp, 2);
+        $retval = $node;
+        $retval =~ s/$parts[0]/$parts[1]/;
+    } elsif ($attr =~ /^\|.*\|$/) {
+        my $exp = substr($attr, 1);
+        chop $exp;
+        my @parts = split('\|', $exp, 2);
+        my $arraySize = @parts;
+        if ($arraySize < 2) {    # easy regx, generate lhs from node
+            my $lhs;
+            my @numbers = $node =~ m/[\D0]*(\d+)/g;
+            $lhs = '[\D0]*(\d+)' x scalar(@numbers);
+            $lhs .= '.*$';
+            unshift(@parts, $lhs);
+        }
+        my ($curr, $next, $prev);
+        $retval = $parts[1];
+
+        ($curr, $next, $prev) =
+            extract_bracketed($retval, '()', qr/[^()]*/);
+        unless ($curr) { #If there were no paramaters to save, treat this one like a plain regex
+            undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
+            $retval = $node;
+            $retval =~ s/$parts[0]/$parts[1]/;
+            if ($retval =~ /^$/) {
+                return undef;
+            }
+            return $retval;
+        }
+        while ($curr)
+        {
+            my $value = $node;
+            $value =~ s/$parts[0]/$curr/;
+            $value  = $evalcpt->reval('use integer;' . $value);
+            $retval = $prev . $value . $next;
+            ($curr, $next, $prev) =
+                extract_bracketed($retval, '()', qr/[^()]*/);
+        }
+        undef $@;
+
+        #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+        #must be applied in total
+        my $answval = $node;
+        $answval =~ s/$parts[0]/$retval/;
+        $retval = $answval;
+    }
+    if ($retval =~ /^$/) {
+        $retval = undef;
+    }
+    return $retval;
+}
+
+#--------------------------------------------------------------------------
+
 =head3 getNodeAttribs
 
     Description: Retrieves the requested attribute

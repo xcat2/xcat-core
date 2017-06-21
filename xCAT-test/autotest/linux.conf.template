@@ -115,6 +115,11 @@ bmcusername=USERID
 bmcpasswd=PASSW0RD
 #For bmc case u need to set username and passwd first
 #End
+#For pdu support
+PDU=f5pdu3
+PDUIP=50.0.0.8
+PORT=6
+#End
 [Custom]
 
 #commands run before test

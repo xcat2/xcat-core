@@ -651,8 +651,9 @@ sub loadcase
             #skip comment lines
             next if ($line =~ /^\s*#/);
 
-            #TODO: description line is treated as a comment line for now
+            #TODO: description and attribute line is treated as a comment line for now
             next if ($line =~ /^description\s*:/);
+            next if ($line =~ /^attribute\s*:/);
 
             if ($line =~ /^start\s*:\s*(.*)/) {
                 my $name =$1;
@@ -907,8 +908,9 @@ sub runcase
 
             #by
             my $runstart = timelocal(localtime());
-            log_this("\nRUN:$cmd");
-            push(@record, "\nRUN:$cmd");
+            my $runstartstr = scalar(localtime());
+            log_this("\nRUN:$cmd  [$runstartstr]");
+            push(@record, "\nRUN:$cmd [$runstartstr]");
             @output = &runcmd($cmd);
             $rc     = $::RUNCMD_RC;
 

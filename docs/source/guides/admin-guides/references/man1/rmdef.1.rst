@@ -22,7 +22,7 @@ SYNOPSIS
 \ **rmdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ]
 
 \ **rmdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
-[\ **-f | -**\ **-force**\ ] [\ *noderange*\ ]
+[\ **-f | -**\ **-force**\ ] [\ **-C | -**\ **-cleanup**\ ] [\ *noderange*\ ]
 
 
 ***********
@@ -41,17 +41,26 @@ OPTIONS
 
 \ **-a|-**\ **-all**\ 
  
- Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.  Once all the data is removed the xCAT daemon will no longer work. Most xCAT commands will fail. 
- In order to use xCAT commands again, you have two options.  You can restore your database from your backup by switching to bypass mode, and running the restorexCATdb command. 
- You switch to bypass mode by setting the XCATBYPASS environmant variable.  (ex. "export XCATBYPASS=yes") 
- A second option is to run xcatconfig -d.  This will restore the initial setup of the database as when xCAT was initially installed. 
- You can then restart xcatd and run xCAT commands.
+ Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option as the xCAT daemons will no longer work once cleared.
+ 
+ To restore:
+ 
+ 
+ 1. \ **export XCATBYPASS=1**\  and run the \ **restorexCATdb**\  command.
+  
+  or
+  
+ 
+ 
+ 2. Run \ **xcatconfig -d**\  which initializes the database the same as when xCAT was installed.
+ 
+ 
  
 
 
 \ **-f|-**\ **-force**\ 
  
- Use this with the all option as an extra indicator that ALL definitions are to be removed.
+ Use this with the \ **-**\ **-all**\  option as an extra indicator that ALL definitions are to be removed.
  
 
 
@@ -76,6 +85,12 @@ OPTIONS
 \ **-t**\  \ *object-types*\ 
  
  A set of comma delimited object types.
+ 
+
+
+\ **-C|-**\ **-cleanup**\ 
+ 
+ Perform additional cleanup by running \ **nodeset offline**\  on the objects specified in the \ *noderange*\ .
  
 
 

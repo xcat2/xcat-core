@@ -1566,6 +1566,7 @@ sub sendmsg {
         $rc   = $text->[0];
         $text = $text->[1];
     }
+    my $text_origin = $text; # Save original text string
     if ($text =~ /:/) {
         ($descr, $text) = split /:/, $text, 2;
     }
@@ -1582,7 +1583,7 @@ sub sendmsg {
     }
     if ($rc) {
         $curptr->{errorcode} = [$rc];
-        $curptr->{error}     = [$text];
+        $curptr->{error}     = [$text_origin];
         $curptr              = $curptr->{error}->[0];
         if (defined $node && %allerrornodes) {
             $allerrornodes{$node} = 1;

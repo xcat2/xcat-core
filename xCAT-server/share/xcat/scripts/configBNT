@@ -67,17 +67,37 @@ if ($::HELP)
     exit(0);
 }
 
+my $switchestab;
+my $switchhash;
+my $passwdtab;
+my @passwd_ent;
+
 if ($::SWITCH) {
     my @filternodes = xCAT::NodeRange::noderange( $::SWITCH );
     if (nodesmissed) {
         my $nodenotdefined = join(',', nodesmissed);
         xCAT::MsgUtils->message("I","The following nodes are not defined in xCAT: $nodenotdefined");
     }
-    # check switch type
-    my $switchestab =  xCAT::Table->new('switches');
-    my $switches_hash = $switchestab->getNodesAttribs(\@filternodes,['switchtype']);
+    # check switch attributes
+    $switchestab =  xCAT::Table->new('switches');
+    $switchhash = $switchestab->getNodesAttribs(\@filternodes,['switchtype','sshusername','sshpassword','protocol']);
+
+    # get switch username and password from passwd
+    $passwdtab = xCAT::Table->new('passwd');
+    @passwd_ent = $passwdtab->getAttribs({ key => "switch" }, [ 'username', 'password' ]);
+
     foreach my $fsw (@filternodes)  {
-        if (($switches_hash->{$fsw}->[0]->{switchtype}) =~ /BNT/) {
+        if (($switchhash->{$fsw}->[0]->{switchtype}) =~ /BNT/) {
+            # use switches table first
+            if ((!defined($switchhash->{$fsw}->[0]->{sshusername})) && 
+                (!defined($switchhash->{$fsw}->[0]->{sshpassword})) ) {
+                if (defined($passwd_ent[0]->{username})) {
+                   $switchhash->{$fsw}->[0]->{sshusername} = $passwd_ent[0]->{username};
+                }
+                if (defined($passwd_ent[0]->{password})) {
+                   $switchhash->{$fsw}->[0]->{sshpassword} = $passwd_ent[0]->{password};
+                }
+            }
             push @nodes, $fsw;
         } else {
             xCAT::MsgUtils->message("E","The $fsw is not BNT switch, will not config");
@@ -96,6 +116,12 @@ if ($::SWITCH) {
 #get mac address for the switches
 my $mactab = xCAT::Table->new("mac");
 my $machash = $mactab->getNodesAttribs(\@nodes,['mac']);
+
+#set community string for switch
+my $community = "public";
+my @snmpcs = xCAT::TableUtils->get_site_attribute("snmpc");
+my $tmp    = $snmpcs[0];
+if (defined($tmp)) { $community = $tmp }
 
 my $switches = join(",",@nodes);
 my $cmd;
@@ -177,7 +203,7 @@ sub config_ip {
             $ip_str =~ s/\./\-/g;
             $dswitch = "switch-$ip_str";
         }
-        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=BNT username=root password=admin protocol=telnet nodetype=switch";
+        $cmd = "chdef -t node -o $dswitch groups=switch ip=$dip switchtype=BNT username=root password=admin  nodetype=switch";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         $cmd = "makehosts $dswitch";
         $rc= xCAT::Utils->runcmd($cmd, 0);
@@ -275,7 +301,6 @@ sub config_hostname {
     }
 }
 
-
 #setup secure SNMP v3 
 sub config_snmp {
     my $snmp_user;
@@ -302,10 +327,32 @@ sub config_snmp {
 
     foreach my $switch (@nodes) {
         my $mysw;
+        my $username;
+        my $passwd;
+        my $protocol;
+
+        my $login_cmd;
+
+        $username = $switchhash->{$switch}->[0]->{sshusername};
+        $passwd = $switchhash->{$switch}->[0]->{sshpassword};
+        $protocol = $switchhash->{$switch}->[0]->{protocol};
+        if ($protocol =~ /telnet/) {
+            $login_cmd = "telnet $switch\r";
+        } else {
+            $login_cmd = "ssh $username\@$switch\r";
+        }
+
+        #get hostname on the switch in case hostname is different 
+        my $ccmd = "snmpwalk -Os -v1 -c $community $switch 1.3.6.1.2.1.1.5";
+        my $result = xCAT::Utils->runcmd($ccmd, 0);
+        my ($desc,$switchhost) = split /: /, $result;
+        if (!$switchhost) {
+            $switchhost=$switch;
+        }
 
         my $mac= $machash->{$switch}->[0]->{mac};
         if ($mac =~ /6c\:ae\:8b/i){
-            my $rc = config_G8264($switch,$snmp_user,$snmp_passwd,$snmp_group);
+            my $rc = config_G8264($switch,$login_cmd, $passwd, $snmp_user,$snmp_passwd,$snmp_group);
             if ($rc == 0){
                 push (@config_switches, $switch);
             }
@@ -316,17 +363,17 @@ sub config_snmp {
         my $config_cmd="configure terminal\r";
         my $exit_cmd="exit\r";
 
-        my $pwd_prompt   = "password: ";
-        my $sw_prompt = "$switch>";
-        my $enable_prompt="$switch#";
+        my $user_prompt   = "username: ";
+        my $pwd_prompt   = "assword: ";
+        my $sw_prompt = "$switchhost>";
+        my $enable_prompt="$switchhost#";
         my $config_prompt="^.*\\\(config\\\)\#";
 
         $mysw = new Expect;
         my $timeout = 20;
-        my $login_cmd = "telnet $switch\r";
-        my $passwd = "admin\r";
+        #my $login_cmd = "telnet $switch\r";
 
-        print "Setup SNMP server for $switch\n";
+        print "Setup SNMP server for $switch, $username, $passwd\n";
         #create a SNMP user
         my $cfg_user1="snmp-server user 5 name $snmp_user\r";
         my $cfg_user2="snmp-server user 5 authentication-protocol sha authentication-password\r";
@@ -351,19 +398,20 @@ sub config_snmp {
         my @result = $mysw->expect(
             $timeout,
             [
-                $pwd_prompt,
+                $user_prompt,
                 sub {
                     $mysw->clear_accum();
-                    $mysw->send("$passwd\r");
+                    $mysw->send("$username\r");
                     $mysw->clear_accum();
                     $mysw->exp_continue();
                 }
             ],
             [
-                "-re", $sw_prompt,
+                $pwd_prompt,
                 sub {
                     $mysw->clear_accum();
-                    $mysw->send($enable_cmd);
+                    $mysw->send("$passwd\r");
+                    $mysw->clear_accum();
                     $mysw->exp_continue();
                 }
             ],
@@ -381,7 +429,7 @@ sub config_snmp {
                     $mysw->clear_accum();
                     $mysw->send($cfg_user1);
                     $mysw->send($cfg_user2);
-                    $mysw->send($passwd);
+                    $mysw->send("$passwd\r");
                     $mysw->send($snmp_passwd);
                     $mysw->send($snmp_passwd);
                     sleep 1;
@@ -399,6 +447,14 @@ sub config_snmp {
                     $mysw->send("write memory\r");
                     $mysw->send($exit_cmd);
                     $mysw->send($exit_cmd);
+                }
+            ],
+            [
+                "-re", $sw_prompt,
+                sub {
+                    $mysw->clear_accum();
+                    $mysw->send($enable_cmd);
+                    $mysw->exp_continue();
                 }
             ],
         );
@@ -425,6 +481,8 @@ sub config_snmp {
 
 sub config_G8264 {
     my $switch = shift;
+    my $login_cmd = shift;
+    my $passwd = shift;
     my $snmp_user = shift;
     my $snmp_passwd = shift;
     my $snmp_group = shift;
@@ -437,9 +495,7 @@ sub config_G8264 {
     #use expect to set password
     my $mysw = new Expect;
     my $timeout = 20;
-    my $login_cmd = "telnet $switch\r";
-    my $passwd = "admin\r";
-    my $pwd_prompt   = "password: ";
+    my $pwd_prompt   = "assword: ";
     my $main_prompt="Main#";
     my $authpw_cmd = "/cfg/sys/ssnmp/snmpv3/usm 5/authpw\r";
 
@@ -467,7 +523,7 @@ sub config_G8264 {
             sub {
                 $mysw->clear_accum();
                 $mysw->send($authpw_cmd);
-                $mysw->send($passwd);
+                $mysw->send("$passwd\r");
                 $mysw->send($snmp_passwd);
                 $mysw->send($snmp_passwd);
                 sleep 1;

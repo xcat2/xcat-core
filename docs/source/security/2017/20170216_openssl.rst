@@ -1,0 +1,25 @@
+2017-02-16 - OpenSSL Vulnerabilities
+====================================
+
+*Feb 16, 2017*, OpenSSL announced the following security advisories: https://www.openssl.org/news/secadv/20170216.txt 
+
+
+Advisory CVEs
+-------------
+
+* CVE-2017-3733 - **Encrypt-Then-Mac renegotiation crash** (Severity:High) 
+
+  OpenSSL 1.1.0 users should upgrade to 1.1.0e
+
+  This issue does not affect OpenSSL version 1.0.2.
+
+Please see the security bulletin above for patch, upgrade, or suggested work around information.
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+

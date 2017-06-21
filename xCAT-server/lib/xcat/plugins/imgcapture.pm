@@ -46,7 +46,7 @@ sub process_request {
     @ARGV = @{ $request->{arg} } if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage:\n imgcapture <node> -t|--type {diskless|sysclone} -o|--osimage <osimage> [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
+    my $usage = "Usage:\n imgcapture <node> -t|--type {diskless|sysclone} -o|--osimage <osimage> [-i <nodebootif>] [-n <nodebootif>] [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
 
     my $os;
     my $arch;

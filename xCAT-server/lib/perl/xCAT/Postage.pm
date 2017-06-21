@@ -1582,7 +1582,13 @@ sub dump_all_attribs_in_tabs
                 } else {
                     $values .= "$attrib=$val||";
                     if ($attrib =~ /^disable$/) {
-                        $values .= "comments=$t";
+                        # Updated on 2017-03-22 for issue 2634 Quotes in tables' comment field break mypostscript
+                        # The original line is : $values .= "comments=$t";
+                        # In order to fix issue 2634, change this line to : $values .= "comments=";
+                        # To keep the free-style of comments and avoid the issues caused by special characters in 
+                        # the comments, the value of comments will not be appending to network related environment
+                        # variables in mypostscript
+                        $values .= "comments=";
                     }
                 }
             }
@@ -1980,12 +1986,16 @@ sub getPostScripts
         {
             $nodecfg = "$tftpdir/pxelinux.cfg/$node";
 
+        } elsif($netboot eq "petitboot"){
+            $nodecfg = "$tftpdir/petitboot/$node";
         }
 
-        my $rc = system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
-        if ($rc == 0)
-        {
-            $result .= "disableconsistentNICrename\n";
+        if( -f "$nodecfg"){
+            my $rc = system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
+            if ($rc == 0)
+            {
+                $result .= "disableconsistentNICrename\n";
+            }
         }
     }
 

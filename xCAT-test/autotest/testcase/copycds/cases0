@@ -168,3 +168,29 @@ check:rc==0
 check:output=~~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 end
 
+
+start:copycds_p_newdir
+os:Linux
+cmd:if [ -e /install/newdir ];then mv  /install/newdir /install/newdirbak; fi
+cmd:copycds $$ISO -p /install/newdir
+check:rc==0
+check:output=~Copying media to /install/newdir
+check:output=~Media copy operation successful
+cmd:ls -l /install/newdir/Packages
+check:rc==0
+cmd:rm -rf /install/newdir
+cmd:if [ -e /install/newdirbak ];then mv  /install/newdirbak /install/newdir; fi
+end
+
+start:copycds_p_noninstalldir
+os:Linux
+cmd:if [ -e /noninstalldir ];then mv /noninstalldir /noninstaldirbak; fi
+cmd:copycds $$ISO -p /noninstalldir
+check:rc==0
+check:output=~Warning: copycds: the specified path "/noninstalldir" is not a subdirectory under /install
+check:output=~Copying media to /noninstalldir
+cmd:ls -l /noninstalldir/Packages
+check:rc==0
+cmd:rm -rf /noninstalldir
+cmd:if [ -e /noninstalldirbak ];then mv /noninstalldirbak /noninstalldir; fi
+end

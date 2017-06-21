@@ -152,7 +152,7 @@ sub preprocess_request
                 'h|help'      => \$::HELP,
                 'v|version'   => \$::VERSION))
         {
-            &usage($cb);
+            &usage($cb,1);
             return (1);
         }
         if ($::HELP) {
@@ -169,7 +169,7 @@ sub preprocess_request
         my $nodes = $req->{node};
         if (!$nodes)
         {
-            &usage($cb);
+            &usage($cb,1);
             return (1);
         }
 
@@ -914,6 +914,7 @@ sub process_request {
     }
 
 
+
     if ($command eq "nodestat_internal") {
 
         #if ( -x '/usr/bin/nmap' ) {
@@ -1210,10 +1211,14 @@ sub process_request {
 sub usage
 {
     my $cb  = shift;
+    my $retcode=shift;
     my $rsp = {};
     $rsp->{data}->[0] = "Usage:";
     $rsp->{data}->[1] = "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-u|--updatedb]";
     $rsp->{data}->[2] = "  nodestat [-h|--help|-v|--version]";
+    if($retcode){
+       $rsp->{errorcode}->[0]=$retcode;
+    }
     xCAT::MsgUtils->message("I", $rsp, $cb);
 }
 

@@ -2,3 +2,6 @@
 docs/build
 # Ignore the temporary file for creating the Release version
 Release.save*
+# ignore the old generated man pages and html pages
+xCAT-client/share/man
+xCAT-client/share/doc

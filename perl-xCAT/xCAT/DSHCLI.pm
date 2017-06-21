@@ -50,7 +50,7 @@ our @dsh_valid_env = (
     'DSH_REMOTE_PASSWORD', 'DSH_TO_USERID',
     'DSH_FROM_USERID',     'DEVICETYPE',
     'RSYNCSN',             'DSH_RSYNC_FILE',
-    'RSYNCSNONLY',
+    'RSYNCSNONLY',         'DSH_VERIFY',
 );
 select(STDERR);
 $| = 1;
@@ -2492,6 +2492,12 @@ sub config_dsh
     $dsh_trace
       && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
+    $$options{'verify'} = $$options{'verify'} || $ENV{'DSH_VERIFY'} || undef;
+    my $rsp = {};
+    $rsp->{data}->[0] = "TRACE: Verify value is $$options{'verify'} ";
+    $dsh_trace
+      && xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
     # Check if $$options{'pre-command'} has been overwritten
     # Mellanox uses pre-command = cli
     if (!$$options{'pre-command'})
@@ -4432,6 +4438,17 @@ sub parse_and_run_dcp
     {
         xCAT::DSHCLI->show_dsh_config;
         return 0;
+    }
+
+    unless ($options{'user'})
+    {
+            # user was not specified with -l flag, check it user calling the command
+            # was saved in DSH_FROM_USERID environment variable
+            my $current_userid = $ENV{'DSH_FROM_USERID'};
+            if (defined($current_userid)) {
+                # Set userid from value in DSH_FROM_USERID environment variable
+                $options{'user'} = $current_userid;
+            }
     }
 
     if (defined($options{'rootimg'}))

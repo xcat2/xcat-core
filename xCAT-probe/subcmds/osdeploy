@@ -115,6 +115,19 @@ unless ($noderange) {
     exit 1;
 }
 
+my @nodes = split (",", $noderange);
+my @error_nodes;
+foreach my $node (@nodes) {
+    if ($node =~ /^-/) {
+        push @error_nodes, $node;
+    }
+}
+if (@error_nodes) {
+    my $error = join (",", @error_nodes);
+    probe_utils->send_msg("stdout", "f", "[$error]: Wrong node definition.");
+    exit 1;
+}
+
 if ($rollforward_time_of_replay) {
     if (($rollforward_time_of_replay !~ /(\d+)h(\d+)m/i) && ($rollforward_time_of_replay !~ /^(\d+)h*$/i) && ($rollforward_time_of_replay !~ /^(\d+)m$/i)) {
         probe_utils->send_msg("stdout", "f", "Unsupported time format for option '-r'");

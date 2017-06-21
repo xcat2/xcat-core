@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash  
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only.
 # It configs the Ethernet adpaters on the node
@@ -15,11 +15,12 @@ function configipv4(){
     str_v4mask=$4
     num_v4num=$5
     str_extra_params=$6
+    str_nic_mtu=$7
 
     #parse the extra parameters
     if [ "$str_extra_params" != "$str_default_token" ]; then
 		parse_nic_extra_params "$str_extra_params"
-	fi	
+    fi	
     
     if [ "$str_os_type" = "sles" ];then
         str_conf_file="/etc/sysconfig/network/ifcfg-${str_if_name}"
@@ -32,7 +33,9 @@ function configipv4(){
             echo "STARTMODE=onboot" >> $str_conf_file
             echo "USERCONTROL=no" >> $str_conf_file
             echo "_nm_name=static-0" >> $str_conf_file
-
+            if [ "$str_nic_mtu" != "$str_default_token" ]; then
+                echo "MTU=${str_nic_mtu}" >> $str_conf_file
+            fi  
 			#add extra params
 			i=0
 			while [ $i -lt ${#array_extra_param_names[@]} ]
@@ -48,7 +51,9 @@ function configipv4(){
             echo "NETMASK_${num_v4num}=${str_v4mask}" >> $str_conf_file
             echo "NETWORK_${num_v4num}=${str_v4net}" >> $str_conf_file
             echo "LABEL_${num_v4num}=${num_v4num}" >> $str_conf_file
-
+            if [ "$str_nic_mtu" != "$str_default_token" ]; then
+                echo "MTU_${num_v4num}=${str_nic_mtu}" >> $str_conf_file
+            fi
 			#add extra params
 			i=0
 			while [ $i -lt ${#array_extra_param_names[@]} ]
@@ -77,7 +82,9 @@ function configipv4(){
         echo "  address ${str_v4ip}" >> $str_conf_file
         echo "  netmask ${str_v4mask}" >> $str_conf_file
         echo "  network ${str_v4net}" >> $str_conf_file
-
+        if [ "$str_nic_mtu" != "$str_default_token" ]; then
+            echo "  mtu ${str_nic_mtu}" >> $str_conf_file    
+        fi
 		#add extra params
 		i=0
 		while [ $i -lt ${#array_extra_param_names[@]} ]
@@ -109,6 +116,10 @@ function configipv4(){
         echo "IPADDR=${str_v4ip}" >> $str_conf_file
         echo "NETMASK=${str_v4mask}" >> $str_conf_file
         echo "ONBOOT=yes" >> $str_conf_file
+        if [ "$str_nic_mtu" != "$str_default_token" ]; then
+            echo "MTU=${str_nic_mtu}" >> $str_conf_file
+        fi
+
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             echo "VLAN=yes" >> $str_conf_file
         fi
@@ -408,6 +419,7 @@ elif [ "$1" = "-s" ];then
     str_inst_ip=''
     str_inst_mask=''
     str_inst_gateway=''
+    str_inst_mtu=''
 
     if [ "$str_os_type" = "aix" ];then
         logger -t xcat -p local4.err "configeth: aix does not support -s flag"
@@ -494,7 +506,20 @@ elif [ "$1" = "-s" ];then
         exit 0
     fi
 
-	#get extra configration parameters for each nic
+    str_inst_net=$(v4calcnet $str_inst_ip $str_inst_mask)
+    num_index=1
+    while [ $num_index -le $NETWORKS_LINES ];do
+        eval str_tmp=\$NETWORKS_LINE$num_index
+        str_tmp_name=`echo $str_tmp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
+        if [ "$str_tmp_name" = "$str_inst_net" ];then
+            str_inst_mtu=`echo $str_tmp | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
+            break
+        fi
+        num_index=$((num_index+1))
+    done
+
+
+    #get extra configration parameters for each nic
     #echo "str_inst_nic=$str_inst_nic, str_inst_ip=$str_inst_ip"
 	get_nic_extra_params $str_inst_nic "$NICEXTRAPARAMS"
 	if [ ${#array_nic_params[@]} -gt 0 ]; then
@@ -512,6 +537,9 @@ elif [ "$1" = "-s" ];then
         echo "  address ${str_inst_ip}" >> $str_conf_file
         echo "  netmask ${str_inst_mask}" >> $str_conf_file
         echo "  hwaddress ether ${str_inst_mac}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "  mtu ${str_inst_mtu}" >> $str_conf_file
+        fi
         if [ -n "$str_inst_gateway" ];then
             echo "  gateway $str_inst_gateway" >> $str_conf_file
         fi
@@ -535,6 +563,9 @@ elif [ "$1" = "-s" ];then
         echo "IPADDR=${str_inst_ip}" >> $str_conf_file
         echo "NETMASK=${str_inst_mask}" >> $str_conf_file
         echo "HWADDR=${str_inst_mac}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        fi
         echo "STARTMODE=onboot" >> $str_conf_file
         if [ -n "$str_inst_gateway" ];then
             grep -i "default" /etc/sysconfig/network/routes
@@ -567,6 +598,9 @@ elif [ "$1" = "-s" ];then
         echo "BOOTPROTO=static" >> $str_conf_file
         echo "ONBOOT=yes" >> $str_conf_file
         echo "HWADDR=${str_inst_mac}" >> $str_conf_file
+        if [ -n "${str_inst_mtu}" ];then
+            echo "MTU=${str_inst_mtu}" >> $str_conf_file
+        fi
         if [ -n "$str_inst_gateway" ];then
             grep -i "GATEWAY" /etc/sysconfig/network
             if [ $? -eq 0 ];then
@@ -599,7 +633,9 @@ elif [ "$1" = "-s" ];then
             fi
         fi
     fi
+
     ifup $str_inst_nic
+
     exit 0
 fi
 
@@ -639,6 +675,7 @@ declare -a array_nic_network_config
 declare -a array_nic_subnet
 declare -a array_nic_netmask
 declare -a array_nic_gateway
+declare -a array_nic_mtu
 
 #get extra configration parameters for each nic
 get_nic_extra_params $str_nic_name "$NICEXTRAPARAMS"
@@ -696,7 +733,8 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     str_subnet=`echo $str_line | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
     str_netmask=`echo $str_line | awk -F'mask=' '{print $2}' | awk -F'|' '{print $1}' | sed 's:^/::'`
     str_gateway=`echo $str_line | awk -F'gateway=' '{print $2}' | awk -F'|' '{print $1}'`
-    
+    str_mtu=`echo $str_line | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`   
+ 
     if [ ! $str_subnet -o ! $str_netmask ];then
         logger -t xcat -p local4.err "configeth: subnet or netmask is not defined in network object $str_netname."
         echo "configeth on $NODE: subnet or netmask is not defined in network object $str_netname."
@@ -707,6 +745,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     array_nic_subnet[$num_index]=$str_subnet
     array_nic_netmask[$num_index]=$str_netmask
     array_nic_gateway[$num_index]=$str_gateway
+    array_nic_mtu[$num_index]=$str_mtu
     echo "$str_gateway" | grep ':'
     if [ $? -eq 0 ];then
         str_ipv6_gateway=$str_gateway
@@ -945,6 +984,7 @@ else
             str_subnet=${array_nic_subnet[$num_index]}
             str_netmask=${array_nic_netmask[$num_index]}
             str_gateway=${array_nic_gateway[$num_index]}
+            str_mtu=${array_nic_mtu[$num_index]}
 			if [ $num_index -lt ${#array_nic_params[@]} ]; then
 				str_extra_params=${array_nic_params[$num_index]}
 			else
@@ -955,7 +995,11 @@ else
 			if [[ -z "$str_gateway" ]]; then
 				str_gateway=$str_default_token
 			fi
-			
+		
+                        if [[ -z "$str_mtu" ]]; then
+                                str_mtu=$str_default_token
+                        fi
+	
 			if [ ! $str_subnet -o ! $str_netmask ];then
                 num_index=$((num_index+1))
                 continue
@@ -963,7 +1007,7 @@ else
 
 			
             if [ `echo $str_ip | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'` ];then
-                configipv4 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv4_index "$str_extra_params"
+                configipv4 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv4_index "$str_extra_params" $str_mtu
                 num_ipv4_index=$((num_ipv4_index+1))
             elif [ `echo $str_ip | grep -E ":"` ];then
                 configipv6 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv6_index $num_ipv4_index $str_gateway "$str_extra_params"

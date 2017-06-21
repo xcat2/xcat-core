@@ -28,6 +28,11 @@ The following table illustrates the cluster being used in this example:
 |                      | r2n10                |
 +----------------------+----------------------+
 
+
+#. Modify ``site`` table attribute to include **service** group's postscripts in compute node definition: ::
+
+       chdef -t site hierarchicalattrs="postscripts"
+
 #. Select the compute nodes that will become service nodes 
      
         The first node in each rack, ``r1n01`` and ``r2n01``, is selected to become the xCAT service nodes and manage the compute nodes in that rack

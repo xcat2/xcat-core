@@ -468,6 +468,7 @@ sub processArgs
     undef $::opt_nics;
     undef $::opt_setattr;
     undef $::opt_template;
+    undef $::opt_cleanup;
 
     # parse the options - include any option from all 4 cmds
     Getopt::Long::Configure("no_pass_through");
@@ -497,6 +498,7 @@ sub processArgs
             'nics'       => \$::opt_nics,
             'u'          => \$::opt_setattr,
             'template:s' => \$::opt_template,
+            'C|cleanup'  => \$::opt_cleanup,
         )
       )
     {
@@ -509,6 +511,13 @@ sub processArgs
     if (defined($::opt_setattr) && ($::command ne "chdef") && ($::command ne "mkdef")) {
         my $rsp;
         $rsp->{data}->[0] = "Option \'-u\' can not work with $::command.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    if (defined($::opt_cleanup) && ($::command ne "rmdef")) {
+        my $rsp;
+        $rsp->{data}->[0] = "Option \'-C\' can not be used with $::command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -1741,11 +1750,8 @@ sub defmk
 
                 #  won't remove the old one unless the force option is used
                 my $rsp;
-                $rsp->{data}->[0] = "\nA definition for \'$obj\' already exists.";
-                $rsp->{data}->[1] = "To remove the old definition and replace it with \na new definition use the force \'-f\' option.";
-                $rsp->{data}->[2] = "To change the existing definition use the \'chdef\' command.";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                $error = 1;
+                $rsp->{data}->[0] = "A definition for \'$obj\' already exists. No changes will be made.  Run again with \'-f\' option to force replace.";
+                xCAT::MsgUtils->message("W", $rsp, $::callback);
                 delete $::FINALATTRS{$obj};
                 next;
 
@@ -1998,7 +2004,6 @@ sub defmk
 
             #  give results
             my $rsp;
-            $rsp->{data}->[0] = "The database was updated for the following objects:";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
@@ -2007,14 +2012,30 @@ sub defmk
                 $rsp->{data}->[$n] = "$o";
                 $n++;
             }
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            if ($n > 1) {
+                # Some objects were created ($n was increased), report as success
+                $rsp->{data}->[0] = "The database was updated for the following objects:";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else {
+                # No objects were created, report as error
+                $rsp->{data}->[0] = "The database was not updated.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
         }
         else
         {
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
             $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            if ($nodenum > 0) {
+                # Some objects were created, report as success
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            else {
+                # No objects were created, report as error
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
         }
         return 0;
     }
@@ -3843,13 +3864,14 @@ sub defls
                                             $nicnames = join(',', @{ $::NicsAttrHash{$showattr} });
                                         }
                                         my $nicsstr;
+                                        my $is_group = $defhash{$obj}{'objtype'} eq 'group';
                                         if ($nicnames)
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $nicnames);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, $nicnames, $is_group);
                                         }
                                         else
                                         {
-                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                            $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, undef, $is_group);
                                         }
 
                                         # Compress mode, format the output
@@ -3902,7 +3924,8 @@ sub defls
                                     if ($showattr =~ /^nic/)
                                     {
                                         my $nicval = "$showattr=$attrval";
-                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval);
+                                        my $is_group = $defhash{$obj}{'objtype'} eq 'group';
+                                        my $nicsstr = xCAT::DBobjUtils->expandnicsattr($nicval, $obj, undef, $is_group);
                                         if ($nicsstr)
                                         {
                                             push(@{ $rsp_info->{data} }, "$nicsstr");
@@ -4016,6 +4039,9 @@ sub defrm
 
     # process the command line
     my $rc = &processArgs;
+
+    # Issue info message if more than cleanup_msg_trigger nodes are being removed with --cleanup option
+    my $cleanup_msg_trigger = 100;
 
     if ($rc != 0)
     {
@@ -4260,24 +4286,33 @@ sub defrm
         }
     }
 
-    # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
-    if ($doreq) {
-        # Go through each object and make sure it is a node type
-        my @allnodes;
-        foreach my $single_object (keys %objhash) {
-            if ($objhash{$single_object} eq "node") {
-                # build a list of nodes to offline
-                push @allnodes, $single_object;
+    if ($::opt_cleanup) {
+        # Call nodeset offline on each node to cleanup its boot configuration files from /tftpboot directory
+        if ($doreq) {
+            # Go through each object and make sure it is a node type
+            my @allnodes;
+            foreach my $single_object (keys %objhash) {
+                if ($objhash{$single_object} eq "node") {
+                    # build a list of nodes to offline
+                    push @allnodes, $single_object;
+                }
             }
+            # If cleaning up (issuing nodeset offline) for more than cleanup_msg_trigger node, 
+            # issue info message
+            if (@allnodes > $cleanup_msg_trigger) {
+               my $rsp;
+               $rsp->{data}->[0] = "Performing configuration cleanup. This might take a some time.";
+               xCAT::MsgUtils->message("I", $rsp, $::callback);
+            }
+            # Run nodeset offline and capture output.
+            # But the output can be ignored since we do not want to prevent user from doing rmdef if
+            # nodeset returns some error.
+            my @output = xCAT::Utils->runxcmd({
+                command => ['nodeset'],
+                node => [@allnodes],
+                arg  => ['offline'],
+            }, $doreq, 0 ,1);
         }
-        # Run nodeset offline and capture output.
-        # But the output can be ignored since we do not want to prevent user from doing rmdef if
-        # nodeset returns some error.
-        my @output = xCAT::Utils->runxcmd({
-            command => ['nodeset'],
-            node => [@allnodes],
-            arg  => ['offline'],
-        }, $doreq, 0 ,1);
     }
 
     # remove the objects
@@ -4490,7 +4525,7 @@ sub defrm_usage
     $rsp->{data}->[0] = "\nUsage: rmdef - Remove xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] = "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
-    $rsp->{data}->[3] = "    [-o object-names] [-w attr=val,[attr=val...] [noderange]\n";
+    $rsp->{data}->[3] = "    [-o object-names] [-C | --cleanup] [noderange]\n";
     $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 5;
 

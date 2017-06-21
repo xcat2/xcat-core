@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **pdu Attributes:**\   \ *pdu*\ , \ *machinetype*\ , \ *modelnum*\ , \ *serialnum*\ , \ *outletCount*\ , \ *comments*\ , \ *disable*\ 
+\ **pdu Attributes:**\   \ *node*\ , \ *nodetype*\ , \ *outlet*\ , \ *machinetype*\ , \ *modelnum*\ , \ *serialnum*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -36,9 +36,21 @@ pdu Attributes:
 
 
 
-\ **pdu**\ 
+\ **node**\ 
  
  The hostname/address of the pdu to which the settings apply
+ 
+
+
+\ **nodetype**\ 
+ 
+ The node type should be pdu
+ 
+
+
+\ **outlet**\ 
+ 
+ The pdu outlet count
  
 
 
@@ -60,16 +72,16 @@ pdu Attributes:
  
 
 
-\ **outletCount**\ 
-
-
-
 \ **comments**\ 
-
+ 
+ Any user-written notes.
+ 
 
 
 \ **disable**\ 
-
+ 
+ Set to 'yes' or '1' to comment out this row.
+ 
 
 
 

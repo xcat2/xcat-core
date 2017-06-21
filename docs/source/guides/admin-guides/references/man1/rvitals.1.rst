@@ -60,7 +60,7 @@ OpenPOWER server specific:
 ==========================
 
 
-\ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | all**\ }
+\ **rvitals**\  \ *noderange*\  [\ **temp | voltage | wattage | fanspeed | power | leds | all**\ ]
 
 
 
