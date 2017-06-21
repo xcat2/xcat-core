@@ -185,6 +185,26 @@ if(event_type == "pull_request")
  
   
   ######################################  check syntax  ################################################
+  currentPath = `pwd`
+  puts "currentPath ---------\n"
+  currentPath.chomp!
+  p currentPath
+	
+  libPath =  ["./check-perl-lib/Confluent",
+                  "./check-perl-lib/Crypt",
+                   "./check-perl-lib/HTTP",
+              "./check-perl-lib/IO/Socket",
+                    "./check-perl-lib/LWP",
+                    "./check-perl-lib/Net",
+                   "./check-perl-lib/SOAP",
+                    "./check-perl-lib/XML",
+                   "./check-perl-lib/xCAT",
+        "./check-perl-lib/xCAT_monitoring",
+            "./check-perl-lib/xCAT_plugin",
+                        "./check-perl-lib",
+                        ]
+  libPath.each{|checkpath| system("mkdir -p #{checkpath}")}
+	
   libFiles = ["/check-perl-lib/Confluent/Client.pm",
               "/check-perl-lib/Confluent/TLV.pm",
                   "/check-perl-lib/Crypt/CBC.pm",
@@ -216,10 +236,7 @@ if(event_type == "pull_request")
                         "/check-perl-lib/SNMP.pm",
                         "/check-perl-lib/probe_global_constant.pm",
                         "/check-perl-lib/probe_utils.pm"]
-  currentPath = `pwd`
-  puts "currentPath ---------\n"
-  currentPath.chomp!
-  p currentPath
+  
   libFiles.each{|value|
 	#f=File.new(File.join("#{currentPath}#{key}","#{value}"),"w+")
  	#f.puts("1;")
