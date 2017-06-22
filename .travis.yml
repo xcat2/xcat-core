@@ -65,7 +65,7 @@ script:
 
 
 #- ruby ./travis.rb
-- perl ./travis.pl
+- perl travis.pl
 
 - mkdir -p ./check-perl-lib/haha
 - echo "1;" > ./check-perl-lib/haha/probe_utils.pm
