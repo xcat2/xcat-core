@@ -362,20 +362,15 @@ cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicne
 check:rc==0
 cmd:updatenode $$CN -P confignetwork 
 check:rc==0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
-check:output=~11.1.0.100
-check:output=~MTU=1496
-check:output!~dhcp
 cmd:xdsh $$CN "cat /tmp/confignetwork_niccustomscript"
 check:rc==0
 check:output=~hello
 cmd:xdsh $$CN "rm -rf /tmp/confignetwork_niccustomscript"
 check:rc==0
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
-check:rc==0
 cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
 check:rc==0
+cmd:rm -rf /tmp/script1 /install/postscripts/script1
 end
 
 start:confignetwork_secondarynic_thirdnic_multiplevalue_updatenode
@@ -440,9 +435,9 @@ end
 
 start:confignetwork_help
 description:this case is to verify if help information is provided
-cmd:confignetworks -h
+cmd:confignetwork -h
 check:rc==0
 #TODO help information is printed
-cmd:confignetworks --help
+cmd:confignetwork --help
 check:rc==0
 #TODO help information is printed
