@@ -549,6 +549,7 @@ sub donets
                     }
                 }
 
+                my $tent=$nethash{$netname};
                 unless ($tent and $tent->{tftpserver})
                 {
                     my $netdev = $ent[7];
@@ -577,7 +578,7 @@ sub donets
                                 push @{ $rsp->{data} }, "    tftpserver=$ipaddr";
                             } else {
                                 if (!$foundmatch) {
-                                    $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { tftpserver => $ipaddr });
+                                    $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { tftpserver => "<xcatmaster>" });
                                 }
                             }
                             last;
