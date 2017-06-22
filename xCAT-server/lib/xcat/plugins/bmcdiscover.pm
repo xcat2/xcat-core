@@ -587,18 +587,10 @@ sub scan_process {
 
                 my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
                 my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /$openbmc_port\/tcp (\w+)/) {
-                    my $port_stat = $1;
-                    if ($port_stat eq "open") {
-                        bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
-                    } else {
-                        bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
-                    }
+                if ($nmap_output =~ /$openbmc_port(.+)open/) {
+                    bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
                 } else {
-                    my $rsp = {};
-                    push @{ $rsp->{data} }, "Can not get status of 2200 port for ip ${$live_ip}[$i].\n";
-                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-                    exit 1;
+                    bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                 }
 
                 exit 0;
