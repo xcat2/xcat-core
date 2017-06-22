@@ -223,12 +223,21 @@ if(event_type == "pull_request")
   ####################   add comments  ########################## 
   #####follow code is added in <set post_url >###
   #PATCH /repos/:owner/:repo/issues/comments/:id
-  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`	
-  if(issyntax)
-	  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{syntaxUrl}`
+  #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`
+  if(resultArr.length!=0)
+	  if(issyntax)
+		  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{syntaxUrl}`
+	  else
+		  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
+	  end
   else
-	  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
+	  if(issyntax)
+		  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**>"}'  #{syntaxUrl}`
+	  else
+		  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  #{post_url}`
+	  end
   end
+
   
  
 	
@@ -261,13 +270,13 @@ if(event_type == "pull_request")
     bLastLine.chomp!
     p bLastLine
     if(isbuild)
-	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{build_url}`
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{buildUrl}`
     else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
     end
   else
     if(isbuild)
-	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{build_url}`
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{buildUrl}`
     else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
     end
@@ -321,13 +330,13 @@ if(event_type == "pull_request")
     lastLine.chomp!
     p lastLine
     if(isinstall)
-	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{install_url}`
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{installUrl}`
     else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
     end
   else
      if(isinstall)
-	     `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{install_url}`
+	     `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{installUrl}`
      else
 	     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
      end
