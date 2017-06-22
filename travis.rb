@@ -225,10 +225,9 @@ if(event_type == "pull_request")
   #PATCH /repos/:owner/:repo/issues/comments/:id
   #`curl -X POST -s -u "#{username}:#{token}" -H "Content-Type: application/json" -d '{"body": "successful!"}' #{post_url}`	
   if(issyntax)
-  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{syntaxUrl}`
-  else{
+	  `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{syntaxUrl}`
+  else
 	  `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **SYNTAX_ERROR**  : #{resultArr1}"}'  #{post_url}`
-       }
   end
   
  
@@ -250,7 +249,7 @@ if(event_type == "pull_request")
   #buildresult = `sudo ./build-ubunturepo -c UP=0 BUILDALL=1 2>&1`
   buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1")
   puts "buildresult: #{buildresult}"
-  if(!buildresult){
+  if(!buildresult)
     bLogLines = IO.readlines("/tmp/build-log")
     bLastIndex = bLogLines.size-1
     bLastLine = logLinesArr[bLastIndex]
@@ -261,23 +260,17 @@ if(event_type == "pull_request")
     #bLastLine.delete!('\:')
     bLastLine.chomp!
     p bLastLine
-    if(isbuild){
-           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{build_url}`
-	}
-    else{   
+    if(isbuild)
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{build_url}`
+    else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD_ERROR**  :  #{bLastLine}"}'  #{post_url}`
-	}
     end
-      }
-  else{
-    if(isbuild){
-           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{build_url}`
-	}
-    else{   
+  else
+    if(isbuild)
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{build_url}`
+    else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  #{post_url}`
-	}
     end
-      }
   end
   
 
@@ -316,7 +309,7 @@ if(event_type == "pull_request")
   installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1")
   puts "installresult : #{installresult}"
   system("cat /tmp/install-log")
-  if(!installresult){
+  if(!installresult)
     logLinesArr = IO.readlines("/tmp/install-log")
     lastIndex = logLinesArr.size-1
     lastLine = logLinesArr[lastIndex]
@@ -328,21 +321,16 @@ if(event_type == "pull_request")
     lastLine.chomp!
     p lastLine
     if(isinstall)
-           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{install_url}`
-    else{   
+	    `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{install_url}`
+    else
 	    `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL_ERROR**  :  #{lastLine}"}'  #{post_url}`
-	 }
     end
-      }
-  else{
-     if(isinstall){
-           `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{install_url}`
-	 }
-     else{  
+  else
+     if(isinstall)
+	     `curl -u "#{username}:#{password}" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{install_url}`
+     else
 	     `curl -u "#{username}:#{password}" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  #{post_url}`
-	 }
      end
-     }
   end
 
 
