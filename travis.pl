@@ -7,19 +7,19 @@ use LWP::Simple;
 use strict;
 use File::Find; 
 
-print "path: $ENV{path}";
-$ower_repo = $ENV{TRAVIS_REPO_SLUG};
+
+$ower_repo = $ENV{'TRAVIS_REPO_SLUG'};
 print "ower_repo : $ower_repo";
-$branch = $ENV{TRAVIS_BRANCH};
+$branch = $ENV{'TRAVIS_BRANCH'};
 print "branch : $branch";
-$event_type = $ENV{TRAVIS_EVENT_TYPE};
+$event_type = $ENV{'TRAVIS_EVENT_TYPE'};
 print "event_type : $event_type";
-$token = $ENV{GITHUB_TOKEN};
+$token = $ENV{'GITHUB_TOKEN'};
 print "token : $token";
-$username = $ENV{USERNAME};
+$username = $ENV{'USERNAME'};
 print "username : $username";
-$password = $ENV{PASSWORD};
-print "password : $password;
+$password = $ENV{'PASSWORD'};
+print "password : $password";
 $currentPath = $ENV{'PWD'};
 print "currentPath : $currentPath";
 ##########################     pull_request format check   ####################
