@@ -4,7 +4,7 @@ use Encode::CN;
 use JSON;  
 use URI::Escape;  
 use LWP::Simple;
-use strict;
+#use strict;
 use File::Find; 
 
 
