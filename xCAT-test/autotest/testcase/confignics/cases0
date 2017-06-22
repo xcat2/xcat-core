@@ -149,13 +149,13 @@ start:confignics_config_multiple_port_withnicaliases_multiple_value
 description:confignics
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
-cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC 
 check:rc==0
 cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
 check:rc==0
-cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC   
 check:rc==0
-cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC    
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nicaliases.$$SECONDNIC="aliases1-1 aliases1-1-1|aliases1-2" nichostnamesuffixes.$$SECONDNIC="-$$SECONDNIC|-$$SECONDNIC-1"
 check:rc==0
@@ -186,6 +186,10 @@ cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 13.1.0.100/16 dev $$THIRDNIC"
+cmd:xdsh $$CN "ip addr del 14.1.0.100/16 dev $$THIRDNIC"
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
