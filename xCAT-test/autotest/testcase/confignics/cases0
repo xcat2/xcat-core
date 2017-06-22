@@ -186,10 +186,6 @@ cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
-cmd:ip addr del 11.1.0.100/16 dev $$SECONDNIC
-cmd:ip addr del 12.1.0.100/16 dev $$SECONDNIC
-cmd:ip addr del 13.1.0.100/16 dev $$THIRDNIC
-cmd:ip addr del 14.1.0.100/16 dev $$THIRDNIC
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
 cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
