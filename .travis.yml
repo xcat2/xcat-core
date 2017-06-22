@@ -1,5 +1,5 @@
 os: linux
-language: ruby
+language: perl
 dist: trusty
 sudo: required
 before_install: 
@@ -29,6 +29,7 @@ before_install:
 #- echo "install XML::Simple" | perl -MCPAN -e 'shell'
 #- quit
 #- sudo apt-get install ruby
+
 - gem install sinatra
 - gem install json
 - gem install activesupport
@@ -62,7 +63,8 @@ script:
 
 
 
-- ruby ./travis.rb
+#- ruby ./travis.rb
+- perl ./travis.pl
 
 - mkdir -p ./check-perl-lib/haha
 - echo "1;" > ./check-perl-lib/haha/probe_utils.pm
