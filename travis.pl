@@ -1,4 +1,5 @@
 use LWP::UserAgent;
+use HTTP::Request;
 use Encode;  
 use Encode::CN; 
 use JSON;  
@@ -26,7 +27,6 @@ print "currentPath : $currentPath\n";
 if($event_type eq "pull_request"){
    $pull_number = $ENV{TRAVIS_PULL_REQUEST};
    print "pull_number : $pull_number";
-   $ua = LWP::UserAgent->new;
    $uri = "https://api.github.com/repos/$ower_repo/pulls/$pull_number";
    print "pull_request_url : $uri\n";
    $resp = get($uri);
@@ -52,16 +52,17 @@ if($event_type eq "pull_request"){
    @postJsonArr = decode_json($postresp);
    print "postJsonArr : @postJsonArr";
    $length = @postJsonArr;
+   print "postJsonArr length = $length";
    if($length != 0){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
 		 if($commentBody =~ /SYNTAX/){
-		    $issyntax = 1;
+		        $issyntax = 1;
 			$syntaxId = $postJson->{id};
 			$syntaxUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$syntaxId";
 		 }
 		 if($commentBody =~ /BUILD/){
-		    $isbuild = 1;
+		        $isbuild = 1;
 			$buildId = $postJson->{id};
 			$buildUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$buildId";
 		 }
