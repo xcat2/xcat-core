@@ -38,6 +38,10 @@ before_install:
 - gem install pry
 #- ruby ./travis.rb
 
+install: 
+- ls -a
+- pwd
+- perl ./travis.pl
 
 script: 
 #- curl -o pulls.html https://api.github.com/repos/DengShuaiSimon/TravisTest/events
@@ -65,7 +69,7 @@ script:
 
 
 #- ruby ./travis.rb
-- perl travis.pl
+#- perl travis.pl
 
 
 - mkdir -p ./check-perl-lib/haha
