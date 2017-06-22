@@ -53,6 +53,8 @@ if($event_type eq "pull_request"){
    print "postJsonArr : @postJsonArr";
    $length = @postJsonArr;
    print "postJsonArr length = $length";
+   $fisrt = @postJsonArr[0];
+   print "postJsonArr first: $first";
    if($length != 0){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
