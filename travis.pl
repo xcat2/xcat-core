@@ -143,7 +143,7 @@ if($event_type eq "pull_request"){
 		  $result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
 		  print "result : $result";
 		  $subresult = substr($result,-3,2);
-		  print "substr($result,-3,2) : $subresult";
+		  print "substr(result,-3,2) : $subresult";
 		  
 		  if($subresult eq "OK"){
 		    $result =~ s/[\n\r]*//g;
@@ -152,7 +152,7 @@ if($event_type eq "pull_request"){
 			$result =~ s/\t//g;
 			$result =~ s/\'//g;
 			$result =~ s/\\//g;
-			$result = "$i $result"
+			$result = "$i $result";
 			push(@resultArr,$result);
 			i = i+1;
 		  }
