@@ -1,5 +1,5 @@
 os: linux
-language: perl
+language: ruby
 dist: trusty
 sudo: required
 before_install: 
