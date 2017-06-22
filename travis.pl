@@ -55,17 +55,17 @@ if($event_type eq "pull_request"){
    if($length != 0){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
-		 if($commentBody =~ /> **SYNTAX/){
+		 if($commentBody =~ /SYNTAX/){
 		    $issyntax = 1;
 			$syntaxId = $postJson->{id};
 			$syntaxUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$syntaxId";
 		 }
-		 if($commentBody =~ /> **BUILD/){
+		 if($commentBody =~ /BUILD/){
 		    $isbuild = 1;
 			$buildId = $postJson->{id};
 			$buildUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$buildId";
 		 }
-		 if($commentBody =~ /> **INSTALL/){
+		 if($commentBody =~ /INSTALL/){
 		    $isinstall = 1;
 			$installId = $postJson->{id};
 			$installUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$installId";
