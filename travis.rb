@@ -78,7 +78,7 @@ if(event_type == "pull_request")
   postresp = Net::HTTP.get_response(URI.parse(post_url))
   postJsonArr = Array.new
   postJsonArr = JSON.parse(postresp.body)
-  pusts "postJsonArr : #{postJsonArr}"
+  puts "postJsonArr : #{postJsonArr}"
   if(postJsonArr.length != 0)
      postJsonArr.each{|postJson| 
 	commentBody = postJson['body']
