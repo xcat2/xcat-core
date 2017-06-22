@@ -154,7 +154,7 @@ if($event_type eq "pull_request"){
 			$result =~ s/\\//g;
 			$result = "$i $result";
 			push(@resultArr,$result);
-			i = i+1;
+			$i = $i+1;
 		  }
 		}
 	  }
@@ -327,7 +327,7 @@ if($event_type eq "pull_request"){
    print color 'bold green';
    print "tabdump site";
    print color 'reset';
-   system("tabdump site")
+   system("tabdump site");
    
    print color 'bold green';
    print "ls /opt/xcat/sbin";
