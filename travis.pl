@@ -9,34 +9,34 @@ use File::Find;
 
 
 $ower_repo = $ENV{'TRAVIS_REPO_SLUG'};
-print "ower_repo : $ower_repo";
+print "ower_repo : $ower_repo\n";
 $branch = $ENV{'TRAVIS_BRANCH'};
-print "branch : $branch";
+print "branch : $branch\n";
 $event_type = $ENV{'TRAVIS_EVENT_TYPE'};
-print "event_type : $event_type";
+print "event_type : $event_type\n";
 $token = $ENV{'GITHUB_TOKEN'};
-print "token : $token";
+print "token : $token\n";
 $username = $ENV{'USERNAME'};
-print "username : $username";
+print "username : $username\n";
 $password = $ENV{'PASSWORD'};
-print "password : $password";
+print "password : $password\n";
 $currentPath = $ENV{'PWD'};
-print "currentPath : $currentPath";
+print "currentPath : $currentPath\n";
 ##########################     pull_request format check   ####################
 if($event_type eq "pull_request"){
    $pull_number = $ENV{TRAVIS_PULL_REQUEST};
    print "pull_number : $pull_number";
    $ua = LWP::UserAgent->new;
    $uri = "https://api.github.com/repos/$ower_repo/pulls/$pull_number";
-   print "pull_request_url : $uri";
+   print "pull_request_url : $uri\n";
    $resp = get($uri);
    $jresp = decode_json($resp);
    $title = $jresp->{title};
-   print "pull_request title : $title";
+   print "pull_request title : $title\n";
    $body = $jresp->{body};
-   print "pull_request body : $body";
+   print "pull_request body : $body\n";
    $post_url = "https://api.github.com/repos/$ower_repo/issues/$pull_number/comments";
-   print "post_url : $post_url";	 
+   print "post_url : $post_url\n";	 
 	
    $issyntax = 0;
    $isbuild = 0;
@@ -141,9 +141,9 @@ if($event_type eq "pull_request"){
 		if($fileType =~ /Perl/){
 		  print "path : $path";
 		  $result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
-		  print "result : $result";
+		  print "result : $result\n";
 		  $subresult = substr($result,-3,2);
-		  print "substr(result,-3,2) : $subresult";
+		  print "substr(result,-3,2) : $subresult\n";
 		  
 		  if($subresult eq "OK"){
 		    $result =~ s/[\n\r]*//g;
@@ -161,7 +161,7 @@ if($event_type eq "pull_request"){
    }#sub
    find(\&wanted,@pathArr);
    $resultArr1 = join("****",@resultArr);
-   print "resultArr1 : $resultArr";
+   print "resultArr1 : $resultArr\n";
    
    ####################   add comments  ########################## 
    if(@resultArr){
@@ -184,20 +184,20 @@ if($event_type eq "pull_request"){
    foreach $term (@resultArr){
       print $term;
    }
-   print "resultArr : @resultArr";
+   print "resultArr : @resultArr\n";
    print color 'reset';
 
    #############################        build         #########################
    print color 'bold green';
-   print "gpg --list-keys";
+   print "gpg --list-keys\n";
    print color 'reset';
    system("gpg --list-keys");
    
    print color 'bold green';
-   print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1";
+   print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
    print color 'reset';
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
-   print "buildresult : $buildresult";
+   print "buildresult : $buildresult\n";
    if(!$buildresult){
      chomp($buildresult);
      @bLogLines = split(/\n/,$buildresult);
@@ -228,42 +228,42 @@ if($event_type eq "pull_request"){
    
    ############################       install        ###########################
    print color 'bold green';
-   print "ls -a";
+   print "ls -a\n";
    print color 'reset';
    system("ls -a");
    
    print color 'bold green';
-   print "sudo ./../../xcat-core/mklocalrepo.sh";
+   print "sudo ./../../xcat-core/mklocalrepo.sh\n";
    print color 'reset';
    system("sudo ./../../xcat-core/mklocalrepo.sh");
    
    print color 'bold green';
-   print "sudo chmod 777 /etc/apt/sources.list";
+   print "sudo chmod 777 /etc/apt/sources.list\n";
    print color 'reset';
    system("sudo chmod 777 /etc/apt/sources.list");
    
    print color 'bold green';
-   print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list";
+   print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    print color 'reset';
    system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
    
    print color 'bold green';
-   print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list";
+   print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    print color 'reset';
    system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
    
    print color 'bold green';
-   print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -";
+   print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
    print color 'reset';
    system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -');
    
    print color 'bold green';
-   print "sudo apt-get -qq update";
+   print "sudo apt-get -qq update\n";
    print color 'reset';
    system("sudo apt-get -qq update");
    
    print color 'bold green';
-   print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1";
+   print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    print color 'reset';
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult";
@@ -278,7 +278,7 @@ if($event_type eq "pull_request"){
 	 $iLastLine =~ s/\t//g;
 	 $iLastLine =~ s/\'//g;
 	 $iLastLine =~ s/\\//g;
-	 print "installresult lastLine : $iLastLine";
+	 print "installresult lastLine : $iLastLine\n";
 	 if(isinstall){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $installUrl`
 	 }else{
@@ -295,7 +295,7 @@ if($event_type eq "pull_request"){
    
  ###########################    Verify xCAT Installation   ##################################
    print color 'bold green';
-   print "source /etc/profile.d/xcat.sh";
+   print "source /etc/profile.d/xcat.sh\n";
    print color 'reset';
    system("source /etc/profile.d/xcat.sh");
    
@@ -305,42 +305,42 @@ if($event_type eq "pull_request"){
    system("sudo echo $USER");
    
    print color 'bold green';
-   print "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis";
+   print "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis\n";
    print color 'reset';
    system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis");
    
    print color 'bold green';
-   print "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow";
+   print "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow\n";
    print color 'reset';
    system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow");
    
    print color 'bold green';
-   print "lsxcatd -v";
+   print "lsxcatd -v\n";
    print color 'reset';
    system("lsxcatd -v");
    
    print color 'bold green';
-   print "tabdump policy";
+   print "tabdump policy\n";
    print color 'reset';
    system("tabdump policy");
    
    print color 'bold green';
-   print "tabdump site";
+   print "tabdump site\n";
    print color 'reset';
    system("tabdump site");
    
    print color 'bold green';
-   print "ls /opt/xcat/sbin";
+   print "ls /opt/xcat/sbin\n";
    print color 'reset';
    system("ls /opt/xcat/sbin");
    
    print color 'bold green';
-   print "service xcatd start";
+   print "service xcatd start\n";
    print color 'reset';
    system("service xcatd start");
    
    print color 'bold green';
-   print "service xcatd status";
+   print "service xcatd status\n";
    print color 'reset';
    system("service xcatd status");
    
