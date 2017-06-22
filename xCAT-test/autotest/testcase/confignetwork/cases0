@@ -146,6 +146,38 @@ cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC
 check:rc==0
 end
 
+start:confignetwork_s_installnic_secondarynic_updatenode
+description: this case is to test confignetwork -s could configure installnic and secondarynic successfully with updatenode.
+cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
+check:rc==0
+cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/;cp -f /etc/network/interfaces /tmp";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC mtu=1496
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=11_1_0_0-255_255_0_0
+check:rc==0
+cmd:updatenode $$CN -P "confignetwork -s"
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+check:output=~11.1.0.100
+check:output=~MTU=1496
+cmd:installnic=`xdsh $$CN ip addr |grep __GETNODEATTR($$CN,ip)__|awk -F " " '{print $NF}'`; if grep SUSE /etc/*release;then xdsh $$CN "grep __GETNODEATTR($$CN,ip)__ /etc/sysconfig/network/ifcfg-$installnic"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep __GETNODEATTR($$CN,ip)__ /etc/sysconfig/network-scripts/ifcfg-$installnic"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep __GETNODEATTR($$CN,ip)__ /etc/network/interfaces";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+check:output=~__GETNODEATTR($$CN,ip)__
+check:output!~dhcp
+cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:xdsh $$CN "rm -rf /tmp/backupnet/ /tmp/interfaces"
+check:rc==0
+end
+
 start:confignetwork_secondarynic_updatenode
 description: this case is to test confignetwork could configure secondarynic successfully with updatenode.
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
