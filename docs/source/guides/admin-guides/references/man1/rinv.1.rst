@@ -39,7 +39,7 @@ OpenPOWER (OpenBMC) server specific:
 ====================================
 
 
-\ **rinv**\  \ *noderange*\  [\ **model | serial | firm | cpu | dimm | all**\ ]
+\ **rinv**\  \ *noderange*\  [\ **model | serial | firm | cpu | dimm | all**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 
 PPC (with HMC) specific:
@@ -231,6 +231,12 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
 \ **-v | -**\ **-version**\ 
  
  Print version.
+ 
+
+
+\ **-V | -**\ **-verbose**\ 
+ 
+ Prints verbose output, if available.
  
 
 

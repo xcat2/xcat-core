@@ -100,7 +100,7 @@ my %usage = (
     OpenPOWER (IPMI) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
     OpenPOWER (OpenBMC) server specific:
-       rinv <noderange> [model|serial|firm|cpu|dimm|all]
+       rinv <noderange> [model|serial|firm|cpu|dimm|all] [-V|--verbose]
     PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
