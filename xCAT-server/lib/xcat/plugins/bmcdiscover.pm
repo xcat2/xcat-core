@@ -83,6 +83,11 @@ sub process_request
     $::CALLBACK = $callback;
 
     #$::args     = $request->{arg};
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
+    } else {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
+    }
 
     unless (defined($request->{arg})) {
         bmcdiscovery_usage();
@@ -1089,6 +1094,10 @@ sub bmcdiscovery_openbmc{
         if (defined($response->{data})) {
             if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
                 $mtm = $response->{data}->{Model};
+                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
+                    print "XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to blank string (ORIG MTM=$mtm)\n";
+                    $mtm = "";
+                }
                 $serial = $response->{data}->{SerialNumber}; 
             } else {
                 xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
