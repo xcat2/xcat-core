@@ -607,7 +607,7 @@ sub mknetboot
             $xcatmaster = '!myipfn!'; #allow service nodes to dynamically nominate themselves as a good contact point, this is of limited use in the event that xcat is not the dhcp/tftp server
         }
 
-        if ($ient and $ient->{tftpserver})
+        if ($ient and $ient->{tftpserver} and $ient->{tftpserver} ne '<xcatmaster>')
         {
             $imgsrv = $ient->{tftpserver};
         }
