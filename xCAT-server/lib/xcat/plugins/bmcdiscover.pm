@@ -1054,6 +1054,7 @@ sub bmcdiscovery_openbmc{
     my $openbmc_project_url = "xyz/openbmc_project";
     my $login_endpoint = "login";
     my $system_endpoint = "inventory/system";
+    my $motherboard_boxelder_endpoint = "$system_endpoint/chassis/motherboard/boxelder/bmc";
 
     my $node_data = $ip;
     my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
@@ -1067,12 +1068,19 @@ sub bmcdiscovery_openbmc{
     my $login_response = $brower->request($login_request);
     
     if ($login_response->is_success) {
+        # attempt to find the system serial/model
         $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
         my $req = HTTP::Request->new('GET', $url, $header);
         my $req_output = $brower->request($req);
         if ($req_output->is_error) {
-            xCAT::MsgUtils->message("W", { data => ["$ip: Could not obtain system information from BMC. Verify firmware levels are up-to-date."] }, $::CALLBACK);
-            return;
+            # If the host system has not yet been powered on, check the boxelder bmc info for model/serial
+            $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_boxelder_endpoint";
+            $req = HTTP::Request->new('GET', $url, $header);
+            $req_output = $brower->request($req);
+            if ($req_output->is_error) {
+                xCAT::MsgUtils->message("W", { data => ["$ip: Could not obtain system information from BMC."] }, $::CALLBACK);
+                return;
+            }
         }
         my $response = decode_json $req_output->content;
         my $mtm;
