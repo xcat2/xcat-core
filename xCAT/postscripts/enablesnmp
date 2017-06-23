@@ -6,7 +6,12 @@ if ! cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2
     echo "This script is only supported on Cumulus OS in ONIE switch"
     exit 2
 fi
+
 snmp_conf="/etc/snmp/snmpd.conf"
+if [ -f "$snmp_conf" ] && grep -w '#xCAT customized snmpd configuration' $snmp_conf;then
+    echo "The snmp has already been configured. Do nothing..."
+    exit 0
+fi
 
 [ -f  "$snmp_conf" ] || exit -1
 

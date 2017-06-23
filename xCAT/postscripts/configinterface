@@ -9,6 +9,11 @@ fi
 
 xcat_intf="/etc/network/interfaces.d/xCAT.intf"
 
+if [ -f $xcat_intf ] && grep -w '#This is sample interface file provided by xCAT' $xcat_intf ; then
+    echo "The switch data ports and default brige have been configured. Do nothing..."
+    exit 0
+fi
+
 echo "#This is sample interface file provided by xCAT" > $xcat_intf
 echo "# bridge-vlan-aware: set to yes to indicate that the bridge is VLAN-aware. " >> $xcat_intf
 echo "# bridge-access: declares the access port. " >> $xcat_intf
