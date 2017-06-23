@@ -337,7 +337,7 @@ check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC=11_1_0_0-255_255_0_0
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
-check:rc!=0
+check:rc==0
 #TODO check the error message
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 check:rc==0
@@ -356,7 +356,7 @@ check:rc==0
 cmd:chtab node=$$CN nics.disable=yes
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
-check:rc==1
+check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:output!~11.1.0.100
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -376,7 +376,7 @@ check:rc==0
 cmd:chtab node=$$CN nics.disable=1
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
-check:rc==1
+check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:output!~11.1.0.100
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
