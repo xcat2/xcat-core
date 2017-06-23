@@ -1,12 +1,16 @@
 #!/bin/bash 
 #-------------------------------------------------------------------------------
 #  confignetwork
-#  Used on Redhat only. Configure bond/vlan/linux bridge/ on the nodes
+#      Configure Ethernet nic/bond/vlan/bridge/ on the nodes
+#      Configure Ethernet nic support redhat sles and ubuntu OS, confignetwork use configeth to realize this work.
+#      Configure bond/vlan/bridge support redhat only.
 #
 #  You can configure nicdevices,nictypes,nicips,nicnetworks in nics table
-#  Then you can run the following commands on MN:
+#  1. If you want to configure install nic and other nics, you can run the following command on MN:
+#       updatenode noderange "confignetwork -s"
+#  2. If you want to configure nics except install nic, you can run the following command on MN:
 #       updatenode noderange confignetwork
-#  confignetwork can be used in postscript too.
+#  3. confignetwork can be used in postscripts or postbootscripts too.
 #
 ############################################################################
 
@@ -20,7 +24,6 @@ else
     log_error "Does NOT support non-Linux Operating System." 
     exit 1
 fi
-
 
 ######################################################################
 #
@@ -61,9 +64,13 @@ function get_nic_cfg_file_content {
          cfg_file="$nwdir/${cfg_dev}"
     fi
 
-    echo "['${cfg_file}']" >&2
-    cat ${cfg_file}| $sed -e 's/^/ >> /g' | log_lines info
-
+    if [ -f $cfg_file ]; then
+        echo "['${cfg_file}']" >&2
+        cat ${cfg_file}| $sed -e 's/^/ >> /g' | log_lines info
+    else
+        log_error "Can not find $cfg_file."
+        errorcode=1
+    fi
 }
 
 ######################################################################
@@ -83,31 +90,30 @@ if [ "$SETINSTALLNIC" = "1" ] || [ "$SETINSTALLNIC" = "yes" ]; then
     bool_install_nic=1
 fi
 
-
-
 ######################################################################
 #
 # Preparation for installnic
 #
 #####################################################################
 function get_installnic {
-    tmp_installnic=''
-    if [ ! $INSTALLNIC ];then
-        tmp_installnic="mac"
-    else
-        tmp_installnic=$INSTALLNIC
-    fi
+
+    tmp_installnic="mac"
+    [ $INSTALLNIC ] && tmp_installnic=$INSTALLNIC
 
     instnic=''
     if [ "$tmp_installnic" = "mac" ];then
-        instnic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://`
+        if [ -n "$MACADDRESS" ]; then
+            instnic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://`
+        else
+            errorcode=1
+        fi
     elif [ `echo $tmp_installnic | grep -E "e(n|th|m)[0-9a-zA-Z]+"` ];then
-        instnic=$str_temp
+        instnic=$tmp_installnic
+    else
+            errorcode=1
     fi
     echo $instnic
 }
-
-
 
 #######################################################################################
 #
@@ -187,11 +193,7 @@ function find_nic_type {
 #
 ###############################################################
 function find_nic_custom_scripts {
-    if [ ! "$1" ];then
-        return
-    fi
-    nic=$1
-    echo $(hashget "niccustomscripts" $nic)
+    [ $1 ] && echo $(hashget "niccustomscripts" "$1")
 }
 
 
@@ -555,30 +557,29 @@ function enable_network_service {
 ############################################################################
 
 errorcode=0
+#nictypes should support capital letters, for example, Ethernet and ethernet
+utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
 #get for installnic
 installnic=''
 installnic=`get_installnic`
 instnic_conf=0
 if [ $boot_install_nic -eq 1 ];then
-    #get installnic
-    installnic=''
-    installnic=`get_installnic`
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    log_info "configure the install nic. "
-    log_info "call 'configeth -s $installnic"
-    instnic_conf=1
-    configeth -s $installnic |log_lines info
-    if [ $? -ne 0 ]; then
+    if [ -n "$installnic" ]; then
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        log_info "configure the install nic $installnic. "
+        instnic_conf=1
+        configeth -s $installnic |log_lines info
+        if [ $? -ne 0 ]; then
+            errorcode=1
+        fi
+        get_nic_cfg_file_content $installnic
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    else
+        log_error "Can not determine proper install nic."
         errorcode=1
     fi
-    get_nic_cfg_file_content $installnic
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
-
-
-#nictypes should support capital letters, for example, Ethernet and ethernet
-utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
 #replace | with "@", for example, eth1|eth2  ---->   eth1@eth2
 nicdevice=`echo "$NICDEVICES" | sed 's/|/@/g'`
@@ -603,7 +604,7 @@ parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 new_nicdevice=`find_nic_and_device_list $str_all_nics|sort -g -k1 -g -k2|uniq`
 if [ -z "$new_nicdevice" ]; then
     log_info "There is no nic device to configure."
-    exit 1 
+    exit $errorcode  
 fi
 
 #sort nics device pair based on nicdevice type
