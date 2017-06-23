@@ -236,7 +236,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, number of CPUs, amou
 
 \ **-V | -**\ **-verbose**\ 
  
- Not supported for all managed machines.  Prints verbose output.
+ Prints verbose output, if available.
  
 
 

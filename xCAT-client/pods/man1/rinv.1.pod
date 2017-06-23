@@ -151,7 +151,7 @@ Print version.
 
 =item B<-V>|B<--verbose>
 
-Not supported for all managed machines.  Prints verbose output.
+Prints verbose output, if available.
 
 =item B<-t>
 
