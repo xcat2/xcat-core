@@ -1095,7 +1095,7 @@ sub bmcdiscovery_openbmc{
             if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
                 $mtm = $response->{data}->{Model};
                 if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
-                    print "XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to blank string (ORIG MTM=$mtm)\n";
+                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
                     $mtm = "";
                 }
                 $serial = $response->{data}->{SerialNumber}; 
