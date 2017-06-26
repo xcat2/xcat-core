@@ -87,7 +87,7 @@ if($event_type eq "pull_request"){
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    system("cat /tmp/build-log");
-   if(!$buildresult){
+   if($buildresult!=0){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
          open (FILE, $file)||die "Can not open $file";
@@ -150,7 +150,7 @@ if($event_type eq "pull_request"){
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
-   if(!$installresult){
+   if($installresult!=0){
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
          open (iFILE, $ifile)||die "Can not open $ifile";
