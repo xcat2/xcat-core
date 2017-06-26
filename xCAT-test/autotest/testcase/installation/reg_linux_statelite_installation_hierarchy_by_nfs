@@ -1,6 +1,6 @@
-start:reg_linux_statelite_installation_hierarchy_by_nfs:stop:yes
+start:reg_linux_statelite_installation_hierarchy_by_nfs
 os:Linux
-stop:yes
+#stop:yes
 cmd:xdsh $$SN fdisk -l
 cmd:xdsh $$SN df -T
 cmd:xdsh $$SN "echo "test"> /test.hierarchy"
@@ -95,6 +95,9 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
+cmd:xdsh $$CN hostname
+check:rc==0
+check:output=~$$CN: $$CN
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "echo "test"> /test.statelite"
 check:rc!=0
