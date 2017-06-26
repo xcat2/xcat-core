@@ -36,7 +36,8 @@ if($event_type eq "pull_request"){
    $body = $jresp->{body};
    print "pull_request body : $body\n";
    $post_url = "https://api.github.com/repos/$ower_repo/issues/$pull_number/comments";
-   print "post_url : $post_url\n";	 
+   print "post_url : $post_url\n";	
+   $content_type = "Content-Type: application/json";
 	
    $issyntax = 0;
    $isbuild = 0;
@@ -118,8 +119,10 @@ if($event_type eq "pull_request"){
      if(isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
 	 }else{
-	   $postresult = system("curl -u \"$username:$password\" $post_url -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' ");
-	   print "$postresult\n";
+	   $post = qq|'{"body": "> **BUILD SUCCESSFUL!**"}' -H "$content_type" $post_url|;
+	   #$postresult = system("curl -u \"$username:$password\" $post_url -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' ");
+	   &process("curl -u \"$username:$password\" -X POST -d $post"); 
+	   #print "$postresult\n";
 	 }
    
    }
