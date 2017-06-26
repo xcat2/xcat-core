@@ -50,12 +50,12 @@ if($event_type eq "pull_request"){
    
    $postresp = get($post_url);
    @postJsonArr = decode_json($postresp);
-   print "postJsonArr : @postJsonArr";
+   print "postJsonArr : @postJsonArr\n";
    $length = @postJsonArr;
-   print "postJsonArr length = $length";
+   print "postJsonArr length = $length\n";
    $fisrt = @postJsonArr[0];
-   print "postJsonArr first: $first";
-   if($length != 0){
+   print "postJsonArr first: $first\n";
+   if($length>1){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
 		 if($commentBody =~ /SYNTAX/){
