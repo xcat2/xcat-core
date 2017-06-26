@@ -149,12 +149,15 @@ if($event_type eq "pull_request"){
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
+   system("cat /tmp/install-log");
    if($installresult!=0){
+         print("run installresult if \n");
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
          open (iFILE, $ifile)||die "Can not open $ifile";
 	 while($iread_line=iFILE){
 	   #chomp $read_line;
+	   print("$iread_line\n");
            push(@iLogLines,$iread_line);
 	  }
          #close(iFILE);
