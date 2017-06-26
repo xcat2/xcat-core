@@ -88,7 +88,7 @@ if($event_type eq "pull_request"){
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    system("cat /tmp/build-log");
-   if($buildresult!=0){
+   if($buildresult ne "0"){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
          open (FILE, $file)||die "Can not open $file";
@@ -106,24 +106,24 @@ if($event_type eq "pull_request"){
 	 $bLastLine =~ s/\t//g;
 	 $bLastLine =~ s/\\//g;
 	 print "buildresult lastLine : $bLastLine\n";
-	 print "isbuild : $isbuild\n";
-	 print "post_url : $post_url\n";
+	 print "isbuild if : $isbuild\n";
+	 print "post_url if: $post_url\n";
 	 if(isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`;
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
    }else{
-     print "isbuild : $isbuild\n";
-     print "post_url : $post_url\n";
+     print "isbuild else: $isbuild\n";
+     print "post_url else : $post_url\n";
      if(isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
 	 }else{
 	   print "run here \n";
-	   $post = qq|'{"body": "> **BUILD SUCCESSFUL!**"}' -H "$content_type" $post_url|;
-	   #$postresult = system("curl -u \"$username:$password\" $post_url -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' ");
-	   &process("curl -u \"$username:$password\" -X POST -d $post"); 
-	   #print "$postresult\n";
+	   #$post = qq|'{"body": "> **BUILD SUCCESSFUL!**"}' -H "$content_type" $post_url|;
+	   $postresult = system("curl -u \"$username:$password\" $post_url -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' ");
+	   #&process("curl -u \"$username:$password\" -X POST -d $post"); 
+	   print "$postresult\n";
 	 }
    
    }
@@ -163,7 +163,7 @@ if($event_type eq "pull_request"){
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
    system("cat /tmp/install-log");
-   if($installresult!=0){
+   if($installresult ne "0"){
          print("run installresult if \n");
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
