@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 ## IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
+#MG June 26
 
 package xCAT_plugin::openbmc;
 
@@ -140,6 +141,14 @@ my %status_info = (
         data           => "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
     },
     RFLASH_UPDATE_ACTIVATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
+    RFLASH_UPDATE_PRIORITY_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/software",
+        data           => "xyz.openbmc_project.Software.Activation.RequestedPriority.0",
+    },
+    RFLASH_UPDATE_PRIORITY_RESPONSE => {
         process        => \&rflash_response,
     },
 
@@ -738,6 +747,7 @@ sub parse_command_status {
                 if ($update_file =~ /^[[:xdigit:]]+$/i) {
                     # Update init_url to include the id of the update to activate
                     $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
                 }
             }
         }
@@ -765,6 +775,8 @@ sub parse_command_status {
             print "Current value of activate request $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} \n";
             $next_status{LOGIN_RESPONSE} = "RFLASH_UPDATE_ACTIVATE_REQUEST";
             $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+            $next_status{"RFLASH_UPDATE_ACTIVATE_RESPOSNE"} = "RFLASH_UPDATE_PRIORITY_REQUEST";
+            $next_status{"RFLASH_UPDATE_PRIORITY_REQUEST"} = "RFLASH_UPDATE_PRIORITY_RESPONSE";
             #xCAT::SvrUtils::sendmsg("Activate option is not yet supported.", $callback);
             #return 1;
         }
@@ -1535,7 +1547,10 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
-        print "Update activatiion response\n";
+        print "Update activation response\n";
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_PRIORITY_RESPONSE") {
+        print "Update priority response\n";
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
