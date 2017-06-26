@@ -148,7 +148,7 @@ if($event_type eq "pull_request"){
 		  $subresult = substr($result,-3,2);
 		  print "substr(result,-3,2) : $subresult\n";
 		  
-		  if($subresult eq "OK"){
+		  if($subresult ne "OK"){
 		    $result =~ s/[\n\r]*//g;
 			$result =~ s/\'//g;
 			$result =~ s/\"//g;
@@ -202,17 +202,22 @@ if($event_type eq "pull_request"){
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    if(!$buildresult){
-     chomp($buildresult);
-     @bLogLines = split(/\n/,$buildresult);
-     $bLastLine = @bLogLines[-1];
-	 print "buildresult lastLine : $bLastLine";
+         open <HANDLE_NAME>,'< /tmp/build-log';
+           @bLogLines =<HANDLE_NAME>;
+         close <HANDLE_NAME>;
+         chomp($buildresult);
+         #@bLogLines = split(/\n/,$buildresult);
+         $bLastLine = @bLogLines[-1];
+	 print "buildresult lastLine : $bLastLine\n";
 	 $bLastLine =~ s/[\n\r]*//g;
 	 $bLastLine =~ s/\'//g;
 	 $bLastLine =~ s/\"//g;
 	 $bLastLine =~ s/\t//g;
 	 $bLastLine =~ s/\'//g;
 	 $bLastLine =~ s/\\//g;
-	 print "buildresult lastLine : $bLastLine";
+	 print "buildresult lastLine : $bLastLine\n";
+	 print "isbuild : $isbuild\n";
+	 print "post_url : $post_url\n";
 	 if(isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`
 	 }else{
@@ -271,9 +276,12 @@ if($event_type eq "pull_request"){
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult";
    if(!$installresult){
-     chomp($installresult);
-     @iLogLines = split(/\n/,$installresult);
-     $iLastLine = @iLogLines[-1];
+         open <HANDLE_NAME>,'< /tmp/build-log';
+           @iLogLines =<HANDLE_NAME>;
+         close <HANDLE_NAME>;
+         chomp($installresult);
+         #@iLogLines = split(/\n/,$installresult);
+         $iLastLine = @iLogLines[-1];
 	 print "installresult lastLine : $iLastLine";
 	 $iLastLine =~ s/[\n\r]*//g;
 	 $iLastLine =~ s/\'//g;
@@ -282,6 +290,7 @@ if($event_type eq "pull_request"){
 	 $iLastLine =~ s/\'//g;
 	 $iLastLine =~ s/\\//g;
 	 print "installresult lastLine : $iLastLine\n";
+	 print "isinstall : $isinstall\n";
 	 if(isinstall){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $installUrl`
 	 }else{
