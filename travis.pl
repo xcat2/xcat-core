@@ -26,7 +26,7 @@ print "currentPath : $currentPath\n";
 ##########################     pull_request format check   ####################
 if($event_type eq "pull_request"){
    $pull_number = $ENV{TRAVIS_PULL_REQUEST};
-   print "pull_number : $pull_number";
+   print "pull_number : $pull_number\n";
    $uri = "https://api.github.com/repos/$ower_repo/pulls/$pull_number";
    print "pull_request_url : $uri\n";
    $resp = get($uri);
@@ -86,7 +86,7 @@ if($event_type eq "pull_request"){
    print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
-   #system("cat /tmp/build-log");
+   system("cat /tmp/build-log");
    if(!$buildresult){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
