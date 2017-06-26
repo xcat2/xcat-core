@@ -36,6 +36,7 @@ before_install:
 - gem install activesupport
 - gem install net
 - gem install pry
+- cpanm -n -q --installdeps 
 #- ruby ./travis.rb
 
 install: 
