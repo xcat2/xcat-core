@@ -96,7 +96,7 @@ if($event_type eq "pull_request"){
                "./check-perl-lib/xCAT_plugin",
                "./check-perl-lib");
    foreach $checkpath (@libPath){
-	     system("sudo mkdir -p $checkpath");
+	     system("mkdir -p $checkpath");
    }
    @libFiles = ("/check-perl-lib/Confluent/Client.pm",
               "/check-perl-lib/Confluent/TLV.pm",
@@ -131,7 +131,7 @@ if($event_type eq "pull_request"){
                         "/check-perl-lib/probe_utils.pm");
    foreach $value (@libFiles){
      $allpath = "$currentPath$value";
-	 system("sudo -s echo \"1;\" > $allpath");
+	 system("sudo echo \"1;\" > $allpath");
    }
    @resultArr = ();
    $i=1;
