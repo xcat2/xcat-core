@@ -113,10 +113,12 @@ if($event_type eq "pull_request"){
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
    }else{
+     print "isbuild : $isbuild\n";
+     print "post_url : $post_url\n";
      if(isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $buildUrl`;
 	 }else{
-	    system("curl -u \"$username:$password\" -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}'  $post_url");
+	    system("curl -u \"$username:$password\" -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' $post_url");
 	 }
    
    }
@@ -176,10 +178,12 @@ if($event_type eq "pull_request"){
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`;
 	 }
    }else{
+     print "isinstall : $isinstall\n";
+     print "post_url : $post_url\n";
      if(isinstall){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $installUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $post_url`;
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}' $post_url`;
 	 }
    
    }
