@@ -131,7 +131,7 @@ if($event_type eq "pull_request"){
                         "/check-perl-lib/probe_utils.pm");
    foreach $value (@libFiles){
      $allpath = "$currentPath$value";
-	 system("sudo echo \"1;\" > $allpath");
+	 system("sudo -s echo \"1;\" > $allpath");
    }
    @resultArr = ();
    $i=1;
