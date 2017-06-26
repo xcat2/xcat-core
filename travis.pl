@@ -118,7 +118,7 @@ if($event_type eq "pull_request"){
      if(isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
 	 }else{
-	   postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/36/comments");
+	   $postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/36/comments");
 	   print "$postresult\n";
 	 }
    
@@ -190,7 +190,8 @@ if($event_type eq "pull_request"){
      if(isinstall){
 	    `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X PATCH $installUrl`;
 	 }else{
-	    `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X POST $post_url`;
+	    $postiresult = `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X POST $post_url`;
+	    print "$postiresult";
 	 }
    
    }
