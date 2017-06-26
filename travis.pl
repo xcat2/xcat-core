@@ -91,11 +91,11 @@ if($event_type eq "pull_request"){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
          open (FILE, $file)||die "Can not open $file";
-	 while($read_line=FILE){
+	 while($read_line=<FILE>){
 	   #chomp($read_line);
            push(@bLogLines,$read_line);
 	  }
-         #close(FILE);
+         close(FILE);
          #@bLogLines = split(/\n/,$buildresult);
          $bLastLine = @bLogLines[-1];
 	 print "buildresult lastLine : $bLastLine\n";
@@ -155,12 +155,12 @@ if($event_type eq "pull_request"){
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
          open (iFILE, $ifile)||die "Can not open $ifile";
-	 while($iread_line=iFILE){
+	 while($iread_line=<iFILE>){
 	   #chomp $read_line;
 	   print("$iread_line\n");
            push(@iLogLines,$iread_line);
 	  }
-         #close(iFILE);
+         close(iFILE);
          #@iLogLines = split(/\n/,$installresult);
          $iLastLine = @iLogLines[-1];
 	 print "installresult lastLine : $iLastLine";
