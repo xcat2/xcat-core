@@ -109,10 +109,26 @@ if($event_type eq "pull_request"){
                     "/check-perl-lib/Net/DNS.pm",
                     "/check-perl-lib/Net/SSLeay.pm",
                     "/check-perl-lib/Net/Telnet.pm",
-                   "/check-perl-lib/SOAP/Lite.pm",
+                    "/check-perl-lib/SOAP/Lite.pm",
                     "/check-perl-lib/XML/LibXML.pm",
                     "/check-perl-lib/XML/Simple.pm",
                    "/check-perl-lib/xCAT/SwitchHandler.pm",
+		   "/check-perl-lib/xCAT/Table.pm",
+		   "/check-perl-lib/xCAT/Utils.pm",
+		   "/check-perl-lib/xCAT/Client.pm",
+		   "/check-perl-lib/xCAT/MsgUtils.pm",
+		   "/check-perl-lib/xCAT/PPC.pm",
+		   "/check-perl-lib/xCAT/Scope.pm",
+		   "/check-perl-lib/xCAT/NodeRange.pm",
+		   "/check-perl-lib/xCAT/SvrUtils.pm",
+		   "/check-perl-lib/xCAT/GlobalDef.pm",
+		   "/check-perl-lib/xCAT/Usage.pm",
+		   "/check-perl-lib/xCAT/Enabletrace.pm",
+		   "/check-perl-lib/xCAT/PasswordUtils.pm",
+		   "/check-perl-lib/xCAT/Usage.pm",
+		   "/check-perl-lib/xCAT/PPCcli.pm",
+		   "/check-perl-lib/xCAT/zvmUtils.pm",
+		   "/check-perl-lib/xCAT/NetworkUtils.pm",
         "/check-perl-lib/xCAT_monitoring/monitorctrl.pm",
         "/check-perl-lib/xCAT_monitoring/montbhandler.pm",
         "/check-perl-lib/xCAT_monitoring/rmcmetrix.pm",
@@ -198,6 +214,7 @@ if($event_type eq "pull_request"){
    print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
+   system("cat /tmp/build-log");
    if(!$buildresult){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
