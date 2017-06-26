@@ -77,136 +77,7 @@ if($event_type eq "pull_request"){
    }#length if
    
    
-   ######################################  check syntax  ################################################
    
-   
-   #chomp($currentPath);
-   print "currentPath : $currentPath\n";
-	  
-   @libPath = ("./check-perl-lib/Confluent",
-               "./check-perl-lib/Crypt",
-               "./check-perl-lib/HTTP",
-               "./check-perl-lib/IO/Socket",
-               "./check-perl-lib/LWP",
-               "./check-perl-lib/Net",
-               "./check-perl-lib/SOAP",
-               "./check-perl-lib/XML",
-               "./check-perl-lib/xCAT",
-               "./check-perl-lib/xCAT_monitoring",
-               "./check-perl-lib/xCAT_plugin",
-               "./check-perl-lib");
-   foreach $checkpath (@libPath){
-	     system("mkdir -p $checkpath");
-   }
-   @libFiles = ("/check-perl-lib/Confluent/Client.pm",
-              "/check-perl-lib/Confluent/TLV.pm",
-                  "/check-perl-lib/Crypt/CBC.pm",
-                  "/check-perl-lib/Crypt/Rijndael.pm",
-                   "/check-perl-lib/HTTP/Async.pm",
-                   "/check-perl-lib/HTTP/Headers.pm",
-              "/check-perl-lib/IO/Socket/SSL.pm",
-                    "/check-perl-lib/LWP/Simple.pm",
-                    "/check-perl-lib/Net/DNS.pm",
-                    "/check-perl-lib/Net/SSLeay.pm",
-                    "/check-perl-lib/Net/Telnet.pm",
-                    "/check-perl-lib/SOAP/Lite.pm",
-                    "/check-perl-lib/XML/LibXML.pm",
-                    "/check-perl-lib/XML/Simple.pm",
-                   "/check-perl-lib/xCAT/SwitchHandler.pm",
-		   "/check-perl-lib/xCAT/Table.pm",
-		   "/check-perl-lib/xCAT/Utils.pm",
-		   "/check-perl-lib/xCAT/Client.pm",
-		   "/check-perl-lib/xCAT/MsgUtils.pm",
-		   "/check-perl-lib/xCAT/PPC.pm",
-		   "/check-perl-lib/xCAT/Scope.pm",
-		   "/check-perl-lib/xCAT/NodeRange.pm",
-		   "/check-perl-lib/xCAT/SvrUtils.pm",
-		   "/check-perl-lib/xCAT/GlobalDef.pm",
-		   "/check-perl-lib/xCAT/Usage.pm",
-		   "/check-perl-lib/xCAT/Enabletrace.pm",
-		   "/check-perl-lib/xCAT/PasswordUtils.pm",
-		   "/check-perl-lib/xCAT/Usage.pm",
-		   "/check-perl-lib/xCAT/PPCcli.pm",
-		   "/check-perl-lib/xCAT/zvmUtils.pm",
-		   "/check-perl-lib/xCAT/NetworkUtils.pm",
-        "/check-perl-lib/xCAT_monitoring/monitorctrl.pm",
-        "/check-perl-lib/xCAT_monitoring/montbhandler.pm",
-        "/check-perl-lib/xCAT_monitoring/rmcmetrix.pm",
-        "/check-perl-lib/xCAT_monitoring/rrdutil.pm",
-            "/check-perl-lib/xCAT_plugin/blade.pm",
-            "/check-perl-lib/xCAT_plugin/bmcconfig.pm",
-            "/check-perl-lib/xCAT_plugin/conserver.pm",
-            "/check-perl-lib/xCAT_plugin/dhcp.pm",
-            "/check-perl-lib/xCAT_plugin/hmc.pm",
-            "/check-perl-lib/xCAT_plugin/notification.pm",
-                        "/check-perl-lib/Expect.pm",
-                        "/check-perl-lib/JSON.pm",
-                        "/check-perl-lib/LWP.pm",
-                        "/check-perl-lib/SNMP.pm",
-                        "/check-perl-lib/probe_global_constant.pm",
-                        "/check-perl-lib/probe_utils.pm");
-   foreach $value (@libFiles){
-     $allpath = "$currentPath$value";
-	 system("echo \"1;\" > $allpath");
-   }
-   system("ls -a ./check-perl-lib");
-   @resultArr = ();
-   $i=1;
-   @pathArr =();
-   push(@pathArr,'/home/travis/build/DengShuaiSimon/xcat-core');
-   sub wanted{
-	  $path = $File::Find::name;
-	  if(-f $File::Find::name){
-	    $fileType = `file $path 2>&1`;
-		if($fileType =~ /Perl/){
-		  print "path : $path";
-		  $result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
-		  print "result : $result\n";
-		  $subresult = substr($result,-3,2);
-		  print "substr(result,-3,2) : $subresult\n";
-		  
-		  if($subresult ne "OK"){
-		    $result =~ s/[\n\r]*//g;
-			$result =~ s/\'//g;
-			$result =~ s/\"//g;
-			$result =~ s/\t//g;
-			$result =~ s/\'//g;
-			$result =~ s/\\//g;
-			$result = "$i $result";
-			push(@resultArr,$result);
-			$i = $i+1;
-		  }
-		}
-	  }
-   }#sub
-   find(\&wanted,@pathArr);
-   $resultArr1 = join("****",@resultArr);
-   print "resultArr1 : $resultArr\n";
-   
-   ####################   add comments  ########################## 
-   if(@resultArr){
-      if(issyntax){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`
-	  }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`
-	  }
-   }else{
-        if(issyntax){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`
-	  }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`
-	  }
-   }
-	
-####################    stop and print error in travis (red color)  ########## 
-	
-   print color 'bold red';
-   foreach $term (@resultArr){
-      print $term;
-   }
-   print "resultArr : @resultArr\n";
-   print color 'reset';
-
    #############################        build         #########################
    
    print "gpg --list-keys\n";
@@ -349,7 +220,136 @@ if($event_type eq "pull_request"){
    
    
   
+   ######################################  check syntax  ################################################
    
+   
+   #chomp($currentPath);
+   print "currentPath : $currentPath\n";
+	  
+   @libPath = ("./check-perl-lib/Confluent",
+               "./check-perl-lib/Crypt",
+               "./check-perl-lib/HTTP",
+               "./check-perl-lib/IO/Socket",
+               "./check-perl-lib/LWP",
+               "./check-perl-lib/Net",
+               "./check-perl-lib/SOAP",
+               "./check-perl-lib/XML",
+               "./check-perl-lib/xCAT",
+               "./check-perl-lib/xCAT_monitoring",
+               "./check-perl-lib/xCAT_plugin",
+               "./check-perl-lib");
+   foreach $checkpath (@libPath){
+	     system("mkdir -p $checkpath");
+   }
+   @libFiles = ("/check-perl-lib/Confluent/Client.pm",
+              "/check-perl-lib/Confluent/TLV.pm",
+                  "/check-perl-lib/Crypt/CBC.pm",
+                  "/check-perl-lib/Crypt/Rijndael.pm",
+                   "/check-perl-lib/HTTP/Async.pm",
+                   "/check-perl-lib/HTTP/Headers.pm",
+              "/check-perl-lib/IO/Socket/SSL.pm",
+                    "/check-perl-lib/LWP/Simple.pm",
+                    "/check-perl-lib/Net/DNS.pm",
+                    "/check-perl-lib/Net/SSLeay.pm",
+                    "/check-perl-lib/Net/Telnet.pm",
+                    "/check-perl-lib/SOAP/Lite.pm",
+                    "/check-perl-lib/XML/LibXML.pm",
+                    "/check-perl-lib/XML/Simple.pm",
+                   "/check-perl-lib/xCAT/SwitchHandler.pm",
+		   "/check-perl-lib/xCAT/Table.pm",
+		   "/check-perl-lib/xCAT/Utils.pm",
+		   "/check-perl-lib/xCAT/Client.pm",
+		   "/check-perl-lib/xCAT/MsgUtils.pm",
+		   "/check-perl-lib/xCAT/PPC.pm",
+		   "/check-perl-lib/xCAT/Scope.pm",
+		   "/check-perl-lib/xCAT/NodeRange.pm",
+		   "/check-perl-lib/xCAT/SvrUtils.pm",
+		   "/check-perl-lib/xCAT/GlobalDef.pm",
+		   "/check-perl-lib/xCAT/Usage.pm",
+		   "/check-perl-lib/xCAT/Enabletrace.pm",
+		   "/check-perl-lib/xCAT/PasswordUtils.pm",
+		   "/check-perl-lib/xCAT/Usage.pm",
+		   "/check-perl-lib/xCAT/PPCcli.pm",
+		   "/check-perl-lib/xCAT/zvmUtils.pm",
+		   "/check-perl-lib/xCAT/NetworkUtils.pm",
+        "/check-perl-lib/xCAT_monitoring/monitorctrl.pm",
+        "/check-perl-lib/xCAT_monitoring/montbhandler.pm",
+        "/check-perl-lib/xCAT_monitoring/rmcmetrix.pm",
+        "/check-perl-lib/xCAT_monitoring/rrdutil.pm",
+            "/check-perl-lib/xCAT_plugin/blade.pm",
+            "/check-perl-lib/xCAT_plugin/bmcconfig.pm",
+            "/check-perl-lib/xCAT_plugin/conserver.pm",
+            "/check-perl-lib/xCAT_plugin/dhcp.pm",
+            "/check-perl-lib/xCAT_plugin/hmc.pm",
+            "/check-perl-lib/xCAT_plugin/notification.pm",
+                        "/check-perl-lib/Expect.pm",
+                        "/check-perl-lib/JSON.pm",
+                        "/check-perl-lib/LWP.pm",
+                        "/check-perl-lib/SNMP.pm",
+                        "/check-perl-lib/probe_global_constant.pm",
+                        "/check-perl-lib/probe_utils.pm");
+   foreach $value (@libFiles){
+     $allpath = "$currentPath$value";
+	 system("echo \"1;\" > $allpath");
+   }
+   system("ls -a ./check-perl-lib");
+   @resultArr = ();
+   $i=1;
+   @pathArr =();
+   push(@pathArr,'/home/travis/build/DengShuaiSimon/xcat-core');
+   sub wanted{
+	  $path = $File::Find::name;
+	  if(-f $File::Find::name){
+	    $fileType = `file $path 2>&1`;
+		if($fileType =~ /Perl/){
+		  print "path : $path";
+		  $result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
+		  print "result : $result\n";
+		  $subresult = substr($result,-3,2);
+		  print "substr(result,-3,2) : $subresult\n";
+		  
+		  if($subresult ne "OK"){
+		    $result =~ s/[\n\r]*//g;
+			$result =~ s/\'//g;
+			$result =~ s/\"//g;
+			$result =~ s/\t//g;
+			$result =~ s/\'//g;
+			$result =~ s/\\//g;
+			$result = "$i $result";
+			push(@resultArr,$result);
+			$i = $i+1;
+		  }
+		}
+	  }
+   }#sub
+   find(\&wanted,@pathArr);
+   $resultArr1 = join("****",@resultArr);
+   print "resultArr1 : $resultArr\n";
+   
+   ####################   add comments  ########################## 
+   if(@resultArr){
+      if(issyntax){
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`
+	  }else{
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`
+	  }
+   }else{
+        if(issyntax){
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`
+	  }else{
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`
+	  }
+   }
+	
+####################    stop and print error in travis (red color)  ########## 
+	
+   print color 'bold red';
+   foreach $term (@resultArr){
+      print $term;
+   }
+   print "resultArr : @resultArr\n";
+   print color 'reset';
+
    
    
    
