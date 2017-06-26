@@ -157,7 +157,6 @@ if($event_type eq "pull_request"){
          open (iFILE, $ifile)||die "Can not open $ifile";
 	 while($iread_line=<iFILE>){
 	   #chomp $read_line;
-	   print("$iread_line\n");
            push(@iLogLines,$iread_line);
 	  }
          close(iFILE);
