@@ -215,16 +215,16 @@ if($event_type eq "pull_request"){
    print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
-   system("cat /tmp/build-log");
+   #system("cat /tmp/build-log");
    if(!$buildresult){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
          open (FILE, $file)||die "Can not open $file";
 	 while($read_line=FILE){
-	   chomp $read_line;
+	   #chomp($read_line);
            push(@bLogLines,$read_line);
 	  }
-         close(FILE);
+         #close(FILE);
          chomp($buildresult);
          #@bLogLines = split(/\n/,$buildresult);
          $bLastLine = @bLogLines[-1];
@@ -284,11 +284,11 @@ if($event_type eq "pull_request"){
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
          open (iFILE, $ifile)||die "Can not open $ifile";
-	 while($iread_line=FILE){
+	 while($iread_line=iFILE){
 	   #chomp $read_line;
            push(@iLogLines,$iread_line);
 	  }
-         close(iFILE);;
+         #close(iFILE);;
          chomp($installresult);
          #@iLogLines = split(/\n/,$installresult);
          $iLastLine = @iLogLines[-1];
