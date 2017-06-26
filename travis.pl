@@ -103,7 +103,6 @@ if($event_type eq "pull_request"){
 	 $bLastLine =~ s/\'//g;
 	 $bLastLine =~ s/\"//g;
 	 $bLastLine =~ s/\t//g;
-	 $bLastLine =~ s/\'//g;
 	 $bLastLine =~ s/\\//g;
 	 print "buildresult lastLine : $bLastLine\n";
 	 print "isbuild : $isbuild\n";
@@ -117,7 +116,7 @@ if($event_type eq "pull_request"){
      if(isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $buildUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $post_url`;
+	    system("curl -u \"$username:$password\" -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}'  $post_url");
 	 }
    
    }
@@ -166,7 +165,6 @@ if($event_type eq "pull_request"){
 	 $iLastLine =~ s/\'//g;
 	 $iLastLine =~ s/\"//g;
 	 $iLastLine =~ s/\t//g;
-	 $iLastLine =~ s/\'//g;
 	 $iLastLine =~ s/\\//g;
 	 print "installresult lastLine : $iLastLine\n";
 	 print "isinstall : $isinstall\n";
