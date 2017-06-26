@@ -109,15 +109,15 @@ if($event_type eq "pull_request"){
 	 print "isbuild : $isbuild\n";
 	 print "post_url : $post_url\n";
 	 if(isbuild){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
    }else{
      if(isbuild){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $buildUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $buildUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD SUCCESSFUL!**"}'  $post_url`;
 	 }
    
    }
@@ -171,15 +171,15 @@ if($event_type eq "pull_request"){
 	 print "installresult lastLine : $iLastLine\n";
 	 print "isinstall : $isinstall\n";
 	 if(isinstall){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $installUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $installUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`;
 	 }
    }else{
      if(isinstall){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $installUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $installUrl`;
 	 }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL SUCCESSFUL!**"}'  $post_url`;
 	 }
    
    }
@@ -327,15 +327,15 @@ if($event_type eq "pull_request"){
    ####################   add comments  ########################## 
    if(@resultArr){
       if(issyntax){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`;
 	  }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`;
 	  }
    }else{
         if(issyntax){
-	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`
+	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`;
 	  }else{
-	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`
+	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`;
 	  }
    }
 	
