@@ -42,7 +42,7 @@ before_install:
 install: 
 - ls -a
 - pwd
-- perl ./travis.pl
+#- perl ./travis.pl
 
 script: 
 #- curl -o pulls.html https://api.github.com/repos/DengShuaiSimon/TravisTest/events
@@ -69,7 +69,7 @@ script:
 
 
 
-#- ruby ./travis.rb
+- ruby ./travis.rb
 #- perl travis.pl
 
 
@@ -79,7 +79,7 @@ script:
 - ls -a ./check-perl-lib
 ###############  build  ###########
 #- gpg --list-keys
-- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+#- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
 
 ############## install ############
 #- pwd
