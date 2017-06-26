@@ -191,14 +191,11 @@ if($event_type eq "pull_request"){
    print color 'reset';
 
    #############################        build         #########################
-   print color 'bold green';
+   
    print "gpg --list-keys\n";
-   print color 'reset';
    system("gpg --list-keys");
    
-   print color 'bold green';
    print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
-   print color 'reset';
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    if(!$buildresult){
@@ -240,55 +237,40 @@ if($event_type eq "pull_request"){
    
    
    ############################       install        ###########################
-   print color 'bold green';
+
    print "ls -a\n";
-   print color 'reset';
    system("ls -a");
    
-   print color 'bold green';
    print "sudo ./../../xcat-core/mklocalrepo.sh\n";
-   print color 'reset';
    system("sudo ./../../xcat-core/mklocalrepo.sh");
    
-   print color 'bold green';
    print "sudo chmod 777 /etc/apt/sources.list\n";
-   print color 'reset';
    system("sudo chmod 777 /etc/apt/sources.list");
    
-   print color 'bold green';
    print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
-   print color 'reset';
    system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
    
-   print color 'bold green';
    print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
-   print color 'reset';
    system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
    
-   print color 'bold green';
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
-   print color 'reset';
    system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -');
    
-   print color 'bold green';
    print "sudo apt-get -qq update\n";
-   print color 'reset';
    system("sudo apt-get -qq update");
    
-   print color 'bold green';
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
-   print color 'reset';
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
-   print "installresult : $installresult";
+   print "installresult : $installresult\n";
    if(!$installresult){
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
-         open (FILE, $ifile)||die "Can not open $ifile";
-	 while($read_line=FILE){
+         open (iFILE, $ifile)||die "Can not open $ifile";
+	 while($iread_line=FILE){
 	   #chomp $read_line;
-           push(@bLogLines,$read_line);
+           push(@iLogLines,$iread_line);
 	  }
-         close(FILE);;
+         close(iFILE);;
          chomp($installresult);
          #@iLogLines = split(/\n/,$installresult);
          $iLastLine = @iLogLines[-1];
@@ -316,54 +298,35 @@ if($event_type eq "pull_request"){
    }
    
  ###########################    Verify xCAT Installation   ##################################
-   print color 'bold green';
+
    print "source /etc/profile.d/xcat.sh\n";
-   print color 'reset';
    system("source /etc/profile.d/xcat.sh");
    
-   print color 'bold green';
    print "sudo echo $USER";
-   print color 'reset';
    system("sudo echo $USER");
    
-   print color 'bold green';
    print "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis\n";
-   print color 'reset';
    system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis");
    
-   print color 'bold green';
    print "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow\n";
-   print color 'reset';
    system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow");
    
-   print color 'bold green';
    print "lsxcatd -v\n";
-   print color 'reset';
    system("lsxcatd -v");
    
-   print color 'bold green';
    print "tabdump policy\n";
-   print color 'reset';
    system("tabdump policy");
    
-   print color 'bold green';
    print "tabdump site\n";
-   print color 'reset';
    system("tabdump site");
    
-   print color 'bold green';
    print "ls /opt/xcat/sbin\n";
-   print color 'reset';
    system("ls /opt/xcat/sbin");
    
-   print color 'bold green';
    print "service xcatd start\n";
-   print color 'reset';
    system("service xcatd start");
    
-   print color 'bold green';
    print "service xcatd status\n";
-   print color 'reset';
    system("service xcatd status");
    
    
