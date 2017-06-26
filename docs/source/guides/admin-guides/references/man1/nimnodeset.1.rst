@@ -33,7 +33,7 @@ This xCAT command can be used to initialize AIX/NIM standalone machines. Once th
 
 If you are using xCAT service nodes the \ **nimnodeset**\  command will automatically determine the correct server(s) for the node and do the initialization on that server(s).
 
-The osimage_name is the name of an xCAT osimage definition that contains the list of NIM resources to use when initializing the nodes.   If the osimage_name is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute (which is the name of an osimage definition). If the osimage_image is provided on the command line then the code will also set the "provmethod" attribute of the node definiions.
+The osimage_name is the name of an xCAT osimage definition that contains the list of NIM resources to use when initializing the nodes.   If the osimage_name is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute (which is the name of an osimage definition). If the osimage_image is provided on the command line then the code will also set the "provmethod" attribute of the node definitions.
 
 This command will also create a NIM resolv_conf resource to be used when installing the node.  If a resolv_conf resource is not already included in the xCAT osimage definition and if the "domain" and "nameservers" values are set then a new
 NIM resolv_conf resource will be created and allocated to the nodes.
@@ -41,7 +41,7 @@ NIM resolv_conf resource will be created and allocated to the nodes.
 The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
 
 The "search" field of the resolv.conf file will contain a list all the domains
-listed in the xCAT network definitions and the xCAT site definiton.
+listed in the xCAT network definitions and the xCAT site definition.
 
 The "nameservers" value can either be set to a specific IP address or the "<xcatmaster>" key word.  The "<xcatmaster>" key word means that the value of the "xcatmaster" attribute of the node definition will be used in the /etc/resolv.conf file.  (I.e.  The name of the install server as known by the node.)
 
@@ -58,13 +58,13 @@ will be created.
 
 You can specify additional attributes and values using the "attr=val" command line option.  This information will be passed on to the underlying call to the NIM "nim -o bos_inst" command.  See the NIM documentation for information on valid command line options for the nim command.  The "attr" must correspond to a NIM attribute supported for the NIM "bos_inst" operation.  Information provided by the "attr=val" option will take precedence over the information provided in the osimage definition.
 
-The force option can be used to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinititializing.
+The force option can be used to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinitializing.
 
 This command will also create a NIM script resource to enable the xCAT support for user-provided customization scripts.
 
 After the \ **nimnodeset**\  command completes you can use the \ **lsnim**\  command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
 
-You can supply your own scripts to be run on the management node  or on the service node (if their is hierarchy) for a node during the \ **nimnodeset**\  command. Such scripts are called \ **prescripts**\ . They should be copied to /install/prescripts dirctory. A table called \ *prescripts*\  is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the \ **nimnodeset**\  command are stored in the 'begin' column of \ *prescripts*\  table. The scripts to be run at the end of the \ **nimnodeset**\  command are stored in the 'end' column of \ *prescripts*\  table. Run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: \ *standalone:myscript1,myscript2*\ . The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action, in this case "standalone". If \ *#xCAT setting:MAX_INSTANCE=number*\  is specified in the script, the script will get invoked for each node in parallel, but no more than \ *number*\  of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
+You can supply your own scripts to be run on the management node  or on the service node (if their is hierarchy) for a node during the \ **nimnodeset**\  command. Such scripts are called \ **prescripts**\ . They should be copied to /install/prescripts directory. A table called \ *prescripts*\  is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the \ **nimnodeset**\  command are stored in the 'begin' column of \ *prescripts*\  table. The scripts to be run at the end of the \ **nimnodeset**\  command are stored in the 'end' column of \ *prescripts*\  table. Run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: \ *standalone:myscript1,myscript2*\ . The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action, in this case "standalone". If \ *#xCAT setting:MAX_INSTANCE=number*\  is specified in the script, the script will get invoked for each node in parallel, but no more than \ *number*\  of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
 
 
 *******
@@ -76,7 +76,7 @@ OPTIONS
 \ *attr=val [attr=val ...]*\ 
  
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
- val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma seperated list. (ex. "script=ascript,bscript").
+ val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma separated list. (ex. "script=ascript,bscript").
  
 
 
@@ -106,8 +106,7 @@ OPTIONS
 
 \ **-l|-**\ **-location**\ 
  
- The directory location to use when creating new NIM resolv_conf resources. The d
- efault location is /install/nim.
+ The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
  
 
 

@@ -41,7 +41,7 @@ Keywords to use:
     port -- the application daemon port number, if not specified, use internal list, then /etc/services. 
     group -- the name of a node group that needs to get the application status from. If not specified, assume all the nodes in the nodelist table. To specify more than one groups, use group=a,group=b format.
     cmd -- the command that will be run locally on mn or sn.
-    lcmd -- the command that will be run the the mn only. 
+    lcmd -- the command that will be run the mn only. 
     dcmd -- the command that will be run distributed on the nodes using xdsh <nodes> ....
 
 For commands specified by 'cmd' and 'lcmd', the input of is a list of comma separated node names, the output must be in the following format:
@@ -63,7 +63,7 @@ Uses fping instead of nmap even if nmap is available.  If you seem to be having 
 
 =item B<-m>|B<--usemon>
 
-Uses the settings from the B<monsetting> talbe to determine a list of applications that need to get status for. 
+Uses the settings from the B<monsetting> table to determine a list of applications that need to get status for. 
 
 =item B<-p>|B<--powerstat>
 

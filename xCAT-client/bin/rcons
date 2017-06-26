@@ -87,7 +87,7 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
     fi
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
-        declare -a ipaddrs=`ip addr | grep 'inet' | awk {'print $2'} | cut -d/ -f1 | grep -v : | tr '\n' ' '`
+        declare -a ipaddrs=`ip -o a | awk {'print $4'} | cut -d/ -f1 | grep -v : | tr '\n' ' '`
         for IP in ${ipaddrs[*]}; do 
             if [[ "${CONSERVER}" == "${IP}" ]]; then 
                 # conserver is the same node, do not connect using -s
@@ -127,12 +127,22 @@ elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
     #NOTE: IPv6 is not good with the below if going by IP, needs more sophisticated
     #parsing
     CONSERVER=`echo $CONSERVER|cut -d: -f 1`
-
+    CONSOLE_VER=`console -V | awk '/conserver.com version/ {print $4}'`
     #Detect console support of SSL, only fixup consolerc if encryption is detected
     if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
         # generate .consolerc if it does not exist or is empty
         if [ ! -s $HOME/.consolerc ]; then
-            cat > $HOME/.consolerc << EOF
+            if [ "$CONSOLE_VER" != "8.1.16" ]; then
+                cat > $HOME/.consolerc << EOF
+config * {
+      port 782;
+      sslenabled yes;
+      sslcacertificatefile $HOME/.xcat/ca.pem;
+      sslcredentials $HOME/.xcat/client-cred.pem;
+}
+EOF
+            else
+                cat > $HOME/.consolerc << EOF
 config * {
       port 782;
       sslenabled yes;
@@ -140,6 +150,7 @@ config * {
       sslcredentials $HOME/.xcat/client-cred.pem;
 }
 EOF
+            fi
         fi
     else
         # ssl is not enabled, comment out the ssl settings in .consolerc
@@ -147,7 +158,10 @@ EOF
             sed -i 's/\Wssl/#ssl/1' $HOME/.consolerc
 	fi
     fi
-
+    # for migration, upgrade conserver
+    if [ "$CONSOLE_VER" != "8.1.16" ]; then
+        sed -i 's/sslauthority/sslcacertificatefile/1' $HOME/.consolerc
+    fi
     exec console $FORCE -M $CONSERVER $1
 else 
     if [[ "$FORCE" == "-s" ]]; then

@@ -51,12 +51,12 @@ DESCRIPTION
 
 
 The getmacs command collects MAC address from a single or range of nodes.
-Note that on AIX systems, the returned MAC address is not colon-seperated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-seperated (for example 8e:e2:24:5c:f0:04).
+Note that on AIX systems, the returned MAC address is not colon-separated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-separated (for example 8e:e2:24:5c:f0:04).
 If no ping test performed,  getmacs writes the first adapter MAC to the xCAT database.  If ping test performed, getmacs will write the first successfully pinged MAC to xCAT database.
 
 For PPC (using Direct FSP Management) specific:
 
-Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform \ **Discovery**\  with option "\ **-D**\ ", since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "\ **-D**\ " to get theirs MAC addresses.
+Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform \ **Discovery**\  with option "\ **-D**\ ", since there is no HMC command to read them and getmacs has to login to open firmware. And if the LPARs has never been activated before, getmacs need to be performed with the option "\ **-D**\ " to get theirs MAC addresses.
 
 For PPC (using HMC) specific:
 
@@ -74,7 +74,7 @@ OPTIONS
 
 \ **-**\ **-arp**\ 
 
-Read MAC address with ARP protocal.
+Read MAC address with ARP protocol.
 
 \ **-C**\ 
 
@@ -90,7 +90,7 @@ Perform discovery for mac address.  By default, it will run ping test to test th
 
 \ **-f**\ 
 
-Force immediate shutdown of the partition.This flag must be used with -D flag.
+Force immediate shutdown of the partition. This flag must be used with -D flag.
 
 \ **-F**\ 
 
@@ -118,7 +118,7 @@ Read MAC address when the lpar is in openfirmware state.  This option mush be us
 
 \ **-S**\ 
 
-The IP address of the machine to ping.  The default is to read from xCAT databse if no \ **-S**\  specified.
+The IP address of the machine to ping.  The default is to read from xCAT database if no \ **-S**\  specified.
 
 \ **-v**\ 
 
@@ -167,7 +167,7 @@ Output is similar to:
   ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
-2. To retrieve the MAC address with ARP protocal:
+2. To retrieve the MAC address with ARP protocol:
 
 
 .. code-block:: perl

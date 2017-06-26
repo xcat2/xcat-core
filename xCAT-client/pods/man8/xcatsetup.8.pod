@@ -85,7 +85,7 @@ The B<xcatsetup> command has only been implemented and tested for system p serve
 =head2 Configuration File
 
 The B<config file> is organized in stanza format and supports the keywords in the sample file below.  Comment lines
-begin with "#".  Stanzas can be ommitted if you do not want to define that type of object.
+begin with "#".  Stanzas can be omitted if you do not want to define that type of object.
 The only hostname formats supported are those shown in this sample file, although you can change the base
 text and the numbers.  For example, hmc1-hmc3 could be changed to hwmgmt01-hwmgmt12.
 The hostnames specified must sort correctly.  I.e. use node01-node80, instead of node1-node80.

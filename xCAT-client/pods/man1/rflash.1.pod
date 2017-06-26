@@ -40,7 +40,7 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 
 =head2 PPC (with HMC) specific:
 
-The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before running B<rflash>, use B<rspconfig> to check if the related HMC ssh is enabled. To enable a HMC ssh connection, use B<rspconfig> comamnd.
+The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before running B<rflash>, use B<rspconfig> to check if the related HMC ssh is enabled. To enable a HMC ssh connection, use B<rspconfig> command.
 
 B<Warning!>  This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
 
@@ -50,7 +50,7 @@ The flash chip of a POWER5 and POWER6 managed system or power subsystem stores f
 
 The B<--commit> flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The B<--recover> flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
 
-B<NOTE:>When the B<--commit> or B<--recover> two flags is used, the noderange B<cannot> be BPA. It only B<can> be CEC or LPAR ,and  will take effect for B<both> managed systems and power subsystems.
+B<NOTE:>When the B<--commit> or B<--recover> two flags is used, the noderange B<cannot> be BPA. It only B<can> be CEC or LPAR, and  will take effect for B<both> managed systems and power subsystems.
 
 xCAT recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
 
@@ -68,7 +68,7 @@ The B<deferred> option will load the new firmware into the T (temp) side, but wi
 
 In Direct FSP/BPA Management, there is B<-d> I<data_directory> option. The default value is /tmp. When doing firmware update, B<rflash> will put some related data from rpm packages in <data_directory> directory, so the execution of B<rflash> will require available disk space in <data_directory> for the command to properly execute: 
 
-For one GFW rpm package and one power code rpm package , if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 1.5*gfw_rpmsize + 1.5*power_rpmsize
+For one GFW rpm package and one power code rpm package, if the GFW rpm package size is gfw_rpmsize, and the Power code rpm package size is power_rpmsize, it requires that the available disk space should be more than: 1.5*gfw_rpmsize + 1.5*power_rpmsize
 
 For Power 775, the B<rflash> command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
 
@@ -76,7 +76,7 @@ For more details about the Firmware Update using Direct FSP/BPA Management, refe
 
 =head2 NeXtScale FPC specific:
 
-The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters 
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http information required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters 
 
 =head2 OpenPOWER specific:
 
@@ -92,7 +92,7 @@ Writes the command's usage statement to standard output.
 
 =item B<-c|--check>
 
-Chech the firmware version of BMC and HPM file.
+Check the firmware version of BMC and HPM file.
 
 =item B<-p> I<directory>
 
@@ -139,12 +139,12 @@ Verbose output.
 =over 4
 
 =item 1.
-To  update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
+To update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
  rflash cec_name -p /tmp/fw --activate disruptive
 
 =item 2.
-To  update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
+To update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
  rflash bpa_name -p /tmp/fw --activate disruptive
 
@@ -154,7 +154,7 @@ To commit a firmware update to permanent flash for both managed system and the r
  rflash cec_name --commit
 
 =item 4.
-To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address  and the directory on the xCAT MN containing the firmware as follows:
+To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address and the directory on the xCAT MN containing the firmware as follows:
 
  rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
 

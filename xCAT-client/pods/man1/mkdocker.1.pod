@@ -82,7 +82,7 @@ Output is similar to:
     host01c01: Pull image ubuntu start
     host01c01: Pull image ubuntu done
     host01c01: Remove default network connection
-    host01c01: Connecting customzied network 'mynet0'
+    host01c01: Connecting customized network 'mynet0'
     host01c01: success
 
 2. To create a docker instance which have dir "destdir" in docker instance bind from "srcdir" on dockerhost, and have "Tty" opened with which the docker instance can be attached after started to check the files under "destdir".
@@ -92,7 +92,7 @@ Output is similar to:
 Output is similar to:
 
     host01c01: Remove default network connection
-    host01c01: Connecting customzied network 'mynet0'
+    host01c01: Connecting customized network 'mynet0'
     host01c01: success
 
 =head1 SEE ALSO

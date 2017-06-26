@@ -635,11 +635,11 @@ function add_br() {
      BRIDGE=$2
 
      if [[ $BRIDGE == "bridge_ovs" ]]; then
-         type brctl >/dev/null 2>/dev/null || echo "There is no ovs-vsctl" >&2 && exit 1
+         type brctl >/dev/null 2>/dev/null || (echo "There is no ovs-vsctl" >&2 && exit 1)
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
-         type brctl >/dev/null 2>/dev/null || echo "There is no brctl" >&2 && exit 1
+         type brctl >/dev/null 2>/dev/null || (echo "There is no brctl" >&2 && exit 1)
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
          log_info "brctl stp $BNAME on"

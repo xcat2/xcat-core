@@ -95,7 +95,7 @@ If there is no match, and we are not over the template count,
 then a new template will be created from the node output. 
 This will result in having all nodes that match a given template reported in
 their group at the end of the run in the output file. 
-If no template count is specified,  0 is the default, and all nodes will
+If no template count is specified, 0 is the default, and all nodes will
 be compared against the first template.
 
 =item B<-s>|B<--seed> I<seed node>
@@ -104,7 +104,7 @@ This is the node that will be used to build the first template
 that is stored in template path.  You can use this parameter instead of running
 the command yourself to build the template.
 
-B<Note:> If the template path file does not exists, and no seed node is 
+B<Note:> If the template path file does not exist, and no seed node is 
 supplied, the seed node automatically is one node in the
 noderange.
 
@@ -126,7 +126,7 @@ template (except for xdshcoll header and comments). If not in exactmatch mode,
 there can exist more lines in the xdsh return from the nodes.
 
 For example, if running a "rpm -qa | grep xCAT" command, without exactmatch 
-set, if the node containes more xCAT rpms that listed in the template,
+set, if the node contains more xCAT rpms that listed in the template,
 it would be considered a match, as long as all rpms listed in the template
 were on the node. With exactmatch set, the output must be identical 
 to the template. 
@@ -137,7 +137,7 @@ Specify a user-defined device type that references the location
 of relevant device configuration file. The devicetype value must
 correspond to a valid device configuration file.
 xCAT ships some default configuration files
-for Ethernet switches and and IB switches under
+for Ethernet switches and IB switches under
 I</opt/xcat/share/xcat/devicetype> directory. If you want to overwrite
 any of the configuration files, copy them to I</var/opt/xcat/>
 directory and cutomize.

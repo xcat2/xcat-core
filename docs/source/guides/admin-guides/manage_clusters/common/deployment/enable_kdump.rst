@@ -38,7 +38,7 @@ In above example, pkglist file is /opt/xcat/share/xcat/netboot/rh/compute.rhels7
 Setup pkglist
 -------------
 
-Before setting up kdump,the approprite rpms should be added to the pkglist file.Here is the rpm packages list which needs to be added to pkglist file for kdump for different OS. 
+Before setting up kdump, the appropriate rpms should be added to the pkglist file.Here is the rpm packages list which needs to be added to pkglist file for kdump for different OS. 
 
 * **[RHEL]** ::
     

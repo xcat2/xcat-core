@@ -8,15 +8,15 @@ B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head2 BMC/MPA specific:
 
-B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<dimm>|B<bios>|B<mparom>|B<mac>|B<all>}
+B<rinv> I<noderange> [B<model>|B<serial>|B<asset>|B<vpd>|B<deviceid>|B<guid>|B<firm>|B<dimm>|B<mprom>|B<all>]
 
-=head2 OpenPOWER (using ipmi) server specific:
+=head2 OpenPOWER (IPMI) server specific:
   
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>} 
+B<rinv> I<noderange> [B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<all>] 
 
-=head2 OpenPOWER (using openbmc) server specific:
+=head2 OpenPOWER (OpenBMC) server specific:
 
-B<rinv> I<noderange> {B<model>|B<serial>|B<deviceid>|B<uuid>|B<guid>|B<vpd>|B<mprom>|B<firm>|B<cpu>|B<dimm>|B<all>}
+B<rinv> I<noderange> [B<model>|B<serial>|B<firm>|B<cpu>|B<dimm>|B<all>] [B<-V>|B<--verbose>]
 
 =head2 PPC (with HMC) specific:
 
@@ -39,7 +39,6 @@ B<rinv> I<noderange> [B<-t>]
 =head2 pdu specific:
 
 B<rinv> I<noderange> 
-
 
 =head2 zVM specific:
 
@@ -69,18 +68,14 @@ B<rinv> I<noderange> [B<--zfcppoolnames>]
 
 =head1 B<Description>
 
-B<rinv>  retrieves  hardware  configuration  information from the on-board
+B<rinv> retrieves hardware configuration information from the on-board
 Service Processor for a single or range of nodes and groups.
 
-Calling B<rinv> for VMware will display the UUID/GUID, nuumber of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
+Calling B<rinv> for VMware will display the UUID/GUID, number of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
 
 =head1 B<Options>
 
 =over 7
-
-=item B<pci>
-
-Retrieves PCI bus information.
 
 =item B<bus>
 
@@ -88,8 +83,7 @@ List all buses for each I/O slot.
 
 =item B<config>
 
-Retrieves number of processors, speed, total  memory,  and  DIMM
-locations.
+Retrieves number of processors, speed, total memory, and DIMM locations.
 
 =item B<model>
 
@@ -113,7 +107,7 @@ To output the raw information of deconfigured resources for CEC.
 
 =item B<asset>
 
-Retrieves asset tag.  Usually it's the MAC address of eth0.
+Retrieves asset tag. Usually it's the MAC address of eth0.
 
 =item B<vpd>
 
@@ -125,19 +119,23 @@ Diagnostics information of firmware.
 
 =item B<mprom>
 
-Retrieves mprom firmware level
+Retrieves mprom firmware level.
+
+=item B<dimm>
+
+Retrieves dual in-line memory module information.
 
 =item B<deviceid>
 
-Retrieves device identification. Usually device, manufacturing and product ids. 
+Retrieves device identification. Usually device, manufacturing and product IDs. 
 
 =item B<uuid>
 
-Retrieves the universally unique identifier
+Retrieves the universally unique identifier.
 
 =item B<guid>
 
-Retrieves the global unique identifier 
+Retrieves the global unique identifier .
 
 =item B<all>
 
@@ -150,6 +148,10 @@ Print help.
 =item B<-v>|B<--version>
 
 Print version.
+
+=item B<-V>|B<--verbose>
+
+Prints verbose output, if available.
 
 =item B<-t>
 

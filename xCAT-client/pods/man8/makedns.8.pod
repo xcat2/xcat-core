@@ -24,7 +24,7 @@ The B<forwarders> value should be set to the IP address of one or more nameserve
 
 An xCAT B<network> definition must be defined for each network used in the cluster.  The B<net> and B<mask> attributes will be used by the B<makedns> command.
 
-A network B<domain> and B<nameservers> values must be provided either in the B<network> definiton corresponding to the node or in the B<site> definition.
+A network B<domain> and B<nameservers> values must be provided either in the B<network> definition corresponding to the node or in the B<site> definition.
 
 Only entries in /etc/hosts or the hosts specified by B<noderange> that have a corresponding xCAT network definition will be added to DNS.
 

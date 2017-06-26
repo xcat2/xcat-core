@@ -59,7 +59,7 @@ When the nodes are discovered, PCM updates the affected configuration files on t
 
 When you power on the nodes, they PXE boot and DHCP/TFTP/HTTP on the management node give each node the xCAT genesis boot image,
 which inventories the node hardware and sends data to the management node.  There, either the sequential discovery process or the
-profile discovery process assigns node attributes and defines the node in the the database.
+profile discovery process assigns node attributes and defines the node in the database.
 
 
 *******
@@ -127,7 +127,7 @@ OPTIONS
  
 
 
-\ **chasiss=**\ \ *chassis-name*\ 
+\ **chassis=**\ \ *chassis-name*\ 
  
  Sets the chassis name that the Blade server or PureFlex blade is located in, for either the Sequential Discovery or Profile Discovery methods. This option is used for the Blade server and PureFlex system only. You cannot specify this option with the rack option.
  
@@ -196,7 +196,7 @@ RETURN VALUE
 
 0  The command completed successfully.
 
-1  An error has occured.
+1  An error has occurred.
 
 
 ********

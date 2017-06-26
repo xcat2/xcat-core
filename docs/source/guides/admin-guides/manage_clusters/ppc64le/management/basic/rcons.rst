@@ -7,11 +7,11 @@ Most enterprise servers do not have video adapters installed with the machine an
 
 Configure the correct console management by modifying the node definition:
 
-    * For OpenPower, **IPMI** managed server: ::
+    * For OpenPOWER, **IPMI** managed server: ::
 
         chdef -t node -o <noderange> cons=ipmi
 
-    * For OpenPower, **OpenBMC** managed servers: ::
+    * For OpenPOWER, **OpenBMC** managed servers: ::
  
         chdef -t node -o <noderange> cons=openbmc
 
@@ -46,7 +46,7 @@ The xCAT ``rcons`` command relies on conserver (http://www.conserver.com/).  The
 
 
 OpenBMC Specific
-```````````````
+````````````````
 
    #. For OpenBMC managed servers, the root user must be able to ssh passwordless to the BMC for the ``rcons`` function to work.  
 

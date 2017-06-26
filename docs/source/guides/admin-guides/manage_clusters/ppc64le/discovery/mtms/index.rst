@@ -3,12 +3,12 @@ MTMS-based Discovery
 
 MTMS stands for  **M**\ achine  **T**\ ype/\ **M**\ odel and **S**\ erial.  This is one way to uniquely identify each physical server.  
 
-MTMS-based hardware discovery assumes the administator has the model type and serial number information for the physical servers and a plan for mapping the servers to intended hostname/IP addresses.
+MTMS-based hardware discovery assumes the administrator has the model type and serial number information for the physical servers and a plan for mapping the servers to intended hostname/IP addresses.
 
 **Overview**
 
    #. Automatically search and collect MTMS information from the servers
-   #. Write **discovered-bmc-nodes** to xCAT (recommened to set different BMC IP address)
+   #. Write **discovered-bmc-nodes** to xCAT (recommended to set different BMC IP address)
    #. Create **predefined-compute-nodes** to xCAT providing additional properties
    #. Power on the nodes which triggers xCAT hardware discovery engine
 

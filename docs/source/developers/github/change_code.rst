@@ -24,8 +24,8 @@ It may take days before your pull request is properly reviewed and you want to k
 Creating additional branches will allow you to work on different tasks/enhancements at the same time.  You can easily manage your working changes between branches with ``git stash.``.
 
 
-Commiting code and pushing to remote branch
--------------------------------------------
+Committing code and pushing to remote branch
+--------------------------------------------
 
 Once your code is ready....
 

@@ -15,7 +15,7 @@ Please make sure the following packages have been installed on the management no
 Set Up the kvm storage directory on the management node(optional)
 -----------------------------------------------------------------
 
-It is a recommended configuration to create a shared file system for virtual machines hosting. The shared file system, usually on a SAN, NAS or GPFS, is shared among KVM hypevisors, which simplifies VM migration from one hypervisor to another with xCAT.
+It is a recommended configuration to create a shared file system for virtual machines hosting. The shared file system, usually on a SAN, NAS or GPFS, is shared among KVM hypervisors, which simplifies VM migration from one hypervisor to another with xCAT.
 
 The easiest shared file system is ``/install`` directory on the management node, it can be shared among hypervisors via NFS. Please refer to the following steps :
 

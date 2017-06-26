@@ -41,7 +41,7 @@ Configure an ``upstream`` repository
 
       $ git remote add upstream git@github.com:xcat2/xcat-core.git
 
-  View the configured reposotories: ::
+  View the configured repositories: ::
 
       $ git remote -v 
       origin  git@github.com:<userid>/xcat-core.git (fetch)

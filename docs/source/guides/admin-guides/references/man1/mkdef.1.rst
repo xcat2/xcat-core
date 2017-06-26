@@ -84,7 +84,7 @@ OPTIONS
 
 \ **-**\ **-template**\  \ *template-object-name*\ 
  
- Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. If there are a template and an existing object with the same name \ *template-object-name*\ , the tempalte object takes precedence over the existing object. For the details of xCAT shipped object definition templates, refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
+ Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. If there are a template and an existing object with the same name \ *template-object-name*\ , the template object takes precedence over the existing object. For the details of xCAT shipped object definition templates, refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
  
 
 
@@ -96,7 +96,7 @@ OPTIONS
 
 \ **-w**\  \ *attr==val*\  \ **-w**\  \ *attr=~val*\  ...
  
- Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. For mkdef commmand, the -w flag only makes sense for creating dynamic node group. Use the help option to get a list of valid attributes for each object type.
+ Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. For mkdef command, the -w flag only makes sense for creating dynamic node group. Use the help option to get a list of valid attributes for each object type.
  
  Operator descriptions:
          ==        Select nodes where the attribute value is exactly this value.
