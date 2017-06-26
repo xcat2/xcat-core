@@ -95,7 +95,7 @@ if($event_type eq "pull_request"){
                "./check-perl-lib/xCAT_monitoring",
                "./check-perl-lib/xCAT_plugin",
                "./check-perl-lib");
-   foreach $chechpath (@libPath){
+   foreach $checkpath (@libPath){
 	     system("sudo mkdir -p $checkpath");
    }
    @libFiles = ("/check-perl-lib/Confluent/Client.pm",
