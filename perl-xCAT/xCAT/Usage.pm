@@ -29,10 +29,10 @@ my %usage = (
      BMC (using IPMI):
        rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
        rpower noderange [pduon|pduoff|pdustat]
-     OpenPower BMC:
+     OpenPOWER BMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
        rpower noderange [pduon|pduoff|pdustat]
-     OpenPower OpenBMC:
+     OpenPOWER OpenBMC:
        rpower noderange [on|off|reset|boot|stat|state|status]
      KVM Virtualization specific:
        rpower <noderange> [boot] [ -c <path to iso> ]
@@ -81,8 +81,10 @@ my %usage = (
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|all}
-  OpenPOWER server specific:
-      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|all]
+  OpenPOWER (IPMI) specific:
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|leds|chassis|all]
+  OpenPOWER (OpenBMC) specific:
+      rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
       rvitals noderange {thermal|all}",
     "reventlog" =>
@@ -93,14 +95,12 @@ my %usage = (
     Common:
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
-    BMC specific:
-       rinv <noderange> [mprom|deviceid|uuid|guid|vpd|dimm|all]
-    OpenPOWER (using ipmi) server specific:
+    BMC/MPA specific:
+       rinv <noderange> [model|serial|asset|vpd|deviceid|guid|firm|dimm|mprom|all]
+    OpenPOWER (IPMI) server specific:
        rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|all] 
-    OpenPOWER (using openbmc) server specific:
-       rinv <noderange> [model|serial|deviceid|uuid|guid|vpd|mprom|firm|cpu|dimm|all]
-    MPA specific:
-       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm] 
+    OpenPOWER (OpenBMC) server specific:
+       rinv <noderange> [model|serial|firm|cpu|dimm|all] [-V|--verbose]
     PPC specific(with HMC):
        rinv <noderange> [all|bus|config|serial|model|firm]
     PPC specific(using Direct FSP Management):
@@ -620,3 +620,41 @@ sub parseCommand {
     return "";
 }
 
+#------------------------------------------------------------------------------
+
+=head3   validateArgs
+    This function validates the arguments of the specified command
+    Arguments:
+        command
+        arguments(array @)
+    Returns:
+        $ref:         a reference to array of [$retcode(integer),$info(string)]
+        $ref->[0]=0 : validation passed
+        $ret->[0]!=0: validation failed, the error info is returned in $ref->[1]
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub validateArgs {
+    my $command=shift; 
+    if ($command =~ /xCAT::Usage/) { $command = shift; }
+  
+    my $count=0; 
+    my @extrargs=@_;
+    if($command =~ m/^(nodeset|rinstall|winstall)$/ ){
+        #suppose that argument like "-p foo" have been processed and 
+        #filtered by GetOpt subroutine 
+        #fortunately the commands in this branch does not have such options
+        foreach(@extrargs){
+            if($_ !~ m/^-[-]?\S+/){
+                $count+=1;
+            }
+        }
+        if ($count!=1) {
+           return [1,"Invalid argument: '".join(" ",@extrargs)."'"];
+        }
+    }
+
+    return [0]; 
+}

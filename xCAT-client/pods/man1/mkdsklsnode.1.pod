@@ -19,7 +19,7 @@ This command will also create a NIM resolv_conf resource to be used when install
 The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
 
 The "search" field of the resolv.conf file will contain a list all the domains 
-listed in the xCAT network definitions and the xCAT site definiton.
+listed in the xCAT network definitions and the xCAT site definition.
 
 The "nameservers" value can either be set to a specific IP address or the "<xcatmaster>" key word.  The "<xcatmaster>" key word means that the value of the "xcatmaster" attribute of the node definition will be used in the /etc/resolv.conf file.  (I.e.  The name of the install server as known by the node.)
 
@@ -41,11 +41,11 @@ You can use the "-n" option of the mkdsklsnode command to create and initialize 
 
 B<Note:> When using the "-n" option make sure that the new osimage you specify and all the NIM resources that are used are different than what are currently being used on the nodes.  The NIM resources should not be shared between the old osimage and the new osimage. 
 
-You can use the force option to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinititializing. Use this option with caution since reinitializing a node will stop the node if it is currently running.
+You can use the force option to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinitializing. Use this option with caution since reinitializing a node will stop the node if it is currently running.
 
 After the mkdsklsnode command completes you can use the B<lsnim> command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
 
-You can supply your own scripts to be run on the management node  or on the service node (if their is hierarchy) for a node during the B<mkdsklsnode> command. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the B<mkdsklsnode> command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the B<mkdsklsnode> command are stored in the 'end' column of I<prescripts> table. Run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: I<diskless:myscript1,myscript2>. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current current nodeset action, in this case "diskless". If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not specified, the script will be invoked once for all the nodes.
+You can supply your own scripts to be run on the management node  or on the service node (if their is hierarchy) for a node during the B<mkdsklsnode> command. Such scripts are called B<prescripts>. They should be copied to /install/prescripts directory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the B<mkdsklsnode> command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the B<mkdsklsnode> command are stored in the 'end' column of I<prescripts> table. Run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: I<diskless:myscript1,myscript2>. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action, in this case "diskless". If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at a time. If it is not specified, the script will be invoked once for all the nodes.
 
 
 =head1 OPTIONS

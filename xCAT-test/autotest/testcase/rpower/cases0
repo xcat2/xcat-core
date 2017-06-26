@@ -1,4 +1,6 @@
 start:rpower_off
+description:This case is to test off option could remote power off nodes 
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~Running|on
@@ -10,6 +12,8 @@ check:output=~Not Activated|off
 end
 
 start:rpower_stat
+description:This case is to test stat option could show the power status of nodes
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 5 ];then break;fi done
 cmd:rpower $$CN stat
@@ -29,6 +33,8 @@ check:output=~Not Activated|off
 end
 
 start:rpower_boot
+description:This case is to test boot option could power on the nodes if nodes in off state.  Or could  hard reset the nodes if they are on. 
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -41,7 +47,8 @@ check:output=~Running|on
 end
 
 start:rpower_status
-description:checkout rpower node status could get node's stauts
+description:This case is to test status option could show the power status of nodes
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN status|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN status
@@ -54,7 +61,8 @@ check:output=~Running|on
 end
 
 start:rpower_state
-description:checkout rpower node status could get node's stauts
+description:This case is to test state option could show the power status of nodes
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN state|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN state
@@ -67,6 +75,8 @@ check:output=~Running|on
 end
 
 start:rpower_on
+description:This case is to test on option could remote power on nodes
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN off
 cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -79,6 +89,8 @@ check:output=~Running|on
 end
 
 start:rpower_reset
+description:This case is to test reset option could hard reset nodes when nodes are in on state.
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN on
 cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 cmd:rpower $$CN stat
@@ -91,19 +103,52 @@ check:output=~Running|on
 end
 
 start:rpower_noderange
+description:This case is to test rpower could process error usage and return help information.
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN
 check:rc!=0
 check:output=~Unsupported|Usage
 end
 
 start:rpower_noderange_nodeps
+description:This case is to test rpower could process error usage and return help information.
+Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN --nodeps
 check:rc!=0
 check:output=~Unsupported|Usage
 end
 
 start:rpower_err_noderange
+description:This case is to test rpower could process error usage and return help information.
+Attribute:N/A 
 cmd:rpower testnode stat
 check:rc!=0
 check:output=~Error
+end
+
+start:rpower_softoff
+description:This case is to test softoff option could remote shutdown nodes 
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN on
+cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~Running|on
+cmd:rpower $$CN softoff
+check:rc==0
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:output=~Not Activated|off
+end
+
+start:rpower_onstandby
+description:This case is to test onstandby option could bring server to standby state 
+Attribute: $$CN-The operation object of rpower command
+arch:ppc64
+cmd:rpower $$CN off
+check:rc==0
+cmd:a=0;while ! `rpower $$CN stat|grep "Not Activated\|off" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+cmd:rpower $$CN stat
+check:output=~Not Activated|off
+cmd:rpower $$CN onstandby
+cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
+check:ouptut=~standby|Standby
 end

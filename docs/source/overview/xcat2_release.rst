@@ -71,7 +71,7 @@ xCAT 2.12.x
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.12.3                    |               |             |- GitHub Issues resolved          |
-|| 2016/09/30                     |               |             |- rinv options for OpenPower      |
+|| 2016/09/30                     |               |             |- rinv options for OpenPOWER      |
 ||                                |               |             |- switch based switch discovery   |
 | `2.12.3 Release Notes <https:// |               |             |- additional options added to     |
 | github.com/xcat2/xcat-core/wiki |               |             |  xcatprobe command               |
@@ -124,7 +124,7 @@ xCAT 2.11.x
 || 2015/12/11                     |- UBT 14.4.3 LE|- S822LC(GTA)|- Infiniband for OpenPOWER        |
 ||                                |- UBT 15.10 LE |- S812LC     |- SW KIT support for OpenPOWER    |
 | `2.11 Release Notes <https://   |- PowerKVM 3.1 |- NeuCloud OP|- renergy command for OpenPOWER   |
-| github.com/xcat2/xcat-core/     |               |- ZoomNet RP |- rflash command for OpenPower    |
+| github.com/xcat2/xcat-core/     |               |- ZoomNet RP |- rflash command for OpenPOWER    |
 | wiki/XCAT_2.11_Release_Notes>`_ |               |             |- Add xCAT Troubleshooting Log    |
 |                                 |               |             |- xCAT Log Classification         |
 |                                 |               |             |- RAID Configuration              |

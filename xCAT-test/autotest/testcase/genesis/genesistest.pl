@@ -1,11 +1,5 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-}
-use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
 use strict;
 use warnings;
 use Getopt::Long;
@@ -71,7 +65,7 @@ if (!defined($noderange)) {
     print "$::USAGE";
     exit 1;
 }
-my $os = xCAT::Utils->osver("all");
+my $os = &get_os;
 if ($check_genesis_file) {
     send_msg(2, "[$$]:Check genesis file...............");
     &check_genesis_file(&get_arch);
@@ -81,8 +75,10 @@ if ($check_genesis_file) {
         send_msg(2, "genesis file available");
     }
 }
-my $master=xCAT::TableUtils->get_site_Master();
+my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
 if (!$master) { $master=hostname(); }
+chomp($master);
+print "master is $master\n"; 
 
 ####################################
 ####nodesetshell test for genesis
@@ -170,7 +166,7 @@ sub check_genesis_file {
 sub rungenesiscmd {
     my $runcmd_script    = "/tmp/cmdtest";
     my $result           = "/tmp/testresult";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     my $genesis_bin_dir;
     my $value = 0;
     my $arch  = shift;
@@ -200,7 +196,7 @@ sub rungenesiscmd {
     }
     `rinstall $noderange "runcmd=cmdtest,shell"`;
     if ($?) {
-        send_msg(0, "rinstall noderange shell failed for runcmd test");
+      send_msg(0, "rinstall noderange shell failed for runcmd test");
     }
     return $value;
 }
@@ -210,7 +206,7 @@ sub rungenesiscmd {
 sub rungenesisimg {
     my $runimg_script    = "/tmp/imgtest";
     my $result           = "/tmp/testresult";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     my $genesis_bin_dir;
     my $value = 0;
     mkdir("/install/my_image");
@@ -262,10 +258,12 @@ sub testxdsh {
         $checkfile   = "/proc/cmdline";
     }
     if (($value == 1) || ($value == 2) || ($value == 3)) {
-        `xdsh $noderange -t 2 cat $checkfile |grep $checkstring`;
+        `xdsh $noderange -t 2 cat $checkfile 2>&1|grep $checkstring `;
         if ($?) {
-            foreach (1 .. 1500) {
-                `xdsh $noderange -t 2 cat $checkfile | grep $checkstring`;
+            foreach (1 .. 10) {
+                sleep 300;
+                send_msg(1,"try to run xdsh to check the results again");
+                `xdsh $noderange -t 2 cat $checkfile 2>&1| grep $checkstring `;
                 last if ($? == 0);
             }
         }
@@ -283,7 +281,7 @@ sub clearenv {
     my $runmetar            = "/install/my_image/my_image.tgz";
     my $runmetar_tmp         = "/tmp/my_image.tgz";
     my $runmedir         = "/install/my_image";
-    my $genesis_base_dir = "$::XCATROOT/share/xcat/netboot/genesis";
+    my $genesis_base_dir = "/opt/xcat/share/xcat/netboot/genesis";
     if (-e "$runimg_script") {
         unlink("$runme");
         unlink("$runmetar_tmp");
@@ -309,6 +307,21 @@ sub clearenv {
         exit 1;
     }
     return 0;
+}
+####################################
+#get os 
+###################################
+sub get_os {
+    my $os     = "unknown";
+    my $output = `cat /etc/*release* 2>&1`;
+    if ($output =~ /suse/i) {
+        $os = "sles";
+    } elsif ($output =~ /Red Hat/i) {
+        $os = "redhat";
+    } elsif ($output =~ /ubuntu/i) {
+        $os = "ubuntu";
+    }
+    return $os;
 }
 ####################################
 #get arch

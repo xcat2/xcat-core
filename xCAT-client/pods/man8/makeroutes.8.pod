@@ -16,7 +16,7 @@ B<makeroutes> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<makeroutes> command adds or deletes routes on the management node or any given nodes. The B<noderange> specifies the nodes where the routes are to be added or removed. When the I<noderange> is omitted, the action will be done on the management node. The B<-r> option specifies the name of routes. The details of the routes are defined in the B<routes> table which contians the route name, subnet, net mask and gateway. If -r option is omitted, the names of the routes found on B<noderes.routenames> for the nodes or on B<site.mnroutenames> for the management node will be used.
+The B<makeroutes> command adds or deletes routes on the management node or any given nodes. The B<noderange> specifies the nodes where the routes are to be added or removed. When the I<noderange> is omitted, the action will be done on the management node. The B<-r> option specifies the name of routes. The details of the routes are defined in the B<routes> table which contains the route name, subnet, net mask and gateway. If -r option is omitted, the names of the routes found on B<noderes.routenames> for the nodes or on B<site.mnroutenames> for the management node will be used.
 
 If you want the routes be automatically setup during node deployment, first put a list of route names to B<noderes.routenames> and then add I<setroute> script name to the B<postscripts.postbootscripts> for the nodes. 
 

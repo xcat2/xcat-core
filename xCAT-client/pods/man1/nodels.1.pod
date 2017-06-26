@@ -75,7 +75,7 @@ Force display of table name and column name context for each result
 
 =item B<-b|--blame>
 
-For values inherited from groups, display which groups provided the inheritence
+For values inherited from groups, display which groups provided the inheritance
 
 =item B<-S> 
 

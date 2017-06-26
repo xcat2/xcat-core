@@ -65,7 +65,7 @@ During the reviewing of your pull request, another pull request may be merged wh
 
     $ git push origin <mybranch> -f
 
-If all the conflicts are resolved, the pull request should automaically turn green again and is able to be merged automatically. 
+If all the conflicts are resolved, the pull request should automatically turn green again and is able to be merged automatically. 
 
 Reviewing Pull Requests as a Maintainer
 ---------------------------------------

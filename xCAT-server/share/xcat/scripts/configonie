@@ -125,11 +125,28 @@ sub config_ssh {
     my $cmd;
     my @config_switches;
 
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
+
     foreach my $switch (@nodes) {
         #remove old host key from /root/.ssh/known_hosts
         $cmd = `ssh-keygen -R $switch`;
 
-        my ($exp, $errstr) = cumulus_connect($switch, $userid, $password, $timeout);
+        my $static_ip = $nodehash->{$switch}->[0]->{ip};
+        my $discover_ip = $nodehash->{$switch}->[0]->{otherinterfaces};
+        my $ssh_ip;
+
+        my $p = Net::Ping->new();
+        if ($p->ping($static_ip)) {
+            $ssh_ip = $static_ip;
+        } elsif ($p->ping($discover_ip)) {
+            $ssh_ip = $discover_ip;
+        } else {
+            print "$switch is not reachable\n";
+            next;
+        }
+
+        my ($exp, $errstr) = cumulus_connect($ssh_ip, $userid, $password, $timeout);
         if (!defined $exp) {
             print ("connect failed $errstr\n");
             next;
@@ -142,6 +159,10 @@ sub config_ssh {
         ($ret, $err) = cumulus_exec($exp, "chmod 700 /root/.ssh");
         ($ret, $err) = cumulus_exec($exp, "echo \"$rootkey\" >/root/.ssh/authorized_keys");
         ($ret, $err) = cumulus_exec($exp, "chmod 644 /root/.ssh/authorized_keys");
+        #config dhcp ip address to static
+        if ($ssh_ip eq $discover_ip) {
+            ($ret, $err) = cumulus_exec($exp, "ifconfig eth0 $static_ip");
+        }
 
         $exp->hard_close();
         push (@config_switches, $switch);

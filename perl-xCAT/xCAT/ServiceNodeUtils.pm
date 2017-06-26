@@ -14,7 +14,6 @@ if ($^O =~ /^aix/i) {
 }
 use lib "$::XCATROOT/lib/perl";
 use strict;
-
 #-----------------------------------------------------------------------------
 
 =head3 readSNInfo
@@ -355,6 +354,37 @@ sub getSNandNodes
 sub getSNList
 {
     require xCAT::Table;
+    require xCAT::NodeRange;
+    my ($class, $service, $options) = @_;
+    my @servicenodes;
+    my $servicenodetab = xCAT::Table->new('servicenode');
+    my $nodetab = xCAT::Table->new('nodelist');
+    unless ($servicenodetab)    # no  servicenode table
+    {
+        xCAT::MsgUtils->message('I', "Unable to open servicenode table.\n");
+        $servicenodetab->close;
+        return @servicenodes;
+    }
+
+
+    if($service){
+        @servicenodes = $servicenodetab->getAllAttribsWhere(["$service==1"],'node');
+    }else{
+        @servicenodes = $servicenodetab->getAllAttribs(('node'));
+    }
+
+    @servicenodes=xCAT::NodeRange::noderange(join(',',map {$_->{node}} @servicenodes));
+    if($options eq "ALL"){
+        return @servicenodes;
+    }    
+
+    @servicenodes = $nodetab->getAllAttribsWhere("node in ("."\'".join("\',\'", @servicenodes)."\'".") and groups not like '%__mgmtnode%'",'node');
+    return map {$_->{node}} @servicenodes;
+}
+
+sub getSNList_orig
+{
+    require xCAT::Table;
     my ($class, $service, $options) = @_;
 
     # reads all nodes from the service node table
@@ -367,6 +397,7 @@ sub getSNList
     }
     my @nodes = $servicenodetab->getAllNodeAttribs([$service]);
     $servicenodetab->close;
+    
     foreach my $node (@nodes)
     {
         if (!defined($service) || ($service eq "")) # want all the service nodes

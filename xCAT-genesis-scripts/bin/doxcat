@@ -212,7 +212,7 @@ else
             tries=0
             while [ -z "$bootnic" ]; do
 	        for tmp1 in $ALLUP_NICS; do
-	            if ip addr show dev $tmp1|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; then
+	            if ip -4 -o a show dev $tmp1|grep -v 'scope link'|grep -v 'dynamic'|grep -q inet ; then
                         result=`ping -c1 -I $tmp1 $XCATMASTER 2>&1`
 	                if [ $? -eq 0 ]; then
 	                    logger -s -t $log_label -p local4.info "the nic $tmp1 can ping $XCATMASTER"
@@ -247,7 +247,7 @@ else
 
             gripeiter=101
             logger -s -t $log_label -p local4.info "Acquiring network addresses.."
-            while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; do
+            while ! ip -4 -o a show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -q inet; do
                 sleep 0.1
                 if [ $gripeiter = 1 ]; then
                     logger -s -t $log_label -p local4.info "It seems to be taking a while to acquire an IPv4 address, you may want to check spanning tree..."
@@ -261,7 +261,7 @@ openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
 logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
 
-ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
+ip -4 -o a show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|awk '{print $4}'
 
 logger -s -t $log_label -p local4.info "Starting ntpd..." 
 ntpd -g -x

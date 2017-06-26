@@ -38,7 +38,7 @@ There are several concepts to support the HX5 multiple blades combination:
 
 \ **Complex**\ : Multiple blades which combined by a scalability card is a complex.
 
-\ **Parition**\ : A logic concept which containing part of the \ **Blade slot node**\  in a complex. Each partition can map to a system to install Operating System. Each partition could have 1HX5, 1HX5+1MD or 2HX5+2MD. (MD is the Memory Drawer)
+\ **Partition**\ : A logic concept which containing part of the \ **Blade slot node**\  in a complex. Each partition can map to a system to install Operating System. Each partition could have 1HX5, 1HX5+1MD or 2HX5+2MD. (MD is the Memory Drawer)
 
 \ **Blade slot node**\ : The physical blade which installed in the slot of a chassis. It can be a HX5 or MD.
 

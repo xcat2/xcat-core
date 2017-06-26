@@ -28,7 +28,9 @@ Provides automated test tool and buckets to help test xCAT commands automaticall
 mkdir -p share/man/man1
 mkdir -p share/doc/man1
 pod2man pods/man1/xcattest.1.pod > share/man/man1/xcattest.1
+pod2man pods/man1/xcatperftest.1.pod > share/man/man1/xcatperftest.1
 pod2html pods/man1/xcattest.1.pod > share/doc/man1/xcattest.1.html
+pod2html pods/man1/xcatperftest.1.pod > share/doc/man1/xcatperftest.1.html
 
 %install
 # The install phase puts all of the files in the paths they should be in when the rpm is

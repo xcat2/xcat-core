@@ -6,6 +6,7 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c
 check:rc==0
+cmd:cat /tmp/genesistestlog/*
 end
 
 start:nodeset_cmdline
@@ -16,6 +17,7 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n 
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl  -n $$CN -c 
 check:rc==0
+cmd:cat /tmp/genesistestlog/*
 end
 
 start:nodeset_runimg
@@ -26,4 +28,5 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n 
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/genesis/genesistest.pl -n $$CN -c
 check:rc==0
+cmd:cat /tmp/genesistestlog/*
 end

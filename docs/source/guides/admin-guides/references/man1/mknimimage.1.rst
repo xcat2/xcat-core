@@ -43,7 +43,7 @@ When creating a mksysb image definition you must specify either the "-n" or the 
 
 When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags, RPM flags, emgr flags to use when installing the software.
 
-To have configuration files updated you must provide the full path name of a "synclists" file which contains the the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
+To have configuration files updated you must provide the full path name of a "synclists" file which contains the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
 
 \ **Updating an existing xCAT osimage**\ 
 
@@ -69,7 +69,7 @@ You can use the "-i" and "-p" options to copy an existing diskless osimage.   To
 
 - any other resources (or attributes) included in the original osimage will be included in the new osimage definition.
 
-- if the "-p" option is specified then the original NIM lpp_source resource will be copied to a new location and redfined to NIM. (The default would be to use the original lpp_source - to save file system space.)
+- if the "-p" option is specified then the original NIM lpp_source resource will be copied to a new location and redefined to NIM. (The default would be to use the original lpp_source - to save file system space.)
 
 \ **Additional information**\ 
 
@@ -85,7 +85,7 @@ To list a NIM resource definition use the AIX \ **lsnim**\  command ("lsnim -l <
 
 To check the validity of a SPOT or lpp_source resource use the AIX \ **nim**\  command ("nim -o check <resourec-name>").
 
-To remove specific NIM resource definitons use the AIX \ **nim**\  command. ("nim -o remove <resource-name>").
+To remove specific NIM resource definitions use the AIX \ **nim**\  command. ("nim -o remove <resource-name>").
 
 
 *******
@@ -255,7 +255,7 @@ OPTIONS
   
  
  
- Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" using the 'E:' prefix. (ex. "otherpkgs=E:IZ38930TL0.120304.epkg.Z").
+ Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma separated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). epkg (AIX interim fix package) file names may be included in the "otherpkgs" using the 'E:' prefix. (ex. "otherpkgs=E:IZ38930TL0.120304.epkg.Z").
  
 
 
@@ -267,7 +267,7 @@ OPTIONS
 
 \ **-c|-**\ **-completeosimage**\ 
  
- Complete the creation of the osimage definition passed in on the command line. This option will use any additonal values passed in on the command line and/or it will attempt to create required resources in order to complete the definition of the xCAT osimage.  For example, if the osimage definition is missing a spot or shared_root resource the command will create those resources and add them to the osimage definition.
+ Complete the creation of the osimage definition passed in on the command line. This option will use any additional values passed in on the command line and/or it will attempt to create required resources in order to complete the definition of the xCAT osimage.  For example, if the osimage definition is missing a spot or shared_root resource the command will create those resources and add them to the osimage definition.
  
 
 
@@ -492,7 +492,7 @@ The xCAT osimage definition created by this command will include the "otherpkgs"
   mknimimage -u 61dskls installp_bundle=bndres1,bndres2 installp_flags="-agcQX"
 
 
-Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definiton is not used or updated.
+Note that when "installp_bundle", "otherpkgs", or "synclists" values are specified with the "-u" option then the xCAT osimage definition is not used or updated.
 
 13) Update an existing image to support NFSv4. Also specify verbose messages.
 

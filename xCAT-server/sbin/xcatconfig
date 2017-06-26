@@ -464,6 +464,10 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
 
 }
 
+if ($::UPDATEINSTALL) {
+    upgrade_conserver();
+}
+
 # more  config needed after xcatd start
 if ($::INITIALINSTALL || $::FORCE)
 {
@@ -2336,5 +2340,47 @@ sub startnamedonboot
         {
             xCAT::MsgUtils->message("I", "dns server has been enabled on boot.");
         }
+    }
+}
+
+#-----------------------------------------------------------------------------
+
+=head3    upgrade_conserver
+
+     Update conserver configuration files while upgrading xcat
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub upgrade_conserver
+{
+    my $version = xCAT::Utils::get_conserver_version();
+    if (!$version) {
+        return;
+    }
+    if (xCAT::Utils::calc_conserver_version($version) < xCAT::Utils::calc_conserver_version("8.1.19")) {
+        return;
+    }
+    my $cmd = "/bin/cat /etc/conserver.cf | grep sslauthority";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        return;
+    }
+    $cmd = "sed -i 's/sslauthority/sslcacertificatefile/1' /etc/conserver.cf";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0) {
+        return;
+    }
+    #restart conserver daemon
+    if (xCAT::Utils->isAIX()) {
+        $cmd = "stopsrc -s conserver";
+        xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "startsrc -s conserver";
+        xCAT::Utils->runcmd($cmd, 0);
+    } else {
+        $cmd = "/etc/init.d/conserver stop";
+        xCAT::Utils->runcmd($cmd, 0);
+        $cmd = "/etc/init.d/conserver start";
+        xCAT::Utils->runcmd($cmd, 0);
     }
 }

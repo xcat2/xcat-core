@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The \ **nodeimport**\  command creates nodes by importing a hostinfo file which is following stanza format. In this hostinfo file, we can define node's hostname, ip, mac, switch name, switch port and host location infomation like rack, chassis, start unit, server height...etc
+The \ **nodeimport**\  command creates nodes by importing a hostinfo file which is following stanza format. In this hostinfo file, we can define node's hostname, ip, mac, switch name, switch port and host location information like rack, chassis, start unit, server height...etc
 
 After nodes imported, the configuration files related with these nodes will be updated automatically. For example: /etc/hosts, dns configuration, dhcp configuration. And the kits node plugins will also be triggered automatically to update kit related configuration/services.
 
@@ -83,9 +83,9 @@ RETURN VALUE
 
 0  The command completed successfully.
 
-1  An error has occured while validating parameters.
+1  An error has occurred while validating parameters.
 
-2  An error has occured while parsing hostinfo file.
+2  An error has occurred while parsing hostinfo file.
 
 
 ********
@@ -143,7 +143,7 @@ To import nodes using a profile, follow the following steps:
  
    # hostinfo end.
  
-   Another example of a node infomation file, a PureFlex X/P node defined:
+   Another example of a node information file, a PureFlex X/P node defined:
    # hostinfo begin
    # To define a PureFlex P/X node, chassis and slot id must be specified.
    # The chassis must be a PureFlex chassis.
@@ -191,7 +191,7 @@ Description: The name of the node, where __hostname__ is automatically generated
 
 \ **mac=<mac-address**\ >  This is a mandatory item.
 
-Description: Specify the MAC address for the NIC used by the provisionging node, where <mac-address> is the NICs MAC address.
+Description: Specify the MAC address for the NIC used by the provisioning node, where <mac-address> is the NICs MAC address.
 
 \ **switches=<nic-name!switch-name!switch-port**\ >  This is a mandatory item, when define switch, switchport and node nic name relationship.
 
@@ -221,9 +221,9 @@ Description: Lists the IP address for each network interface configuration (NIC)
 
 Description: node location info. Specify the rack name which this node will be placed into. If not specify this item, there will be no node location info set for this node. this item must be specified together with height + unit.
 
-\ **chasiss=<chassis-name**\ > This is an optional item.
+\ **chassis=<chassis-name**\ > This is an optional item.
 
-Description: node location info, for blade(or PureFlex) only. Specify the chasiss name which this blade will be placed into. this item can not be specified together with rack.
+Description: node location info, for blade(or PureFlex) only. Specify the chassis name which this blade will be placed into. this item can not be specified together with rack.
 
 \ **height=<chassis-height**\ > This is an optional item.
 

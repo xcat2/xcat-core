@@ -43,7 +43,7 @@ The \ **forwarders**\  value should be set to the IP address of one or more name
 
 An xCAT \ **network**\  definition must be defined for each network used in the cluster.  The \ **net**\  and \ **mask**\  attributes will be used by the \ **makedns**\  command.
 
-A network \ **domain**\  and \ **nameservers**\  values must be provided either in the \ **network**\  definiton corresponding to the node or in the \ **site**\  definition.
+A network \ **domain**\  and \ **nameservers**\  values must be provided either in the \ **network**\  definition corresponding to the node or in the \ **site**\  definition.
 
 Only entries in /etc/hosts or the hosts specified by \ **noderange**\  that have a corresponding xCAT network definition will be added to DNS.
 

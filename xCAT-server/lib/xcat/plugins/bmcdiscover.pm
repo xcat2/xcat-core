@@ -29,6 +29,9 @@ use Data::Dumper;
 use File::Basename;
 use File::Path;
 use Cwd;
+use LWP;
+use HTTP::Cookies;
+use HTTP::Response;
 use JSON;
 
 my $nmap_path;
@@ -41,6 +44,9 @@ if ($tempstring =~ /debian/ || $tempstring =~ /ubuntu/) {
 my $parent_fd;
 my $bmc_user;
 my $bmc_pass;
+my $openbmc_user;
+my $openbmc_pass;
+my $openbmc_port = 2200;
 
 #-------------------------------------------------------
 
@@ -77,6 +83,13 @@ sub process_request
     $::CALLBACK = $callback;
 
     #$::args     = $request->{arg};
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON};
+    } else {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
+    }
 
     unless (defined($request->{arg})) {
         bmcdiscovery_usage();
@@ -211,10 +224,11 @@ sub bmcdiscovery_processargs {
     # Get the default bmc account from passwd table, 
     # this is only done for the discovery process
     ############################################
-    ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+    ($bmc_user, $bmc_pass, $openbmc_user, $openbmc_pass) = bmcaccount_from_passwd();
     # overwrite the default user and password if one is provided
     if ($::opt_U) {
         $bmc_user = $::opt_U;
+        $openbmc_user = $::opt_U;
     } elsif ($::opt_P) {
         # If password is provided, but no user, set the user to blank
         # Support older FSP and Tuletta machines
@@ -222,6 +236,7 @@ sub bmcdiscovery_processargs {
     }
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
+        $openbmc_pass = $::opt_P;
     }
 
     #########################################
@@ -577,9 +592,9 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
-                my $nmap_cmd = "nmap ${$live_ip}[$i] -p 2200 -Pn";
+                my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
                 my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /2200\/tcp (\w+)/) {
+                if ($nmap_output =~ /$openbmc_port\/tcp (\w+)/) {
                     my $port_stat = $1;
                     if ($port_stat eq "open") {
                         bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
@@ -587,7 +602,9 @@ sub scan_process {
                         bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                     }
                 } else {
-                    xCAT::MsgUtils->message("E", "Can not get status of 2200 port.", $::CALLBACK);
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "Can not get status of 2200 port for ip ${$live_ip}[$i].\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                     exit 1;
                 }
 
@@ -868,12 +885,16 @@ sub bmcdiscovery {
 sub bmcaccount_from_passwd {
     my $bmcusername = "ADMIN";
     my $bmcpassword = "admin";
+    my $openbmcusername = "root";
+    my $openbmcpassword = "0penBmc";
     my $passwdtab   = xCAT::Table->new("passwd", -create => 0);
     if ($passwdtab) {
         my $bmcentry = $passwdtab->getAttribs({ 'key' => 'ipmi' }, 'username', 'password');
         if (defined($bmcentry)) {
             $bmcusername = $bmcentry->{'username'};
             $bmcpassword = $bmcentry->{'password'};
+
+            # if username or password is undef or empty in passwd table, bmcusername or bmcpassword is empty
             unless ($bmcusername) {
                 $bmcusername = '';
             }
@@ -881,8 +902,21 @@ sub bmcaccount_from_passwd {
                 $bmcpassword = '';
             }
         }
+
+        my $openbmcentry = $passwdtab->getAttribs({ 'key' => 'openbmc' }, 'username', 'password');
+        if (defined($openbmcentry)) {
+            $openbmcusername = $openbmcentry->{'username'};
+            $openbmcpassword = $openbmcentry->{'password'};
+            # if username or password is undef or empty in passwd table, openbmcusername or openbmcpassword is empty
+            unless ($openbmcusername) {
+                $openbmcusername = '';
+            }
+            unless ($openbmcpassword) {
+                $openbmcpassword = '';
+            }
+        }
     }
-    return ($bmcusername, $bmcpassword);
+    return ($bmcusername, $bmcpassword, $openbmcusername, $openbmcpassword);
 }
 
 #----------------------------------------------------------------------------
@@ -958,6 +992,10 @@ sub bmcdiscovery_ipmi {
 
                 }
             }
+            if ($mtm eq '' or $serial eq '') {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+                return;
+            }
 
             $node_data .= ",$mtm";
             $node_data .= ",$serial";
@@ -1018,22 +1056,58 @@ sub bmcdiscovery_openbmc{
     my $request_command = shift;
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
-    my $node_data = $ip;
-    my $cjar_file = "/tmp/cjar_$ip";
-    my $data = '{"data": [ "' . $bmc_user .'", "' . $bmc_pass . '" ] }';
+    print "$ip: Detected openbmc, attempting to obtain system information...\n";
+    my $http_protocol="https";
+    my $openbmc_project_url = "xyz/openbmc_project";
+    my $login_endpoint = "login";
+    my $system_endpoint = "inventory/system";
+    my $motherboard_boxelder_endpoint = "$system_endpoint/chassis/motherboard/boxelder/bmc";
 
-    my $output = `curl -c $cjar_file -k -X POST -H \"Content-Type: application/json\" -d '$data' https://$ip/login`;
+    my $node_data = $ip;
+    my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
+    my $cookie_jar = HTTP::Cookies->new();
+    my $header = HTTP::Headers->new('Content-Type' => 'application/json');
+    my $data = '{"data": [ "' . $openbmc_user .'", "' . $openbmc_pass . '" ] }';
+    $brower->cookie_jar($cookie_jar);
+
+    my $url = "$http_protocol://$ip/$login_endpoint";
+    my $login_request = HTTP::Request->new( 'POST', $url, $header, $data );
+    my $login_response = $brower->request($login_request);
     
-    if ($output =~ /\"status\": \"ok\"/) {
-        my $req_output = `curl -b $cjar_file -k https://$ip/xyz/openbmc_project/inventory/system/chassis/motherboard`;
-        my $response = decode_json $req_output;
+    if ($login_response->is_success) {
+        # attempt to find the system serial/model
+        $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
+        my $req = HTTP::Request->new('GET', $url, $header);
+        my $req_output = $brower->request($req);
+        if ($req_output->is_error) {
+            # If the host system has not yet been powered on, check the boxelder bmc info for model/serial
+            $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_boxelder_endpoint";
+            $req = HTTP::Request->new('GET', $url, $header);
+            $req_output = $brower->request($req);
+            if ($req_output->is_error) {
+                xCAT::MsgUtils->message("W", { data => ["$ip: Could not obtain system information from BMC."] }, $::CALLBACK);
+                return;
+            }
+        }
+        my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
 
-        if (defined($response->{data}) and defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
-            $mtm = $response->{data}->{Model};
-            $serial = $response->{data}->{SerialNumber}; 
-        } else {
+        if (defined($response->{data})) {
+            if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
+                $mtm = $response->{data}->{Model};
+                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
+                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
+                    $mtm = "";
+                }
+                $serial = $response->{data}->{SerialNumber}; 
+            } else {
+                xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
+                return;
+            }
+ 
+        } else { 
+            xCAT::MsgUtils->message("E", { data => ["Unable to connect to REST server at $ip"] }, $::CALLBACK);
             return;
         }
 
@@ -1059,11 +1133,11 @@ sub bmcdiscovery_openbmc{
             $node =~ s/(.*)/\L$1/g;
             $node =~ s/[\s:\._]/-/g;
         }
-
-        unlink $cjar_file;
     } else {
-        if ($output =~ /\"description\": \"Invalid username or password\"/) {
+        if ($login_response->status_line =~ /401 Unauthorized/) {
             xCAT::MsgUtils->message("W", { data => ["Invalid username or password for $ip"] }, $::CALLBACK); 
+        } else {
+            xCAT::MsgUtils->message("W", { data => ["$login_response->status_line for $ip"] }, $::CALLBACK);
         }
         return;
     }

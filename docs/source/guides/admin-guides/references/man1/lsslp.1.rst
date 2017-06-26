@@ -41,13 +41,13 @@ OPTIONS
 *******
 
 
-\ **noderange**\    The nodes which the user want to discover.  If the user specify the noderange, lsslp will just return the nodes in the node range. Which means it will help to add the new nodes to the xCAT database without modifying the existed definitions. But the nodes' name specified in noderange should be defined in database in advance. The specified nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).  Do not use noderange with the flag -s.
+\ **noderange**\    The nodes which the user wants to discover.  If the user specifies the noderange, lsslp will just return the nodes in the node range. Which means it will help to add the new nodes to the xCAT database without modifying the existed definitions. But the nodes' name specified in noderange should be defined in database in advance. The specified nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).  Do not use noderange with the flag -s.
 
 \ **-i**\           IP(s) the command will send out (defaults to all available adapters).
 
 \ **-h**\           Display usage message.
 
-\ **-n**\           Only display and write the newly discovered hardwares.
+\ **-n**\           Only display and write the newly discovered hardware.
 
 \ **-u**\           Do unicast to a specified IP range. Must be used with \ **-s**\  and \ **-**\ **-range**\ . The \ **-u**\  flag is not supported on AIX.
 
@@ -55,15 +55,15 @@ OPTIONS
 
 \ **-r**\           Display Raw SLP response.
 
-\ **-C**\           The number of the expected responses specified by the user.  When using this flag, lsslp will not return until the it has found all the nodes or time out.  The default max time is 3 secondes. The user can use -T flag the specify the time they want to use.  A short time will limite the time costing, while a long time will help to find all the nodes.
+\ **-C**\           The number of the expected responses specified by the user.  When using this flag, lsslp will not return until the it has found all the nodes or time out.  The default max time is 3 seconds. The user can use -T flag the specify the time they want to use.  A short time will limit the time costing, while a long time will help to find all the nodes.
 
-\ **-T**\           The number in seconds to limite the time costing of lsslp.
+\ **-T**\           The number in seconds to limit the time of lsslp.
 
 \ **-s**\           Service type interested in discovering.
 
 \ **-t**\           Number or service-request attempts.
 
-\ **-**\ **-vpdtable**\   Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
+\ **-**\ **-vpdtable**\   Output the SLP response in vpdtable formatting. Easy for writing data to vpd table.
 
 \ **-v**\           Command Version.
 
@@ -73,9 +73,9 @@ OPTIONS
 
 \ **-x**\           XML format.
 
-\ **-z**\           Stanza formated output.
+\ **-z**\           Stanza formatted output.
 
-\ **-I**\           Give the warning message for the nodes in database which have no SLP responses. Note that this flag noly can be used after the database migration finished successfully.
+\ **-I**\           Give the warning message for the nodes in database which have no SLP responses. Note that this flag can only be used after the database migration finished successfully.
 
 
 ************

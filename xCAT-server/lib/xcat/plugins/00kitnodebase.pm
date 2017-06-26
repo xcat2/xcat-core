@@ -130,7 +130,7 @@ sub process_request {
         if ($runconservercmd) {
             push @commandslist, [ 'makeconservercf', '-d' ];
         }
-        push @commandslist, [ 'makeknownhosts', '-r' ];
+        push @commandslist, [ 'makeknownhosts', '-d' ];
         if ($macflag) {
             push @commandslist, [ 'makedhcp', '-d' ];
         }

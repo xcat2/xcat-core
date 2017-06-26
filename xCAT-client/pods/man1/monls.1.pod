@@ -15,7 +15,7 @@ B<monls [-a|--all] [-d|--description]>
 
 =head1 DESCRIPTION
 
-This command is used to list the status, desctiption, the configuration scripts and the settings of one or all of the monitoring plug-in modules.
+This command is used to list the status, description, the configuration scripts and the settings of one or all of the monitoring plug-in modules.
 
 
 =head1 Parameters
@@ -26,9 +26,9 @@ I<name> is the name of the monitoring plug-in module.
 =head1 OPTIONS
 
 
-B<-a | --all>          Searches the I<XCATROOT/lib/perl/xCAT_monitoring> directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the I<monitoring> tabel.
+B<-a | --all>          Searches the I<XCATROOT/lib/perl/xCAT_monitoring> directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the I<monitoring> table.
 
-B<-d | --description>  Display the description of the plug-in modules. The description ususally contains the possible settings.
+B<-d | --description>  Display the description of the plug-in modules. The description usually contains the possible settings.
 
 B<-h | --help>         Display usage message.
 
@@ -64,7 +64,7 @@ The output looks like this:
   nagiosmon       not-monitored
 
 
-3. To list the status and the desciption for I<snmpmon> module, enter:
+3. To list the status and the description for I<snmpmon> module, enter:
 
   monls snmpmon -d
 

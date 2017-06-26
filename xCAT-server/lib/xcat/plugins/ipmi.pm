@@ -2470,6 +2470,8 @@ sub fpc_firmxfer_watch {
     }
 }
 
+my %fpcsessions;
+
 sub reseat_node {
     my $sessdata = shift;
     if (1) {    # TODO: FPC path checked for
@@ -2490,8 +2492,19 @@ sub reseat_node {
         my $nodeuser = $authdata->{$fpc}->{username};
         my $nodepass = $authdata->{$fpc}->{password};
         $sessdata->{slotnumber} = $mpent->{id};
-        $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
-        $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
+	if (exists $fpcsessions{$mpent->{mpa}}) {
+            $sessdata->{fpcipmisession} = $fpcsessions{$mpent->{mpa}}; 
+	    until ($sessdata->{fpcipmisession}->{logged}) {
+                $sessdata->{fpcipmisession}->waitforrsp(timeout=>1);
+            }
+	    $sessdata->{fpcipmisession}->subcmd(netfn => 0x32, command => 0xa4,
+		    data => [ $sessdata->{slotnumber}, 2 ],
+		    callback => \&fpc_node_reseat_complete, callback_args => $sessdata);
+	} else {
+            $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc => $mpent->{mpa}, userid => $nodeuser, password => $nodepass);
+	    $fpcsessions{$mpent->{mpa}} = $sessdata->{fpcipmisession};
+            $sessdata->{fpcipmisession}->login(callback => \&fpc_node_reseat, callback_args => $sessdata);
+        }
     }
 }
 
@@ -2535,7 +2548,7 @@ sub power {
     my $code;
 
     if (($sessdata->{subcommand} !~ /^on$|^off$|^reset$|^boot$|^stat$|^state$|^status$/) and isopenpower($sessdata)) {
-        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPower" ], $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg([ 1, "unsupported command rpower $sessdata->{subcommand} for OpenPOWER" ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
 
@@ -6506,30 +6519,30 @@ sub vitals {
         $sensor_filters{leds}    = 1;
         $doall                   = 1;
     }
-    if (grep /temp/, @textfilters) {
+    if (grep /^temp$/, @textfilters) {
         $sensor_filters{0x01} = 1;
     }
-    if (grep /volt/, @textfilters) {
+    if (grep /^voltage$/, @textfilters) {
         $sensor_filters{0x02} = 1;
     }
-    if (grep /watt/, @textfilters) {
+    if (grep /^wattage$/, @textfilters) {
         $sensor_filters{watt} = 1;
     }
-    if (grep /fan/, @textfilters) {
+    if (grep /^fanspeed$/, @textfilters) {
         $sensor_filters{0x04} = 1;
     }
-    if (grep /power/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
+    if (grep /^power$/, @textfilters) { #power does not really include energy, but most people use 'power' to mean both
         $sensor_filters{0x03}       = 1;
         $sensor_filters{powerstate} = 1;
         $sensor_filters{energy}     = 1;
     }
-    if (grep /energy/, @textfilters) {
+    if (grep /^energy$/, @textfilters) {
         $sensor_filters{energy} = 1;
     }
-    if (grep /led/, @textfilters) {
+    if (grep /^leds$/, @textfilters) {
         $sensor_filters{leds} = 1;
     }
-    if (grep /chassis/, @textfilters) {
+    if (grep /^chassis$/, @textfilters) {
         $sensor_filters{chassis} = 1;
     }
     unless (keys %sensor_filters) {

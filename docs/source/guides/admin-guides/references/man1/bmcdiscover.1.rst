@@ -35,7 +35,7 @@ DESCRIPTION
 ***********
 
 
-The \ **bmcdiscover**\  command will discover Baseboard Management Controllers (BMCs) using a scan mathod.
+The \ **bmcdiscover**\  command will discover Baseboard Management Controllers (BMCs) using a scan method.
 
 The command uses \ **nmap**\  to scan active nodes over a specified IP range.  The IP range format should be a format that is acceptable by \ **nmap**\ .
 
@@ -52,7 +52,7 @@ OPTIONS
 
 \ **-**\ **-range**\ 
  
- Specify one or more IP ranges acceptable to nmap.  IP rance can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the \ **bmcdiscover**\  command may take a long time to return.
+ Specify one or more IP ranges acceptable to nmap.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the \ **bmcdiscover**\  command may take a long time to return.
  
 
 
