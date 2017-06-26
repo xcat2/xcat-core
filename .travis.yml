@@ -36,7 +36,7 @@ before_install:
 - gem install activesupport
 - gem install net
 - gem install pry
-- cpan -i XML::LibXML
+- cpan -i -f XML::LibXML
 #- ruby ./travis.rb
 
 install: 
