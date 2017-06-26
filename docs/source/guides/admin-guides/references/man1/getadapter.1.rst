@@ -31,7 +31,7 @@ DESCRIPTION
 
 Traditionally, network interfaces in Linux are enumerated as eth[0123...], but these names do not necessarily correspond to actual labels on the chassis. \ **getadapter**\  help customer to get predictable network device name and some other network adapter information before provision or network configuration.
 
-\ **getadapter**\  use genesis to collect network adapters information, so that mean it need to restart the target node.
+\ **Since getadpter uses genesis to collect network adapters information, the target node will be restarted.**\ 
 
 \ **getadapter**\  For each node within the <noderange>, follows below scheme:
 
@@ -41,14 +41,40 @@ If user hopes to scan the adapter information for the node but these information
 
 \ **getadapter**\  tries to collect more information for the  target network device,  but doesn't guarantee collect same much information for every network device.
 
-Below are the possible information can be collect up to now:
+
+******************************
+\ **Collected information:**\ 
+******************************
+
+
+
 \ **name**\ : the consistent name which can be used by confignic directly in operating system which follow the same naming scheme with rhels7
+
+
+
 \ **pci**\ : the pci location
+
+
+
 \ **mac**\ : the MAC address
+
+
+
 \ **candidatename**\ : All the names which satisfy predictable network device naming scheme. \ *(if xcat enhance confignic command later, user can use these names to configure their network adapter, even customize their name)*\ 
+
+
+
 \ **vender**\ :  the vender of network device
+
+
+
 \ **model**\ :  the model of network device
+
+
+
 \ **linkstate**\ :  the link state of network device
+
+
 
 
 *******
