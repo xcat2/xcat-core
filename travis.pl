@@ -81,7 +81,7 @@ if($event_type eq "pull_request"){
    
    
    #chomp($currentPath);
-   print "currentPath : $currentPath";
+   print "currentPath : $currentPath\n";
 	  
    @libPath = ("./check-perl-lib/Confluent",
                "./check-perl-lib/Crypt",
@@ -96,7 +96,7 @@ if($event_type eq "pull_request"){
                "./check-perl-lib/xCAT_plugin",
                "./check-perl-lib");
    foreach $chechpath (@libPath){
-	     system("mkdir -p $checkpath");
+	     system("sudo mkdir -p $checkpath");
    }
    @libFiles = ("/check-perl-lib/Confluent/Client.pm",
               "/check-perl-lib/Confluent/TLV.pm",
