@@ -118,7 +118,8 @@ if($event_type eq "pull_request"){
      if(isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
 	 }else{
-	    system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST $post_url");
+	   postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST https://api.github.com/repos/DengShuaiSimon/xcat-core/issues/36/comments");
+	   print "$postresult\n";
 	 }
    
    }
@@ -132,27 +133,27 @@ if($event_type eq "pull_request"){
    
    print "sudo ./../../xcat-core/mklocalrepo.sh\n";
    $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
-   print "result:$result1";
+   print "result:$result1\n";
    
    print "sudo chmod 777 /etc/apt/sources.list\n";
    $result2 = system("sudo chmod 777 /etc/apt/sources.list");
-   print "result:$result2";
+   print "result:$result2\n";
    
    print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result3 = system("sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "result:$result3";
+   print "result:$result3\n";
    
    print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "result:$result4";
+   print "result:$result4\n";
    
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
    $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
-   print "result:$result5";
+   print "result:$result5\n";
    
    print "sudo apt-get -qq update\n";
    $result6 = system("sudo apt-get -qq update");
-   print "result:$result6";
+   print "result:$result6\n";
    
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
