@@ -131,22 +131,28 @@ if($event_type eq "pull_request"){
    system("ls -a");
    
    print "sudo ./../../xcat-core/mklocalrepo.sh\n";
-   system("sudo ./../../xcat-core/mklocalrepo.sh");
+   $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
+   print "result:$result1";
    
    print "sudo chmod 777 /etc/apt/sources.list\n";
-   system("sudo chmod 777 /etc/apt/sources.list");
+   $result2 = system("sudo chmod 777 /etc/apt/sources.list");
+   print "result:$result2";
    
    print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
-   system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
+   $result3 = system("sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
+   print "result:$result3";
    
    print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
-   system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list');
+   $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
+   print "result:$result4";
    
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
-   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -');
+   $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
+   print "result:$result5";
    
    print "sudo apt-get -qq update\n";
-   system("sudo apt-get -qq update");
+   $result6 = system("sudo apt-get -qq update");
+   print "result:$result6";
    
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
