@@ -96,7 +96,6 @@ if($event_type eq "pull_request"){
            push(@bLogLines,$read_line);
 	  }
          #close(FILE);
-         chomp($buildresult);
          #@bLogLines = split(/\n/,$buildresult);
          $bLastLine = @bLogLines[-1];
 	 print "buildresult lastLine : $bLastLine\n";
@@ -159,8 +158,7 @@ if($event_type eq "pull_request"){
 	   #chomp $read_line;
            push(@iLogLines,$iread_line);
 	  }
-         #close(iFILE);;
-         chomp($installresult);
+         #close(iFILE);
          #@iLogLines = split(/\n/,$installresult);
          $iLastLine = @iLogLines[-1];
 	 print "installresult lastLine : $iLastLine";
