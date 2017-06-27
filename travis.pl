@@ -61,9 +61,10 @@ if($event_type eq "pull_request"){
    $hashbody = $first->{body};
    print "hashbody : $hashbody";
    
-   if($length>1){
+   if($length=1){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
+	     print "body : $commentBody";
 		 if($commentBody =~ /SYNTAX/){
 		        $issyntax = 1;
 			$syntaxId = $postJson->{id};
