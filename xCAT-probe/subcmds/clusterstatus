@@ -1,0 +1,134 @@
+#! /usr/bin/perl
+# IBM(c) 2016 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_utils;
+use File::Basename;
+use Net::Ping;
+use Getopt::Long qw(:config no_ignore_case);
+
+use Data::Dumper;
+use warnings;
+
+my $program_name = basename("$0");
+my $help;
+my $noderange = "compute";
+my $test;
+my $output  = "stdout";
+my $verbose = 0;
+my $rst     = 0;
+
+$::USAGE = "Usage:
+    $program_name -h
+    $program_name {-d|-g} [-n noderange] [-V|--verbose]
+
+Description:
+    Use this command to get a summary of the cluster. 
+
+Options:
+    -h : Get usage information of $program_name
+    -n : Range of nodes to check. Default is \"compute\".
+    -d : Discovery. Display count of discovered nodes.
+    -g : Group count. Display count of nodes in each group.
+    -V : To print additional debug information.
+";
+
+#-------------------------------------
+# main process
+#-------------------------------------
+if (
+    !GetOptions("--help|h" => \$help,
+        "T"                  => \$test,
+        "V|verbose"          => \$VERBOSE,
+        "d|discovery"        => \$DISCOVERY,
+        "g|groupcount"       => \$GROUPCOUNT,
+        "n=s"                => \$noderange))
+{
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if ($help) {
+    if ($output ne "stdout") {
+        probe_utils->send_msg("$output", "d", "$::USAGE");
+    } else {
+        print "$::USAGE";
+    }
+    exit 0;
+}
+
+if ($test) {
+    probe_utils->send_msg("$output", "o", "Use this command to get node summary in the cluster.");
+    exit 0;
+}
+
+if ((!$DISCOVERY) and (!$GROUPCOUNT)) {
+    probe_utils->send_msg("$output", "f", "Discovery or groupcount option is required for $program_name");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+if (scalar(@ARGV) >= 1) {
+
+    # After processing all the expected flags and arguments,
+    # there is still left over stuff on the command line
+    probe_utils->send_msg("$output", "f", "Invalid flag or parameter: @ARGV");
+    probe_utils->send_msg("$output", "d", "$::USAGE");
+    exit 1;
+}
+
+check_for_discovered_nodes() if ($DISCOVERY);
+groupcount_nodes() if ($GROUPCOUNT);
+
+# Check for node definitions with MAC address defined
+sub check_for_discovered_nodes {
+    my $na = "N/A";
+    my $rc = 0;
+
+    my $all_nodes_mac = `lsdef -i mac -c $noderange 2> /dev/null`;
+    chomp($all_nodes_mac);
+    my @all_nodes_mac_lines = split("[\n\r]", $all_nodes_mac);
+
+    if ($all_nodes_mac =~ /Usage:/) {
+
+        # lsdef command displayed a Usage message. Must be some noderange formatting problem.
+        # Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
+        return 1;
+    }
+
+    if (scalar(@all_nodes_mac_lines) <= 0) {
+
+        # There were no nodes matching the noderange. Issue a warning and exit.
+        probe_utils->send_msg("$output", "w", "No nodes matching the noderange were found.");
+        return 1;
+    }
+
+    # Go through the list of nodes and count how many have mac value
+    my $mac_counter=0;
+    foreach (@all_nodes_mac_lines) {
+        # probe_utils->send_msg("$output", "d", "Processing $_.") if ($VERBOSE);
+        my ($node_name, $value) = split ":", $_;
+        my ($mac_name, $mac_value) = split "=", $value;
+        if ($mac_value) {
+            # mac if set for the node
+            $mac_counter++;
+            probe_utils->send_msg("$output", "d", "($mac_counter) $_") if ($VERBOSE);
+        }
+    }
+    my $percent = sprintf("%.2f", (($mac_counter / scalar(@all_nodes_mac_lines)) * 100));
+
+    probe_utils->send_msg("$output", "o", "$mac_counter out of " . scalar(@all_nodes_mac_lines) . " in the noderange \"$noderange\" have been discovered ($percent/%)");
+    return $rc;
+}
+
+sub groupcount_nodes {
+    my $na = "N/A";
+    my $rc = 0;
+  
+    probe_utils->send_msg("$output", "w", "Group count function is not yet implemented.");
+    return $rc;
+}
