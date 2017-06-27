@@ -49,35 +49,37 @@ if($event_type eq "pull_request"){
    $buildUrl = "";
    $installUrl = "";
    
+   $json = new JSON;
    $postresp = get($post_url);
-   $postJsonArr = decode_json($postresp);
-   print "postJsonArr : $postJsonArr\n";
+   #$postJsonArr = decode_json($postresp);
+   $postJsonArr = $json->decode($postresp);
+   print "postJsonArr : @{$postJsonArr}\n";
    #$length = @postJsonArr;
    #print "postJsonArr length = $length\n";
    $fisrt = $postJsonArr->[0];
    print "postJsonArr first: $first\n";
    $hashorarray = ref($first);
    print "hash or array : $hashorarray\n";
-   $hashbody = $first->{body};
+   $hashbody = $first->{'body'};
    print "hashbody : $hashbody\n";
    
    if($first){
-      foreach $postJson (@postJsonArr){
-	     $commentBody = $postJson->{body};
+      foreach $postJson (@{$postJsonArr}){
+	     $commentBody = $postJson->{'body'};
 	     print "body : $commentBody";
 		 if($commentBody =~ /SYNTAX/){
 		        $issyntax = 1;
-			$syntaxId = $postJson->{id};
+			$syntaxId = $postJson->{'id'};
 			$syntaxUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$syntaxId";
 		 }
 		 if($commentBody =~ /BUILD/){
 		        $isbuild = 1;
-			$buildId = $postJson->{id};
+			$buildId = $postJson->{'id'};
 			$buildUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$buildId";
 		 }
 		 if($commentBody =~ /INSTALL/){
 		    $isinstall = 1;
-			$installId = $postJson->{id};
+			$installId = $postJson->{'id'};
 			$installUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$installId";
 		 }
 	  }#foreach
