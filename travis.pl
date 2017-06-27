@@ -341,9 +341,7 @@ if($event_type eq "pull_request"){
    #print "\033[31mresultArr1 : $resultArr1\033[0m\n";
    $checklength = @resultArr;
    print "resultArr length: $checklength\n";
-   foreach $term (@resultArr){
-      print "\033[31m$term\033[0m\n";
-   }
+   
    ####################   add comments  ########################## 
    if($checklength>0){
       if($issyntax){
@@ -351,7 +349,11 @@ if($event_type eq "pull_request"){
 	  }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`;
 	  }
-	  die "\033[31mCheck syntax error!\033[0m\n";
+	  #######    stop and print error in travis (red color)  ####
+	  foreach $term (@resultArr){
+              print "\033[31m$term\033[0m\n";
+          }
+	  #die "\033[31mCheck syntax error!\033[0m\n";
    }else{
         if($issyntax){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`;
@@ -359,17 +361,19 @@ if($event_type eq "pull_request"){
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`;
 	  }
    }
-	
-####################    stop and print error in travis (red color)  ########## 
-	
-   #foreach $term (@resultArr){
-   #   print "\033[31m$term\033[0m\n";
-   #}
-   #print "\033[31mresultArr : @resultArr\033[0m\n";
 
 
-   
-   
+
+##############################   xcat-test install and test cases   ######################################
+
+   `sudo apt-get -y install xcat-test`;
+  
+
+
+
+
+
+
    
    
    
