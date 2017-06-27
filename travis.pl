@@ -88,7 +88,7 @@ if($event_type eq "pull_request"){
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    system("cat /tmp/build-log");
-   if($buildresult ne "0"){
+   if($buildresult != 0){
          $file = "/tmp/build-log";
 	 @bLogLines = ();
          open (FILE, $file)||die "Can not open $file";
@@ -108,7 +108,7 @@ if($event_type eq "pull_request"){
 	 print "buildresult lastLine : $bLastLine\n";
 	 print "isbuild if : $isbuild\n";
 	 print "post_url if: $post_url\n";
-	 if(isbuild){
+	 if($isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`;
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
@@ -116,7 +116,7 @@ if($event_type eq "pull_request"){
    }else{
      print "isbuild else: $isbuild\n";
      print "post_url else : $post_url\n";
-     if(isbuild){
+     if($isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
 	 }else{
 	   print "run here \n";
@@ -183,7 +183,7 @@ if($event_type eq "pull_request"){
 	 $iLastLine =~ s/\\//g;
 	 print "installresult lastLine : $iLastLine\n";
 	 print "isinstall : $isinstall\n";
-	 if(isinstall){
+	 if($isinstall){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $installUrl`;
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`;
@@ -191,7 +191,7 @@ if($event_type eq "pull_request"){
    }else{
      print "isinstall : $isinstall\n";
      print "post_url : $post_url\n";
-     if(isinstall){
+     if($isinstall){
 	    `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X PATCH $installUrl`;
 	 }else{
 	    $postiresult = `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X POST $post_url`;
