@@ -231,7 +231,7 @@ if($event_type eq "pull_request"){
    print "service xcatd status\n";
    system("service xcatd status");
    
-   
+   die "\033[42mStop check syntax!\033[0m\n";
   
    ######################################  check syntax  ################################################
    
