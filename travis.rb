@@ -302,14 +302,23 @@ if(event_type == "pull_request")
   #system("cd xcat-core")
   puts "\033[42msudo ./mklocalrepo.sh\033[0m\n"
   system("sudo ./../../xcat-core/mklocalrepo.sh")
+	
+  puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
+  system("sudo apt-get  install software-properties-common")
+	
+  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main"')
+  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main"')
+  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"')
+  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates universe"')
+	
+	
   system("sudo chmod 777 /etc/apt/sources.list")
   system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
   system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
   #system("sudo cat /etc/apt/sources.list")
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
-  puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
-  system("sudo apt-get  install software-properties-common")
+  
   ##`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
   system("sudo apt-get -qq update")
