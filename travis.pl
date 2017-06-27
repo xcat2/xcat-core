@@ -342,14 +342,14 @@ if($event_type eq "pull_request"){
    $checklength = @resultArr;
    ####################   add comments  ########################## 
    if($checklength>0){
-      if(issyntax){
+      if($issyntax){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`;
 	  }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`;
 	  }
 	  die "\033[31mCheck syntax error!\033[0m\n";
    }else{
-        if(issyntax){
+        if($issyntax){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`;
 	  }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX CORRECT!**"}'  $post_url`;
