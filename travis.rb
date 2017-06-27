@@ -321,11 +321,11 @@ if(event_type == "pull_request")
   #system("sudo cat /etc/apt/sources.list")
  
   
-  ##`sudo apt-get clean all`
+  `sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
   system("sudo apt-get -qq update")
   ##`sudo apt-get install xCAT --force-yes -y`
-  puts "\033[42m sudo apt-get install xCAT --force-yes \033[0m\n"
+  puts "\033[42m sudo apt-get install xcat --force-yes \033[0m\n"
   installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1")
   puts "installresult : #{installresult}"
   system("cat /tmp/install-log")
