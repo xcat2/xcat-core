@@ -309,7 +309,7 @@ if(event_type == "pull_request")
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
   puts "\033[42m sudo apt-get  install software-properties-common \033[0m\n"
-  #system("sudo apt-get  install software-properties-common")
+  system("sudo apt-get  install software-properties-common")
   ##`sudo apt-get clean all`
   puts "\033[42m sudo apt-get -qq update \033[0m\n"
   system("sudo apt-get -qq update")
