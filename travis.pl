@@ -112,6 +112,7 @@ if($event_type eq "pull_request"){
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
+	 die "Build error!";
    }else{
      if($isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
@@ -185,6 +186,7 @@ if($event_type eq "pull_request"){
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`;
 	 }
+	 die "\033[42mInstall Error!\033[0m\n";
    }else{
      print "isinstall : $isinstall\n";
      print "post_url : $post_url\n";
