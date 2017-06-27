@@ -316,10 +316,10 @@ if($event_type eq "pull_request"){
 	  if(-f $File::Find::name){
 	    $fileType = `file $path 2>&1`;
 		if($fileType =~ /Perl/){
-		  print "path : $path";
+		  #print "path : $path";
 		  #$result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
 		  $result = `perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $path 2>&1`;
-		  print "result : $result\n";
+		  #print "result : $result\n";
 		  $subresult = substr($result,-3,2);
 		  print "substr(result,-3,2) : $subresult\n";
 		  
@@ -341,7 +341,10 @@ if($event_type eq "pull_request"){
    $resultArr1 = join("****",@resultArr);
    print "\033[31mresultArr1 : $resultArr1\033[0m\n";
    $checklength = @resultArr;
-   print "resultArr length: $checklength";
+   print "resultArr length: $checklength\n";
+   foreach $term (@resultArr){
+      print "\033[31m$term\033[0m\n";
+   }
    ####################   add comments  ########################## 
    if($checklength>0){
       if($issyntax){
@@ -360,9 +363,9 @@ if($event_type eq "pull_request"){
 	
 ####################    stop and print error in travis (red color)  ########## 
 	
-   foreach $term (@resultArr){
-      print "\033[31m$term\033[0m\n";
-   }
+   #foreach $term (@resultArr){
+   #   print "\033[31m$term\033[0m\n";
+   #}
    #print "\033[31mresultArr : @resultArr\033[0m\n";
 
 
