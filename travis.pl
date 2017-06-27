@@ -325,8 +325,8 @@ if($event_type eq "pull_request"){
 		  
 		  if($subresult ne "OK"){
 		        $result =~ s/[\n\r]*//g;
-			#$result =~ s/\'//g;
-			#$result =~ s/\"//g;
+			$result =~ s/\'/\\'/g;
+			$result =~ s/\"/\\"/g;
 			$result =~ s/\t//g;
 			$result =~ s/\\//g;
 			$result = "( $i ) $result";
