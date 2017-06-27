@@ -42,12 +42,12 @@ if($event_type eq "pull_request"){
    $issyntax = 0;
    $isbuild = 0;
    $isinstall =0;
-   $syntaxId = "";
-   $buildId = "";
-   $installId = "";
-   $syntaxUrl = "";
-   $buildUrl = "";
-   $installUrl = "";
+   #$syntaxId = "";
+   #$buildId = "";
+   #$installId = "";
+   #$syntaxUrl = "";
+   #$buildUrl = "";
+   #$installUrl = "";
    
    $json = new JSON;
    $postresp = get($post_url);
@@ -80,7 +80,7 @@ if($event_type eq "pull_request"){
 			$buildUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$buildId";
 		 }
 		 if($commentBody =~ /INSTALL/){
-		    $isinstall = 1;
+		        $isinstall = 1;
 			$installId = $postJson->{'id'};
 			$installUrl = "https://api.github.com/repos/$ower_repo/issues/comments/$installId";
 		 }
@@ -128,12 +128,10 @@ if($event_type eq "pull_request"){
      print "post_url else : $post_url\n";
      if($isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
+	    #`curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X DELETE $buildUrl`;
 	 }else{
-	   print "run here \n";
-	   #$post = qq|'{"body": "> **BUILD SUCCESSFUL!**"}' -H "$content_type" $post_url|;
-	   $postresult = system("curl -u \"$username:$password\" $post_url -X POST -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' ");
-	   #&process("curl -u \"$username:$password\" -X POST -d $post"); 
-	   print "$postresult\n";
+	   $postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST $post_url");
+	   print "postresult: $postresult\n";
 	 }
    
    }
@@ -147,29 +145,29 @@ if($event_type eq "pull_request"){
    
    print "sudo ./../../xcat-core/mklocalrepo.sh\n";
    $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
-   print "result:$result1\n";
+   print "mklocalrepo.sh :$result1\n";
    
    print "sudo chmod 777 /etc/apt/sources.list\n";
    $result2 = system("sudo chmod 777 /etc/apt/sources.list");
-   print "result:$result2\n";
+   print "chmod 777 sources.list:$result2\n";
    
    print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result3 = system("sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "result:$result3\n";
+   print "echo arch=amd64:$result3\n";
    
    print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "result:$result4\n";
+   print "echo arch=ppc64el:$result4\n";
    
    system("cat /etc/apt/sources.list");
    
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
    $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
-   print "result:$result5\n";
+   print "wget ...key:$result5\n";
    
    print "sudo apt-get -qq update\n";
    $result6 = system("sudo apt-get -qq update");
-   print "result:$result6\n";
+   print "apt-get update:$result6\n";
    
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
