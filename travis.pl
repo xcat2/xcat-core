@@ -50,18 +50,18 @@ if($event_type eq "pull_request"){
    $installUrl = "";
    
    $postresp = get($post_url);
-   @postJsonArr = decode_json($postresp);
-   print "postJsonArr : @postJsonArr\n";
-   $length = @postJsonArr;
-   print "postJsonArr length = $length\n";
-   $fisrt = @postJsonArr[0];
+   $postJsonArr = decode_json($postresp);
+   print "postJsonArr : $postJsonArr\n";
+   #$length = @postJsonArr;
+   #print "postJsonArr length = $length\n";
+   $fisrt = $postJsonArr->[0];
    print "postJsonArr first: $first\n";
    $hashorarray = ref($first);
-   print "hash or array : $hashorarray";
+   print "hash or array : $hashorarray\n";
    $hashbody = $first->{body};
-   print "hashbody : $hashbody";
+   print "hashbody : $hashbody\n";
    
-   if($length=1){
+   if($first){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
 	     print "body : $commentBody";
