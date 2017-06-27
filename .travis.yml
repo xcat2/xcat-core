@@ -69,8 +69,8 @@ script:
 
 
 
-#- ruby ./travis.rb
-- perl travis.pl
+- ruby ./travis.rb
+#- perl travis.pl
 
 
 - mkdir -p ./check-perl-lib/haha
