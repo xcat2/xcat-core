@@ -309,7 +309,8 @@ if($event_type eq "pull_request"){
    @resultArr = ();
    $i=1;
    @pathArr =();
-   push(@pathArr,'/home/travis/build/DengShuaiSimon/xcat-core');
+   #push(@pathArr,'/home/travis/build/DengShuaiSimon/xcat-core');
+   push(@pathArr,'/opt/xcat');
    sub wanted{
 	  $path = $File::Find::name;
 	  if(-f $File::Find::name){
@@ -317,7 +318,7 @@ if($event_type eq "pull_request"){
 		if($fileType =~ /Perl/){
 		  print "path : $path";
 		  #$result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
-		  $result = `perl -I perl-xCAT/ -I xCAT-server/lib/perl/ -c $path 2>&1`;
+		  $result = `perl -c $path 2>&1`;
 		  print "result : $result\n";
 		  $subresult = substr($result,-3,2);
 		  print "substr(result,-3,2) : $subresult\n";
