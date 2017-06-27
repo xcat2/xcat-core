@@ -347,6 +347,7 @@ if($event_type eq "pull_request"){
 	  }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $post_url`;
 	  }
+	  die "\033[31mCheck syntax error!\033[0m\n";
    }else{
         if(issyntax){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX CORRECT!**"}'  $syntaxUrl`;
@@ -357,12 +358,11 @@ if($event_type eq "pull_request"){
 	
 ####################    stop and print error in travis (red color)  ########## 
 	
-   print color 'bold red';
    foreach $term (@resultArr){
       print $term;
    }
-   print "resultArr : @resultArr\n";
-   print color 'reset';
+   print "\033[31mresultArr : @resultArr\033[0m\n";
+
 
    
    
