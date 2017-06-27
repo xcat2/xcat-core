@@ -321,7 +321,7 @@ if($event_type eq "pull_request"){
 		  $result = `perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $path 2>&1`;
 		  #print "result : $result\n";
 		  $subresult = substr($result,-3,2);
-		  print "substr(result,-3,2) : $subresult\n";
+		  #print "substr(result,-3,2) : $subresult\n";
 		  
 		  if($subresult ne "OK"){
 		    $result =~ s/[\n\r]*//g;
@@ -339,7 +339,7 @@ if($event_type eq "pull_request"){
    }#sub
    find(\&wanted,@pathArr);
    $resultArr1 = join("****",@resultArr);
-   print "\033[31mresultArr1 : $resultArr1\033[0m\n";
+   #print "\033[31mresultArr1 : $resultArr1\033[0m\n";
    $checklength = @resultArr;
    print "resultArr length: $checklength\n";
    foreach $term (@resultArr){
