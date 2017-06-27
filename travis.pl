@@ -54,21 +54,13 @@ if($event_type eq "pull_request"){
    #$postJsonArr = decode_json($postresp);
    $postJsonArr = $json->decode($postresp);
    print "postJsonArr : @{$postJsonArr}\n";
-   #$length = @postJsonArr;
-   #print "postJsonArr length = $length\n";
-   $fisrt = $postJsonArr->[0];
-   print "postJsonArr first: $first\n";
-   $hashorarray = ref($first);
-   print "hash or array : $hashorarray\n";
-   $hashbody = $first->{'body'};
-   print "hashbody : $hashbody\n";
    $length = @{$postJsonArr};
    print "postJsonArr length = $length\n";
    
    if($length >1){
       foreach $postJson (@{$postJsonArr}){
 	     $commentBody = $postJson->{'body'};
-	     print "body : $commentBody";
+	     print "body : $commentBody\n";
 		 if($commentBody =~ /SYNTAX/){
 		        $issyntax = 1;
 			$syntaxId = $postJson->{'id'};
@@ -115,17 +107,12 @@ if($event_type eq "pull_request"){
 	 $bLastLine =~ s/\"//g;
 	 $bLastLine =~ s/\t//g;
 	 $bLastLine =~ s/\\//g;
-	 print "buildresult lastLine : $bLastLine\n";
-	 print "isbuild if : $isbuild\n";
-	 print "post_url if: $post_url\n";
 	 if($isbuild){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $buildUrl`;
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
    }else{
-     print "isbuild else: $isbuild\n";
-     print "post_url else : $post_url\n";
      if($isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
 	    #`curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X DELETE $buildUrl`;
@@ -145,35 +132,35 @@ if($event_type eq "pull_request"){
    
    print "sudo ./../../xcat-core/mklocalrepo.sh\n";
    $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
-   print "mklocalrepo.sh :$result1\n";
+   print "mklocalrepo.sh result :$result1\n";
    
    print "sudo chmod 777 /etc/apt/sources.list\n";
    $result2 = system("sudo chmod 777 /etc/apt/sources.list");
-   print "chmod 777 sources.list:$result2\n";
+   print "chmod 777 sources.list result:$result2\n";
    
    print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result3 = system("sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "echo arch=amd64:$result3\n";
+   print "echo arch=amd64 result:$result3\n";
    
    print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
    $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
-   print "echo arch=ppc64el:$result4\n";
+   print "echo arch=ppc64el result:$result4\n";
    
    system("cat /etc/apt/sources.list");
    
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
    $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
-   print "wget ...key:$result5\n";
+   print "wget ...key result:$result5\n";
    
    print "sudo apt-get -qq update\n";
    $result6 = system("sudo apt-get -qq update");
-   print "apt-get update:$result6\n";
+   print "apt-get update result:$result6\n";
    
    print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
    $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
    system("cat /tmp/install-log");
-   if($installresult ne "0"){
+   if($installresult != 0){
          print("run installresult if \n");
          $ifile = "/tmp/install-log";
 	 @iLogLines = ();
@@ -327,7 +314,8 @@ if($event_type eq "pull_request"){
 	    $fileType = `file $path 2>&1`;
 		if($fileType =~ /Perl/){
 		  print "path : $path";
-		  $result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
+		  #$result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
+		  $result = `perl -I perl-xCAT/ -I xCAT-server/lib/perl/ -c $path 2>&1`;
 		  print "result : $result\n";
 		  $subresult = substr($result,-3,2);
 		  print "substr(result,-3,2) : $subresult\n";
