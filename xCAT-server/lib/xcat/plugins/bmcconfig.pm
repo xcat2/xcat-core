@@ -105,7 +105,6 @@ sub process_request {
         return;
     }
 
-    #my $sitetable = xCAT::Table->new('site');
     my $ipmitable = xCAT::Table->new("$bmc_mgmt_type");
     my $tmphash;
     my $username;
@@ -142,8 +141,8 @@ sub process_request {
         $clipassword = $password;
     }
     unless (defined $bmc) {
-        xCAT::MsgUtils->message('S', "Unable to identify bmc for $node, refusing to give config data");
-        $callback->({ error => ["Invalid table configuration for bmcconfig"], errorcode => [1] });
+        xCAT::MsgUtils->message('S', "Received request from host=$node but unable to determine $bmc_mgmt_type.bmc value for the node.  Verify mgt attribute is configured correctly for the node and the BMC is defined.");
+        $callback->({ error => ["Unable to detect BMC configuration value for bmcconfig"], errorcode => [1] });
         return 1;
     }
     my $bmcport_counter = 0;
