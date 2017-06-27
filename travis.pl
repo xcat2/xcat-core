@@ -324,11 +324,10 @@ if($event_type eq "pull_request"){
 		  #print "substr(result,-3,2) : $subresult\n";
 		  
 		  if($subresult ne "OK"){
-		    $result =~ s/[\n\r]*//g;
-			$result =~ s/\'//g;
-			$result =~ s/\"//g;
+		        $result =~ s/[\n\r]*//g;
+			#$result =~ s/\'//g;
+			#$result =~ s/\"//g;
 			$result =~ s/\t//g;
-			$result =~ s/\'//g;
 			$result =~ s/\\//g;
 			$result = "( $i ) $result";
 			push(@resultArr,$result);
