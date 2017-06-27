@@ -131,9 +131,10 @@ sub process_request
     }
 
     #fill in the total outlet count for each pdu
-    $pdutab = xCAT::Table->new('pdu');
-    @pduents = $pdutab->getAllNodeAttribs(['node', 'outlet']);
-    fill_outletCount(\@pduents, $callback);
+    #This is *way* too expensive in a large cluster to try to walk every PDU every time
+    #$pdutab = xCAT::Table->new('pdu');
+    #@pduents = $pdutab->getAllNodeAttribs(['node', 'outlet']);
+    #fill_outletCount(\@pduents, $callback);
 
     if( $command eq "rinv") {
         #for higher performance, handle node in batch
@@ -290,10 +291,12 @@ sub powerpduoutlet {
                 $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
                 next;
             }
-            if ($outlet > $pdunodes->{$pdu}->{outlet} ) {
-                $callback->({ errorcode => [1],error => "outlet number $outlet is invalid for $pdu"});
-                next;
-            }
+	    # the check is too expensive.   To re-enable, would have to 
+	    # check if known, fetch on demand.  For now, let the previous behavior stand
+	    #if ($outlet > $pdunodes->{$pdu}->{outlet} ) {
+	    #    $callback->({ errorcode => [1],error => "outlet number $outlet is invalid for $pdu"});
+	    #    next;
+	    #}
             my $cmd;
             if ($subcmd eq "pdustat") {
                 $statstr=outletstat($session, $outlet);
