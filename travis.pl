@@ -56,6 +56,11 @@ if($event_type eq "pull_request"){
    print "postJsonArr length = $length\n";
    $fisrt = @postJsonArr[0];
    print "postJsonArr first: $first\n";
+   $hashorarray = ref($first);
+   print "hash or array : $hashorarray";
+   $hashbody = $first->{body};
+   print "hashbody : $hashbody";
+   
    if($length>1){
       foreach $postJson (@postJsonArr){
 	     $commentBody = $postJson->{body};
