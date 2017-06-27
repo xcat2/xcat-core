@@ -127,7 +127,7 @@ if($event_type eq "pull_request"){
      print "isbuild else: $isbuild\n";
      print "post_url else : $post_url\n";
      if($isbuild){
-	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL!**"}' -X PATCH $buildUrl`;
+	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
 	 }else{
 	   print "run here \n";
 	   #$post = qq|'{"body": "> **BUILD SUCCESSFUL!**"}' -H "$content_type" $post_url|;
