@@ -309,10 +309,10 @@ if(event_type == "pull_request")
   puts "\033[42m sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add - \033[0m\n"
   system('sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -')
 	
-  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main"')
-  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main"')
-  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"')
-  system('add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates universe"')
+  system('sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main"')
+  system('sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates main"')
+  system('sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) universe"')
+  system('sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc)-updates universe"')
 	
 	
   system("sudo chmod 777 /etc/apt/sources.list")
