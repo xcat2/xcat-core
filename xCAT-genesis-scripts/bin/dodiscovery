@@ -188,7 +188,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip -4 -o a show dev $dev|awk '/global/{print $4}'`
-	MAC=`ip -o l show dev $dev|awk '/ether/{print $15}'| tr /a-f/ /A-F/`
+        MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
         if [ "$MAC_OF_FIRST_UP_NIC" == "unknown" ]; then
             MAC_OF_FIRST_UP_NIC=`echo $MAC | sed -e s/://g`
         fi
