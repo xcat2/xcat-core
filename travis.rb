@@ -302,7 +302,7 @@ if(event_type == "pull_request")
   #system("cd xcat-core")
   puts "\033[42msudo ./mklocalrepo.sh\033[0m\n"
   system("sudo ./../../xcat-core/mklocalrepo.sh")
-  #system("sudo chmod 777 /etc/apt/sources.list")
+  system("sudo chmod 777 /etc/apt/sources.list")
   system('sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
   system('sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list')
   #system("sudo cat /etc/apt/sources.list")
