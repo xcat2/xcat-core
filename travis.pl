@@ -118,7 +118,7 @@ if($event_type eq "pull_request"){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
 	    #`curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X DELETE $buildUrl`;
 	 }else{
-	   $postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL!**\"}' -X POST $post_url");
+	   $postresult = system("curl -u \"$username:$password\"  -d '{\"body\":\"> **BUILD SUCCESSFUL-post!**\"}' -X POST $post_url");
 	   print "postresult: $postresult\n";
 	 }
    
@@ -191,9 +191,9 @@ if($event_type eq "pull_request"){
      print "isinstall : $isinstall\n";
      print "post_url : $post_url\n";
      if($isinstall){
-	    `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X PATCH $installUrl`;
+	    `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL-patch!**"}' -X PATCH $installUrl`;
 	 }else{
-	    $postiresult = `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL!**"}' -X POST $post_url`;
+	    $postiresult = `curl -u "$username:$password" -d '{"body":"> **INSTALL SUCCESSFUL-post!**"}' -X POST $post_url`;
 	    print "$postiresult";
 	 }
    
@@ -329,7 +329,7 @@ if($event_type eq "pull_request"){
 			$result =~ s/\t//g;
 			$result =~ s/\'//g;
 			$result =~ s/\\//g;
-			$result = "$i $result";
+			$result = "( $i ) $result";
 			push(@resultArr,$result);
 			$i = $i+1;
 		  }
@@ -338,10 +338,10 @@ if($event_type eq "pull_request"){
    }#sub
    find(\&wanted,@pathArr);
    $resultArr1 = join("****",@resultArr);
-   print "resultArr1 : $resultArr\n";
-   
+   print "\033[31mresultArr1 : $resultArr1\033[0m\n";
+   $checklength = @resultArr;
    ####################   add comments  ########################## 
-   if(@resultArr){
+   if($checklength>0){
       if(issyntax){
 	    `curl -u "$username:$password" -X PATCH -d '{"body":"> **SYNTAX_ERROR**  : $resultArr1"}'  $syntaxUrl`;
 	  }else{
