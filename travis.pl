@@ -83,10 +83,10 @@ if($event_type eq "pull_request"){
    
    #############################        build         #########################
    
-   print "gpg --list-keys\n";
+   print "\033[42mgpg --list-keys\033[0m\n";
    system("gpg --list-keys");
    
-   print "sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\n";
+   print "\033[42msudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1\033[0m\n";
    $buildresult = system("sudo ./build-ubunturepo -c UP=0 BUILDALL=1 >/tmp/build-log 2>&1");
    print "buildresult : $buildresult\n";
    system("cat /tmp/build-log");
@@ -112,7 +112,7 @@ if($event_type eq "pull_request"){
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **BUILD_ERROR**  :  $bLastLine"}'  $post_url`;
 	 }
-	 die "Build error!";
+	 die "\033[31mBuild error!\033[0m\n";
    }else{
      if($isbuild){
 	    `curl -u "$username:$password" -d '{"body":"> **BUILD SUCCESSFUL-patch!**"}' -X PATCH $buildUrl`;
@@ -128,36 +128,36 @@ if($event_type eq "pull_request"){
    
    ############################       install        ###########################
 
-   print "ls -a\n";
+   print "\033[42mls -a\033[0m\n";
    system("ls -a");
    
-   print "sudo ./../../xcat-core/mklocalrepo.sh\n";
+   print "\033[42msudo ./../../xcat-core/mklocalrepo.sh\033[0m\n";
    $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
    print "mklocalrepo.sh result :$result1\n";
    
-   print "sudo chmod 777 /etc/apt/sources.list\n";
+   print "\033[42msudo chmod 777 /etc/apt/sources.list\033[0m\n";
    $result2 = system("sudo chmod 777 /etc/apt/sources.list");
    print "chmod 777 sources.list result:$result2\n";
    
-   print "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
+   print "\033[42msudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\033[0m\n";
    $result3 = system("sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
    print "echo arch=amd64 result:$result3\n";
    
-   print "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\n";
+   print "\033[42msudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list\033[0m\n";
    $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
    print "echo arch=ppc64el result:$result4\n";
    
    system("cat /etc/apt/sources.list");
    
-   print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
+   print "\033[42msudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\033[0m\n";
    $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
    print "wget ...key result:$result5\n";
    
-   print "sudo apt-get -qq update\n";
+   print "\033[42msudo apt-get -qq update\033[0m\n";
    $result6 = system("sudo apt-get -qq update");
    print "apt-get update result:$result6\n";
    
-   print "sudo apt-get install xcat --force-yes >/tmp/install-log 2>&1\n";
+   print "\033[42msudo apt-get install xcat --force-yes >/tmp/install-log 2>&1\033[0m\033[42m";
    $installresult = system("sudo apt-get install xcat --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
    system("cat /tmp/install-log");
@@ -186,7 +186,7 @@ if($event_type eq "pull_request"){
 	 }else{
 	    `curl -u "$username:$password" -X POST -d '{"body":"> **INSTALL_ERROR**  : $iLastLine"}'  $post_url`;
 	 }
-	 die "\033[42mInstall Error!\033[0m\n";
+	 die "\033[31mInstall Error!\033[0m\n";
    }else{
      print "isinstall : $isinstall\n";
      print "post_url : $post_url\n";
@@ -201,37 +201,37 @@ if($event_type eq "pull_request"){
    
  ###########################    Verify xCAT Installation   ##################################
 
-   print "source /etc/profile.d/xcat.sh\n";
+   print "\033[42msource /etc/profile.d/xcat.sh\033[0m\n";
    system("source /etc/profile.d/xcat.sh");
    
-   print "sudo echo $USER";
+   print "\033[42msudo echo $USER\033[0m\n";
    system("sudo echo $USER");
    
-   print "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis\n";
+   print "\033[42msudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis\033[0m\n";
    system("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis");
    
-   print "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow\n";
+   print "\033[42msudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow\033[0m\n";
    system("sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow");
    
-   print "lsxcatd -v\n";
+   print "\033[42mlsxcatd -v\033[0m\n";
    system("lsxcatd -v");
    
-   print "tabdump policy\n";
+   print "\033[42mtabdump policy\033[0m\n";
    system("tabdump policy");
    
-   print "tabdump site\n";
+   print "\033[42mtabdump site\033[0m\n";
    system("tabdump site");
    
-   print "ls /opt/xcat/sbin\n";
+   print "\033[42mls /opt/xcat/sbin\033[0m\n";
    system("ls /opt/xcat/sbin");
    
-   print "service xcatd start\n";
+   print "\033[42mservice xcatd start\033[0m\n";
    system("service xcatd start");
    
-   print "service xcatd status\n";
+   print "\033[42mservice xcatd status\033[0m\n";
    system("service xcatd status");
    
-   die "\033[42mStop check syntax!\033[0m\n";
+   #die "\033[42mStop check syntax!\033[0m\n";
   
    ######################################  check syntax  ################################################
    
