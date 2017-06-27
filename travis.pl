@@ -151,6 +151,8 @@ if($event_type eq "pull_request"){
    $result4 = system("sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list");
    print "result:$result4\n";
    
+   system("cat /etc/apt/sources.list");
+   
    print "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -\n";
    $result5 = system("sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -");
    print "result:$result5\n";
