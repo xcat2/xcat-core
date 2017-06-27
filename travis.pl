@@ -157,8 +157,8 @@ if($event_type eq "pull_request"){
    $result6 = system("sudo apt-get -qq update");
    print "apt-get update result:$result6\n";
    
-   print "sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1\n";
-   $installresult = system("sudo apt-get install xCAT --force-yes >/tmp/install-log 2>&1");
+   print "sudo apt-get install xcat --force-yes >/tmp/install-log 2>&1\n";
+   $installresult = system("sudo apt-get install xcat --force-yes >/tmp/install-log 2>&1");
    print "installresult : $installresult\n";
    system("cat /tmp/install-log");
    if($installresult != 0){
