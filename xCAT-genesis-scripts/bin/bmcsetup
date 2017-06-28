@@ -99,7 +99,6 @@ function snooze() {
         logger -s -t $log_label -p local4.debug "OpenPOWER, snooze for 30 seconds..."
         sleep 30
     else
-        logger -s -t $log_label -p local4.debug "snooze for 1 second..."
         sleep 1
     fi
 } 
