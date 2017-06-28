@@ -325,8 +325,8 @@ if($event_type eq "pull_request"){
 		  
 		  if($subresult ne "OK"){
 		        $result =~ s/[\n\r]*//g;
-			$result =~ s/\'/\\'/g;
-			$result =~ s/\"/\\"/g;
+			$result =~ s/\'//g;
+			$result =~ s/\"//g;
 			$result =~ s/\t//g;
 			$result =~ s/\\//g;
 			$result = "( $i ) $result";
@@ -351,7 +351,7 @@ if($event_type eq "pull_request"){
 	  }
 	  #######    stop and print error in travis (red color)  ####
 	  foreach $term (@resultArr){
-              #print "\033[31m$term\033[0m\n";
+              print "\033[31m$term\033[0m\n";
           }
 	  #die "\033[31mCheck syntax error!\033[0m\n";
    }else{
