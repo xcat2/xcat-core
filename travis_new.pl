@@ -7,16 +7,16 @@ use Data::Dumper;
 use Time::Local;
 use File::Basename;
 use File::Path;
-use File::Find; 
+use File::Find;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
-use LWP::UserAgent;
-use HTTP::Request;
-use Encode;  
-use Encode::CN; 
-use JSON;  
-use URI::Escape;  
-use LWP::Simple;
+#use LWP::UserAgent;
+#use HTTP::Request;
+#use Encode;
+#use Encode::CN;
+#use JSON;
+#use URI::Escape;
+#use LWP::Simple;
 
 #---Global attributes---
 my $rst = 0;
@@ -82,7 +82,7 @@ sub get_files_recursive
 
 #--------------------------------------------------------
 # Fuction name: check_pr_format
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
@@ -93,38 +93,38 @@ sub check_pr_format{
         my $pr_content = decode_json($pr_url_resp);
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
-        
-   
+
+
         #my $content_type = "Content-Type: application/json";
         print ">>>>>Dumper pr_content:\n";
         print Dumper $pr_content;
         print ">>>>>pr title = $pr_title\n";
         print ">>>>>pr body = $pr_body \n";
-        
-        
-        
+
+
+
     }
     return 0;
 }
 
 #--------------------------------------------------------
 # Fuction name: check_pr_format
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
 sub send_back_comment{
     my $message = shift;
-   
+
     my $comment_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
     my $comment_url_resp = get($comment_url);
     my $json = new JSON;
     my $comment_content = $json->decode($comment_url_resp);
     my $comment_len = @$comment_content;
-    
+
     print ">>>>>Dumper comment_content:\n";
     print Dumper $comment_content;
-    
+
     my $post_url = undef;
     my $post_method = undef;
     if($comment_len > 1){
@@ -144,13 +144,13 @@ sub send_back_comment{
         $post_url = $comment_url;
         $post_method = "POST";
     }
-    
-    `curl -u "$username:$password" -X $post_method -d '{"body":"$message"}' $post_url`;
+
+    `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
 #--------------------------------------------------------
 # Fuction name: build_xcat_core
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
@@ -162,7 +162,7 @@ sub build_xcat_core{
         send_back_comment("> **BUILD_ERROR**  :  $cmd .... failed");
         return 1;
     }
-    
+
     $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
@@ -172,18 +172,18 @@ sub build_xcat_core{
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
         send_back_comment("> **BUILD_ERROR**  :  $lastline");
-        return 1;        
+        return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
         send_back_comment("> **BUILD SUCCESSFUL**");
     }
-   
+
     return 0;
 }
 
 #--------------------------------------------------------
 # Fuction name: install_xcat
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
@@ -197,7 +197,7 @@ sub install_xcat{
     my @output;
     foreach my $cmd (@cmds){
         @output = runcmd("$cmd");
-        if(($::RUNCMD_RC){
+        if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
@@ -205,9 +205,9 @@ sub install_xcat{
             return 1;
         }
     }
-    
+
     my $cmd = "sudo apt-get install xcat --force-yes";
-    my @output = runcmd("$cmd");
+    @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
     print Dumper \@output;
     if($::RUNCMD_RC){
@@ -215,68 +215,68 @@ sub install_xcat{
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[install_xcat] $cmd ....[Failed]\n";
         send_back_comment("> **INSTALL_XCAT_ERROR**  :  $lastline");
-        return 1;   
+        return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
         send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
     }
-    
+
     return 0;
 }
 
 
 #--------------------------------------------------------
 # Fuction name: check_syntax
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
 sub check_syntax{
     my @output;
     my @syntax_err;
-    my $rst = 0;
-    
+    my $ret = 0;
+
     my @target_dirs=("/opt/xcat/",
                      "/install/");
     foreach my $dir (@target_dirs){
         my @files    = ();
         get_files_recursive("$dir", \@files);
-        
+
         foreach my $file (@files) {
             next if($file =~ /\/opt\/xcat\/share\/xcat\/netboot\/genesis\//);
-            
+
             @output = runcmd("file $file");
             if($output[0] =~ /perl/i){
                 @output = runcmd("perl -c $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
-                    $rst = 1;
+                    $ret = 1;
                 }
             }elsif($output[0] =~ /shell/i){
                 @output = runcmd("sh -n $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
-                    $rst = 1;
-                }      
+                    $ret = 1;
+                }
             }
         }
     }
-    
+
     if(@syntax_err){
         my $err_str = join(";", @syntax_err);
-        print "[check_syntax] $cmd ....[Failed]\n";
+        print "[check_syntax] syntax checking ....[Failed]\n";
         send_back_comment("> **SYNTAX_ERROR** : $err_str");
     }else{
-        print "[check_syntax] $cmd ....[Pass]\n";
+        print "[check_syntax] syntax checking ....[Pass]\n";
         send_back_comment("> **SYNTAX CORRECT!**");
     }
-    
-    return $rst;
+
+    return $ret;
 }
 
 #--------------------------------------------------------
 # Fuction name: run_fast_regression_test
-# Description:  
+# Description:
 # Atrributes:
 # Retrun code:
 #--------------------------------------------------------
@@ -289,7 +289,7 @@ sub run_fast_regression_test{
          print Dumper \@output;
          return 1;
     }
-    
+
     $cmd = "xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
@@ -297,8 +297,8 @@ sub run_fast_regression_test{
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
          return 1;
-    }   
-    
+    }
+
     $cmd = "xcattest -b MN_basic.bundle > /dev/null";
     @output = runcmd("$cmd");
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
@@ -313,7 +313,7 @@ sub run_fast_regression_test{
         send_back_comment("> **FAST REGRESSION TEST Failed!** : $log_str");
         return 1;
     }
-    
+
     return 0;
 }
 
@@ -330,7 +330,7 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "PASSWORD",
                        "PWD");
 foreach (@travis_env_attr){
-    print "$_ = $ENV{$_}\n"; 
+    print "$_ = $ENV{$_}\n";
 }
 
 #Start to check the format of pull request
@@ -340,7 +340,7 @@ if($rst){
     print RED "Check pull request format failed\n";
 }
 
-#Start to build xcat core 
+#Start to build xcat core
 print BOLD GREEN "\n------To Build xCAT core package------\n";
 $rst = build_xcat_core();
 if($rst){
@@ -354,7 +354,7 @@ if($rst){
     print RED "Install xcat failed\n";
 }
 
-#Check the syntax of changing code 
+#Check the syntax of changing code
 print BOLD GREEN "\n------To check the syntax of changing code------\n";
 $rst = check_syntax();
 if($rst){
