@@ -107,6 +107,12 @@ sub check_pr_format{
     return 0;
 }
 
+#--------------------------------------------------------
+# Fuction name: check_pr_format
+# Description:  
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
 sub send_back_comment{
     my $message = shift;
    
@@ -141,6 +147,7 @@ sub send_back_comment{
     
     `curl -u "$username:$password" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
+
 #--------------------------------------------------------
 # Fuction name: build_xcat_core
 # Description:  
