@@ -7,8 +7,18 @@ use Data::Dumper;
 use Time::Local;
 use File::Basename;
 use File::Path;
+use File::Find; 
+use LWP::UserAgent;
+use HTTP::Request;
+use Encode;  
+use Encode::CN; 
+use JSON;  
+use URI::Escape;  
+use LWP::Simple;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
+
+
 
 #---Global attributes---
 my $rst = 0;
@@ -79,24 +89,48 @@ sub get_files_recursive
 # Retrun code:
 #--------------------------------------------------------
 sub check_pr_format{
+    if($ENV{'TRAVIS_EVENT_TYPE'} eq "pull_request"){
+        my $pr_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/pulls/$ENV{'TRAVIS_PULL_REQUEST'}";
+        my $pr_url_resp = get($pr_url);
+        my $pr_content = decode_json($pr_url_resp);
+        my $pr_title = $pr_content->{title};
+        my $pr_body  = $pr_content->{body};
+        
+        my $comment_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
+        my $comment_url_resp = get($comment_url);
+        my $json = new JSON;
+        my $comment_content = $json->decode($comment_url_resp);
+        
+        
+        #my $content_type = "Content-Type: application/json";
+        print ">>>>>Dumper pr_content:\n";
+        print Dumper $pr_content;
+        print ">>>>>pr title = $pr_title\n";
+        print ">>>>>pr body = $pr_body \n";
+        
+        print ">>>>>Dumper comment_content:\n";
+        print Dumper $comment_content;
+        
+    }
     return 0;
 }
 
 #===============Main Process=============================
+
+print BOLD GREEN "\n------Dumper Travis Environment Attribute------\n";
 my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "TRAVIS_BRANCH",
-                       "RAVIS_EVENT_TYPE",
+                       "TRAVIS_EVENT_TYPE",
+                       "TRAVIS_PULL_REQUEST",
                        "GITHUB_TOKEN",
                        "USERNAME",
                        "PASSWORD",
                        "PWD");
-                       
-print BOLD GREEN "------Dumper Travis Environment Attribute------\n";
 foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n"; 
 }
 
-print BOLD GREEN "------To Check Pull Request Format------\n";
+print BOLD GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
     print RED "Check pull request format failed\n";
