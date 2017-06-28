@@ -8,6 +8,8 @@ use Time::Local;
 use File::Basename;
 use File::Path;
 use File::Find; 
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
 use LWP::UserAgent;
 use HTTP::Request;
 use Encode;  
@@ -15,10 +17,6 @@ use Encode::CN;
 use JSON;  
 use URI::Escape;  
 use LWP::Simple;
-use Term::ANSIColor qw(:constants);
-$Term::ANSIColor::AUTORESET = 1;
-
-
 
 #---Global attributes---
 my $rst = 0;
@@ -96,27 +94,117 @@ sub check_pr_format{
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
         
-        my $comment_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
-        my $comment_url_resp = get($comment_url);
-        my $json = new JSON;
-        my $comment_content = $json->decode($comment_url_resp);
-        
-        
+   
         #my $content_type = "Content-Type: application/json";
         print ">>>>>Dumper pr_content:\n";
         print Dumper $pr_content;
         print ">>>>>pr title = $pr_title\n";
         print ">>>>>pr body = $pr_body \n";
         
-        print ">>>>>Dumper comment_content:\n";
-        print Dumper $comment_content;
+        
         
     }
     return 0;
 }
 
+sub send_back_comment{
+    my $message = shift;
+   
+    my $comment_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/$ENV{'TRAVIS_PULL_REQUEST'}/comments";
+    my $comment_url_resp = get($comment_url);
+    my $json = new JSON;
+    my $comment_content = $json->decode($comment_url_resp);
+    my $comment_len = @$comment_content;
+    
+    print ">>>>>Dumper comment_content:\n";
+    print Dumper $comment_content;
+    
+    my $post_url = undef;
+    my $post_method = undef;
+    if($comment_len > 1){
+        foreach my $comment (@{$comment_content}){
+            if($comment->{'body'} =~ /SYNTAX/){
+                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+            }elsif($comment->{'body'} =~ /BUILD/){
+                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+            }elsif($comment->{'body'} =~ /INSTALL/){
+                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+            }
+        }
+        $post_method = "PATCH";
+    }else{
+        $post_url = $comment_url;
+        $post_method = "POST";
+    }
+    
+    `curl -u "$username:$password" -X $post_method -d '{"body":"$message"}' $post_url`;
+}
+#--------------------------------------------------------
+# Fuction name: build_xcat_core
+# Description:  
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub build_xcat_core{
+    my $cmd = "gpg --list-keys";
+    my @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+        print "[build_xcat_core] $cmd ....[Failed]\n";
+        return 1;
+    }
+    
+    $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
+    @output = runcmd("$cmd");
+    print ">>>>>Dumper the output of '$cmd'\n";
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        my $lastline = $output[-1];
+        $lastline =~ s/[\r\n\t\\"']*//g;
+        print "[build_xcat_core] $cmd ....[Failed]\n";
+        send_back_comment("> **BUILD_ERROR**  :  $lastline");
+        return 1;        
+    }else{
+        print "[build_xcat_core] $cmd ....[Pass]\n";
+        send_back_comment("> **BUILD SUCCESSFUL**");
+    }
+   
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name: install_xcat
+# Description:  
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub install_xcat{
+    return 0;
+}
+
+
+#--------------------------------------------------------
+# Fuction name: check_syntax
+# Description:  
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub check_syntax{
+    return 0;
+}
+
+#--------------------------------------------------------
+# Fuction name: run_fast_regression_test
+# Description:  
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub run_fast_regression_test{
+    return 0;
+}
+
 #===============Main Process=============================
 
+#Dumper Travis Environment Attribute
 print BOLD GREEN "\n------Dumper Travis Environment Attribute------\n";
 my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "TRAVIS_BRANCH",
@@ -130,10 +218,39 @@ foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n"; 
 }
 
+#Start to check the format of pull request
 print BOLD GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
     print RED "Check pull request format failed\n";
+}
+
+#Start to build xcat core 
+print BOLD GREEN "\n------To Build xCAT core package------\n";
+$rst = build_xcat_core();
+if($rst){
+    print RED "Build xCAT core package failed\n";
+}
+
+#Start to install xcat
+print BOLD GREEN "\n------To install xcat------\n";
+$rst = install_xcat();
+if($rst){
+    print RED "Install xcat failed\n";
+}
+
+#Check the syntax of changing code 
+print BOLD GREEN "\n------To check the syntax of changing code------\n";
+$rst = check_syntax();
+if($rst){
+    print RED "check the syntax of changing code failed\n";
+}
+
+#run fast regression
+print BOLD GREEN "\n------To run fast regression test------\n";
+$rst = run_fast_regression_test();
+if($rst){
+    print RED "Run fast regression test failed\n";
 }
 
 exit 0;
