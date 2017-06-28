@@ -71,7 +71,7 @@ script:
 
 #- ruby ./travis.rb
 #perl travis.pl
-perl travis_new.pl
+- perl travis_new.pl
 
 
 - mkdir -p ./check-perl-lib/haha
