@@ -319,7 +319,7 @@ if($event_type eq "pull_request"){
 		  #print "path : $path";
 		  #$result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
 		  $result = `sudo perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $path 2>&1`;
-		  #print "result : $result\n";
+		  print "result : $result\n";
 		  $subresult = substr($result,-3,2);
 		  #print "substr(result,-3,2) : $subresult\n";
 		  
