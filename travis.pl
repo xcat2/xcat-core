@@ -351,7 +351,7 @@ if($event_type eq "pull_request"){
 	  }
 	  #######    stop and print error in travis (red color)  ####
 	  foreach $term (@resultArr){
-              print "\033[31m$term\033[0m\n";
+              #print "\033[31m$term\033[0m\n";
           }
 	  #die "\033[31mCheck syntax error!\033[0m\n";
    }else{
@@ -366,8 +366,16 @@ if($event_type eq "pull_request"){
 
 ##############################   xcat-test install and test cases   ######################################
 
-   `sudo apt-get -y install xcat-test`;
-  
+   print "\033[42msudo apt-get -y install xcat-test\033[0m\n";
+   $testresult =`sudo apt-get -y install xcat-test`;
+   print "restresult : $testresult\n";
+   
+   print "sudo find / -name 'xcat-test_*'\n";
+   $findresult = `sudo find / -name 'xcat-test_*'`;
+   print "findresult : $findresult";
+   
+   
+   
 
 
 
