@@ -315,7 +315,7 @@ if($event_type eq "pull_request"){
 	  $path = $File::Find::name;
 	  if(-f $File::Find::name){
 	    $fileType = `file $path 2>&1`;
-		if($fileType =~ /Perl/){
+		if(($fileType =~ /Perl/)&&($path !~ /genesis/)){
 		  #print "path : $path";
 		  #$result = `perl -I perl-xCAT/ -I check-perl-lib -I xCAT-server/lib/perl/ -c $path 2>&1`;
 		  $result = `perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $path 2>&1`;
@@ -323,7 +323,7 @@ if($event_type eq "pull_request"){
 		  $subresult = substr($result,-3,2);
 		  #print "substr(result,-3,2) : $subresult\n";
 		  
-		  if(($subresult ne "OK")&&($path !~ /genesis/)){
+		  if($subresult ne "OK"){
 		        $result =~ s/[\n\r]*//g;
 			$result =~ s/\'//g;
 			$result =~ s/\"//g;
