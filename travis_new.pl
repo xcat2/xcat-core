@@ -129,6 +129,8 @@ sub send_back_comment{
                 $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
             }elsif($comment->{'body'} =~ /INSTALL/){
                 $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+            }elsif($comment->{'body'} =~ /FAST REGRESSION/){
+                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
             }
         }
         $post_method = "PATCH";
@@ -272,6 +274,39 @@ sub check_syntax{
 # Retrun code:
 #--------------------------------------------------------
 sub run_fast_regression_test{
+    my $cmd = "sudo apt-get install xcat-test --force-yes";
+    my @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print "[run_fast_regression_test] error dumper:\n";
+         print Dumper \@output;
+         return 1;
+    }
+    
+    $cmd = "xcattest -h";
+    @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print "[run_fast_regression_test] error dumper:\n";
+         print Dumper \@output;
+         return 1;
+    }   
+    
+    $cmd = "xcattest -b MN_basic.bundle > /dev/null";
+    @output = runcmd("$cmd");
+    my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
+    chomp($fail_log);
+    if(-z "/opt/xcat/share/xcat/tools/autotest/result/$fail_log"){
+        print "[run_fast_regression_test] $cmd ....[Pass]\n";
+        send_back_comment("> **FAST REGRESSION TEST PASS!**");
+    }else{
+        print "[run_fast_regression_test] $cmd ....[Failed]\n";
+        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log");
+        my $log_str = join (";", @output );
+        send_back_comment("> **FAST REGRESSION TEST Failed!** : $log_str");
+        return 1;
+    }
+    
     return 0;
 }
 
