@@ -150,6 +150,7 @@ sub build_xcat_core{
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         print "[build_xcat_core] $cmd ....[Failed]\n";
+        send_back_comment("> **BUILD_ERROR**  :  $cmd .... failed");
         return 1;
     }
     
@@ -178,6 +179,39 @@ sub build_xcat_core{
 # Retrun code:
 #--------------------------------------------------------
 sub install_xcat{
+    my @cmds = ("sudo ./../../xcat-core/mklocalrepo.sh",
+               "sudo chmod 777 /etc/apt/sources.list",
+               "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
+               "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
+               "sudo apt-get -qq update");
+    my @output;
+    foreach my $cmd (@cmds){
+        @output = runcmd("$cmd");
+        if(($::RUNCMD_RC){
+            print RED "[install_xcat] $cmd. ...[Failed]\n";
+            print "[install_xcat] error message:\n";
+            print Dumper \@output;
+            send_back_comment("> **INSTALL_ERROR**  :  $cmd .... failed");
+            return 1;
+        }
+    }
+    
+    my $cmd = "sudo apt-get install xcat --force-yes";
+    my @output = runcmd("$cmd");
+    print ">>>>>Dumper the output of '$cmd'\n";
+    print Dumper \@output;
+    if($::RUNCMD_RC){
+        my $lastline = $output[-1];
+        $lastline =~ s/[\r\n\t\\"']*//g;
+        print "[install_xcat] $cmd ....[Failed]\n";
+        send_back_comment("> **INSTALL_XCAT_ERROR**  :  $lastline");
+        return 1;   
+    }else{
+        print "[install_xcat] $cmd ....[Pass]\n";
+        send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
+    }
+    
     return 0;
 }
 
@@ -189,7 +223,46 @@ sub install_xcat{
 # Retrun code:
 #--------------------------------------------------------
 sub check_syntax{
-    return 0;
+    my @output;
+    my @syntax_err;
+    my $rst = 0;
+    
+    my @target_dirs=("/opt/xcat/",
+                     "/install/");
+    foreach my $dir (@target_dirs){
+        my @files    = ();
+        get_files_recursive("$dir", \@files);
+        
+        foreach my $file (@files) {
+            next if($file =~ /\/opt\/xcat\/share\/xcat\/netboot\/genesis\//);
+            
+            @output = runcmd("file $file");
+            if($output[0] =~ /perl/i){
+                @output = runcmd("perl -c $file");
+                if($::RUNCMD_RC){
+                    push @syntax_err, @output;
+                    $rst = 1;
+                }
+            }elsif($output[0] =~ /shell/i){
+                @output = runcmd("sh -n $file");
+                if($::RUNCMD_RC){
+                    push @syntax_err, @output;
+                    $rst = 1;
+                }      
+            }
+        }
+    }
+    
+    if(@syntax_err){
+        my $err_str = join(";", @syntax_err);
+        print "[check_syntax] $cmd ....[Failed]\n";
+        send_back_comment("> **SYNTAX_ERROR** : $err_str");
+    }else{
+        print "[check_syntax] $cmd ....[Pass]\n";
+        send_back_comment("> **SYNTAX CORRECT!**");
+    }
+    
+    return $rst;
 }
 
 #--------------------------------------------------------
