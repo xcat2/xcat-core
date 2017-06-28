@@ -323,7 +323,7 @@ if($event_type eq "pull_request"){
 		  $subresult = substr($result,-3,2);
 		  #print "substr(result,-3,2) : $subresult\n";
 		  
-		  if($subresult ne "OK"){
+		  if(($subresult ne "OK")&&($path !~ /genesis/)){
 		        $result =~ s/[\n\r]*//g;
 			$result =~ s/\'//g;
 			$result =~ s/\"//g;
