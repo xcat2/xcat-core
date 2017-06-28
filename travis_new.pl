@@ -10,13 +10,13 @@ use File::Path;
 use File::Find;
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
-#use LWP::UserAgent;
-#use HTTP::Request;
-#use Encode;
-#use Encode::CN;
-#use JSON;
-#use URI::Escape;
-#use LWP::Simple;
+use LWP::UserAgent;
+use HTTP::Request;
+use Encode;
+use Encode::CN;
+use JSON;
+use URI::Escape;
+use LWP::Simple;
 
 #---Global attributes---
 my $rst = 0;
