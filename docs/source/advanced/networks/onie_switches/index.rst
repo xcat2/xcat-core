@@ -7,6 +7,7 @@ The Open Network Install Environment, or "ONIE" [1]_. is an open source project 
    :maxdepth: 2
 
    os_cumulus/index.rst 
+   os_cumulus/ztp.rst 
 
 
 .. [1] Open Network Install Environment: Created by Cumulus Networks, Inc. in 2012, the Open Network Install Environment (ONIE) Project is a small operating system, pre-installed as firmware on bare metal network switches, that provides an environment for automated operating system provisioning.
