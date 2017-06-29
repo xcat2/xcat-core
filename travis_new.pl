@@ -241,12 +241,14 @@ sub install_xcat{
                  "service xcatd status");
         foreach my $cmd (@cmds){
             @output = runcmd("$cmd");
-            print "[install_xcat] run $cmd....\n";
-            print Dumper \@output;
             if($::RUNCMD_RC){
                 print RED "[install_xcat] $cmd. ...[Failed]\n";
+                print Dumper \@output;
                 send_back_comment("> **INSTALL_XCAT_ERROR**");
                 return 1;
+            }else{
+                print "[install_xcat] run $cmd....[Pass]\n";
+                print Dumper \@output;
             }
         }
         send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
@@ -317,11 +319,13 @@ sub check_syntax{
 sub run_fast_regression_test{
     my $cmd = "sudo apt-get install xcat-test --force-yes";
     my @output = runcmd("$cmd");
-    print "[run_fast_regression_test] $cmd .....:\n";
-    print Dumper \@output;
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print Dumper \@output;
          return 1;
+    }else{
+        print "[run_fast_regression_test] $cmd .....:\n";
+        print Dumper \@output;
     }
 
     $cmd = "xcattest -h";
@@ -331,6 +335,9 @@ sub run_fast_regression_test{
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
          return 1;
+    }else{
+         print "[run_fast_regression_test] $cmd .....:\n";
+         print Dumper \@output; 
     }
     
     my $hostname = `hostname`;
