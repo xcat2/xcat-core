@@ -339,9 +339,16 @@ foreach (@travis_env_attr){
 # `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X PSOT -d '{"body":"$message"}' $post_url`;
 my $msg;
 
-$msg = "> **message_test1:**  \n jasdjfjad";
+$msg = "> **SYNTAX1:** jasdjfjad";
+print "send msg : $msg\n";
 send_back_comment("$msg");
-$msg = "> **message_test2:**  \n ``kasjdfj\adsjf;lkj\nkajkl.-\jdfja``";
+
+$msg = "> **SYNTAX2:** jasdjfjad";
+print "send msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **SYNTAX3:**  \n ``kasjdfj\adsjf;lkj\nkajkl.-\jdfja``";
+print "send msg : $msg\n";
 send_back_comment("$msg");
 
 exit 0;
