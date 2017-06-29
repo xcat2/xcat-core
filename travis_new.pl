@@ -244,8 +244,8 @@ sub install_xcat{
             if($::RUNCMD_RC){
                 print RED "[install_xcat] $cmd. ...[Failed]\n";
                 print Dumper \@output;
-                send_back_comment("> **INSTALL_XCAT_ERROR**");
-                return 1;
+                #send_back_comment("> **INSTALL_XCAT_ERROR**");
+                #return 1;
             }else{
                 print "[install_xcat] run $cmd....[Pass]\n";
                 print Dumper \@output;
@@ -281,7 +281,7 @@ sub check_syntax{
 
             @output = runcmd("file $file");
             if($output[0] =~ /perl/i){
-                @output = runcmd("perl -c $file");
+                @output = runcmd("perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl  -c $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
                     $ret = 1;
@@ -334,12 +334,23 @@ sub run_fast_regression_test{
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
-         return 1;
+         #return 1;
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
          print Dumper \@output; 
     }
     
+    $cmd = "/opt/xcat/bin/xcattest -h";
+    @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print "[run_fast_regression_test] error dumper:\n";
+         print Dumper \@output;
+         return 1;
+    }else{
+         print "[run_fast_regression_test] $cmd .....:\n";
+         print Dumper \@output; 
+    }
     my $hostname = `hostname`;
     chomp($hostname);
     print "hostname = $hostname\n";
