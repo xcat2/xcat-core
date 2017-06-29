@@ -186,7 +186,7 @@ sub build_xcat_core{
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
-        send_back_comment("> **BUILD SUCCESSFUL**");
+        send_back_comment("> **BUILD SUCCESSFUL 1**");   #akdjflasdjfjdasljf
     }
 
     return 0;
@@ -229,8 +229,29 @@ sub install_xcat{
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
+        
+        print "------To config xcat and check if xcat work correctly-----\n";
+        @cmds = ("source /etc/profile.d/xcat.sh",
+                 "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
+                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
+                 "lsxcatd -v",
+                 "tabdump policy",
+                 "tabdump site",
+                 "ls /opt/xcat/sbin",
+                 "service xcatd status");
+        foreach my $cmd (@cmds){
+            @output = runcmd("$cmd");
+            print "[install_xcat] run $cmd....\n";
+            print Dumper \@output;
+            if($::RUNCMD_RC){
+                print RED "[install_xcat] $cmd. ...[Failed]\n";
+                send_back_comment("> **INSTALL_XCAT_ERROR**");
+                return 1;
+            }
+        }
         send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
     }
+
 
     return 0;
 }
@@ -296,10 +317,10 @@ sub check_syntax{
 sub run_fast_regression_test{
     my $cmd = "sudo apt-get install xcat-test --force-yes";
     my @output = runcmd("$cmd");
+    print "[run_fast_regression_test] $cmd .....:\n";
+    print Dumper \@output;
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
-         print "[run_fast_regression_test] error dumper:\n";
-         print Dumper \@output;
          return 1;
     }
 
