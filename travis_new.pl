@@ -128,24 +128,26 @@ sub send_back_comment{
 
     my $post_url = undef;
     my $post_method = undef;
-    if($comment_len > 1){
+    if($comment_len > 0){
         foreach my $comment (@{$comment_content}){
-            if($comment->{'body'} =~ /SYNTAX/){
+            if($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
-            }elsif($comment->{'body'} =~ /BUILD/){
+            }elsif($comment->{'body'} =~ /BUILD/ && $message =~ /BUILD/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
-            }elsif($comment->{'body'} =~ /INSTALL/){
+            }elsif($comment->{'body'} =~ /INSTALL/ &&  $message =~ /INSTALL/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
-            }elsif($comment->{'body'} =~ /FAST REGRESSION/){
+            }elsif($comment->{'body'} =~ /FAST REGRESSION/ &&  $message =~ /FAST REGRESSION/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
             }
         }
         $post_method = "PATCH";
-    }else{
+    }
+    
+    if(! defined $post_url){
         $post_url = $comment_url;
         $post_method = "POST";
     }
