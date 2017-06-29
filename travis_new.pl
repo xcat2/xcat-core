@@ -357,40 +357,6 @@ foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
 }
 
-
-#-------test---------
-# `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X PSOT -d '{"body":"$message"}' $post_url`;
-my $msg;
-
-$msg = "> **test1:** jasdjfjad123";
-print "\nsend msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **test2:**  \n jasdjfjad";
-print "\nsend msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **test3:**   ``jasdjfjad123``";
-print "\nsend msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **test4:**   jasdj=fjad";
-print "\nsend msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **test5:**   ja'sdjfj'ad";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **test6:** ``kasjdfjadsjf;lkjnk'ajkl'.jdfja``";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-exit 0;
-#-------test---------
-
-
-
 #Start to check the format of pull request
 print BOLD GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
