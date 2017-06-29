@@ -186,7 +186,7 @@ sub build_xcat_core{
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
-        send_back_comment("> **BUILD SUCCESSFUL 1**");   #akdjflasdjfjdasljf
+        send_back_comment("> **BUILD SUCCESSFUL**");  
     }
 
     return 0;
