@@ -231,12 +231,12 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
         
         print "------To config xcat and check if xcat work correctly-----\n";
-        @cmds = ("source /etc/profile.d/xcat.sh",
+        @cmds = ("sudo source /etc/profile.d/xcat.sh",
                  "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
-                 "lsxcatd -v",
-                 "tabdump policy",
-                 "tabdump site",
+                 "sudo lsxcatd -v",
+                 "sudo tabdump policy",
+                 "sudo tabdump site",
                  "ls /opt/xcat/sbin",
                  "service xcatd status");
         foreach my $cmd (@cmds){
@@ -328,7 +328,7 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = "xcattest -h";
+    $cmd = "sudo xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
@@ -340,7 +340,7 @@ sub run_fast_regression_test{
          print Dumper \@output; 
     }
     
-    $cmd = "/opt/xcat/bin/xcattest -h";
+    $cmd = "sudo /opt/xcat/bin/xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
