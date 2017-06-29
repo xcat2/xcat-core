@@ -149,7 +149,7 @@ sub send_back_comment{
         $post_url = $comment_url;
         $post_method = "POST";
     }
-     print "method = $post_method\n";
+     print "method = $post_method to $post_url \n";
     `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
@@ -343,27 +343,27 @@ foreach (@travis_env_attr){
 # `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X PSOT -d '{"body":"$message"}' $post_url`;
 my $msg;
 
-$msg = "> **SYNTAX1:** jasdjfjad";
+$msg = "> **test1:** jasdjfjad";
+print "\nsend msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **test2:**  \n jasdjfjad";
+print "\nsend msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **test3:**   ``jasdjfjad``";
+print "\nsend msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **test4:**   jasdj=fjad";
+print "\nsend msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **test5:**   ja'sdjfj'ad";
 print "send msg : $msg\n";
 send_back_comment("$msg");
 
-$msg = "> **SYNTAX2:**  \n jasdjfjad";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **SYNTAX3:**   ``jasdjfjad``";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **SYNTAX4:**   jasdj=fjad";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **SYNTAX4:**   jasdjfj'ad";
-print "send msg : $msg\n";
-send_back_comment("$msg");
-
-$msg = "> **SYNTAX5:** ``kasjdfjadsjf;lkjnk'ajkl.jdfja``";
+$msg = "> **test6:** ``kasjdfjadsjf;lkjnk'ajkl'.jdfja``";
 print "send msg : $msg\n";
 send_back_comment("$msg");
 
