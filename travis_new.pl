@@ -64,7 +64,11 @@ sub get_files_recursive
     my $files_path_ref = shift;
 
     my $fd = undef;
-    opendir($fd, $dir);
+    if(!opendir($fd, $dir)){
+        print "[get_files_recursive]: failed to open $dir :$!\n";
+        return 1;
+    }
+    
     for (; ;)
     {
         my $direntry = readdir($fd);
@@ -79,6 +83,7 @@ sub get_files_recursive
         }
     }
     closedir($fd);
+    return 0;
 }
 
 #--------------------------------------------------------
@@ -133,18 +138,21 @@ sub send_back_comment{
             if($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
+                $post_method = "PATCH";
             }elsif($comment->{'body'} =~ /BUILD/ && $message =~ /BUILD/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
+                $post_method = "PATCH";
             }elsif($comment->{'body'} =~ /INSTALL/ &&  $message =~ /INSTALL/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
+                $post_method = "PATCH";
             }elsif($comment->{'body'} =~ /FAST REGRESSION/ &&  $message =~ /FAST REGRESSION/){
                 #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
                 $post_url = $comment->{'url'};
+                $post_method = "PATCH";
             }
         }
-        $post_method = "PATCH";
     }
     
      print "method = $post_method to $post_url \n";
@@ -239,8 +247,8 @@ sub check_syntax{
     my @syntax_err;
     my $ret = 0;
 
-    my @target_dirs=("/opt/xcat/",
-                     "/install/");
+    my @target_dirs=("/opt/xcat",
+                     "/install");
     foreach my $dir (@target_dirs){
         my @files    = ();
         get_files_recursive("$dir", \@files);
