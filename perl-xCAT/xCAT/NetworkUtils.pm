@@ -736,7 +736,7 @@ sub get_nic_ip
     my %iphash;
     my $mode            = "MULTICAST";
     my $payingattention = 0;
-    my $interface;
+    my $interface       = "";
     my $keepcurrentiface;
 
 
@@ -793,6 +793,7 @@ sub get_nic_ip
                     delete $iphash{$interface};
                 }
                 $keepcurrentiface = 0;
+                $interface = "";
                 if (!($line =~ /LOOPBACK/) and
                     $line =~ /UP( |,|>)/ and
                     $line =~ /$mode/) {
