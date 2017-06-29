@@ -123,7 +123,7 @@ sub send_back_comment{
     my $comment_content = $json->decode($comment_url_resp);
     my $comment_len = @$comment_content;
 
-    print ">>>>>Dumper comment_content:\n";
+    print "\n\n>>>>>Dumper comment_content: $comment_len\n";
     print Dumper $comment_content;
 
     my $post_url = undef;
@@ -131,13 +131,17 @@ sub send_back_comment{
     if($comment_len > 1){
         foreach my $comment (@{$comment_content}){
             if($comment->{'body'} =~ /SYNTAX/){
-                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                $post_url = $comment->{'url'};
             }elsif($comment->{'body'} =~ /BUILD/){
-                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                $post_url = $comment->{'url'};
             }elsif($comment->{'body'} =~ /INSTALL/){
-                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                $post_url = $comment->{'url'};
             }elsif($comment->{'body'} =~ /FAST REGRESSION/){
-                $post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+                $post_url = $comment->{'url'};
             }
         }
         $post_method = "PATCH";
@@ -145,7 +149,7 @@ sub send_back_comment{
         $post_url = $comment_url;
         $post_method = "POST";
     }
-
+     print "method = $post_method\n";
     `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
@@ -343,11 +347,23 @@ $msg = "> **SYNTAX1:** jasdjfjad";
 print "send msg : $msg\n";
 send_back_comment("$msg");
 
-$msg = "> **SYNTAX2:** jasdjfjad";
+$msg = "> **SYNTAX2:**  \n jasdjfjad";
 print "send msg : $msg\n";
 send_back_comment("$msg");
 
-$msg = "> **SYNTAX3:**  \n ``kasjdfj\adsjf;lkj\nkajkl.-\jdfja``";
+$msg = "> **SYNTAX3:**   ``jasdjfjad``";
+print "send msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **SYNTAX4:**   jasdj=fjad";
+print "send msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **SYNTAX4:**   jasdjfj'ad";
+print "send msg : $msg\n";
+send_back_comment("$msg");
+
+$msg = "> **SYNTAX5:** ``kasjdfjadsjf;lkjnk'ajkl.jdfja``";
 print "send msg : $msg\n";
 send_back_comment("$msg");
 
