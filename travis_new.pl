@@ -126,7 +126,7 @@ sub send_back_comment{
     print "\n\n>>>>>Dumper comment_content: $comment_len\n";
     print Dumper $comment_content;
 
-    my $post_url = $post_url;
+    my $post_url = $comment_url;
     my $post_method = "POST";
     if($comment_len > 0){
         foreach my $comment (@{$comment_content}){
@@ -204,7 +204,7 @@ sub install_xcat{
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            send_back_comment("> **INSTALL_XCAT_ERROR**")
+            send_back_comment("> **INSTALL_XCAT_ERROR**");
             return 1;
         }
     }
