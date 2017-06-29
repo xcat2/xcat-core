@@ -1428,7 +1428,9 @@ sub switchsetup {
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
             if ($mytype eq "onie") {
-                send_msg($request, 0, "onie switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configonie after Cumulus OS installed on switch\n");
+                send_msg($request, 0, "Call to config $switches\n");
+                my $out = `$config_script --switches $switches --all`;
+                send_msg($request, 0, "output = $out\n");
             } else {
                 send_msg($request, 0, "call to config $mytype switches $switches\n");
                 my $out = `$config_script --switches $switches --all`;
