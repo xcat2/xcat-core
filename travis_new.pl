@@ -18,6 +18,7 @@ use JSON;
 use URI::Escape;
 use LWP::Simple;
 
+
 #---Global attributes---
 my $rst = 0;
 
@@ -332,6 +333,21 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
 foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
 }
+
+
+#-------test---------
+# `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X PSOT -d '{"body":"$message"}' $post_url`;
+my $msg;
+
+$msg = "> **message_test1:**  \n jasdjfjad";
+send_back_comment("$msg");
+$msg = "> **message_test2:**  \n ``kasjdfj\adsjf;lkj\nkajkl.-\jdfja``";
+send_back_comment("$msg");
+
+exit 0;
+#-------test---------
+
+
 
 #Start to check the format of pull request
 print BOLD GREEN "\n------To Check Pull Request Format------\n";
