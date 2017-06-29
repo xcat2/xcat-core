@@ -126,8 +126,8 @@ sub send_back_comment{
     print "\n\n>>>>>Dumper comment_content: $comment_len\n";
     print Dumper $comment_content;
 
-    my $post_url = undef;
-    my $post_method = undef;
+    my $post_url = $post_url;
+    my $post_method = "POST";
     if($comment_len > 0){
         foreach my $comment (@{$comment_content}){
             if($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/){
@@ -147,10 +147,6 @@ sub send_back_comment{
         $post_method = "PATCH";
     }
     
-    if(! defined $post_url){
-        $post_url = $comment_url;
-        $post_method = "POST";
-    }
      print "method = $post_method to $post_url \n";
     `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
@@ -178,7 +174,7 @@ sub build_xcat_core{
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD_ERROR**  :  $lastline");
+        send_back_comment("> **BUILD ERROR** : ``$lastline``");
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
@@ -208,7 +204,7 @@ sub install_xcat{
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            send_back_comment("> **INSTALL_ERROR**  :  $cmd .... failed");
+            send_back_comment("> **INSTALL_XCAT_ERROR**")
             return 1;
         }
     }
@@ -221,7 +217,7 @@ sub install_xcat{
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[install_xcat] $cmd ....[Failed]\n";
-        send_back_comment("> **INSTALL_XCAT_ERROR**  :  $lastline");
+        send_back_comment("> **INSTALL_XCAT_ERROR** : ``$lastline``");
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
@@ -270,9 +266,11 @@ sub check_syntax{
     }
 
     if(@syntax_err){
-        my $err_str = join(";", @syntax_err);
+        #my $err_str = join(";", @syntax_err);
         print "[check_syntax] syntax checking ....[Failed]\n";
-        send_back_comment("> **SYNTAX_ERROR** : $err_str");
+        print "[check_syntax] Dumper error message:\n";
+        print Dumper @syntax_err;
+        send_back_comment("> **SYNTAX ERROR**");
     }else{
         print "[check_syntax] syntax checking ....[Pass]\n";
         send_back_comment("> **SYNTAX CORRECT!**");
@@ -305,6 +303,22 @@ sub run_fast_regression_test{
          print Dumper \@output;
          return 1;
     }
+    
+    my $hostname = `hostname`;
+    chomp($hostname);
+    print "hostname = $hostname\n";
+    $cmd = "echo '[System]' > /regression.conf; echo 'MN=$hostname' >> /regression.conf";
+    @output = runcmd("$cmd");
+    if($::RUNCMD_RC){
+         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print "[run_fast_regression_test] error dumper:\n";
+         print Dumper \@output;
+         return 1;
+    }
+    
+    print "Dumper regression conf file:\n";
+    @output = runcmd("cat /regression.conf"); 
+    print Dumper \@output;
 
     $cmd = "xcattest -b MN_basic.bundle > /dev/null";
     @output = runcmd("$cmd");
@@ -316,8 +330,11 @@ sub run_fast_regression_test{
     }else{
         print "[run_fast_regression_test] $cmd ....[Failed]\n";
         @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log");
+        print "[run_fast_regression_test] Dump failed cases:\n";
+        print Dumper \@output;
+        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log|grep -- '--END'|awk -F'::' '{print $2}'");
         my $log_str = join (";", @output );
-        send_back_comment("> **FAST REGRESSION TEST Failed!** : $log_str");
+        send_back_comment("> **FAST REGRESSION TEST Failed** : failed cases : $log_str");
         return 1;
     }
 
