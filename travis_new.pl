@@ -231,26 +231,33 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
         
         print "------To config xcat and check if xcat work correctly-----\n";
-        @cmds = ("sudo source /etc/profile.d/xcat.sh",
+        @cmds = ("source /etc/profile.d/xcat.sh",
                  "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
-                 "sudo lsxcatd -v",
-                 "sudo tabdump policy",
-                 "sudo tabdump site",
+                 "lsxcatd -v",
+                 "tabdump policy",
+                 "tabdump site",
                  "ls /opt/xcat/sbin",
                  "service xcatd status");
         foreach my $cmd (@cmds){
-            @output = runcmd("$cmd");
-            if($::RUNCMD_RC){
-                print RED "[install_xcat] $cmd. ...[Failed]\n";
-                print Dumper \@output;
+            print "To run $cmd.....\n";
+            system("$cmd");
+           # @output = runcmd("$cmd");
+           # if($::RUNCMD_RC){
+            #    print RED "[install_xcat] $cmd. ...[Failed]\n";
+            #    print Dumper \@output;
                 #send_back_comment("> **INSTALL_XCAT_ERROR**");
                 #return 1;
-            }else{
-                print "[install_xcat] run $cmd....[Pass]\n";
-                print Dumper \@output;
-            }
+          #  }else{
+            #    print "[install_xcat] run $cmd....[Pass]\n";
+           #     print Dumper \@output;
+           # }
         }
+        
+        @output  = rumcmd("export");
+        print "Dumper export\n";
+        print Dumper \@output;
+        
         send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
     }
 
