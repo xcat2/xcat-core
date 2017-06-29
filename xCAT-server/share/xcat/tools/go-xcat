@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.19
+# Version 1.0.20
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -1567,14 +1567,22 @@ case "${GO_XCAT_ACTION}" in
 	then
 		echo
 		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
-		read -r -p "Continue? [y/n] "
-		case "${REPLY}" in
-		"Y"*|"y"*)
-			;;
-		*)
-			echo "Aborting ..."
-			exit 0
-		esac
+		while true; do
+
+			read -r -p "Continue? [y/n] "
+			case "${REPLY}" in
+			"Y"*|"y"*)
+				break	
+				;;
+			"N"*|"n"*)
+				echo "Good-bye!"
+				exit 0
+				;;
+			*)
+				echo "Invalid response!"
+				;;
+			esac
+		done
 	fi
 	# Use `-y' here. Since the STDOUT is redirect to tee.
 	# `yum' does not display the prompt message properly when
@@ -1645,10 +1653,11 @@ case "${GO_XCAT_ACTION}" in
 		If this is the very first time xCAT has been installed, run the following
 		commands to set environment variables into your PATH:
 
-		    for sh,
-		        \`source /etc/profile.d/xcat.sh'
-		    or csh,
-		        \`source /etc/profile.d/xcat.csh'
+		For sh: 
+			source /etc/profile.d/xcat.sh
+
+		For csh: 
+			source /etc/profile.d/xcat.csh
 		EOF
 		;;
 	"update")
