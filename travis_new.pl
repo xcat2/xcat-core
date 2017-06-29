@@ -345,7 +345,7 @@ foreach (@travis_env_attr){
 # `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X PSOT -d '{"body":"$message"}' $post_url`;
 my $msg;
 
-$msg = "> **test1:** jasdjfjad";
+$msg = "> **test1:** jasdjfjad123";
 print "\nsend msg : $msg\n";
 send_back_comment("$msg");
 
@@ -353,7 +353,7 @@ $msg = "> **test2:**  \n jasdjfjad";
 print "\nsend msg : $msg\n";
 send_back_comment("$msg");
 
-$msg = "> **test3:**   ``jasdjfjad``";
+$msg = "> **test3:**   ``jasdjfjad123``";
 print "\nsend msg : $msg\n";
 send_back_comment("$msg");
 
