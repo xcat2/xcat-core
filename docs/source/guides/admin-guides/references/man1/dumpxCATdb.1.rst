@@ -35,7 +35,7 @@ If not using the binary dump option (-b), then the dumpxCATdb command creates .c
 Supports using XCAT_SKIPTABLES env variable to provide a list of skip tables.
 The command will never backup TEAL or ISNM tables, except isnm_config.  To dump TEAL tables use the documented process for TEAL.  For ISNM use tabdump, after using tabprune to get to prune unnecessary records.
 
-If using the binary dump option for the DB2 or postgreSQL database, then the routine will use the Database provide utilites for backup of the entire database.
+If using the binary dump option for the DB2 or postgreSQL database, then the routine will use the Database provide utilities for backup of the entire database.
 
 
 *******
@@ -49,7 +49,7 @@ OPTIONS
 
 \ **-V**\           Verbose.
 
-\ **-a**\           All,without this flag the eventlog and auditlog will be skipped.
+\ **-a**\           All, without this flag the eventlog and auditlog will be skipped.
 
 \ **-b**\           This flag is only used for the DB2 or postgreSQL database. The routine will use the database backup utilities to create a binary backup of the entire  database. Note to use this backup on DB2, you will have first had to modify the logging of the database and have taken an offline initial backup. Refer to the xCAT DB2 documentation for more instructions.
 

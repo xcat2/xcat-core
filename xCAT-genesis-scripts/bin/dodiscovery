@@ -25,11 +25,11 @@ logger -s -t $log_label -p local4.info "Waiting for nics to get addresses"
 while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	NEWNICSGETTINGADDR=""
 	for nic in $NICSGETTINGADDR; do
-		if ! ip addr show dev $nic |grep -v inet6|grep inet >/dev/null;  then
+		if ! ip -4 -o a show dev $nic |grep -q inet;  then
 			NEWNICSGETTINGADDR="$NEWNICSGETTINGADDR $nic"
 		else
 			echo -n "$nic|"
-			ip addr show dev $nic |grep -v inet6|grep inet|sed -e s/\\/.*//|awk '{print $2}'
+			ip -4 -o addr show dev $nic | awk '{print $4}' | sed -e sX/.*XX
 		fi
 	done
 	sleep 0.1
@@ -187,8 +187,8 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	ONBOARDINDEX=""
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
-	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
-	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
+	ADDRESS=`ip -4 -o a show dev $dev|awk '/global/{print $4}'`
+        MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
         if [ "$MAC_OF_FIRST_UP_NIC" == "unknown" ]; then
             MAC_OF_FIRST_UP_NIC=`echo $MAC | sed -e s/://g`
         fi

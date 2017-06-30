@@ -19,11 +19,11 @@ Name
 ****************
 
 
-\ **rinstall**\  \ *noderange*\  \ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\  [\ **-c | -**\ **-console**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **winstall**\  \ *noderange*\  [\ **boot**\  | \ **shell**\  | \ **runcmd=bmcsetup**\ ] [\ **runimage=**\ \ *task*\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  \ *noderange*\  \ **osimage**\ =\ *imagename*\  | [\ **-O**\ ] \ *imagename*\  [\ **-**\ **-ignorekernelchk**\ ] [\ **-c | -**\ **-console**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **winstall**\  \ *noderange*\  [\ **osimage**\ =\ *imagename*\  | \ *imagename*\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-u | -**\ **-uefimode**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **rinstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
+\ **winstall**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -31,11 +31,11 @@ Name
 *******************
 
 
-\ **winstall**\  is a convenience command to begin OS provision on a noderange(support nodes with "nodetype.mgt=ipmi,blade,hmc,ivm,fsp,kvm,esx,rhevm").
+\ **winstall**\  is a convenience command to begin OS provision on a noderange.
 
-If \ **osimage**\ =\ *imagename*\  | \ **-O**\  \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
+If \ **osimage**\ =\ *imagename*\  | \ *imagename*\  is specified or nodetype.provmethod=\ **osimage**\  is set, provision the noderange with the osimage specified/configured.
 
-It  will then run wcons on the nodes.
+It  will then run \ **wcons**\  on the noderange.
 
 
 ***************
@@ -50,9 +50,9 @@ It  will then run wcons on the nodes.
  
 
 
-\ **osimage | osimage=**\ \ *imagename*\ |\ **-O**\ \ *imagename*\ 
+\ *imagename*\  | \ **osimage=**\ \ *imagename*\ 
  
- Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
+ Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the \ *imagename*\  is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
  
 
 
@@ -62,7 +62,7 @@ It  will then run wcons on the nodes.
  
 
 
-\ **runimage**\ =\ *task*\ 
+\ **runimage=**\ \ *task*\ 
  
  If you would like to run a task after deployment, you can define that task with this attribute.
  
@@ -70,14 +70,13 @@ It  will then run wcons on the nodes.
 
 \ **runcmd=bmcsetup**\ 
  
- This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC
- for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
+ This instructs the node to boot to the xCAT nbfs environment and proceed to configure BMC for basic remote access.  This causes the IP, netmask, gateway, username, and password to be programmed according to the configuration table.
  
 
 
 \ **shell**\ 
  
- This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
+ This instructs the node to boot to the xCAT genesis environment, and present a shell prompt on console.
  The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
  
 
@@ -100,15 +99,9 @@ It  will then run wcons on the nodes.
  
 
 
-\ **-V | -**\ **-Verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose output.
- 
-
-
-\ **-c | -**\ **-console**\ 
- 
- Requests that rinstall runs rcons once the provision starts.  This will only work if there is only one node in the noderange. See winstall(8)|winstall.8 for starting consoles on multiple nodes.
  
 
 
@@ -119,7 +112,7 @@ It  will then run wcons on the nodes.
 
 
 
-1. Provison nodes 1 through 20, using their current configuration.
+1. Provision nodes 1 through 20, using their current configuration.
  
  
  .. code-block:: perl
@@ -134,7 +127,7 @@ It  will then run wcons on the nodes.
  
  .. code-block:: perl
  
-   winstall node1-node20 -O rhels6.4-ppc64-netboot-compute
+   winstall node1-node20 osimage=rhels6.4-ppc64-netboot-compute
  
  
 

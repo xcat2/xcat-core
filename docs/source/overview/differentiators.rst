@@ -18,7 +18,7 @@ Differentiators
 
   IBM Power, IBM Power LE, x86_64
 
-* Support Multiple Virtulization Infrastructures
+* Support Multiple Virtualization Infrastructures
 
   IBM PowerKVM, KVM, IBM zVM, ESXI, XEN
 

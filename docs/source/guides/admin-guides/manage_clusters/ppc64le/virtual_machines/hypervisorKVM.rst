@@ -16,7 +16,7 @@ Provision Hypervisor
 
 #. Customize the hypervisor node definition to create network bridge
 
-   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Specify the **xHRM** with appropriate parameters in  **postscripts** attibute. For example:
+   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Specify the **xHRM** with appropriate parameters in  **postscripts** attribute. For example:
 
    * To create a bridge named 'br0' against the installation network device specified by **installnic**: ::
 
@@ -68,7 +68,7 @@ If the hypervisor is provisioned successfully according to the steps described a
    br0             8000.000000000000       no              eth0
 
 
-If the network bridge is not created or configured successfully, run "xHRM" with **updatenode** on managememt node to create it manually:::
+If the network bridge is not created or configured successfully, run "xHRM" with **updatenode** on management node to create it manually:::
 
    updatenode kvmhost1  -P "xHRM bridgeprereq eth0:br0"
 

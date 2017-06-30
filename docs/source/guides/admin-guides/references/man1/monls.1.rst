@@ -33,7 +33,7 @@ DESCRIPTION
 ***********
 
 
-This command is used to list the status, desctiption, the configuration scripts and the settings of one or all of the monitoring plug-in modules.
+This command is used to list the status, description, the configuration scripts and the settings of one or all of the monitoring plug-in modules.
 
 
 **********
@@ -49,9 +49,9 @@ OPTIONS
 *******
 
 
-\ **-a | -**\ **-all**\           Searches the \ *XCATROOT/lib/perl/xCAT_monitoring*\  directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the \ *monitoring*\  tabel.
+\ **-a | -**\ **-all**\           Searches the \ *XCATROOT/lib/perl/xCAT_monitoring*\  directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the \ *monitoring*\  table.
 
-\ **-d | -**\ **-description**\   Display the description of the plug-in modules. The description ususally contains the possible settings.
+\ **-d | -**\ **-description**\   Display the description of the plug-in modules. The description usually contains the possible settings.
 
 \ **-h | -**\ **-help**\          Display usage message.
 
@@ -110,7 +110,7 @@ The output looks like this:
    nagiosmon       not-monitored
 
 
-3. To list the status and the desciption for \ *snmpmon*\  module, enter:
+3. To list the status and the description for \ *snmpmon*\  module, enter:
 
 
 .. code-block:: perl

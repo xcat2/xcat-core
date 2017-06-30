@@ -1999,6 +1999,18 @@ sub defmk
     }
     else
     {
+        my $nodenum = 0;
+        my $ret = 0;
+        my @nodes_updated = ();
+        foreach my $node (keys %::FINALATTRS) {
+            if ($::FINALATTRS{$node}{updated}) {
+                $nodenum++;
+                push @nodes_updated, $node;
+            }
+            if ($::FINALATTRS{$node}{error}) {
+                $ret = 1;
+            }
+        }
         if ($::verbose)
         {
 
@@ -2007,7 +2019,7 @@ sub defmk
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
-            foreach my $o (sort(keys %::FINALATTRS))
+            foreach my $o (sort( @nodes_updated))
             {
                 $rsp->{data}->[$n] = "$o";
                 $n++;
@@ -2023,21 +2035,17 @@ sub defmk
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
             }
         }
-        else
-        {
-            my $rsp;
-            my $nodenum = scalar(keys %::FINALATTRS);
-            $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
-            if ($nodenum > 0) {
-                # Some objects were created, report as success
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-            }
-            else {
-                # No objects were created, report as error
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-            }
+        my $rsp;
+        $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
+        if ($nodenum > 0) {
+            # Some objects were created, report as success
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
-        return 0;
+        else {
+            # No objects were created, report as error
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+        }
+        return $ret;
     }
 }
 
@@ -2786,18 +2794,29 @@ sub defch
     }
     else
     {
+        my $nodenum = 0;
+        my $ret = 0;
+        my @nodes_updated = ();
+        foreach my $node (keys %::FINALATTRS) {
+            if ($::FINALATTRS{$node}{updated}) {
+                $nodenum++;
+                push @nodes_updated, $node;
+            }
+            if ($::FINALATTRS{$node}{error}) {
+                $ret = 1;
+            }
+        }
         if ($::verbose)
         {
 
             #  give results
             my $rsp;
-            my $nodenum = scalar(keys %::FINALATTRS);
             if ($nodenum) {
                 $rsp->{data}->[0] = "The database was updated for the following objects:";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
 
                 my $n = 1;
-                foreach my $o (sort(keys %::FINALATTRS))
+                foreach my $o (sort(@nodes_updated))
                 {
                     $rsp->{data}->[$n] = "$o\n";
                     $n++;
@@ -2810,7 +2829,7 @@ sub defch
         else
         {
             my $rsp;
-            my $nodenum = scalar(keys %::FINALATTRS);
+
             if ($nodenum) {
                 $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
             } else {
@@ -2842,7 +2861,7 @@ sub defch
                 }
             }
         }
-        return 0;
+        return $ret;
     }
 }
 

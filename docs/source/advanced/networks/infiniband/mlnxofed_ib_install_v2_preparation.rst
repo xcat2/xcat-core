@@ -22,7 +22,7 @@ The ``mlnxofed_ib_install.v2`` is a sample script intended to assist with the in
        # ensure the script has execute permission
        chmod +x /install/postscripts/mlnxofed_ib_install
 
-#. Familarize the options available for the xCAT ``mlnxofed_ib_install`` script. 
+#. Familiarize the options available for the xCAT ``mlnxofed_ib_install`` script. 
 
    +---------+------------------+----------------------------------------------------------+
    | Option  | Required         | Description                                              |

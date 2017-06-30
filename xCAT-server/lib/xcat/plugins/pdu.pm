@@ -288,7 +288,7 @@ sub powerpduoutlet {
             my ($pdu, $outlet) = split /:/, $pdu_outlet;
             my $session = connectTopdu($pdu,$callback);
             if (!$session) {
-                $callback->({ errorcode => [1],error => "Couldn't connect to $pdu"});
+                $callback->({ errorcode => [1],error => "$node: Couldn't connect to $pdu"});
                 next;
             }
 	    # the check is too expensive.   To re-enable, would have to 
@@ -317,7 +317,7 @@ sub powerpduoutlet {
             } 
     
             if ($session->{ErrorStr}) { 
-                $callback->({ errorcode => [1],error => "$session->{ErrorStr} for $pdu outlet $outlet"});
+                $callback->({ errorcode => [1],error => "$node: $pdu outlet $outlet has error = $session->{ErrorStr}"});
             } else {
                 $output = "$pdu outlet $outlet is $statstr"; 
                 xCAT::SvrUtils::sendmsg($output, $callback, $node, %allerrornodes);
@@ -428,6 +428,7 @@ sub connectTopdu {
     my $community = "public";
     my $session;
     my $msg = "connectTopdu";
+    my $versionoid = ".1.3.6.1.4.1.2.6.223.7.3.0";
 
     $session = new SNMP::Session(
         DestHost       => $pdu,
@@ -449,9 +450,20 @@ sub connectTopdu {
 
     return $session;
 
+    my $varbind = new SNMP::Varbind([ $versionoid, '' ]);
+    my $pduversion = $session->get($varbind);
+    if ($session->{ErrorStr}) {
+        return;
+    }
+
+    $session->{newmib} = 0;
+    if ($pduversion =~ /sLEN/) {
+        $session->{newmib} = 1;
+    }
+
+    return $session;
+
 }
-
-
 
 
 

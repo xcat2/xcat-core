@@ -21,6 +21,7 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
+use xCAT::data::switchinfo;
 
 #global variables for this module
 my $community;
@@ -32,31 +33,6 @@ my %global_scan_type = (
     lldp => "lldp_scan",
     snmp => "snmp_scan"
 );
-
-my %global_mac_identity = (
-    "a8:97:dc" => "BNT G8052 switch",
-    "6c:ae:8b" => "BNT G8264-T switch",
-    "fc:cf:62" => "BNT G8124 switch",
-    "7c:fe:90" => "Mellanox IB switch",
-    "8c:ea:1b" => "Edgecore Networks Switch"
-);
-
-my %global_switch_type = (
-    Juniper => "Juniper",
-    juniper => "Juniper",
-    Cisco => "Cisco",
-    cisco => "Cisco",
-    BNT => "BNT",
-    Blade => "BNT",
-    G8052 => "BNT",
-    RackSwitch => "BNT",
-    Mellanox => "Mellanox",
-    mellanox => "Mellanox",
-    MLNX => "Mellanox",
-    MELLAN => "Mellanox",
-    Edgecore => "onie"
-);
-
 
 
 #-------------------------------------------------------------------------------
@@ -737,16 +713,16 @@ sub nmap_scan {
                         }
                         my $vendor = $addr->{vendor};
                         if ($vendor) {
-                            my $search_string = join '|', keys(%global_switch_type);
+                            my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                             if ($vendor =~ /($search_string)/) {
                                 $found = 1;
                             }
                         } 
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            my $search_string = join '|', keys(%global_mac_identity);
+                            my $search_string = join '|', keys(%xCAT::data::switchinfo::global_mac_identity);
                             if ($mac =~ /($search_string)/i) {
                                 my $key = $1;
-                                $vendor = $global_mac_identity{lc $key};
+                                $vendor = $xCAT::data::switchinfo::global_mac_identity{lc $key};
                                 $found = 1;
                             }
 
@@ -840,7 +816,7 @@ sub nmap_osguess {
                         last;
                     }  
                 }
-                my $search_string = join '|', keys(%global_switch_type);
+                my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                 if ($line =~ /Running/) {
                     if ($line =~ /($search_string)/){
                         $vendor = $1;
@@ -1169,10 +1145,10 @@ sub get_switchtype {
     my $vendor = shift;
     my $key = "Not support";
     
-    my $search_string = join '|', keys(%global_switch_type);
+    my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
-        return $global_switch_type{$key};
+        return $xCAT::data::switchinfo::global_switch_type{$key};
     } else {
         return $key;
     }

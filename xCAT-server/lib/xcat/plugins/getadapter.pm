@@ -122,8 +122,8 @@ sub route_request {
     my $command = $request->{command}->[0];
     my $ret     = xCAT::State->REQUEST_ERROR;
 
-    if (scalar(@{ $request->{node} }) == 0) {
-        return $ret;
+    if (!$request->{node}) {
+        return xCAT::State->REQUEST_WAIT;
     }
 
     my $build_request_message_func = sub {
@@ -404,7 +404,7 @@ sub update_adapter_result {
         $interface_exists = 0;
 
         if (exists($msg->{nic}->[$i]->{interface})) {
-            $output .= $msg->{nic}->[$i]->{interface};
+            $output .= $msg->{nic}->[$i]->{interface}."!";
             if ($has_nic) {
                 $data .= "," . $msg->{nic}->[$i]->{interface} . "!";
             }
@@ -414,38 +414,46 @@ sub update_adapter_result {
             $interface_exists = 1;
             $has_nic          = 1;
         }
+        my @nic_attrs = ();
+        my @output_attrs = ();
         if (exists($msg->{nic}->[$i]->{mac})) {
-            $output .= "!mac=" . $msg->{nic}->[$i]->{mac};
+            push(@output_attrs, "mac=" . $msg->{nic}->[$i]->{mac});
             if ($interface_exists) {
-                $data .= " mac=" . $msg->{nic}->[$i]->{mac};
+                push(@nic_attrs, "mac=" . $msg->{nic}->[$i]->{mac});
             }
         }
         if (exists($msg->{nic}->[$i]->{pcilocation})) {
-            $output .= "|pci=" . $msg->{nic}->[$i]->{pcilocation};
+            push(@output_attrs, "pci=" . $msg->{nic}->[$i]->{pcilocation});
             if ($interface_exists) {
-                $data .= "pci=" . $msg->{nic}->[$i]->{pcilocation};
+                push(@nic_attrs, "pci=" . $msg->{nic}->[$i]->{pcilocation});
             }
         }
         if (exists($msg->{nic}->[$i]->{predictablename})) {
-            $output .= "|candidatename=" . $msg->{nic}->[$i]->{predictablename};
+            push(@output_attrs, "candidatename=" . $msg->{nic}->[$i]->{predictablename});
         }
         if (exists($msg->{nic}->[$i]->{vendor})) {
-            $output .= "|vendor=" . $msg->{nic}->[$i]->{vendor};
+            $msg->{nic}->[$i]->{vendor} =~ s/^\s+|\s+$//g;
+            push(@output_attrs, "vendor=" . $msg->{nic}->[$i]->{vendor});
         }
         if (exists($msg->{nic}->[$i]->{model})) {
-            $output .= "|model=" . $msg->{nic}->[$i]->{model};
+            $msg->{nic}->[$i]->{model} =~ s/^\s+|\s+$//g;
+            push(@output_attrs, "model=" . $msg->{nic}->[$i]->{model});
         }
         if (exists($msg->{nic}->[$i]->{linkstate})) {
-            $output .= "|linkstate=" . $msg->{nic}->[$i]->{linkstate};
+            push(@output_attrs, "linkstate=" . (split(' ', $msg->{nic}->[$i]->{linkstate}))[0]);
             if ($interface_exists) {
-                $data .= " linkstate=" . $msg->{nic}->[$i]->{linkstate};
+                push(@nic_attrs, "linkstate=". (split(' ', $msg->{nic}->[$i]->{linkstate}))[0]);
             }
         }
+        if (@nic_attrs) {
+            $data .= join(" ", @nic_attrs);
+        }
+        $output .= join("|", @output_attrs);
         $output .= "\n";
     }
     $callback->({ data => "$output" });
     if (!$has_nic) {
-        $callback->({ data => "$node: nics talbe will not be updated as not any ".
+        $callback->({ data => "$node: nics table will not be updated as not any ".
                     "useful information could be found with udevadm command." });
         return 0;
     }

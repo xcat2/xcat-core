@@ -4,10 +4,8 @@ package xCAT_plugin::nodediscover;
 use xCAT::Table;
 use IO::Socket;
 use strict;
-
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
-use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
 use IO::Select;
@@ -15,7 +13,7 @@ use IO::Handle;
 use xCAT::Utils;
 use Sys::Syslog;
 use Text::Balanced qw(extract_bracketed);
-
+use xCAT::data::switchinfo;
 use xCAT::DiscoveryUtils;
 
 
@@ -175,6 +173,7 @@ sub process_request {
         }
     }
 
+
     # save inventory info into the hwinv table
     if (defined($request->{cpucount}) or defined($request->{cputype}) or defined($request->{memory}) or defined($request->{disksize})) {
         my $basicdata;
@@ -232,14 +231,31 @@ sub process_request {
         if ($rent and $rent->{'netboot'}) {
             $currboot = $rent->{'netboot'};
         }
+
         if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
             $nrtab->setNodeAttribs($node, { netboot => 'xnba' });
         } elsif ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
             $nrtab->setNodeAttribs($node, { netboot => 'petitboot' });
         } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot !~ /yaboot/) {
             $nrtab->setNodeAttribs($node, { netboot => 'yaboot' });
+        } elsif($request->{arch}->[0] =~ /armv7l/ and $currboot !~ /onie/) { 
+            #for onie switch, the netboot should be "onie"
+            $nrtab->setNodeAttribs($node, { netboot => 'onie' });  
         }
     }
+
+    if(defined $request->{nodetype} and $request->{nodetype}->[0] = 'switch' and $request->{_xcat_clientmac}->[0]){
+        #for onie switch, lookup and set the switchtype via mac of mgt interface
+        my $switchestab = xCAT::Table->new('switches');
+        if ($switchestab) {
+            my $switchtype=$xCAT::data::switchinfo::global_mac_identity{substr(lc($request->{_xcat_clientmac}->[0]),0,8)};
+            if(defined $switchtype){
+                $switchestab->setNodeAttribs($node,{ switchtype => $switchtype });
+            }
+            $switchestab->close();
+        }
+    }
+  
 
     my $macstring = "";
     if (defined($request->{mac})) {
@@ -252,9 +268,11 @@ sub process_request {
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
+
             if ($ifinfo[1] eq 'usb0') {    #skip usb nic
                 next;
             }
+
             $bydriverindex{ $ifinfo[0] } += 1;
             if (scalar @discoverynics) {
                 $forcenic = -1;    #$forcenic defaults to explicitly skip nic
@@ -295,7 +313,7 @@ sub process_request {
                             push @hostnames_to_update, $hosttag;
                         }
                     }
-                    print Dumper($hosttag) . "\n";
+                    #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
                         $usednames{$hosttag} = 1;
                         unless ($usednames_for_net{$netn}) {

@@ -59,7 +59,7 @@ RETURN VALUE
 
 0  The command completed successfully.
 
-1  An error has occured.
+1  An error has occurred.
 
 
 ********

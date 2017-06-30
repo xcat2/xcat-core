@@ -63,7 +63,7 @@ PARAMETERS
 **********
 
 
-\ *imagename*\  specifies the name of a os image definition to be used. The specification for the image is storted in the \ *osimage*\  table and \ *linuximage*\  table.
+\ *imagename*\  specifies the name of a os image definition to be used. The specification for the image is stored in the \ *osimage*\  table and \ *linuximage*\  table.
 
 
 *******

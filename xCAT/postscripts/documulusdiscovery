@@ -1,0 +1,132 @@
+#!/bin/bash
+#this script grabs the switch information, then composes a "findme" request and sends it to MN
+#so that the switch can be discovered 
+
+# TODO: Figure out the master based on the DHCP packet
+XCATMASTER=$(cat /var/lib/dhcp/dhclient.eth0.leases |grep cumulus-provision-url|tail -1|awk -F/ '{print $3}')
+XCATPORT=3001
+log_label="xcat.documulusdiscovery"
+
+#helper script for socat, write the received message to /tmp/helper.socat.sh
+cat > /tmp/helper.socat.sh << 'EOF'
+read strin
+echo $strin > /tmp/result.socat.out
+EOF
+
+[ -f "/tmp/helper.socat.sh" ] && chmod 777 /tmp/helper.socat.sh
+
+#listen to the 3001 port for any response from xcatd on MN
+#the message in the response will be written to /tmp/result.socat.out
+socat TCP4-LISTEN:3001,reuseaddr EXEC:"/tmp/helper.socat.sh" &
+
+#generate key pairs for the SSL connection between switch and xcatd on MN
+mkdir -p /etc/xcat
+mkdir -p /etc/pki/tls
+
+if [ ! -f /etc/xcat/privkey.pem ]; then
+echo "[ req ]
+distinguished_name = nodedn
+
+[ nodedn ]" > /etc/pki/tls/openssl.cnf
+    logger -s -t $log_label -p local4.info "Generating private key..."
+    openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+    logger -s -t $log_label -p local4.info "Done"
+fi
+
+PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
+PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+export PUBKEY
+
+logger -s -t $log_label -p local4.info "Beginning switch discovery process..."
+
+#grab the switch information
+dmidweinfo=$(/usr/sbin/dmidecode 2>/dev/null)
+PRODUCTNAME=$(echo "$dmidweinfo"|grep "Product Name"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
+MTM=$PRODUCTNAME
+ARCH=$(uname -m)
+SERIAL=$(echo "$dmidweinfo"|grep "Serial Number"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
+
+#compose the findme request
+echo '<xcatrequest>' > /tmp/discopacket
+echo "<command>findme</command>" >> /tmp/discopacket
+echo "<sequential>1</sequential>" >> /tmp/discopacket
+echo "<nodetype>switch</nodetype>" >> /tmp/discopacket
+echo "<arch>$ARCH</arch>" >> /tmp/discopacket
+#echo "<switchtype>$MTM</switchtype>" >> /tmp/discopacket
+echo "<vendor>$MTM</vendor>" >> /tmp/discopacket
+echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
+
+MAC_OF_FIRST_UP_NIC=$(ip addr show eth0|grep "link/ether"|awk -F' '  '{print $2}')
+MAC=$MAC_OF_FIRST_UP_NIC
+ADDRESS=$(ip address show dev eth0|grep "inet "|grep global|awk '{print $2}')
+DRIVER=$(grep DRIVER /sys/class/net/eth0/device/uevent|awk -F= '{print $2}')
+echo "<mac>$DRIVER|eth0|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+
+UUID=`echo $MTM-$SERIAL-$MAC_OF_FIRST_UP_NIC| tr /A-Z/ /a-z/`
+echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+
+echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket
+echo "<sha512sig>" >> /tmp/discopacket
+echo "</sha512sig>" >> /tmp/discopacket
+echo "</xcatrequest>" >> /tmp/discopacket
+openssl dgst -sha512 -out /tmp/discopacket.sha512 -sign /etc/xcat/privkey.pem /tmp/discopacket
+openssl enc -e -a -in /tmp/discopacket.sha512  > /tmp/discopacket.b64sig
+cat /tmp/discopacket |while read line; do
+        if [ "$line" = "</sha512sig>" ]; then
+                cat /tmp/discopacket.b64sig >> /tmp/discopacket.new
+        fi
+        echo $line >> /tmp/discopacket.new
+done
+mv /tmp/discopacket.new /tmp/discopacket
+logger -s -t $log_label -p local4.info "Discovery packet file is ready."
+rm -f /tmp/discopacket.gz
+gzip -9 /tmp/discopacket
+
+
+
+if [ -z "$XCATMASTER" ] || [ -z "$XCATPORT" ]; then
+    logger -s -t $log_label -p local4.err "Failed to get xcatd connection information, exit..."
+    rm -rf /tmp/result.socat.out
+    rm -rf /tmp/helper.socat.sh
+    exit 1
+fi
+
+
+#send the find me request ot xcatd on MN
+MAX_RETRY=10
+RETRY=0
+DISCOVERED=0
+
+while [ $RETRY -lt $MAX_RETRY ]; do
+    logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT) [ RETRY= $RETRY ]  ..."
+    (cat /tmp/discopacket.gz | socat STDIN UDP:$XCATMASTER:$XCATPORT,sourceport=301 ) &
+
+    WAITRETRY=0
+    while [ $WAITRETRY -lt 100 ]; do
+        if [ -f "/tmp/result.socat.out" ] && grep "restart" /tmp/result.socat.out; then
+            DISCOVERED=1
+            break;
+        fi
+        sleep 1
+        ((WAITRETRY=WAITRETRY+1))
+    done
+
+    if [ "$DISCOVERED" = "1" ]; then
+        break
+    fi
+    
+    sleep 2 
+    ((RETRY=RETRY+1))
+done
+
+rm -rf /tmp/result.socat.out
+rm -rf /tmp/helper.socat.sh
+
+if [ "$DISCOVERED" = "0" ] ; then
+    logger -s -t $log_label -p local4.info "Failed to discover me, exit..."
+    exit 1
+elif [ "$DISCOVERED" = "1" ]; then
+    echo "installstatus discovered" | socat STDIN TCP:$XCATMASTER:3002,sourceport=301,reuseaddr,retry=5
+fi
+
+exit 0

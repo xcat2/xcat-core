@@ -360,7 +360,7 @@ Output is similar to:
    Available BSR array:  256
 
 
-Note: The lines listed in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicates a physical I/O resource in a normal power machine.
+Note: The lines listed in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class description)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicates a physical I/O resource in a normal power machine.
 
 9. For DFM-managed partition on normal power machine, list out the detailed information:
 

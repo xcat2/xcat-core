@@ -29,7 +29,7 @@ Force to removal of a running container or failed to disconnect customized netwo
 =head1 EXAMPLES
 
     rmdocker host01c01
-    host01c01: Disconnect customzied network 'mynet0' done
+    host01c01: Disconnect customized network 'mynet0' done
     host01c01: success
 
 =head1 SEE ALSO

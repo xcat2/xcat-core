@@ -151,7 +151,7 @@ PPC (using Direct FSP Management) specific:
 
 For Power 755(use option \ *--p775*\  to specify):
 
-chvm could be used to change the octant configuration values for generating LPARs. chvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The chvm will only set the pending attributes value. After chvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use chvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots.
+chvm could be used to change the octant configuration values for generating LPARs. chvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The chvm will only set the pending attributes value. After chvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use chvm to change the partition plan. If the partition needs I/O slots, the administrator should use chvm to assign the I/O slots.
 
 chvm is also designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar.
 
@@ -166,7 +166,7 @@ zVM specific:
 =============
 
 
-The chvm command modifes the virtual machine's configuration specified in noderange.
+The chvm command modifies the virtual machine's configuration specified in noderange.
 
 
 
@@ -336,7 +336,7 @@ VMware/KVM specific:
 
 \ **-**\ **-resize**\  \ *disk*\ =\ *size*\ 
  
- Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than it's current size. The disk in \ *raw*\  format can be resized smaller, use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
+ Change the size of the Hard disk.  The disk in \ *qcow2*\  format can not be set to less than its current size. The disk in \ *raw*\  format can be resized smaller, use caution. Multiple disks can be resized by using comma separated \ *disk*\ \ **=**\ \ *size*\  pairs.  The disks are specified by SCSI id.  Size defaults to GB.
  
 
 

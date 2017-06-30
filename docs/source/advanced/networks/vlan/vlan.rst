@@ -206,7 +206,7 @@ There is no need to specify -i flag for removing nodes from a vlan.
 Remove a VLAN
 -------------
 
-The **rmvlan** command removes the given vlan ID from the cluster. It removes the vlan id from all the swithces involved, deconfigures the nodes so that vlan adaptor (tag) will be remved, cleans up /etc/hosts, DNS and database tables for the given vlan.
+The **rmvlan** command removes the given vlan ID from the cluster. It removes the vlan id from all the switches involved, deconfigures the nodes so that vlan adaptor (tag) will be removed, cleans up /etc/hosts, DNS and database tables for the given vlan.
 
 For example: ::
 
@@ -215,7 +215,7 @@ For example: ::
 VLAN Security
 -------------
 
-To make the vlan more secure, the root guard and the bpdu guard are enabled for each ports within the vlan by **mkvlan** and **chvlan** commands. This way it guards the topology changes on the switch by the hackers who hack the STP. However, when the vlan is removed by the **rmvlan** and the **chvlan (-d)** commands, the root guard and the bpdu guard are not disabled because the code cannot tell if the guards were enabled by the admin or not. If you want to remove the gurads after the vlan is removed, you need to use the switch command line interface to do so. Refer to the documents for the switch command line interfaces for details.
+To make the vlan more secure, the root guard and the bpdu guard are enabled for each ports within the vlan by **mkvlan** and **chvlan** commands. This way it guards the topology changes on the switch by the hackers who hack the STP. However, when the vlan is removed by the **rmvlan** and the **chvlan (-d)** commands, the root guard and the bpdu guard are not disabled because the code cannot tell if the guards were enabled by the admin or not. If you want to remove the guards after the vlan is removed, you need to use the switch command line interface to do so. Refer to the documents for the switch command line interfaces for details.
 
 Limitation
 ----------

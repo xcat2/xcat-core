@@ -325,7 +325,7 @@ PARAMETERS
  The scripts must be executable and copied 
  to the /install/postscripts directory.
  Each script can take zero or more parameters.
- If parameters are spcified, the whole list needs to be quoted by double quotes. 
+ If parameters are specified, the whole list needs to be quoted by double quotes. 
  For example:
  
  
@@ -341,7 +341,7 @@ PARAMETERS
  Specifies one or more "attribute equals value" pairs, separated by spaces.
  Attr=val pairs must be specified last on the command line.  The currently
  supported attributes are: "installp_bundle", "otherpkgs", "installp_flags", 
- "emgr_flags" and "rpm_flags".  These attribute are only valid for AIX software
+ "emgr_flags" and "rpm_flags".  These attributes are only valid for AIX software
  maintenance support.
  
 
@@ -355,9 +355,7 @@ OPTIONS
 
 \ **-**\ **-fanout**\ =\ *fanout_value*\ 
  
- Specifies a fanout value for the maximum number of  concur-
- rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  If \ **-**\ **-fanout**\  is not specified, a default fanout value of \ **64**\  is used.
+ Specifies a fanout value for the maximum number of concurrently executing remote shell processes. Serial execution can be specified by indicating a fanout value of \ **1**\ . If \ **-**\ **-fanout**\  is not specified, a default fanout value of \ **64**\  is used.
  
 
 
@@ -441,7 +439,7 @@ OPTIONS
  AIX and Linux and updating software (-S) for Linux only. 
  The non-root userid  must be previously defined as an xCAT user. 
  The userid sudo setup will have to be done by the admin on the node.
- This is not supported in a hiearchical cluster, that is the node is serviced by a service node. 
+ This is not supported in a hierarchical cluster, that is the node is serviced by a service node. 
  See the document Granting_Users_xCAT_privileges for required xcat/sudo setup.
  
 

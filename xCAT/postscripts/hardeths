@@ -47,11 +47,11 @@ network_ipv4calc ()
 }
 
 if [ -f /etc/os-release ] && (cat /etc/os-release |grep -i  '^NAME=[ "]*Cumulus Linux[ "]*$' >/dev/null 2>&1); then
-    osver="cumulus"
+    OSVER="cumulus"
 fi
 
 defgw=`ip route | grep default | awk '{print $3}'`
-if ( pmatch $OSVER "ubuntu*" ) || (pmatch $osver "cumulus")
+if ( pmatch $OSVER "ubuntu*" ) || (pmatch $OSVER "cumulus")
 then
     echo `hostname` >/etc/hostname
     mv /etc/network/interfaces /etc/network/interfaces.old # this file will be filled up next
@@ -88,13 +88,13 @@ if [ ! -z $HOSTNAMECTL ] && [ ! -z $NODE ]; then
 fi
 
 for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
-    IPADDRMASK=`ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
+    IPADDRMASK=`ip -4 -o a sh dev $nic | awk '/inet/{print $4}' | head -n 1`
     IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
     [ -z $IPADDR ] && continue
     PREFIXMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`
     # converts to x.x.x.x mask value
     maskfromprefix $PREFIXMASK
-    if ( pmatch $OSVER "ubuntu*" ) || (pmatch $osver "cumulus")
+    if ( pmatch $OSVER "ubuntu*" ) || (pmatch $OSVER "cumulus")
     then
         NETWORK=`network_ipv4calc $IPADDR $NETMASK`
         #BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
@@ -169,7 +169,7 @@ EOF
     fi
 done
 
-if ( pmatch $OSVER "ubuntu*") || (pmatch $osver "cumulus")
+if ( pmatch $OSVER "ubuntu*") || (pmatch $OSVER "cumulus")
 then
     cat >>/etc/network/interfaces <<EOF
 auto lo

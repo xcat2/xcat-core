@@ -502,7 +502,7 @@ sub addnode
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
-        if ($nrent and $nrent->{tftpserver})
+        if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>')
         {
             #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
             #the value of inet_ntoa() will be "undef", which will cause fatal error
@@ -531,9 +531,7 @@ sub addnode
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
                     $node_server = $nrent->{xcatmaster};
-                } elsif ($nrent->{servicenode}) {
-                    $node_server = $nrent->{servicenode};
-                }
+                } 
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
@@ -2271,6 +2269,7 @@ sub addnet6
             push @netent, "    option domain-search  $domainstring;\n";
         }
     }
+    
 
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
@@ -2456,10 +2455,11 @@ sub addnet
             {
                 $tftp = $ent->{tftpserver};
             }
-            else
-            {    #presume myself to be it, dhcp no longer does this for us
+            if (!$tftp || ($tftp eq '<xcatmaster>'))
+            {
                 $tftp = $myip;
             }
+
             if ($ent and $ent->{gateway})
             {
                 $gateway = $ent->{gateway};
@@ -2574,6 +2574,7 @@ sub addnet
             push @netent, "    option interface-mtu $mtu;\n";
         }
 
+
         #  add domain-search if not sles10 or rh5
         my $osv = xCAT::Utils->osver();
         unless (($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/)) {
@@ -2591,6 +2592,8 @@ sub addnet
                 push @netent, "    option domain-search  $domainstring;\n";
             }
         }
+        #for cumulus ZTP process
+        push @netent, "    option cumulus-provision-url \"http://$tftp/install/postscripts/cumulusztp\";\n";
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2928,6 +2931,7 @@ sub newconfig
     }
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
     push @dhcpconf, "option www-server code 114 = string;\n";
+    push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "omapi-port 7911;\n";            #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";

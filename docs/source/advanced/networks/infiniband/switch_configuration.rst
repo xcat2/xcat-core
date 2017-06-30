@@ -66,7 +66,7 @@ Then run the following: ::
 Setup syslog on the Switch
 --------------------------
 
-Use the following command to consolidate the syslog to the Management Node or Service Nodes, where ip is the addess of the MN or SN as known by the switch. ::
+Use the following command to consolidate the syslog to the Management Node or Service Nodes, where ip is the address of the MN or SN as known by the switch. ::
 
 	rspconfig mswitch logdest=<ip>
 

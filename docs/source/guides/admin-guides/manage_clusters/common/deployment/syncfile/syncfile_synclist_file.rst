@@ -97,7 +97,7 @@ Note: From xCAT 2.9.2 on AIX and from xCAT 2.12 on Linux, xCAT support a new for
 
        file -> (noderange for permitted nodes) file
 
-The noderange would have several format. Following examples show that /etc/hosts file is synced to the nodes which is specifed before the file name  ::
+The noderange would have several format. Following examples show that /etc/hosts file is synced to the nodes which is specified before the file name  ::
 
        /etc/hosts -> (node1,node2) /etc/hosts            # The /etc/hosts file is synced to node1 and node2
        /etc/hosts -> (node1-node4) /etc/hosts            # The /etc/hosts file is synced to node1,node2,node3 and node4

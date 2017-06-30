@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The \ **lstree**\  command can display the tree of service node hierarchy for the xCAT nodes which have service node defined or which are service nodes, display the tree of hardware hierarchy only for the physical objects, display the tree of VM hierarchy for the xCAT nodes which are virtual machines or which are the hosts of virtual machines. If a noderange is specified, only show the part of the hierarchy that involves those nodes. For ZVM, we only support to disply VM hierarchy. By default, lstree will show both the hardware hierarchy and the VM hierarchy for all the nodes.
+The \ **lstree**\  command can display the tree of service node hierarchy for the xCAT nodes which have service node defined or which are service nodes, display the tree of hardware hierarchy only for the physical objects, display the tree of VM hierarchy for the xCAT nodes which are virtual machines or which are the hosts of virtual machines. If a noderange is specified, only show the part of the hierarchy that involves those nodes. For ZVM, we only support to display VM hierarchy. By default, lstree will show both the hardware hierarchy and the VM hierarchy for all the nodes.
 
 
 *******
