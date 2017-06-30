@@ -234,7 +234,8 @@ sub install_xcat{
         @cmds = (". /etc/profile.d/xcat.sh",
                  "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
-                 "lsxcatd -v",
+                 "sudo -s /opt/xcat/sbin/tabdump policy",
+                 ". /etc/profile.d/xcat.sh && lsxcatd -v",
                  "tabdump policy",
                  "tabdump site",
                  "ls /opt/xcat/sbin",
@@ -254,7 +255,7 @@ sub install_xcat{
            # }
         }
         
-        @output  = rumcmd("export");
+        @output  = runcmd("export");
         print "Dumper export\n";
         print Dumper \@output;
         
