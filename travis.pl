@@ -131,8 +131,12 @@ if($event_type eq "pull_request"){
    print "\033[42mls -a\033[0m\n";
    system("ls -a");
    
-   print "\033[42msudo ./../../xcat-core/mklocalrepo.sh\033[0m\n";
-   $result1 = system("sudo ./../../xcat-core/mklocalrepo.sh");
+   $cdresult = chdir('/home/travis/build/xcat-core') or die "$!";
+   print "cdresult : $cdresult\n";
+   system("ls -a");
+   
+   print "\033[42msudo ./mklocalrepo.sh\033[0m\n";
+   $result1 = system("sudo ./mklocalrepo.sh");
    print "mklocalrepo.sh result :$result1\n";
    
    print "\033[42msudo chmod 777 /etc/apt/sources.list\033[0m\n";
