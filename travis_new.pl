@@ -231,7 +231,7 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
         
         print "------To config xcat and check if xcat work correctly-----\n";
-        @cmds = ("source /etc/profile.d/xcat.sh",
+        @cmds = (". /etc/profile.d/xcat.sh",
                  "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
                  "lsxcatd -v",
