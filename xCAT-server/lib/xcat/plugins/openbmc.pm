@@ -214,6 +214,13 @@ my %status_info = (
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_SSHCFG_REQUEST => {
+        method         => "GET",
+        init_url       => "",
+    },
+    RSPCONFIG_SSHCFG_RESPONSE => {
+        process        => \&rspconfig_sshcfg_response,
+    },
     RVITALS_REQUEST => {
         method         => "GET",
         init_url       => "$openbmc_project_url/sensors/enumerate",
@@ -484,6 +491,8 @@ sub parse_args {
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
+            } elsif ($subcommand =~ /^sshcfg$/) {
+                $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
             } else {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
@@ -651,6 +660,13 @@ sub parse_command_status {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
+            } elsif ($subcommand =~ /^sshcfg$/) {
+                # Special processing to copy ssh keys, currently there is no REST API to do this.
+                # Instead, copy ssh key file to the BMC in function specified by RSPCONFIG_SSHCFG_RESPONSE
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
+                $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
+                push @options, $subcommand;
+                return 0;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
                 my $value = $2;
@@ -1349,6 +1365,56 @@ sub rspconfig_response {
     } 
 }
 
+#-------------------------------------------------------
+
+=head3  rspconfig_sshcfg_response
+
+  Deal with response of rspconfig command for sscfg subcommand.
+  Append contents of id_rsa.pub file from management node to
+  the authorized_keys file on BMC
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_sshcfg_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content; 
+
+    use xCAT::RShellAPI;
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_RESPONSE") {
+        my $bmcip = $node_info{$node}{bmc};
+        my $userid = $node_info{$node}{username}; 
+        my $userpw = $node_info{$node}{password};
+        my $filename = "/root/.ssh/id_rsa.pub";
+
+        # Read in contents of the id_rsa.pub file
+        open my $fh, '<', $filename or die "Error opening $filename: $!";
+        my $id_rsa_pub_contents = do { local $/; <$fh> };
+
+        # Login and append content of the read in id_rsa.pub file to the authorized_keys file on BMC
+        my $output = xCAT::RShellAPI::run_remote_shell_api($bmcip, $userid, $userpw, 0, 0, "mkdir -p ~/.ssh; echo \"$id_rsa_pub_contents\" >> ~/.ssh/authorized_keys");
+
+        # If error was returned from executing command above. Display it to the user.
+        # output[0] contains 1 is error, output[1] contains error messages
+        if (@$output[0] == 1) {
+            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip:\n" . @$output[1], $callback, $node);
+        }
+        else {
+            xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
+        }
+    }
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    } 
+}
 #-------------------------------------------------------
 
 =head3  rvitals_response

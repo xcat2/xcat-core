@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<vlan>}
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<vlan>|B<sshcfg>}
 
 =head2 MPA specific:
 
@@ -204,8 +204,7 @@ B<rspconfig> I<noderange> B<--resetnet>
 
 =head1 DESCRIPTION
 
-B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
-specified, without the B<=>, it displays the current value.
+B<rspconfig> configures various settings in the nodes' service processors.
 
 For options B<autopower>|B<iocap>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first.
 
@@ -389,6 +388,10 @@ Performs a service processor dump.
 =item B<sshcfg>={B<enable>|B<disable>}
 
 Enable or disable SSH on MPA.
+
+=item B<sshcfg>
+
+Copy SSH keys.
 
 =item B<swnet>={[I<ip>],[I<gateway>],[I<netmask>]}
 
