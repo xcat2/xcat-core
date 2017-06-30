@@ -385,9 +385,9 @@ foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
 }
 
-my @os_info = runcmd("cat /etc/*release*");
+my @os_info = runcmd("cat /etc/os-release");
 print "Current OS information:\n";
-print Dumper /@os_info;
+print Dumper \@os_info;
 
 #Start to check the format of pull request
 print GREEN "\n------To Check Pull Request Format------\n";
