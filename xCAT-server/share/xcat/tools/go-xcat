@@ -1658,10 +1658,10 @@ case "${GO_XCAT_ACTION}" in
 		commands to set environment variables into your PATH:
 
 		For sh: 
-			source /etc/profile.d/xcat.sh
+		    source /etc/profile.d/xcat.sh
 
 		For csh: 
-			source /etc/profile.d/xcat.csh
+		    source /etc/profile.d/xcat.csh
 		EOF
 		;;
 	"update")
