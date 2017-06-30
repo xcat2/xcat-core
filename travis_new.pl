@@ -389,6 +389,10 @@ my @os_info = runcmd("cat /etc/os-release");
 print "Current OS information:\n";
 print Dumper \@os_info;
 
+my @perl_vserion = runcmd("perl -v");
+print "Current perl information:\n";
+print Dumper \@perl_vserion;
+
 #Start to check the format of pull request
 print GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
