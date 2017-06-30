@@ -318,7 +318,7 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = ". /etc/profile.d/xcat.sh && xcattest -h";
+    $cmd = ". /etc/profile.d/xcat.sh && sudo xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
@@ -347,7 +347,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = ". /etc/profile.d/xcat.sh && xcattest -b MN_basic.bundle > /dev/null";
+    $cmd = ". /etc/profile.d/xcat.sh && sudo xcattest -b MN_basic.bundle > /dev/null";
     @output = runcmd("$cmd");
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
     chomp($fail_log);
