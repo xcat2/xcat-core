@@ -8,8 +8,6 @@ use Time::Local;
 use File::Basename;
 use File::Path;
 use File::Find;
-use Term::ANSIColor qw(:constants);
-$Term::ANSIColor::AUTORESET = 1;
 use LWP::UserAgent;
 use HTTP::Request;
 use Encode;
@@ -18,6 +16,8 @@ use JSON;
 use URI::Escape;
 use LWP::Simple;
 
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
 
 #---Global attributes---
 my $rst = 0;
@@ -100,15 +100,12 @@ sub check_pr_format{
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
 
-
-        #my $content_type = "Content-Type: application/json";
         print ">>>>>Dumper pr_content:\n";
         #print Dumper $pr_content;
         print ">>>>>pr title = $pr_title\n";
         print ">>>>>pr body = $pr_body \n";
-
-
-
+        
+        # TO DO
     }
     return 0;
 }
@@ -135,20 +132,10 @@ sub send_back_comment{
     my $post_method = "POST";
     if($comment_len > 0){
         foreach my $comment (@{$comment_content}){
-            if($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/){
-                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
-                $post_url = $comment->{'url'};
-                $post_method = "PATCH";
-            }elsif($comment->{'body'} =~ /BUILD/ && $message =~ /BUILD/){
-                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
-                $post_url = $comment->{'url'};
-                $post_method = "PATCH";
-            }elsif($comment->{'body'} =~ /INSTALL/ &&  $message =~ /INSTALL/){
-                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
-                $post_url = $comment->{'url'};
-                $post_method = "PATCH";
-            }elsif($comment->{'body'} =~ /FAST REGRESSION/ &&  $message =~ /FAST REGRESSION/){
-                #$post_url = "https://api.github.com/repos/$ENV{'TRAVIS_REPO_SLUG'}/issues/comments/$comment->{'id'}";
+            if(($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/) 
+              ||($comment->{'body'} =~ /BUILD/ && $message =~ /BUILD/)
+              ||($comment->{'body'} =~ /INSTALL/ &&  $message =~ /INSTALL/)
+              ||($comment->{'body'} =~ /FAST REGRESSION/ &&  $message =~ /FAST REGRESSION/)){
                 $post_url = $comment->{'url'};
                 $post_method = "PATCH";
             }
@@ -199,7 +186,8 @@ sub build_xcat_core{
 # Retrun code:
 #--------------------------------------------------------
 sub install_xcat{
-    my @cmds = ("sudo ./../../xcat-core/mklocalrepo.sh",
+    
+    my @cmds = ("cd ./../../xcat-core && sudo ./mklocalrepo.sh",
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
@@ -231,39 +219,32 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Pass]\n";
         
         print "------To config xcat and check if xcat work correctly-----\n";
-        @cmds = (". /etc/profile.d/xcat.sh && export",
-                 "export",
-                 "sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
-                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
-                 "sudo -s /opt/xcat/sbin/tabdump policy",
-                 ". /etc/profile.d/xcat.sh && lsxcatd -v",
-                 "tabdump policy",
-                 "tabdump site",
+        @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
+                 ". /etc/profile.d/xcat.sh && chtab priority=1.1 policy.name=travis policy.rule=allow",
+                 ". /etc/profile.d/xcat.sh && tabdump policy",
+                 ". /etc/profile.d/xcat.sh && tabdump site",
+                 ". /etc/profile.d/xcat.sh && lsxcatd -a",
                  "ls /opt/xcat/sbin",
                  "service xcatd status");
+        my $ret = 0;
         foreach my $cmd (@cmds){
-            print "\nTo run $cmd.....\n";
-            system("$cmd");
-           # @output = runcmd("$cmd");
-           # if($::RUNCMD_RC){
-            #    print RED "[install_xcat] $cmd. ...[Failed]\n";
-            #    print Dumper \@output;
-                #send_back_comment("> **INSTALL_XCAT_ERROR**");
-                #return 1;
-          #  }else{
-            #    print "[install_xcat] run $cmd....[Pass]\n";
-           #     print Dumper \@output;
-           # }
+            print "\n[install_xcat] To run $cmd.....\n";
+            #system("$cmd");
+            @output = runcmd("$cmd");
+            print Dumper \@output;
+            if($::RUNCMD_RC){
+               print RED "[install_xcat] $cmd. ...[Failed]\n";
+               $ret = 1;
+            }else{
+               print "[install_xcat] $cmd....[Pass]\n";
+            }
         }
-        
-        @output  = runcmd("export");
-        print "Dumper export\n";
-        print Dumper \@output;
-        
+        if($ret){
+            send_back_comment("> **INSTALL_XCAT_ERROR**");
+            return 1;
+        }
         send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
     }
-
-
     return 0;
 }
 
@@ -290,13 +271,13 @@ sub check_syntax{
 
             @output = runcmd("file $file");
             if($output[0] =~ /perl/i){
-                @output = runcmd("perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl  -c $file");
+                @output = runcmd(". /etc/profile.d/xcat.sh && perl -c $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
                     $ret = 1;
                 }
             }elsif($output[0] =~ /shell/i){
-                @output = runcmd("sh -n $file");
+                @output = runcmd(". /etc/profile.d/xcat.sh && sh -n $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
                     $ret = 1;
@@ -337,7 +318,7 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = "sudo xcattest -h";
+    $cmd = ". /etc/profile.d/xcat.sh && xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
@@ -348,22 +329,12 @@ sub run_fast_regression_test{
          print "[run_fast_regression_test] $cmd .....:\n";
          print Dumper \@output; 
     }
-    
-    $cmd = "sudo /opt/xcat/bin/xcattest -h";
-    @output = runcmd("$cmd");
-    if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]";
-         print "[run_fast_regression_test] error dumper:\n";
-         print Dumper \@output;
-         return 1;
-    }else{
-         print "[run_fast_regression_test] $cmd .....:\n";
-         print Dumper \@output; 
-    }
+  
     my $hostname = `hostname`;
     chomp($hostname);
     print "hostname = $hostname\n";
-    $cmd = "echo '[System]' > /regression.conf; echo 'MN=$hostname' >> /regression.conf";
+    my $conf_file = "$ENV{'PWD'}/regression.conf";
+    $cmd = "echo '[System]' > $conf_file; echo 'MN=$hostname' >> $conf_file";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
@@ -373,10 +344,10 @@ sub run_fast_regression_test{
     }
     
     print "Dumper regression conf file:\n";
-    @output = runcmd("cat /regression.conf"); 
+    @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = "xcattest -b MN_basic.bundle > /dev/null";
+    $cmd = ". /etc/profile.d/xcat.sh && xcattest -b MN_basic.bundle > /dev/null";
     @output = runcmd("$cmd");
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
     chomp($fail_log);
@@ -400,7 +371,7 @@ sub run_fast_regression_test{
 #===============Main Process=============================
 
 #Dumper Travis Environment Attribute
-print BOLD GREEN "\n------Dumper Travis Environment Attribute------\n";
+print GREEN "\n------Dumper Travis Environment Attribute------\n";
 my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "TRAVIS_BRANCH",
                        "TRAVIS_EVENT_TYPE",
@@ -414,35 +385,35 @@ foreach (@travis_env_attr){
 }
 
 #Start to check the format of pull request
-print BOLD GREEN "\n------To Check Pull Request Format------\n";
+print GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
     print RED "Check pull request format failed\n";
 }
 
 #Start to build xcat core
-print BOLD GREEN "\n------To Build xCAT core package------\n";
+print GREEN "\n------To Build xCAT core package------\n";
 $rst = build_xcat_core();
 if($rst){
     print RED "Build xCAT core package failed\n";
 }
 
 #Start to install xcat
-print BOLD GREEN "\n------To install xcat------\n";
+print GREEN "\n------To install xcat------\n";
 $rst = install_xcat();
 if($rst){
     print RED "Install xcat failed\n";
 }
 
 #Check the syntax of changing code
-print BOLD GREEN "\n------To check the syntax of changing code------\n";
+print GREEN "\n------To check the syntax of changing code------\n";
 $rst = check_syntax();
 if($rst){
     print RED "check the syntax of changing code failed\n";
 }
 
 #run fast regression
-print BOLD GREEN "\n------To run fast regression test------\n";
+print GREEN "\n------To run fast regression test------\n";
 $rst = run_fast_regression_test();
 if($rst){
     print RED "Run fast regression test failed\n";
