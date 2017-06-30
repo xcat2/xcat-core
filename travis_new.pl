@@ -103,7 +103,7 @@ sub check_pr_format{
 
         #my $content_type = "Content-Type: application/json";
         print ">>>>>Dumper pr_content:\n";
-        print Dumper $pr_content;
+        #print Dumper $pr_content;
         print ">>>>>pr title = $pr_title\n";
         print ">>>>>pr body = $pr_body \n";
 
@@ -128,8 +128,8 @@ sub send_back_comment{
     my $comment_content = $json->decode($comment_url_resp);
     my $comment_len = @$comment_content;
 
-    print "\n\n>>>>>Dumper comment_content: $comment_len\n";
-    print Dumper $comment_content;
+    #print "\n\n>>>>>Dumper comment_content: $comment_len\n";
+    #print Dumper $comment_content;
 
     my $post_url = $comment_url;
     my $post_method = "POST";
@@ -177,7 +177,7 @@ sub build_xcat_core{
     $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
-    print Dumper \@output;
+    #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
