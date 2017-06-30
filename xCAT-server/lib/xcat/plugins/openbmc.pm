@@ -186,14 +186,15 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/control/boot/bootsource/attr/Sources",
+        data           => "xyz.openbmc_project.Control.Boot.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
         process        => \&rsetboot_response,
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/control/boot/bootsource",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -607,7 +608,15 @@ sub parse_command_status {
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data}
+            if ($subcommand eq "net") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Network";
+            } elsif ($subcommand eq "hd") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Disk";
+            } elsif ($subcommand eq "cd") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "ExternalMedia";
+            } elsif ($subcommand eq "def" or $subcommand eq "default") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Default";
+            }
             $next_status{RSETBOOT_SET_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         } elsif ($subcommand eq "stat") {
@@ -1217,10 +1226,10 @@ sub rsetboot_response {
     my $response_info = decode_json $response->content;    
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_GET_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node); #if response data is hd
-        xCAT::SvrUtils::sendmsg("Network", $callback, $node); #if response data is net
-        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node); #if response data is net
-        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node); #if response data is def
+        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
+        xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
+        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
+        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
