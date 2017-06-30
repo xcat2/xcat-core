@@ -220,7 +220,7 @@ sub install_xcat{
         
         print "------To config xcat and check if xcat work correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
-                 ". /etc/profile.d/xcat.sh && chtab priority=1.1 policy.name=travis policy.rule=allow",
+                 "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
                  ". /etc/profile.d/xcat.sh && tabdump policy",
                  ". /etc/profile.d/xcat.sh && tabdump site",
                  ". /etc/profile.d/xcat.sh && lsxcatd -a",
