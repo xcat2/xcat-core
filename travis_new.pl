@@ -268,7 +268,8 @@ sub check_syntax{
 
         foreach my $file (@files) {
             next if($file =~ /\/opt\/xcat\/share\/xcat\/netboot\/genesis\//);
-
+            next if($file =~ /\/opt\/xcat\/probe\//);
+        
             @output = runcmd("file $file");
             if($output[0] =~ /perl/i){
                 @output = runcmd(". /etc/profile.d/xcat.sh && perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $file");
@@ -276,12 +277,12 @@ sub check_syntax{
                     push @syntax_err, @output;
                     $ret = 1;
                 }
-            }elsif($output[0] =~ /shell/i){
-                @output = runcmd(". /etc/profile.d/xcat.sh && sh -n $file");
-                if($::RUNCMD_RC){
-                    push @syntax_err, @output;
-                    $ret = 1;
-                }
+            #}elsif($output[0] =~ /shell/i){
+            #    @output = runcmd(". /etc/profile.d/xcat.sh && sh -n $file");
+            #    if($::RUNCMD_RC){
+            #        push @syntax_err, @output;
+            #        $ret = 1;
+            #    }
             }
         }
     }
