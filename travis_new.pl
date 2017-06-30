@@ -173,7 +173,7 @@ sub build_xcat_core{
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
-        send_back_comment("> **BUILD SUCCESSFUL**");  
+        send_back_comment("> **BUILD SUCCESSFUL 1**");  
     }
 
     return 0;
