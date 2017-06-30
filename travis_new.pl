@@ -348,7 +348,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = ". /etc/profile.d/xcat.sh &&  xcattest -b MN_basic.bundle > /dev/null";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle > /dev/null'";
     @output = runcmd("$cmd");
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
     chomp($fail_log);
