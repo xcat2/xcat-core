@@ -271,7 +271,7 @@ sub check_syntax{
             next if($file =~ /\/opt\/xcat\/probe\//);
         
             @output = runcmd("file $file");
-            if($output[0] =~ /perl/i){
+            if($output[0] =~ /perl /i){
                 @output = runcmd(". /etc/profile.d/xcat.sh && perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $file");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
@@ -319,7 +319,7 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = ". /etc/profile.d/xcat.sh && sudo xcattest -h";
+    $cmd = "sudo . /etc/profile.d/xcat.sh && xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
@@ -348,7 +348,7 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = ". /etc/profile.d/xcat.sh && sudo xcattest -b MN_basic.bundle > /dev/null";
+    $cmd = "sudo . /etc/profile.d/xcat.sh &&  xcattest -b MN_basic.bundle > /dev/null";
     @output = runcmd("$cmd");
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
     chomp($fail_log);
