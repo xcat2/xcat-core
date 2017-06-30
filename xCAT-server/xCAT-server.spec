@@ -202,6 +202,9 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples/*
 
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/OPENBMC.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins/docker.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/xcat/plugins/openbmc.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/PPC.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/fsp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
