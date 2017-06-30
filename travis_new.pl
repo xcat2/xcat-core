@@ -272,7 +272,7 @@ sub check_syntax{
         
             @output = runcmd("file $file");
             if($output[0] =~ /perl /i){
-                @output = runcmd(". /etc/profile.d/xcat.sh && perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $file");
+                @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && perl -I /opt/xcat/lib/perl -I /opt/xcat/lib -I /usr/lib/perl5 -I /usr/share/perl -c $file'");
                 if($::RUNCMD_RC){
                     push @syntax_err, @output;
                     $ret = 1;
