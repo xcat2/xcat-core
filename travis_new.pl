@@ -311,7 +311,7 @@ sub run_fast_regression_test{
     my $cmd = "sudo apt-get install xcat-test --force-yes";
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
          print Dumper \@output;
          return 1;
     }else{
@@ -319,10 +319,10 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = "sudo . /etc/profile.d/xcat.sh && xcattest -h";
+    $cmd = "sudo . /etc/profile.d/xcat.sh && sudo xcattest -h";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
-         print RED "[run_fast_regression_test] $cmd ....[Failed]";
+         print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
          #return 1;
@@ -360,7 +360,7 @@ sub run_fast_regression_test{
         @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log");
         print "[run_fast_regression_test] Dump failed cases:\n";
         print Dumper \@output;
-        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log|grep -- '--END'|awk -F'::' '{print $2}'");
+        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log|grep -- '--END'|awk -F'::' '{print \$2}'");
         my $log_str = join (";", @output );
         send_back_comment("> **FAST REGRESSION TEST Failed** : failed cases : $log_str");
         return 1;
