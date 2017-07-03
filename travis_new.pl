@@ -347,8 +347,8 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle > /dev/null'";
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle'";
+    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
     @output = runcmd("$cmd");
     print Dumper \@output;
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
@@ -394,7 +394,7 @@ my @perl_vserion = runcmd("perl -v");
 print "Current perl information:\n";
 print Dumper \@perl_vserion;
 
-my @sh_version = runcmd("sh --version");
+my @sh_version = runcmd("sudo bash -c 'sh --version'");
 print "Current sh information:\n";
 print Dumper \@sh_version;
 
