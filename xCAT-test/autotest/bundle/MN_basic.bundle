@@ -218,7 +218,7 @@ tabrestore_err
 tabrestore_h
 tabrestore_null
 tabrestore_table
-xcatd_restart
+#xcatd_restart
 xcatd_start
 xcatd_stop
 xcatsnap_b_d
