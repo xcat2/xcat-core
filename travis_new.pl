@@ -352,15 +352,17 @@ sub run_fast_regression_test{
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle -q' &";
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
     
-    @caseslist=("xcatsnap_b_d","xcatsnap_h","xcatsnap_null","xcatsnap_v","xcatstanzafile_attribute",
-                "xcatstanzafile_colon","xcatstanzafile_objtype","xcatstanzafile_specificvalue","xcatd_start","xcatd_stop");
-    $casenum[0] = @caseslist;
+    #@caseslist=("xcatsnap_b_d","xcatsnap_h","xcatsnap_null","xcatsnap_v","xcatstanzafile_attribute",
+    #             "xcatstanzafile_colon","xcatstanzafile_objtype","xcatstanzafile_specificvalue","xcatd_start","xcatd_stop");
+    #$casenum[0] = @caseslist;
     
+    my $x = 0;
     foreach my $case (@caseslist){
+        ++$x;
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
-        print "[run_fast_regression_test] run $cmd\n";
-        @output = runcmd("$cmd");
-        print Dumper \@output;
+        print "[run_fast_regression_test] run $x: $cmd\n";
+        #@output = runcmd("$cmd");
+        #print Dumper \@output;
     }
    
     my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep xcattest");
@@ -375,6 +377,8 @@ sub run_fast_regression_test{
         if(! $::RUNCMD_RC){
             ++$failnum;
             push @failcase, @output;
+            @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log");
+            print Dumper \@output; 
         }else{
            ++$passnum;
         }
