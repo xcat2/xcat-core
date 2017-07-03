@@ -142,8 +142,8 @@ sub send_back_comment{
         }
     }
     
-     print "method = $post_method to $post_url \n";
-    `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url`;
+     print "[send_back_comment] method = $post_method to $post_url \n";
+    `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
 }
 
 #--------------------------------------------------------
@@ -157,7 +157,7 @@ sub build_xcat_core{
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD_ERROR**  :  $cmd .... failed");
+        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed");
         return 1;
     }
 
@@ -200,7 +200,7 @@ sub install_xcat{
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            send_back_comment("> **INSTALL_XCAT_ERROR**");
+            send_back_comment("> **INSTALL XCAT ERROR**");
             return 1;
         }
     }
@@ -213,7 +213,7 @@ sub install_xcat{
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[install_xcat] $cmd ....[Failed]\n";
-        send_back_comment("> **INSTALL_XCAT_ERROR** : ``$lastline``");
+        send_back_comment("> **INSTALL XCAT ERROR** : ``$lastline``");
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
@@ -229,7 +229,6 @@ sub install_xcat{
         my $ret = 0;
         foreach my $cmd (@cmds){
             print "\n[install_xcat] To run $cmd.....\n";
-            #system("$cmd");
             @output = runcmd("$cmd");
             print Dumper \@output;
             if($::RUNCMD_RC){
@@ -240,10 +239,10 @@ sub install_xcat{
             }
         }
         if($ret){
-            send_back_comment("> **INSTALL_XCAT_ERROR**");
+            send_back_comment("> **INSTALL XCAT ERROR**");
             return 1;
         }
-        send_back_comment("> **INSTALL_XCAT_SUCCESSFUL**");
+        send_back_comment("> **INSTALL XCAT SUCCESSFUL**");
     }
     return 0;
 }
@@ -277,18 +276,17 @@ sub check_syntax{
                     push @syntax_err, @output;
                     $ret = 1;
                 }
-            #}elsif($output[0] =~ /shell/i){
-            #    @output = runcmd(". /etc/profile.d/xcat.sh && sh -n $file");
-            #    if($::RUNCMD_RC){
-            #        push @syntax_err, @output;
-            #        $ret = 1;
-            #    }
+            }elsif($output[0] =~ /shell/i){
+                @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && sh -n $file'");
+                if($::RUNCMD_RC){
+                    push @syntax_err, @output;
+                    $ret = 1;
+                }
             }
         }
     }
 
     if(@syntax_err){
-        #my $err_str = join(";", @syntax_err);
         print "[check_syntax] syntax checking ....[Failed]\n";
         print "[check_syntax] Dumper error message:\n";
         print Dumper @syntax_err;
@@ -319,13 +317,13 @@ sub run_fast_regression_test{
         print Dumper \@output;
     }
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -h'";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l bundleinfo'";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]\n";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
-         #return 1;
+         return 1;
     }else{
          print "[run_fast_regression_test] $cmd .....:\n";
          print Dumper \@output; 
@@ -348,8 +346,10 @@ sub run_fast_regression_test{
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle > /dev/null'";
+    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle > /dev/null'";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table > /dev/null'";
     @output = runcmd("$cmd");
+    print Dumper \@output;
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
     chomp($fail_log);
     if(-z "/opt/xcat/share/xcat/tools/autotest/result/$fail_log"){
