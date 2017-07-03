@@ -23,6 +23,13 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   ([ -f $str_dir_name/xcatlib.sh ] && . $str_dir_name/xcatlib.sh) || \
+   ([ -f /install/postscripts/xcatlib.sh ] && . /install/postscripts/xcatlib.sh) || \
+   ([ -f /xcatpost/xcatlib.sh ] && . /xcatpost/xcatlib.sh)
+fi
+
 op=$1
 
 net=$2
