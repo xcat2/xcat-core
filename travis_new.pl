@@ -21,6 +21,7 @@ $Term::ANSIColor::AUTORESET = 1;
 
 #---Global attributes---
 my $rst = 0;
+my $exit_code = 0;
 
 #--------------------------------------------------------
 # Fuction name: runcmd
@@ -191,7 +192,7 @@ sub install_xcat{
                "sudo chmod 777 /etc/apt/sources.list",
                "sudo echo \"deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
                "sudo echo \"deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main\" >> /etc/apt/sources.list",
-               "sudo wget -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
+               "sudo wget -q -O - \"http://xcat.org/files/xcat/repos/apt/apt.key\" | sudo apt-key add -",
                "sudo apt-get -qq update");
     my @output;
     foreach my $cmd (@cmds){
@@ -347,7 +348,7 @@ sub run_fast_regression_test{
     print Dumper \@output;
 
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle > /dev/null'";
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table > /dev/null'";
+    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
     @output = runcmd("$cmd");
     print Dumper \@output;
     my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
@@ -393,12 +394,17 @@ my @perl_vserion = runcmd("perl -v");
 print "Current perl information:\n";
 print Dumper \@perl_vserion;
 
+my @sh_version = runcmd("sh --version");
+print "Current sh information:\n";
+print Dumper \@sh_version;
+
 #Start to check the format of pull request
 print GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
     print RED "Check pull request format failed\n";
 }
+$exit_code = $exit_code | $rst;
 
 #Start to build xcat core
 print GREEN "\n------To Build xCAT core package------\n";
@@ -406,6 +412,7 @@ $rst = build_xcat_core();
 if($rst){
     print RED "Build xCAT core package failed\n";
 }
+$exit_code = $exit_code | $rst;
 
 #Start to install xcat
 print GREEN "\n------To install xcat------\n";
@@ -413,6 +420,7 @@ $rst = install_xcat();
 if($rst){
     print RED "Install xcat failed\n";
 }
+$exit_code = $exit_code | $rst;
 
 #Check the syntax of changing code
 print GREEN "\n------To check the syntax of changing code------\n";
@@ -420,6 +428,7 @@ $rst = check_syntax();
 if($rst){
     print RED "check the syntax of changing code failed\n";
 }
+$exit_code = $exit_code | $rst;
 
 #run fast regression
 print GREEN "\n------To run fast regression test------\n";
@@ -427,5 +436,7 @@ $rst = run_fast_regression_test();
 if($rst){
     print RED "Run fast regression test failed\n";
 }
+$exit_code = $exit_code | $rst;
 
-exit 0;
+$exit_code = 0;
+exit $exit_code;
