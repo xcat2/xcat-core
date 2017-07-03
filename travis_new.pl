@@ -45,14 +45,7 @@ sub runcmd
         $::RUNCMD_RC = $rc;
     }
     chomp(@$outref);
-    
-    my @tmparr;
-    foreach my $str (@$outref){
-        if(length($str) != 0){
-            push @tmparr, $str;
-        }
-    }
-    return @tmparr;
+    return @$outref;
 
 }
 
@@ -367,6 +360,7 @@ sub run_fast_regression_test{
    
     my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep xcattest");
     my @failcase;
+    my $passnum;
     my $failnum = 0;
     foreach my $case_log (@case_logs){
         chomp($case_log);
@@ -376,15 +370,17 @@ sub run_fast_regression_test{
         if(! $::RUNCMD_RC){
             ++$failnum;
             push @failcase, @output;
+        }else{
+           ++$passnum;
         }
     }
     
     if($failnum){
         my $log_str = join (";", @failcase );
-        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum[0] failedNum $failnum FailedCases: $log_str");
+        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum[0] Pass $passnum failed $failnum FailedCases: $log_str");
         return 1;
     }else{
-        send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum[0] failedNum $failnum");
+        send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum[0] Pass $passnum failed $failnum");
     }
 
     return 0;
