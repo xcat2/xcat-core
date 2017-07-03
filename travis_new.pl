@@ -45,7 +45,14 @@ sub runcmd
         $::RUNCMD_RC = $rc;
     }
     chomp(@$outref);
-    return @$outref;
+    
+    my @tmparr;
+    foreach my $str (@$outref){
+        if(length($str) != 0){
+            push @tmparr, $str;
+        }
+    }
+    return @tmparr;
 
 }
 
@@ -340,31 +347,44 @@ sub run_fast_regression_test{
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
          print "[run_fast_regression_test] error dumper:\n";
          print Dumper \@output;
-         return 1;
+         return 1; 
     }
     
     print "Dumper regression conf file:\n";
     @output = runcmd("cat $conf_file"); 
     print Dumper \@output;
 
-    $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle'";
+    my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
+    my @casenum = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l casenum -b MN_basic.bundle'");
+    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle -q' &";
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
-    @output = runcmd("$cmd");
-    print Dumper \@output;
-    my $fail_log = `ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases`;
-    chomp($fail_log);
-    if(-z "/opt/xcat/share/xcat/tools/autotest/result/$fail_log"){
-        print "[run_fast_regression_test] $cmd ....[Pass]\n";
-        send_back_comment("> **FAST REGRESSION TEST PASS!**");
-    }else{
-        print "[run_fast_regression_test] $cmd ....[Failed]\n";
-        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log");
-        print "[run_fast_regression_test] Dump failed cases:\n";
+    foreach my $case (@caseslist){
+        $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'");
+        print "[run_fast_regression_test] run $cmd\n";
+        @output = runcmd("$cmd");
         print Dumper \@output;
-        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$fail_log|grep -- '--END'|awk -F'::' '{print \$2}'");
-        my $log_str = join (";", @output );
-        send_back_comment("> **FAST REGRESSION TEST Failed** : failed cases : $log_str");
+    }
+   
+    my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep xcattest");
+    my @failcase;
+    my $failnum = 0;
+    foreach my $case_log (@case_logs){
+        chomp($case_log);
+        
+        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
+        runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|grep 'Failed'");
+        if(! $::RUNCMD_RC){
+            ++$failnum;
+            push @failcase, @output;
+        }
+    }
+    
+    if($failnum){
+        my $log_str = join (";", @failcase );
+        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum[0] failedNum $failnum FailedCases: $log_str");
         return 1;
+    }else{
+        send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum[0] failedNum $failnum");
     }
 
     return 0;
