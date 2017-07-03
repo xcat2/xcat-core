@@ -351,6 +351,10 @@ sub run_fast_regression_test{
     my @casenum = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l casenum -b MN_basic.bundle'");
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle -q' &";
     #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
+    @caseslist=("xcatsnap_b_d","xcatsnap_h","xcatsnap_null","xcatsnap_v","xcatstanzafile_attribute",
+                "xcatstanzafile_colon","xcatstanzafile_objtype","xcatstanzafile_specificvalue","xcatd_start","xcatd_stop");
+    my @casenum;
+    $@casenum[0] = @caseslist;
     foreach my $case (@caseslist){
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $cmd\n";
