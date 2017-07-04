@@ -373,7 +373,7 @@ sub run_fast_regression_test{
         ++$x;
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
-        #@output = runcmd("$cmd");
+        @output = runcmd("$cmd");
         #print Dumper \@output;
     }
    
