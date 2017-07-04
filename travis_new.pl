@@ -115,9 +115,10 @@ sub check_pr_format{
         }
         
         if(length($checkrst) == 0){
-            send_back_comment("> **PR FORMAT CORRECT**");  
+            send_back_comment("> **PR FORMAT CORRECT**"); 
         }else{
             send_back_comment("> **PR FORMAT ERROR** : $checkrst");  
+            return 1;
         }
     }
     return 0;
@@ -390,29 +391,7 @@ sub run_fast_regression_test{
              }
          }
     }
-   
-    #my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases");
-    #print ">>>case logs:\n";
-    #print Dumper \@case_logs;
-    
-    #@output = runcmd("ls -l /opt/xcat/share/xcat/tools/autotest/result/");
-    #print Dumper \@output;
-     
-    #foreach my $case_log (@case_logs){
-    #    chomp($case_log);
-        
-    #    if(-z "/opt/xcat/share/xcat/tools/autotest/result/$case_log"){
-    #        ++$passnum;
-    #    }else{
-    #        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
-    #        ++$failnum;
-    #       push @failcase, @output;
-    #       print "\n[run_fast_regression_test] case $output[0] failed--------------\n";
-    #        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log");
-    #        print Dumper \@output; 
-    #   }
-    #}
-    
+
     if($failnum){
         my $log_str = join (",", @failcase );
         send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please get detaied information in ``Merge pull request`` box");
@@ -435,6 +414,7 @@ sub mark_time{
     my $runstartstr = scalar(localtime());
     print "[mark_time] $runstartstr\n";
 }
+
 #===============Main Process=============================
 
 #Dumper Travis Environment Attribute
@@ -463,6 +443,9 @@ print Dumper \@perl_vserion;
 #print "Current sh information:\n";
 #print Dumper \@sh_version;
 
+my @disk = runcmd("df -h");
+print "Disk information:\n";
+print Dumper \@disk;
 
 #Start to check the format of pull request
 &mark_time;
@@ -470,41 +453,45 @@ print GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
     print RED "Check pull request format failed\n";
+    exit $rst;
 }
-$exit_code = $exit_code | $rst;
 
-&mark_time;
 #Start to build xcat core
+&mark_time;
 print GREEN "\n------To Build xCAT core package------\n";
 $rst = build_xcat_core();
 if($rst){
     print RED "Build xCAT core package failed\n";
+    exit $rst;
 }
-$exit_code = $exit_code | $rst;
-&mark_time;
+
 #Start to install xcat
+&mark_time;
 print GREEN "\n------To install xcat------\n";
 $rst = install_xcat();
 if($rst){
     print RED "Install xcat failed\n";
+    exit $rst;
 }
-$exit_code = $exit_code | $rst;
-&mark_time;
+
 #Check the syntax of changing code
+&mark_time;
 print GREEN "\n------To check the syntax of changing code------\n";
 $rst = check_syntax();
 if($rst){
     print RED "check the syntax of changing code failed\n";
+    exit $rst;
 }
-$exit_code = $exit_code | $rst;
-&mark_time;
+
 #run fast regression
+&mark_time;
 print GREEN "\n------To run fast regression test------\n";
 $rst = run_fast_regression_test();
 if($rst){
     print RED "Run fast regression test failed\n";
+    exit $rst;
 }
-$exit_code = $exit_code | $rst;
+
 &mark_time;
-$exit_code = 0;
-exit $exit_code;
+#$exit_code = 0;
+exit 0;
