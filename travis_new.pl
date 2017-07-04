@@ -101,12 +101,24 @@ sub check_pr_format{
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
 
-        print ">>>>>Dumper pr_content:\n";
-        #print Dumper $pr_content;
-        print ">>>>>pr title = $pr_title\n";
-        print ">>>>>pr body = $pr_body \n";
+        print "[check_pr_format] Dumper pr_content:\n";
+        print Dumper $pr_content;
+        print "[check_pr_format] pr title = $pr_title\n";
+        print "[check_pr_format] pr body = $pr_body \n";
         
-        # TO DO
+        my $checkrst="";
+        if(! $pr_title){
+            $checkrst.="Miss title.";
+        }
+        if(! $pr_body){
+             $checkrst.="Miss description.";
+        }
+        
+        if(length($checkrst) == 0){
+            send_back_comment("> **PR FORMAT CORRECT**");  
+        }else{
+            send_back_comment("> **PR FORMAT ERROR** : $checkrst");  
+        }
     }
     return 0;
 }
@@ -135,6 +147,7 @@ sub send_back_comment{
         foreach my $comment (@{$comment_content}){
             if(($comment->{'body'} =~ /SYNTAX/ && $message =~ /SYNTAX/) 
               ||($comment->{'body'} =~ /BUILD/ && $message =~ /BUILD/)
+              ||($comment->{'body'} =~ /FORMAT/ && $message =~ /FORMAT/)
               ||($comment->{'body'} =~ /INSTALL/ &&  $message =~ /INSTALL/)
               ||($comment->{'body'} =~ /FAST REGRESSION/ &&  $message =~ /FAST REGRESSION/)){
                 $post_url = $comment->{'url'};
@@ -164,12 +177,13 @@ sub build_xcat_core{
 
     $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
-    print ">>>>>Dumper the output of '$cmd'\n";
+    #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
+        print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
         send_back_comment("> **BUILD ERROR** : ``$lastline``. Please get detaied information in ``Merge pull request`` box");
         return 1;
@@ -209,19 +223,20 @@ sub install_xcat{
 
     my $cmd = "sudo apt-get install xcat --force-yes";
     @output = runcmd("$cmd");
-    print ">>>>>Dumper the output of '$cmd'\n";
+    #print ">>>>>Dumper the output of '$cmd'\n";
     #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[install_xcat] $cmd ....[Failed]\n";
+        print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
         send_back_comment("> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box");
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
         
-        print "------To config xcat and check if xcat work correctly-----\n";
+        print "\n------To config xcat and check if xcat work correctly-----\n";
         @cmds = ("sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis",
                  "sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow",
                  ". /etc/profile.d/xcat.sh && tabdump policy",
@@ -363,6 +378,12 @@ sub run_fast_regression_test{
     }
    
     my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases");
+    print ">>>case logs:\n";
+    print Dumper \@case_logs;
+    
+    @output = runcmd("ls -l /opt/xcat/share/xcat/tools/autotest/result/");
+    print Dumper \@output;
+     
     my @failcase;
     my $passnum = -1;
     my $failnum = 0;
