@@ -323,7 +323,7 @@ Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf
-SignWith: yes
+#SignWith: no
 
 __EOF__
      done
@@ -444,7 +444,7 @@ Codename: $dist
 Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf
-SignWith: yes
+#SignWith: no
 
 __EOF__
     done

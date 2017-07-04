@@ -73,7 +73,7 @@ makedns_d_node
 makedns_h
 makedns_n
 makedns_node
-makehost_n_r
+#makehost_n_r
 makehosts_d
 makehosts_h
 makehosts_help
@@ -218,7 +218,7 @@ tabrestore_err
 tabrestore_h
 tabrestore_null
 tabrestore_table
-xcatd_restart
+#xcatd_restart
 xcatd_start
 xcatd_stop
 xcatsnap_b_d

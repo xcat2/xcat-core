@@ -1,0 +1,119 @@
+os: linux
+language: ruby
+dist: trusty
+sudo: required
+before_install: 
+#- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server rpm gnupg  ubuntu-keyring ubuntu-extras-keyring debian-archive-keyring debian-keyring nginx;
+- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
+- perl -v
+#- echo yes | perl -MCPAN -e 'my $c = "CPAN::HandleConfig"; $c->load(doit => 1, autoconfig => 1); $c->edit(prerequisites_policy => "follow"); $c->edit(build_requires_install_policy => "yes"); $c->commit'
+#- echo yes > perl -MCPAN -e shell
+#- install Crypt::Rijndael Confluent::Client Confluent::TLV Expect HTTP::Async HTTP::Headers IO::Socket::SSL JSON LWP LWP::Simple Net::Telnet Net::SSLeay Net::DNS probe_global_constant probe_utils SOAP::Lite SNMP XML::Simple
+#- sudo su
+#- echo "install Crypt::Rijndael" | perl -MCPAN -e 'shell'
+#- echo "install Confluent::Client" | perl -MCPAN -e 'shell'
+#- echo "install Confluent::TLV" | perl -MCPAN -e 'shell'
+#- echo "install Expect" | perl -MCPAN -e 'shell'
+#- echo "install HTTP::Async" | perl -MCPAN -e 'shell'
+#- echo "install HTTP::Headers" | perl -MCPAN -e 'shell'
+#- echo "install IO::Socket::SSL" | perl -MCPAN -e 'shell'
+#- echo "install JSON" | perl -MCPAN -e 'shell'
+#- echo "install LWP" | perl -MCPAN -e 'shell'
+#- echo "install LWP::Simple" | perl -MCPAN -e 'shell'
+#- echo "install Net::Telnet" | perl -MCPAN -e 'shell'
+#- echo "install Net::SSLeay" | perl -MCPAN -e 'shell'
+#- echo "install Net::DNS" | perl -MCPAN -e 'shell'
+#- echo "install probe_global_constant" | perl -MCPAN -e 'shell'
+#- echo "install probe_utils" | perl -MCPAN -e 'shell'
+#- echo "install SOAP::Lite" | perl -MCPAN -e 'shell'
+#- echo "install SNMP" | perl -MCPAN -e 'shell'
+#- echo "install XML::Simple" | perl -MCPAN -e 'shell'
+#- quit
+#- sudo apt-get install ruby
+
+- gem install sinatra
+- gem install json
+- gem install activesupport
+- gem install net
+- gem install pry
+#- echo yes | cpan -i XML::LibXML
+#- ruby ./travis.rb
+
+install: 
+- ls -a
+- pwd
+#- perl ./travis.pl
+
+script: 
+#- curl -o pulls.html https://api.github.com/repos/DengShuaiSimon/TravisTest/events
+#- cat /home/travis/.travis/job_stages
+- echo $TRAVIS_BUILD_ID
+- echo $TRAVIS_EVENT_TYPE
+- echo $TRAVIS_BUILD_NUMBER
+- echo $TRAVIS_BUILD_DIR
+- echo $TRAVIS_COMMIT
+- echo $TRAVIS_COMMIT_MESSAGE
+- echo $TRAVIS_COMMIT_RANGE
+- echo $TRAVIS_JOB_ID
+- echo $TRAVIS_JOB_NUMBER
+- echo $TRAVIS_BRANCH
+- echo $TRAVIS_COMMIT_MESSAGE
+- echo $USERNAME
+- echo $PASSWORD
+- echo $GITHUB_TOKEN
+#- curl -i https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/9/comments
+- git log --pretty=format:"%s %b" -2
+#- git log --pretty=format:"%s" -1
+#- git log --pretty=format:"%b" -1
+#- git log --format=%s -n 3
+#- git log --format=%B -n 3
+#- curl -d "body='successful'" "https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/24/comments" 
+#- perl -I./perl-xCAT/ -c ./xCAT-server/lib/xcat/plugins/xnba.pm
+
+
+
+#- ruby ./travis.rb
+#- perl travis.pl
+- perl travis_new.pl
+
+
+#- mkdir -p ./check-perl-lib/haha
+#- echo "1;" > ./check-perl-lib/haha/probe_utils.pm
+#- cat ./check-perl-lib/haha/probe_utils.pm
+#- ls -a ./check-perl-lib
+###############  build  ###########
+#- gpg --list-keys
+#- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
+
+############## install ############
+#- pwd
+#- cd ..
+#- cd ..
+#- cd xcat-core
+#- ls -a
+#- sudo ./mklocalrepo.sh
+#- sudo chmod 777 /etc/apt/sources.list
+#- sudo echo "deb [arch=amd64] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+#- sudo echo "deb [arch=ppc64el] http://xcat.org/files/xcat/repos/apt/xcat-dep trusty main" >> /etc/apt/sources.list
+#- sudo cat /etc/apt/sources.list
+#- sudo wget -O - "http://xcat.org/files/xcat/repos/apt/apt.key" | sudo apt-key add -
+#- sudo apt-get  install software-properties-common
+##- sudo apt-get clean all
+#- sudo apt-get -qq update
+##- sudo apt-get install xCAT --force-yes -y
+#- sudo apt-get install xCAT --force-yes
+#- source /etc/profile.d/xcat.sh
+#- sudo echo "$USER"
+##- sudo cat /opt/xcat/share/xcat/scripts/setup-local-client.sh
+##- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh travis "" -f
+#- sudo -s /opt/xcat/share/xcat/scripts/setup-local-client.sh -f travis
+#- sudo -s /opt/xcat/sbin/chtab priority=1.1 policy.name=travis policy.rule=allow
+#- lsxcatd -v
+#- tabdump policy
+#- tabdump site
+##- /opt/xcat/sbin/tabdump policy
+##- /opt/xcat/sbin/tabdump site
+#- ls /opt/xcat/sbin
+#- ls /opt/xcat
+#- service xcatd start
+#- service xcatd status
