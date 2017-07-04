@@ -74,10 +74,10 @@ script:
 - perl travis_new.pl
 
 
-- mkdir -p ./check-perl-lib/haha
-- echo "1;" > ./check-perl-lib/haha/probe_utils.pm
-- cat ./check-perl-lib/haha/probe_utils.pm
-- ls -a ./check-perl-lib
+#- mkdir -p ./check-perl-lib/haha
+#- echo "1;" > ./check-perl-lib/haha/probe_utils.pm
+#- cat ./check-perl-lib/haha/probe_utils.pm
+#- ls -a ./check-perl-lib
 ###############  build  ###########
 #- gpg --list-keys
 #- sudo ./build-ubunturepo -c UP=0 BUILDALL=1;
