@@ -101,8 +101,8 @@ sub check_pr_format{
         my $pr_title = $pr_content->{title};
         my $pr_body  = $pr_content->{body};
 
-        print "[check_pr_format] Dumper pr_content:\n";
-        print Dumper $pr_content;
+        #print "[check_pr_format] Dumper pr_content:\n";
+        #print Dumper $pr_content;
         print "[check_pr_format] pr title = $pr_title\n";
         print "[check_pr_format] pr body = $pr_body \n";
         
