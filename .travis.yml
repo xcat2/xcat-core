@@ -58,6 +58,9 @@ script:
 - echo $TRAVIS_JOB_NUMBER
 - echo $TRAVIS_BRANCH
 - echo $TRAVIS_COMMIT_MESSAGE
+- echo $USERNAME
+- echo $PASSWORD
+- echo $GITHUB_TOKEN
 #- curl -i https://api.github.com/repos/DengShuaiSimon/TravisTest/issues/9/comments
 - git log --pretty=format:"%s %b" -2
 #- git log --pretty=format:"%s" -1
