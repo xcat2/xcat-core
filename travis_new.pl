@@ -369,38 +369,49 @@ sub run_fast_regression_test{
     my $casenum = @caseslist;
     
     my $x = 0;
+    my @failcase;
+    my $passnum = 0;
+    my $failnum = 0;
     foreach my $case (@caseslist){
         ++$x;
         $cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t $case'";
         print "[run_fast_regression_test] run $x: $cmd\n";
         @output = runcmd("$cmd");
         #print Dumper \@output;
+        for(my $i = $#output; $i>-1; --$i){
+            if($output[$i] =~ /------END::(.+)::Failed/){
+                push @failcase, $1;
+                ++$failnum;
+                print Dumper \@output;
+                last;
+             }elsif ($output[$i] =~ /------END::(.+)::Passed/){
+                ++$passnum;
+                last;
+             }
+         }
     }
    
-    my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases");
-    print ">>>case logs:\n";
-    print Dumper \@case_logs;
+    #my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases");
+    #print ">>>case logs:\n";
+    #print Dumper \@case_logs;
     
-    @output = runcmd("ls -l /opt/xcat/share/xcat/tools/autotest/result/");
-    print Dumper \@output;
+    #@output = runcmd("ls -l /opt/xcat/share/xcat/tools/autotest/result/");
+    #print Dumper \@output;
      
-    my @failcase;
-    my $passnum = -1;
-    my $failnum = 0;
-    foreach my $case_log (@case_logs){
-        chomp($case_log);
+    #foreach my $case_log (@case_logs){
+    #    chomp($case_log);
         
-        if(-z "/opt/xcat/share/xcat/tools/autotest/result/$case_log"){
-            ++$passnum;
-        }else{
-            @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
-            ++$failnum;
-            push @failcase, @output;
-            print "\n[run_fast_regression_test] case $output[0] failed--------------\n";
-            @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log");
-            print Dumper \@output; 
-        }
-    }
+    #    if(-z "/opt/xcat/share/xcat/tools/autotest/result/$case_log"){
+    #        ++$passnum;
+    #    }else{
+    #        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
+    #        ++$failnum;
+    #       push @failcase, @output;
+    #       print "\n[run_fast_regression_test] case $output[0] failed--------------\n";
+    #        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log");
+    #        print Dumper \@output; 
+    #   }
+    #}
     
     if($failnum){
         my $log_str = join (",", @failcase );
