@@ -158,7 +158,7 @@ sub build_xcat_core{
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed");
+        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed. Please get detaied information in ``Merge pull request`` box");
         return 1;
     }
 
@@ -170,7 +170,8 @@ sub build_xcat_core{
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD ERROR** : ``$lastline``");
+        print Dumper \@output;
+        send_back_comment("> **BUILD ERROR** : ``$lastline``. Please get detaied information in ``Merge pull request`` box");
         return 1;
     }else{
         print "[build_xcat_core] $cmd ....[Pass]\n";
@@ -201,7 +202,7 @@ sub install_xcat{
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            send_back_comment("> **INSTALL XCAT ERROR**");
+            send_back_comment("> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box");
             return 1;
         }
     }
@@ -209,12 +210,13 @@ sub install_xcat{
     my $cmd = "sudo apt-get install xcat --force-yes";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
-    print Dumper \@output;
+    #print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[install_xcat] $cmd ....[Failed]\n";
-        send_back_comment("> **INSTALL XCAT ERROR** : ``$lastline``");
+        print Dumper \@output;
+        send_back_comment("> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box");
         return 1;
     }else{
         print "[install_xcat] $cmd ....[Pass]\n";
@@ -234,13 +236,14 @@ sub install_xcat{
             print Dumper \@output;
             if($::RUNCMD_RC){
                print RED "[install_xcat] $cmd. ...[Failed]\n";
+               #print Dumper \@output;
                $ret = 1;
             }else{
                print "[install_xcat] $cmd....[Pass]\n";
             }
         }
         if($ret){
-            send_back_comment("> **INSTALL XCAT ERROR**");
+            send_back_comment("> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box");
             return 1;
         }
         send_back_comment("> **INSTALL XCAT SUCCESSFUL**");
@@ -291,7 +294,7 @@ sub check_syntax{
         print "[check_syntax] syntax checking ....[Failed]\n";
         print "[check_syntax] Dumper error message:\n";
         print Dumper @syntax_err;
-        send_back_comment("> **SYNTAX ERROR**");
+        send_back_comment("> **SYNTAX ERROR** : Please get detaied information in ``Merge pull request`` box");
     }else{
         print "[check_syntax] syntax checking ....[Pass]\n";
         send_back_comment("> **SYNTAX CORRECT!**");
@@ -348,13 +351,7 @@ sub run_fast_regression_test{
     print Dumper \@output;
 
     my @caseslist = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l caselist -b MN_basic.bundle'");
-    my @casenum = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && xcattest -l casenum -b MN_basic.bundle'");
-    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -b MN_basic.bundle -q' &";
-    #$cmd = "sudo bash -c '. /etc/profile.d/xcat.sh &&  xcattest -f $conf_file -t tabdump_v,tabdump_h,tabdump_table'";
-    
-    #@caseslist=("xcatsnap_b_d","xcatsnap_h","xcatsnap_null","xcatsnap_v","xcatstanzafile_attribute",
-    #             "xcatstanzafile_colon","xcatstanzafile_objtype","xcatstanzafile_specificvalue","xcatd_start","xcatd_stop");
-    #$casenum[0] = @caseslist;
+    my $casenum = @caseslist;
     
     my $x = 0;
     foreach my $case (@caseslist){
@@ -365,31 +362,31 @@ sub run_fast_regression_test{
         #print Dumper \@output;
     }
    
-    my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep xcattest");
+    my @case_logs = runcmd("ls /opt/xcat/share/xcat/tools/autotest/result/ |grep failedcases");
     my @failcase;
-    my $passnum;
+    my $passnum = -1;
     my $failnum = 0;
     foreach my $case_log (@case_logs){
         chomp($case_log);
         
-        @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
-        runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|grep 'Failed'");
-        if(! $::RUNCMD_RC){
+        if(-z "/opt/xcat/share/xcat/tools/autotest/result/$case_log"){
+            ++$passnum;
+        }else{
+            @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log|grep -- '--END'|awk -F'::' '{print \$2}'");
             ++$failnum;
             push @failcase, @output;
+            print "\n[run_fast_regression_test] case $output[0] failed--------------\n";
             @output = runcmd("cat /opt/xcat/share/xcat/tools/autotest/result/$case_log");
             print Dumper \@output; 
-        }else{
-           ++$passnum;
         }
     }
     
     if($failnum){
-        my $log_str = join (";", @failcase );
-        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum[0] Pass $passnum failed $failnum FailedCases: $log_str");
+        my $log_str = join (",", @failcase );
+        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str");
         return 1;
     }else{
-        send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum[0] Pass $passnum failed $failnum");
+        send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum Pass $passnum failed $failnum");
     }
 
     return 0;
