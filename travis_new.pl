@@ -295,12 +295,12 @@ sub check_syntax{
                     push @syntax_err, @output;
                     $ret = 1;
                 }
-            }elsif($output[0] =~ /shell/i){
-                @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && sh -n $file'");
-                if($::RUNCMD_RC){
-                    push @syntax_err, @output;
-                    $ret = 1;
-                }
+            #}elsif($output[0] =~ /shell/i){
+            #    @output = runcmd("sudo bash -c '. /etc/profile.d/xcat.sh && sh -n $file'");
+            #    if($::RUNCMD_RC){
+            #        push @syntax_err, @output;
+            #        $ret = 1;
+            #    }
             }
         }
     }
@@ -413,6 +413,17 @@ sub run_fast_regression_test{
     return 0;
 }
 
+#--------------------------------------------------------
+# Fuction name: run_fast_regression_test
+# Description:
+# Atrributes:
+# Retrun code:
+#--------------------------------------------------------
+sub mark_time{
+    my $runstart    = timelocal(localtime());
+    my $runstartstr = scalar(localtime());
+    print "[mark_time] $runstartstr\n";
+}
 #===============Main Process=============================
 
 #Dumper Travis Environment Attribute
@@ -437,11 +448,13 @@ my @perl_vserion = runcmd("perl -v");
 print "Current perl information:\n";
 print Dumper \@perl_vserion;
 
-my @sh_version = runcmd("sudo bash -c 'sh --version'");
-print "Current sh information:\n";
-print Dumper \@sh_version;
+#my @sh_version = runcmd("sudo bash -c 'sh --version'");
+#print "Current sh information:\n";
+#print Dumper \@sh_version;
+
 
 #Start to check the format of pull request
+&mark_time;
 print GREEN "\n------To Check Pull Request Format------\n";
 $rst  = check_pr_format();
 if($rst){
@@ -449,6 +462,7 @@ if($rst){
 }
 $exit_code = $exit_code | $rst;
 
+&mark_time;
 #Start to build xcat core
 print GREEN "\n------To Build xCAT core package------\n";
 $rst = build_xcat_core();
@@ -456,7 +470,7 @@ if($rst){
     print RED "Build xCAT core package failed\n";
 }
 $exit_code = $exit_code | $rst;
-
+&mark_time;
 #Start to install xcat
 print GREEN "\n------To install xcat------\n";
 $rst = install_xcat();
@@ -464,7 +478,7 @@ if($rst){
     print RED "Install xcat failed\n";
 }
 $exit_code = $exit_code | $rst;
-
+&mark_time;
 #Check the syntax of changing code
 print GREEN "\n------To check the syntax of changing code------\n";
 $rst = check_syntax();
@@ -472,7 +486,7 @@ if($rst){
     print RED "check the syntax of changing code failed\n";
 }
 $exit_code = $exit_code | $rst;
-
+&mark_time;
 #run fast regression
 print GREEN "\n------To run fast regression test------\n";
 $rst = run_fast_regression_test();
@@ -480,6 +494,6 @@ if($rst){
     print RED "Run fast regression test failed\n";
 }
 $exit_code = $exit_code | $rst;
-
+&mark_time;
 $exit_code = 0;
 exit $exit_code;
