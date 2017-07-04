@@ -610,7 +610,7 @@ sub process_request {
     my @dnsifinsite = xCAT::TableUtils->get_site_attribute("dnsinterfaces");
     if (@dnsifinsite)
 
-      #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
+    #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
     {
         my $dnsinterfaces = $dnsifinsite[0];
         my $listenonifs;
@@ -865,29 +865,23 @@ sub process_request {
         }
         else
         {
-            #my $cmd = "service $service status|grep running";
-            #my @output=xCAT::Utils->runcmd($cmd, 0);
-            #if ($::RUNCMD_RC != 0)
-            #{
-            #    $cmd = "service $service start";
-            #    @output=xCAT::Utils->runcmd($cmd, 0);
-            #    my $outp = join('', @output);
-            #    if ($::RUNCMD_RC != 0)
-            #    {
-            #        my $rsp = {};
-            #        $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-            #        xCAT::MsgUtils->message("E", $rsp, $callback);
-            #        return;
-            #    }
-            #}
-            my $retcode = xCAT::Utils->startservice("named");
-            if ($retcode != 0)
+            my $needtostart = 1;
+            # If named is already restarted in the same time, then to avoid starting it again.
+            # Rare case (#3082): to avoid two named daemon co-existing
+            if ($ctx->{restartneeded}) {
+                sleep 1;
+                $needtostart = xCAT::Utils->checkservicestatus("named");
+            }
+            if ($needtostart != 0)
             {
-                my $rsp = {};
-                $rsp->{data}->[0] = "failed to start named.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return;
-
+                my $retcode = xCAT::Utils->startservice("named");
+                if ($retcode != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "failed to start named.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return;
+                }
             }
         }
     }
