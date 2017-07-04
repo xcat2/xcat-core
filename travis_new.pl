@@ -404,7 +404,7 @@ sub run_fast_regression_test{
     
     if($failnum){
         my $log_str = join (",", @failcase );
-        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str");
+        send_back_comment("> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please get detaied information in ``Merge pull request`` box");
         return 1;
     }else{
         send_back_comment("> **FAST REGRESSION TEST Successful**: Totalcase $casenum Pass $passnum failed $failnum");
