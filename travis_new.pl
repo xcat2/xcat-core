@@ -353,7 +353,7 @@ sub run_fast_regression_test{
     chomp($hostname);
     print "hostname = $hostname\n";
     my $conf_file = "$ENV{'PWD'}/regression.conf";
-    $cmd = "echo '[System]' > $conf_file; echo 'MN=$hostname' >> $conf_file";
+    $cmd = "echo '[System]' > $conf_file; echo 'MN=$hostname' >> $conf_file; echo '[Table_site]' >> $conf_file; echo 'key=domain' >>$conf_file; echo 'value=pok.stglabs.ibm.com' >> $conf_file";
     @output = runcmd("$cmd");
     if($::RUNCMD_RC){
          print RED "[run_fast_regression_test] $cmd ....[Failed]";
