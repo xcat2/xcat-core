@@ -4,7 +4,6 @@
 package xCAT::Usage;
 use Getopt::Long;
 use xCAT::Utils;
-
 #-------------------------------------------------------------------------------
 
 =head1  xCAT::Usage
@@ -649,11 +648,11 @@ sub validateArgs {
         #filtered by GetOpt subroutine 
         #fortunately the commands in this branch does not have such options
         foreach(@extrargs){
-            if($_ !~ m/^-[-]?\S+/){
+            if($_ and $_ !~ m/^-[-]?\S+/){
                 $count+=1;
             }
         }
-        if ($count!=1) {
+        unless (($command =~ m/^(rinstall|winstall)$/ and $count==0) or $count==1) {
            return [1,"Invalid argument: '".join(" ",@extrargs)."'"];
         }
     }
