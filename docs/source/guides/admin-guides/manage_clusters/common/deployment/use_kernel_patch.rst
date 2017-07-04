@@ -11,7 +11,7 @@ The RPM names below are only examples, substitute your specific level and archit
         mkdir -p /install/kernels/<kernelver>
         cp /tmp/kernel-*.rpm /install/kernels/<kernelver>
         createrepo /install/kernels/<kernelver>/
-        chdef -t osimage rhels7.3-ppc64le-install-compute pkgdir=/install/rhels7.3/ppc64le,/install/kernels/<kernelver>
+        chdef -t osimage rhels7.3-ppc64le-install-compute -p pkgdir=/install/kernels/<kernelver>
 
 #. Inject the drivers from the new kernel RPMs into the initrd ::
 
