@@ -156,9 +156,8 @@ sub send_back_comment{
         }
     }
     
-     print "[send_back_comment] method = $post_method to $post_url \n";
-    #`curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
-     `curl -u "denfshuaishuai\@icloud.com:ds18811031107" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
+     print "[send_back_comment] method = $post_method to $post_url\n";
+     `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
 #--------------------------------------------------------
@@ -168,25 +167,30 @@ sub send_back_comment{
 # Retrun code:
 #--------------------------------------------------------
 sub build_xcat_core{
-    my $cmd = "gpg --list-keys";
-    my @output = runcmd("$cmd");
-    if($::RUNCMD_RC){
-        print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed. Please get detaied information in ``Merge pull request`` box");
-        return 1;
+    my @output;
+    my @cmds = ("gpg --list-keys",
+                "sed -i '/SignWith: yes/d' $ENV{'PWD'}/build-ubunturepo");
+    foreach my $cmd (@cmds){
+        print "[build_xcat_core] to run $cmd\n";
+        @output = runcmd("$cmd");
+        if($::RUNCMD_RC){
+            print "[build_xcat_core] $cmd ....[Failed]\n";
+            send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
+            return 1;
+        }
     }
 
-    $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
+    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
-    #print ">>>>>Dumper the output of '$cmd'\n";
-    #print Dumper \@output;
+    print ">>>>>Dumper the output of '$cmd'\n";
+    print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        print ">>>>>Dumper the output of '$cmd'\n";
-        print Dumper \@output;
-        $check_result_str .= "> **BUILD ERROR**, Please get detaied information in ``Merge pull request`` box";
+        #print ">>>>>Dumper the output of '$cmd'\n";
+        #print Dumper \@output;
+        $check_result_str .= "> **BUILD ERROR**, Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
     }else{
@@ -194,6 +198,12 @@ sub build_xcat_core{
         $check_result_str .= "> **BUILD SUCCESSFUL** ";
         send_back_comment("$check_result_str");
     }
+
+#    my $buildpath ="/home/travis/build/xcat-core/";
+#    my @buildfils = (); 
+#    get_files_recursive("$buildpath", \@buildfils);
+#    print "\n-----------Dumper build files-----------\n";
+#    print Dumper \@buildfils;
 
     return 0;
 }
@@ -214,12 +224,13 @@ sub install_xcat{
                "sudo apt-get -qq update");
     my @output;
     foreach my $cmd (@cmds){
+        print "[install_xcat] to run $cmd\n";
         @output = runcmd("$cmd");
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box ";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
             send_back_comment("$check_result_str");
             return 1;
         }
@@ -235,7 +246,7 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Failed]\n";
         print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
-        $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");     
         return 1;
     }else{
@@ -263,7 +274,7 @@ sub install_xcat{
             }
         }
         if($ret){
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
             send_back_comment("$check_result_str");
             return 1;
         }
@@ -316,7 +327,7 @@ sub check_syntax{
         print "[check_syntax] syntax checking ....[Failed]\n";
         print "[check_syntax] Dumper error message:\n";
         print Dumper @syntax_err;
-        $check_result_str .= "> **CODE SYNTAX ERROR** : Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **CODE SYNTAX ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
     }else{
         print "[check_syntax] syntax checking ....[Pass]\n";
@@ -402,7 +413,7 @@ sub run_fast_regression_test{
 
     if($failnum){
         my $log_str = join (",", @failcase );
-        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
     }else{   
@@ -439,6 +450,8 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "GITHUB_TOKEN",
                        "USERNAME",
                        "PASSWORD",
+                       "xcatbotuser",
+                       "xcatbotpw",
                        "PWD");
 foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
