@@ -177,8 +177,8 @@ sub build_xcat_core{
 
     $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
-    #print ">>>>>Dumper the output of '$cmd'\n";
-    #print Dumper \@output;
+    print ">>>>>Dumper the output of '$cmd'\n";
+    print Dumper \@output;
     if($::RUNCMD_RC){
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
