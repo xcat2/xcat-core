@@ -157,7 +157,6 @@ sub send_back_comment{
     }
     
      print "[send_back_comment] method = $post_method to $post_url\n";
-    #`curl -v -H "Authorization: token bf43c85ee93d2fc18bd2c8446aa997c54fc2095b" -X $post_method -d '{"body":"$message"}' $post_url`;
      `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
@@ -172,7 +171,7 @@ sub build_xcat_core{
     my @output = runcmd("$cmd");
     if($::RUNCMD_RC){
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed. Please get detaied information in ``Merge pull request`` box");
+        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
         return 1;
     }
 
@@ -186,7 +185,7 @@ sub build_xcat_core{
         print "[build_xcat_core] $cmd ....[Failed]\n";
         print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
-        $check_result_str .= "> **BUILD ERROR**, Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **BUILD ERROR**, Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
     }else{
@@ -195,6 +194,11 @@ sub build_xcat_core{
         send_back_comment("$check_result_str");
     }
 
+my $buildpath ="/home/travis/build/xcat-core/";
+my @buildfils = (); 
+get_files_recursive("$buildpath", \@buildfils);
+print "\n-----------Dumper build files-----------\n";
+print Dumper \@buildfils;
     return 0;
 }
 
@@ -219,7 +223,7 @@ sub install_xcat{
             print RED "[install_xcat] $cmd. ...[Failed]\n";
             print "[install_xcat] error message:\n";
             print Dumper \@output;
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box ";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information ";
             send_back_comment("$check_result_str");
             return 1;
         }
@@ -235,7 +239,7 @@ sub install_xcat{
         print "[install_xcat] $cmd ....[Failed]\n";
         print ">>>>>Dumper the output of '$cmd'\n";
         print Dumper \@output;
-        $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");     
         return 1;
     }else{
@@ -263,7 +267,7 @@ sub install_xcat{
             }
         }
         if($ret){
-            $check_result_str .= "> **INSTALL XCAT ERROR** : Please get detaied information in ``Merge pull request`` box";
+            $check_result_str .= "> **INSTALL XCAT ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
             send_back_comment("$check_result_str");
             return 1;
         }
@@ -316,7 +320,7 @@ sub check_syntax{
         print "[check_syntax] syntax checking ....[Failed]\n";
         print "[check_syntax] Dumper error message:\n";
         print Dumper @syntax_err;
-        $check_result_str .= "> **CODE SYNTAX ERROR** : Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **CODE SYNTAX ERROR** : Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
     }else{
         print "[check_syntax] syntax checking ....[Pass]\n";
@@ -402,7 +406,7 @@ sub run_fast_regression_test{
 
     if($failnum){
         my $log_str = join (",", @failcase );
-        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please get detaied information in ``Merge pull request`` box";
+        $check_result_str .= "> **FAST REGRESSION TEST Failed**: Totalcase $casenum Pass $passnum failed $failnum FailedCases: $log_str.  Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
     }else{   
