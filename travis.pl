@@ -167,12 +167,17 @@ sub send_back_comment{
 # Retrun code:
 #--------------------------------------------------------
 sub build_xcat_core{
-    my $cmd = "gpg --list-keys";
-    my @output = runcmd("$cmd");
-    if($::RUNCMD_RC){
-        print "[build_xcat_core] $cmd ....[Failed]\n";
-        send_back_comment("> **BUILD ERROR**  :  $cmd .... failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
-        return 1;
+    my @output;
+    my @cmds = ("gpg --list-keys",
+                "sed -i '/SignWith: yes/d' $ENV{'PWD'}/build-ubunturepo");
+    foreach my $cmd (@cmds){
+        print "[build_xcat_core] to run $cmd\n";
+        @output = runcmd("$cmd");
+        if($::RUNCMD_RC){
+            print "[build_xcat_core] $cmd ....[Failed]\n";
+            send_back_comment("> **BUILD ERROR** : $cmd failed. Please click ``Details`` label in ``Merge pull request`` box for detailed information");
+            return 1;
+        }
     }
 
     $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
