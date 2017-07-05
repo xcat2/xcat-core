@@ -157,8 +157,8 @@ sub send_back_comment{
     }
     
      print "[send_back_comment] method = $post_method to $post_url\n";
-    `curl -v -H "Authorization: token bf43c85ee93d2fc18bd2c8446aa997c54fc2095b" -X $post_method -d '{"body":"$message"}' $post_url`;
-    #`curl -v -H "Authorization: token $ENV{'xcatbottoken'}" -X $post_method -d '{"body":"$message"}' $post_url`; 
+    #`curl -v -H "Authorization: token bf43c85ee93d2fc18bd2c8446aa997c54fc2095b" -X $post_method -d '{"body":"$message"}' $post_url`;
+     `curl -u "$ENV{'xcatbotuser'}:$ENV{'xcatbotpw'}" -X $post_method -d '{"body":"$message"}' $post_url`;
 }
 
 #--------------------------------------------------------
@@ -439,6 +439,8 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "GITHUB_TOKEN",
                        "USERNAME",
                        "PASSWORD",
+                       "xcatbotuser",
+                       "xcatbotpw",
                        "PWD");
 foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
