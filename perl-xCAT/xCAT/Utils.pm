@@ -4024,7 +4024,7 @@ sub servicemap {
         "firewall"  => [ "iptables",     "firewalld", "ufw" ],
         "http"      => [ "apache2",      "httpd" ],
         "ntpserver" => [ "ntpd",         "ntp" ],
-        "mysql"     => [ "mysqld",       "mysql" ],
+        "mysql"     => [ "mysqld",       "mysql", "mariadb" ],
     );
 
     my $path       = undef;
