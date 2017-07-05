@@ -157,8 +157,8 @@ sub send_back_comment{
     }
     
      print "[send_back_comment] method = $post_method to $post_url \n";
-    #`curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
-     `curl -u "denfshuaishuai\@icloud.com:ds18811031107" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
+    `curl -u "$ENV{'USERNAME'}:$ENV{'PASSWORD'}" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
+    # `curl -u "denfshuaishuai\@icloud.com:ds18811031107" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
 }
 
 #--------------------------------------------------------
