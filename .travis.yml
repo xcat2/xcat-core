@@ -1,0 +1,28 @@
+os: linux
+dist: trusty
+sudo: required
+before_install: 
+- sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
+- perl -v
+
+script: 
+- echo $TRAVIS_BUILD_ID
+- echo $TRAVIS_EVENT_TYPE
+- echo $TRAVIS_BUILD_NUMBER
+- echo $TRAVIS_BUILD_DIR
+- echo $TRAVIS_COMMIT
+- echo $TRAVIS_COMMIT_MESSAGE
+- echo $TRAVIS_COMMIT_RANGE
+- echo $TRAVIS_JOB_ID
+- echo $TRAVIS_JOB_NUMBER
+- echo $TRAVIS_BRANCH
+- echo $TRAVIS_COMMIT_MESSAGE
+- echo $USERNAME
+- echo $PASSWORD
+- echo $GITHUB_TOKEN
+- git log --pretty=format:"%s %b" -2
+
+- perl travis.pl
+
+
+
