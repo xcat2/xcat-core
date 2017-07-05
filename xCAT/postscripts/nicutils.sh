@@ -255,6 +255,36 @@ function load_kmod {
     fi
 }
 
+
+#################################################################
+# 
+# query nicextraparams from nics table
+# input: nic
+# output: set value for globe ${array_extra_param_names}
+#         and ${array_extra_param_values}
+#
+#################################################################
+function query_extra_params {
+
+    nic=$1
+    if [ -z "$nic" ]; then
+        return 
+    fi
+    get_nic_extra_params $nic "$NICEXTRAPARAMS"
+    j=0
+    while [ $j -lt ${#array_nic_params[@]} ]
+    do
+        token1="${array_nic_params[$j]}"
+        echo "array_nic_params $j=$token1"
+        j=$((j+1))
+    done
+    if [ ${#array_nic_params[@]} -gt 0 ]; then
+        str_extra_params=${array_nic_params[$ipindex-1]}
+        parse_nic_extra_params "$str_extra_params"
+    fi
+
+}
+
 #################################################################
 #
 # query attribute from networks table
@@ -422,6 +452,9 @@ function create_persistent_ifcfg {
     local _netmask=""
     local _mtu=""
     local inattrs=""
+    unset array_nic_params
+    unset array_extra_param_names
+    unset array_extra_param_values
 
     # parser input arguments
     while [ -n "$1" ];
@@ -462,6 +495,9 @@ function create_persistent_ifcfg {
         fi
 
     fi
+
+    query_extra_params $ifname
+
     local attrs=""
     attrs=${attrs}${attrs:+,}"DEVICE=$ifname"
     attrs=${attrs}${attrs:+,}"BOOTPROTO=static"
@@ -495,6 +531,16 @@ function create_persistent_ifcfg {
             attrs=${attrs}${attrs:+,}"HWADDR=$mac"
         fi
     fi
+    
+    #add extra params
+    i=0
+    while [ $i -lt ${#array_extra_param_names[@]} ]
+    do
+        name="${array_extra_param_names[$i]}"
+        value="${array_extra_param_values[$i]}"
+        attrs=${attrs}${attrs:+,}"${name}=${value}"
+        i=$((i+1))
+    done
 
     # record manual and auto attributes first
     # since input attributes might overwrite them.
