@@ -441,7 +441,11 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "PASSWORD",
                        "PWD");
 foreach (@travis_env_attr){
-    print "$_ = $ENV{$_}\n";
+    if($ENV{$_}) {
+        print "$_ = '$ENV{$_}'\n";
+    } else {
+        print "$_ = ''\n";
+    }
 }
 
 my @os_info = runcmd("cat /etc/os-release");
