@@ -8076,11 +8076,37 @@ sub preprocess_request {
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
         $realnoderange = \@bmcnodes;
     } elsif ($command eq "rspconfig") {
-
         # filter out the nodes which should be handled by ipmi.pm
         my (@bmcnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
         $realnoderange = \@bmcnodes;
+
+        if ($realnoderange) {
+            my $optset = 0;
+            my $optget = 0;
+            foreach (@exargs) {
+                if ($_ =~ /^(\w+)=(.*)/) {
+                    $optset = 1;
+                    my $option = $1;
+                    unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
+                        $callback->({ errorcode => [1], data => [ "Unsupported command: $command $option"] });
+                        $request = {};
+                        return;
+                    }
+                } elsif ($_ =~ /^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
+                    $optget = 1;
+                } else {
+                    $callback->({ errorcode => [1], data => [ "Unsupported command: $command $_"] });
+                    $request = {};
+                    return;
+                }
+            }
+            if ($optset and $optget) {
+                $callback->({ errorcode => [1], data => [ "Do not set and get information in the same command for $command."] });
+                $request = {};
+                return;
+            }
+        }
     } elsif ($command eq "rinv") {
         if ($exargs[0] eq "-t" and $#exargs == 0) {
             unshift @{ $request->{arg} }, 'all';
