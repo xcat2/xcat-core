@@ -157,7 +157,7 @@ sub send_back_comment{
     }
     
      print "[send_back_comment] method = $post_method to $post_url by token\n";
-    `curl -v -H "Authorization: token 7333caf3936a938ad0803e7a297423e43f69fb62" -X $post_method -d '{"body":"$message"}' $post_url 2>&1 > /dev/null`;
+    `curl -v -H "Authorization: token 7333caf3936a938ad0803e7a297423e43f69fb62" -X $post_method -d '{"body":"$message"}' $post_url 2>&1`;
 }
 
 #--------------------------------------------------------
