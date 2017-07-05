@@ -188,8 +188,8 @@ sub build_xcat_core{
         my $lastline = $output[-1];
         $lastline =~ s/[\r\n\t\\"']*//g;
         print "[build_xcat_core] $cmd ....[Failed]\n";
-        print ">>>>>Dumper the output of '$cmd'\n";
-        print Dumper \@output;
+        #print ">>>>>Dumper the output of '$cmd'\n";
+        #print Dumper \@output;
         $check_result_str .= "> **BUILD ERROR**, Please click ``Details`` label in ``Merge pull request`` box for detailed information";
         send_back_comment("$check_result_str");
         return 1;
@@ -199,11 +199,12 @@ sub build_xcat_core{
         send_back_comment("$check_result_str");
     }
 
-my $buildpath ="/home/travis/build/xcat-core/";
-my @buildfils = (); 
-get_files_recursive("$buildpath", \@buildfils);
-print "\n-----------Dumper build files-----------\n";
-print Dumper \@buildfils;
+#    my $buildpath ="/home/travis/build/xcat-core/";
+#    my @buildfils = (); 
+#    get_files_recursive("$buildpath", \@buildfils);
+#    print "\n-----------Dumper build files-----------\n";
+#    print Dumper \@buildfils;
+
     return 0;
 }
 
@@ -223,6 +224,7 @@ sub install_xcat{
                "sudo apt-get -qq update");
     my @output;
     foreach my $cmd (@cmds){
+        print "[install_xcat] to run $cmd\n";
         @output = runcmd("$cmd");
         if($::RUNCMD_RC){
             print RED "[install_xcat] $cmd. ...[Failed]\n";
