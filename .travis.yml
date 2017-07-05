@@ -22,8 +22,8 @@ script:
 - echo $GITHUB_TOKEN
 - git log --pretty=format:"%s %b" -2
 
-- perl travis.pl
-#- if [ $TRAVIS_EVENT_TYPE == "pull_request" ]; then perl ./travis.pl;  fi
+#- perl travis.pl
+- if [ $TRAVIS_EVENT_TYPE == "pull_request" ]; then perl ./travis.pl;  fi
 
 
 

@@ -180,7 +180,7 @@ sub build_xcat_core{
         }
     }
 
-    $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
+    my $cmd = "sudo ./build-ubunturepo -c UP=0 BUILDALL=1";
     @output = runcmd("$cmd");
     print ">>>>>Dumper the output of '$cmd'\n";
     print Dumper \@output;
