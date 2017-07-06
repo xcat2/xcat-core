@@ -259,9 +259,15 @@ function load_kmod {
 #################################################################
 # 
 # query nicextraparams from nics table
-# input: nic
+# example: nicextraparams.eth0="MTU=9000 something=yes"
+# input: nic, here is eth0
 # output: set value for globe ${array_extra_param_names}
 #         and ${array_extra_param_values}
+#         example: 
+#         array_extra_param_names[0]="MTU"
+#         array_extra_param_values[0]="9000"
+#         array_extra_param_names[1]="something"
+#         array_extra_param_values[0]="yes"
 #
 #################################################################
 function query_extra_params {
@@ -274,12 +280,15 @@ function query_extra_params {
     j=0
     while [ $j -lt ${#array_nic_params[@]} ]
     do
-        token1="${array_nic_params[$j]}"
-        echo "array_nic_params $j=$token1"
+        #get key=value pair from nicextraparams
+        #for example: MTU=9000
+        exparampair="${array_nic_params[$j]}"
         j=$((j+1))
     done
     if [ ${#array_nic_params[@]} -gt 0 ]; then
-        str_extra_params=${array_nic_params[$ipindex-1]}
+        #Current confignetwork only support one ip for vlan/bond/bridge
+        #So only need the first ${array_nic_params[0]} for first nicips
+        str_extra_params=${array_nic_params[0]}
         parse_nic_extra_params "$str_extra_params"
     fi
 
