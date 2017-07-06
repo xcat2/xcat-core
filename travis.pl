@@ -450,8 +450,6 @@ my @travis_env_attr = ("TRAVIS_REPO_SLUG",
                        "GITHUB_TOKEN",
                        "USERNAME",
                        "PASSWORD",
-                       "xcatbotuser",
-                       "xcatbotpw",
                        "PWD");
 foreach (@travis_env_attr){
     print "$_ = $ENV{$_}\n";
