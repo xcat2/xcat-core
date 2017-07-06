@@ -8082,29 +8082,31 @@ sub preprocess_request {
         $realnoderange = \@bmcnodes;
 
         if ($realnoderange) {
-            my $optset = 0;
-            my $optget = 0;
+            my $optset;
+            my $option;
             foreach (@exargs) {
                 if ($_ =~ /^(\w+)=(.*)/) {
-                    $optset = 1;
-                    my $option = $1;
-                    unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
-                        $callback->({ errorcode => [1], data => [ "Unsupported command: $command $option"] });
+                    if ($optset eq 0) {
+                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
                         $request = {};
                         return;
                     }
-                } elsif ($_ =~ /^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
-                    $optget = 1;
+                    $optset = 1;
+                    $option = $1;
                 } else {
+                    if ($optset eq 1) {
+                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        $request = {};
+                        return;
+                    }
+                    $option = $_;
+                    $optset = 0;
+                }
+                unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
                     $callback->({ errorcode => [1], data => [ "Unsupported command: $command $_"] });
                     $request = {};
                     return;
                 }
-            }
-            if ($optset and $optget) {
-                $callback->({ errorcode => [1], data => [ "Do not set and get information in the same command for $command."] });
-                $request = {};
-                return;
             }
         }
     } elsif ($command eq "rinv") {
