@@ -74,10 +74,20 @@ check:output=~$$MIGRATION1_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "chdef -t node -o node0001  nodetype=osi groups=linux"
+cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
+cmd:lsdef __GETNODEATTR($$SN,hcp)__ -z | ssh $$CN "mkdef -z"
+cmd:lsdef __GETNODEATTR($$SN,vmhost)__ -z | ssh $$CN "mkdef -z"
+cmd:ssh $$CN "chtab key=system passwd.username=root passwd.password=cluster"
+cmd:ssh $$CN "rscan __GETNODEATTR($$SN,hcp)__ -w"
+cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
+cmd:makedhcp -d $$SN
+cmd:ssh $$CN "chtab key=consoleondemand site.value=yes"
+cmd:ssh $$CN "makeconservercf $$SN"
+cmd:ssh $$CN "service conserver restart"
+cmd:scp $$ISO $$CN:/tmp/foobar.iso
+cmd:ssh $$CN "copycds -n __GETNODEATTR($$CN,os)__ /tmp/foobar.iso"
+cmd:ssh $$CN "makedhcp -n"
 check:rc==0
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/xcat-dep*.tar.bz2 /"
@@ -95,9 +105,14 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
-cmd:xdsh $$CN "noderm node0001"
+cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
+check:rc==0
+cmd:sleep 300
+cmd:ssh $$CN "a=0; until lsdef -l $$SN -i status | grep -q booted; do (( ++a > 90 )) && exit 99 ; sleep 20; done"
+check:rc==0
+cmd:ssh $$CN "xdsh $$SN date"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
@@ -184,10 +199,20 @@ check:output=~$$MIGRATION2_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "chdef -t node -o node0001  nodetype=osi groups=linux"
+cmd:lsdef $$SN -z | ssh $$CN "mkdef -z"
+cmd:lsdef __GETNODEATTR($$SN,hcp)__ -z | ssh $$CN "mkdef -z"
+cmd:lsdef __GETNODEATTR($$SN,vmhost)__ -z | ssh $$CN "mkdef -z"
+cmd:ssh $$CN "chtab key=system passwd.username=root passwd.password=cluster"
+cmd:ssh $$CN "rscan __GETNODEATTR($$SN,hcp)__ -w"
+cmd:ssh $$CN "chdef $$SN servicenode= monserver= nfsserver= tftpserver= xcatmaster="
+cmd:makedhcp -d $$SN
+cmd:ssh $$CN "chtab key=consoleondemand site.value=yes"
+cmd:ssh $$CN "makeconservercf $$SN"
+cmd:ssh $$CN "service conserver restart"
+cmd:scp $$ISO $$CN:/tmp/foobar.iso
+cmd:ssh $$CN "copycds -n __GETNODEATTR($$CN,os)__ /tmp/foobar.iso"
+cmd:ssh $$CN "makedhcp -n"
 check:rc==0
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
 cmd:xdsh $$CN "cd /; scp -r $$MN:/core-rpms-snap.tar.bz2 /"
 check:rc==0
 cmd:xdsh $$CN "cd /; scp -r $$MN:/xcat-dep*.tar.bz2 /"
@@ -205,9 +230,14 @@ check:rc==0
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
-cmd:xdsh $$CN "lsdef"
-check:output=~node0001
-cmd:xdsh $$CN "noderm node0001"
+cmd:ssh $$CN "rinstall $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute"
+check:rc==0
+cmd:sleep 300
+cmd:ssh $$CN "a=0; until lsdef -l $$SN -i status | grep -q booted; do (( ++a > 90 )) && exit 99 ; sleep 20; done"
+check:rc==0
+cmd:ssh $$CN "xdsh $$SN date"
+check:rc==0
+cmd:xdsh $$CN "/opt/xcat/share/xcat/tools/go-xcat smoke-test"
 check:rc==0
 cmd:latest_version_info=`lsxcatd -v`;xdsh $$CN "lsxcatd -v" | grep "$latest_version_info"
 check:rc==0
