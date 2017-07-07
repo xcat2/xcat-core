@@ -43,7 +43,8 @@ if (
                 'ip'         => \$::IP,
                 'name'       => \$::NAME,
                 'snmp'       => \$::SNMP,
-                'vlan=s'     => \$::VLAN,
+                'accessvlan=s' => \$::PVID,
+                'allowvlan=s'  => \$::VID,
                 'port=s'     => \$::PORT,
                 'mode=s'     => \$::MODE,
                 'all'        => \$::ALL,
@@ -120,7 +121,7 @@ if (($::CONFIG) || ($::ALL)) {
     run_rspconfig();
 }
 
-if ($::VLAN) {
+if ( ($::PVID) || ($::VID) ) {
     config_vlan();
 }
 
@@ -363,6 +364,9 @@ sub config_vlan {
         exit(1);
     }
 
+    my $access_vlan = $::PVID;
+    my $allowed_vlan = $::VID;
+
     # will default to trunk mode
     if ($::MODE) {
        $mode = $::MODE;
@@ -372,11 +376,18 @@ sub config_vlan {
             &usage;
             exit(1);
        }
+       if ($mode =~ /hybrid/) 
+       {
+           if (!$access_vlan) {
+               print "NOTE: Hybrid mode will change access vlan back to 1\n"; 
+               print "please provide access vlan if other than 1\n"; 
+               $access_vlan = 1;
+           }
+       }
     } else {
        $mode = "access";
     }
 
-    $vlan = $::VLAN;
 
     foreach my $switch (@nodes) {
         my $devicetype;
@@ -394,10 +405,7 @@ sub config_vlan {
             next;
         }
 
-        print "Tagging VLAN=$vlan for $switch port $port_input\n";
-
-        # create vlan
-        my $vlan_cmd = `xdsh $switch --devicetype $devicetype "enable;configure terminal;vlan $vlan;exit;exit" `;
+        print "Tagging access vlan to $access_vlan and allowed vlan to $allowed_vlan with $mode mode for $switch port $port_input\n";
 
         my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
         foreach my $port (@ports) {
@@ -405,12 +413,23 @@ sub config_vlan {
             # Build up the commands for easier readability
             $cmd = $cmd . "enable\;";
             $cmd = $cmd . "configure terminal\;";
+            if ($access_vlan){
+                $cmd = $cmd . "vlan $access_vlan\;";
+                $cmd = $cmd . "exit\;";
+            }
+            if ($allowed_vlan){
+                $cmd = $cmd . "vlan $allowed_vlan\;";
+                $cmd = $cmd . "exit\;";
+            }
             $cmd = $cmd . "interface ethernet 1/$port\;";
             $cmd = $cmd . "switchport mode $mode\;";
             if ($mode =~ /access/) {
-                $cmd = $cmd . "switchport access vlan $vlan\;";
+                $cmd = $cmd . "switchport access vlan $access_vlan\;";
+            } elsif ($mode =~ /hybrid/) {
+                $cmd = $cmd . "switchport $mode allowed-vlan $allowed_vlan\;";
+                $cmd = $cmd . "switchport access vlan $access_vlan\;";
             } else {
-                $cmd = $cmd . "switchport $mode allowed-vlan $vlan\;";
+                $cmd = $cmd . "switchport $mode allowed-vlan $allowed_vlan\;";
             }
             $cmd = $cmd . "exit\;exit\;exit\;";
             my $final_cmd = $cmd_prefix . " \"" . $cmd . "\"";
@@ -445,10 +464,10 @@ sub usage
         configMellanox --switches switchnames --config  
 
     To configure VLAN on a specified port (Mellanox Ethernet switch ONLY):
-        configMellanox --switches switchnames --port port --vlan vlan --mode mode
+        configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode
 
             The following mode are supported for switchport:
-                * access        Only untagged ingress Ethernet packets are allowed
+                * access        Only untagged ingress Ethernet packets are allowed 
                 * trunk         Only tagged ingress Ethernet packets are allowed
                 * hybrid        Both tagged and untagged ingress Ethernet packets are allowed
                 * access-dcb    Only untagged ingress Ethernet packets are allowed. Egress packets will be priority tagged
