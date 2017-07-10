@@ -2237,10 +2237,10 @@ sub copycd
         elsif ($desc =~ /Red Hat Enterprise Linux/)
         {
             #
-            # Attempt to auto-detect for RHEL OS, the last element has typically been the verson
+            # Attempt to auto-detect for RHEL OS, the last element has typically been the version
             #
             my @rhel_version = split / /, $desc;
-            if ( $rhel_version[4] != $rhel_version[-1]) {
+            if (scalar @rhel_version > 5) {
                 $distname = "rhels" . $rhel_version[-1] . "-" . lc($rhel_version[4]);
             } 
             else { 
