@@ -162,8 +162,8 @@ my %status_info = (
     },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
-        data           => "xyz.openbmc_project.State.Host.Transition.Off",
+        init_url       => "$openbmc_project_url/state/chassis0/attr/RequestedPowerTransition",
+        data           => "xyz.openbmc_project.State.Chassis.Transition.Off",
     },
     RPOWER_OFF_RESPONSE => {
         process        => \&rpower_response,
