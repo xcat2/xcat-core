@@ -472,7 +472,7 @@ sub parse_args {
         #
         # disable function until fully tested
         #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $check = unsupported($callback); # Check later for each subcommand: if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -488,9 +488,11 @@ sub parse_args {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
                 }
                 $setorget = "set";
+                if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
+                if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^sshcfg$/) {
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
             } else {
@@ -546,6 +548,8 @@ sub parse_args {
 sub parse_command_status {
     my $command  = shift;
     my $subcommand;
+
+    xCAT::SvrUtils::sendmsg("Ensure you are running 1724B or higher.", $callback);
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
 
