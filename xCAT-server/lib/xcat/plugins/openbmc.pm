@@ -168,6 +168,11 @@ my %status_info = (
     RPOWER_OFF_RESPONSE => {
         process        => \&rpower_response,
     },
+    RPOWER_SOFTOFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
+        data           => "xyz.openbmc_project.State.Host.Transition.Off",
+    },
     RPOWER_RESET_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
@@ -441,7 +446,7 @@ sub parse_args {
     }
 
     if ($command eq "rpower") {
-        unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
+        unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
@@ -566,6 +571,9 @@ sub parse_command_status {
         } elsif ($subcommand eq "off") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_OFF_REQUEST";
             $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+        } elsif ($subcommand eq "softoff") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_SOFTOFF_REQUEST";
+            $next_status{RPOWER_SOFTOFF_REQUEST} = "RPOWER_OFF_RESPONSE";
         } elsif ($subcommand eq "reset") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_RESET_REQUEST";
             $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
