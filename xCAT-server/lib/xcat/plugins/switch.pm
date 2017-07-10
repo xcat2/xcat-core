@@ -226,13 +226,13 @@ sub process_request {
                 }
                 foreach my $portname (keys %{ $macinfo->{$switch} }) {
                     if (length($portname) > $port_name_length) {
-                        $port_name_length = length($portname);
+                        $port_name_length = length($portname) + 8;
                     }
                 }
             }
-            my $format = "%-" . $switch_name_length . "s  %-" . $port_name_length . "s  %-18s  %-20s  %-7s  %s";
+            my $format = "%-" . $switch_name_length . "s  %-" . $port_name_length . "s  %-26s  %s";
             my %failed_switches = ();
-            my $header = sprintf($format, "Switch", "Port", "MAC address", "Node", "Vlan", "MTU");
+            my $header = sprintf($format, "Switch", "Port(MTU)", "MAC address(VLAN)", "Node");
             if (!defined($req->{opt}->{check}) and $port_name_length) {
                 $cb->({ data => $header });
                 $cb->({ data => "--------------------------------------------------------------------------------------" })
@@ -251,7 +251,6 @@ sub process_request {
                     $cb->({ node => [ { name => $switch, data => ["PASS"] } ] });
                     next;
                 }
-                  
                 foreach my $port (sort keys %{ $macinfo->{$switch} }) {
                     my $node = '';
                     if (defined($macinfo->{$switch}->{$port}->{Node})) {
@@ -274,9 +273,22 @@ sub process_request {
                         @macarray = @{ $macinfo->{$switch}->{$port}->{MACaddress} };
                         my $ind = 0;
                         foreach (@macarray) {
+                            my $mac = $_;
                             $vlanid = $vlans[$ind];
+                            my $mac_vlan;
+                            if (!$mac) {
+                                $mac_vlan="N/A";
+                            } elsif ($vlanid) {
+                                $mac_vlan = "$mac($vlanid)"; 
+                            } else {
+                                $mac_vlan = $mac;
+                            }
                             $mtu = $mtuarray[$ind];
-                            my $data = sprintf($format, $switch, $port, ($_ ne '') ? $_ : '       N/A', $node,$vlanid,$mtu);
+                            my $port_mtu = $port;
+                            if ($mtu) {
+                                $port_mtu = "$port($mtu)";
+                            }
+                            my $data = sprintf($format, $switch, $port_mtu, $mac_vlan, $node);
                             $cb->({ data => $data });
                             $ind++;
 
