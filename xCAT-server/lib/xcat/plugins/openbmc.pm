@@ -178,7 +178,7 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/state/host0",
+        init_url       => "$openbmc_project_url/state/enumerate",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
@@ -996,10 +996,6 @@ sub rpower_response {
 
     my $response_info = decode_json $response->content;
 
-    foreach my $key (keys %{$response_info->{data}}) {
-        # Debug, print out the Current and Transition States     
-        print "$node: DEBUG host_states $key=$response_info->{'data'}->{$key}\n";
-    }
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
@@ -1025,23 +1021,47 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
-        if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
-            # State is off, but check if it is transitioning
-            if ($response_info->{'data'}->{RequestedHostTransition} =~ /On$/) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+        my $chassis_state = "";
+        my $chassis_transition_state = "";
+        my $host_state = "";
+        my $host_transition_state = "";
+        foreach my $type (keys %{$response_info->{data}}) {
+            if ($type =~ /host0/) {
+                $host_state = $response_info->{'data'}->{$type}->{CurrentHostState};
+                $host_transition_state = $response_info->{'data'}->{$type}->{RequestedHostTransition};
             }
-            else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+            if ($type =~ /chassis0/) { 
+                $chassis_state = $response_info->{'data'}->{$type}->{CurrentPowerState};
+                $chassis_transition_state = $response_info->{'data'}->{$type}->{RequestedPowerTransition};
             }
-        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Quiesced$/) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
-        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Running$/) {
-            # State is on, but check if it is transitioning
-            if ($response_info->{'data'}->{RequestedHostTransition} =~ /Off$/) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
-            }
-            else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+        }
+       
+        print "$node: DEBUG State CurrentPowerState=$chassis_state\n";
+        print "$node: DEBUG State RequestedPowerTransition=$chassis_transition_state\n";
+        print "$node: DEBUG State CurrentHostState=$host_state\n";
+        print "$node: DEBUG State RequestedHostTransition=$host_transition_state\n";
+
+        if ($chassis_state =~ /Off$/) {
+            xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+        } elsif ($chassis_state =~ /On$/) { 
+            if ($host_state =~ /Off$/) {
+                # State is off, but check if it is transitioning
+                if ($host_transition_state =~ /On$/) {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+                }
+                else {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                }
+            } elsif ($host_state =~ /Quiesced$/) {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
+            } elsif ($host_state =~ /Running$/) {
+                # State is on, but check if it is transitioning
+                if ($host_transition_state =~ /Off$/) {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
+                }
+                else {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                }
             }
         } else {
             my $unexpected_state = $response_info->{'data'}->{CurrentHostState};
