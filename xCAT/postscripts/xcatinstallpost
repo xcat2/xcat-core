@@ -74,7 +74,12 @@ if [ $? -eq 0 ]; then
 else
     echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 fi
-
+# Store the SERVICEGROUP into the xcatinfo file for statful installation
+sed -i "/SERVICEGROUP=.*/d" /opt/xcat/xcatinfo
+sn_group=`grep '^SERVICEGROUP' /$xcatpost/mypostscript |cut -d= -f2 | tr -d \'\"`
+if [ "x" != "x$sn_group" ]; then
+    echo "SERVICEGROUP=$sn_group" >> /opt/xcat/xcatinfo
+fi
 
 CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
 if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then

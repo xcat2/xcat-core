@@ -691,6 +691,14 @@ else
     echo "USEFLOWCONTROL=NO" >> /opt/xcat/xcatinfo
 fi
 
+# Store the SERVICEGROUP into the xcatinfo file for node deployment, and also for updatenode -s
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "1" ]; then
+    sed -i "/SERVICEGROUP=.*/d" /opt/xcat/xcatinfo
+    sn_group=`grep '^SERVICEGROUP' /$xcatpost/mypostscript |cut -d= -f2 | tr -d \'\"`
+    if [ "x" != "x$sn_group" ]; then
+      echo "SERVICEGROUP=$sn_group" >> /opt/xcat/xcatinfo
+    fi
+fi
 
 # when called by the updatenode command  MODE=1,2
 # the nodename is passed in by xdsh in the NODE environment variable by xdsh.
