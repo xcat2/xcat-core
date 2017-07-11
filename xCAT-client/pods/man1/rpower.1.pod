@@ -22,7 +22,7 @@ B<rpower> I<noderange> [B<pduon>|B<pduoff>|B<pdustat>|B<pdureset>]
 
 =head2 OpenPOWER OpenBMC:
 
-B<rpower> I<noderange> [B<off>|B<on>|B<softoff>|B<reset>|B<boot>|B<stat>|B<state>|B<status>]
+B<rpower> I<noderange> [B<off>|B<on>|B<softoff>|B<reset>|B<boot>|B<bmcstate>|B<stat>|B<state>|B<status>]
 
 =head2 PPC (with IVM or HMC) specific:
 
@@ -246,6 +246,10 @@ To pause all processes in the instance.
 =item B<unpause>
 
 To unpause all processes in the instance.
+
+=item B<bmcstate>
+
+To get state of the BMC.
 
 =item B<state>
 
