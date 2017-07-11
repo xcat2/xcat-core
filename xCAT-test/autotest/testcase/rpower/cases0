@@ -153,12 +153,14 @@ cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 
 check:ouptut=~standby|Standby
 end
 start:rpower_ipmi_wrongpasswd
-description:rpower ipmi and its passwd wrong
+description:rpower ipmi and its password wrong
 Attribute: $$CN-The operation object of rpower command
-cmd:tabdump passwd |grep ipmi>/tmp/ipmipasswd;Username=`cat /tmp/ipmipasswd |awk -F "\""  '{print $4}'`;Passwd=`cat /tmp/ipmipasswd |awk -F "\""  '{print $6}'`;`chtab key=ipmi passwd.password=$Passwd.wrong passwd.username=$Username`;tabdump passwd;
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -pt $$CN  $$ipmipasswd $$ipminame
 check:rc==0
-cmd:rpower $$CN stat
-check:output=~Error: ERROR: Incorrect password provided
-check:rc!=0
-cmd:Username=`cat /tmp/ipmipasswd |awk -F "\""  '{print $4}'`;Passwd=`cat /tmp/ipmipasswd |awk -F "\""  '{print $6}'`;chtab key=ipmi passwd.password=$Passwd passwd.username=$Username;tabdump passwd;`rm -rf /tmp/ipmipasswd`
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -c $$CN 
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -apt $$CN  $$ipmipasswd $$ipminame
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -c $$CN
+check:rc==0
 end
