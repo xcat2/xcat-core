@@ -226,7 +226,7 @@ sub process_request {
                 }
                 foreach my $portname (keys %{ $macinfo->{$switch} }) {
                     if (length($portname) > $port_name_length) {
-                        $port_name_length = length($portname) + 8;
+                        $port_name_length = length($portname) + 10;
                     }
                 }
             }
@@ -258,10 +258,6 @@ sub process_request {
                     }
 
                     my $mtu = '';
-                    my @mtuarray = ();
-                    if (defined($macinfo->{$switch}->{$port}->{Mtu})) {
-                        @mtuarray = @{ $macinfo->{$switch}->{$port}->{Mtu} };
-                    }
                     my $vlanid = '';
                     my @vlans = ();
                     if (defined($macinfo->{$switch}->{$port}->{Vlanid})) {
@@ -283,9 +279,9 @@ sub process_request {
                             } else {
                                 $mac_vlan = $mac;
                             }
-                            $mtu = $mtuarray[$ind];
                             my $port_mtu = $port;
-                            if ($mtu) {
+                            if (defined($macinfo->{$switch}->{$port}->{Mtu})) {
+                                $mtu = $macinfo->{$switch}->{$port}->{Mtu}->[0];
                                 $port_mtu = "$port($mtu)";
                             }
                             my $data = sprintf($format, $switch, $port_mtu, $mac_vlan, $node);
