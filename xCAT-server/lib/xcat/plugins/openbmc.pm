@@ -234,6 +234,7 @@ $::RESPONSE_OK                  = "200 OK";
 $::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
 $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 $::RESPONSE_METHOD_NOT_ALLOWED  = "405 Method Not Allowed";
+$::RESPONSE_SERVICE_TIMEOUT     = "504 Gateway Timeout";
 
 #-----------------------------
 
@@ -355,8 +356,9 @@ sub process_request {
     if ($request->{command}->[0] ne "getopenbmccons") {
         $cookie_jar = HTTP::Cookies->new({});
         $async = HTTP::Async->new(
+            slots => 500,
             cookie_jar => $cookie_jar,
-            timeout => 10,
+            timeout => 60,
             max_request_time => 60,
             ssl_options => {
                 SSL_verify_mode => 0,
@@ -932,7 +934,8 @@ sub deal_with_response {
             $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
             return;
-            
+        } elsif ($response->status_line eq $::RESPONSE_SERVICE_TIMEOUT) {
+            $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
             my $response_info = decode_json $response->content;
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
