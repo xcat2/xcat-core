@@ -30,6 +30,9 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 
 $::VERBOSE = 0;
+# String constants for rbeacon states
+$::BEACON_STATE_OFF="off";
+$::BEACON_STATE_ON="on";
 # String constants for rpower states
 $::POWER_STATE_OFF          = "off";
 $::POWER_STATE_ON           = "on";
@@ -104,6 +107,23 @@ my %status_info = (
     },
     LOGIN_RESPONSE     => {
         process        => \&login_response,
+    },
+
+    RBEACON_ON_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/led/groups/enclosure_identify/attr/Asserted", 
+        data           => "true",
+    },
+    RBEACON_ON_RESPONSE => {
+        process        => \&rbeacon_response,
+    },
+    RBEACON_OFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/led/groups/enclosure_identify/attr/Asserted",
+        data           => "false",
+    },
+    RBEACON_OFF_RESPONSE => {
+        process        => \&rbeacon_response,
     },
 
     REVENTLOG_REQUEST => {
@@ -460,7 +480,11 @@ sub parse_args {
          $subcommand = $ARGV[0]
     }
 
-    if ($command eq "rpower") {
+    if ($command eq "rbeacon") { 
+        unless ($subcommand =~ /^on$|^off$/) {
+	    return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rpower") {
         unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
@@ -580,6 +604,18 @@ sub parse_command_status {
     )) {
         xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
         return 1;
+    }
+
+    if ($command eq "rbeacon") { 
+        $subcommand = $ARGV[0];
+
+        if ($subcommand eq "on") {
+            $next_status{LOGIN_RESPONSE} = "RBEACON_ON_REQUEST";
+            $next_status{RBEACON_ON_REQUEST} = "RBEACON_ON_RESPONSE";
+        } elsif ($subcommand eq "off") {
+            $next_status{LOGIN_RESPONSE} = "RBEACON_OFF_REQUEST";
+            $next_status{RBEACON_OFF_REQUEST} = "RBEACON_OFF_RESPONSE";
+        }
     }
 
     if ($command eq "rpower") {
@@ -1330,6 +1366,45 @@ sub rsetboot_response {
 
     return;
 }
+
+#-------------------------------------------------------
+
+=head3  rbeacon_response
+
+  Deal with response of rbeacon command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rbeacon_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    if ($node_info{$node}{cur_status} eq "RBEACON_ON_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("$::BEACON_STATE_ON", $callback, $node);
+        }
+    } 
+
+    if ($node_info{$node}{cur_status} eq "RBEACON_OFF_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("$::BEACON_STATE_OFF", $callback, $node);
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+}
+
 
 #-------------------------------------------------------
 
