@@ -31,12 +31,13 @@ use xCAT_monitoring::monitorctrl;
 
 $::VERBOSE = 0;
 # String constants for rpower states
-$::POWER_STATE_OFF="off";
-$::POWER_STATE_ON="on";
-$::POWER_STATE_POWERING_OFF="powering-off";
-$::POWER_STATE_POWERING_ON="powering-on";
-$::POWER_STATE_QUIESCED="quiesced";
-$::POWER_STATE_RESET="reset";
+$::POWER_STATE_OFF          = "off";
+$::POWER_STATE_ON           = "on";
+$::POWER_STATE_POWERING_OFF = "powering-off";
+$::POWER_STATE_POWERING_ON  = "powering-on";
+$::POWER_STATE_QUIESCED     = "quiesced";
+$::POWER_STATE_RESET        = "reset";
+$::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE="";
 
 $::NO_ATTRIBUTES_RETURNED="No attributes returned from the BMC.";
@@ -152,6 +153,11 @@ my %status_info = (
         process        => \&rinv_response,
     },
 
+    RPOWER_BMCREBOOT_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/state/bmc0/attr/RequestedBMCTransition",
+        data           => "xyz.openbmc_project.State.BMC.Transition.Reboot",
+    },
     RPOWER_ON_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
@@ -446,7 +452,7 @@ sub parse_args {
     }
 
     if ($command eq "rpower") {
-        unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcstate$|^status$|^stat$|^state$/) {
+        unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
@@ -592,6 +598,10 @@ sub parse_command_status {
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
             $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
             $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+        } elsif ($subcommand eq "bmcreboot") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+            $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
+            $status_info{RPOWER_RESET_RESPONSE}{argv} = "$subcommand";
         }
     } 
 
@@ -1026,7 +1036,12 @@ sub rpower_response {
 
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+            if (defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
+                my $bmc_node = "$node BMC";
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_REBOOT", $callback, $bmc_node);
+            } else {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+            }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     }
