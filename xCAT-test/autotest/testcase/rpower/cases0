@@ -152,6 +152,34 @@ cmd:rpower $$CN onstandby
 cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~standby|Standby
 end
+start:rpower_suspend_OpenpowerBmc
+description:rpower openpowerbmc using suspend
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN suspend
+check:output=~Error: unsupported command rpower suspend for OpenPOWER
+check:rc==1
+end
+start:rpower_softoff_OpenpowerBmc
+description:rpower openpowerbmc using softoff
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN softoff
+check:output=~Error: unsupported command rpower softoff for OpenPOWER
+check:rc==1
+end
+start:rpower_wake_OpenpowerBmc
+description:rpower openpowerbmc using wake
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN wake
+check:output=~Error: unsupported command rpower wake for OpenPOWER
+check:rc==1
+end
+start:rpower_errorcommand_OpenpowerBmc
+description:rpower openpowerbmc using errorcommand
+Attribute: $$CN-The operation object of rpower command
+cmd:rpower $$CN ddd
+check:output=~Unsupported command:
+check:rc==1
+end
 start:rpower_ipmi_wrongpasswd
 description:rpower ipmi and its password wrong
 Attribute: $$CN-The operation object of rpower command
