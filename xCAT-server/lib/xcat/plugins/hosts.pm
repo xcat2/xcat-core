@@ -660,7 +660,7 @@ sub donics
             if (!$nicip) {
                 next;
             }
-            #Only format for nicips:<nic1>!<ip1>|<ip2>|... or <nic1>!<one regular expression>
+            #Only support format for nicips is :<nic1>!<ip1>|<ip2>|... or <nic1>!<one regular expression>
             if ($nicip =~ /^\|\S*\|$/) {
                 $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
             }
