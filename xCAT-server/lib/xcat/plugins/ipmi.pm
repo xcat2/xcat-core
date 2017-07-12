@@ -1610,9 +1610,10 @@ sub isfpc {
 sub isopenpower {
     my $sessdata = shift;
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
+        # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
-    # mfg_id 10876 is for Supermicro, prod_id 2355 for B&S, and 0 for Boston
     } elsif (($sessdata->{prod_id} == 0 or $sessdata->{prod_id} == 2355) and $sessdata->{mfg_id} == 10876) {
+        # mfg_id 10876 is for Supermicro, prod_id 2355 for B&S, and 0 for Boston
         return 1;
     } else {
         return 0;
