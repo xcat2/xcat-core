@@ -660,9 +660,7 @@ sub donics
             if (!$nicip) {
                 next;
             }
-            #If there is one nicip in  nicips, and it is regular expression
-            #for example: eth0!|\D+(\d+)\D+|10.80.1.($1*2+103)|
-            #Does not support: there is regular expression in multple nicips
+            #Only format for nicips:<nic1>!<ip1>|<ip2>|... or <nic1>!<one regular expression>
             if ($nicip =~ /^\|\S*\|$/) {
                 $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
             }
