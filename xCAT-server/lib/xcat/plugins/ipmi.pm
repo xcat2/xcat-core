@@ -1611,8 +1611,10 @@ sub isopenpower {
     my $sessdata = shift;
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         return 1;
-    }
-    else {
+    # mfg_id 10876 is for Supermicro, prod_id 2355 for B&S, and 0 for Boston
+    } elsif (($sessdata->{prod_id} == 0 or $sessdata->{prod_id} == 2355) and $sessdata->{mfg_id} == 10876) {
+        return 1;
+    } else {
         return 0;
     }
 }
@@ -3971,7 +3973,7 @@ sub add_fruhash {
                 $fru->rec_type("hw");
             }
             $fru->value($err);
-            if (exists($sessdata->{currfrusdr})) {
+            if ($sessdata->{currfrusdr}) {
                 $fru->desc($sessdata->{currfrusdr}->id_string);
             }
             if (exists($sessdata->{frudex})) {
@@ -4213,6 +4215,9 @@ sub parsefru {
         } else { #some meaning suggested, but not parsable, xCAT shouldn't meddle
             return "Unrecognized FRU format", undef;
         }
+    }
+    elsif (!$bytes->[1] and !$bytes->[2] and !$bytes->[3] and !$bytes->[4] and !$bytes->[5]) {
+        return "No data available", undef;
     }
     if ($bytes->[1]) { #The FRU spec, unfortunately, gave no easy way to tell the size of internal area
          #consequently, will find the next defined field and preserve the addressing and size of current FRU
