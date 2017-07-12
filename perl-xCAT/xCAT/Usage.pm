@@ -29,7 +29,7 @@ my %usage = (
        rpower noderange [on|off|softoff|reset|boot|stat|state|status|wake|suspend [-w timeout] [-o] [-r]]
        rpower noderange [pduon|pduoff|pdustat]
      OpenPOWER BMC:
-       rpower noderange [on|off|reset|boot|stat|state|status]
+       rpower noderange [on|off|softoff|reset|boot|bmcstate|stat|state|status]
        rpower noderange [pduon|pduoff|pdustat]
      OpenPOWER OpenBMC:
        rpower noderange [on|off|reset|boot|stat|state|status]

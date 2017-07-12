@@ -226,16 +226,16 @@ sub process_request {
                 }
                 foreach my $portname (keys %{ $macinfo->{$switch} }) {
                     if (length($portname) > $port_name_length) {
-                        $port_name_length = length($portname);
+                        $port_name_length = length($portname) + 10;
                     }
                 }
             }
-            my $format = "%-" . $switch_name_length . "s  %-" . $port_name_length . "s  %-18s  %s";
+            my $format = "%-" . $switch_name_length . "s  %-" . $port_name_length . "s  %-26s  %s";
             my %failed_switches = ();
-            my $header = sprintf($format, "Switch", "Port", "MAC address", "Node");
+            my $header = sprintf($format, "Switch", "Port(MTU)", "MAC address(VLAN)", "Node");
             if (!defined($req->{opt}->{check}) and $port_name_length) {
                 $cb->({ data => $header });
-                $cb->({ data => "------------------------------------------------------------------" })
+                $cb->({ data => "--------------------------------------------------------------------------------------" })
             }
             foreach my $switch (keys %$macinfo) {
                 if (defined($macinfo->{$switch}->{ErrorStr})) {
@@ -256,12 +256,37 @@ sub process_request {
                     if (defined($macinfo->{$switch}->{$port}->{Node})) {
                         $node = $macinfo->{$switch}->{$port}->{Node};
                     }
+
+                    my $mtu = '';
+                    my $vlanid = '';
+                    my @vlans = ();
+                    if (defined($macinfo->{$switch}->{$port}->{Vlanid})) {
+                        @vlans = @{ $macinfo->{$switch}->{$port}->{Vlanid} };
+                    }
+
                     my @macarrary = ();
                     if (defined($macinfo->{$switch}->{$port}->{MACaddress})) {
                         @macarray = @{ $macinfo->{$switch}->{$port}->{MACaddress} };
+                        my $ind = 0;
                         foreach (@macarray) {
-                            my $data = sprintf($format, $switch, $port, ($_ ne '') ? $_ : '       N/A', $node);
+                            my $mac = $_;
+                            $vlanid = $vlans[$ind];
+                            my $mac_vlan;
+                            if (!$mac) {
+                                $mac_vlan="N/A";
+                            } elsif ($vlanid) {
+                                $mac_vlan = "$mac($vlanid)"; 
+                            } else {
+                                $mac_vlan = $mac;
+                            }
+                            my $port_mtu = $port;
+                            if (defined($macinfo->{$switch}->{$port}->{Mtu})) {
+                                $mtu = $macinfo->{$switch}->{$port}->{Mtu}->[0];
+                                $port_mtu = "$port($mtu)";
+                            }
+                            my $data = sprintf($format, $switch, $port_mtu, $mac_vlan, $node);
                             $cb->({ data => $data });
+                            $ind++;
 
                             #$cb->({node=>[{name=>$switch,data=>$data}]});
                         }
@@ -269,7 +294,7 @@ sub process_request {
                 }
             }
             if (!defined($req->{opt}->{check}) and $port_name_length) {
-                $cb->({ data => "------------------------------------------------------------------" })
+                $cb->({ data => "--------------------------------------------------------------------------------------" })
             }
             foreach (keys %failed_switches) {
                 $cb->({ node => [ { name => $_, error => [ $failed_switches{$_} ], errorcode => 1 } ] });
