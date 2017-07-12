@@ -185,10 +185,11 @@ description:rpower ipmi and its password wrong
 Attribute: $$CN-The operation object of rpower command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -pt $$CN  $$ipmipasswd $$ipminame
 check:rc==0
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -c $$CN 
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -c $$CN
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -apt $$CN  $$ipmipasswd $$ipminame
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_ipmi_wrongpasswd_test.sh  -c $$CN
 check:rc==0
 end
+
