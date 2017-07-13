@@ -8082,11 +8082,39 @@ sub preprocess_request {
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
         $realnoderange = \@bmcnodes;
     } elsif ($command eq "rspconfig") {
-
         # filter out the nodes which should be handled by ipmi.pm
         my (@bmcnodes, @nohandle);
         xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
         $realnoderange = \@bmcnodes;
+
+        if ($realnoderange) {
+            my $optset;
+            my $option;
+            foreach (@exargs) {
+                if ($_ =~ /^(\w+)=(.*)/) {
+                    if ($optset eq 0) {
+                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        $request = {};
+                        return;
+                    }
+                    $optset = 1;
+                    $option = $1;
+                } else {
+                    if ($optset eq 1) {
+                        $callback->({ errorcode => [1], data => [ "Usage Error: Cannot display and change attributes on the same command."] });
+                        $request = {};
+                        return;
+                    }
+                    $option = $_;
+                    $optset = 0;
+                }
+                unless ($option =~ /^USERID$|^ip$|^netmask$|^gateway$|^vlan$|^userid$|^username$|^password$|^snmpdest|^thermprofile$|^alert$|^garp$|^community$|^backupgateway$/) {
+                    $callback->({ errorcode => [1], data => [ "Unsupported command: $command $_"] });
+                    $request = {};
+                    return;
+                }
+            }
+        }
     } elsif ($command eq "rinv") {
         if ($exargs[0] eq "-t" and $#exargs == 0) {
             unshift @{ $request->{arg} }, 'all';
