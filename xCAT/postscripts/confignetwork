@@ -320,7 +320,7 @@ function sort_nics_device_order {
                 echo $alonenic
             else
                 errorcode=1
-                echo "Error: nicips,nictype and nicnetwork should be configured in nics table for $alonenic."
+                echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
                 ((num1+=1)) 
                 continue
             fi
@@ -521,7 +521,7 @@ function configure_nicdevice {
         elif [ x"$nic_dev_type" = "xinfiniband" ]; then
             log_error "confignetwork does not support configure IB. "
         else
-            log_error "Error : please check nictypes for $nic_pair."
+            log_error "Error : please check nic data in nics table."
             errorcode=1
         fi 
 
@@ -603,7 +603,7 @@ parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 #bond0 eth2@eth3
 new_nicdevice=`find_nic_and_device_list $str_all_nics|sort -g -k1 -g -k2|uniq`
 if [ -z "$new_nicdevice" ]; then
-    log_info "There is no nic device to configure."
+    log_info "There is no other nic device to configure."
     exit $errorcode  
 fi
 

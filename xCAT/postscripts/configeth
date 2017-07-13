@@ -8,7 +8,7 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
    . $str_dir_name/nicutils.sh
 fi
-
+error_code=0
 function configipv4(){
     str_if_name=$1
     str_v4ip=$2
@@ -320,6 +320,10 @@ function add_ip_temporary(){
             str_bcase=$(v4calcbcase $str_ip $str_mask)
             #the label is ready, add the ip address directly
             ip addr add $str_ip/${str_mask} broadcast $str_bcase dev $str_nic_name scope global label $str_label
+            if [ $? -ne 0 ]; then
+                log_error "add the ip address $str_ip/${str_mask} failed."
+                error_code=1
+            fi
         fi
     fi
 }
@@ -349,7 +353,7 @@ if [ "$str_os_type" = "linux" ];then
     fi
 else
     echo "configeth dose not support AIX in this build"
-    exit 0
+    exit 1
 
 fi
 
@@ -409,7 +413,7 @@ if [ "$1" = "-r" ];then
         #delete the configuration files
         delete_nic_config_files $str_nic_name
     fi
-    exit 0
+    exit $error_code
 elif [ "$1" = "-s" ];then
     if [ $# -lt 2 ];then
         logger -t xcat -p local4.err "configeth: config install nic, but the nic name is missed"
@@ -472,7 +476,7 @@ elif [ "$1" = "-s" ];then
             fi
        fi
     else
-        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic* | grep lease`
+        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic* | grep lease >& /dev/null`
         if [ -e "$str_lease_file" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
@@ -504,7 +508,7 @@ elif [ "$1" = "-s" ];then
     if [ -z "$str_inst_ip" -o -z "$str_inst_mask" ];then
         logger -t xcat -p local4.err "configeth: config install nic, can not find the information from lease file, return."
         log_info "configeth on $NODE: config install nic, can not find information from dhcp lease file, return."
-        exit 0
+        exit 1
     fi
 
     str_inst_net=$(v4calcnet $str_inst_ip $str_inst_mask)
@@ -636,8 +640,12 @@ elif [ "$1" = "-s" ];then
     fi
 
     ifup $str_inst_nic
+    if [ $? -ne 0 ]; then
+        log_error "ifup $str_inst_nic failed."
+        error_code=1
+    fi
 
-    exit 0
+    exit $error_code
 fi
 
 #main prcess
@@ -717,6 +725,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     if [ ! $str_netname ];then
         logger -t xcat -p local4.err "configeth: Network name is not defined on $str_nic_name for $str_ip."
         log_error "configeth on $NODE: Network name is not defined on $str_nic_name for $str_ip."
+        error_code=1
         num_index=$((num_index+1))
         continue
     fi
@@ -726,6 +735,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     if [ ! $str_line ];then
         logger -t xcat -p local4.err "configeth: Network object $str_netname is not defined."
         log_error "configeth on $NODE: Network object $str_netname is not defined."
+        error_code=1
         num_index=$((num_index+1))
         continue
     fi
@@ -739,6 +749,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     if [ ! $str_subnet -o ! $str_netmask ];then
         logger -t xcat -p local4.err "configeth: subnet or netmask is not defined in network object $str_netname."
         log_error "configeth on $NODE: subnet or netmask is not defined in network object $str_netname."
+        error_code=1
         num_index=$((num_index+1))
         continue
     fi
@@ -770,6 +781,7 @@ while [ $num_index -lt ${#array_nic_ips[*]} ];do
     else
         logger -t xcat -p local4.err "configeth: the ipaddress( $str_ip ) for $str_nic_name is invalid."
         log_error "configeth on $NODE: the ipaddress( $str_ip ) for $str_nic_name is invalid."
+        error_code=1
     fi
     num_index=$((num_index+1))
 done
@@ -790,6 +802,7 @@ if [ "$str_os_type" = "aix" ];then
             chdev -l $str_nic_name -a netaddr='' -a netmask=''
             logger -t xcat -p local4.err "configeth: delete undefined ip address $str_old_ip"
             log_error "configeth on $NODE: delete undefined ip address $str_old_ip"
+            error_code=1
         fi
     fi
 
@@ -864,6 +877,10 @@ if [ "$str_os_type" = "aix" ];then
     
     #change the nic status to up
     chdev -l $str_nic_name -a state=up
+    if [ $? -ne 0 ]; then
+        log_error "chdev -l $str_nic_name -a state=up failed."
+        error_code=1
+    fi
 else
     str_history=''
     bool_restart_flag=0
@@ -895,6 +912,10 @@ else
                         log_info "configeth on $NODE: delete $str_old_ip for $str_nic_name temporary."
                         str_old_ip=`echo $str_old_ip | tr '_' '/'`
                         ip addr del $str_old_ip dev $str_nic_name
+                        if [ $? -ne 0 ]; then
+                            log_error "ip addr del $str_old_ip dev $str_nic_name failed."
+                            error_code=1
+                        fi
                     fi
                 done
             else
@@ -1028,11 +1049,19 @@ else
     if [ $bool_restart_flag -eq 1 ];then
         if [ "$str_os_type" = "debian" ];then
             ifup -a -i /etc/network/interfaces.d/$str_nic_name
+            if [ $? -ne 0 ]; then
+                log_error "ifup -a -i /etc/network/interfaces.d/$str_nic_name failed."
+                error_code=1
+            fi
         else
             echo "bring up ip"
             ifup $str_nic_name
+            if [ $? -ne 0 ]; then
+                log_error "ifup $str_nic_name failed."
+                error_code=1
+            fi
         fi
     fi
 fi
 
-exit 0
+exit $error_code
