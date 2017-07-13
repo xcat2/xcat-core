@@ -379,8 +379,9 @@ sub config_vlan {
        if ($mode =~ /hybrid/) 
        {
            if (!$access_vlan) {
-               print "NOTE: Hybrid mode will change access vlan back to 1\n"; 
-               print "please provide access vlan if other than 1\n"; 
+               print "NOTE: Hybrid mode will change access VLAN back to 1\n"; 
+               print "If other than 1, run the command again with access VLAN number: \n"
+               print "    configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode\n"; 
                $access_vlan = 1;
            }
        }
@@ -405,7 +406,7 @@ sub config_vlan {
             next;
         }
 
-        print "Tagging access vlan to $access_vlan and allowed vlan to $allowed_vlan with $mode mode for $switch port $port_input\n";
+        print "Tagging access VLAN to $access_vlan and allowed VLAN to $allowed_vlan with $mode mode for $switch port $port_input\n";
 
         my $cmd_prefix = "xdsh $switch --devicetype $devicetype";
         foreach my $port (@ports) {
