@@ -380,7 +380,7 @@ sub config_vlan {
        {
            if (!$access_vlan) {
                print "NOTE: Hybrid mode will change access VLAN back to 1\n"; 
-               print "If other than 1, run the command again with access VLAN number: \n"
+               print "If other than 1, run the command again with access VLAN number: \n";
                print "    configMellanox --switches switchnames --port port --accessvlan vlan1 --allowvlan vlan2 --mode mode\n"; 
                $access_vlan = 1;
            }
