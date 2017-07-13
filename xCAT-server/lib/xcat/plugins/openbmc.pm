@@ -945,7 +945,12 @@ sub gen_send_request {
     }
 
     if ($status_info{ $node_info{$node}{cur_status} }{data}) {
-        $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
+        # Handle boolean values by create the json objects without wrapping with quotes
+        if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
+            $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
+        } else {
+            $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
+        }
     }
 
     if ($node_info{$node}{cur_url}) {
