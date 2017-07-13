@@ -334,7 +334,7 @@ fi
 #create the xcatinstallpost
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
+#!/bin/bash
 
 if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
@@ -356,6 +356,7 @@ else
     fi
 
 fi
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
