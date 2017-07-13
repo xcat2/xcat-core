@@ -45,7 +45,7 @@ OpenPOWER OpenBMC:
 ==================
 
 
-\ **rpower**\  \ *noderange*\  [\ **off | on | softoff | reset | boot | bmcstate | stat | state | status**\ ]
+\ **rpower**\  \ *noderange*\  [\ **off | on | softoff | reset | boot | bmcreboot | bmcstate | stat | state | status**\ ]
 
 
 PPC (with IVM or HMC) specific:
