@@ -351,11 +351,17 @@ sub preprocess_request {
 #-------------------------------------------------------
 sub process_request {
     my $request = shift;
+    $callback = shift;
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
+    my $extrargs       = $request->{arg};
+    my @exargs         = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs = @$extrargs;
+    }
 
     my $check = parse_node_info($noderange);
-    my $rst = parse_command_status($command);
+    my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
 
     if ($request->{command}->[0] ne "getopenbmccons") {
@@ -552,7 +558,8 @@ sub parse_args {
 
 #-------------------------------------------------------
 sub parse_command_status {
-    my $command  = shift;
+    my $command     = shift;
+    my $subcommands = shift;
     my $subcommand;
 
     xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firware level is at v1.99.6-0-r1, or higher.", $callback);
@@ -568,7 +575,7 @@ sub parse_command_status {
     }
 
     if ($command eq "rpower") {
-        $subcommand = $ARGV[0];
+        $subcommand = $$subcommands[0];
 
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_ON_REQUEST";
@@ -597,8 +604,8 @@ sub parse_command_status {
     } 
 
     if ($command eq "rinv") {
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -626,7 +633,7 @@ sub parse_command_status {
             return 1;
         }
 
-        $subcommand = $ARGV[0];
+        $subcommand = $$subcommands[0];
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
@@ -656,8 +663,8 @@ sub parse_command_status {
             return 1;
         }
 
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -677,7 +684,7 @@ sub parse_command_status {
 
     if ($command eq "rspconfig") {
         my @options = ();
-        foreach $subcommand (@ARGV) {
+        foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
@@ -709,8 +716,8 @@ sub parse_command_status {
     }
 
     if ($command eq "rvitals") {
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -735,7 +742,7 @@ sub parse_command_status {
             return 1;
         }
 
-        my $update_file = $ARGV[0]; 
+        my $update_file = $$subcommands[0]; 
         my $filename = undef;
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
