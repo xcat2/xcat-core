@@ -607,7 +607,7 @@ sub parse_command_status {
     }
 
     if ($command eq "rbeacon") { 
-        $subcommand = $ARGV[0];
+        $subcommand = $$subcommands[0];
 
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RBEACON_ON_REQUEST";
