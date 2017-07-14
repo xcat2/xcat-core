@@ -1,6 +1,7 @@
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::petitboot;
 
+#use Data::Dumper;
 use File::Path;
 use Getopt::Long;
 use xCAT::Table;
@@ -125,12 +126,10 @@ sub setstate {
 
                     # We are in the service node pools, print error if no facing ip.
                     if (xCAT::InstUtils->is_me($sn)) {
-                        my @myself = xCAT::NetworkUtils->determinehostname();
-                        my $myname = $myself[ (scalar @myself) - 1 ];
                         $::callback->(
                             {
                                 error => [
-                                    "$myname: $ipfnd[1] on service node $sn"
+                                    "$::myxcatname: $ipfnd[1] on service node $sn"
                                 ],
                                 errorcode => [1]
                             }
@@ -142,7 +141,7 @@ sub setstate {
                 $::callback->(
                     {
                         error => [
-                            "$myname: $ipfnd[1]"
+                            "$::myxcatname: $ipfnd[1]"
                         ],
                         errorcode => [1]
                     }
@@ -363,6 +362,7 @@ sub preprocess_request {
             return xCAT::Scope->get_broadcast_scope_with_parallel($req);
         }
     }
+    # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
 }
 
@@ -408,27 +408,57 @@ sub process_request {
         return;
     }
 
-    #if not shared tftpdir, then filter, otherwise, set up everything
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    $::myxcatname = $hostinfo[(scalar @hostinfo) - 1];
+    xCAT::MsgUtils->trace(0, "d", "petitboot: running on $::myxcatname");
+
+    my @unmanagednodes = ();
+    #if not shared tftpdir, then broadcast, otherwise, set up everything
     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
         @nodes = ();
-        my @hostinfo = xCAT::NetworkUtils->determinehostname();
-        my $cur_xmaster = pop @hostinfo;
-        xCAT::MsgUtils->trace(0, "d", "petitboot: running on $cur_xmaster");
 
-        # Get current server managed node list
+        my %iphash   = ();
+        # flag the IPs or names in iphash
+        foreach (@hostinfo) { $iphash{$_} = 1; }
+        #print Dumper(\%iphash);
+
+        my $mynodeonly  = 0;
+        my @entries = xCAT::TableUtils->get_site_attribute("disjointnetboot");
+        my $t_entry = $entries[0];
+        if (defined($t_entry)) {
+            $mynodeonly = $t_entry;
+        }
+        xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: disjointnetboot=$mynodeonly");
+
+        # Get managed node list under current server
+        # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
         my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-        my %managed = {};
-        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
+        #print Dumper($sn_hash);
+        my %managed = ();
+        foreach (keys %$sn_hash) {
+            if (exists($iphash{$_})) {
+                my $cur_xmaster = $_;
+                foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
+                last;
+            }
+        }
 
         foreach (@rnodes) {
+            # For MN, the scope is all CN, for SN, the scope is the nodes it managed if disjointnetboot is set.
+            my $req2manage = exists($managed{$_}) || xCAT::Utils->isMN();
+            if ($mynodeonly == 1 && $req2manage != 1) {
+                push @unmanagednodes, $_;
+                next;
+            }
+
+            # Only handle its boot configuration files if the node in same subnet
             if (xCAT::NetworkUtils->nodeonmynet($_)) {
                 push @nodes, $_;
             } else {
                 my $msg = "petitboot configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
-                if ( $cur_xmaster ) {
-                    $msg .= ": $cur_xmaster";
-                }
-                if ( exists( $managed{$_} ) ) {
+                $msg .= ": $::myxcatname" if ( $::myxcatname );
+
+                if ($req2manage == 1) {
                     # report error when it is under my control but I cannot handle it.
                     my $rsp;
                     $rsp->{data}->[0] = $msg;

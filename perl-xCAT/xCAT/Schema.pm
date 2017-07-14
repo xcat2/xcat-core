@@ -1171,6 +1171,9 @@ passed as argument rather than by table value',
 "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n" .
 "              If value is set to a hostname, the directory in tftpdir\n" .
 "              will be mounted from that hostname on the SN\n\n" .
+" disjointnetboot:  Only available when sharedtftp is set to 0/no. If set to '1', a service node\n" .
+"              handles the netboot (petitboot/grub2/xnba) config file only for the nodes it manages.\n" .
+"              The default value is '0'. '0' means handle all the nodes in the same subnet.\n\n" .
 " sharedinstall:  Indicates if a shared file system will be used for installation\n" .
 "                 resources. Possible values are: 'no', 'sns', or 'all'.  'no' \n" .
 "                 means a shared file system is not being used.  'sns' means a\n" .
