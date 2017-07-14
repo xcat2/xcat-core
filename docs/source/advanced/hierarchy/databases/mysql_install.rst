@@ -26,20 +26,14 @@ Red Hat Enterprise Linux
        perl-DBD-MySQL*
        mysql-server-5.*
        mysql-5.*
-       mysql-devel-5.*
-       mysql-bench-5.*
        mysql-connector-odbc-*
 
 * MariaDB - Using ``yum``, ensure that the following packages are installed on the management node: ::
 
-       mariadb-devel-5.*
-       mariadb-libs-5.*
        mariadb-server-5.*
-       mariadb-bench-5.*
        mariadb-5.*
        perl-DBD-MySQL*
        mysql-connector-odbc-*
-       unixODBC*
 
 Suse Linux Enterprise Server
 ----------------------------
