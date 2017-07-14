@@ -247,6 +247,10 @@ To pause all processes in the instance.
 
 To unpause all processes in the instance.
 
+=item B<bmcreboot>
+
+To reboot BMC.
+
 =item B<bmcstate>
 
 To get state of the BMC.

@@ -380,6 +380,12 @@ OPTIONS
  
 
 
+\ **bmcreboot**\ 
+ 
+ To reboot BMC.
+ 
+
+
 \ **bmcstate**\ 
  
  To get state of the BMC.
