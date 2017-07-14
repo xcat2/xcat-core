@@ -103,6 +103,7 @@ mkdef_template_cec_template_without_remainder
 mkdef_template_invalid_template
 mkdef_template_switch_template_without_attribute
 mkdef_z
+mkdef_regex_nicsip
 nodeadd_err_symbol
 nodeadd_h
 nodeadd_noderange
