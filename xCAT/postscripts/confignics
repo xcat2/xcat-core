@@ -18,7 +18,7 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
 fi
-
+error_code=0
 #the nics' information contain: 
 #1. ip address
 #2. nic network
@@ -102,6 +102,7 @@ function findnetwork(){
     done
     
     echo "Error: Can not find the corresponding network defination for ip address: $str_ip ."
+    error_code=1
 }
 
 function checknetwork(){
@@ -138,7 +139,7 @@ str_os_type=`uname | tr 'A-Z' 'a-z'`
 if [ "$str_os_type" = "aix" ];then
     logger -t xcat -p local4.err "confignics: aix does not support in this build"
     echo "confignics: aix does not support in this build"
-    exit 0
+    exit 1
 fi
 bool_remove=0
 num_iba_ports=
@@ -167,7 +168,7 @@ then
         then
             logger -t xcat -p local4.info "confignics --script <myscript> could Not be used with other options"
             echo "confignics --script <myscript> could Not be used with other options"
-            exit -1
+            exit 1
         fi
         boot_myscript=1
         myscript=$2;
@@ -215,7 +216,7 @@ if [ -z "$NICIPS" ];then
    else
        logger -t xcat -p local4.info "confignics: nicips attribute is not defined. "
        echo "confignics on $NODE: nicips attribute is not defined. "
-       exit 0
+       exit 1
    fi
 fi
 splitconfig "$NICIPS"
@@ -226,7 +227,7 @@ splitconfig "$NICCUSTOMSCRIPTS"
 if [ $boot_myscript -eq 1 ];then
     . $str_dir_name/$myscript
     if [ $? -ne 0 ];then
-        exit -1
+        exit 1
     fi
     exit 0
 fi
@@ -277,6 +278,9 @@ if [ $bool_remove -eq 1 ];then
         logger -t xcat -p local4.info "confignics: remove nic $str_temp_nic"
         echo "confignics on $NODE: remove nic $str_temp_nic"
         configeth -r $str_temp_nic
+        if [ $? -ne 0 ]; then
+            error_code=1
+        fi
     done
 fi
 old_ifs=$IFS
@@ -310,6 +314,9 @@ do
                 logger -t xcat -p local4.info "confignics: call 'configeth $str_inst_nic'"
                 echo "confignics on $NODE: call 'configeth -s $str_inst_nic"
                 configeth -s $str_inst_nic
+                if [ $? -ne 0 ]; then
+                    error_code=1
+                fi
                 continue
             else
                 continue
@@ -322,6 +329,7 @@ do
         else
             logger -t xcat -p local4.info "confignics: unknown nic type for $key: $str_value ."
             echo "confignics on $NODE: unknown nic type for $key: $str_value ."
+            error_code=1
             continue
         fi
 
@@ -337,6 +345,9 @@ do
              logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} $str_network'"
              echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} $str_network'"
              configeth $key ${array_temp[0]} $str_network
+             if [ $? -ne 0 ]; then
+                 error_code=1
+             fi
         elif [ "$str_nic_type" = "infiniband" ];then
             if [ $str_ib_nics ];then
                 str_ib_nics=$str_ib_nics","$key
@@ -346,6 +357,7 @@ do
         else
             logger -t xcat -p local4.info "confignics: unknown type $str_nic_type for NIC: $key"
             echo "confignics on $NODE: unknown type $str_nic_type for NIC: $key"
+            error_code=1
         fi
     fi
 done
@@ -358,5 +370,9 @@ else
         logger -t xcat -p local4.info "confignics: executed script: 'configib -u' to remove all ib nics and configuration files"
         echo "confignics on $NODE: executed script: 'configib -r' to remove all ib nics and configuration files"
         configib
+        if [ $? -ne 0 ]; then
+            error_code=1
+        fi
     fi
 fi
+exit $error_code
