@@ -382,8 +382,7 @@ function get_network_attr {
    if [ $index -le $NETWORKS_LINES ]; then
        echo "$netline" | $sed -e 's/||/\n/g' | $awk -F'=' '$1 == "'$attrname'" {print $2}'
    else
-       log_error "Fail to get $attrname for network $netname"
-       exit 1
+       return 1
    fi
 }
 
