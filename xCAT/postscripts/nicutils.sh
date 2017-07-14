@@ -498,7 +498,7 @@ function create_persistent_ifcfg {
         if [ -z "$_netmask" ]; then
             _netmask=`get_network_attr $xcatnet mask`
             if [ $? -ne 0 ]; then
-                log_warn "There is no mask configure in network $xcatnet from networks table."
+                log_warn "There is no netmask configured for network $xcatnet in networks table"
                 _netmask=""
             fi
         fi
@@ -507,7 +507,6 @@ function create_persistent_ifcfg {
         if [ -z "$_mtu" ]; then
             _mtu=`get_network_attr $xcatnet mtu`
             if [ $? -ne 0 ]; then
-                log_warn "There is no mtu value configured in network $xcatnet from networks table."
                 _mtu=""
             fi
         fi
@@ -896,7 +895,7 @@ function create_bridge_interface {
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
         if [ $? -ne 0 ]; then
-            log_warn "There is no mtu value configured in network $xcatnet from networks table."
+            log_warn "There is no MTU configured for network $xcatnet in networks table."
             _mtu=""
         fi
     fi
@@ -1021,7 +1020,7 @@ function create_ethernet_interface {
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
         if [ $? -ne 0 ]; then
-            log_warn "There is no mtu value configured in network $xcatnet from networks table."
+            log_warn "There is no MTU configured for network $xcatnet in networks table."
             _mtu=""
         fi
 
@@ -1113,7 +1112,7 @@ function create_vlan_interface {
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
         if [ $? -ne 0 ]; then
-            log_warn "There is no mtu value configured in network $xcatnet from networks table."
+            log_warn "There is no MTU configured for network $xcatnet in networks table."
             _mtu=""
         fi
 
@@ -1295,7 +1294,7 @@ function create_bond_interface {
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
         if [ $? -ne 0 ]; then
-            log_warn "There is no mtu value configured in network $xcatnet from networks table."
+            log_warn "There is no MTU configured for network $xcatnet in networks table."
             _mtu=""
         fi
     fi
