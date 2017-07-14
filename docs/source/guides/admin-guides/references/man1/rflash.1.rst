@@ -11,7 +11,7 @@ Name
 ****
 
 
-\ **rflash**\  - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. \ **rflash**\  is also able to update firmware for NextScale Fan Power Controllers (FPC).
+\ **rflash**\  - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. POWER8 and POWER9 systems are also supported. \ **rflash**\  is also able to update firmware for NextScale Fan Power Controllers (FPC).
 
 
 ****************
@@ -50,7 +50,7 @@ OpenPOWER BMC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm_file_path*\  [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d=**\ \ *data_directory] [\ \*\*-c\*\*\ |\ \*\*-**\ **-check\*\*\ ] [\ \*\*-**\ **-retry=\*\*\ \ \*count\*\ ] [\ \*\*-V\*\*\ ]*\ 
 
 
 
@@ -122,7 +122,8 @@ OpenPOWER specific:
 ===================
 
 
-The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
+\ **Note:**\  When using \ **rflash**\  in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes. Shared storage can be used to accomplish that, alternatively the hpm file or contents of the data directory can be copied to Service Nodes.
 
 
 
@@ -153,6 +154,12 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 \ **-d**\  \ *data_directory*\ 
  
  Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management.
+ 
+
+
+\ **-d=**\ \ *data_directory*\ 
+ 
+ Used for Supermicro systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral.
  
 
 
@@ -263,6 +270,16 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
  .. code-block:: perl
  
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
+ 
+ 
+
+
+6. To update the firmware on OpenPOWER Supermicro machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+ 
+ 
+ .. code-block:: perl
+ 
+   rflash briggs01 -d=/root/supermicro/OP825
  
  
 

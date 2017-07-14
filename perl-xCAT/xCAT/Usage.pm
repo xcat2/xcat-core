@@ -340,7 +340,7 @@ my %usage = (
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
     PPC64LE (using BMC Management) specific:
-        rflash <noderange> [-c | --check] [--retry=<count>] [-V] <hpm_file>",
+        rflash <noderange> [-c | --check] [--retry=<count>] [-V] [<hpm_file>|-d=<data_directory>]",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

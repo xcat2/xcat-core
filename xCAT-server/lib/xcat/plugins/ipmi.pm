@@ -1825,6 +1825,7 @@ sub do_firmware_update {
     my $is_firestone = 0;
     my $firestone_update_version;
     my $htm_update_version;
+    my $pUpdate_directory;
     $ret = get_ipmitool_version(\$ipmitool_ver);
     exit $ret if $ret < 0;
 
@@ -1866,12 +1867,6 @@ sub do_firmware_update {
                 errorcode => 1 });
         exit -1;
     }
-    if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
-        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
-        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
-        $exit_with_error_func->($sessdata->{node}, $callback,
-            "The image file doesn't match this machine");
-    }
 
     my $output;
     my $bmc_addr     = $sessdata->{ipmisession}->{bmc};
@@ -1885,6 +1880,7 @@ sub do_firmware_update {
         $hpm_file = xCAT::Utils->full_path($hpm_file, $::cwd);
     }
 
+    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
 
     # NOTE (chenglch) lanplus should be used for the task of hpm update
     # which indicate the bmc support ipmi protocol version 2.0.
@@ -1937,6 +1933,121 @@ sub do_firmware_update {
                 }
             }
         }
+        if ($opt =~ /-d=/) {
+            my ($attribute, $directory_name) = split(/=/, $opt);
+            if (defined $directory_name) {
+                # directory was passed in, verify it is valid
+                if (-d $directory_name) {
+                   # Passed in directory name exists
+                   $pUpdate_directory = $directory_name;
+                }
+                else {
+                    $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Can not access data directory $directory_name");
+                }
+            }
+            else {
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Data directory must be specified.");
+            }
+        }
+    }
+
+    # For Supermicro machines such as P9 Boston (9006-22C) or P8 Briggs (8001-22C) 
+    # firmware update is done using pUpdate utility expected to be in the 
+    # specified data directory along with the update files .bin for BMC or .pnor for Host
+    if ($output =~ /8001-22C|9006-22C/) {
+        # Verify valid data directory was specified
+        unless ($pUpdate_directory) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Directory name is required to update Boston or Briggs machines.");
+        }
+        
+        # Verify specified directory contains executable pUpdate utility
+        unless (-x "$pUpdate_directory/pUpdate") {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Can not find executable pUpdate utility in data directory $pUpdate_directory.");
+        }
+
+        # Verify there is at least one of update files inside data directory - .bin or .pnor
+
+        my @pnor_files = <"$pUpdate_directory/*.pnor">; # Get a list of all .pnor files
+        my @bmc_files  = <"$pUpdate_directory/*.bin">;  # Get a list of all .bin files
+
+        if (scalar(@pnor_files) > 1) {
+            # Error if more than one .pnor file in data directory
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Multiple PNOR update files detected in data directory $pUpdate_directory.");
+        }
+
+        if (scalar(@bmc_files) > 1) {
+            # Error if more than one .bin file in data directory
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Multiple BMC update files detected in data directory $pUpdate_directory.");
+        }
+
+        my $pnor_file;
+        if (scalar(@pnor_files) > 0) {
+            $pnor_file = $pnor_files[0];
+        }
+
+        my $bmc_file;
+        if (scalar(@bmc_files) > 0) {
+            $bmc_file = $bmc_files[0];
+        }
+
+        # At least one update file is needed, .bmc or .pnor
+        unless ($pnor_file || $bmc_file) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "At least one update file (.bin or .pnor) needs to be in data directory $pUpdate_directory.");
+        }
+        # All checks are done, run pUpdate utility on each of the update files found in 
+        # the specified data directory
+        xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
+
+        if ($bmc_file) {
+            # BMC file was found in data directory, run update with it
+            my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
+            if ($verbose) {
+                xCAT::SvrUtils::sendmsg([ 0,
+                    "rflashing BMC, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                    $callback, $sessdata->{node});
+            }
+            my $output = xCAT::Utils->runcmd($pUpdate_bmc_cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Error running command $pUpdate_bmc_cmd");
+            }
+            if ($verbose) {
+                xCAT::SvrUtils::sendmsg([ 0, "Waiting for BMC to reboot (2 min)..." ], $callback, $sessdata->{node});
+            }
+            sleep (120);
+        }
+
+
+        if ($pnor_file) {
+            # PNOR file was found in data directory, run update with it
+            my $pUpdate_pnor_cmd = "$pUpdate_directory/pUpdate -pnor $pnor_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >>".$rflash_log_file." 2>&1";
+            if ($verbose) {
+                xCAT::SvrUtils::sendmsg([ 0,
+                    "rflashing PNOR, see the detail progress :\"tail -f $rflash_log_file\"" ],
+                    $callback, $sessdata->{node});
+            }
+            my $output = xCAT::Utils->runcmd($pUpdate_pnor_cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                    "Error running command $pUpdate_pnor_cmd");
+            }
+        }
+
+        $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated");
+    }
+
+    if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
+        ($hpm_data_hash{productID} ne $sessdata->{prod_id}) ||
+        ($hpm_data_hash{manufactureID} ne $sessdata->{mfg_id})) {
+        $exit_with_error_func->($sessdata->{node}, $callback,
+            "The image file doesn't match this machine");
     }
 
     # check for 8335-GTB Firmware above 1610A release.  If below, exit
@@ -2060,7 +2171,6 @@ RETRY_UPGRADE:
     # step 4 upgrade firmware
     # For firestone machines if updating from 810 to 820 version or from 820 to 810,
     # extra steps are needed. Hanled in "if" block, "else" block is normal update in a single step.
-    my $rflash_log_file = xCAT::Utils->full_path($sessdata->{node}.".log", RFLASH_LOG_DIR);
     if ($is_firestone and 
         (($firestone_update_version eq "820" and $htm_update_version eq "810") or 
          ($firestone_update_version eq "810" and $htm_update_version eq "820")) 
@@ -2228,7 +2338,7 @@ sub rflash {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
-            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$/ && $opt !~ /^--buffersize=/ && $opt !~ /^--retry=/) {
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=|^-d=/) {
                 $callback->({ error => "The option $opt is not supported",
                         errorcode => 1 });
                 return;
