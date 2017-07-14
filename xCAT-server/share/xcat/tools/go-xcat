@@ -2,7 +2,7 @@
 #
 # go-xcat - Install xCAT automatically.
 #
-# Version 1.0.20
+# Version 1.0.21
 #
 # Copyright (C) 2016 International Business Machines
 # Eclipse Public License, Version 1.0 (EPL-1.0)
@@ -1051,6 +1051,8 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
+	local ver="$2"
+	[[ -z "${ver}" ]] && ver="latest"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
@@ -1064,7 +1066,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
 	esac
 	[[ -z "${url}" ]] &&
-		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-dep"
 	case "${url##*.}" in
 	"repo") # local repo file
 		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
@@ -1083,7 +1085,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 			url="${tmp}"
 			;;
 		*)
-			url="${url}/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+			url="${url}/${distro}/${GO_XCAT_ARCH}"
 			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
 			return "$?"
 			;;
@@ -1117,8 +1119,10 @@ function add_xcat_dep_repo_apt()
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
+	local ver="$2"
+	[[ -z "${ver}" ]] && ver="latest"
 	[[ -z "${url}" ]] &&
-		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/xcat-dep"
+		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/${ver}/xcat-dep"
 	add_repo_by_url_apt "${url}" "xcat-dep"
 }
 
@@ -1538,7 +1542,7 @@ show_progress_meters
 ERR_MSG="$({
 	if add_xcat_core_repo -y "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
-		if add_xcat_dep_repo -y "${GO_XCAT_DEP_URL}"
+		if add_xcat_dep_repo -y "${GO_XCAT_DEP_URL}" "${GO_XCAT_VERSION}"
 		then
 			update_repo && exit 0
 			remove_repo "xcat-dep"
@@ -1654,10 +1658,10 @@ case "${GO_XCAT_ACTION}" in
 		commands to set environment variables into your PATH:
 
 		For sh: 
-			source /etc/profile.d/xcat.sh
+		    source /etc/profile.d/xcat.sh
 
 		For csh: 
-			source /etc/profile.d/xcat.csh
+		    source /etc/profile.d/xcat.csh
 		EOF
 		;;
 	"update")
