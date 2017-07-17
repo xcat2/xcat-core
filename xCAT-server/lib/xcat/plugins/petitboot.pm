@@ -409,7 +409,7 @@ sub process_request {
     }
 
     my @hostinfo = xCAT::NetworkUtils->determinehostname();
-    $::myxcatname = $hostinfo[(scalar @hostinfo) - 1];
+    $::myxcatname = $hostinfo[-1];
     xCAT::MsgUtils->trace(0, "d", "petitboot: running on $::myxcatname");
 
     my @unmanagednodes = ();
@@ -443,29 +443,45 @@ sub process_request {
             }
         }
 
+        my $notsamenet_nodes_err  = '';
+        my $notsamenet_nodes_warn = '';
+
         foreach (@rnodes) {
             # For MN, the scope is all CN, for SN, the scope is the nodes it managed if disjointnetboot is set.
-            my $req2manage = exists($managed{$_}) || xCAT::Utils->isMN();
-            if ($mynodeonly == 1 && $req2manage != 1) {
+            my $req2manage = exists($managed{$_});
+            if ($req2manage) {
                 push @unmanagednodes, $_;
-                next;
+                # quick pass through if disjoint is set.
+                next if ( $mynodeonly == 1 && xCAT::Utils->isMN() != 1 );
             }
 
             # Only handle its boot configuration files if the node in same subnet
             if (xCAT::NetworkUtils->nodeonmynet($_)) {
                 push @nodes, $_;
-            } else {
-                my $msg = "petitboot configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
-                $msg .= ": $::myxcatname" if ( $::myxcatname );
+            } elsif ( $req2manage ) {
+                # report error when it is under my control but I cannot handle it.
+                $notsamenet_nodes_err .= " $_";
+            }
+            else {
+                $notsamenet_nodes_warn .= " $_";
+            }
+        }
 
-                if ($req2manage == 1) {
-                    # report error when it is under my control but I cannot handle it.
-                    my $rsp;
-                    $rsp->{data}->[0] = $msg;
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                } else {
-                    xCAT::MsgUtils->message("S", $msg);
-                }
+        if ( $mynodeonly == 1 && scalar (@unmanagednodes) > 0 && xCAT::Utils->isMN() != 1) {
+            my $str_umnodes = join(" ", @unmanagednodes);
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: unmanaged nodes are $str_umnodes");
+        }
+
+        if ( $notsamenet_nodes_err || $notsamenet_nodes_warn ) {
+            my $msg = "petitboot configuration file was not created ";
+            $msg .= "on $::myxcatname " if ( $::myxcatname );
+            $msg .= "for below nodes because sharedtftp attribute is not set and the nodes are not on same network as this xcatmaster: ";
+            xCAT::MsgUtils->message("S", $msg . $notsamenet_nodes_warn . $notsamenet_nodes_err);
+            # For managed children, need to report error
+            if ( $notsamenet_nodes_err ) {
+                my $rsp;
+                $rsp->{data}->[0] = $msg . $notsamenet_nodes_err;
+                xCAT::MsgUtils->message("E", $rsp, $callback);
             }
         }
     } else {
@@ -474,7 +490,7 @@ sub process_request {
 
     #>>>>>>>used for trace log>>>>>>>
     my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodes are $str_node");
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: nodes are $str_node") if ($str_node);
 
     # return directly if no nodes in the same network
     unless (@nodes) {
