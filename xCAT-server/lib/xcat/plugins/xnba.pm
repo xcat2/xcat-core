@@ -700,7 +700,7 @@ sub process_request {
     #now run the end part of the prescripts
     unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')
         $errored = 0;
-        if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
+        if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handle my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
                     node => \@nodes,
