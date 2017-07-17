@@ -1613,7 +1613,7 @@ sub isopenpower {
         # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
     } elsif (($sessdata->{prod_id} == 0 or $sessdata->{prod_id} == 2355) and $sessdata->{mfg_id} == 10876) {
-        # mfg_id 10876 is for Supermicro, prod_id 2355 for B&S, and 0 for Boston
+        # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 for Boston
         return 1;
     } else {
         return 0;
@@ -1953,7 +1953,7 @@ sub do_firmware_update {
         }
     }
 
-    # For Supermicro machines such as P9 Boston (9006-22C) or P8 Briggs (8001-22C) 
+    # For IBM Power S822LC for Big Data (Supermicro) machines such as P9 Boston (9006-22C) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
     if ($output =~ /8001-22C|9006-22C/) {

@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. POWER8 and POWER9 systems are also supported. B<rflash> is also able to update firmware for NextScale Fan Power Controllers (FPC).
+B<rflash> - Performs Licensed Internal Code (LIC) update or firmware update on supported xCAT managed nodes.
 
 =head1 B<Synopsis>
 
@@ -82,7 +82,7 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 =head2 OpenPOWER specific:
 
 The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
-B<Note:> When using B<rflash> in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes. Shared storage can be used to accomplish that, alternatively the hpm file or contents of the data directory can be copied to Service Nodes.
+B<Note:> When using B<rflash> in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes.
 
 =head1 B<Options>
 
@@ -106,7 +106,7 @@ Specifies the directory where the raw data from rpm packages for each CEC/Frame 
 
 =item B<-d=>I<data_directory>
 
-Used for Supermicro systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
+Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
 
 =item B<--activate> {B<concurrent> | B<disruptive>}
 
@@ -174,7 +174,7 @@ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when upd
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
 
 =item 6.
-To update the firmware on OpenPOWER Supermicro machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
 
  rflash briggs01 -d=/root/supermicro/OP825
 
