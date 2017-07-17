@@ -12,6 +12,8 @@ lang en_US
 
 %include /tmp/repos
 
+#INSTALL_SOURCES#
+
 #device ethernet e100
 keyboard "us"
 
@@ -23,20 +25,22 @@ zerombr
 #
 # Wipe out the disk
 #
-clearpart --all --initlabel
+# Clear partitioning via partitition file
+#clearpart --all --initlabel
 #clearpart --linux
-#key --skip
 
 #
 # Customize to fit your needs
 #
 
 #XCAT_PARTITION_START#
+#Use script based partition table creation
+%include /tmp/partitionfile
+
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
-%include /tmp/partitionfile
-#part swap --size 1024
+#part swap --size 1024 
 #part / --size 1 --grow --fstype ext4
 
 #RAID 0 /scr for performance
@@ -134,7 +138,6 @@ rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 # OR
 auth --useshadow --enablemd5
 
-
 #
 # SE Linux
 #
@@ -165,6 +168,5 @@ cat >> /var/log/xcat/xcat.log << "EOF"
 EOF
 echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
-#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
 } &>>/var/log/xcat/xcat.log
 %end

@@ -1,13 +1,13 @@
 #Please make sure there is a space between @ and group name
-wget
-ntp
-nfs-utils
-net-snmp
-rsync
-yp-tools
-openssh-server
-util-linux
-net-tools
 libvirt
-screen
+net-snmp
+net-tools
+nfs-utils
+ntp
+openssh-server
 qemu-kvm
+rsync
+screen
+util-linux
+wget
+yp-tools
