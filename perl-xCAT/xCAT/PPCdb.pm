@@ -217,14 +217,16 @@ sub add_ppc {
         ###############################
         # Update hosts table
         ###############################
-        if ($otherinterfaces) {
-            $db{hosts}->setNodeAttribs($name,
-                { otherinterfaces => $ips });
-        } else {
-            $db{hosts}->setNodeAttribs($name,
-                { ip => $ips });
+        if ($ips) {
+            if ($otherinterfaces) {
+                $db{hosts}->setNodeAttribs($name,
+                    { otherinterfaces => $ips });
+            } else {
+                $db{hosts}->setNodeAttribs($name,
+                    { ip => $ips });
+            }
+            $db{hosts}{commit} = 1;
         }
-        $db{hosts}{commit} = 1;
 
         ###############################
         # Update mac table
