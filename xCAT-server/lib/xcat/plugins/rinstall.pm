@@ -132,9 +132,6 @@ sub rinstall {
         else {
             unless ($state =~ /-/) {
                 $STATES = $state;
-                if ($RESTSTATES) {
-                    $STATES .= ",$RESTSTATES";
-                }
             }
         }
 
@@ -265,6 +262,9 @@ sub rinstall {
     }
     elsif ($STATES) {
         push @parameter, "$STATES";
+        if ($RESTSTATES) {
+            $parameter[-1] .= ",$RESTSTATES";
+        }
     }
     else {
 
