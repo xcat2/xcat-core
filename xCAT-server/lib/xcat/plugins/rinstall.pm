@@ -69,6 +69,7 @@ sub rinstall {
     my $CONSOLE;
     my $OSIMAGE;
     my $STATES;
+    my $RESTSTATES;
     my $ignorekernelchk;
     my $VERBOSE;
     my $HELP;
@@ -108,8 +109,7 @@ sub rinstall {
         }
 
         my $state = $ARGV[0];
-        my $reststates;
-        ($state, $reststates) = split(/,/, $state, 2);
+        ($state, $RESTSTATES) = split(/,/, $state, 2);
         chomp($state);
         if ($state eq "image" or $state eq "winshell" or $state =~ /^osimage/) {
             my $target;
@@ -132,6 +132,9 @@ sub rinstall {
         else {
             unless ($state =~ /-/) {
                 $STATES = $state;
+                if ($RESTSTATES) {
+                    $STATES .= ",$RESTSTATES";
+                }
             }
         }
 
@@ -251,7 +254,11 @@ sub rinstall {
         #only provision the normal nodes
         @nodes = @validnodes;
 
-        push @parameter, "osimage=$OSIMAGE";
+        if ($RESTSTATES) {
+            push @parameter, "osimage=$OSIMAGE,$RESTSTATES";
+        } else {
+            push @parameter, "osimage=$OSIMAGE";
+        }
         if ($ignorekernelchk) {
             push @parameter, " --ignorekernelchk";
         }
@@ -310,8 +317,10 @@ sub rinstall {
 
         #only provision the normal nodes
         @nodes = @validnodes;
-
         push @parameter, "osimage";
+        if ($RESTSTATES) {
+            $parameter[-1] .= ",$RESTSTATES";
+        }
     }
 
     if (scalar(@nodes) == 0) {
