@@ -1018,16 +1018,18 @@ sub kickstartnetwork {
     unless ($mactab) { $tmplerr = "mac table should always exist prior to template processing when doing autoula"; return; }
     my $ent = $mactab->getNodeAttribs($node, ['mac'], prefetchcache => 1);
     unless ($ent and $ent->{mac}) { $tmplerr = "missing mac data for $node"; return; }
-    my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
-    $suffix = lc($suffix);
 
     if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+        my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
+        $suffix = lc($suffix);
         unless ($hoststab) { $hoststab = xCAT::Table->new('hosts', -create => 1); }
         $line .= "static --device=$suffix --noipv4 --ipv6=";
         my $ulaaddr = autoulaaddress($suffix);
         $hoststab->setNodeAttribs($node, { ip => $ulaaddr });
         $line .= $ulaaddr;
     } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
+        my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
+        $suffix = lc($suffix);
         my ($ipaddr, $hostname, $gateway, $netmask) = xCAT::NetworkUtils->getNodeNetworkCfg($node);
         unless ($ipaddr) { $tmplerr = "cannot resolve the network configuration of $node"; return; }
 
@@ -1063,7 +1065,7 @@ sub kickstartnetwork {
 
         #return "#KSNET static unsupported";
     } else {
-        $line .= "dhcp --device=$suffix";
+        $line .= "dhcp"; # --device=$suffix";
     }
     return $line;
 }
