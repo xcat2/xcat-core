@@ -29,10 +29,10 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 
-$::VERBOSE = 0;
+$::VERBOSE                  = 0;
 # String constants for rbeacon states
-$::BEACON_STATE_OFF="off";
-$::BEACON_STATE_ON="on";
+$::BEACON_STATE_OFF         = "off";
+$::BEACON_STATE_ON          = "on";
 # String constants for rpower states
 $::POWER_STATE_OFF          = "off";
 $::POWER_STATE_ON           = "on";
@@ -41,9 +41,9 @@ $::POWER_STATE_POWERING_ON  = "powering-on";
 $::POWER_STATE_QUIESCED     = "quiesced";
 $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
-$::UPLOAD_FILE="";
+$::UPLOAD_FILE              = "";
 
-$::NO_ATTRIBUTES_RETURNED="No attributes returned from the BMC.";
+$::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
 sub unsupported {
     my $callback = shift;
@@ -301,7 +301,12 @@ my $async;
 my $cookie_jar;
 
 my $callback;
+
 my %allerrornodes = ();
+
+my $xcatdebugmode = 0;
+
+my $flag_debug = "[openbmc_debug]";
 
 #-------------------------------------------------------
 
@@ -387,6 +392,8 @@ sub process_request {
         @exargs = @$extrargs;
     }
 
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
+
     my $check = parse_node_info($noderange);
     my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
@@ -422,7 +429,7 @@ sub process_request {
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-            print "$node: DEBUG POST $login_url -d $content\n";
+            xCAT::SvrUtils::sendmsg("$flag_debug POST $login_url -d $content", $callback, $node) if ($xcatdebugmode); 
         }
     }  
 
@@ -460,24 +467,28 @@ sub parse_args {
     my $noderange = shift;
     my $check = undef;
 
-    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
-        return ([ 1, "No option specified for $command" ]);
-    }
+    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firware level is at v1.99.6-0-r1, or higher.", $callback);
 
     my $subcommand = undef;
-    if (scalar(@ARGV) > 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
-        return ([ 1, "Only one option is supported at the same time" ]);
-    } elsif (scalar(@ARGV) == 2) {
-        # Check if one is calling for Verbose output
-        foreach (@ARGV) {
-           if ($_ =~ /V|verbose/) {
-              $::VERBOSE=1;
-           } else {
-               $subcommand = $_
-           }
-        }
+    my $verbose    = undef;
+    unless (GetOptions(
+        'V|verbose'  => \$verbose,
+    )) {
+        return ([ 1, "Error parsing arguments." ]);
+    }
+
+    # If command includes '-V', it must be the last one prarmeter. Or print error message.
+    if ($verbose) {
+        my $option = $$extrargs[-1];
+        return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
+    }
+
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
+        return ([ 1, "Only one option is supported at the same time for $command" ]);
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
+        return ([ 1, "No option specified for $command" ]);
     } else { 
-         $subcommand = $ARGV[0]
+        $subcommand = $ARGV[0];
     }
 
     if ($command eq "rbeacon") { 
@@ -504,10 +515,10 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        my $option_s = 0;
+        unless (GetOptions("s" => \$option_s,)) {
+            return ([1, "Error parsing arguments." ]);
+        }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -594,17 +605,12 @@ sub parse_command_status {
     my $subcommands = shift;
     my $subcommand;
 
-    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firware level is at v1.99.6-0-r1, or higher.", $callback);
+    if ($$subcommands[-1] =~ /V|verbose/) {
+        $::VERBOSE = 1;
+        pop(@$subcommands);
+    }
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
-
-    my $verbose = undef;
-    unless (GetOptions(
-        'V|verbose'  => \$verbose,
-    )) {
-        xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-        return 1;
-    }
 
     if ($command eq "rbeacon") { 
         $subcommand = $$subcommands[0];
@@ -675,12 +681,6 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
-        my $persistent = 0;
-        unless (GetOptions("p" => \$persistent,)) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
-        }
-
         $subcommand = $$subcommands[0];
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
@@ -706,9 +706,9 @@ sub parse_command_status {
 
     if ($command eq "reventlog") {
         my $option_s = 0;
-        unless (GetOptions("s" => \$option_s,)) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
+        if ($$subcommands[-1] eq "-s") {
+            $option_s = 1; 
+            pop(@$subcommands);
         }
 
         if (defined($$subcommands[0])) {
@@ -780,14 +780,19 @@ sub parse_command_status {
         my $list = 0;
         my $delete = 0;
         my $upload = 0;
-        unless (GetOptions(
-            'c|check'  => \$check_version,
-            'l|list'   => \$list,
-            'd|delete' => \$delete,
-            'u|upload' => \$upload,
-        )) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
+
+        if ($$subcommands[-1] =~ /c|check/) {
+            $check_version = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /l|list/) {
+            $list = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /d|delete/) {
+            $delete = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /u|upload/) {
+            $upload = 1;
+            pop(@$subcommands);
         }
 
         my $update_file = $$subcommands[0]; 
@@ -966,17 +971,17 @@ sub gen_send_request {
 
     my $debug_info;
     if ($method eq "GET") {
-        $debug_info = "$node: DEBUG $method $request_url";
+        $debug_info = "$method $request_url";
     } else {
         if ($::UPLOAD_FILE) {
             # Slightly different debug message when doing a file upload
-            $debug_info = "$node: DEBUG $method $request_url -T " . $::UPLOAD_FILE;
+            $debug_info = "$method $request_url -T " . $::UPLOAD_FILE;
         }
         else {
-            $debug_info = "$node: DEBUG $method $request_url -d $content";
+            $debug_info = "$method $request_url -d $content";
         }
     }
-    print "$debug_info\n";
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
 
     return;
 }
@@ -1000,7 +1005,8 @@ sub deal_with_response {
 
     delete $handle_id_node{$handle_id};
 
-    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+    my $debug_info = lc ($node_info{$node}{cur_status}) . " " . $response->status_line;
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
 
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
@@ -1130,12 +1136,12 @@ sub rpower_response {
             }
         }
        
-        print "$node: DEBUG State CurrentBMCState=$bmc_state\n";
-        print "$node: DEBUG State RequestedBMCTransition=$bmc_transition_state\n";
-        print "$node: DEBUG State CurrentPowerState=$chassis_state\n";
-        print "$node: DEBUG State RequestedPowerTransition=$chassis_transition_state\n";
-        print "$node: DEBUG State CurrentHostState=$host_state\n";
-        print "$node: DEBUG State RequestedHostTransition=$host_transition_state\n";
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentBMCState=$bmc_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedBMCTransition=$bmc_transition_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentPowerState=$chassis_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedPowerTransition=$chassis_transition_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentHostState=$host_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedHostTransition=$host_transition_state", $callback, $node) if ($xcatdebugmode);
 
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
             my $bmc_node = "$node BMC";
@@ -1512,13 +1518,6 @@ sub rspconfig_response {
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
     }
 
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE" and $response_info->{'message'} eq $::RESPONSE_OK) {
-        if ($status_info{RSPCONFIG_SET_RESPONSE}{ip}) {
-            $node_info{$node}{bmc} = $status_info{RSPCONFIG_SET_RESPONSE}{ip};
-            print "$node: DEBUG BMC IP is $node_info{$node}{bmc}\n";
-        }
-    }
-
     if ($next_status{ $node_info{$node}{cur_status} }) {
         $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
         gen_send_request($node);
@@ -1600,7 +1599,7 @@ sub rvitals_response {
     my $content_info;
     my @sorted_output;
     
-    print "$node: DEBUG Processing command: rvitals $grep_string \n";
+    xCAT::SvrUtils::sendmsg("$flag_debug Processing command: rvitals $grep_string", $callback, $node) if ($xcatdebugmode);
     print Dumper(%{$response_info->{data}});
 
     foreach my $key_url (keys %{$response_info->{data}}) {
