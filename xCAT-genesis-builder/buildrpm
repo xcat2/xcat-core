@@ -178,6 +178,10 @@ for d in `echo $PERL_LIB_DIR`; do
     fi
 done
 
+# create the predictable naming for nics
+LIB_UDEV_RULES="/lib/udev/rules.d/"
+cp $DRACUTMODDIR/80-net-name-slot.rules /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/lib/udev/rules.d/ 
+
 if [ $? -ne 0 ]; then
     echo "ERROR - expanding the initramfs, please correct the issues and try again"
     exit 1
