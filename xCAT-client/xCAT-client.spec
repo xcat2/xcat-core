@@ -166,6 +166,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkflexnode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/getadapter
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsslp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/switchdiscover
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/pdudiscover
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/bmcdiscover
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/makentp
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/imgcapture
