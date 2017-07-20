@@ -265,6 +265,7 @@ my %status_info = (
 $::RESPONSE_OK                  = "200 OK";
 $::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
 $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
+$::RESPONSE_FORBIDDEN           = "403 Forbidden";
 $::RESPONSE_METHOD_NOT_ALLOWED  = "405 Method Not Allowed";
 $::RESPONSE_SERVICE_TIMEOUT     = "504 Gateway Timeout";
 
@@ -507,11 +508,6 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         # command for openbmc rcons
     } elsif ($command eq "rsetboot") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-        $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
@@ -705,8 +701,6 @@ sub parse_command_status {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         }
-        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        return 1;
     }
 
     if ($command eq "reventlog") {
@@ -1031,6 +1025,8 @@ sub deal_with_response {
             my $response_info = decode_json $response->content;
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
                 $error = $response_info->{'data'}->{'exception'};
+            } elsif ($response->status_line eq $::RESPONSE_FORBIDDEN) {
+                $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
                 $error = "path or object not found $1";
             } else {
