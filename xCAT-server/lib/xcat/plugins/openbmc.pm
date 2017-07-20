@@ -485,7 +485,7 @@ sub parse_args {
 
     if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
         return ([ 1, "Only one option is supported at the same time for $command" ]);
-    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
     } else { 
         $subcommand = $ARGV[0];
@@ -511,10 +511,15 @@ sub parse_args {
         # disable function until fully tested
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
+        #
+        # disable function until fully tested
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $option_s = 0;
         unless (GetOptions("s" => \$option_s,)) {
             return ([1, "Error parsing arguments." ]);
