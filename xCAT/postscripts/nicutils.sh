@@ -288,6 +288,7 @@ function query_extra_params {
     if [ ${#array_nic_params[@]} -gt 0 ]; then
         #Current confignetwork only support one ip for vlan/bond/bridge
         #So only need the first ${array_nic_params[0]} for first nicips
+        #TODO: support multiple nicips for vlan/bond/bridge
         str_extra_params=${array_nic_params[0]}
         parse_nic_extra_params "$str_extra_params"
     fi
@@ -381,8 +382,7 @@ function get_network_attr {
    if [ $index -le $NETWORKS_LINES ]; then
        echo "$netline" | $sed -e 's/||/\n/g' | $awk -F'=' '$1 == "'$attrname'" {print $2}'
    else
-       log_error "Fail to get \"$attrname\" for network \"$netname\""
-       exit 1
+       return 1
    fi
 }
 
@@ -496,11 +496,18 @@ function create_persistent_ifcfg {
         fi
         if [ -z "$_netmask" ]; then
             _netmask=`get_network_attr $xcatnet mask`
+            if [ $? -ne 0 ]; then
+                log_error "There is no netmask configured for network $xcatnet in networks table"
+                _netmask=""
+            fi
         fi
 
         # Query mtu value from "networks" table
         if [ -z "$_mtu" ]; then
             _mtu=`get_network_attr $xcatnet mtu`
+            if [ $? -ne 0 ]; then
+                _mtu=""
+            fi
         fi
 
     fi
@@ -886,6 +893,9 @@ function create_bridge_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
     fi
 
     if [ x$_pretype == "xethernet" ]; then 
@@ -1007,6 +1017,10 @@ function create_ethernet_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
+
     fi
 
     # define and bring up interface
@@ -1094,6 +1108,10 @@ function create_vlan_interface {
     # Query mtu value from "networks" table
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
+
     fi
 
 
@@ -1271,8 +1289,10 @@ function create_bond_interface {
     # Query mtu value from "networks" table   
     if [ -z "$_mtu" ]; then
         _mtu=`get_network_attr $xcatnet mtu`
+        if [ $? -ne 0 ]; then
+            _mtu=""
+        fi
     fi
- 
     ##############################
     # Create target bond interface
     # if target bond device was already exists, assume succ.
