@@ -118,7 +118,7 @@ my %usage = (
     pdu specific:
        rinv noderange ",
     "rsetboot" =>
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" =>
       "Usage: 
