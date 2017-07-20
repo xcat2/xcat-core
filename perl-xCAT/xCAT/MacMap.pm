@@ -147,6 +147,12 @@ OID, and have the switch table port value match exactly the format suggested by 
         return 0;
     }
 
+    #HP calls their PortChannel interfaces "trunks"
+    #designated as Trk1, etc. don't match those
+    if ($namepersnmp =~ /Trk/) {
+        return 0;
+    }
+
     #The blacklist approach has been exhausted.  For now, assuming that means good,
     #if something ambiguous happens, the whitelist would have been:
     #'Port','Port #','/' (if namepercfg has no /, then / would be...),
