@@ -5,7 +5,7 @@ Traditionally, network interfaces in Linux are enumerated as eth[0123…], but
 these names do not correspond to actual labels on the chassis. Now, most of
 the linux distribution support naming the adapter with slot information which
 makes adapter name predictable. xCAT add ``getadapter`` script which can be
-running during discovery stage to detect the adapter names and pci slot
+run during discovery stage to detect the adapter names and pci slot
 information to help customer configure the network.
 
 
@@ -16,7 +16,7 @@ Set the chian table to run ``getadapter`` script ::
 
   chdef <noderange> chain="runcmd=getadapter"
 
-When the discovery completed, the column ``nicsadapter`` of ```nics`` table is
+After the discovery completed, the column ``nicsadapter`` of ```nics`` table is
 updated.
 
 View result with ``lsdef`` command ::

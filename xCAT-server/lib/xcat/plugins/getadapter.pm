@@ -19,7 +19,6 @@ use lib "$::XCATROOT/lib/perl";
 
 use xCAT::Table;
 use xCAT::State;
-use Data::Dumper;
 use strict;
 
 #-------------------------------------------------------
