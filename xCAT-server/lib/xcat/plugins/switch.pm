@@ -346,6 +346,15 @@ sub process_request {
             }
         }
 
+        unless ($bmc_node) {
+            if ($req->{'bmcmac'}->[0]) {
+                my $bmcmac = lc($req->{'bmcmac'}->[0]);
+                $bmcmac =~ s/\://g;
+                my $tmp_node = "node-$bmcmac";
+                $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
+            }
+        }
+
         if ($node) {
             xCAT::MsgUtils->message("S", "xcat.discovery.switch: ($req->{_xcat_clientmac}->[0]) Found node: $node");
 

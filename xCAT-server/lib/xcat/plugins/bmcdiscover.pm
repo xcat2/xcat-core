@@ -35,6 +35,7 @@ use HTTP::Response;
 use JSON;
 
 my $nmap_path;
+my %ipmac = ();
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
@@ -508,43 +509,56 @@ sub scan_process {
     # Handle commas in $range for nmap
     $range =~ tr/,/ /;
 
-    my $ip_list;
     ############################################################
     # get live ip list
     ###########################################################
-    if ($method eq "nmap") {
-
-        #check nmap version first
-        my $nmap_version = xCAT::Utils->get_nmapversion();
-
-        # the output of nmap is different for version under 5.10
-        if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
-            $bcmd = join(" ", $nmap_path, " -sP -n $range | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' ' ");
-        } else {
-            $bcmd = join(" ", $nmap_path, " -sn -n $range | grep -B1 up | grep \"Nmap scan report\" |cut -d ' ' -f5 |tr -s '\n' ' ' ");
-        }
-
-        $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
-        if ($::RUNCMD_RC != 0) {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "Nmap scan is failed.\n";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return 2;
-        }
-
-    }
-    else
-    {
+    if ($method ne "nmap") {
         my $rsp = {};
         push @{ $rsp->{data} }, "The bmcdiscover method should be nmap.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;
     }
 
-    my $live_ip = split_comma_delim_str($ip_list);
+    #check nmap version first
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    my $ip_info_list;
 
-    if (scalar(@{$live_ip}) > 0)
-    {
+    #  the output of nmap is different for version under 5.10
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $bcmd = join(" ", $nmap_path, " -sP -n $range");
+    } else {
+        $bcmd = join(" ", $nmap_path, " -sn -n $range");
+    }
+
+    $ip_info_list = xCAT::Utils->runcmd("$bcmd", -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Nmap scan is failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+
+    my $ip_list;
+    my $mac_list;
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $ip_list  = `echo -e "$ip_info_list" | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;  
+    } else {
+        $ip_list  = `echo -e "$ip_info_list" | grep -B1 up | grep "Nmap scan report" |cut -d ' ' -f5 | tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`; 
+    }
+
+    my $live_ip  = split_comma_delim_str($ip_list);
+    my $live_mac = split_comma_delim_str($mac_list);
+
+    if (scalar(@{$live_ip}) > 0) {
+
+        foreach (@{$live_ip}) {
+            my $new_mac = lc(shift @{$live_mac});
+            $new_mac =~ s/\://g;
+            $ipmac{$_} = $new_mac;
+        }
+
         ###############################
         # Set the signal handler for ^c
         ###############################
@@ -984,8 +998,12 @@ sub bmcdiscovery_ipmi {
 
                 }
             }
-            if ($mtm eq '' or $serial eq '') {
-                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+
+            $mtm = '' if ($mtm =~ /^0+$/);
+            $serial = '' if ($serial =~ /^0+$/); 
+
+            unless (($mtm or $serial) or $ipmac{$ip}) {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial and MAC Address is unavailable for $ip"] }, $::CALLBACK);
                 return;
             }
 
@@ -1005,6 +1023,8 @@ sub bmcdiscovery_ipmi {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
                 $node =~ s/[\s:\._]/-/g;
+            } else {
+                $node = "node-$ipmac{$ip}";
             }
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("W", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
@@ -1093,9 +1113,6 @@ sub bmcdiscovery_openbmc{
                     $mtm = "";
                 }
                 $serial = $response->{data}->{SerialNumber}; 
-            } else {
-                xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
-                return;
             }
  
         } else { 
@@ -1106,6 +1123,14 @@ sub bmcdiscovery_openbmc{
         # delete space before and after
         $mtm =~ s/^\s+|\s+$//g; 
         $serial =~ s/^\s+|\s+$//g;
+
+        $mtm = '' if ($mtm =~ /^0+$/);
+        $serial = '' if ($serial =~ /^0+$/);
+
+        unless (($mtm or $serial) or $ipmac{$ip}) {
+            xCAT::MsgUtils->message("W", { data => ["Could not obtain Valid Model Type and/or Serial Number and MAC Address for BMC at $ip"] }, $::CALLBACK);
+            return;
+        }
 
         # format info string for format_stanza function
         $node_data .= ",$mtm";
@@ -1124,6 +1149,8 @@ sub bmcdiscovery_openbmc{
             $node = "node-$mtm-$serial";
             $node =~ s/(.*)/\L$1/g;
             $node =~ s/[\s:\._]/-/g;
+        } else {
+            $node = "node-$ipmac{$ip}";
         }
     } else {
         if ($login_response->status_line =~ /401 Unauthorized/) {

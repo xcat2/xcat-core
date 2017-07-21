@@ -141,10 +141,12 @@ if [ "$UUID" != "unknown" ]; then
         echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 
-if [ "$MTM" != "unknown" ]; then
+flag_mtm=`echo '$MTM' | sed 's/0//g'`
+if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
-if [ "$SERIAL" != "unknown" ]; then
+flag_serial=`echo '$SERIAL' | sed 's/0//g'`
+if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
 if [ "$PLATFORM" != "unknown" ]; then
@@ -157,6 +159,11 @@ if [ "$IsStatic" ]; then
     if [ "$BMCIPADDR" ]; then
         echo "<bmc>$BMCIPADDR</bmc>" >> /tmp/discopacket
     fi
+fi
+
+BMCMAC=`ipmitool lan print 1 | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
+if [ "$BMCMAC" ]; then
+    echo "<bmcmac>$BMCMAC</bmcmac>" >> /tmp/discopacket
 fi
 
 # Check whether the hardware support in-band BMC configuration with the IPMI device
