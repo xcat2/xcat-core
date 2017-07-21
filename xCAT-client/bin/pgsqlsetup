@@ -747,8 +747,8 @@ sub initpgdb
     if ($debianflag) {
         $hbafile = $::debiancfgdir . "/pg_hba.conf";
     }
-		$cmd = "cp $hbafile $hbafile.org";    # backup the original
-		xCAT::Utils->runcmd($cmd, -1);
+    $cmd = "cp $hbafile $hbafile.org";    # backup the original
+    xCAT::Utils->runcmd($cmd, -1);
 
     push @ACCESSADDRS, $::MN;  # add management node to list
     my $insertstr = undef;     # start with empty string
