@@ -473,7 +473,7 @@ sub process_pdudiscover {
     Getopt::Long::Configure("no_pass_through");
     my %opt;
     if (!GetOptions( \%opt,
-                    qw(h|help V|Verbose x z w r n range=s setup))) {
+                    qw(h|help V|verbose x z w r range=s setup))) {
         my $usage_string = xCAT::Usage->getUsage($request->{command}->[0]);
         $callback->({ data => $usage_string });
         return;
