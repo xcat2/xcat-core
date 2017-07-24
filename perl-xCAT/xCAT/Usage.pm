@@ -481,7 +481,7 @@ Options:
       "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat]",
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|osimage[=<imagename>]|offline|shutdown|stat [-a]]",
     "rmflexnode" =>
       "Usage:
     rmflexnode [-h|--help|-v|--version]

@@ -110,8 +110,9 @@ site Attributes:
    dhcplease:  The lease time for the dhcp client. The default value is 43200.
   
    disjointdhcps:  If set to '1', the .leases file on a service node only contains
-                   the nodes it manages. The default value is '0'.
-                   '0' value means include all the nodes in the subnet.
+                   the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles
+                   boot loader configuration on a service node only for the nodes it manages.
+                   The default value is '0'. It means include all the nodes in the subnet.
   
    pruneservices:  Whether to enable service pruning when noderm is run (i.e.
                    removing DHCP entries when noderm is executed)
@@ -297,10 +298,6 @@ site Attributes:
                 in tftpdir is mounted on all on Service Nodes. Default is 1/yes.
                 If value is set to a hostname, the directory in tftpdir
                 will be mounted from that hostname on the SN
-  
-   disjointnetboot:  Only avaialbe when sharedtftp is set to 0/no. If set to '1', a service node
-                handles the netboot (petitboot/grub2/xnba) config file only for the nodes it manages.
-                The default value is '0'. '0' means handle all the nodes in the same subnet.
   
    sharedinstall:  Indicates if a shared file system will be used for installation
                    resources. Possible values are: 'no', 'sns', or 'all'.  'no' 
