@@ -421,6 +421,9 @@ sub makescript {
         #get the node type, service node or compute node
         my $nodetype = getNodeType($node);
 
+        #get the node ip address
+        my $cnipaddr = xCAT::NetworkUtils->getipaddr($node);
+        #print "hello $cnipaddr $node";
         #print Dumper($noderesent);
         #print Dumper($routes);
         #routes
@@ -556,7 +559,7 @@ sub makescript {
         #$inc =~ s/#NODE#/$node/eg;
         $inc =~ s/#MASTER_IP_ADDR#/$master_ip/eg;
         $inc =~ s/\$NODE/$node/eg;
-
+        $inc =~ s/#IPADDR#/$cnipaddr/eg;
         #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg;
         $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/xCAT::Template::tabdb($1,$2,$3)/eg;
         $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg;
