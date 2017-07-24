@@ -42,6 +42,7 @@ if ($^O =~ /^aix/i) {
 }
 use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw nstore_fd store_fd fd_retrieve);
+use Sys::Hostname;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
@@ -2301,7 +2302,8 @@ sub dispatch_request {
                 my $errstr;
                 eval {
                     undef $_->{'_xcatdest'};
-
+                    #the xCAT version is included in the request which will be forwarded
+                    $_->{'_xcatver'}=xCAT::Version->Version();
                     # mainly used by SN to filter out the incorrect module that xcat command came into
                     $_->{'_modname'} = $modname;
 
@@ -2803,8 +2805,22 @@ sub service_connection {
                     delete($req->{tokenid});
                 }
 
+                #for xcat requests forwarded from other nodes, such as MN<-->SN
+                # compare the version of xCAT which forwarded the request and the
+                # one which processes the forwarded command
+                #if the 2 versions are different, a warning message is included in the response
+                if($req->{'_xcatver'} and $req->{'_xcatver'}->[0]){
+                    my $myxcatver=xCAT::Version->Version();
+                    if($req->{'_xcatver'}->[0] ne $myxcatver){
+                        my $myhostname=Sys::Hostname::hostname;
+                        my $resp = { warning => ["xCAT Version mismatch! \"$myxcatver\" on $myhostname does not match \"$req->{'_xcatver'}->[0]\" on $peerhost!"]};
+                        $resp->{serverdone} = [undef];
+                        send_response($resp, $sock);
+                    }
+                }
+
+    
                 # we have a full request..
-                #printf $request."\n";
                 $request = "";
                 if (xCAT::xcatd->validate($peername, $peerhost, $req, $peerhostorg, \@deferredmsgargs)) {
                     $req->{'_xcat_authname'}   = [$peername];
