@@ -36,6 +36,8 @@ use Class::Struct;
 use XML::Simple;
 use Storable qw(dclone);
 use SNMP;
+use Expect;
+use Net::Ping;
 
 my $VERBOSE = 0;
 my %allerrornodes = ();
@@ -62,6 +64,7 @@ sub handled_commands
        rpower => ["nodehm:mgt","pduoutlet:pdu=\.\*"],
        rinv   => ["nodehm:mgt"],
        nodeset => ["nodehm:mgt"],
+       rspconfig => ["nodehm:mgt"],
        pdudiscover => "pdu",
     };
 }
@@ -169,6 +172,13 @@ sub process_request
                     $callback->({ errorcode => [1],error => "The option $subcmd is not support for pdu node(s) $pdunode."});
                 }
             }
+        }
+    }elsif($command eq "rspconfig") {
+        my $subcmd = $exargs[0];
+        if ($subcmd eq 'sshcfg') {
+            process_sshcfg($noderange, $subcmd, $callback);
+        } else {
+            $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
         }
     }elsif($command eq "pdudiscover") {
         process_pdudiscover($request, $subreq, $callback);
@@ -455,6 +465,123 @@ sub connectTopdu {
 
     return $session;
 
+}
+
+sub process_sshcfg { 
+    my $noderange = shift;
+    my $subcmd = shift;
+    my $callback = shift;
+
+    my $password = "password8";
+    my $userid = "root";
+    my $timeout = 10;
+    my $keyfile = "/root/.ssh/id_rsa.pub";
+    my $rootkey = `cat /root/.ssh/id_rsa.pub`;
+    my $cmd;
+
+    my $nodetab = xCAT::Table->new('hosts');
+    my $nodehash = $nodetab->getNodesAttribs($noderange,['ip','otherinterfaces']);
+    
+    foreach my $pdu (@$noderange) {
+        my $msg = " process_sshcfg";
+        xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
+
+        #remove old host key from /root/.ssh/known_hosts
+        $cmd = `ssh-keygen -R $pdu`;
+
+        my $static_ip = $nodehash->{$pdu}->[0]->{ip};
+        my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+        my $ssh_ip;
+
+        my $p = Net::Ping->new();
+        if ($p->ping($static_ip)) {
+            $ssh_ip = $static_ip;
+        } elsif ($p->ping($discover_ip)) {
+            $ssh_ip = $discover_ip;
+        } else {
+            $msg = " is not reachable";
+            xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
+            next;
+        }
+
+        my ($exp, $errstr) = session_connect($ssh_ip, $userid, $password, $timeout);
+        if (!defined $exp) {
+            $msg = " Failed to connect $errstr";
+            xCAT::SvrUtils::sendmsg($msg, $callback, $pdu, %allerrornodes);
+            next;
+        }
+
+        my $ret;
+        my $err;
+
+        ($ret, $err) = session_exec($exp, "mkdir -p /home/root/.ssh");
+        ($ret, $err) = session_exec($exp, "chmod 700 /home/root/.ssh");
+        ($ret, $err) = session_exec($exp, "echo \"$rootkey\" >/home/root/.ssh/authorized_keys");
+        ($ret, $err) = session_exec($exp, "chmod 644 /home/root/.ssh/authorized_keys");
+        #config dhcp ip address to static
+        if ($ssh_ip eq $discover_ip) {
+            # ($ret, $err) = session_exec($exp, "ifconfig eth0 $static_ip");
+        }
+
+        $exp->hard_close();
+    }
+
+    return;
+}
+
+sub session_connect {
+     my $server   = shift;
+     my $userid   = shift;
+     my $password = shift;
+     my $timeout  = shift;
+
+     my $ssh      = Expect->new;
+     my $command     = 'ssh';
+     my @parameters  = ($userid . "@" . $server);
+
+     $ssh->debug(0);
+     $ssh->log_stdout(0);    # suppress stdout output..
+     $ssh->slave->stty(qw(sane -echo));
+
+     unless ($ssh->spawn($command, @parameters))
+     {
+         my $err = $!;
+         $ssh->soft_close();
+         my $rsp;
+         return(undef, "unable to run command $command $err\n");
+     }
+
+     $ssh->expect($timeout,
+                   [ "-re", qr/WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED/, sub {die "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\n"; } ],
+                   [ "-re", qr/\(yes\/no\)\?\s*$/, sub { $ssh->send("yes\n");  exp_continue; } ],
+                   [ "-re", qr/ password:/,        sub {$ssh->send("$password\n"); exp_continue; } ],
+                   [ "-re", qr/:~\$/,              sub { $ssh->send("sudo su\n"); exp_continue; } ],
+                   [ "-re", qr/.*#/,               sub { $ssh->clear_accum(); } ],
+                   [ timeout => sub { die "No login.\n"; } ]
+                  );
+     $ssh->clear_accum();
+     return ($ssh);
+}
+
+
+sub session_exec {
+     my $exp = shift;
+     my $cmd = shift;
+     my $timeout    = shift;
+     my $prompt =  shift;
+
+     $timeout = 10 unless defined $timeout;
+     $prompt = qr/.*#/ unless defined $prompt;
+
+
+     $exp->clear_accum();
+     $exp->send("$cmd\n");
+     my ($mpos, $merr, $mstr, $mbmatch, $mamatch) = $exp->expect(6,  "-re", $prompt);
+
+     if (defined $merr) {
+         return(undef,$merr);
+     }
+     return($mbmatch);
 }
 
 sub process_pdudiscover {
