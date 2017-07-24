@@ -42,6 +42,7 @@ if ($^O =~ /^aix/i) {
 }
 use lib "$::XCATROOT/lib/perl";
 use Storable qw(freeze thaw nstore_fd store_fd fd_retrieve);
+use Sys::Hostname;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
@@ -2811,18 +2812,15 @@ sub service_connection {
                 if($req->{'_xcatver'} and $req->{'_xcatver'}->[0]){
                     my $myxcatver=xCAT::Version->Version();
                     if($req->{'_xcatver'}->[0] ne $myxcatver){
-                        require Sys::Hostname;
                         my $myhostname=Sys::Hostname::hostname;
-                        my $resp = { warning => ["$myhostname: my xCAT version \"$myxcatver\" does not match the forwarder's xCAT version \"$req->{'_xcatver'}->[0]\" on $peerhost"]};
+                        my $resp = { warning => ["xCAT Version mismatch! \"$myxcatver\" on $myhostname does not match \"$req->{'_xcatver'}->[0]\" on $peerhost!"]};
                         $resp->{serverdone} = [undef];
                         send_response($resp, $sock);
-                        #return;
                     }
                 }
 
     
                 # we have a full request..
-                #printf $request."\n";
                 $request = "";
                 if (xCAT::xcatd->validate($peername, $peerhost, $req, $peerhostorg, \@deferredmsgargs)) {
                     $req->{'_xcat_authname'}   = [$peername];
