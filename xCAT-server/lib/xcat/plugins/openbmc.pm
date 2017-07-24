@@ -508,6 +508,7 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         # command for openbmc rcons
     } elsif ($command eq "rsetboot") {
+        $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
