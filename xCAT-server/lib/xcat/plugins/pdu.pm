@@ -62,6 +62,7 @@ sub handled_commands
        rpower => ["nodehm:mgt","pduoutlet:pdu=\.\*"],
        rinv   => ["nodehm:mgt"],
        nodeset => ["nodehm:mgt"],
+       pdudiscover => "pdu",
     };
 }
 
@@ -85,6 +86,7 @@ sub preprocess_request {
     if (ref($extrargs)) {
         @exargs=@$extrargs;
     }
+
     my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
     if ($usage_string) {
         $callback->({data=>[$usage_string]});
@@ -92,7 +94,7 @@ sub preprocess_request {
         return;
     }
 
-    if (!$noderange) {
+    if ((!$noderange) && ($command ne "pdudiscover") ){
         $usage_string = xCAT::Usage->getUsage($command);
         $callback->({ data => $usage_string });
         $req = {};
@@ -168,6 +170,8 @@ sub process_request
                 }
             }
         }
+    }elsif($command eq "pdudiscover") {
+        process_pdudiscover($request, $subreq, $callback);
     }elsif($command eq "nodeset") {
         $callback->({ errorcode => [1],error => "The input $command is not support for pdu"});
     }else{
@@ -450,6 +454,40 @@ sub connectTopdu {
     }
 
     return $session;
+
+}
+
+sub process_pdudiscover {
+    my $request  = shift;
+    my $sub_req  = shift;
+    my $callback = shift;
+    my $extrargs = $request->{arg};
+    my @exargs   = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs=@$extrargs;
+    }
+
+    #check case in GetOptions
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+    Getopt::Long::Configure("no_pass_through");
+    my %opt;
+    if (!GetOptions( \%opt,
+                    qw(h|help V|verbose x z w r range=s setup))) {
+        my $usage_string = xCAT::Usage->getUsage($request->{command}->[0]);
+        $callback->({ data => $usage_string });
+        return;
+
+    }
+
+    push @exargs, "-s snmp --pdu";
+    my $cmd = "switchdiscover @exargs";
+    my $result = xCAT::Utils->runcmd($cmd, 0);
+
+    my $rsp = {};
+    push @{ $rsp->{data} }, "$result";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+
 
 }
 
