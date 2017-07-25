@@ -1519,16 +1519,16 @@ sub rspconfig_response {
 
 
             ($path, $adapter_id) = (split(/ipv4\//, $key_url));
-            unless ($address =~ /n\/a/) {
-                # We have already processed an entry with adapter information.
-                # This must be a second entry. Display an error. Currently only supporting
-                # an adapter with a single IP address set.
-                $error = "Interfaces with multiple IP addresses are not supported";
-                last;
-            }
 
             if ($adapter_id) {
                 if (defined($content{Address}) and $content{Address}) {
+                    unless ($address =~ /n\/a/) {
+                        # We have already processed an entry with adapter information.
+                        # This must be a second entry. Display an error. Currently only supporting
+                        # an adapter with a single IP address set.
+                        $error = "Interfaces with multiple IP addresses are not supported";
+                        last;
+                    }
                     $address = $content{Address};
                 }
                 if (defined($content{Gateway}) and $content{Gateway}) {
