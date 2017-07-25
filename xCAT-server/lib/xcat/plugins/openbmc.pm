@@ -143,6 +143,13 @@ my %status_info = (
     RFLASH_UPDATE_ACTIVATE_RESPONSE => {
         process        => \&rflash_response,
     },
+    RFLASH_UPDATE_CHECK_STATE_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software",
+    },
+    RFLASH_UPDATE_CHECK_STATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
     RFLASH_UPDATE_PRIORITY_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
@@ -746,8 +753,10 @@ sub parse_command_status {
                 # Check if hex number for the updateid is passed
                 if ($update_file =~ /^[[:xdigit:]]+$/i) {
                     # Update init_url to include the id of the update to activate
+                    # MG
                     $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
-                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
+                    # Update init_url to include the id of the update to check state
+                    $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_file";
                 }
             }
         }
@@ -775,8 +784,8 @@ sub parse_command_status {
             print "Current value of activate request $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} \n";
             $next_status{LOGIN_RESPONSE} = "RFLASH_UPDATE_ACTIVATE_REQUEST";
             $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
-            $next_status{"RFLASH_UPDATE_ACTIVATE_RESPOSNE"} = "RFLASH_UPDATE_PRIORITY_REQUEST";
-            $next_status{"RFLASH_UPDATE_PRIORITY_REQUEST"} = "RFLASH_UPDATE_PRIORITY_RESPONSE";
+            $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+            $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
             #xCAT::SvrUtils::sendmsg("Activate option is not yet supported.", $callback);
             #return 1;
         }
@@ -1547,10 +1556,41 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
-        print "Update activation response\n";
+        # We get here after the activation of the image file. No processing. Just a landing spot 
     }
-    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_PRIORITY_RESPONSE") {
-        print "Update priority response\n";
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
+        my $activation_state;
+        my $progress_state;
+        my $priority_state;
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my $content = ${ $response_info->{data} }{$key_url};
+            # Get values of some attributes to determine activation status 
+            if ($key_url eq "Activation") {
+                $activation_state = ${ $response_info->{data} }{$key_url};
+            }
+            if ($key_url eq "Progress") {
+                $progress_state = ${ $response_info->{data} }{$key_url};
+            }
+            if ($key_url eq "Priority") {
+                $priority_state = ${ $response_info->{data} }{$key_url};
+            }
+        }
+
+        if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Active" && $priority_state eq "0") {
+            # Activation state of active and priority of 0 indicates the avtivation has been completed
+            xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
+            $wait_node_num--;
+            return;
+        }
+
+        if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Activating") {
+            # Activation still going, sleep for a bit, then print the progress value
+            sleep(15);
+            xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
+
+            # Set next state to come back here to chect the activation status again.
+            $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
