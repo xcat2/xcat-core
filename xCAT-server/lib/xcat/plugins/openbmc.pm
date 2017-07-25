@@ -135,8 +135,8 @@ my %status_info = (
     },
     REVENTLOG_CLEAR_REQUEST => {
         method         => "POST",
-        init_url       => "$openbmc_url/records/events/action/clear",
-        data           => "",
+        init_url       => "$openbmc_project_url/logging//action/delete",
+        data           => '{ "data": [] }',
     },
     REVENTLOG_CLEAR_RESPONSE => {
         process        => \&reventlog_response,
@@ -513,10 +513,6 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "reventlog") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $option_s = 0;
         unless (GetOptions("s" => \$option_s,)) {
             return ([1, "Error parsing arguments." ]);
@@ -1444,7 +1440,7 @@ sub reventlog_response {
     } else {
         my ($entry_string, $option_s) = split(",", $status_info{REVENTLOG_RESPONSE}{argv});
         my $content_info; 
-        my %output_s = () if ($option_s);
+        my %output = ();
         my $entry_num = 0;
         $entry_string = "all" if ($entry_string eq "0");
         $entry_num = 0 + $entry_string if ($entry_string ne "all");
@@ -1452,21 +1448,29 @@ sub reventlog_response {
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
             my $id_num = 0 + $content{Id} if ($content{Id});
-            if (($entry_string eq "all" or ($id_num and ($entry_num ge $id_num))) and $content{Message}) {
-                my $content_info = $content{Timestamp} . " " . $content{Message}; 
-                if ($option_s) {
-                    $output_s{$id_num} = $content_info;
-                    $entry_num = $id_num if ($entry_num < $id_num);
-                } else {
-                    xCAT::SvrUtils::sendmsg("$content_info", $callback, $node);
-                }
+            if ($content{Message}) {
+                my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($content{Timestamp}/1000);
+                $mon += 1;
+                $year += 1900;
+                my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec); 
+                my $content_info = "Entry $content{Id}:" . $UTC_time . " " . $content{Message}; 
+                $output{$id_num} = $content_info;
             }
         }
 
-        if (%output_s) {
-            for (my $key = $entry_num; $key >= 1; $key--) {
-                xCAT::SvrUtils::sendmsg("$output_s{$key}", $callback, $node) if ($output_s{$key});
-            } 
+        my $count = 0;
+        if ($option_s) {
+            foreach my $key ( sort { $b <=> $a } keys %output) {
+                xCAT::SvrUtils::sendmsg($output{$key}, $callback, $node);
+                $count++;
+                last if ($entry_string ne "all" and $count >= $entry_num); 
+            }
+        } else {
+            foreach my $key (keys %output) {
+                xCAT::SvrUtils::sendmsg("$output{$key}", $callback, $node) if ($output{$key});
+                $count++;
+                last if ($entry_string ne "all" and $count >= $entry_num);
+            }
         }
     }
 
