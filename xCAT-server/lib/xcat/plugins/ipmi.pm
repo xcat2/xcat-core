@@ -1707,7 +1707,8 @@ sub calc_ipmitool_version {
 #        verbose:  verbose output
 #        use_rc:   Some machines, like IBM Power S822LC for Big Data (Supermicro), do not return
 #                  a "00" ready string from calling ipmi raw command. Instead they return RC=0. This
-#                  flag tells the check_bmc_status_with_ipmitool() to check the RC instead of "00" string
+#                  flag if 1, tells the check_bmc_status_with_ipmitool() to check the RC 
+#                  instead of "00" string. If set to 0, the "00" ready string is checked.
 #    Returns:
 #        1 when bmc is up
 #        0 when no response from bmc
@@ -1728,7 +1729,7 @@ sub check_bmc_status_with_ipmitool {
     my $code_type    = "ready";
 
     if ($use_rc) {
-        $cmd            = $pre_cmd . " raw 0x3a 0x0a >> /dev/null 2>&1 ; echo \$?";
+        $cmd            = $cmd . " >> /dev/null 2>&1 ; echo \$?";
         $bmc_ready_code = "0";
         $code_type      = "return";
     }
@@ -1874,7 +1875,7 @@ sub do_firmware_update {
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
         $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
-                  "firestone mathines, please setup IPMITool 1.8.15 or above.",
+                  "firestone machines, please setup IPMITool 1.8.15 or above.",
                 errorcode => 1 });
         exit -1;
     }
@@ -2191,7 +2192,7 @@ RETRY_UPGRADE:
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 2, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 2, $sessdata, $verbose, 0)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -2257,7 +2258,7 @@ RETRY_UPGRADE:
         }
 
         # Wait for BMC to reboot before continuing to next step
-        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
+        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 0)) {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Timeout waiting for the bmc ready status. Firmware update suspended");
         }
@@ -2321,7 +2322,7 @@ RETRY_UPGRADE:
 
     # step 5 power on
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 0)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
