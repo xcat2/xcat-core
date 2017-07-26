@@ -1,6 +1,5 @@
 description:the cases in this bundle is to used to verify xCAT hardware control funtions on openpower servers which are mananged using openbmc. 
 #INCLUDE:hdctrl_general.bundle#
-rinv_deviceid
 rinv_uuid
 rinv_vpd
 rinv_cpu
