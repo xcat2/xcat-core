@@ -217,15 +217,15 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/boot/bootsource/attr/Sources",
-        data           => "xyz.openbmc_project.Control.Boot.Sources.",
+        init_url       => "$openbmc_project_url/control/host0/boot_source/attr/BootSource",
+        data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
         process        => \&rsetboot_response,
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/boot/bootsource",
+        init_url       => "$openbmc_project_url/control/host0/boot_source",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -1363,7 +1363,7 @@ sub rsetboot_response {
 
     my $response_info = decode_json $response->content;    
 
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_GET_RESPONSE") {
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
         xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
         xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
         xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
