@@ -1622,6 +1622,13 @@ sub isopenpower {
 
 sub check_firmware_version {
 
+    sub _on_receive_ugp {
+        my $rsp     = shift;
+        my $sessdta = shift;
+        shift @{ $rsp->{data} };
+        return;
+    }
+
     sub _on_receive_version {
         my $rsp      = shift;
         my $sessdata = shift;
@@ -1650,6 +1657,15 @@ sub check_firmware_version {
     my $sessdata         = shift;
     my $firmware_version = shift;
     my $component_string = shift;
+
+    # GET TARGET UPGRADE CAPABILITIES
+    $sessdata->{ipmisession}->subcmd(netfn => 0x2c, command => 0x2e,
+            data => [ 0 ],
+            callback      => \&_on_receive_ugp,
+            callback_args => $sessdata);
+        while (xCAT::IPMI->waitforrsp()) { yield }
+
+
     foreach my $c_id (@{ $sessdata->{component_ids} }) {
         $sessdata->{c_id} = $c_id;
 
