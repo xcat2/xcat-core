@@ -233,7 +233,7 @@ my %status_info = (
 
     RSPCONFIG_GET_REQUEST => {
         method         => "GET",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/network/enumerate",
     },
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
@@ -468,7 +468,7 @@ sub parse_args {
     my $noderange = shift;
     my $check = undef;
 
-    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firware level is at v1.99.6-0-r1, or higher.", $callback);
+    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firmware level is at v1.99.6-0-r1, or higher.", $callback);
 
     my $subcommand = undef;
     my $verbose    = undef;
@@ -758,9 +758,7 @@ sub parse_command_status {
                 push @options, $key;
             }
         }
-        $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
-        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        return 1;
+        $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
     }
 
     if ($command eq "rvitals") {
@@ -1497,24 +1495,68 @@ sub rspconfig_response {
     my $response_info = decode_json $response->content; 
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
-        my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
-        my $data;
+        my $address         = "n/a";
+        my $gateway         = "n/a";
+        my $prefix          = "n/a";
+        my $vlan            = "n/a";
+        my $default_gateway = "n/a";
+        my $adapter_id      = "n/a";
+        my $error;
+        my $path;
         my @output;
-        if ($grep_string =~ "ip") {
-            $data = ""; # got data from response
-            push @output, "BMC IP: $data";
-        } 
-        if ($grep_string =~ "netmask") {
-            $data = ""; # got data from response
-            push @output, "BMC Netmask: $data"; 
-        } 
-        if ($grep_string =~ "gateway") {
-            $data = ""; # got data from response
-            push @output, "BMC Gateway: $data";
+        my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+            if ($key_url =~ /network\/config/) {
+                if (defined($content{DefaultGateway}) and $content{DefaultGateway}) {
+                    $default_gateway = $content{DefaultGateway};
+                }
+            }
+
+
+            ($path, $adapter_id) = (split(/ipv4\//, $key_url));
+
+            if ($adapter_id) {
+                if (defined($content{Address}) and $content{Address}) {
+                    unless ($address =~ /n\/a/) {
+                        # We have already processed an entry with adapter information.
+                        # This must be a second entry. Display an error. Currently only supporting
+                        # an adapter with a single IP address set.
+                        $error = "Interfaces with multiple IP addresses are not supported";
+                        last;
+                    }
+                    $address = $content{Address};
+                }
+                if (defined($content{Gateway}) and $content{Gateway}) {
+                    $gateway = $content{Gateway};
+                }
+                if (defined($content{PrefixLength}) and $content{PrefixLength}) {
+                    $prefix = $content{PrefixLength};
+                }
+            }
         }
-        if ($grep_string =~ "vlan") {
-            $data = ""; # got data from response
-            push @output, "BMC VLAN ID enabled: $data";
+        if ($error) {
+            # Display error message once, regardless of how many subcommands were specified
+            push @output, $error;
+        }
+        else {
+            if ($grep_string =~ "ip") {
+                push @output, "BMC IP: $address"; 
+            } 
+            if ($grep_string =~ "netmask") {
+                if ($address) {
+                    my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
+                    my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                    push @output, "BMC Netmask: " . $netmask; 
+                }
+            } 
+            if ($grep_string =~ "gateway") {
+                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+            }  
+            if ($grep_string =~ "vlan") {
+                push @output, "BMC VLAN ID enabled: $vlan";
+            }
         }
 
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
