@@ -17,6 +17,7 @@ rinv_serial
 rinv_model
 rinv_firm
 rinv_all
+rinv_mixnode
 rvitals_h
 rvitals_v
 rvitals_errorcommand
