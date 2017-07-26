@@ -488,7 +488,7 @@ sub process_sshcfg {
 
         #remove old host key from /root/.ssh/known_hosts
         $cmd = "ssh-keygen -R $pdu";
-        my $result = xCAT::Utils->runcmd($cmd, 0);
+        xCAT::Utils->runcmd($cmd, 0);
 
         my $static_ip = $nodehash->{$pdu}->[0]->{ip};
         my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
