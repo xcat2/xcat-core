@@ -1367,7 +1367,7 @@ sub rsetboot_response {
         xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
         xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
         xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
-        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
+        xCAT::SvrUtils::sendmsg("Default", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
