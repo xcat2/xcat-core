@@ -6702,9 +6702,9 @@ sub vitals {
     if ($sensor_filters{energy}) {
         if ($iem_support) {
             push @{ $sessdata->{sensorstoread} }, "energy";
-        } elsif (not $doall) {
-            xCAT::SvrUtils::sendmsg([ 1, ":Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment" ], $callback, $sessdata->{node}, %allerrornodes);
-        }
+        } #elsif (not $doall) {
+            #xCAT::SvrUtils::sendmsg([ 1, ":Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment" ], $callback, $sessdata->{node}, %allerrornodes);
+        #}
 
         #my @energies;
         #($rc,@energies)=readenergy();
