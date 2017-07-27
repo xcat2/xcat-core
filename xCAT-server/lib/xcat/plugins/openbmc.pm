@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 ## IBM(c) 2017 EPL license http://www.eclipse.org/legal/epl-v10.html
-#MG June 26
 
 package xCAT_plugin::openbmc;
 
@@ -150,12 +149,12 @@ my %status_info = (
     RFLASH_UPDATE_CHECK_STATE_RESPONSE => {
         process        => \&rflash_response,
     },
-    RFLASH_UPDATE_PRIORITY_REQUEST  => {
+    RFLASH_SET_PRIORITY_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
-        data           => "xyz.openbmc_project.Software.Activation.RequestedPriority.0",
+        data           => "false", # Priority state of 0 sets image to active
     },
-    RFLASH_UPDATE_PRIORITY_RESPONSE => {
+    RFLASH_SET_PRIORITY_RESPONSE => {
         process        => \&rflash_response,
     },
 
@@ -504,10 +503,6 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rflash") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $filename_passed = 0;
         my $updateid_passed = 0;
         foreach my $opt (@$extrargs) {
@@ -752,10 +747,9 @@ sub parse_command_status {
             else {
                 # Check if hex number for the updateid is passed
                 if ($update_file =~ /^[[:xdigit:]]+$/i) {
-                    # Update init_url to include the id of the update to activate
-                    # MG
-                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} .= "/$update_file/attr/RequestedActivation";
-                    # Update init_url to include the id of the update to check state
+                    # Update init_url to include the id of the update
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_file/attr/RequestedActivation";
+                    $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_file/attr/Priority";
                     $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_file";
                 }
             }
@@ -780,14 +774,17 @@ sub parse_command_status {
             $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
         }
         if ($activate) {
-            # MG
-            print "Current value of activate request $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} \n";
+            # Activation of an update was requested.
+            # First we query the update image for its Activation state. If image is in "Ready" we
+            # need to set "RequestedActivation" attribute to "Active". If image is in "Active" we
+            # need to set "Priority" to 0.
             $next_status{LOGIN_RESPONSE} = "RFLASH_UPDATE_ACTIVATE_REQUEST";
             $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
             $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
             $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
-            #xCAT::SvrUtils::sendmsg("Activate option is not yet supported.", $callback);
-            #return 1;
+
+            $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
+            $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
     }
 
@@ -1495,10 +1492,11 @@ sub rflash_response {
     my $update_activation;
     my $update_purpose;
     my $update_version;
+    my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
         # Display "list" option header and data
-        xCAT::SvrUtils::sendmsg("ID       Purpose State    Version", $callback, $node);
+        xCAT::SvrUtils::sendmsg("ID       Purpose State      Version", $callback, $node);
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
 
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -1514,7 +1512,15 @@ sub rflash_response {
             if (defined($content{Purpose}) and $content{Purpose}) {
                 $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
             }
-            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-8s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+            if (defined($content{Priority}))  {
+                $update_priority = (split(/\./, $content{Priority}))[ -1 ];
+            }
+            # Priority attribute of 0 indicates the "really" active update image
+            if ($update_priority == 0) {
+                $update_activation = $update_activation . "(*)";
+                $update_priority = -1; # Reset update priority for next loop iteration
+            }
+            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
@@ -1556,7 +1562,10 @@ sub rflash_response {
         }
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
-        # We get here after the activation of the image file. No processing. Just a landing spot 
+        xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_SET_PRIORITY_RESPONSE") {
+        print "Update priority has been set";
     }
     if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
         my $activation_state;
@@ -1576,14 +1585,22 @@ sub rflash_response {
             }
         }
 
-        if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Active" && $priority_state eq "0") {
-            # Activation state of active and priority of 0 indicates the avtivation has been completed
-            xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
-            $wait_node_num--;
-            return;
+        if ($activation_state =~ /Software.Activation.Activations.Active/) { 
+            if (scalar($priority_state) == 0) {
+                # Activation state of active and priority of 0 indicates the activation has been completed
+                xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
+                $wait_node_num--;
+                return;
+            }
+            else {
+                # Activation state of active and priority of non 0 - need to just set priority to 0 to activate
+                print "Update is already active, just need to set priority to 0";
+                $next_status{ $node_info{$node}{cur_status} } = "RFLASH_SET_PRIORITY_REQUEST";
+            }
         }
 
-        if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Activating") {
+        #if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Activating") {
+        if ($activation_state =~ /Software.Activation.Activations.Activating/) {
             # Activation still going, sleep for a bit, then print the progress value
             sleep(15);
             xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
