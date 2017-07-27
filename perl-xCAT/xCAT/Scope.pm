@@ -1,8 +1,8 @@
 package xCAT::Scope;
 
-#use Data::Dumper;
 use xCAT::Utils;
 use xCAT::Table;
+use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils qw(getSNList);
 
 
@@ -148,22 +148,31 @@ sub get_broadcast_scope_with_parallel {
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
     my $snlist = shift;
+    my @reqs = ();
+    $req->{_xcatpreprocessed}->[0] = 1;
+    my $isMN = xCAT::Utils->isMN();
     #Handle the one for current management/service node
-    my $reqs = get_parallel_scope($req); 
+    if ( $isMN ) {
+        $reqs = get_parallel_scope($req);
+    } else {
+        # get site.master and broadcast to it as MN will not be in SN list or defined in noderes.servicenode.
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master = $entries[0];
+        my $reqcopy = {%$req};
+        $reqcopy->{'_xcatdest'} = $master;
+        $reqs = get_parallel_scope($reqcopy);
+    }
     my @requests = @$reqs;
 
     #Broadcast the request to other management/service nodes
     foreach (@$snlist) {
         my $xcatdest = $_;
-        if (xCAT::NetworkUtils->thishostisnot($xcatdest)) {
-            my $reqcopy = {%$req};
-            $reqcopy->{'_xcatdest'} = $xcatdest;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+        my $reqcopy = {%$req};
+        $reqcopy->{'_xcatdest'} = $xcatdest;
 
-            $reqs = get_parallel_scope($reqcopy);
-            foreach (@$reqs) {
-                push @requests, {%$_};
-            }
+        $reqs = get_parallel_scope($reqcopy);
+        foreach (@$reqs) {
+            push @requests, {%$_};
         }
     }
     return \@requests;
@@ -197,12 +206,22 @@ sub get_broadcast_disjoint_scope_with_parallel {
 
     my $sn_hash = shift;
     my @reqs = ();
+    $req->{_xcatpreprocessed}->[0] = 1;
+    my $isMN = xCAT::Utils->isMN();
     #Handle the one for current management/service node
-    if ( xCAT::Utils->isMN() ) {
-        $reqs = get_parallel_scope($req); 
+    if ( $isMN ) {
+        $reqs = get_parallel_scope($req);
+    } else {
+        # get site.master and broadcast to it as MN will not be in SN list or defined in noderes.servicenode.
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master = $entries[0];
+        my $reqcopy = {%$req};
+        $reqcopy->{'_xcatdest'} = $master;
+        $reqs = get_parallel_scope($reqcopy);
     }
     my @requests = @$reqs;
 
+    my $handled4me = 0;
     #Broadcast the request to other management/service nodes
     foreach (keys %$sn_hash) {
         my $xcatdest = $_;
@@ -210,15 +229,26 @@ sub get_broadcast_disjoint_scope_with_parallel {
             my $reqcopy = {%$req};
             $reqcopy->{'_xcatdest'} = $xcatdest;
             $reqcopy->{'node'} = $sn_hash->{$xcatdest};
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
             $reqs = get_parallel_scope($reqcopy);
             foreach (@$reqs) {
                 push @requests, {%$_};
             }
+        } elsif ($isMN == 0) {
+            # avoid handle myself multiple times when different IP address used in `noderes.servicenode`.
+            next if $handled4me;
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $xcatdest;
+            $reqcopy->{'node'} = $sn_hash->{$xcatdest};
+
+            $reqs = get_parallel_scope($reqcopy);
+            foreach (@$reqs) {
+                push @requests, {%$_};
+            }
+            $handled4me = 1;
         }
     }
-    #print Dumper(\@requests);
+
     return \@requests;
 }
 

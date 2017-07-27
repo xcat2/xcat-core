@@ -1,7 +1,6 @@
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::petitboot;
 
-#use Data::Dumper;
 use File::Path;
 use Getopt::Long;
 use xCAT::Table;
@@ -464,7 +463,7 @@ sub process_request {
         my $errormsg = $ipret->{'error'};
         my $nodeip = $ipret->{'ip'};
         if ($errormsg) {# Add the node to failure set
-            xCAT::MsgUtils->trace(0, "E", "petitboot: IP address of $_ is $nodeip. $errormsg");
+            xCAT::MsgUtils->trace(0, "E", "petitboot: Defined IP address of $_ is $nodeip. $errormsg");
             unless ($nodeip) {
                 $failurenodes{$_} = 1;
             }
@@ -497,7 +496,10 @@ sub process_request {
     unless (@nodes) {
         xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: no valid nodes. Stop the operation on this server.");
 
-        # It must be an error if my managed nodes are not handled.
+        # We need special hanlding to see if the plugin needs report error.
+        # - For MN, it is designed to handle all nodes, any error is required to be reqport. (All nodes are handled on MN if sharedtftp=1)
+        # - For SN, if disjointdhcps=1 AND sharedtftp=0, all nodes in the request are the nodes managed by this SN, so we need report error
+        #           if disjointdhcps=1 AND sharedtftp=0, report error only if there are nodes are managed by me.
         if (xCAT::Utils->isMN() != 1 && $request->{'_disparatetftp'}->[0] && $request->{'_disjointmode'}->[0] != 1) {
             # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
             # For other case, all passing node range are required to be handled.
@@ -525,7 +527,7 @@ sub process_request {
         }
         my $rsp;
         $rsp->{errorcode}->[0] = 1;
-        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.\n";
+        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
         $callback->($rsp);
         return;
     }
@@ -696,7 +698,7 @@ sub process_request {
     if (%failurenodes) {
         my $rsp;
         $rsp->{errorcode}->[0] = 1;
-        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.\n";
+        $rsp->{error}->[0]     = "Failed to generate petitboot configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
         $callback->($rsp);
         return;
     }
