@@ -808,7 +808,6 @@ sub parse_command_status {
 
     if ($command eq "rflash") {
         my $check_version = 0;
-<<<<<<< HEAD
         my $list = 0;
         my $delete = 0;
         my $upload = 0;
