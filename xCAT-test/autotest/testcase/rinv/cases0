@@ -11,6 +11,13 @@ check:rc==0
 check:output=~Usage
 check:output=~rinv
 end
+start:rinv_help
+description:show help information for rinv
+cmd:rinv --help
+check:rc==0
+check:output=~Usage
+check:output=~rinv
+end
 start:rinv_v
 description:show version for Version
 cmd:rinv -v
@@ -117,4 +124,10 @@ check:rc==1
 check:output=~$$CN: Error: Invalid username or password
 cmd:cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza 
 check:rc==0
+end
+start:rinv_errorcommand
+description:get right return if input error command
+cmd:rinv $$CN dafds
+check:rc==1
+check:output=~Unsupported command
 end

@@ -19,9 +19,7 @@
 #
 #####################################################
 
-
 [ -f "/xcatpost/xcatlib.sh" ] &&  . /xcatpost/xcatlib.sh 
-
 
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
@@ -39,6 +37,7 @@ else
     done
 fi
 
+XCATINFOFILE=/opt/xcat/xcatinfo
 
 #echolog: process message log and echo in xcatdsklspost
 #arguments:
@@ -691,6 +690,22 @@ else
     echo "USEFLOWCONTROL=NO" >> /opt/xcat/xcatinfo
 fi
 
+# Store the SERVICEGROUP into the xcatinfo file for node deployment, and also for updatenode -s
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "1" ]; then
+    sn_group=`grep '^SERVICEGROUP' /$xcatpost/mypostscript |cut -d= -f2 | tr -d \'\"`
+    if [ "x" != "x$sn_group" ]; then
+      # Change or add SERVICEGROUP line if service node pool defined.
+      grep 'SERVICEGROUP=' $XCATINFOFILE > /dev/null 2>&1
+      if [ $? -eq 0 ]; then
+        sed -i "s/SERVICEGROUP=.*/SERVICEGROUP=$sn_group/" $XCATINFOFILE
+      else
+        echo "SERVICEGROUP=$sn_group" >> $XCATINFOFILE
+      fi
+    else
+      # Remove SERVICEGROUP line if no service node pool defined.
+      sed -i "/SERVICEGROUP=.*/d" $XCATINFOFILE
+    fi
+fi
 
 # when called by the updatenode command  MODE=1,2
 # the nodename is passed in by xdsh in the NODE environment variable by xdsh.

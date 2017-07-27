@@ -1,0 +1,13 @@
+#Please make sure there is a space between @ and group name
+libvirt
+net-snmp
+net-tools
+nfs-utils
+ntp
+openssh-server
+qemu-kvm
+rsync
+screen
+util-linux
+wget
+yp-tools

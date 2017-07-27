@@ -21,8 +21,10 @@ no strict;
 use Data::Dumper;
 use Socket;
 use Expect;
+use xCAT::data::switchinfo;
 
 #global variables for this module
+my $device;
 my $community;
 my %globalopt;
 my @filternodes;
@@ -32,42 +34,6 @@ my %global_scan_type = (
     lldp => "lldp_scan",
     snmp => "snmp_scan"
 );
-
-my %global_mac_identity = (
-    "a8:97:dc" => "BNT G8052 switch",
-    "6c:ae:8b" => "BNT G8264-T switch",
-    "fc:cf:62" => "BNT G8124 switch",
-    "7c:fe:90" => "Mellanox switch",
-    "e4:1d:2d" => "Mellanox switch",
-    "24:8a:07" => "Mellanox switch",
-    "00:25:8b" => "Mellanox switch",
-    "00:02:c9" => "Mellanox switch",
-    "f4:52:14" => "Mellanox switch",
-    "ec:0d:9a" => "Mellanox switch",
-    "cc:37:ab" => "Edgecore Networks Switch",
-    "a8:2b:b5" => "Edgecore Networks Switch",
-    "70:72:cf" => "Edgecore Networks Switch",
-    "8c:ea:1b" => "Edgecore Networks Switch"
-);
-
-my %global_switch_type = (
-    Juniper => "Juniper",
-    juniper => "Juniper",
-    Cisco => "Cisco",
-    cisco => "Cisco",
-    BNT => "BNT",
-    Blade => "BNT",
-    G8052 => "BNT",
-    RackSwitch => "BNT",
-    Mellanox => "Mellanox",
-    mellanox => "Mellanox",
-    MLNX => "Mellanox",
-    MELLAN => "Mellanox",
-    Cumulus => "onie",
-    cumulus => "onie",
-    Edgecore => "onie"
-);
-
 
 
 #-------------------------------------------------------------------------------
@@ -178,7 +144,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version x z w r n range=s s=s setup))) {
+            qw(h|help V|verbose v|version x z w r n range=s s=s setup pdu))) {
         return( usage() );
     }
 
@@ -291,6 +257,12 @@ sub parse_args {
     #########################################################
     if ( exists( $opt{setup} )) {
             $globalopt{setup} = 1;
+    }
+
+    $device = "switch";
+    if ( exists( $opt{pdu} )) {
+        $globalopt{pdu} = 1;
+        $device = "pdu";
     }
 
 
@@ -748,16 +720,16 @@ sub nmap_scan {
                         }
                         my $vendor = $addr->{vendor};
                         if ($vendor) {
-                            my $search_string = join '|', keys(%global_switch_type);
+                            my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                             if ($vendor =~ /($search_string)/) {
                                 $found = 1;
                             }
                         } 
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            my $search_string = join '|', keys(%global_mac_identity);
+                            my $search_string = join '|', keys(%xCAT::data::switchinfo::global_mac_identity);
                             if ($mac =~ /($search_string)/i) {
                                 my $key = $1;
-                                $vendor = $global_mac_identity{lc $key};
+                                $vendor = $xCAT::data::switchinfo::global_mac_identity{lc $key};
                                 $found = 1;
                             }
 
@@ -851,7 +823,7 @@ sub nmap_osguess {
                         last;
                     }  
                 }
-                my $search_string = join '|', keys(%global_switch_type);
+                my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
                 if ($line =~ /Running/) {
                     if ($line =~ /($search_string)/){
                         $vendor = $1;
@@ -915,7 +887,7 @@ sub snmp_scan {
 
     # snmpwalk command has to be available for snmp_scan
     if (-x "/usr/bin/snmpwalk" ){
-        send_msg($request, 0, "Discovering switches using snmpwalk for @$ranges .....");
+        send_msg($request, 0, "Discovering $device using snmpwalk for @$ranges .....");
     } else {
         send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command first");
         return 1;
@@ -1003,7 +975,7 @@ sub snmp_scan {
             $switches->{$mac}->{vendor} = $vendor;
             $switches->{$mac}->{name} = $hostname;
             if (exists($globalopt{verbose}))    {
-               send_msg($request, 0, "found switch: $hostname, $ip, $stype, $vendor");
+               send_msg($request, 0, "found $device: $hostname, $ip, $stype, $vendor");
             }
         }
     }
@@ -1041,8 +1013,15 @@ sub get_snmpvendorinfo {
         }
         return $snmpwalk_vendor;
     }
-
+   
     my ($desc,$model) = split /: /, $result;
+
+    if (exists($globalopt{pdu})) {
+        if ( ($model =~ /pdu/) || ($model =~ /PDU/) ) {
+            return $model;
+        }
+        return $snmpwalk_vendor;
+    }
 
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "switch model = $model\n" );
@@ -1180,10 +1159,10 @@ sub get_switchtype {
     my $vendor = shift;
     my $key = "Not support";
     
-    my $search_string = join '|', keys(%global_switch_type);
+    my $search_string = join '|', keys(%xCAT::data::switchinfo::global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
-        return $global_switch_type{$key};
+        return $xCAT::data::switchinfo::global_switch_type{$key};
     } else {
         return $key;
     }
@@ -1221,23 +1200,13 @@ sub xCATdB {
         }
 
         #################################################
-        # use lsdef command to check if this switch is
-        # already in the switch table
-        # if it is, use chdef to update it's attribute
-        # otherwise, use mkdef to add this switch to
-        # switch table
+        # use chdef command to make new device or update 
+        # it's attribute 
         ##################################################
-        $ret = xCAT::Utils->runxcmd( { command => ['lsdef'], arg => ['-t','node','-o',$host] }, $sub_req, 0, 1);
-        if ($::RUNCMD_RC == 0)
-        {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"ip=$ip","mac=$mac",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,'-p','groups=switch'] }, $sub_req, 0, 1);
+        if (exists($globalopt{pdu})) {
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor"] }, $sub_req, 0, 1);
         } else {
-            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','node','-o',$host,'groups=switch',"ip=$ip","mac=$mac",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
-        }
-        if ($::RUNCMD_RC != 0)
-        {
-            send_msg($request, 0, "$$ret[0]");
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"groups=$device","ip=$ip","mac=$mac","nodetype=$device","mgt=$device","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
         }
     }
 }
@@ -1322,14 +1291,16 @@ sub format_stanza {
         if ($mac =~ /nomac/) {
             $mac = " ";
         }
-
+      
         $result .= "$host:\n\tobjtype=node\n";
-        $result .= "\tgroups=switch\n";
+        $result .= "\tgroups=$device\n";
         $result .= "\tip=$ip\n";
         $result .= "\tmac=$mac\n";
-        $result .= "\tmgt=switch\n";
-        $result .= "\tnodetype=switch\n";
-        $result .= "\tswitchtype=$stype\n";
+        $result .= "\tmgt=$device\n";
+        $result .= "\tnodetype=$device\n";
+        if (!exists($globalopt{pdu})) {
+            $result .= "\tswitchtype=$stype\n";
+        }
     }
     return ($result); 
 }
@@ -1364,12 +1335,14 @@ sub format_xml {
 
         $result .= "hostname=$host\n";
         $result .= "objtype=node\n";
-        $result .= "groups=switch\n";
+        $result .= "groups=$device\n";
         $result .= "ip=$ip\n";
         $result .= "mac=$mac\n";
-        $result .= "mgt=switch\n";
-        $result .= "nodetype=switch\n";
-        $result .= "switchtype=$stype\n";
+        $result .= "mgt=$device\n";
+        $result .= "nodetype=$device\n";
+        if (!exists($globalopt{pdu})) {
+            $result .= "switchtype=$stype\n";
+        }
 
         my $href = {
             Switch => { }
@@ -1388,7 +1361,7 @@ sub format_xml {
     return ($xml);    
 }
 
-#--------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 =head3 matchPredefineSwitch 
       find discovered switches with predefine switches
       for each discovered switches:
@@ -1423,7 +1396,7 @@ sub matchPredefineSwitch {
 
         my $node = $macmap->find_mac($mac,0,1);
         if (!$node) {
-            send_msg($request, 0, "Switch discovered: $dswitch ");
+            send_msg($request, 0, "$device discovered: $dswitch ");
             $discoverswitch->{$mac}->{ip} = $ip;
             $discoverswitch->{$mac}->{vendor} = $vendor;
             $discoverswitch->{$mac}->{name} = $dswitch;
@@ -1432,11 +1405,15 @@ sub matchPredefineSwitch {
 
         my $stype = get_switchtype($vendor);
 
-        send_msg($request, 0, "Switch discovered and matched: $dswitch to $node" );
+        send_msg($request, 0, "$device discovered and matched: $dswitch to $node" );
 
         # only write to xcatdb if -w or --setup option specified
         if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
-            xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+            if (exists($globalopt{pdu})) {
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+            } else {
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+            }
         }
 
         push (@{$configswitch->{$stype}}, $node);
@@ -1458,12 +1435,18 @@ sub switchsetup {
     my $nodes_to_config = shift;
     my $request = shift;
     my $sub_req = shift;
+    if (exists($globalopt{pdu})) {
+        return;
+    }
+
     foreach my $mytype (keys %$nodes_to_config) {
         my $config_script = "$::XCATROOT/share/xcat/scripts/config".$mytype;
         if (-r -x $config_script) {
             my $switches = join(",",@{${nodes_to_config}->{$mytype}});
             if ($mytype eq "onie") {
-                send_msg($request, 0, "onie switch needs to take 50 mins to install, please run /opt/xcat/share/xcat/script/configonie after Cumulus OS installed on switch\n");
+                send_msg($request, 0, "Call to config $switches\n");
+                my $out = `$config_script --switches $switches --all`;
+                send_msg($request, 0, "output = $out\n");
             } else {
                 send_msg($request, 0, "call to config $mytype switches $switches\n");
                 my $out = `$config_script --switches $switches --all`;

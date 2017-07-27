@@ -6,7 +6,7 @@ net-snmp
 rsync
 yp-tools
 openssh-server
-util-linux-ng
+util-linux
 net-tools
 libvirt
 screen

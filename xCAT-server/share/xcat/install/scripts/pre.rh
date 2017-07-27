@@ -193,7 +193,6 @@ if [ -e "/tmp/xcat.install_disk" ]; then
     instdisk=`cat /tmp/xcat.install_disk`
 fi
 
-
 modprobe ext4 >& /dev/null
 modprobe ext4dev >& /dev/null
 if grep ext4dev /proc/filesystems > /dev/null; then
@@ -211,7 +210,7 @@ if [ `uname -m` = "ppc64" ]; then
 fi
 if [ -d /sys/firmware/efi ]; then 
     echo 'bootloader --driveorder='$instdisk >> /tmp/partitionfile
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
+    echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitionfile
 else
     echo 'bootloader' >> /tmp/partitionfile
 fi

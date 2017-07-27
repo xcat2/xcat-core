@@ -29,16 +29,21 @@ use xCAT::SvrUtils;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 
+$::VERBOSE                  = 0;
+# String constants for rbeacon states
+$::BEACON_STATE_OFF         = "off";
+$::BEACON_STATE_ON          = "on";
 # String constants for rpower states
-$::POWER_STATE_OFF="off";
-$::POWER_STATE_ON="on";
-$::POWER_STATE_POWERING_OFF="powering-off";
-$::POWER_STATE_POWERING_ON="powering-on";
-$::POWER_STATE_QUIESCED="quiesced";
-$::POWER_STATE_RESET="reset";
-$::UPLOAD_FILE="";
+$::POWER_STATE_OFF          = "off";
+$::POWER_STATE_ON           = "on";
+$::POWER_STATE_POWERING_OFF = "powering-off";
+$::POWER_STATE_POWERING_ON  = "powering-on";
+$::POWER_STATE_QUIESCED     = "quiesced";
+$::POWER_STATE_RESET        = "reset";
+$::POWER_STATE_REBOOT       = "reboot";
+$::UPLOAD_FILE              = "";
 
-$::NO_ATTRIBUTES_RETURNED="No attributes returned from the BMC.";
+$::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
 sub unsupported {
     my $callback = shift;
@@ -102,6 +107,23 @@ my %status_info = (
     },
     LOGIN_RESPONSE     => {
         process        => \&login_response,
+    },
+
+    RBEACON_ON_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/led/groups/enclosure_identify/attr/Asserted", 
+        data           => "true",
+    },
+    RBEACON_ON_RESPONSE => {
+        process        => \&rbeacon_response,
+    },
+    RBEACON_OFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/led/groups/enclosure_identify/attr/Asserted",
+        data           => "false",
+    },
+    RBEACON_OFF_RESPONSE => {
+        process        => \&rbeacon_response,
     },
 
     REVENTLOG_REQUEST => {
@@ -174,6 +196,11 @@ my %status_info = (
         process        => \&rinv_response,
     },
 
+    RPOWER_BMCREBOOT_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/state/bmc0/attr/RequestedBMCTransition",
+        data           => "xyz.openbmc_project.State.BMC.Transition.Reboot",
+    },
     RPOWER_ON_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
@@ -184,11 +211,16 @@ my %status_info = (
     },
     RPOWER_OFF_REQUEST  => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
-        data           => "xyz.openbmc_project.State.Host.Transition.Off",
+        init_url       => "$openbmc_project_url/state/chassis0/attr/RequestedPowerTransition",
+        data           => "xyz.openbmc_project.State.Chassis.Transition.Off",
     },
     RPOWER_OFF_RESPONSE => {
         process        => \&rpower_response,
+    },
+    RPOWER_SOFTOFF_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/state/host0/attr/RequestedHostTransition",
+        data           => "xyz.openbmc_project.State.Host.Transition.Off",
     },
     RPOWER_RESET_REQUEST  => {
         method         => "PUT",
@@ -200,7 +232,7 @@ my %status_info = (
     },
     RPOWER_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/state/host0",
+        init_url       => "$openbmc_project_url/state/enumerate",
     },
     RPOWER_STATUS_RESPONSE => {
         process        => \&rpower_response,
@@ -208,14 +240,15 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/control/boot/bootsource/attr/Sources",
+        data           => "xyz.openbmc_project.Control.Boot.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
         process        => \&rsetboot_response,
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/control/boot/bootsource",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -223,7 +256,7 @@ my %status_info = (
 
     RSPCONFIG_GET_REQUEST => {
         method         => "GET",
-        init_url       => "",
+        init_url       => "$openbmc_project_url/network/enumerate",
     },
     RSPCONFIG_GET_RESPONSE => {
         process        => \&rspconfig_response,
@@ -235,6 +268,13 @@ my %status_info = (
     },
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
+    },
+    RSPCONFIG_SSHCFG_REQUEST => {
+        method         => "GET",
+        init_url       => "",
+    },
+    RSPCONFIG_SSHCFG_RESPONSE => {
+        process        => \&rspconfig_sshcfg_response,
     },
     RVITALS_REQUEST => {
         method         => "GET",
@@ -248,7 +288,9 @@ my %status_info = (
 $::RESPONSE_OK                  = "200 OK";
 $::RESPONSE_SERVER_ERROR        = "500 Internal Server Error";
 $::RESPONSE_SERVICE_UNAVAILABLE = "503 Service Unavailable";
+$::RESPONSE_FORBIDDEN           = "403 Forbidden";
 $::RESPONSE_METHOD_NOT_ALLOWED  = "405 Method Not Allowed";
+$::RESPONSE_SERVICE_TIMEOUT     = "504 Gateway Timeout";
 
 #-----------------------------
 
@@ -283,7 +325,12 @@ my $async;
 my $cookie_jar;
 
 my $callback;
+
 my %allerrornodes = ();
+
+my $xcatdebugmode = 0;
+
+my $flag_debug = "[openbmc_debug]";
 
 #-------------------------------------------------------
 
@@ -305,6 +352,8 @@ sub preprocess_request {
 
     if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}) eq 'ARRAY') {
         $::OPENBMC_DEVEL = $request->{environment}->[0]->{XCAT_OPENBMC_DEVEL}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::OPENBMC_DEVEL = $request->{environment}->[0]->{XCAT_OPENBMC_DEVEL};
     } else {
         $::OPENBMC_DEVEL = $request->{environment}->{XCAT_OPENBMC_DEVEL};
     }
@@ -358,18 +407,27 @@ sub preprocess_request {
 #-------------------------------------------------------
 sub process_request {
     my $request = shift;
+    $callback = shift;
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
+    my $extrargs       = $request->{arg};
+    my @exargs         = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs = @$extrargs;
+    }
+
+    if ($::XCATSITEVALS{xcatdebugmode}) { $xcatdebugmode = $::XCATSITEVALS{xcatdebugmode} }
 
     my $check = parse_node_info($noderange);
-    my $rst = parse_command_status($command);
+    my $rst = parse_command_status($command, \@exargs);
     return if ($rst);
 
     if ($request->{command}->[0] ne "getopenbmccons") {
         $cookie_jar = HTTP::Cookies->new({});
         $async = HTTP::Async->new(
+            slots => 500,
             cookie_jar => $cookie_jar,
-            timeout => 10,
+            timeout => 60,
             max_request_time => 60,
             ssl_options => {
                 SSL_verify_mode => 0,
@@ -395,7 +453,7 @@ sub process_request {
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-            print "$node: DEBUG POST $login_url -d $content\n";
+            xCAT::SvrUtils::sendmsg("$flag_debug POST $login_url -d $content", $callback, $node) if ($xcatdebugmode); 
         }
     }  
 
@@ -432,18 +490,37 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
- 
-    if (!defined($extrargs) and $command =~ /rpower|rsetboot|rspconfig|rflash/) {
+
+    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firmware level is at v1.99.6-0-r1, or higher.", $callback);
+
+    my $subcommand = undef;
+    my $verbose    = undef;
+    unless (GetOptions(
+        'V|verbose'  => \$verbose,
+    )) {
+        return ([ 1, "Error parsing arguments." ]);
+    }
+
+    # If command includes '-V', it must be the last one prarmeter. Or print error message.
+    if ($verbose) {
+        my $option = $$extrargs[-1];
+        return ([ 1, "Error parsing arguments." ]) if ($option !~ /V|verbose/);
+    }
+
+    if (scalar(@ARGV) >= 2 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
+        return ([ 1, "Only one option is supported at the same time for $command" ]);
+    } elsif (scalar(@ARGV) == 0 and $command =~ /rpower|rspconfig|rflash/) {
         return ([ 1, "No option specified for $command" ]);
+    } else { 
+        $subcommand = $ARGV[0];
     }
 
-    if (scalar(@ARGV) > 1 and ($command =~ /rpower|rinv|rsetboot|rvitals/)) {
-        return ([ 1, "Only one option is supported at the same time" ]);
-    }
-
-    my $subcommand = $ARGV[0];
-    if ($command eq "rpower") {
-        unless ($subcommand =~ /^on$|^off$|^reset$|^boot$|^status$|^stat$|^state$/) {
+    if ($command eq "rbeacon") { 
+        unless ($subcommand =~ /^on$|^off$/) {
+	    return ([ 1, "Unsupported command: $command $subcommand" ]);
+        }
+    } elsif ($command eq "rpower") {
+        unless ($subcommand =~ /^on$|^off$|^softoff$|^reset$|^boot$|^bmcreboot$|^bmcstate$|^status$|^stat$|^state$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rinv") {
@@ -454,10 +531,7 @@ sub parse_args {
     } elsif ($command eq "getopenbmccons") {
         # command for openbmc rcons
     } elsif ($command eq "rsetboot") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $subcommand = "stat" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^net$|^hd$|^cd$|^def$|^default$|^stat$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
@@ -466,6 +540,10 @@ sub parse_args {
         # disable function until fully tested
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        my $option_s = 0;
+        unless (GetOptions("s" => \$option_s,)) {
+            return ([1, "Error parsing arguments." ]);
+        }
         $subcommand = "all" if (!defined($ARGV[0]));
         unless ($subcommand =~ /^\d$|^\d+$|^all$|^clear$/) {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
@@ -474,7 +552,7 @@ sub parse_args {
         #
         # disable function until fully tested
         #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+        $check = unsupported($callback); # Check later for each subcommand: if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -490,9 +568,13 @@ sub parse_args {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
                 }
                 $setorget = "set";
+                if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
+                if (ref($check) eq "ARRAY") { return $check; }
+            } elsif ($subcommand =~ /^sshcfg$/) {
+                $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
             } else {
                 return ([ 1, "Unsupported command: $command $subcommand" ]);
             }
@@ -557,13 +639,31 @@ sub parse_args {
 
 #-------------------------------------------------------
 sub parse_command_status {
-    my $command  = shift;
+    my $command     = shift;
+    my $subcommands = shift;
     my $subcommand;
+
+    if ($$subcommands[-1] =~ /V|verbose/) {
+        $::VERBOSE = 1;
+        pop(@$subcommands);
+    }
 
     $next_status{LOGIN_REQUEST} = "LOGIN_RESPONSE";
 
+    if ($command eq "rbeacon") { 
+        $subcommand = $$subcommands[0];
+
+        if ($subcommand eq "on") {
+            $next_status{LOGIN_RESPONSE} = "RBEACON_ON_REQUEST";
+            $next_status{RBEACON_ON_REQUEST} = "RBEACON_ON_RESPONSE";
+        } elsif ($subcommand eq "off") {
+            $next_status{LOGIN_RESPONSE} = "RBEACON_OFF_REQUEST";
+            $next_status{RBEACON_OFF_REQUEST} = "RBEACON_OFF_RESPONSE";
+        }
+    }
+
     if ($command eq "rpower") {
-        $subcommand = $ARGV[0];
+        $subcommand = $$subcommands[0];
 
         if ($subcommand eq "on") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_ON_REQUEST";
@@ -571,12 +671,16 @@ sub parse_command_status {
         } elsif ($subcommand eq "off") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_OFF_REQUEST";
             $next_status{RPOWER_OFF_REQUEST} = "RPOWER_OFF_RESPONSE";
+        } elsif ($subcommand eq "softoff") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_SOFTOFF_REQUEST";
+            $next_status{RPOWER_SOFTOFF_REQUEST} = "RPOWER_OFF_RESPONSE";
         } elsif ($subcommand eq "reset") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_RESET_REQUEST";
             $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
-        } elsif ($subcommand eq "status" or $subcommand eq "state" or $subcommand eq "stat") {
+        } elsif ($subcommand =~ /^bmcstate$|^status$|^state$|^stat$/) {
             $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
             $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
+            $status_info{RPOWER_STATUS_RESPONSE}{argv} = "$subcommand";
         } elsif ($subcommand eq "boot") {
             $next_status{LOGIN_RESPONSE} = "RPOWER_STATUS_REQUEST";
             $next_status{RPOWER_STATUS_REQUEST} = "RPOWER_STATUS_RESPONSE";
@@ -584,12 +688,16 @@ sub parse_command_status {
             $next_status{RPOWER_ON_REQUEST} = "RPOWER_ON_RESPONSE";
             $next_status{RPOWER_STATUS_RESPONSE}{ON} = "RPOWER_RESET_REQUEST";
             $next_status{RPOWER_RESET_REQUEST} = "RPOWER_RESET_RESPONSE";
+        } elsif ($subcommand eq "bmcreboot") {
+            $next_status{LOGIN_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+            $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
+            $status_info{RPOWER_RESET_RESPONSE}{argv} = "$subcommand";
         }
     } 
 
     if ($command eq "rinv") {
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -611,36 +719,36 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
-        my $persistent = 0;
-        unless (GetOptions("p" => \$persistent,)) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
-        }
-
-        $subcommand = $ARGV[0];
+        $subcommand = $$subcommands[0];
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
-            # modify $status_info{RSETBOOT_SET_REQUEST}{data}
+            if ($subcommand eq "net") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Network";
+            } elsif ($subcommand eq "hd") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Disk";
+            } elsif ($subcommand eq "cd") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "ExternalMedia";
+            } elsif ($subcommand eq "def" or $subcommand eq "default") {
+                $status_info{RSETBOOT_SET_REQUEST}{data} .= "Default";
+            }
             $next_status{RSETBOOT_SET_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         } elsif ($subcommand eq "stat") {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_STATUS_REQUEST";
             $next_status{RSETBOOT_STATUS_REQUEST} = "RSETBOOT_STATUS_RESPONSE";
         }
-        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        return 1;
     }
 
     if ($command eq "reventlog") {
         my $option_s = 0;
-        unless (GetOptions("s" => \$option_s,)) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
+        if ($$subcommands[-1] eq "-s") {
+            $option_s = 1; 
+            pop(@$subcommands);
         }
 
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -660,11 +768,18 @@ sub parse_command_status {
 
     if ($command eq "rspconfig") {
         my @options = ();
-        foreach $subcommand (@ARGV) {
+        foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
+            } elsif ($subcommand =~ /^sshcfg$/) {
+                # Special processing to copy ssh keys, currently there is no REST API to do this.
+                # Instead, copy ssh key file to the BMC in function specified by RSPCONFIG_SSHCFG_RESPONSE
+                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SSHCFG_REQUEST";
+                $next_status{RSPCONFIG_SSHCFG_REQUEST} = "RSPCONFIG_SSHCFG_RESPONSE";
+                push @options, $subcommand;
+                return 0;
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
                 my $value = $2;
@@ -679,14 +794,12 @@ sub parse_command_status {
                 push @options, $key;
             }
         }
-        $next_status{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
-        xCAT::SvrUtils::sendmsg("Command $command is not available now!", $callback);
-        return 1;
+        $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
     }
 
     if ($command eq "rvitals") {
-        if (defined($ARGV[0])) {
-            $subcommand = $ARGV[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
         } else {
             $subcommand = "all";
         }
@@ -697,23 +810,29 @@ sub parse_command_status {
     }
 
     if ($command eq "rflash") {
-        my $check_version = 0;
-        my $list     = 0;
-        my $delete   = 0;
-        my $upload   = 0;
+        my $list = 0;
+        my $delete = 0;
+        my $upload = 0;
         my $activate = 0;
-        unless (GetOptions(
-            'c|check'    => \$check_version,
-            'l|list'     => \$list,
-            'd|delete'   => \$delete,
-            'u|upload'   => \$upload,
-            'a|activate' => \$activate,
-        )) {
-            xCAT::SvrUtils::sendmsg("Error parsing arguments.", $callback);
-            return 1;
+
+        if ($$subcommands[-1] =~ /c|check/) {
+            $check_version = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /l|list/) {
+            $list = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /d|delete/) {
+            $delete = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /u|upload/) {
+            $upload = 1;
+            pop(@$subcommands);
+        } elsif ($$subcommands[-1] =~ /a|activate/) {
+            $activate = 1;
+            pop(@$subcommands);
         }
 
-        my $update_file = $ARGV[0]; 
+        my $update_file = $$subcommands[0]; 
         my $filename = undef;
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
@@ -887,7 +1006,12 @@ sub gen_send_request {
     }
 
     if ($status_info{ $node_info{$node}{cur_status} }{data}) {
-        $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
+        # Handle boolean values by create the json objects without wrapping with quotes
+        if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
+            $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
+        } else {
+            $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
+        }
     }
 
     if ($node_info{$node}{cur_url}) {
@@ -903,17 +1027,17 @@ sub gen_send_request {
 
     my $debug_info;
     if ($method eq "GET") {
-        $debug_info = "$node: DEBUG $method $request_url";
+        $debug_info = "$method $request_url";
     } else {
         if ($::UPLOAD_FILE) {
             # Slightly different debug message when doing a file upload
-            $debug_info = "$node: DEBUG $method $request_url -T " . $::UPLOAD_FILE;
+            $debug_info = "$method $request_url -T " . $::UPLOAD_FILE;
         }
         else {
-            $debug_info = "$node: DEBUG $method $request_url -d $content";
+            $debug_info = "$method $request_url -d $content";
         }
     }
-    print "$debug_info\n";
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
 
     return;
 }
@@ -937,7 +1061,8 @@ sub deal_with_response {
 
     delete $handle_id_node{$handle_id};
 
-    print "$node: DEBUG " . lc ($node_info{$node}{cur_status}) . " " . $response->status_line . "\n";
+    my $debug_info = lc ($node_info{$node}{cur_status}) . " " . $response->status_line;
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
 
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
@@ -951,11 +1076,14 @@ sub deal_with_response {
             $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
             return;
-            
+        } elsif ($response->status_line eq $::RESPONSE_SERVICE_TIMEOUT) {
+            $error = $::RESPONSE_SERVICE_TIMEOUT;
         } else {
             my $response_info = decode_json $response->content;
             if ($response->status_line eq $::RESPONSE_SERVER_ERROR) {
                 $error = $response_info->{'data'}->{'exception'};
+            } elsif ($response->status_line eq $::RESPONSE_FORBIDDEN) {
+                $error = "$::RESPONSE_FORBIDDEN - This function is not yet available in OpenBMC firmware.";
             } elsif ($response_info->{'data'}->{'description'} =~ /path or object not found: (.+)/) {
                 $error = "path or object not found $1";
             } else {
@@ -1015,10 +1143,6 @@ sub rpower_response {
 
     my $response_info = decode_json $response->content;
 
-    foreach my $key (keys %{$response_info->{data}}) {
-        # Debug, print out the Current and Transition States     
-        print "$node: DEBUG host_states $key=$response_info->{'data'}->{$key}\n";
-    }
 
     if ($node_info{$node}{cur_status} eq "RPOWER_ON_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
@@ -1036,7 +1160,12 @@ sub rpower_response {
 
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+            if (defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
+                my $bmc_node = "$node BMC";
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_REBOOT", $callback, $bmc_node);
+            } else {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
+            }
             $new_status{$::STATUS_POWERING_ON} = [$node];
         }
     }
@@ -1044,27 +1173,66 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
-        if ($response_info->{'data'}->{CurrentHostState} =~ /Off$/) {
-            # State is off, but check if it is transitioning
-            if ($response_info->{'data'}->{RequestedHostTransition} =~ /On$/) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+        my $bmc_state = "";
+        my $bmc_transition_state = "";
+        my $chassis_state = "";
+        my $chassis_transition_state = "";
+        my $host_state = "";
+        my $host_transition_state = "";
+        foreach my $type (keys %{$response_info->{data}}) {
+            if ($type =~ /bmc0/) {
+                $bmc_state = $response_info->{'data'}->{$type}->{CurrentBMCState};
+                $bmc_transition_state = $response_info->{'data'}->{$type}->{RequestedBMCTransition};
             }
-            else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+            if ($type =~ /chassis0/) { 
+                $chassis_state = $response_info->{'data'}->{$type}->{CurrentPowerState};
+                $chassis_transition_state = $response_info->{'data'}->{$type}->{RequestedPowerTransition};
             }
-        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Quiesced$/) {
-            xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
-        } elsif ($response_info->{'data'}->{CurrentHostState} =~ /Running$/) {
-            # State is on, but check if it is transitioning
-            if ($response_info->{'data'}->{RequestedHostTransition} =~ /Off$/) {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
+            if ($type =~ /host0/) {
+                $host_state = $response_info->{'data'}->{$type}->{CurrentHostState};
+                $host_transition_state = $response_info->{'data'}->{$type}->{RequestedHostTransition};
             }
-            else {
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
-            }
+        }
+       
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentBMCState=$bmc_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedBMCTransition=$bmc_transition_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentPowerState=$chassis_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedPowerTransition=$chassis_transition_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentHostState=$host_state", $callback, $node) if ($xcatdebugmode);
+        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedHostTransition=$host_transition_state", $callback, $node) if ($xcatdebugmode);
+
+        if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
+            my $bmc_node = "$node BMC";
+            my $bmc_short_state = (split(/\./, $bmc_state))[-1];
+            xCAT::SvrUtils::sendmsg($bmc_short_state, $callback, $bmc_node);
         } else {
-            my $unexpected_state = $response_info->{'data'}->{CurrentHostState};
-            xCAT::SvrUtils::sendmsg("Unexpected state - $unexpected_state", $callback, $node);
+            if ($chassis_state =~ /Off$/) {
+                xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+            } elsif ($chassis_state =~ /On$/) { 
+                if ($host_state =~ /Off$/) {
+                    # State is off, but check if it is transitioning
+                    if ($host_transition_state =~ /On$/) {
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+                    }
+                    else {
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                    }
+                } elsif ($host_state =~ /Quiesced$/) {
+                    xCAT::SvrUtils::sendmsg("$::POWER_STATE_QUIESCED", $callback, $node);
+                } elsif ($host_state =~ /Running$/) {
+                    # State is on, but check if it is transitioning
+                    if ($host_transition_state =~ /Off$/) {
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
+                    }
+                    else {
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                    }
+                } else {
+                    xCAT::SvrUtils::sendmsg("Unexpected host state=$host_state", $callback, $node);
+                }
+            } else {
+                xCAT::SvrUtils::sendmsg("Unexpected chassis state=$chassis_state", $callback, $node);
+            }
         }
     }
 
@@ -1120,30 +1288,27 @@ sub rinv_response {
 
         if ($grep_string eq "firm") {
             # This handles the data from the /xyz/openbmc_project/Software endpoint.
-            #
-            # Handle printing out all posssible Software values in a generic format: 
-            #    node: <Purpose> Software: <version> (<Activation>)
-            #
             my $sw_id = (split(/\//, $key_url))[-1];
             if (defined($content{Version}) and $content{Version}) {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
+                $purpose_value = "[$sw_id]$purpose_value";
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
                 #
-                # For 'rinv firm', only print Active software.  'rflash list' will handle others
+                # For 'rinv firm', only print Active software, unless verbose is specified
                 #
-                if ($activation_value =~ "Active") {
+                if ($activation_value =~ "Active" or $::VERBOSE) {
                     #
-                    # The space below between "SOFTWARE:" and $content{Version} is intentional
+                    # The space below between "Firmware Product Version:" and $content{Version} is intentional
                     # to cause the sorting of this line before any additional info lines 
                     #
-                    $content_info = "$purpose_value SOFTWARE[$sw_id]:   $content{Version} ($activation_value)";
+                    $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
                     push (@sorted_output, $content_info); 
     
                     if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
                         # ExtendedVersion is going to be a comma separated list of additional software
                         my @versions = split(',', $content{ExtendedVersion});
                         foreach my $ver (@versions) { 
-                            $content_info = "$purpose_value SOFTWARE[$sw_id]: -- additional info: $ver";
+                            $content_info = "$purpose_value Firmware Product: -- additional info: $ver";
                             push (@sorted_output, $content_info);
                         }
                     }
@@ -1186,7 +1351,14 @@ sub rinv_response {
         # sort alpha, then numeric 
         my @sorted_output = grep {s/(^|\D)0+(\d)/$1$2/g,1} sort 
             grep {s/(\d+)/sprintf"%06.6d",$1/ge,1} @sorted_output;
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@sorted_output);
+        foreach (@sorted_output) { 
+            #
+            # The firmware output requires the ID to be part of the string to sort correctly.
+            # Remove this ID from the output to the user
+            #
+            $_ =~ s/\[.*?\]//;
+            xCAT::SvrUtils::sendmsg("$_", $callback, $node);
+        }
     } else {
         xCAT::SvrUtils::sendmsg("$::NO_ATTRIBUTES_RETURNED", $callback, $node);
     }
@@ -1248,10 +1420,10 @@ sub rsetboot_response {
     my $response_info = decode_json $response->content;    
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_GET_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node); #if response data is hd
-        xCAT::SvrUtils::sendmsg("Network", $callback, $node); #if response data is net
-        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node); #if response data is net
-        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node); #if response data is def
+        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
+        xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
+        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
+        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -1263,6 +1435,45 @@ sub rsetboot_response {
 
     return;
 }
+
+#-------------------------------------------------------
+
+=head3  rbeacon_response
+
+  Deal with response of rbeacon command
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rbeacon_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content;
+
+    if ($node_info{$node}{cur_status} eq "RBEACON_ON_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("$::BEACON_STATE_ON", $callback, $node);
+        }
+    } 
+
+    if ($node_info{$node}{cur_status} eq "RBEACON_OFF_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("$::BEACON_STATE_OFF", $callback, $node);
+        }
+    }
+
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    }
+}
+
 
 #-------------------------------------------------------
 
@@ -1342,34 +1553,71 @@ sub rspconfig_response {
     my $response_info = decode_json $response->content; 
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
-        my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
-        my $data;
+        my $address         = "n/a";
+        my $gateway         = "n/a";
+        my $prefix          = "n/a";
+        my $vlan            = "n/a";
+        my $default_gateway = "n/a";
+        my $adapter_id      = "n/a";
+        my $error;
+        my $path;
         my @output;
-        if ($grep_string =~ "ip") {
-            $data = ""; # got data from response
-            push @output, "BMC IP: $data";
-        } 
-        if ($grep_string =~ "netmask") {
-            $data = ""; # got data from response
-            push @output, "BMC Netmask: $data"; 
-        } 
-        if ($grep_string =~ "gateway") {
-            $data = ""; # got data from response
-            push @output, "BMC Gateway: $data";
+        my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+            if ($key_url =~ /network\/config/) {
+                if (defined($content{DefaultGateway}) and $content{DefaultGateway}) {
+                    $default_gateway = $content{DefaultGateway};
+                }
+            }
+
+
+            ($path, $adapter_id) = (split(/ipv4\//, $key_url));
+
+            if ($adapter_id) {
+                if (defined($content{Address}) and $content{Address}) {
+                    unless ($address =~ /n\/a/) {
+                        # We have already processed an entry with adapter information.
+                        # This must be a second entry. Display an error. Currently only supporting
+                        # an adapter with a single IP address set.
+                        $error = "Interfaces with multiple IP addresses are not supported";
+                        last;
+                    }
+                    $address = $content{Address};
+                }
+                if (defined($content{Gateway}) and $content{Gateway}) {
+                    $gateway = $content{Gateway};
+                }
+                if (defined($content{PrefixLength}) and $content{PrefixLength}) {
+                    $prefix = $content{PrefixLength};
+                }
+            }
         }
-        if ($grep_string =~ "vlan") {
-            $data = ""; # got data from response
-            push @output, "BMC VLAN ID enabled: $data";
+        if ($error) {
+            # Display error message once, regardless of how many subcommands were specified
+            push @output, $error;
+        }
+        else {
+            if ($grep_string =~ "ip") {
+                push @output, "BMC IP: $address"; 
+            } 
+            if ($grep_string =~ "netmask") {
+                if ($address) {
+                    my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
+                    my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                    push @output, "BMC Netmask: " . $netmask; 
+                }
+            } 
+            if ($grep_string =~ "gateway") {
+                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+            }  
+            if ($grep_string =~ "vlan") {
+                push @output, "BMC VLAN ID enabled: $vlan";
+            }
         }
 
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
-    }
-
-    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE" and $response_info->{'message'} eq $::RESPONSE_OK) {
-        if ($status_info{RSPCONFIG_SET_RESPONSE}{ip}) {
-            $node_info{$node}{bmc} = $status_info{RSPCONFIG_SET_RESPONSE}{ip};
-            print "$node: DEBUG BMC IP is $node_info{$node}{bmc}\n";
-        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
@@ -1380,6 +1628,56 @@ sub rspconfig_response {
     } 
 }
 
+#-------------------------------------------------------
+
+=head3  rspconfig_sshcfg_response
+
+  Deal with response of rspconfig command for sscfg subcommand.
+  Append contents of id_rsa.pub file from management node to
+  the authorized_keys file on BMC
+  Input:
+        $node: nodename of current response
+        $response: Async return response
+
+=cut
+
+#-------------------------------------------------------
+sub rspconfig_sshcfg_response {
+    my $node = shift;
+    my $response = shift;
+
+    my $response_info = decode_json $response->content; 
+
+    use xCAT::RShellAPI;
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SSHCFG_RESPONSE") {
+        my $bmcip = $node_info{$node}{bmc};
+        my $userid = $node_info{$node}{username}; 
+        my $userpw = $node_info{$node}{password};
+        my $filename = "/root/.ssh/id_rsa.pub";
+
+        # Read in contents of the id_rsa.pub file
+        open my $fh, '<', $filename or die "Error opening $filename: $!";
+        my $id_rsa_pub_contents = do { local $/; <$fh> };
+
+        # Login and append content of the read in id_rsa.pub file to the authorized_keys file on BMC
+        my $output = xCAT::RShellAPI::run_remote_shell_api($bmcip, $userid, $userpw, 0, 0, "mkdir -p ~/.ssh; echo \"$id_rsa_pub_contents\" >> ~/.ssh/authorized_keys");
+
+        # If error was returned from executing command above. Display it to the user.
+        # output[0] contains 1 is error, output[1] contains error messages
+        if (@$output[0] == 1) {
+            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip:\n" . @$output[1], $callback, $node);
+        }
+        else {
+            xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
+        }
+    }
+    if ($next_status{ $node_info{$node}{cur_status} }) {
+        $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
+        gen_send_request($node);
+    } else {
+        $wait_node_num--;
+    } 
+}
 #-------------------------------------------------------
 
 =head3  rvitals_response
@@ -1403,7 +1701,7 @@ sub rvitals_response {
     my $content_info;
     my @sorted_output;
     
-    print "$node: DEBUG Processing command: rvitals $grep_string \n";
+    xCAT::SvrUtils::sendmsg("$flag_debug Processing command: rvitals $grep_string", $callback, $node) if ($xcatdebugmode);
     print Dumper(%{$response_info->{data}});
 
     foreach my $key_url (keys %{$response_info->{data}}) {

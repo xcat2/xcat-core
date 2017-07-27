@@ -35,6 +35,7 @@ use HTTP::Response;
 use JSON;
 
 my $nmap_path;
+my %ipmac = ();
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
@@ -46,6 +47,7 @@ my $bmc_user;
 my $bmc_pass;
 my $openbmc_user;
 my $openbmc_pass;
+my $openbmc_port = 2200;
 
 #-------------------------------------------------------
 
@@ -82,6 +84,13 @@ sub process_request
     $::CALLBACK = $callback;
 
     #$::args     = $request->{arg};
+    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
+    } elsif (ref($request->{environment}) eq 'ARRAY') {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON};
+    } else {
+        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
+    }
 
     unless (defined($request->{arg})) {
         bmcdiscovery_usage();
@@ -500,43 +509,56 @@ sub scan_process {
     # Handle commas in $range for nmap
     $range =~ tr/,/ /;
 
-    my $ip_list;
     ############################################################
     # get live ip list
     ###########################################################
-    if ($method eq "nmap") {
-
-        #check nmap version first
-        my $nmap_version = xCAT::Utils->get_nmapversion();
-
-        # the output of nmap is different for version under 5.10
-        if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
-            $bcmd = join(" ", $nmap_path, " -sP -n $range | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' ' ");
-        } else {
-            $bcmd = join(" ", $nmap_path, " -sn -n $range | grep -B1 up | grep \"Nmap scan report\" |cut -d ' ' -f5 |tr -s '\n' ' ' ");
-        }
-
-        $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
-        if ($::RUNCMD_RC != 0) {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "Nmap scan is failed.\n";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-            return 2;
-        }
-
-    }
-    else
-    {
+    if ($method ne "nmap") {
         my $rsp = {};
         push @{ $rsp->{data} }, "The bmcdiscover method should be nmap.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 2;
     }
 
-    my $live_ip = split_comma_delim_str($ip_list);
+    #check nmap version first
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    my $ip_info_list;
 
-    if (scalar(@{$live_ip}) > 0)
-    {
+    #  the output of nmap is different for version under 5.10
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $bcmd = join(" ", $nmap_path, " -sP -n $range");
+    } else {
+        $bcmd = join(" ", $nmap_path, " -sn -n $range");
+    }
+
+    $ip_info_list = xCAT::Utils->runcmd("$bcmd", -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Nmap scan is failed.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+
+    my $ip_list;
+    my $mac_list;
+    if (xCAT::Utils->version_cmp($nmap_version, "5.10") < 0) {
+        $ip_list  = `echo -e "$ip_info_list" | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`;  
+    } else {
+        $ip_list  = `echo -e "$ip_info_list" | grep -B1 up | grep "Nmap scan report" |cut -d ' ' -f5 | tr -s '\n' ' '`;
+        $mac_list = `echo -e "$ip_info_list" | grep -A1 up | grep "MAC Address" | cut -d ' ' -f3 | tr -s '\n' ' '`; 
+    }
+
+    my $live_ip  = split_comma_delim_str($ip_list);
+    my $live_mac = split_comma_delim_str($mac_list);
+
+    if (scalar(@{$live_ip}) > 0) {
+
+        foreach (@{$live_ip}) {
+            my $new_mac = lc(shift @{$live_mac});
+            $new_mac =~ s/\://g;
+            $ipmac{$_} = $new_mac;
+        }
+
         ###############################
         # Set the signal handler for ^c
         ###############################
@@ -584,20 +606,12 @@ sub scan_process {
                 # Set child process default, if not the function runcmd may return error
                 $SIG{CHLD} = 'DEFAULT';
 
-                my $nmap_cmd = "nmap ${$live_ip}[$i] -p 2200 -Pn";
+                my $nmap_cmd = "nmap ${$live_ip}[$i] -p $openbmc_port -Pn";
                 my $nmap_output = xCAT::Utils->runcmd($nmap_cmd, -1);
-                if ($nmap_output =~ /2200\/tcp (\w+)/) {
-                    my $port_stat = $1;
-                    if ($port_stat eq "open") {
-                        bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
-                    } else {
-                        bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
-                    }
+                if ($nmap_output =~ /$openbmc_port(.+)open/) {
+                    bmcdiscovery_openbmc(${$live_ip}[$i], $opz, $opw, $request_command);
                 } else {
-                    my $rsp = {};
-                    push @{ $rsp->{data} }, "Can not get status of 2200 port for ip ${$live_ip}[$i].\n";
-                    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-                    exit 1;
+                    bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                 }
 
                 exit 0;
@@ -984,8 +998,12 @@ sub bmcdiscovery_ipmi {
 
                 }
             }
-            if ($mtm eq '' or $serial eq '') {
-                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial is unavailable for $ip"] }, $::CALLBACK);
+
+            $mtm = '' if ($mtm =~ /^0+$/);
+            $serial = '' if ($serial =~ /^0+$/); 
+
+            unless (($mtm or $serial) or $ipmac{$ip}) {
+                xCAT::MsgUtils->message("W", { data => ["BMC Type/Model and/or Serial and MAC Address is unavailable for $ip"] }, $::CALLBACK);
                 return;
             }
 
@@ -1005,6 +1023,8 @@ sub bmcdiscovery_ipmi {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
                 $node =~ s/[\s:\._]/-/g;
+            } else {
+                $node = "node-$ipmac{$ip}";
             }
         } elsif ($output =~ /error : unauthorized name/) {
             xCAT::MsgUtils->message("W", { data => ["BMC username is incorrect for $ip"] }, $::CALLBACK);
@@ -1048,10 +1068,12 @@ sub bmcdiscovery_openbmc{
     my $request_command = shift;
     my $node            = sprintf("node-%08x", unpack("N*", inet_aton($ip)));
 
+    print "$ip: Detected openbmc, attempting to obtain system information...\n";
     my $http_protocol="https";
     my $openbmc_project_url = "xyz/openbmc_project";
     my $login_endpoint = "login";
     my $system_endpoint = "inventory/system";
+    my $motherboard_boxelder_endpoint = "$system_endpoint/chassis/motherboard/boxelder/bmc";
 
     my $node_data = $ip;
     my $brower = LWP::UserAgent->new( ssl_opts => { SSL_verify_mode => 0x00, verify_hostname => 0  }, );
@@ -1065,21 +1087,32 @@ sub bmcdiscovery_openbmc{
     my $login_response = $brower->request($login_request);
     
     if ($login_response->is_success) {
+        # attempt to find the system serial/model
         $url = "$http_protocol://$ip/$openbmc_project_url/$system_endpoint";
         my $req = HTTP::Request->new('GET', $url, $header);
         my $req_output = $brower->request($req);
-        return if ($req_output->is_error); 
+        if ($req_output->is_error) {
+            # If the host system has not yet been powered on, check the boxelder bmc info for model/serial
+            $url = "$http_protocol://$ip/$openbmc_project_url/$motherboard_boxelder_endpoint";
+            $req = HTTP::Request->new('GET', $url, $header);
+            $req_output = $brower->request($req);
+            if ($req_output->is_error) {
+                xCAT::MsgUtils->message("W", { data => ["$ip: Could not obtain system information from BMC."] }, $::CALLBACK);
+                return;
+            }
+        }
         my $response = decode_json $req_output->content;
         my $mtm;
         my $serial;
 
         if (defined($response->{data})) {
-            if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
-                $mtm = $response->{data}->{Model};
+            if (defined($response->{data}->{PartNumber}) and defined($response->{data}->{SerialNumber})) {
+                $mtm = $response->{data}->{PartNumber};
+                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
+                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
+                    $mtm = "";
+                }
                 $serial = $response->{data}->{SerialNumber}; 
-            } else {
-                xCAT::MsgUtils->message("W", { data => ["Could not obtain Model Type and/or Serial Number for BMC at $ip"] }, $::CALLBACK);
-                return;
             }
  
         } else { 
@@ -1090,6 +1123,14 @@ sub bmcdiscovery_openbmc{
         # delete space before and after
         $mtm =~ s/^\s+|\s+$//g; 
         $serial =~ s/^\s+|\s+$//g;
+
+        $mtm = '' if ($mtm =~ /^0+$/);
+        $serial = '' if ($serial =~ /^0+$/);
+
+        unless (($mtm or $serial) or $ipmac{$ip}) {
+            xCAT::MsgUtils->message("W", { data => ["Could not obtain Valid Model Type and/or Serial Number and MAC Address for BMC at $ip"] }, $::CALLBACK);
+            return;
+        }
 
         # format info string for format_stanza function
         $node_data .= ",$mtm";
@@ -1108,6 +1149,8 @@ sub bmcdiscovery_openbmc{
             $node = "node-$mtm-$serial";
             $node =~ s/(.*)/\L$1/g;
             $node =~ s/[\s:\._]/-/g;
+        } else {
+            $node = "node-$ipmac{$ip}";
         }
     } else {
         if ($login_response->status_line =~ /401 Unauthorized/) {

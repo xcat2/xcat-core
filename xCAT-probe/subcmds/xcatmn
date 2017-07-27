@@ -387,7 +387,7 @@ sub check_network {
 
         # on SN, get ip address by compare 'master' attribute in 'site' table
         # choose the one in the same network with 'master'
-        my @ipoutput = `ip addr show 2>&1| grep inet | grep -v inet6`;
+        my @ipoutput = `ip -4 a show 2>&1| grep inet`;
         foreach (@ipoutput) {
             if ($_ =~ /inet\s+(.+)\/(.+)\s+brd\s+(.+)\s+scope global/i) {
                 if (xCAT::NetworkUtils::isInSameSubnet($sitetable_ref->{master}, $1, $2, 1)) {

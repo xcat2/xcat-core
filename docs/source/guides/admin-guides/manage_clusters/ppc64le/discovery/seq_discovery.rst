@@ -31,35 +31,41 @@ For more information about chain, refer to :doc:`Chain <../../../../../advanced/
 Initialize the discovery process
 ````````````````````````````````
 
-Specify the predefined nodes to the nodediscoverstart command to initialize the discovery process::
+Specify the predefined nodes to the `nodediscoverstart` command to initialize the discovery process::
 
     nodediscoverstart noderange=cn1
 
-See "nodediscoverstart man page<TBD>" for more details.
+See :doc:`nodediscoverstart </guides/admin-guides/references/man1/nodediscoverstart.1>` for more information.
 
 Display information about the discovery process
 ```````````````````````````````````````````````
 
-There are additional nodediscover commands you can run during the discovery process. See their man pages for more details.
+There are additional `nodediscover*` commands you can run during the discovery process. See the man pages for more details.
 
 
-Verify the status of discovery::
+Verify the status of discovery using :doc:`nodediscoverstatus </guides/admin-guides/references/man1/nodediscoverstatus.1>`::
     
     nodediscoverstatus
 
-Show the nodes that have been discovered so far::
+Show the nodes that have been discovered using :doc:`nodediscoverls </guides/admin-guides/references/man1/nodediscoverls.1>`::
     
     nodediscoverls -t seq -l
 
-Stop the current sequential discovery process::
+Stop the current sequential discovery process using: :doc:`nodediscoverstop </guides/admin-guides/references/man1/nodediscoverstop.1>`::
     
     nodediscoverstop
 
-Note: The sequential discovery process will be stopped automatically when all of the node names in the node pool are used up. 
+
+**Note:** The sequential discovery process will stop automatically when all of the node names in the pool are consumed.
 
 Start discovery process
 -----------------------
 
 To start the discovery process, the system administrator needs to power on the servers one by one manually. Then the hardware discovery process will start automatically.
 
-.. include:: standard_cn_definition.rst
+Verify Node Definition
+----------------------
+
+After discovery of the node, properties of the server will be added to the xCAT node definition.  
+
+Display the node definition and verify that the MAC address has been populated. 

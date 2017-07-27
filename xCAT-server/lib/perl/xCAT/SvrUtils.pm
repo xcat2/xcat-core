@@ -742,6 +742,13 @@ sub update_tables_with_templates
                     osarch       => $arch,
                     synclists    => $synclistfile,
                     osdistroname => $osdistroname);
+
+                #for service node osimage, add service node to the postscripts attributes
+                if($profile eq "service"){
+                    $tb_cols{postscripts}="servicenode";
+                }
+
+
                 if ($args{description}) {
                     $tb_cols{description} = $args{description};
                 }

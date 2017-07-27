@@ -72,6 +72,8 @@ $::pgcmddir       = "/usr/bin";                   # pg cmds location
 $::debiancfgdir   = "/etc/postgresql/9.1/main";
 my $INIT;
 my $SETUPODBC;
+my @LISTENADDRS;
+my @ACCESSADDRS;
 my $NOSTART;
 my $SETUPPCM;
 my $HELP;
@@ -83,6 +85,8 @@ if (
     !GetOptions(
         'i|init'    => \$INIT,
         'o|odbc'    => \$SETUPODBC,
+        'l|listen=s'=> \@LISTENADDRS,
+        'a|access=s'=> \@ACCESSADDRS,
         'N|nostart' => \$NOSTART,
         'P|PCM'     => \$SETUPPCM,
         'h|help'    => \$HELP,
@@ -126,6 +130,13 @@ if ((!($INIT)) && ($SETUPODBC))
 {
     $odbconly = 1;
 
+}
+
+# create comma-separated list of additional listen addresses
+my $listenaddrs = undef;
+if (@LISTENADDRS)
+{
+    $listenaddrs = join ',', @LISTENADDRS;  
 }
 
 #
@@ -428,7 +439,7 @@ sub usage
 "Usage:\npgsqlsetup - Performs the setup of PostgreSQL for xCAT to use as its database. See man pgsqlsetup for more information."
     );
     my $msg =
-"pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-N|--nostart] [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
+"pgsqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-N|--nostart] [-l|--listen address] [-a|--access address] [-P|--PCM] [-o|--odbc] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -726,7 +737,8 @@ sub initpgdb
     }
     &runpostgrescmd($cmd);
 
-    # insert  MN ip address in the # IPv4 local connections: stanza of
+    # insert  MN ip address and any -a addresses 
+    # in the # IPv4 local connections: stanza of
     # the /var/lib/pgsql/data/pg_hba.conf file
     # if it is not already there
 
@@ -735,43 +747,44 @@ sub initpgdb
     if ($debianflag) {
         $hbafile = $::debiancfgdir . "/pg_hba.conf";
     }
-    $cmd = "fgrep  $::MN $hbafile";
+    $cmd = "cp $hbafile $hbafile.org";    # backup the original
     xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # not already there
-    {
-        $cmd = "cp $hbafile $hbafile.org";    # backup the original
+
+    push @ACCESSADDRS, $::MN;  # add management node to list
+    my $insertstr = undef;     # start with empty string
+    for my $hbaaccess (@ACCESSADDRS)
+      {
+        $cmd = "fgrep $hbaaccess $hbafile";
         xCAT::Utils->runcmd($cmd, -1);
-        my $insertstr = "host    all          all        ";
-        $insertstr .= $::MN;
-        $insertstr .= "\/32      md5 ";
-        $cmd =
-"awk '{gsub(\"\IPv4 local connections:\",\"\IPv4 local connections:\\n$insertstr \"); print}'   $hbafile > $hbafile.xcat";
-        xCAT::Utils->runcmd($cmd, 0);
-
-        if ($::RUNCMD_RC != 0)
+        if ($::RUNCMD_RC != 0)    # not already there
         {
-
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
+            $insertstr .= "host    all          all        ";
+            $insertstr .= $hbaaccess;
+            $insertstr .= "\/32      md5\n "; # add entry line to string
         }
-        $cmd = "cp -p  $hbafile.xcat $hbafile  ";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
-        }
-        $cmd = "rm  $hbafile.xcat ";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-
-            xCAT::MsgUtils->message("E", " $cmd failed.");
-            exit(1);
-        }
-        $dbrestart = 1;
-    }
+      }
+    $cmd = "awk '{gsub(\"\IPv4 local connections:\",\"\IPv4 local connections:\\n$insertstr \"); print}'   $hbafile > $hbafile.xcat";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+      {
+         xCAT::MsgUtils->message("E", " $cmd failed.");
+         exit(1);
+      }
+    $cmd = "cp -p  $hbafile.xcat $hbafile  ";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+      {
+         xCAT::MsgUtils->message("E", " $cmd failed.");
+         exit(1);
+      }
+    $cmd = "rm  $hbafile.xcat ";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+      {
+        xCAT::MsgUtils->message("E", " $cmd failed.");
+        exit(1);
+      }
+	  $dbrestart = 1;
 
     # setup the postgresql.conf file
     my $pgconf = $::installdatadir;
@@ -789,6 +802,10 @@ sub initpgdb
         if ($::osname eq 'Linux')
         {
             $cmd = qq~ echo listen_addresses = \\'localhost,$::MN\\' >> $pgconf~;
+             if ($::listenaddrs) 
+             {
+                 $cmd = qq~ echo listen_addresses = \\'localhost,$::MN,$::listenaddrs\\' >> $pgconf~;
+             }
             `$cmd`;
         }
 
@@ -796,6 +813,10 @@ sub initpgdb
         if ($::osname eq 'AIX')
         {
             $cmd = qq~ echo listen_addresses = \\'$::MN\\' >> $pgconf~;
+            if ($::listenaddrs)
+            {
+                $cmd = qq~ echo listen_addresses = \\'$::MN,$::listenaddrs\\' >> $pgconf~;
+            }
             `$cmd`;
             $cmd = qq~echo logging_collector = on >> $pgconf~;
             `$cmd`;

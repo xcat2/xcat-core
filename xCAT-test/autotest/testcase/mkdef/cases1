@@ -44,20 +44,104 @@ cmd:chtab node=kvms 'vm.host=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|'
 check:rc==0
 cmd:mkdef -t node -o c01f02x03v04 groups=kvms mgt=kvm
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmcpus | grep 'vmcpus=2$'
+cmd:chdef c01f02x03v04 -i vmcpus | grep 'vmcpus=2$'
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmhost | grep 'vmhost=c01f02x03$'
+cmd:chdef c01f02x03v04 -i vmhost | grep 'vmhost=c01f02x03$'
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmmemory | grep 'vmmemory=3072$'
+cmd:chdef c01f02x03v04 -i vmmemory | grep 'vmmemory=3072$'
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmnicnicmodel | grep 'vmnicnicmodel=virtio$'
+cmd:chdef c01f02x03v04 -i vmnicnicmodel | grep 'vmnicnicmodel=virtio$'
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmnics | grep 'vmnics=virbr2$'
+cmd:chdef c01f02x03v04 -i vmnics | grep 'vmnics=virbr2$'
 check:rc==0
-cmd:chdef c910f02x03v04 -i vmstorage | grep 'vmstorage=dir:///install/vms/vm4$'
+cmd:chdef c01f02x03v04 -i vmstorage | grep 'vmstorage=dir:///install/vms/vm4$'
 check:rc==0
 cmd:rmdef -t node c01f02x03v04
 check:rc==0
 cmd:chtab -d node=kvms vm
+check:rc==0
+end
+
+start:mkdef_regex_nicsip
+description:Verify the GitHub issue #3047.
+cmd:rmdef xcattest_tmp_node_sn[01-16]
+cmd:rmdef -t group -o xcattest_tmp_group_regex
+cmd:mkdef -t group -o xcattest_tmp_group_regex
+check:rc==0
+cmd:chdef -t group -o xcattest_tmp_group_regex 'ip=|\D+(\d+)|172.21.254.($1%100)|'
+check:rc==0
+cmd:chdef -t group -o xcattest_tmp_group_regex 'nicips.eth1=|\D+(\d+)|172.20.254.($1%100)|'
+check:rc==0
+cmd:lsdef -t group -o xcattest_tmp_group_regex | grep -F 'nicips.eth1=|\D+(\d+)|172.20.254.($1%100)|'
+check:rc==0
+cmd:mkdef xcattest_tmp_node_sn[01-16] groups=xcattest_tmp_group_regex
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn01 -c -i ip | grep -F 'ip=172.21.254.1'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn01 -c -i nicips | grep -F 'nicips.eth1=172.20.254.1'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn02 -c -i ip | grep -F 'ip=172.21.254.2'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn02 -c -i nicips | grep -F 'nicips.eth1=172.20.254.2'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn03 -c -i ip | grep -F 'ip=172.21.254.3'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn03 -c -i nicips | grep -F 'nicips.eth1=172.20.254.3'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn04 -c -i ip | grep -F 'ip=172.21.254.4'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn04 -c -i nicips | grep -F 'nicips.eth1=172.20.254.4'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn05 -c -i ip | grep -F 'ip=172.21.254.5'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn05 -c -i nicips | grep -F 'nicips.eth1=172.20.254.5'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn06 -c -i ip | grep -F 'ip=172.21.254.6'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn06 -c -i nicips | grep -F 'nicips.eth1=172.20.254.6'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn07 -c -i ip | grep -F 'ip=172.21.254.7'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn07 -c -i nicips | grep -F 'nicips.eth1=172.20.254.7'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn08 -c -i ip | grep -F 'ip=172.21.254.8'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn08 -c -i nicips | grep -F 'nicips.eth1=172.20.254.8'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn09 -c -i ip | grep -F 'ip=172.21.254.9'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn09 -c -i nicips | grep -F 'nicips.eth1=172.20.254.9'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn10 -c -i ip | grep -F 'ip=172.21.254.10'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn10 -c -i nicips | grep -F 'nicips.eth1=172.20.254.10'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn11 -c -i ip | grep -F 'ip=172.21.254.11'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn11 -c -i nicips | grep -F 'nicips.eth1=172.20.254.11'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn12 -c -i ip | grep -F 'ip=172.21.254.12'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn12 -c -i nicips | grep -F 'nicips.eth1=172.20.254.12'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn13 -c -i ip | grep -F 'ip=172.21.254.13'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn13 -c -i nicips | grep -F 'nicips.eth1=172.20.254.13'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn14 -c -i ip | grep -F 'ip=172.21.254.14'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn14 -c -i nicips | grep -F 'nicips.eth1=172.20.254.14'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn15 -c -i ip | grep -F 'ip=172.21.254.15'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn15 -c -i nicips | grep -F 'nicips.eth1=172.20.254.15'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn16 -c -i ip | grep -F 'ip=172.21.254.16'
+check:rc==0
+cmd:lsdef xcattest_tmp_node_sn16 -c -i nicips | grep -F 'nicips.eth1=172.20.254.16'
+check:rc==0
+cmd:rmdef xcattest_tmp_node_sn[01-16]
+check:rc==0
+cmd:rmdef -t group -o xcattest_tmp_group_regex
 check:rc==0
 end
