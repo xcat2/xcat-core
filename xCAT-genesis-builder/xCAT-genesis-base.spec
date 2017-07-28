@@ -37,6 +37,7 @@ Packager: IBM Corp.
 %Description
 xCAT genesis (Genesis Enhanced Netboot Environment for System Information and Servicing) is a small, embedded-like environment for xCAT's use in discovery and management actions when interaction with an OS is infeasible.
 This package comprises the base platform with most of the xCAT specific behavior left to xCAT-genesis-scripts package.
+Built in environment "%dist" on %{_arch}.
 %Prep
 
 
