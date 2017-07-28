@@ -3,12 +3,13 @@
 ########
 # Set all the variables below
 
+LINUX_DISTRO="rhels7.4"
+LINUX_ARCH="ppc64le"
+
 COMPUTE_NODE="c910f03c01p10"
-OSIMAGE_NAME="rhels7.3-ppc64le-netboot-cudafull"
-OSIMAGE_OTHERPKGDIR="/install/post/otherpkgs/rhels7.3/ppc64le"
 SOURCE_BASEDIR="/media/xcat"
 
-RHEL_ISO="${SOURCE_BASEDIR}/RHEL-7.3-20161019.0-Server-ppc64le-dvd1.iso"
+RHEL_ISO="${SOURCE_BASEDIR}/RHEL-7.4-20170711.0-Server-ppc64le-dvd1.iso"
 CUDA_RPMS=(
 	"${SOURCE_BASEDIR}/cuda-repo-rhel7-8-0-local-ga2v2-8.0.61-1.ppc64le.rpm"
 	"${SOURCE_BASEDIR}/cuda-repo-rhel7-8-0-local-cublas-performance-update-8.0.61-1.ppc64le.rpm"
@@ -18,7 +19,9 @@ DKMS_RPM="${SOURCE_BASEDIR}/dkms-2.3-5.20170523git8c3065c.el7.noarch.rpm"
 # Set all the variables above
 ########
 
-OSIMAGE_ROOTIMGDIR="/install/netboot/rhels7.3/ppc64le/${OSIMAGE_NAME}"
+OSIMAGE_NAME="${LINUX_DISTRO}-${LINUX_ARCH}-netboot-cudafull"
+OSIMAGE_OTHERPKGDIR="/install/post/otherpkgs/${LINUX_DISTRO}/${LINUX_ARCH}"
+OSIMAGE_ROOTIMGDIR="/install/netboot/${LINUX_DISTRO}/${LINUX_ARCH}/${OSIMAGE_NAME}"
 
 [ -f "${RHEL_ISO}" ]
 [ "$?" -ne "0" ] && echo "File ${RHEL_ISO} not found." >&2 && exit 1
@@ -31,18 +34,18 @@ mkdef -z <<-EOF
 
 ${OSIMAGE_NAME}:
     objtype=osimage
-    exlist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.exlist
+    exlist=/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.exlist
     imagetype=linux
-    osarch=ppc64le
-    osdistroname=rhels7.3-ppc64le
+    osarch=${LINUX_ARCH}
+    osdistroname=${LINUX_DISTRO}-${LINUX_ARCH}
     osname=Linux
-    osvers=rhels7.3
+    osvers=${LINUX_DISTRO}
     otherpkgdir="${OSIMAGE_OTHERPKGDIR}"
-    otherpkglist=/opt/xcat/share/xcat/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist
+    otherpkglist=/opt/xcat/share/xcat/netboot/rh/cudafull.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.otherpkgs.pkglist
     permission=755
-    pkgdir=/install/rhels7.3/ppc64le
-    pkglist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
-    postinstall=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall
+    pkgdir=/install/${LINUX_DISTRO}/${LINUX_ARCH}
+    pkglist=/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.pkglist
+    postinstall=/opt/xcat/share/xcat/netboot/rh/compute.${LINUX_DISTRO%%.*}.${LINUX_ARCH}.postinstall
     profile=compute
     provmethod=netboot
     rootimgdir=${OSIMAGE_ROOTIMGDIR}
