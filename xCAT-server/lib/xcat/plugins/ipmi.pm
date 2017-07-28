@@ -1721,6 +1721,10 @@ sub calc_ipmitool_version {
 #        zz_retry: minimum number of 00 to receive before exiting
 #        sessdata: session data for display
 #        verbose:  verbose output
+#        use_rc:   Some machines, like IBM Power S822LC for Big Data (Supermicro), do not return
+#                  a "00" ready string from calling ipmi raw command. Instead they return RC=0. This
+#                  flag if 1, tells the check_bmc_status_with_ipmitool() to check the RC 
+#                  instead of "00" string. If set to 0, the "00" ready string is checked.
 #    Returns:
 #        1 when bmc is up
 #        0 when no response from bmc
@@ -1732,11 +1736,19 @@ sub check_bmc_status_with_ipmitool {
     my $zz_retry     = shift;
     my $sessdata     = shift;
     my $verbose      = shift;
+    my $use_rc       = shift;
     my $count        = 0;
     my $zz_count     = 0;
     my $bmc_response = 0;
     my $cmd          = $pre_cmd . " raw 0x3a 0x0a";
+    my $bmc_ready_code = "00";
+    my $code_type    = "ready";
 
+    if ($use_rc) {
+        $cmd            = $cmd . " >> /dev/null 2>&1 ; echo \$?";
+        $bmc_ready_code = "0";
+        $code_type      = "return";
+    }
     # BMC response of " c0" means BMC still running IPL
     # BMC response of " 00" means ready to flash
     #
@@ -1746,18 +1758,18 @@ sub check_bmc_status_with_ipmitool {
     # interrupts it.
     while ($count < $retry) {
         $bmc_response = xCAT::Utils->runcmd($cmd, -1);
-        if ($bmc_response =~ /00/) {
+        if ($bmc_response =~ /$bmc_ready_code/) {
             if ($zz_count > $zz_retry) {
                 # zero-zero ready code was received for $zz_count iterations - good to exit
                 if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("Received BMC ready code 00 for $zz_count iterations - BMC is ready.", $callback, $sessdata->{node}, %allerrornodes);
+                    xCAT::SvrUtils::sendmsg("Received BMC $code_type code $bmc_ready_code for $zz_count iterations - BMC is ready.", $callback, $sessdata->{node}, %allerrornodes);
                 }
                 return 1;
             }
             else {
                 # check to make sure zero-zero is received again
                 if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("($zz_count) BMC ready code - 00", $callback, $sessdata->{node}, %allerrornodes);
+                    xCAT::SvrUtils::sendmsg("($zz_count) BMC $code_type code - $bmc_ready_code", $callback, $sessdata->{node}, %allerrornodes);
                 }
                 $zz_count++;
             }
@@ -1767,7 +1779,7 @@ sub check_bmc_status_with_ipmitool {
                 # zero-zero was received before, but now we get something else.
                 # reset the zero-zero counter to make sure we get $zz_count iterations of zero-zero
                 if ($verbose) {
-                    xCAT::SvrUtils::sendmsg("Resetting counter because BMC ready code - $bmc_response", $callback, $sessdata->{node}, %allerrornodes);
+                    xCAT::SvrUtils::sendmsg("Resetting counter because BMC $code_type code - $bmc_response", $callback, $sessdata->{node}, %allerrornodes);
                 }
                 $zz_count = 0;
             }
@@ -1776,7 +1788,7 @@ sub check_bmc_status_with_ipmitool {
         $count++;
     }
     if ($verbose) {
-        xCAT::SvrUtils::sendmsg("Never received 00 code after $count retries - BMC not ready.", $callback, $sessdata->{node}, %allerrornodes);
+        xCAT::SvrUtils::sendmsg("Never received $code_type code $bmc_ready_code after $count retries - BMC not ready.", $callback, $sessdata->{node}, %allerrornodes);
     }
     return 0;
 }
@@ -1879,7 +1891,7 @@ sub do_firmware_update {
     # only 1.8.15 or above support hpm update for firestone machines.
     if (calc_ipmitool_version($ipmitool_ver) < calc_ipmitool_version("1.8.15")) {
         $callback->({ error => "IPMITool $ipmitool_ver do not support firmware update for " .
-                  "firestone mathines, please setup IPMITool 1.8.15 or above.",
+                  "firestone machines, please setup IPMITool 1.8.15 or above.",
                 errorcode => 1 });
         exit -1;
     }
@@ -2021,6 +2033,22 @@ sub do_firmware_update {
         # the specified data directory
         xCAT::SvrUtils::sendmsg("rflash started, Please wait...", $callback, $sessdata->{node});
 
+        # step 1 power off
+        $cmd = $pre_cmd . " chassis power off";
+        if ($verbose) {
+            xCAT::SvrUtils::sendmsg("Preparing to upgrade firmware, powering chassis off...", $callback, $sessdata->{node}, %allerrornodes);
+        }
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
+        }
+        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 10, 2, $sessdata, $verbose, 1)) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+            "Timeout to check the bmc status");
+        }
+
+        # step 2 update BMC file or PNOR file, or both
         if ($bmc_file) {
             # BMC file was found in data directory, run update with it
             my $pUpdate_bmc_cmd = "$pUpdate_directory/pUpdate -f $bmc_file -i lan -h $bmc_addr -u $bmc_userid -p $bmc_password >".$rflash_log_file." 2>&1";
@@ -2034,10 +2062,12 @@ sub do_firmware_update {
                 $exit_with_error_func->($sessdata->{node}, $callback,
                     "Error running command $pUpdate_bmc_cmd");
             }
-            if ($verbose) {
-                xCAT::SvrUtils::sendmsg([ 0, "Waiting for BMC to reboot (2 min)..." ], $callback, $sessdata->{node});
+            # Wait for BMC to reboot before continuing to next step.
+            # Since this is a IBM Power S822LC for Big Data (Supermicro) machine, use RC to check if ready 
+            unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 1)) {
+                $exit_with_error_func->($sessdata->{node}, $callback,
+                "Timeout to check the bmc status");
             }
-            sleep (120);
         }
 
 
@@ -2055,8 +2085,15 @@ sub do_firmware_update {
                     "Error running command $pUpdate_pnor_cmd");
             }
         }
+        # step 3 power on
+        $cmd = $pre_cmd . " chassis power on";
+        $output = xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Running ipmitool command $cmd failed: $output");
+        }
 
-        $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated");
+        $exit_with_success_func->($sessdata->{node}, $callback, "Firmware updated, powering chassis on to populate FRU information...");
     }
 
     if (($hpm_data_hash{deviceID} ne $sessdata->{device_id}) ||
@@ -2171,7 +2208,7 @@ RETRY_UPGRADE:
     }
 
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 2, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 2, $sessdata, $verbose, 0)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -2237,7 +2274,7 @@ RETRY_UPGRADE:
         }
 
         # Wait for BMC to reboot before continuing to next step
-        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
+        unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 0)) {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Timeout waiting for the bmc ready status. Firmware update suspended");
         }
@@ -2301,7 +2338,7 @@ RETRY_UPGRADE:
 
     # step 5 power on
     # check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 60, 10, $sessdata, $verbose, 0)) {
         $exit_with_error_func->($sessdata->{node}, $callback,
             "Timeout to check the bmc status");
     }
@@ -2355,7 +2392,7 @@ sub rflash {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
             } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=|^-d=/) {
-                $callback->({ error => "The option $opt is not supported",
+                $callback->({ error => "The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
                 return;
             }
