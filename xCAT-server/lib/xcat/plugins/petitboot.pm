@@ -385,7 +385,16 @@ sub preprocess_request {
             }
 
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
-            return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash);
+            my @dhcpsvrs = ();
+            my $ntab = xCAT::Table->new('networks');
+            if ($ntab) {
+                foreach (@{ $ntab->getAllEntries() }) {
+                    next unless ($_->{dynamicrange});
+                    # if dynamicrange specified but dhcpserver was not - issue error message
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver})
+                }
+            }
+            return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     }
     # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
