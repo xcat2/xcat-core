@@ -106,7 +106,7 @@ cmd:chdef -p -t node  -o $$CN  groups="test"
 check:rc==0
 cmd:rinv test all
 check:rc==1
-check:output=~$$CN: SYSTEM |$$CN: System
+check:output=~$$CN: SYSTEM|$$CN: System
 cmd:chdef -m -t node -o $$CN groups="test"
 check:rc==0
 cmd:rmdef testnode;if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi

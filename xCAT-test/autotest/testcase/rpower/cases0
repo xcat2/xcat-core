@@ -91,7 +91,7 @@ end
 start:rpower_reset
 description:This case is to test reset option could hard reset nodes when nodes are in on state.
 Attribute: $$CN-The operation object of rpower command
-cmd:stat=`rpower $$CN stat`;if ([[ $stat =~ on ]] || [[ $stat =~ Running ]]) ;then rpower $$CN reset;sleep 30;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ on ]] || [[ $stat1 =~ Running ]]);then exit 0;else exit 1;fi;else rpower $$CN reset;sleep 30;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ off ]] || [[ $stat1 =~ "Not Activated" ]]);then exit 0;else exit 1;fi;fi
+cmd:stat=`rpower $$CN stat`;if ([[ $stat =~ on ]] || [[ $stat =~ Running ]]) ;then rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ on ]] || [[ $stat1 =~ Running ]]);then exit 0;else exit 1;fi;else rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ off ]] || [[ $stat1 =~ "Not Activated" ]]);then exit 0;else exit 1;fi;fi
 check:rc==0
 end
 
