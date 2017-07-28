@@ -62,7 +62,7 @@ bootparams Attributes:
 
 \ **addkcmdline**\ 
  
- User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"
+ User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")
  
 
 
