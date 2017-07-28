@@ -1364,10 +1364,18 @@ sub rsetboot_response {
     my $response_info = decode_json $response->content;    
 
     if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
-        xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
-        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
-        xCAT::SvrUtils::sendmsg("Default", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
+        if ($response_info->{'data'}->{BootSource} =~ /Disk$/) {
+            xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /Network$/) {
+            xCAT::SvrUtils::sendmsg("Network", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/) {
+            xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /Default$/) {
+            xCAT::SvrUtils::sendmsg("Default", $callback, $node);
+        } else {
+            my $error_msg = "Can not get valid rsetboot status, the data is " . $response_info->{'data'}->{BootSource};
+            xCAT::SvrUtils::sendmsg("$error_msg", $callback, $node);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
