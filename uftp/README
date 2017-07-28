@@ -1,0 +1,37 @@
+Implementing UFTP in xCAT
+
+When a node boots via xCAT in stateless mode, it first receives a kernel and
+an initial ramdisk from the management server. Inside the initial ramdisk is
+a script named xcatroot which is responsible for copying the node's root
+filesystem image from the management server with wget, uncompressing it into
+RAM, and switching to it. The URL of the root filesystem image is passed to
+xcatroot via a kernel boot parameter.
+
+In order to support uftp, xcatroot needs to start uftpd, and then signal the
+management server that it is ready to receive the image file. The management
+server also needs to wait for some amount of time before starting the transfer,
+since there could be some variability in the hardware boot process, and the
+slowest node might not have started uftpd yet. In order to make sure the image
+transferred correctly, the md5 checksum is checked. If the md5 check fails, or
+the transfer times out, xcatroot falls back to wget.
+
+To implement this, three kernel boot parameters were added, which are:
+
+uftp
+uftpdelay
+md5sum
+
+To use UFTP, set uftp=true. The uftpdelay parameter is for specifying the
+number of seconds to wait before the transfer starts, and defaults to 30 if
+not specified. The md5sum parameter should be set to the md5 checksum of the
+root filesystem image. These need to be set in the addkcmdline field in the
+osimage table in xCAT, so that nodeset will pick them up. The packimage
+command has been extended with some options to facilitate this:
+
+   packimage [-s| --sum]                             set md5sum=<md5 checksum of image>
+   packimage [-u| --uftp]                            set uftp=true
+   packimage [-d| --delay=<uftp delay in seconds>    set uftpdelay=<uftp delay in seconds>
+
+Note that if -s is omitted, and an md5sum exists in addkcmdline, the existing
+entry is removed because it would no longer be valid. Similarly, if -u is
+omitted and uftp=true exists in addkcmdline, it is removed.
