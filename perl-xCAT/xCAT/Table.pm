@@ -844,12 +844,28 @@ sub new
         }
 
         my $oldumask = umask 0077;
-        unless ($::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) { #= $self->{tabname};
-            $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} } =
-              DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
+        my $retry = 0;
+        while (!$::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
+            eval {
+                local $SIG{__WARN__} = sub {
+                    my $message = shift;
+                    if ($retry == 3 && $message) {
+                        xCAT::MsgUtils->message("S", "Failed to connect to ".$self->{tabname}." table after retrying $retry times: $message");
+                    }
+                };
+                $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} } =
+                    DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
+            };
+            if ($::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
+                last;
+            } elsif ($retry == 3) {
+                last;
+            } else {
+                sleep (2**$retry);
+            }
+            $retry++;
         }
         umask $oldumask;
-
         $self->{dbh} = $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} };
 
         #Store the Table object reference as afflicted by changes to the DBH
