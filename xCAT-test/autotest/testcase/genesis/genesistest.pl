@@ -18,6 +18,7 @@ my $check_genesis_file;
 my $noderange;
 my $clear_env;
 my $help = 0;
+my $nodestanza;
 $::USAGE = "Usage:
     $program_name -h
     $program_name -n <node_range> -s 
@@ -79,7 +80,11 @@ my $master=`lsdef -t site -i master -c  2>&1 | awk -F'=' '{print \$2}'`;
 if (!$master) { $master=hostname(); }
 chomp($master);
 print "master is $master\n"; 
-
+$nodestanza="/tmp/$noderange.stanza";
+if (!(-e $nodestanza)) {
+    `lsdef $noderange -z > $nodestanza`;
+    `chdef $noderange xcatmaster=$master`;
+} 
 ####################################
 ####nodesetshell test for genesis
 ####################################
@@ -306,6 +311,10 @@ sub clearenv {
         send_msg(0, "rinstall node failed");
         exit 1;
     }
+    if (-e "$nodestanza") {
+    `cat $nodestanza | chdef -z`;
+    unlink("$nodestanza"); 
+    } 
     return 0;
 }
 ####################################
