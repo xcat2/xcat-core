@@ -33,17 +33,28 @@ imgurl="$(getarg imgurl=)";
 MD5="$(getarg md5sum=)"
 TRYUFTP="$(getarg uftp=)"
 uftpdelay="$(getarg uftpdelay=)"
+uftpport="$(getarg uftpport=)"
 if [ ! -z "$imgurl" ]; then
     if [ xhttp = x${imgurl%%:*} ]; then
         NFS=0
         FILENAME=${imgurl##*/}
         [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "TRYUFTP=$TRYUFTP"
         if [ "$TRYUFTP" = "true" ]; then
-            if uftpd -D / -q; then
+            if [ ! -z "$uftpport" ]; then
+                uftpd -D / -q -p $uftpport
+                uftpd_rc=$?
+            else
+                uftpd -D / -q
+                uftpd_rc=$?
+            fi
+            if [ "$uftpd_rc" = 0 ]; then
                 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "started uftpd"
                 echo "started uftpd" 1>&2
                 # send a request to the uftp listener on management node
-                uftpurl=$(echo $imgurl | sed 's/80/1045/')
+                uftpurl=$(echo $imgurl | sed "s/80/1045/")
+                if [ ! -z "$uftpport" ]; then
+                    uftpurl=$(echo $uftpurl | sed "s+$+/uftpport=$uftpport+")
+                fi
                 [ "$xcatdebugmode" > "0" ] && logger -t xcat -p debug "sending uftp request to $uftpurl"
                 echo "sending uftp request to $uftpurl" 1>&2
                 wget -t 1 -T 1 -q $uftpurl

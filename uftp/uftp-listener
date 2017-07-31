@@ -1,5 +1,4 @@
 #!/bin/bash
-set -E
 LOGDIR=/var/log/xcat/
 LOGFILE=uftp_listener.log
 mkdir -p $LOGDIR
@@ -12,6 +11,13 @@ usage() {
 debug() {
   [ "$DEBUG" ] && echo "$@"
   echo "$@" >> $LOGDIR/$LOGFILE
+}
+
+start_copy() {
+  sleep $SLEEP
+  debug "copying $ROOTIMG"
+  debug "$UFTP -I $INTERFACE -R 950000 -p $UFTPPORT -D /rootimg.cpio.gz $ROOTIMG"
+  $UFTP -I $INTERFACE -R 950000 -p $UFTPPORT -D /rootimg.cpio.gz $ROOTIMG
 }
 
 while getopts ":i:s:hd" options
@@ -66,20 +72,29 @@ if [ "$RC" = 0 ]; then
   exit 1
 fi
 
-debug "listening for transfer request on 1045/tcp"
+debug "listening for transfer request on interface $INTERFACE 1045/tcp"
+declare -A copyjobs
 while true
 do
-  LINE=$(nc -l -p 1045 | grep -E "/install/.*/rootimg(\.sfs|\.cpio\.gz|\.cpio\.xz|\.tar.gz|\.tar\.xz|-statelite\.gz)")
-  DATE=$(date --rfc-3339=ns)
-  debug $DATE $LINE
-  ROOTIMG=$(echo $LINE | sed 's/.*GET //' | sed 's+HTTP/1.1.*++')
-  if [ ! -f $ROOTIMG ]
-  then
-    debug "$ROOTIMG: file not found"
-  else
-    debug "sleeping $SLEEP seconds"
-    sleep $SLEEP 	# wait for additional nodes that might also want this image
-    debug "copying $ROOTIMG"
-    $UFTP -I $INTERFACE -R 500000 -B 104857600 -b 8800 -D /rootimg.cpio.gz $ROOTIMG
-  fi
+  nc -l -p 1045 -k | while read LINE; do
+    VALIDATED=$(echo $LINE | grep -E "/install/.*/rootimg(\.sfs|\.cpio\.gz|\.cpio\.xz|\.tar.gz|\.tar\.xz|-statelite\.gz)")
+    if [ -n "$VALIDATED" ]; then
+      ROOTIMG=$(echo $VALIDATED | sed 's/.*GET //' | sed 's+ HTTP/1.1.*++')
+      if $(echo $ROOTIMG | grep uftpport > /dev/null); then
+        UFTPPORT=$(echo $ROOTIMG | sed 's+.*uftpport=++')
+        ROOTIMG=$(echo $ROOTIMG | sed 's+/uftpport=.*++')
+      else
+        UFTPPORT=1044
+      fi
+      if [ ! -f "$ROOTIMG" ]; then
+        debug "$ROOTIMG: file not found"
+      elif [ ! x${copyjobs[$ROOTIMG]} = x ] && jobs -lr | grep ${copyjobs[$ROOTIMG]} > /dev/null; then
+        : # if we get here, there is already a uftp copy job staged for this url, so do nothing
+        # debug "$ROOTIMG job detected"
+      else
+        start_copy $ROOTIMG &
+        copyjobs[$ROOTIMG]=$!
+      fi
+    fi
+  done
 done
