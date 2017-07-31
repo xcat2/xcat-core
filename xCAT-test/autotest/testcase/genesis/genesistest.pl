@@ -83,7 +83,7 @@ print "master is $master\n";
 $nodestanza="/tmp/$noderange.stanza";
 if (!(-e $nodestanza)) {
     `lsdef $noderange -z > $nodestanza`;
-    `chdef $noderange xcatmaster=$master`;
+    `chdef $noderange xcatmaster= `;
 } 
 ####################################
 ####nodesetshell test for genesis
