@@ -47,7 +47,7 @@ if [ ! -z $NODE_NAME ]; then
    if [[ $OS = "Linux" ]]; then
       CLIENT_IP=`ping -c 3 $NODE_NAME | sed '/icmp_seq/!d;s/.*(\([0-9.]\+\)).*/\1/' | uniq  2>&1`
       RET=`echo $?`
-      NIC=`ip route | grep "src $CLIENT_IP" | sed -r 's/.*dev (.*)  proto.*/\1/'  2>&1`
+      NIC=`ip route | grep "src $CLIENT_IP" | sed -r 's/.*dev (.*) +proto.*/\1/'  2>&1`
       NRET=`echo $?`
    else ## for AIX
       CLIENT_IP=`ping -c 3 $NODE_NAME | grep "icmp_seq" | sed 's/.*from \([0-9.]*\):.*/\1/' | uniq 2>&1`
