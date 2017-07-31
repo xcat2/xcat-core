@@ -219,7 +219,6 @@ config_rsyslog_V8()
     # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
     # to make the MN be able to receive syslog from remote hosts
     if [ -f "$remoteconf" ]; then
-      
         ##listen on tcp and udp port to enable receiving the xcat debug logs 
         ##forwarded  via tcp/udp protocol
         sed -i 's/#\$ModLoad imudp.so/\$ModLoad imudp.so/; 
@@ -228,9 +227,17 @@ config_rsyslog_V8()
                        s/#\$InputTCPServerRun <port>/\$InputTCPServerRun 514/' $remoteconf
     fi
 
-    #ubuntu16.04 ships rsyslog 8.16.0,which does not ship remote.conf
-    #the configuration for UDP and TCP syslog reception is in rsyslog.conf
+
+    ##listen on tcp and udp port to enable receiving the xcat debug logs 
+    ##forwarded  via tcp/udp protocol
     if [ -f "$conf_file" ]; then
+        #rhels7.4 ships rsyslogd 8.24.0, which does not ship remote.conf
+        #the relevant sections are included in rsyslog.conf
+        sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
+                       /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
+
+        #ubuntu16.04 ships rsyslog 8.16.0,which does not ship remote.conf
+        #the configuration for UDP and TCP syslog reception is in rsyslog.conf
         sed -i 's/#module(load="imudp")/module(load="imudp")/;
                 s/#input(type="imudp" port="514")/input(type="imudp" port="514")/;
                 s/#module(load="imtcp")/module(load="imtcp")/;
@@ -242,17 +249,18 @@ config_rsyslog_V8()
   else
     # not logging local, forward logging
     # backup the existing remote.conf file from the install
-    if [ ! -f $remoteconf.XCATORIG ]; then
-      cp -f $remoteconf $remoteconf.XCATORIG
+    if [ -f $remoteconf ] && [ ! -f $remoteconf.XCATORIG ]; then
+        cp -f $remoteconf $remoteconf.XCATORIG
     fi
 
     if [ $isSN -eq 1 ];then
-      ##listen on tcp and udp port to enable receiving the xcat debug logs 
-      ##forwarded  via tcp/udp protocol
-      sed -i 's/#\$ModLoad imudp.so/\$ModLoad imudp.so/; 
-                     s/#\$UDPServerRun 514/\$UDPServerRun 514/; 
-                     s/#\$ModLoad imtcp.so/\$ModLoad imtcp.so/; 
-                     s/#\$InputTCPServerRun <port>/\$InputTCPServerRun 514/' $remoteconf
+        ##listen on tcp and udp port to enable receiving the xcat debug logs 
+        ##forwarded  via tcp/udp protocol
+        [ -f "$remoteconf" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
+                       /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $remoteconf 
+
+        [ -f "$conf_file" ] && sed -i '/#\$ModLoad \+imudp\|imtcp\|imudp.so\|imtcp.so/s/^#//;
+                       /#\$InputTCPServerRun\|UDPServerRun.*/s/^#//' $conf_file
     fi
 
 
