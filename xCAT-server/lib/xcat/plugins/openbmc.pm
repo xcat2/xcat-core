@@ -467,9 +467,6 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
-
-    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firmware level is at v1.99.6-0-r1, or higher.", $callback);
-
     my $subcommand = undef;
     my $verbose    = undef;
     unless (GetOptions(
