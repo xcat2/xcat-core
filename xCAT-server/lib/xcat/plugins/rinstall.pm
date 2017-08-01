@@ -335,6 +335,7 @@ sub rinstall {
         $rsp->{data}->[0] = "Provision node(s): @nodes";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
+
     %nodes = map { $_, 1 } @nodes;
 
     # Run nodeset $noderange $parameter
@@ -355,8 +356,8 @@ sub rinstall {
         push @{ $rsp->{data} }, @$res;
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
-    unless ($rc == 0) {
 
+    unless ($rc == 0) {
         # We got an error with the nodeset
         my @successnodes;
         my @failurenodes;
@@ -364,12 +365,8 @@ sub rinstall {
         my @lines = @$res;
         foreach my $line (@lines) {
             $rsp->{data}->[0] = $line;
-            if (($line =~ /: install/) or ($line =~ /: netboot/)) {
-                my $successnode;
-                my $restline;
-                ($successnode, $restline) = split(/:/, $line, 2);
-                $nodes{$successnode} = 0;
-                push @successnodes, $successnode;
+            if($line =~ /The (\S+) can not be resolved/){
+                push @failurenodes,$1;
             }
             if ($line =~ /dhcp server is not running/) {
                 my $rsp = {};
@@ -380,18 +377,18 @@ sub rinstall {
             }
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
-        foreach my $node (@nodes) {
-            if ($nodes{$node} == 1) {
-                push @failurenodes, $node;
-            }
+
+        foreach my $node (@failurenodes) {
+            delete $nodes{$node};
         }
+
         my $rsp = {};
         if (0+@failurenodes > 0) { 
             $rsp->{error}->[0] = "Failed to run 'nodeset' against the following nodes: @failurenodes";
             $rsp->{errorcode}->[0] = 1;
             xCAT::MsgUtils->message("E", $rsp, $callback);
         }
-        @nodes = @successnodes;
+        @nodes = keys %nodes;
     }
 
     # Group the nodes according to the nodehm.mgt
@@ -591,30 +588,6 @@ sub rinstall {
         }
     }
 
-    # Check if they asked to bring up a console (-c) from rinstall always for winstall
-    $req->{startconsole}->[0] = 0;
-    if ($command =~ /rinstall/) {
-
-        # For rinstall, the -c|--console option can provide the remote console for only 1 node
-        if ($CONSOLE) {
-            if (scalar @nodes != 1) {
-                my $rsp = {};
-                $rsp->{error}->[0] = "rinstall -c only accepts one node in the noderange. See winstall for support of consoles on multiple nodes.";
-                $rsp->{errorcode}->[0] = 1;
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-            else {
-                # Tell rinstall client ok to start rcons
-                $req->{startconsole}->[0] = 1;
-            }
-        }
-    }
-    elsif ($command =~ /winstall/) {
-
-        # Command winstall can start a wcons command to multiple nodes for monitoring the provision cycle
-        $req->{startconsole}->[0] = 1;
-    }
     return 0;
 }
 
