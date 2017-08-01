@@ -46,11 +46,18 @@ NeXtScale FPC specific:
 \ **rflash**\  \ *noderange*\  \ *http_directory*\ 
 
 
-OpenPOWER BMC specific:
-=======================
+OpenPOWER BMC specific (using IPMI):
+====================================
 
 
 \ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d=**\ \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+
+
+OpenPOWER OpenBMC specific :
+============================
+
+
+\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ]
 
 
 
@@ -118,12 +125,20 @@ NeXtScale FPC specific:
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http information required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters
 
 
-OpenPOWER specific:
-===================
+OpenPOWER specific (using IPMI):
+================================
 
 
 The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
 \ **Note:**\  When using \ **rflash**\  in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes.
+
+
+OpenPOWER OpenBMC specific:
+===========================
+
+
+The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER node and either an update .tar file or an uploaded image id.
+\ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
 
 
@@ -141,7 +156,7 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 \ **-c|-**\ **-check**\ 
  
- Check the firmware version of BMC and HPM file.
+ Check the firmware version of BMC and an update file.
  
 
 
@@ -184,6 +199,24 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 \ **-**\ **-retry=**\ \ *count*\ 
  
  Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
+ 
+
+
+\ **-a|-**\ **-activate**\ 
+ 
+ Activate update image. Image id must be specified.
+ 
+
+
+\ **-l|-**\ **-list**\ 
+ 
+ List currently uploaded update images. "(\*)" indicates currently active image.
+ 
+
+
+\ **-u|-**\ **-upload**\ 
+ 
+ Upload update image. Specified file must be in .tar format.
  
 
 
