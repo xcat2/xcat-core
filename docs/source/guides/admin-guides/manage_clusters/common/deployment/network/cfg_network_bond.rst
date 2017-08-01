@@ -1,9 +1,9 @@
 Configure Bond using two Ethernet Adapters
 ------------------------------------------
 
-The following example set the xCAT properties for compute node ``cn1`` to create:
+The following example sets the xCAT properties for compute node ``cn1`` to create:
 
-  * Compute node ``cn1`` has two physical NICs: eth2 and eth3  
+  * Compute node ``cn1`` with two physical NICs: ``eth2`` and ``eth3``  
   * Bond eth2 and eth3 as ``bond0`` 
   * Assign ip ``40.0.0.1`` to the bonded interface ``bond0`` 
 
@@ -33,7 +33,7 @@ Define attributes in the ``nics`` table
 Enable ``confignetwork`` to configure bond
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. If add ``confignetwork`` into the node's postscripts list, ``confignetwork`` will be executed during OS deployment on compute node ::
+#. If adding ``confignetwork`` into the node's postscripts list, ``confignetwork`` will be executed during OS deployment on compute node ::
 
     chdef cn1 -p postscripts=confignetwork
 
@@ -50,4 +50,4 @@ Login to compute node cn1 and check bonding options in ``/etc/sysconfig/network-
 
 
 * ``mode=802.3ad`` requires additional configuration on the switch. 
-
+* ``mode=2`` can be used for bonding without additional switch configuration.

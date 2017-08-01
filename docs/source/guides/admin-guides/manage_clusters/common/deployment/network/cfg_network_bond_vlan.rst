@@ -1,9 +1,9 @@
 Configure VLAN Based on Bond Adapters
 -------------------------------------
 
-The following example set the xCAT properties for compute node ``cn1`` to create:
+The following example sets the xCAT properties for compute node ``cn1`` to create:
 
-  * Compute node ``cn1`` has two physical NICs: eth2 and eth3  
+  * Compute node ``cn1`` with two physical NICs: ``eth2`` and ``eth3`` 
   * Bond eth2 and eth3 as ``bond0`` 
   * Create bridge ``bond0.1`` based on ``bond0``
   * Assign ip ``40.0.0.1`` to the bridge interface ``bond0.1`` 
@@ -34,9 +34,9 @@ Define attributes in the ``nics`` table
     chdef cn1 nicnetworks.bond0.1=net40
 
 Enable ``confignetwork`` to configure bridge
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. If add ``confignetwork`` into the node's postscripts list, ``confignetwork`` will be executed during OS deployment on compute node ::
+#. If adding ``confignetwork`` into the node's postscripts list, ``confignetwork`` will be executed during OS deployment on compute node ::
 
     chdef cn1 -p postscripts=confignetwork
 

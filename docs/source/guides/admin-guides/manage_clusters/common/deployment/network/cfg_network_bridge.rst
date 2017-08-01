@@ -8,7 +8,7 @@ The following example set the xCAT properties for compute node ``cn1`` to create
   * Assign ip ``30.5.106.9`` to br0
 
 Add network object into the networks table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Add/modify the network ``net30`` in the ``networks`` table ::
 

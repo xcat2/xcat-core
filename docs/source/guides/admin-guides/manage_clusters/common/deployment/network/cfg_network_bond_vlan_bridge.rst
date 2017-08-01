@@ -10,7 +10,7 @@ The following example set the xCAT properties for compute node ``cn1`` to achiev
   * Make bridge ``br2`` using ``bond0.2`` with IP (20.0.0.1)
 
 Define the additional networks to xCAT
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If this is a new network being created on the compute nodes, an entry needs to be created into the xCAT database.
 

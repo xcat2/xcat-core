@@ -1,14 +1,14 @@
 Configure Aliases
 -----------------
 
-The following example set the xCAT properties for compute node ``cn1`` to create:
+The following example sets the xCAT properties for compute node ``cn1`` to create:
 
-  * Compute node ``cn1`` has one physical NIC: eth2
+  * Compute node ``cn1`` with one physical NIC: ``eth2``
   * User wants to configure aliases ``aliases1-1`` and ``aliases1-2``
   * Assign ip ``11.1.0.100`` to ``aliases1-1`` and ``12.1.0.100`` to ``aliases1-2``
 
 Add network object into the networks table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Add/modify the networks in the ``networks`` table ::
 
@@ -16,7 +16,7 @@ Add/modify the networks in the ``networks`` table ::
     chdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0
 
 Define attributes in the ``nics`` table
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 #. Compute node ``cn1`` has one physical NICs: ``eth2`` ::
@@ -32,7 +32,7 @@ Define attributes in the ``nics`` table
     chdef cn1 nicnetworks.eth2="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0"
 
 Update /etc/hosts
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 #. Update the ``/etc/hosts`` file ::
 
@@ -44,7 +44,7 @@ Update /etc/hosts
     12.1.0.100 cn1-eth2-1 cn1-eth2-1.cluster.com aliases1-2
 
 Enable ``confignetwork`` to configure aliases
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Add ``confignetwork`` into the node's postscripts list, ``confignetwork`` will be executed during OS deployment on compute node ::
 
@@ -55,9 +55,9 @@ Enable ``confignetwork`` to configure aliases
     updatenode cn1 -P confignetwork
 
 Check the result
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
-Check if eth2 is configured correct or not ::
+Check if eth2 is configured correctly ::
 
     xdsh cn1 "ip addr show eth2"
 

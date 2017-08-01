@@ -1,9 +1,9 @@
 Configure Ethernet Network Interface
 ------------------------------------
 
-The following example set the xCAT properties for compute node ``cn1`` to create:
+The following example sets the xCAT properties for compute node ``cn1`` to create:
 
-  * Compute node ``cn1`` has two physical NICs: ``eth0`` and ``eth1``
+  * Compute node ``cn1`` with two physical NICs: ``eth0`` and ``eth1``
   * Management network is ``11.1.89.0``, application network is ``13.1.89.0``
   * The install NIC is eth0, and application NIC is eth1
   * Assign static ip ``11.1.89.7/24`` to eth0
@@ -22,7 +22,7 @@ Add/update additional networks ``net11`` and ``net13`` into ``networks`` table::
 Define Adapters in the nics table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Privision ip is coming from DHCP, it is no need to configure install nic into ``nics`` table. Provision ip can be configured in node definition, but it is not must. ::
+#. Provision ip is coming from DHCP, there is no need to configure install nic into ``nics`` table. Provision ip can be configured in node definition, but it is not required. ::
 
     chdef cn1 ip=11.1.89.7
 
@@ -66,7 +66,7 @@ Configure adapters with static IPs
 
         updatenode cn1 -P "confignetwork"
 
-**Notes:** Option "-s" writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option "-s", ``confignetwork`` only configure all NIC's data defined in ``nics`` table.
+**Notes:** Option "-s" writes the install NIC's information into configuration file for persistence. All other NIC's data defined in ``nics`` table will be written also. Without option "-s", ``confignetwork`` only configures all NIC's data defined in ``nics`` table.
 
 Check result
 ~~~~~~~~~~~~

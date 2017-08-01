@@ -1,5 +1,5 @@
-Configure Additional Network Interfaces - confignics - (depleted)
-=================================================================
+Configure Additional Network Interfaces - confignics - (deprecated)
+===================================================================
 
 The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (multiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
 
