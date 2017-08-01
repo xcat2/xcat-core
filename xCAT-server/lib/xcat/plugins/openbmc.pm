@@ -586,9 +586,17 @@ sub parse_args {
         my $updateid_passed = 0;
         my $option_flag;
         foreach my $opt (@$extrargs) {
+            print "Examening $opt \n";
             # Only files ending on .tar are allowed
             if ($opt =~ /.*\.tar$/i) {
                 $filename_passed = 1;
+                print "Opt matches filename ending on .tar \n";
+                next;
+            }
+            # Check if hex number for the updateid is passed
+            if ($opt =~ /^[[:xdigit:]]+$/i) {
+                $updateid_passed = 1;
+                print "Opt matches hex fileid \n";
                 next;
             }
             # Check if hex number for the updateid is passed
@@ -809,7 +817,6 @@ sub parse_command_status {
     }
 
     if ($command eq "rflash") {
-        my $check_version = 0;
         my $list = 0;
         my $delete = 0;
         my $upload = 0;
