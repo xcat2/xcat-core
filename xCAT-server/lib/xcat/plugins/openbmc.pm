@@ -877,7 +877,7 @@ sub parse_node_info {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
                 $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute bmc", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
             }
@@ -887,7 +887,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{username}) {
                 $node_info{$node}{username} = $passwd_hash->{username};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute username", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -898,7 +898,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{password}) {
                 $node_info{$node}{password} = $passwd_hash->{password};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute password", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -906,7 +906,7 @@ sub parse_node_info {
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
         } else {
-            xCAT::SvrUtils::sendmsg("Unable to get information from openbmc table", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
             next;
         }
