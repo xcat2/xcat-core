@@ -342,8 +342,10 @@ my %usage = (
 	rflash <noderange> -p <rpm_directory> [--activate {disruptive|deferred}] [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
         rflash <noderange> [--bpa_acdl]
-    PPC64LE (using BMC Management) specific:
-        rflash <noderange> [-c | --check] [--retry=<count>] [-V] [<hpm_file>|-d=<data_directory>]",
+    PPC64LE (using IPMI Management) specific:
+        rflash <noderange> [-c|--check] [--retry=<count>] [-V] [<hpm_file>|-d=<data_directory>]
+    PPC64LE (using OpenBMC Management) specific:
+        rflash <noderange> [-c|--check] [-l|--list] [-a|--activate] [-u|--upload] [<tar_file>|<image_id>]",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]
