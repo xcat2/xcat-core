@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ]
+\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
@@ -59,7 +59,7 @@ Assume that /tftpboot is the root for tftpd (set in site(5)|site.5).
 \ **nodeset**\   is  called  by \ **rinstall**\  and \ **winstall**\  and is also called by the
 installation process remotely to set the boot state back to "boot".
 
-In a hierarchical cluster which managed by service nodes, the boot stat of the nodes should be kept in consistence on the mn and on the service nodes. Then \ **nodeset**\  command is required to be dispatched to the service nodes for handling the boot configuration files. There are multiple messages for one node from service nodes, it is hard to tell where is the problem from. To make the output more clear, user could run the command with "XCATSHOWSVR=1" environment variable, and then the output message will be appended with the server information.
+In a hierarchical cluster managed by service nodes, \ **nodeset**\  command is used to make sure compute node states are consistent on service and management nodes. When errors are reported, run the command with verbose mode. And the command will display additional service node information, which might be useful in identifying the problem.
 
 A user can supply their own scripts to be run on the mn or on the service node (if a hierarchical cluster) for a node when the nodeset command is run. Such scripts are called \ **prescripts**\ . They should be copied to /install/prescripts directory. A table called \ *prescripts*\  is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the nodeset command are stored in the 'begin' column of \ *prescripts*\  table. The scripts to be run at the end of the nodeset command are stored in the 'end' column of \ *prescripts*\  table. You can run 'tabdump -d prescripts' command for details. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current nodeset action. If \ *#xCAT setting:MAX_INSTANCE=number*\  is specified in the script, the script will get invoked for each node in parallel, but no more than \ *number*\  of instances will be invoked at a time. If it is not specified, the script will be invoked once for all the nodes.
 
@@ -130,6 +130,12 @@ A user can supply their own scripts to be run on the mn or on the service node (
 \ **shutdown**\ 
  
  To make the node to get into power off status. This status only can be used after \ **runcmd**\  and \ **runimage**\  to power off the node after the performing of operations.
+ 
+
+
+\ **-V | -**\ **-verbose**\ 
+ 
+ Verbose mode.
  
 
 

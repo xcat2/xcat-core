@@ -67,6 +67,15 @@ push(@{ $cmdref->{arg} }, @ARGV);
 
 my $noderange = $cmdref->{noderange}->[0];    # save the noderange
 
+# Allow to print server information when -V/--verbose
+foreach (reverse(@ARGV)) {
+    print $_;
+    if ($_ eq '-V' || $_ eq '--verbose') {
+        $ENV{'XCATSHOWSVR'} = 1;
+        last;
+    }
+}
+
 # ok call Client to run the plugin rinstall.pm
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 

@@ -102,5 +102,14 @@ foreach (keys %ENV) {
     }
 }
 
+# Allow to print server information when -V
+foreach (reverse(@ARGV)) {
+    print $_;
+    if ($_ eq '-V') {
+        $ENV{'XCATSHOWSVR'} = 1;
+        last;
+    }
+}
+
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
