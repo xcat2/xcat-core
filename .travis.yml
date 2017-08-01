@@ -4,6 +4,7 @@ sudo: required
 before_install: 
 - sudo apt-get install -y git reprepro devscripts debhelper libsoap-lite-perl libdbi-perl quilt openssh-server dpkg looptools genometools software-properties-common
 - perl -v
+- echo "yes" | sudo cpan -f -i Capture::Tiny
 
 script: 
 - echo $TRAVIS_BUILD_ID
