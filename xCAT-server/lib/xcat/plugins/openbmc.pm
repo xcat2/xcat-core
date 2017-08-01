@@ -584,40 +584,42 @@ sub parse_args {
     } elsif ($command eq "rflash") {
         my $filename_passed = 0;
         my $updateid_passed = 0;
+        my $option_flag;
         foreach my $opt (@$extrargs) {
-            print "Examening $opt \n";
             # Only files ending on .tar are allowed
             if ($opt =~ /.*\.tar$/i) {
                 $filename_passed = 1;
-                print "Opt matches filename ending on .tar \n";
                 next;
             }
             # Check if hex number for the updateid is passed
             if ($opt =~ /^[[:xdigit:]]+$/i) {
                 $updateid_passed = 1;
-                print "Opt matches hex fileid \n";
                 next;
             }
-            if ($filename_passed) {
-                # Filename was passed, check flags allowed with file
-                if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
-                    return ([ 1, "Invalid option specified when a file is provided: $opt" ]);
+            # check if option starting with - was passed
+            if ($opt =~ /^-/) {
+                $option_flag = $opt;
+            }
+        }
+        if ($filename_passed) {
+            # Filename was passed, check flags allowed with file
+            if ($option_flag !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
+                return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
+            }
+        }
+        else {
+            if ($updateid_passed) {
+                # Updateid was passed, check flags allowed with update id
+                if ($option_flag !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
+                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
             }
             else {
-                if ($updateid_passed) {
-                    # Updateid was passed, check flags allowed with update id
-                    if ($opt !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
-                        return ([ 1, "Invalid option specified when an update id is provided: $opt" ]);
-                    }
-                }
-                else {
-                   # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
-                   if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
-                       return ([ 1, "Invalid option specified: $opt" ]);
-                   }
-                }
-            }
+                # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
+                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list/) {
+                    return ([ 1, "Invalid option specified: $option_flag" ]);
+               }
+            }  
         }
     } else {
         return ([ 1, "Command is not supported." ]);
@@ -812,25 +814,24 @@ sub parse_command_status {
         my $delete = 0;
         my $upload = 0;
         my $activate = 0;
+        my $update_file;
 
-        if ($$subcommands[-1] =~ /c|check/) {
-            $check_version = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /l|list/) {
-            $list = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /d|delete/) {
-            $delete = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /u|upload/) {
-            $upload = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /a|activate/) {
-            $activate = 1;
-            pop(@$subcommands);
+        foreach $subcommand (@$subcommands) {
+            if ($subcommand =~ /-c|--check/) {
+                $check_version = 1;
+            } elsif ($subcommand =~ /-l|--list/) {
+                $list = 1;
+            } elsif ($subcommand =~ /-d|--delete/) {
+                $delete = 1;
+            } elsif ($subcommand =~ /-u|--upload/) {
+                $upload = 1;
+            } elsif ($subcommand =~ /-a|--activate/) {
+                $activate = 1;
+            } else {
+                $update_file = $subcommand;
+            }
         }
 
-        my $update_file = $$subcommands[0]; 
         my $filename = undef;
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
@@ -1903,7 +1904,6 @@ sub rflash_response {
             }
         }
 
-        #if ($activation_state eq "xyz.openbmc_project.Software.Activation.Activations.Activating") {
         if ($activation_state =~ /Software.Activation.Activations.Activating/) {
             # Activation still going, sleep for a bit, then print the progress value
             sleep(15);
