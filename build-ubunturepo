@@ -338,7 +338,7 @@ __EOF__
            echo "SignWith: yes" >> conf/distributions
            echo "" >> conf/distributions
        fi
-     done
+    done
 
     cat << __EOF__ > conf/options
 verbose
@@ -457,15 +457,18 @@ Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf
 __EOF__
+
+        if [ "$GPGSIGN" = "0" ];then
+            echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
+            echo "" >> conf/distributions
+        else
+            echo "SignWith: yes" >> conf/distributions
+            echo "" >> conf/distributions
+        fi
+
     done
 
-    if [ "$GPGSIGN" = "0" ];then
-        echo "GPGSIGN=$GPGSIGN specified, the repo will not be signed"
-        echo "" >> conf/distributions
-    else
-        echo "SignWith: yes" >> conf/distributions
-        echo "" >> conf/distributions
-    fi
+
 
     cat << __EOF__ > conf/options
 verbose

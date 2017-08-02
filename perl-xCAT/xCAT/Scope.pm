@@ -2,6 +2,7 @@ package xCAT::Scope;
 
 use xCAT::Utils;
 use xCAT::Table;
+use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils qw(getSNList);
 
 
@@ -125,16 +126,17 @@ sub get_parallel_scope {
 =head3 get_broadcast_scope_with_parallel
 
     Convert a request object to an array of multiple requests according to the 
-    splitted node range.
+    splitted node range. Also it replicates the requests to all required service
+    nodes or management node.
 
     Arguments:
        Reference of request
-       Callback: TODO, Optional, the Callback will be used to filter the nodes
+       SN list: Array of target service nodes
     Returns: An array of requests
     Error:
         none
     Example:
-        my $reqs = xCAT::Scope->get_broadcast_scope($request);
+        my $reqs = xCAT::Scope->get_broadcast_scope_with_parallel($request, \@snlist);
 =cut
 
 #-----------------------------------------------------------------------------
@@ -145,25 +147,118 @@ sub get_broadcast_scope_with_parallel {
     }
     #Exit if the packet has been preprocessed in its history
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    $req->{_xcatpreprocessed}->[0] = 1;
 
-    #Handle the one for current management/service node
-    my $reqs = get_parallel_scope($req); 
-    my @requests = @$reqs;
+    my $snlist = shift;
 
-    #Broadcast the request to other management/service nodes
-    foreach (xCAT::ServiceNodeUtils->getSNList()) {
-        if (xCAT::NetworkUtils->thishostisnot($_)) {
-            my $xcatdest = $_;
-            my $reqcopy = {%$req};
-            $reqcopy->{'_xcatdest'} = $_;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            #Apply callback to filter the node range in future.
-            $reqs = get_parallel_scope($reqcopy);
-            foreach (@$reqs) {
-                push @requests, {%$_};
-            }
+    my $reqs = get_parallel_scope($req);
+
+    my @requests = (); # The request array will be return.
+    push @requests, @$reqs;
+
+    # when this method is called on service node, it is required to broadcast to MN too.
+    # get site.master from DB in order to dispatch to MN ( MN will not be added in servicenode table)
+    if ( xCAT::Utils->isServiceNode() ) {
+        my @entries = xCAT::TableUtils->get_site_attribute("master");
+        my $master = $entries[0];
+        foreach (@$reqs) {
+            my $reqcopy = {%$_};
+            $reqcopy->{'_xcatdest'} = $master;
+            push @requests, $reqcopy;
         }
     }
+
+    #Broadcast the request to all service nodes
+    foreach (@$snlist) {
+        my $xcatdest = $_;
+        next unless (xCAT::NetworkUtils->thishostisnot($xcatdest));
+
+        foreach (@$reqs) {
+            my $reqcopy = {%$_};
+            $reqcopy->{'_xcatdest'} = $xcatdest;
+            push @requests, $reqcopy;
+        }
+    }
+    return \@requests;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 get_broadcast_disjoint_scope_with_parallel
+
+    Convert a request object to an array of multiple requests according to the 
+    splitted node range. Also it replicates the requests to all required service
+    nodes or management node, but the request to a service node will only contains 
+    the node range it manages.
+
+    Arguments:
+       Reference of request
+       SN hash: Hash of target service nodes => Managed CNs
+       Special servers: Array of servers, those servers are required to handle whole noderange.
+    Returns: An array of requests
+    Error:
+        none
+    Example:
+        my $reqs = xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($request, \@snhash);
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_broadcast_disjoint_scope_with_parallel {
+    my $req = shift;
+    if ($req =~ /xCAT::Scope/) {
+        $req = shift;
+    }
+    #Exit if the packet has been preprocessed in its history
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    $req->{_xcatpreprocessed}->[0] = 1;
+
+    my $sn_hash = shift;
+    my $extras = shift;
+
+    my @requests = (); # The request array will be return.
+    my $reqs = get_parallel_scope($req);
+
+    my $handled4me = 0;  # indicate myself is already handled.
+    my %prehandledhash = ();# the servers which is already handled.
+    foreach (@$extras) {
+        my $xcatdest = $_;
+        if (xCAT::NetworkUtils->thishostisnot($xcatdest)) {
+            # TODO, To avoid sending request to a multi-home server many times.
+            foreach (@$reqs) {
+                my $reqcopy = {%$_};
+                $reqcopy->{'_xcatdest'} = $xcatdest;
+                push @requests, $reqcopy;
+            }
+            $prehandledhash{$xcatdest} = 1;
+        } elsif ($handled4me == 0) {
+            push @requests, @$reqs;
+            $handled4me = 1;
+        }
+    }
+
+    #Broadcast the request to all available service nodes
+    foreach (keys %$sn_hash) {
+        my $xcatdest = $_;
+        # to check if the SN already handled
+        next if (exists($prehandledhash{$xcatdest}));
+
+        if (xCAT::NetworkUtils->thishostisnot($xcatdest)) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $xcatdest;
+            $reqcopy->{'node'} = $sn_hash->{$xcatdest};
+
+            $reqs = get_parallel_scope($reqcopy);
+            push @requests, @$reqs;
+        } elsif ($handled4me == 0) {
+            my $reqcopy = {%$req};
+            $reqcopy->{'node'} = $sn_hash->{$xcatdest};
+
+            $reqs = get_parallel_scope($reqcopy);
+            push @requests, @$reqs;
+            $handled4me = 1;
+        }
+    }
+
     return \@requests;
 }
 

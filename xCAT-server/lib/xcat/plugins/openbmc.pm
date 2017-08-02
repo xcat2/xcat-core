@@ -217,15 +217,15 @@ my %status_info = (
 
     RSETBOOT_SET_REQUEST => {
         method         => "PUT",
-        init_url       => "$openbmc_project_url/control/boot/bootsource/attr/Sources",
-        data           => "xyz.openbmc_project.Control.Boot.Sources.",
+        init_url       => "$openbmc_project_url/control/host0/boot_source/attr/BootSource",
+        data           => "xyz.openbmc_project.Control.Boot.Source.Sources.",
     },
     RSETBOOT_SET_RESPONSE => {
         process        => \&rsetboot_response,
     },
     RSETBOOT_STATUS_REQUEST  => {
         method         => "GET",
-        init_url       => "$openbmc_project_url/control/boot/bootsource",
+        init_url       => "$openbmc_project_url/control/host0/boot_source",
     },
     RSETBOOT_STATUS_RESPONSE => {
         process        => \&rsetboot_response,
@@ -467,9 +467,6 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
-
-    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firmware level is at v1.99.6-0-r1, or higher.", $callback);
-
     my $subcommand = undef;
     my $verbose    = undef;
     unless (GetOptions(
@@ -877,7 +874,7 @@ sub parse_node_info {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
                 $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute bmc", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
             }
@@ -887,7 +884,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{username}) {
                 $node_info{$node}{username} = $passwd_hash->{username};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute username", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -898,7 +895,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{password}) {
                 $node_info{$node}{password} = $passwd_hash->{password};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute password", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -906,7 +903,7 @@ sub parse_node_info {
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
         } else {
-            xCAT::SvrUtils::sendmsg("Unable to get information from openbmc table", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
             next;
         }
@@ -1361,11 +1358,19 @@ sub rsetboot_response {
 
     my $response_info = decode_json $response->content;    
 
-    if ($node_info{$node}{cur_status} eq "RSETBOOT_GET_RESPONSE") {
-        xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Disk$/);
-        xCAT::SvrUtils::sendmsg("Network", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Network$/);
-        xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/);
-        xCAT::SvrUtils::sendmsg("boot override inactive", $callback, $node) if ($response_info->{'data'}->{BootSource} =~ /Default$/);
+    if ($node_info{$node}{cur_status} eq "RSETBOOT_STATUS_RESPONSE") {
+        if ($response_info->{'data'}->{BootSource} =~ /Disk$/) {
+            xCAT::SvrUtils::sendmsg("Hard Drive", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /Network$/) {
+            xCAT::SvrUtils::sendmsg("Network", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /ExternalMedia$/) {
+            xCAT::SvrUtils::sendmsg("CD/DVD", $callback, $node);
+        } elsif ($response_info->{'data'}->{BootSource} =~ /Default$/) {
+            xCAT::SvrUtils::sendmsg("Default", $callback, $node);
+        } else {
+            my $error_msg = "Can not get valid rsetboot status, the data is " . $response_info->{'data'}->{BootSource};
+            xCAT::SvrUtils::sendmsg("$error_msg", $callback, $node);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {

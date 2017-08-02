@@ -422,7 +422,7 @@ cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtif
 check:rc==0
 cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nichostnamesuffixes.$$SECONDNIC="-$$SECONDNIC-1|-$$SECONDNIC-2"
 check:rc==0
-cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="13_1_0_0-255_255_0_0|14_1_0_0-255_255_0_0" nichostnamesuffixes.$$THIRDNIC="-$$THIRDNIC-1|-$$THIRDNIC-2"
+cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.200|14.1.0.100" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="13_1_0_0-255_255_0_0|14_1_0_0-255_255_0_0" nichostnamesuffixes.$$THIRDNIC="-$$THIRDNIC-1|-$$THIRDNIC-2"
 check:rc==0
 cmd:cp /etc/hosts /etc/hosts.bak
 cmd:rc==0
@@ -439,8 +439,8 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/ne
 check:output=~11.1.0.100
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 12.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 12.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC:1"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 12.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:output=~12.1.0.100
-cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 13.1.0.100 /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 13.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 13.1.0.100 /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
-check:output=~13.1.0.100
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 13.1.0.200 /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 13.1.0.200 /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 13.1.0.200 /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
+check:output=~13.1.0.200
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 14.1.0.100 /etc/sysconfig/network/ifcfg-$$THIRDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 14.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$THIRDNIC:1"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 14.1.0.100 /etc/network/interfaces.d/$$THIRDNIC";else echo "Sorry,this is not supported os"; fi
 check:output=~14.1.0.100
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -453,7 +453,7 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifc
 check:rc==0
 cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
 cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$SECONDNIC"
-cmd:xdsh $$CN "ip addr del 13.1.0.100/16 dev $$THIRDNIC"
+cmd:xdsh $$CN "ip addr del 13.1.0.200/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip addr del 14.1.0.100/16 dev $$THIRDNIC"
 cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
 check:rc==0

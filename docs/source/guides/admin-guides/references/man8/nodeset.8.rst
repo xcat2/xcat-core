@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ] [\ **-V | -**\ **-verbose**\ ]
+\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  [\ **-a**\ ]| \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ] [\ **-V | -**\ **-verbose**\ ]
 
 \ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
@@ -109,7 +109,7 @@ A user can supply their own scripts to be run on the mn or on the service node (
 
 \ **stat**\ 
  
- Display the current boot loader config file description for the nodes requested
+ Display the current boot loader config file description for the nodes requested. When \ **disjointdhcps**\  is set, using \ **-a**\  to display them on all available service nodes.
  
 
 

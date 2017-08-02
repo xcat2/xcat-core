@@ -331,8 +331,8 @@ passed as argument rather than by table value',
 'kernel' => 'The kernel that network boot actions should currently acquire and use.  Note this could be a chained boot loader such as memdisk or a non-linux boot loader',
 'initrd' => 'The initial ramdisk image that network boot actions should use (could be a DOS floppy or hard drive image if using memdisk as kernel)',
             'kcmdline' => 'Arguments to be passed to the kernel',
-'addkcmdline' => 'User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"',
-'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
+            'addkcmdline' => 'User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")',
+            'dhcpstatements' => 'xCAT manipulated custom dhcp statements (not intended for user manipulation)',
 'adddhcpstatements' => 'Custom dhcp statements for administrator use (not implemneted yet)',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -799,7 +799,7 @@ passed as argument rather than by table value',
             imagename => 'The name of this xCAT OS image definition.',
             template => 'The fully qualified name of the template file that will be used to create the OS installer configuration file for stateful installations (e.g.  kickstart for RedHat, autoyast for SLES).',
             boottarget => 'The name of the boottarget definition.  When this attribute is set, xCAT will use the kernel, initrd and kernel params defined in the boottarget definition instead of the default.',
-            addkcmdline => 'User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments. For the kernel options need to be persistent after installation, specify them with prefix "R::".  This attribute is ignored if linuximage.boottarget is set.',
+            addkcmdline => 'User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" "). This attribute is ignored if linuximage.boottarget is set.',
             pkglist => 'The fully qualified name of the file that stores the distro  packages list that will be included in the image. Make sure that if the pkgs in the pkglist have dependency pkgs, the dependency pkgs should be found in one of the pkgdir',
             pkgdir => 'The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.',
             otherpkglist => 'The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".',
@@ -1029,8 +1029,9 @@ passed as argument rather than by table value',
 " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n" .
 " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n" .
 " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n" .
-"                 the nodes it manages. The default value is '0'.\n" .
-"                 '0' value means include all the nodes in the subnet.\n\n" .
+"                 the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles\n" .
+"                 boot loader configuration on a service node only for the nodes it manages.\n" .
+"                 The default value is '0'. It means include all the nodes in the subnet.\n\n" .
 " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n" .
 "                 removing DHCP entries when noderm is executed)\n\n" .
 " managedaddressmode: The mode of networking configuration during node provision.\n" .
