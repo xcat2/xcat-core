@@ -547,17 +547,13 @@ sub process_request {
     my $str_node = join(" ", @nodes);
     xCAT::MsgUtils->trace(0, "d", "xnba: nodes are $str_node") if ($str_node);
 
-    # return directly if no nodes in the same network
+    # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {
         xCAT::MsgUtils->message("S", "xCAT: xnba netboot: no valid nodes. Stop the operation on this server.");
 
-        # We need special hanlding to see if the plugin needs report error.
-        # - For MN, it is designed to handle all nodes, any error is required to be reqport. (All nodes are handled on MN if sharedtftp=1)
-        # - For SN, if disjointdhcps=1 AND sharedtftp=0, all nodes in the request are the nodes managed by this SN, so we need report error
-        #           if disjointdhcps=1 AND sharedtftp=0, report error only if there are nodes are managed by me.
-        if (xCAT::Utils->isMN() != 1 && $::XNBA_request->{'_disparatetftp'}->[0] && $::XNBA_request->{'_disjointmode'}->[0] != 1) {
+        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
+        if ($::XNBA_request->{'_disparatetftp'}->[0] && $::XNBA_request->{'_disjointmode'}->[0] != 1) {
             # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
-            # For other case, all passing node range are required to be handled.
             my %iphash   = ();
             # flag the IPs or names in iphash
             foreach (@hostinfo) { $iphash{$_} = 1; }
@@ -565,21 +561,19 @@ sub process_request {
             # Get managed node list under current server
             # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-            #my %managed = ();
             my $req2manage = 0;
             foreach (keys %$sn_hash) {
                 if (exists($iphash{$_})) {
-                    #my $cur_xmaster = $_;
-                    #foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
                     $req2manage = 1;
                     last;
                 }
             }
             if ($req2manage == 0) {
-                xCAT::MsgUtils->trace(0, "d", "xnba: No nodes are required to be managed on this server");
+                #No nodes are required to be handled, quit without error.
                 return;
             }
         }
+        # Okay, now report error as no nodes are handled.
         my $rsp;
         $rsp->{errorcode}->[0] = 1;
         $rsp->{error}->[0]     = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";

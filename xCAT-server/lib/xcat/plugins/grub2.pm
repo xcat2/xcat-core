@@ -1,6 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::grub2;
-#use Data::Dumper;
+
 use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Utils;
@@ -611,17 +611,13 @@ sub process_request {
     my $str_node = join(" ", @nodes);
     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: nodes are $str_node") if ($str_node);
 
-    # return directly if no nodes in the same network
+    # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
     unless (@nodes) {
         xCAT::MsgUtils->message("S", "xCAT: grub2 netboot: no valid nodes. Stop the operation on this server.");
 
-        # We need special hanlding to see if the plugin needs report error.
-        # - For MN, it is designed to handle all nodes, any error is required to be reqport. (All nodes are handled on MN if sharedtftp=1)
-        # - For SN, if disjointdhcps=1 AND sharedtftp=0, all nodes in the request are the nodes managed by this SN, so we need report error
-        #           if disjointdhcps=1 AND sharedtftp=0, report error only if there are nodes are managed by me.
-        if (xCAT::Utils->isMN() != 1 && $request->{'_disparatetftp'}->[0] && $request->{'_disjointmode'}->[0] != 1) {
+        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
+        if ($request->{'_disparatetftp'}->[0] && $request->{'_disjointmode'}->[0] != 1) {
             # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
-            # For other case, all passing node range are required to be handled.
             my %iphash   = ();
             # flag the IPs or names in iphash
             foreach (@hostinfo) { $iphash{$_} = 1; }
@@ -629,16 +625,14 @@ sub process_request {
             # Get managed node list under current server
             # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
             my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-            #my %managed = ();
             my $req2manage = 0;
             foreach (keys %$sn_hash) {
                 if (exists($iphash{$_})) {
-                    #my $cur_xmaster = $_;
-                    #foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
                     $req2manage = 1;
                     last;
                 }
             }
+            # Okay, now report error as no nodes are handled.
             if ($req2manage == 0) {
                 xCAT::MsgUtils->trace(0, "d", "grub2: No nodes are required to be managed on this server");
                 return;

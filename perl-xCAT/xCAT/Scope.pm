@@ -126,7 +126,8 @@ sub get_parallel_scope {
 =head3 get_broadcast_scope_with_parallel
 
     Convert a request object to an array of multiple requests according to the 
-    splitted node range.
+    splitted node range. Also it replicates the requests to all required service
+    nodes or management node.
 
     Arguments:
        Reference of request
@@ -155,7 +156,8 @@ sub get_broadcast_scope_with_parallel {
     my @requests = (); # The request array will be return.
     push @requests, @$reqs;
 
-    # get site.master from DB and dispatch to it as MN will not be in SN list.
+    # when this method is called on service node, it is required to broadcast to MN too.
+    # get site.master from DB in order to dispatch to MN ( MN will not be added in servicenode table)
     if ( xCAT::Utils->isServiceNode() ) {
         my @entries = xCAT::TableUtils->get_site_attribute("master");
         my $master = $entries[0];
@@ -184,8 +186,10 @@ sub get_broadcast_scope_with_parallel {
 
 =head3 get_broadcast_disjoint_scope_with_parallel
 
-    Convert a request object to an array of multiple request objects according to the 
-    service node management scope. (Work under disjoint mode)
+    Convert a request object to an array of multiple requests according to the 
+    splitted node range. Also it replicates the requests to all required service
+    nodes or management node, but the request to a service node will only contains 
+    the node range it manages.
 
     Arguments:
        Reference of request
@@ -245,9 +249,6 @@ sub get_broadcast_disjoint_scope_with_parallel {
 
             $reqs = get_parallel_scope($reqcopy);
             push @requests, @$reqs;
-            #foreach (@$reqs) {
-            #    push @requests, {%$_};
-            #}
         } elsif ($handled4me == 0) {
             my $reqcopy = {%$req};
             $reqcopy->{'node'} = $sn_hash->{$xcatdest};
