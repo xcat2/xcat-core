@@ -79,6 +79,14 @@ if($bname eq "rinstall" and $startconsole==1 and scalar @noderange!=1 ){
     exit 1;    
 }
 
+# Allow to print server information when -V/--verbose
+foreach (reverse(@ARGV)) {
+    if ($_ eq '-V' || $_ eq '--verbose') {
+        $ENV{'XCATSHOWSVR'} = 1;
+        last;
+    }
+}
+
 # ok call Client to run the plugin rinstall.pm
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 if ($xCAT::Client::EXITCODE == 0)             # no errors

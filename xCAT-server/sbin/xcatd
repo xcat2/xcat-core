@@ -940,6 +940,9 @@ unless ($foreground) {
     daemonize;
 }
 
+# Cache the hostname, restart xcatd if hostname is changed after xcatd running
+my $MYXCATSERVER = Sys::Hostname::hostname;
+
 $dbmaster = xCAT::Table::init_dbworker;
 if ($enable_perf) {
     xCAT::MsgUtils->perf_log_process( "db", undef, "dbprocess", $dbmaster );
@@ -2585,8 +2588,21 @@ sub send_response {
     if ($encode eq "xml") {
         my $xml;
         if ($response->{xcatresponse}) {    # it's an aggregate, keeproot
+            if ($MYXCATSERVER) {
+                my $rsp = $response->{xcatresponse};
+                if ( (ref($rsp) eq 'ARRAY') && scalar(@$rsp) > 0 ) {
+                    foreach (@$rsp) {
+                        $_->{xcatdsource}->[0] = $MYXCATSERVER unless ($_->{xcatdsource});
+                    }
+                }
+            }
             $xml = XMLout($response, KeyAttr => [], NoAttr => 1, KeepRoot => 1);
         } else {
+            if ($MYXCATSERVER) {
+                unless (exists($response->{serverdone})) {
+                    $response->{xcatdsource}->[0] = $MYXCATSERVER;
+                }
+            }
             $xml = XMLout($response, RootName => 'xcatresponse', NoAttr => 1);
         }
         $xml =~ tr/\011-\177/?/c;
