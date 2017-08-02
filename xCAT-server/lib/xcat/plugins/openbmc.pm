@@ -582,6 +582,11 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rflash") {
+        #
+        # disable function until fully supported by openbmc 
+        # Currently waiting for issue https://github.com/openbmc/openbmc/issues/2074 to be fixed
+        #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $filename_passed = 0;
         my $updateid_passed = 0;
         my $option_flag;
@@ -1888,6 +1893,11 @@ sub rflash_response {
             if ($key_url eq "Priority") {
                 $priority_state = ${ $response_info->{data} }{$key_url};
             }
+        }
+
+        if ($activation_state =~ /Software.Activation.Activations.Failed/) {
+            # Activation failed. Report error and exit
+            xCAT::SvrUtils::sendmsg([1,"Activation of firmware failed"], $callback, $node);
         }
 
         if ($activation_state =~ /Software.Activation.Activations.Active/) { 
