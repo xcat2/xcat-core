@@ -25,9 +25,13 @@
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
-   ([ -f $str_dir_name/xcatlib.sh ] && . $str_dir_name/xcatlib.sh) || \
-   ([ -f /install/postscripts/xcatlib.sh ] && . /install/postscripts/xcatlib.sh) || \
-   ([ -f /xcatpost/xcatlib.sh ] && . /xcatpost/xcatlib.sh)
+   if [ -f $str_dir_name/xcatlib.sh ]; then
+       . $str_dir_name/xcatlib.sh
+   elif [ -f /install/postscripts/xcatlib.sh ]; then
+       . /install/postscripts/xcatlib.sh
+   elif [ -f /xcatpost/xcatlib.sh ]; then
+       . /xcatpost/xcatlib.sh
+   fi
 fi
 
 op=$1
