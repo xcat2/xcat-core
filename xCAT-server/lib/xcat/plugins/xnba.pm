@@ -331,10 +331,12 @@ sub preprocess_request {
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     my $HELP;
+    my $ALLFLAG;
     my $VERSION;
     my $VERBOSE;
     if (!GetOptions('h|?|help' => \$HELP,
             'v|version' => \$VERSION,
+            'a'           =>\$ALLFLAG,
             'V'         => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
         )) {
         if ($usage{$command}) {
@@ -380,6 +382,13 @@ sub preprocess_request {
         return;
     }
 
+    if ($ARGV[0] ne "stat" && $ALLFLAG) {
+        my %rsp;
+        $rsp{error}->[0] = "'-a' could only be used with 'stat' subcommand.";
+        $rsp{errorcode}->[0] = 1;
+        $callback1->(\%rsp);
+        return;
+    }
 
     #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when
     #they specify no sharedtftp in site table
@@ -394,12 +403,12 @@ sub preprocess_request {
         xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
         unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) { # mix is ok for these options
             if ((@SN > 0) && (@CN > 0)) {    # there are both SN and CN
-                my $rsp;
-                $rsp->{data}->[0] =
+                my %rsp;
+                $rsp{errorcode}->[0] = 1;
+                $rsp{error}->[0] =
 "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
-                xCAT::MsgUtils->message("E", $rsp, $callback1);
+                $callback1->(\%rsp);
                 return;
-
             }
         }
 
@@ -408,9 +417,39 @@ sub preprocess_request {
             return [$req];
         }
         if (@CN > 0) {    # if compute nodes broadcast to all servicenodes
-            return xCAT::Scope->get_broadcast_scope_with_parallel($req);
+
+            my @sn = xCAT::ServiceNodeUtils->getSNList();
+            unless ( @sn > 0 ) {
+                return xCAT::Scope->get_parallel_scope($req)
+            }
+
+            my $mynodeonly  = 0;
+            my @entries = xCAT::TableUtils->get_site_attribute("disjointdhcps");
+            my $t_entry = $entries[0];
+            if (defined($t_entry)) {
+                $mynodeonly = $t_entry;
+            }
+            $req->{'_disjointmode'} = [$mynodeonly];
+            xCAT::MsgUtils->trace(0, "d", "xnba: disjointdhcps=$mynodeonly");
+
+            if ($mynodeonly == 0 || $ALLFLAG) { # broadcast to all service nodes
+                return xCAT::Scope->get_broadcast_scope_with_parallel($req, \@sn);
+            }
+
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@CN, "xcat", "MN");
+            my @dhcpsvrs = ();
+            my $ntab = xCAT::Table->new('networks');
+            if ($ntab) {
+                foreach (@{ $ntab->getAllEntries() }) {
+                    next unless ($_->{dynamicrange});
+                    # if dynamicrange specified but dhcpserver was not - issue error message
+                    push @dhcpsvrs, $_->{dhcpserver} if ($_->{dhcpserver})
+                }
+            }
+            return xCAT::Scope->get_broadcast_disjoint_scope_with_parallel($req, $sn_hash, \@dhcpsvrs);
         }
     }
+    # Do not dispatch to service nodes if non-sharedtftp or the node range contains only SNs.
     return xCAT::Scope->get_parallel_scope($req);
 }
 
@@ -437,12 +476,14 @@ sub process_request {
 
     #>>>>>>>used for trace log end>>>>>>>
 
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    $::myxcatname = $hostinfo[-1];
+    xCAT::MsgUtils->trace(0, "d", "xnba: running on $::myxcatname");
     if (ref($::XNBA_request->{node})) {
         @rnodes = @{ $::XNBA_request->{node} };
     } else {
         if ($::XNBA_request->{node}) { @rnodes = ($::XNBA_request->{node}); }
     }
-
     unless (@rnodes) {
         if ($usage{ $::XNBA_request->{command}->[0] }) {
             $::XNBA_callback->({ data => $usage{ $::XNBA_request->{command}->[0] } });
@@ -450,60 +491,98 @@ sub process_request {
         return;
     }
 
-    #if not shared, then help sync up
-    if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-        @nodes = ();
-        my @hostinfo = xCAT::NetworkUtils->determinehostname();
-        my $cur_xmaster = pop @hostinfo;
-        xCAT::MsgUtils->trace(0, "d", "xnba: running on $cur_xmaster");
-        
-        # Get current server managed node list
-        my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
-        my %managed = {};
-        foreach (@{ $sn_hash->{$cur_xmaster} }) { $managed{$_} = 1; }
-
-        # Whatever the node managed by this xcatmaster explicitly, if the node in same subnet, we need to handle its boot configuration files
-        foreach (@rnodes) {
-            if (xCAT::NetworkUtils->nodeonmynet($_)) {
-                push @nodes, $_;
+    if ($args[0] eq 'stat') {
+        my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
+        my %nrhash = %{ $noderestab->getNodesAttribs(\@rnodes, [qw(tftpdir)]) };
+        foreach my $node (@rnodes) {
+            my %response;
+            my $tftpdir;
+            if ($nrhash{$node}->[0] and $nrhash{$node}->[0]->{tftpdir}) {
+                $tftpdir = $nrhash{$node}->[0]->{tftpdir};
             } else {
-                my $msg = "xnba configuration file was not created for node [$_] because sharedtftp attribute is not set and the node is not on same network as this xcatmaster";
-                if ( $cur_xmaster ) { 
-                    $msg .= ": $cur_xmaster"; 
-                }
-                if ( exists( $managed{$_} ) ) {
-                    # report error when it is under my control but I cannot handle it.
-                    my $rsp;
-                    $rsp->{data}->[0] = $msg;
-                    xCAT::MsgUtils->message("E", $rsp, $::XNBA_callback);
-                } else {
-                    xCAT::MsgUtils->message("S", $msg);
-                }
-
+                $tftpdir = $globaltftpdir;
             }
+            $response{node}->[0]->{name}->[0] = $node;
+            $response{node}->[0]->{data}->[0] = getstate($node, $tftpdir);
+            $::XNBA_callback->(\%response);
         }
-    } else {
-        @nodes = @rnodes;
-    }
-
-    #>>>>>>>used for trace log>>>>>>>
-    my $str_node = join(" ", @nodes);
-    xCAT::MsgUtils->trace(0, "d", "xnba: nodes are $str_node");
-
-    # return directly if no nodes in the same network
-    unless (@nodes) {
-        xCAT::MsgUtils->message("S", "xCAT: xnba netboot: no valid nodes. Stop the operation on this server.");
         return;
     }
 
-    if (ref($::XNBA_request->{arg})) {
-        @args = @{ $::XNBA_request->{arg} };
+    my @nodes = ();
+    # Filter those nodes which have bad DNS: not resolvable or inconsistent IP
+    my %failurenodes = ();
+    my %preparednodes = ();
+    foreach (@rnodes) {
+        my $ipret = xCAT::NetworkUtils->checkNodeIPaddress($_);
+        my $errormsg = $ipret->{'error'};
+        my $nodeip = $ipret->{'ip'};
+        if ($errormsg) {# Add the node to failure set
+            xCAT::MsgUtils->trace(0, "E", "xnba: Defined IP address of $_ is $nodeip. $errormsg");
+            unless ($nodeip) {
+                $failurenodes{$_} = 1;
+            }
+        }
+        if ($nodeip) {
+            $preparednodes{$_} = $nodeip;
+        }
+    }
+
+    #if not shared tftpdir, then filter, otherwise, set up everything
+    if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        # Filter those nodes not in the same subnet, and print error message in log file.
+        foreach (keys %preparednodes) {
+            # Only handle its boot configuration files if the node in same subnet
+            if (xCAT::NetworkUtils->nodeonmynet($preparednodes{$_})) {
+                push @nodes, $_;
+            } else {
+                xCAT::MsgUtils->trace(0, "W", "xnba: configuration file was not created for [$_] because the node is not on the same network as this server");
+                delete $preparednodes{$_};
+            }
+        }
     } else {
-        @args = ($::XNBA_request->{arg});
+        @nodes = keys %preparednodes;
+    }
+
+    my $str_node = join(" ", @nodes);
+    xCAT::MsgUtils->trace(0, "d", "xnba: nodes are $str_node") if ($str_node);
+
+    # Return directly if no nodes in the same network, need to report error on console if its managed nodes are not handled.
+    unless (@nodes) {
+        xCAT::MsgUtils->message("S", "xCAT: xnba netboot: no valid nodes. Stop the operation on this server.");
+
+        # If non-shared tftproot and non disjoint mode, need to figure out if no nodes here is a normal case.
+        if ($::XNBA_request->{'_disparatetftp'}->[0] && $::XNBA_request->{'_disjointmode'}->[0] != 1) {
+            # Find out which nodes are really mine only when not sharedtftp and not disjoint mode.
+            my %iphash   = ();
+            # flag the IPs or names in iphash
+            foreach (@hostinfo) { $iphash{$_} = 1; }
+
+            # Get managed node list under current server
+            # The node will be under under 'site.master' if no 'noderes.servicenode' is defined
+            my $sn_hash = xCAT::ServiceNodeUtils->getSNformattedhash(\@rnodes, "xcat", "MN");
+            my $req2manage = 0;
+            foreach (keys %$sn_hash) {
+                if (exists($iphash{$_})) {
+                    $req2manage = 1;
+                    last;
+                }
+            }
+            if ($req2manage == 0) {
+                #No nodes are required to be handled, quit without error.
+                return;
+            }
+        }
+        # Okay, now report error as no nodes are handled.
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $::XNBA_callback->($rsp);
+        return;
     }
 
     #now run the begin part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
         if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: the call is distrubuted to the service node already, so only need to handles my own children");
@@ -515,7 +594,7 @@ sub process_request {
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: nodeset did not distribute to the service node");
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runbeginpre request");
             $sub_req->({ command => ['runbeginpre'],
-                    node => \@rnodes,
+                    node => \@nodes,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
@@ -547,7 +626,7 @@ sub process_request {
     if (!$inittime) { $inittime = 0; }
 
     my %bphash;
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact') {
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact') {
         $errored = 0;
         xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue setdestiny request");
         $sub_req->({ command => ['setdestiny'],
@@ -562,6 +641,7 @@ sub process_request {
         }
     }
 
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: starting to handle configuration...");
     #Time to actually configure the nodes, first extract database data with the scalable calls
     my $chaintab = xCAT::Table->new('chain');
     my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
@@ -589,10 +669,7 @@ sub process_request {
         mkpath($tftpdir . "/xcat/xnba/nodes/");
         my %response;
         $response{node}->[0]->{name}->[0] = $_;
-        if ($args[0] eq 'stat') {
-            $response{node}->[0]->{data}->[0] = getstate($_, $tftpdir);
-            $::XNBA_callback->(\%response);
-        } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
+        if ($args[0]) { # Send it on to the destiny plugin, then setstate
             my $rc;
             my $errstr;
             my $ent          = $typehash->{$_}->[0];
@@ -617,45 +694,38 @@ sub process_request {
             }
         }
     }
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: Finish to handle configurations");
 
     # for offline operation, remove the dhcp entries
     if ($args[0] eq 'offline') {
         $sub_req->({ command => ['makedhcp'], arg => ['-d'], node => \@nodes }, $::XNBA_callback);
     }
 
-
     #dhcp stuff -- inittime is set when xcatd on sn is started
-    unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
+    unless (($inittime) || ($args[0] eq 'offline')) {
         my $do_dhcpsetup = 1;
-
-        #my $sitetab = xCAT::Table->new('site');
-        #if ($sitetab) {
-        #(my $ref) = $sitetab->getAttribs({key => 'dhcpsetup'}, 'value');
         my @entries = xCAT::TableUtils->get_site_attribute("dhcpsetup");
         my $t_entry = $entries[0];
         if (defined($t_entry)) {
             if ($t_entry =~ /0|n|N/) { $do_dhcpsetup = 0; }
         }
-
-        #}
-
         if ($do_dhcpsetup) {
-            if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'], arg => ['-l'],
-                        node => \@nodes }, $::XNBA_callback);
-            } else {
-                xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue makedhcp request");
-                $sub_req->({ command => ['makedhcp'],
-                        node => \@nodes }, $::XNBA_callback);
-            }
+            my @parameter;
+            push @parameter, '-l' if ($::request->{'_disparatetftp'}->[0]);
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue makedhcp request");
+
+            $sub_req->({ command => ['makedhcp'],
+                         arg => \@parameter,
+                         node => \@nodes }, $::XNBA_callback);
+        } else {
+            xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: dhcpsetup=$do_dhcpsetup");
         }
     }
 
     #now run the end part of the prescripts
-    unless ($args[0] eq 'stat') {    # or $args[0] eq 'enact')
+    unless ($args[0] eq '') {    # or $args[0] eq 'enact')
         $errored = 0;
-        if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handles my own children
+        if ($::XNBA_request->{'_disparatetftp'}->[0]) { #the call is distrubuted to the service node already, so only need to handle my own children
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
                     node => \@nodes,
@@ -663,7 +733,7 @@ sub process_request {
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
             xCAT::MsgUtils->trace($verbose_on_off, "d", "xnba: issue runendpre request");
             $sub_req->({ command => ['runendpre'],
-                    node => \@rnodes,
+                    node => \@nodes,
                     arg => [ $args[0] ] }, \&pass_along);
         }
         if ($errored) {
@@ -672,6 +742,15 @@ sub process_request {
             $rsp->{error}->[0] = "Failed in running end prescripts.  Processing will still continue.\n";
             $::XNBA_callback->($rsp);
         }
+    }
+
+    # Return error codes if there are failed nodes
+    if (%failurenodes) {
+        my $rsp;
+        $rsp->{errorcode}->[0] = 1;
+        $rsp->{error}->[0]     = "Failed to generate xnba configurations for some node(s) on $::myxcatname. Check xCAT log file for more details.";
+        $::XNBA_callback->($rsp);
+        return;
     }
 
 }
