@@ -46,7 +46,7 @@ Update /etc/hosts
 Configure adapters with static IPs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. Execute ``confignetwork -s`` to configure both provision ip ``11.1.89.7`` and data ip ``13.1.89.7`` as static
+#. Execute ``confignetwork -s`` to configure both provision ip ``11.1.89.7`` and application data ip ``13.1.89.7`` as static
 
     a. Add ``confignetwork -s`` into postscript list to execute on reboot ::
 
@@ -71,6 +71,6 @@ Configure adapters with static IPs
 Check result
 ~~~~~~~~~~~~
 
-#. Use ``xdsh cn1 "ip a"`` to check ``eth0`` and ``eth1``
+#. Use ``xdsh cn1 "ip addr"`` to check ``eth0`` and ``eth1``
 
 #. Check ``ifcfg-eth0`` and ``ifcfg-eth1`` under ``/etc/sysconfig/network-scripts/``

@@ -53,4 +53,4 @@ Check ``ifcfg-eth1`` under ``/etc/sysconfig/network-scripts/`` ::
    
     BRIDGE=br1
 
-Use ``ip a`` command to check if ``br1``, ``eth0.6`` and ``eth0.7`` are correct.
+Use ``ip addr`` command to check if ``br1``, ``eth0.6`` and ``eth0.7`` are correct.

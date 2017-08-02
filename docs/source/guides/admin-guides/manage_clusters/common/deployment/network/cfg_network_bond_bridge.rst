@@ -72,4 +72,4 @@ Check ``ifcfg-br0`` under ``/etc/sysconfig/network-scripts/`` ::
    STP="on"
    TYPE="Bridge"
 
-Use ``ip a`` command to check if ``br0`` and ``bond0`` are correct.
+Use ``ip addr`` command to check if ``br0`` and ``bond0`` are correct.

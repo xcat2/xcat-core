@@ -60,4 +60,4 @@ Login to compute node cn1 and check ``ifcfg-br1`` and ``ifcfg-br2`` under ``/etc
     STP="on"
     TYPE="Bridge"
 
-Use ``ip a`` command to check if ``br1``, ``br2``, ``eth0.6`` and ``eth0.7``.
+Use ``ip addr`` command to check if ``br1``, ``br2``, ``eth0.6`` and ``eth0.7``.

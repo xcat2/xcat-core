@@ -49,4 +49,4 @@ Login to compute node cn1 and check VLAN options in ``ifcfg-eth0.6`` and ``ifcfg
 
     VLAN=yes
 
-Use ``ip a`` command to check if ``eth0.6`` and ``eth0.7`` are there.
+Use ``ip addr`` command to check if ``eth0.6`` and ``eth0.7`` are there.

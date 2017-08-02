@@ -58,4 +58,4 @@ Login to compute node cn1 and check ``ifcfg-bond0.1`` under ``/etc/sysconfig/net
    USERCTL=no
    VLAN=yes
 
-Use ``ip a`` command to check if ``br0`` and ``bond0`` are correct.
+Use ``ip addr`` command to check if ``br0`` and ``bond0`` are correct.

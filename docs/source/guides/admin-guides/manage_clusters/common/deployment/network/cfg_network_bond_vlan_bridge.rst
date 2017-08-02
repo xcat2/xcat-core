@@ -72,6 +72,6 @@ Check result
 
 Use ``ip`` command on ``cn1`` to check all NICs ::
    
-    xdsh cn1 "ip a"
+    xdsh cn1 "ip addr"
 
 Check all network configuration files under ``/etc/sysconfig/network-scripts/``.
