@@ -41,6 +41,7 @@ my $valid_discovery_type_str = join(",", @valid_discovery_type);
 my $program_name = basename("$0");
 $::USAGE = "Usage:
     $program_name -h
+    $program_name -n <node_range> -m <discovery_type> -c
     $program_name -n <node_range> -m <discovery_type> [-t <max_waiting_time>] [-V] [--noprecheck] 
     $program_name -n <node_range> -m <discovery_type> -r <roll_back_duration> [-V] [--noprecheck]
 
@@ -55,6 +56,7 @@ Options:
     -V           : Output more information for debug.
     -m           : The method of discovery, the valid values are $valid_discovery_type_str.
     -n           : The range of predefined nodes, must be used with option -m.
+    -c           : Only do pre-check including predefined nodes' definition, genesis version and files, dynamic range.
     -t           : The maximum time to wait when doing monitor, unit is minutes. default is 60.
     -r           : Trigger 'Replay history' mode. Follow the duration of rolling back. Units are 'h' (hour) or 'm' (minute)
                    Supported format examples: 3h30m (3 hours and 30 minutes ago), 2h (2 hours ago), 40m (40 minutes ago) and 3 (3 hours ago).
@@ -73,6 +75,7 @@ my $maxwaittime = 60;    #unit is minute, the max wait time of monitor
 my $rollforward_time_of_replay;    #used by feature replay discovery log
 my $noderange;
 my $discovery_type;
+my $pre_check    = 0;
 my $no_pre_check = 0;
 my $nics;
 if (
@@ -80,6 +83,7 @@ if (
         "T"            => \$test,
         "V"            => \$verbose,
         "--noprecheck" => \$no_pre_check,
+        "c"            => \$pre_check,
         "m=s"          => \$discovery_type,
         "n=s"          => \$noderange,
         "t=s"          => \$maxwaittime,
@@ -119,6 +123,16 @@ if (defined($discovery_type)) {
         probe_utils->send_msg("stdout", "", "$::USAGE");
         exit 1;
     }
+}
+
+if ($pre_check) {
+    if ($no_pre_check or $rollforward_time_of_replay) {
+        probe_utils->send_msg("stdout", "f", "Option '-c' could not used with '--noprecheck', '-r'");
+        probe_utils->send_msg("stdout", "", "$::USAGE");
+        exit 1;
+    }
+    $rst = do_pre_check();
+    exit $rst;
 }
 
 if ($rollforward_time_of_replay) {
@@ -194,15 +208,25 @@ sub check_pre_defined_node {
 
     # check whether there is bmc node in noderange
     my @bmcnodes = ();
+    my @nochain  = ();
     foreach my $node (keys %nodecheckrst) {
         if (($nodecheckrst{$node}{"nodetype"} eq "mp") and ($nodecheckrst{$node}{"hwtype"} eq "bmc")) {
             push @bmcnodes, $node;
+        }
+        unless ($nodecheckrst{$node}{"chain"}) {
+            push @nochain, $node;
         }
     }
     if (@bmcnodes) {
         my $bmcnode = join(",", @bmcnodes);
         probe_utils->send_msg("stdout", "f", "[$bmcnode] : bmc node(s)");
         $rst = 1; 
+    }
+
+    if (@nochain) {
+        my $nochainnode = join(",", @nochain);
+        probe_utils->send_msg("stdout", "f", "[$nochainnode] : Invalid value for attribute 'chain'");
+        $rst = 1;
     }
 
     # if discover type is mtms, check whether mtms is only for per-define node and bmc node 
@@ -310,6 +334,10 @@ sub check_pre_defined_node {
             }
         }
 
+        my $all_switch = ` xcatprobe switch_macmap`;
+        my $error_switch = `echo -e "$all_switch" | grep "FAIL" | cut -d ' ' -f1`;
+        my $valid_nodes = `echo -e "$all_switch" | sed s'/\-//g' |  grep -v "FAIL" | grep -v "MAC address" | awk '{print \$4}' | grep -E -v "^\$"`;
+        my %error_switch_hash = ();
         my @error_switchport;
         my %errorhash = ();
         my $keystring;
@@ -322,8 +350,13 @@ sub check_pre_defined_node {
 
                 if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
                     push @error_attribute, "switch";
+                } elsif ($error_switch =~ $nodecheckrst{$node}{"switch"}) {
+                    my $error_switch_string = "No switch " . $nodecheckrst{$node}{"switch"} . " information obtained."; 
+                    push @{$error_switch_hash{$error_switch_string}}, $node;
+                    next;
                 }
-                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/) {
+
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/ or $valid_nodes !~ $node) {
                     push @error_attribute, "switchport";
                 }
 
@@ -375,6 +408,11 @@ sub check_pre_defined_node {
         foreach my $switch_port (@error_switchport) {
             my $switchnode = join(",", @{ $switch_node{$switch_port} });
             probe_utils->send_msg("stdout", "f", "[$switchnode] : Duplicate node definition found for the same switch and switchport $switch_port.");
+            $rst = 1;
+        }
+        foreach my $key (keys %error_switch_hash) {
+            my $nodes = join(",", @{$error_switch_hash{$key}});
+            probe_utils->send_msg("stdout", "f", "[$nodes] : $key");
             $rst = 1;
         }
     }
@@ -492,7 +530,9 @@ sub do_pre_check {
 sub check_genesis_file {
     my $msg = "Genesis files are avaliable";
     my $rst = 0;
+    my @warn_msg;
 
+    my $genesis_v;
     my $os = probe_utils->get_os();
     if ($os =~ "unknown") {
         probe_utils->send_msg("stdout", "f", $msg);
@@ -508,6 +548,7 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
         }
+        $genesis_v = `dpkg -s xcat-genesis-base-ppc64`;
     } else {
         my $genesis_output = `rpm -qa | grep -i "xcat-genesis"`;
         unless (($genesis_output =~ /base/ and $genesis_output =~ /ppc64/) and
@@ -517,6 +558,40 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "f", $msg);
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
+        }
+        $genesis_v = `rpm -qi xCAT-genesis-base-ppc64`;
+    }
+
+    if ($genesis_v =~ /Built in environment .+fc26.* on (.+)\./) {
+        push @warn_msg, "xcat-genesis-base-ppc64 is built in environment fc26 on $1.";
+    }
+
+    my $genesis_update_flag_p;
+    my $genesis_update_flag_x;
+    my $genesis_time;
+    my $genesis_base_time;
+    my $genesis_script_time;
+    $genesis_base_time  = `stat /etc/xcat/genesis-base-updated | grep Modify | cut -d ' ' -f 2-3` if (-e '/etc/xcat/genesis-base-updated');
+    $genesis_script_time = `stat /etc/xcat/genesis-scripts-updated | grep Modify | cut -d ' ' -f 2-3` if (-e '/etc/xcat/genesis-scripts-updated');
+    if ($genesis_base_time > $genesis_script_time) {
+        $genesis_time = $genesis_base_time;
+    } else {
+        $genesis_time = $genesis_script_time;
+    }
+
+    my $dhcpinterface = `tabdump site | sed s/'"'//g | grep '^dhcpinterfaces'`;
+    my $noboot_file;
+    my @tmp_info = split(",", $dhcpinterface);
+    foreach (@tmp_info) {
+        if ($_ =~ /(.+):noboot/) {
+            my $noboot_nic = $1; 
+            my $ip_string = `ip -4 -o a | grep $noboot_nic | awk -F ' ' '{print \$4}'`;
+            if ($ip_string) {
+                my ($noboot_ip, $noboot_netmask) = split('\/', $ip_string);
+                my @noboot_ips = split('\.', $noboot_ip);
+                $noboot_file = $noboot_ips[0] . ".0.0.0_$noboot_netmask";
+                chomp($noboot_file);
+            }
         }
     }
 
@@ -539,9 +614,14 @@ sub check_genesis_file {
 
         @genesis_files = glob("$genesis_folder/*");
 
-        foreach (@genesis_files) {
-            unless (open(FILE, $_)) {
-                push @errors, "Cannot open file $_.";
+        foreach my $file (@genesis_files) {
+            if ($noboot_file and $file =~ $noboot_file) {
+                push @warn_msg, "File $file should not exist, please delete it.";
+                next;
+            }
+
+            unless (open(FILE, $file)) {
+                push @errors, "Cannot open file $file.";
                 $rst = 1;
                 next;
             }
@@ -558,6 +638,15 @@ sub check_genesis_file {
                         push @errors, "'initrd' cannot be downloaded from $initrd_path.";
                         $rst = 1;
                     }
+
+                    if ($initrd_path =~ /http.+($tftpdir\/.+)/) {
+                        my $initrd_file = $1;
+                        my $initrd_time = `stat $initrd_file | grep Modify | cut -d ' ' -f 2-3`;
+                        if ($initrd_time < $genesis_time) {
+                            $genesis_update_flag_p = 1;
+                        }
+                    }
+
                 }
 
                 if ($genesis_line =~ /^kernel/) {
@@ -593,9 +682,14 @@ sub check_genesis_file {
 
         @genesis_files = glob("$genesis_folder/*");
 
-        foreach (@genesis_files) {
-            if ($_ =~ /uefi$/) {
-                my $file_name = basename($_);
+        foreach my $file (@genesis_files) {
+            if ($noboot_file and $file =~ $noboot_file) {
+                push @warn_msg, "File $file should not exist, please delete it.";
+                next;
+            }
+
+            if ($file =~ /uefi$/) {
+                my $file_name = basename($file);
                 my @tmp_ip    = split('_', $file_name);
                 my $ip_range  = shift(@tmp_ip);
                 my $host_ip;
@@ -614,8 +708,8 @@ sub check_genesis_file {
                     next;
                 }
 
-                unless (open(FILE, $_)) {
-                    push @errors, "Cannot open file $_.";
+                unless (open(FILE, $file)) {
+                    push @errors, "Cannot open file $file.";
                     $rst = 1;
                     next;
                 }
@@ -671,7 +765,13 @@ sub check_genesis_file {
                                     if ($wget_rst) {
                                         push @errors, "'initrd' cannot be downloaded from $initrd_http.";
                                         $rst = 1;
+                                    } else {
+                                        my $initrd_time = `stat $initrd_path | grep Modify | cut -d ' ' -f 2-3`;
+                                        if ($initrd_time < $genesis_time) {
+                                            $genesis_update_flag_x = 1;
+                                        }
                                     }
+ 
                                 }
                             }
                         }
@@ -681,11 +781,16 @@ sub check_genesis_file {
         }
     }
 
+    push @warn_msg, "Genesis packages have been updated, please run 'mknb <arch>'" if ($genesis_update_flag_p and $genesis_update_flag_x);
+
     if ($rst) {
         probe_utils->send_msg("stdout", "f", $msg);
         probe_utils->send_msg("stdout", "d", $_) foreach (@errors);
     } else {
         probe_utils->send_msg("stdout", "o", $msg);
+        if (@warn_msg) {
+            probe_utils->send_msg("stdout", "w", $_) foreach (@warn_msg);
+        }
     }
 
     return $rst;
@@ -756,6 +861,8 @@ sub dhcp_dynamic_range_check {
             } else {
                 push @dynamic_range, "$2-$1";
             }
+        } elsif ($config_line =~ /^range dynamic-bootp (\d+.\d+.\d+.\d+)/) {
+            push @dynamic_range, "$1-$1";
         }
     }
 
@@ -859,6 +966,8 @@ sub get_node_ip {
             $nodeipcheck{$node}{"ip"} = $ip_net;
         } elsif (!$nodeipcheck{$node}{"ip"} and $ip_net) {
             $nodeipcheck{$node}{"ip"} = $ip_net;
+        } elsif ($nodeipcheck{$node}{"ip"} and !$ip_net) {
+            $nodeipcheck{$node}{"error"} = "Unknown host $node, please run 'makehosts' and 'makedns'";
         } 
         if ($ip_net and !$isonmynet) {
             $nodeipcheck{$node}{"error"} = "IP for $node is not on any network this server attached.";
