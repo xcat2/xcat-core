@@ -57,7 +57,7 @@ OpenPOWER OpenBMC specific :
 ============================
 
 
-\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ]
+\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ] [\ **-d | -**\ **-delete**\ ]
 
 
 
@@ -217,6 +217,12 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 \ **-u|-**\ **-upload**\ 
  
  Upload update image. Specified file must be in .tar format.
+ 
+
+
+\ **-d|-**\ **-delete**\ 
+ 
+ Delete update image from BMC
  
 
 
