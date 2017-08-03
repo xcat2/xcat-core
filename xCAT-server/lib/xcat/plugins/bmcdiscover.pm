@@ -67,6 +67,48 @@ sub handled_commands
 }
 
 #-------------------------------------------------------
+#
+sub preprocess_request {
+    my $request = shift;
+    if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
+
+    my $callback = shift;
+    my $extargs = $request->{arg};
+    my @exargs = ($request->{arg});
+    if (ref($extargs)) {
+        @exargs = @$extargs;
+    }
+    @ARGV = @exargs;
+    $Getopt::Long::ignorecase=0;
+    Getopt::Long::Configure("bundling");
+    my $sns = undef;
+    if ((grep /--sn/, @ARGV) and (Getopt::Long::GetOptions('sn=s' => \$sns))) {
+        unless ($sns) {
+            $callback->({ error => ["The value for --sn is invalid"], errorcode => [1] });
+            $request = ();
+            return;
+        }
+        my $nettab = xCAT::Table->new("networks");
+        my @entries   = $nettab->getAllAttribs('dhcpserver', 'dynamicrange');
+        my @dhcpservers = ();
+        foreach (@entries) {
+            if (!defined($_->{dynamicrange})) {next;}
+            push @dhcpservers, $_->{dhcpserver};
+        }
+        my @requests = ();
+        foreach (split (/,/, $sns)) {
+            my $reqcopy = {%$request};
+            $reqcopy->{'_xcatdest'} = $_;   
+            $reqcopy->{'sn'} = $_;
+            $reqcopy->{'dhcpservers'} = \@dhcpservers;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            push @requests, $reqcopy;
+        }
+        return \@requests;
+    } else {
+        return [$request];
+    }
+}
 
 =head3  process_request
 
@@ -91,7 +133,26 @@ sub process_request
     } else {
         $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
     }
-
+    if ($request->{sn}) {
+        my $dhcpservers = $request->{dhcpservers};
+        if (!defined($dhcpservers) or ref($dhcpservers) ne 'ARRAY') {
+            $callback->({ error => ["the ". $request->{command}->[0]. " doesn't work when no dynamic range set."], errorcode => [1] });
+            return 1;
+        }
+        else {
+            my $have_dynamicrange_set = 0;
+            foreach (@$dhcpservers) {
+                unless (xCAT::NetworkUtils->thishostisnot($_)) {
+                    $have_dynamicrange_set = 1;
+                    last;
+                }
+            }
+            unless ($have_dynamicrange_set) {
+                $callback->({ error => ["the ". $request->{command}->[0]. " won't work since no dynamic range set on $request->{sn}->[0]"], errorcode => [1] });
+                return 1;
+            }
+        }
+    }
     unless (defined($request->{arg})) {
         bmcdiscovery_usage();
         return 2;
@@ -184,6 +245,7 @@ sub bmcdiscovery_processargs {
         'ipsource'      => \$::opt_S,
         'version|v'     => \$::opt_v,
         't'             => \$::opt_T,
+        'sn=s'          => \$::opt_SN,
     );
 
     if (!$getopt_success) {
@@ -238,6 +300,11 @@ sub bmcdiscovery_processargs {
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
         $openbmc_pass = $::opt_P;
+    }
+    if ($request->{sn}) {
+        $::opt_SN = $request->{sn}->[0];
+    } else {
+        $::opt_SN = '';
     }
 
     #########################################
@@ -664,7 +731,7 @@ sub format_stanza {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
     my $result;
     if (defined($bmcip)) {
         $result .= "$node:\n\tobjtype=node\n";
@@ -683,6 +750,12 @@ sub format_stanza {
         }
         if ($bmcpass) {
             $result .= "\tbmcpassword=$bmcpass\n";
+        }
+        if ($sn) {
+            $result .="\tservicenode=$sn\n";
+        }
+        if ($conserver) {
+            $result .= "\tconserver=$conserver\n";
         }
         my $rsp = {};
         push @{ $rsp->{data} }, "$result";
@@ -705,7 +778,7 @@ sub write_to_xcatdb {
     my $node = shift;
     my $data = shift;
     my $mgt_type = shift;
-    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype) = split(/,/, $data);
+    my ($bmcip, $bmcmtm, $bmcserial, $bmcuser, $bmcpass, $nodetype, $hwtype, $sn, $conserver) = split(/,/, $data);
     my $request_command = shift;
     my $ret;
 
@@ -713,6 +786,7 @@ sub write_to_xcatdb {
                                   arg => [ '-t', 'node', '-o', $node, "bmc=$bmcip", "cons=$mgt_type", 
                                            "mgt=$mgt_type", "mtm=$bmcmtm", "serial=$bmcserial", 
                                            "bmcusername=$bmcuser", "bmcpassword=$bmcpass", "nodetype=$nodetype", 
+                                           "servicenode=$sn", "conserver=$conserver",
                                            "hwtype=$hwtype", "groups=all" ] },
                                   $request_command, 0, 1);
     if ($::RUNCMD_RC != 0) {
@@ -1018,7 +1092,7 @@ sub bmcdiscovery_ipmi {
             } else {
                 $node_data .= ",,";
             }
-            $node_data .= ",mp,bmc";
+            $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
                 $node =~ s/(.*)/\L$1/g;
@@ -1144,7 +1218,7 @@ sub bmcdiscovery_openbmc{
         } else {
             $node_data .= ",,";
         }
-        $node_data .= ",mp,bmc";
+        $node_data .= ",mp,bmc,$::opt_SN,$::opt_SN";
         if ($mtm and $serial) {
             $node = "node-$mtm-$serial";
             $node =~ s/(.*)/\L$1/g;
