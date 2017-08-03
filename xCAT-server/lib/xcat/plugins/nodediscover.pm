@@ -470,7 +470,7 @@ sub process_request {
         Timeout  => '1',
         Proto    => 'tcp'
     );
-    unless ($sock) { xCAT::MsgUtils->message("S", "Failed to notify $clientip that it's actually $node."); return; }
+    unless ($sock) { xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Failed to notify $clientip that it's actually $node."); return; }
     print $sock $restartstring;
     close($sock);
 

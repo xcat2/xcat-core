@@ -19,14 +19,32 @@ sub process_request {
     my $cb    = shift;
     my $doreq = shift;
     if ($req->{command}->[0] eq 'findme') {
+
         if (!defined($req->{discoverymethod}) or !defined($req->{discoverymethod}->[0]) or ($req->{discoverymethod}->[0] eq 'undef')) {
             my $rsp = {};
             $rsp->{error}->[0] = "The discovery request can not be processed";
             $cb->($rsp);
             xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Failed to discover the node.");
-            return;
+
+            #now, notify the node that its findme request has been processed
+            my $client_ip = $req->{'_xcat_clientip'};
+            xCAT::MsgUtils->message("S","Notify $client_ip that its findme request has been processed");
+            my $sock = new IO::Socket::INET(
+                PeerAddr => $client_ip,
+                PeerPort => '3001',
+                Timeout  => '1',
+                Proto    => 'tcp'
+            );
+            if ($sock) { 
+                print $sock "processed";
+                close($sock);
+            }else{
+                xCAT::MsgUtils->message("S", "Failed to notify $client_ip that its findme request has been processed"); 
+            }
+        }else{
+            xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully discovered the node using $req->{discoverymethod}->[0] discovery method.");
         }
-        xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: ($req->{_xcat_clientmac}->[0]) Successfully discovered the node using $req->{discoverymethod}->[0] discovery method.");
+
         return;
     }
 }
