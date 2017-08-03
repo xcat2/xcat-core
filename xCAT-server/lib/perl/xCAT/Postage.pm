@@ -1436,6 +1436,63 @@ sub getDisklessNet()
     return $result;
 
 }
+#---------------------------------------------------
+=head3 get_nics_nicips
+
+    Description: If nicips contain regular expression, 
+                 transform the regular expression attribute to the target ip,
+                 then generate new nicips with target ip.
+    Arguments:
+            Node
+            nicips Attribute value (may have regular expression)
+    Returns:
+            new nicips Attribute value
+    Globals:
+    Error:
+    Example:
+            $nicips = transRegexAttrs($node, $nicips_with_regex)
+    Comments:
+        none
+=cut
+#---------------------------------------------------
+sub get_nics_nicips
+{
+    my $node = shift;
+    my $old_nicips = shift;
+    my $new_nicips;
+    my $nicname;
+    my $nicip;
+    if (defined($old_nicips)) {
+        my @nicandiplist = split(',', $old_nicips);
+        foreach (@nicandiplist)
+        {
+            #if it contains a "!" then split on "!"
+            if ($_ =~ /!/) {
+                ($nicname, $nicip) = split('!', $_);
+            } else {
+                ($nicname, $nicip) = split(':', $_);
+            }                                                                 
+            if (!$nicip) {
+                next;
+            }
+            #If there is one nicip in  nicips, and it is regular expression
+            #for example: eth0!|\D+(\d+)\D+|10.80.1.($1*2+103)|
+            #Does not support: there is regular expression in multple nicips
+            if ($nicip =~ /^\|\S*\|$/) {
+                #transform the regular expression attribute to the target ip 
+                $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
+            }
+            #generate new nicips
+            if (defined($new_nicips)) {
+                $new_nicips.=",".$nicname."!".$nicip;
+            } else {
+                $new_nicips=$nicname."!".$nicip;
+            }
+       }
+      
+    }
+    return $new_nicips;
+}
 
 sub collect_all_attribs_for_tables_in_template
 {
@@ -1473,7 +1530,12 @@ sub collect_all_attribs_for_tables_in_template
                     if ($ent->{$node}->[0]) {
                         foreach my $attrib (@attribs) {
                             $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $ent->{$node}->[0]->{$attrib};
-
+                            #If nicips contains regular expression 
+                            if ($tabname =~ /^nics$/ && $attrib =~ /^nicips$/ &&  
+                                $::GLOBAL_TAB_HASH{nics}{$node}{nicips} =~ /\S*\!\|\S*/)
+                            {
+                                $::GLOBAL_TAB_HASH{nics}{$node}{nicips}=get_nics_nicips($node,$::GLOBAL_TAB_HASH{nics}{$node}{nicips});
+                            }
                             #for noderes.xcatmaster
                             if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ &&
                                 (!exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
@@ -1517,7 +1579,6 @@ sub collect_all_attribs_for_tables_in_template
                     if (!defined($::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{tftpserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
                     }
-
                     #if the values are not got, we will set them to '';
                     foreach my $attrib (@attribs) {
                         if (!defined($::GLOBAL_TAB_HASH{$tabname}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}) || !defined($::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib})) {
