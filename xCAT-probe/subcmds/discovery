@@ -351,7 +351,7 @@ sub check_pre_defined_node {
                 if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
                     push @error_attribute, "switch";
                 } elsif ($error_switch =~ $nodecheckrst{$node}{"switch"}) {
-                    my $error_switch_string = "No switch " . $nodecheckrst{$node}{"switch"} . " information obtained."; 
+                    my $error_switch_string = "Switch " . $nodecheckrst{$node}{"switch"} . " can not be accessible."; 
                     push @{$error_switch_hash{$error_switch_string}}, $node;
                     next;
                 }
@@ -585,11 +585,16 @@ sub check_genesis_file {
     foreach (@tmp_info) {
         if ($_ =~ /(.+):noboot/) {
             my $noboot_nic = $1; 
-            my $ip_string = `ip -4 -o a | grep $noboot_nic | awk -F ' ' '{print \$4}'`;
+            my $ip_string = `ip -4 -o a |awk -F' ' '/$noboot_nic/ {print \$4}'`;
             if ($ip_string) {
                 my ($noboot_ip, $noboot_netmask) = split('\/', $ip_string);
-                my @noboot_ips = split('\.', $noboot_ip);
-                $noboot_file = $noboot_ips[0] . ".0.0.0_$noboot_netmask";
+                my $local_nets = xCAT::NetworkUtils::my_nets();
+                foreach my $key (%{$local_nets}) {
+                    if (${$local_nets}{$key} eq $noboot_ip) {
+                        $noboot_file = $key;
+                        $noboot_file =~ s/\//\_/g;
+                    }
+                }
                 chomp($noboot_file);
             }
         }
@@ -642,7 +647,7 @@ sub check_genesis_file {
                     if ($initrd_path =~ /http.+($tftpdir\/.+)/) {
                         my $initrd_file = $1;
                         my $initrd_time = `stat $initrd_file | grep Modify | cut -d ' ' -f 2-3`;
-                        if ($initrd_time < $genesis_time) {
+                        if ($genesis_time and $initrd_time < $genesis_time) {
                             $genesis_update_flag_p = 1;
                         }
                     }
@@ -709,7 +714,7 @@ sub check_genesis_file {
                 }
 
                 unless (open(FILE, $file)) {
-                    push @errors, "Cannot open file $file.";
+                    push @errors, "Cannot open file $file : $!..";
                     $rst = 1;
                     next;
                 }
@@ -737,7 +742,7 @@ sub check_genesis_file {
                             $rst = 1;
                         } else {
                             unless (open(FILE_ELILO, $elilo_path)) {
-                                push @errors, "Cannot open file $_.";
+                                push @errors, "Cannot open file $_ : $!..";
                                 $rst = 1;
                                 next;
                             }
@@ -767,7 +772,7 @@ sub check_genesis_file {
                                         $rst = 1;
                                     } else {
                                         my $initrd_time = `stat $initrd_path | grep Modify | cut -d ' ' -f 2-3`;
-                                        if ($initrd_time < $genesis_time) {
+                                        if ($genesis_time and $initrd_time < $genesis_time) {
                                             $genesis_update_flag_x = 1;
                                         }
                                     }
