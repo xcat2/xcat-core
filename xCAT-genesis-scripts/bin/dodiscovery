@@ -1,6 +1,13 @@
 #!/bin/bash
 log_label="xcat.genesis.dodiscovery"
 
+#the time when the latest findme request is sent to master
+reqtime=0
+#the timeout value on the waiting for the "processed" response from master
+#when the xcatd on master finished the processing of my findme request, 
+#a "processed" response will be replied
+maxresptime=180
+
 minixcatd.awk &
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
@@ -56,6 +63,23 @@ done
 	
 #time to make our packet...
 while [ ! -r /restart ]; do
+
+    #record the current time
+    curtime=$(date +%s)       
+
+    #the existence of "/processing" indicates that my  findme request is under processing
+    if [ -f "/processing"  ]; then
+        if [ $curtime -gt $[ $reqtime + $maxresptime ] ]; then
+           #I think my findme request processing is timeout, I will resend the findme request
+           logger -s -t $log_label -p local4.info  "seems the processing of my findme request cost more than $maxresptime, send new findme request"
+           rm -rf /processing
+        else
+           logger -s -t $log_label -p local4.info  "My findme request is still under processing, do not send new request"
+           sleep 5
+        fi
+        continue
+    fi
+
 MTM=unknown
 SERIAL=unknown
 ARCH=unknown
@@ -287,6 +311,9 @@ gzip -9 /tmp/discopacket
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
+      
+        #record the time when the "findme request is sent to master"
+        reqtime=$(date +%s) 
 	#cat /tmp/discopacket
 	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5
