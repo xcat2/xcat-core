@@ -241,11 +241,11 @@ check:rc==0
 end
 start:chdef_site_check
 description:This case is use to check site table could be changed successfully
-cmd:var=`tabdump site | grep dhcplease |awk -F "\"" '{print $4}'`;echo $var>/tmp/sitevalue;chdef -t site clustersite dhcplease=300
+cmd:var=`lsdef -t site clustersite -i dhcplease|grep 'dhcplease=' |awk -F= '{print $2}'`;echo $var>/tmp/sitevalue;chdef -t site clustersite dhcplease=300
 check:rc==0
 check:output=~1 object definitions have been created or modified.
-cmd: tabdump site | grep dhcplease |awk -F "\"" '{print $4}'
+cmd:lsdef -t site clustersite -i dhcplease|grep 'dhcplease=' |awk -F= '{print $2}'
 check:output=~300
-cmd:if [[ -f  /tmp/sitevalue ]];then var=`cat /tmp/sitevalue`;chdef -t site clustersite dhcplease=$var;rm -rf /tmp/sitevalue;fi
+cmd:if [ -f  /tmp/sitevalue ];then var=`cat /tmp/sitevalue`;chdef -t site clustersite dhcplease=$var;rm -rf /tmp/sitevalue;fi
 check:rc==0
 end
