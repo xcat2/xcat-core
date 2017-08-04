@@ -128,7 +128,7 @@ ${OSIMAGE_NAME}:
     provmethod=netboot
     rootimgdir=${OSIMAGE_ROOTIMGDIR}
 EOF
-[ "$?" -ne "0" ] && echo "Make node definition failed." >&2 && exit 1
+[ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"

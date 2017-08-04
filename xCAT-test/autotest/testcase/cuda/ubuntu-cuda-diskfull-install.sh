@@ -127,12 +127,12 @@ ${OSIMAGE_NAME}:
     osvers=${LINUX_DISTRO}
     otherpkgdir=${OSIMAGE_OTHERPKGDIR}/var/cuda/repo-8-0-local-ga2v2,http://ports.ubuntu.com/ubuntu-ports/ xenial
     pkgdir=/install/${LINUX_DISTRO}/${LINUX_ARCH}
-    pkglist=/opt/xcat/share/xcat/install/ubuntu/compute.${LINUX_DISTRO}.${LINUX_ARCH}.pkglist
+    pkglist=/opt/xcat/share/xcat/install/ubuntu/cudafull.${LINUX_DISTRO}.${LINUX_ARCH}.pkglist
     profile=compute
     provmethod=install
     template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
 EOF
-[ "$?" -ne "0" ] && echo "Make node definition failed." >&2 && exit 1
+[ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"
@@ -164,7 +164,7 @@ sleep 5
 xdsh "${COMPUTE_NODE}" date
 [ "$?" -ne "0" ] && echo "Failed connect to compute node via SSH." >&2 && exit 1
 
-xdsh "${COMPUTE_NODE}" 'rpm -q cuda' | grep ': cuda-'
+xdsh "${COMPUTE_NODE}" 'dpkg -l' | grep 'cuda-'
 [ "$?" -ne "0" ] && echo "CUDA installation checking failed" >&2 && exit 1
 
 exit 0

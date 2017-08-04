@@ -123,7 +123,7 @@ ${OSIMAGE_NAME}:
     provmethod=install
     template=/opt/xcat/share/xcat/install/rh/compute.${LINUX_DISTRO%%.*}.tmpl
 EOF
-[ "$?" -ne "0" ] && echo "Make node definition failed." >&2 && exit 1
+[ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"

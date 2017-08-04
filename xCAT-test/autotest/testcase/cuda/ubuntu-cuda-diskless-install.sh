@@ -137,7 +137,7 @@ ${OSIMAGE_NAME}:
     provmethod=netboot
     rootimgdir=${OSIMAGE_ROOTIMGDIR}
 EOF
-[ "$?" -ne "0" ] && echo "Make node definition failed." >&2 && exit 1
+[ "$?" -ne "0" ] && echo "Make osimage definition failed." >&2 && exit 1
 
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"
@@ -176,7 +176,7 @@ sleep 5
 xdsh "${COMPUTE_NODE}" date
 [ "$?" -ne "0" ] && echo "Failed connect to compute node via SSH." >&2 && exit 1
 
-xdsh "${COMPUTE_NODE}" 'rpm -q cuda' | grep ': cuda-'
+xdsh "${COMPUTE_NODE}" 'dpkg -l' | grep 'cuda-'
 [ "$?" -ne "0" ] && echo "CUDA installation checking failed" >&2 && exit 1
 
 exit 0
