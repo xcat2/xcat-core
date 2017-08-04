@@ -225,7 +225,7 @@ sub check_pre_defined_node {
 
     if (@nochain) {
         my $nochainnode = join(",", @nochain);
-        probe_utils->send_msg("stdout", "f", "[$nochainnode] : Invalid value for attribute 'chain'");
+        probe_utils->send_msg("stdout", "f", "[$nochainnode] : No value for attribute 'chain'");
         $rst = 1;
     }
 
@@ -351,8 +351,8 @@ sub check_pre_defined_node {
                 if (!(exists($nodecheckrst{$node}{"switch"})) or $nodecheckrst{$node}{"switch"} !~ /^\w/) {
                     push @error_attribute, "switch";
                 } elsif ($error_switch =~ $nodecheckrst{$node}{"switch"}) {
-                    my $error_switch_string = "Switch " . $nodecheckrst{$node}{"switch"} . " can not be accessible."; 
-                    push @{$error_switch_hash{$error_switch_string}}, $node;
+                    my $error_switch = $nodecheckrst{$node}{"switch"}; 
+                    push @{$error_switch_hash{$error_switch}}, $node;
                     next;
                 }
 
@@ -412,7 +412,8 @@ sub check_pre_defined_node {
         }
         foreach my $key (keys %error_switch_hash) {
             my $nodes = join(",", @{$error_switch_hash{$key}});
-            probe_utils->send_msg("stdout", "f", "[$nodes] : $key");
+            my $error_string = "Switch " . $key . " can not be accessible.";
+            probe_utils->send_msg("stdout", "f", "[$nodes] : $error_string");
             $rst = 1;
         }
     }
@@ -562,8 +563,8 @@ sub check_genesis_file {
         $genesis_v = `rpm -qi xCAT-genesis-base-ppc64`;
     }
 
-    if ($genesis_v =~ /Built in environment .+fc26.* on (.+)\./) {
-        push @warn_msg, "xcat-genesis-base-ppc64 is built in environment fc26 on $1.";
+    if ($genesis_v !~ /Built in environment .+fc.* on (.+)\./) {
+        push @warn_msg, "xcat-genesis-base-ppc64 is built in environment fedora on $1.";
     }
 
     my $genesis_update_flag_p;
