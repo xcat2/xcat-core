@@ -18,7 +18,6 @@ use xCAT::Template;
 use xCAT::SvrUtils;
 use xCAT::Zone;
 
-use Data::Dumper;
 use File::Basename;
 use Socket;
 use strict;
