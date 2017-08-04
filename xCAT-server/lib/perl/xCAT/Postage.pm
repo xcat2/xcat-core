@@ -18,7 +18,7 @@ use xCAT::Template;
 use xCAT::SvrUtils;
 use xCAT::Zone;
 
-#use Data::Dumper;
+use Data::Dumper;
 use File::Basename;
 use Socket;
 use strict;
@@ -1530,12 +1530,6 @@ sub collect_all_attribs_for_tables_in_template
                     if ($ent->{$node}->[0]) {
                         foreach my $attrib (@attribs) {
                             $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $ent->{$node}->[0]->{$attrib};
-                            #If nicips contains regular expression 
-                            if ($tabname =~ /^nics$/ && $attrib =~ /^nicips$/ &&  
-                                $::GLOBAL_TAB_HASH{nics}{$node}{nicips} =~ /\S*\!\|\S*/)
-                            {
-                                $::GLOBAL_TAB_HASH{nics}{$node}{nicips}=get_nics_nicips($node,$::GLOBAL_TAB_HASH{nics}{$node}{nicips});
-                            }
                             #for noderes.xcatmaster
                             if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ &&
                                 (!exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
@@ -1572,7 +1566,11 @@ sub collect_all_attribs_for_tables_in_template
                         !defined($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} = $::XCATSITEVALS{master};
                     }
-
+                    #If nicips contains regular expression
+                    if (exists($::GLOBAL_TAB_HASH{nics}{$node}{nicips}) && $::GLOBAL_TAB_HASH{nics}{$node}{nicips} =~ /\S*\!\|\S*/)
+                    {
+                        $::GLOBAL_TAB_HASH{nics}{$node}{nicips}=get_nics_nicips($node,$ent->{$node}->[0]->{nicips});
+                    }
                     if (!defined($::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver})) {
                         $::GLOBAL_TAB_HASH{noderes}{$node}{nfsserver} = $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster};
                     }
