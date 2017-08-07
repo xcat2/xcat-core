@@ -59,6 +59,8 @@ Name
 conveniently specify a list of nodes.  The result is that the  command  will
 be applied to a range of nodes, often in parallel.
 
+To avoid shell expansion, \ **noderange**\  should better be quoted with single quotes('') or double quotes("").
+
 \ **noderange**\  is a comma-separated list.  Each token (text between commas)
 in the list can be any of the forms listed below:
 

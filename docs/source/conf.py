@@ -95,7 +95,6 @@ exclude_patterns = ['guides/install-guides/common_sections.rst',
                     '**ppc64le/discovery/pbmc_discovery_with_bmcdiscover.rst',
                     '**ppc64le/discovery/pbmc_discovery_with_lsslp.rst',
                     '**ppc64le/discovery/schedule_environment.rst',
-                    '**ppc64le/discovery/standard_cn_definition.rst',
                     '**ppc64le/diskless/customize_image/cfg_partition.rst',
                     '**ppc64le/diskless/customize_image/raid_cfg.rst',
                     #'**chain/create_image_for_runimage.rst'

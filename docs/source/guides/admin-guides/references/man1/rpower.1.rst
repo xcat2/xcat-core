@@ -45,7 +45,7 @@ OpenPOWER OpenBMC:
 ==================
 
 
-\ **rpower**\  \ *noderange*\  [\ **off | on | reset | boot | stat | state | status**\ ]
+\ **rpower**\  \ *noderange*\  [\ **off | on | softoff | reset | boot | bmcreboot | bmcstate | stat | state | status**\ ]
 
 
 PPC (with IVM or HMC) specific:
@@ -377,6 +377,18 @@ OPTIONS
 \ **unpause**\ 
  
  To unpause all processes in the instance.
+ 
+
+
+\ **bmcreboot**\ 
+ 
+ To reboot BMC.
+ 
+
+
+\ **bmcstate**\ 
+ 
+ To get state of the BMC.
  
 
 

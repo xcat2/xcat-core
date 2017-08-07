@@ -7,6 +7,9 @@ makehosts_help
 makehosts_n_noderange
 makehosts_n
 makehost_n_r
+confignetwork_secondarynic_nicnetworks_updatenode_false
+confignetwork_secondarynic_nicips_updatenode_false
+confignetwork_secondarynic_nictype_updatenode_false
 chdef_null
 chdef_z
 chdef_t_o_error

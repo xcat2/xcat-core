@@ -91,15 +91,8 @@ end
 start:rpower_reset
 description:This case is to test reset option could hard reset nodes when nodes are in on state.
 Attribute: $$CN-The operation object of rpower command
-cmd:rpower $$CN on
-cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-cmd:rpower $$CN stat
-check:ouptut=~Running|on
-cmd:rpower $$CN reset
+cmd:stat=`rpower $$CN stat`;if ([[ $stat =~ on ]] || [[ $stat =~ Running ]]) ;then rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ on ]] || [[ $stat1 =~ Running ]]);then exit 0;else exit 1;fi;else rpower $$CN reset;sleep 300;stat1=`rpower $$CN stat`;if ([[ $stat1 =~ off ]] || [[ $stat1 =~ "Not Activated" ]]);then exit 0;else exit 1;fi;fi
 check:rc==0
-cmd:a=0;while ! `rpower $$CN stat|grep "Running\|on" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
-cmd:rpower $$CN stat
-check:output=~Running|on
 end
 
 start:rpower_noderange
@@ -107,7 +100,7 @@ description:This case is to test rpower could process error usage and return hel
 Attribute: $$CN-The operation object of rpower command
 cmd:rpower $$CN
 check:rc!=0
-check:output=~Unsupported|Usage
+check:output=~Unsupported|Usage|Please enter an action
 end
 
 start:rpower_noderange_nodeps
@@ -151,4 +144,36 @@ check:output=~Not Activated|off
 cmd:rpower $$CN onstandby
 cmd:a=0;while ! `rpower $$CN stat|grep "standby\|Standby" >/dev/null`; do sleep 5;((a++));if [ $a -gt 11 ];then break;fi done
 check:ouptut=~standby|Standby
+end
+start:rpower__wrongpasswd
+description:rpower ipmi and openbmc using wrong passwd  
+Attribute: $$CN-The operation object of rpower command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -pt $$CN  $$rightbmcpasswd $$rightbmcusername
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN 
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -apt $$CN  $$rightbmcpasswd $$rightbmcusername
+check:rc==0
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rpower/rpower_wrongpasswd_test.sh  -c $$CN
+check:rc==0
+end
+start:rpower_suspend_OpenpowerBmc
+cmd:rpower $$CN suspend
+check:output=~Error: unsupported command rpower suspend for OpenPOWER
+check:rc==1
+end
+start:rpower_softoff_OpenpowerBmc
+cmd:rpower $$CN softoff
+check:output=~Error: unsupported command rpower softoff for OpenPOWER
+check:rc==1
+end
+start:rpower_wake_OpenpowerBmc
+cmd:rpower $$CN wake
+check:output=~Error: unsupported command rpower wake for OpenPOWER
+check:rc==1
+end
+start:rpower_errorcommand_OpenpowerBmc
+cmd:rpower $$CN ddd
+check:output=~Unsupported command: 
+check:rc==1
 end

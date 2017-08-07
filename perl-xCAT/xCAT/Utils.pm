@@ -4017,14 +4017,14 @@ sub servicemap {
     # (general service name) => {list of possible service names}
     #
     my %svchash = (
-        "dhcp" => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
-        "nfs" => [ "nfsserver", "nfs-server", "nfs", "nfs-kernel-server" ],
-        "named"     => [ "named",    "bind9" ],
-        "syslog"    => [ "syslog",   "syslogd", "rsyslog" ],
-        "firewall"  => [ "iptables", "firewalld", "ufw" ],
-        "http"      => [ "apache2",  "httpd" ],
-        "ntpserver" => [ "ntpd",     "ntp" ],
-        "mysql"     => [ "mysqld",   "mysql" ],
+        "dhcp"      => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
+        "nfs"       => [ "nfsserver",    "nfs-server", "nfs", "nfs-kernel-server" ],
+        "named"     => [ "named",        "bind9" ],
+        "syslog"    => [ "syslog",       "syslogd", "rsyslog" ],
+        "firewall"  => [ "iptables",     "firewalld", "ufw" ],
+        "http"      => [ "apache2",      "httpd" ],
+        "ntpserver" => [ "ntpd",         "ntp" ],
+        "mysql"     => [ "mysqld",       "mysql", "mariadb" ],
     );
 
     my $path       = undef;

@@ -844,12 +844,28 @@ sub new
         }
 
         my $oldumask = umask 0077;
-        unless ($::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) { #= $self->{tabname};
-            $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} } =
-              DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
+        my $retry = 0;
+        while (!$::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
+            eval {
+                local $SIG{__WARN__} = sub {
+                    my $message = shift;
+                    if ($retry == 3 && $message) {
+                        xCAT::MsgUtils->message("S", "Failed to connect to ".$self->{tabname}." table after retrying $retry times: $message");
+                    }
+                };
+                $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} } =
+                    DBI->connect($self->{connstring}, $self->{dbuser}, $self->{dbpass}, { AutoCommit => $self->{realautocommit} });
+            };
+            if ($::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} }) {
+                last;
+            } elsif ($retry == 3) {
+                last;
+            } else {
+                sleep (2**$retry);
+            }
+            $retry++;
         }
         umask $oldumask;
-
         $self->{dbh} = $::XCAT_DBHS->{ $self->{connstring}, $self->{dbuser}, $self->{dbpass}, $self->{realautocommit} };
 
         #Store the Table object reference as afflicted by changes to the DBH
@@ -2186,6 +2202,12 @@ sub getNodesAttribs {
         $self->{nodelist}->{_use_cache} = 1;
     }
     my $rethash;
+    my @hierarchy_attrs = ();
+    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+    if ($hierarchy_field) {
+        @hierarchy_attrs = split(/,/, $hierarchy_field);
+    }
+    $options{hierarchy_attrs} = \@hierarchy_attrs;
     foreach (@$nodelist) {
         my @nodeentries = $self->getNodeAttribs($_, \@realattribs, %options);
         $rethash->{$_} = \@nodeentries;    #$self->getNodeAttribs($_,\@attribs);
@@ -2435,6 +2457,16 @@ sub getNodeAttribs
     } else {
         @attribs = @_;
     }
+
+    if (!exists($options{hierarchy_attrs})) {
+        my @hierarchy_attrs = ();
+        my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+        if ($hierarchy_field) {
+            @hierarchy_attrs = split(/,/, $hierarchy_field);
+        }
+        $options{hierarchy_attrs} = \@hierarchy_attrs;
+    }
+
     my $datum;
     my $oldusecache;
     my $nloldusecache;
@@ -2665,12 +2697,7 @@ sub getNodeAttribs_nosub_returnany
 
     my $attrib;
     my $result;
-    my @hierarchy_attrs;
-    my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
-    if ($hierarchy_field) {
-        @hierarchy_attrs = split(/,/, $hierarchy_field);
-    }
-
+    my @hierarchy_attrs = @{ $options{hierarchy_attrs} };
     my $data = $results[0];
     if (defined {$data}) { #if there was some data for the node, loop through and check it
         foreach $result (@results) {
@@ -3103,7 +3130,13 @@ sub getAllNodeAttribs
             #}  end SF 3580
 
             #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
-
+            my %options;
+            my @hierarchy_attrs = ();
+            my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
+            if ($hierarchy_field) {
+                @hierarchy_attrs = split(/,/, $hierarchy_field);
+            }
+            $options{hierarchy_attrs} = \@hierarchy_attrs;
             foreach (@nodes)
             {
                 if ($donenodes{$_}) { next; }
@@ -3117,7 +3150,7 @@ sub getAllNodeAttribs
                 #  }
                 #} else {
                 my @attrs =
-                  $self->getNodeAttribs($_, $attribq); #@{$localhash->{$_}} #$self->getNodeAttribs($_, $attribq)
+                  $self->getNodeAttribs($_, $attribq, %options); #@{$localhash->{$_}} #$self->getNodeAttribs($_, $attribq)
                 ;    #Logic moves to getNodeAttribs
                      #}
                  #populate node attribute by default, this sort of expansion essentially requires it.

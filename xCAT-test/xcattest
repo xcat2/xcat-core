@@ -220,6 +220,13 @@ if (defined($configfile)) {
     }
 } else {
     $setup_env_by_config_file = 0;
+    # Leverage environment variable to used in test case
+    foreach (keys %ENV) {
+        if (/^XCATTEST_/) {
+            my @envname=split("_",$_,2);
+            $config{var}{$envname[-1]} = $ENV{$_};
+        }
+    }
 }
 
 if ($restore) {
@@ -682,7 +689,7 @@ sub load_config_file {
             }
         } elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([:\w\.\-\/]+)/) {
+            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
                 $attr  = $1;
                 $value = $2;
                 if ($attr eq "Name") {

@@ -429,7 +429,7 @@ for user in $BMCUS; do
     if [ -z "$USERSLOT" ]; then
         USERSLOT=$((`ipmitool raw 6 0x44 1 1|awk '{print $3}'` + 1))
     fi
-    if [ "$USERSLOT" == 0 ]; then USERSLOT=2; fi
+    if [ "$USERSLOT" == 0 -o -z "$LOCKEDUSERS" ]; then USERSLOT=2; fi
     if [ "$ISITE" = 1 ]; then
         allowcred.awk &
         CREDPID=$!

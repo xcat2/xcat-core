@@ -36,9 +36,8 @@ clearpart --all --initlabel
 #/boot really significant for this sort of setup nowadays?
 #part /boot --size 50 --fstype ext3
 %include /tmp/partitionfile
-#part swap --size 1024 
+#part swap --size 1024
 #part / --size 1 --grow --fstype ext4
-#XCAT_PARTITION_END#
 
 #RAID 0 /scr for performance
 #part / --size 1024 --ondisk sda
@@ -69,6 +68,7 @@ clearpart --all --initlabel
 #part raid.41 --size 1 --grow --ondisk sda
 #part raid.42 --size 1 --grow --ondisk sdb
 #raid /scr --level 1 --device md4 raid.41 raid.42
+#XCAT_PARTITION_END#
 
 #
 # bootloader config
@@ -120,7 +120,7 @@ skipx
 #
 # perl -e 'print crypt("blah","Xa") . "\n";'p
 # openssl passwd -apr1 -salt xxxxxxxx password
-# 
+#
 # where "blah" is your root password.
 #
 #rootpw --iscrypted XaLGAVe1C41x2
@@ -128,7 +128,7 @@ skipx
 rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 #
-# NIS setup: auth --enablenis --nisdomain sensenet 
+# NIS setup: auth --enablenis --nisdomain sensenet
 # --nisserver neptune --useshadow --enablemd5
 #
 # OR
@@ -155,7 +155,7 @@ reboot
 {
 echo "Running Kickstart Pre-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh.rhels7#
-} >>/tmp/pre-install.log 2>&1
+} &>>/tmp/pre-install.log
 %end
 %post
 mkdir -p /var/log/xcat/
@@ -166,5 +166,5 @@ EOF
 echo "Running Kickstart Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
-} >>/var/log/xcat/xcat.log 2>&1
+} &>>/var/log/xcat/xcat.log
 %end

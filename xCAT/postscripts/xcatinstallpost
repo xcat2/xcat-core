@@ -20,7 +20,7 @@ fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
-
+XCATINFOFILE=/opt/xcat/xcatinfo
 MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g`
 INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
@@ -74,7 +74,20 @@ if [ $? -eq 0 ]; then
 else
     echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 fi
-
+# Store the SERVICEGROUP into the xcatinfo file for statful installation
+sn_group=`grep '^SERVICEGROUP' /xcatpost/mypostscript |cut -d= -f2 | tr -d \'\"`
+if [ "x" != "x$sn_group" ]; then
+  # Change or add SERVICEGROUP line if service node pool defined.
+  grep 'SERVICEGROUP=' $XCATINFOFILE > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    sed -i "s/SERVICEGROUP=.*/SERVICEGROUP=$sn_group/" $XCATINFOFILE
+  else
+    echo "SERVICEGROUP=$sn_group" >> $XCATINFOFILE
+  fi
+else
+  # Remove SERVICEGROUP line if no service node pool defined.
+  sed -i "/SERVICEGROUP=.*/d" $XCATINFOFILE
+fi
 
 CNS=`grep NODESTATUS= /xcatpost/mypostscript.post |awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
 if [ -z "$CNS" ] || [[ "$CNS" =~ ^(1|yes|y)$ ]]; then

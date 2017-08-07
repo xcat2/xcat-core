@@ -1383,6 +1383,8 @@ sub initDB
 "$::XCATROOT/sbin/chtab priority=2.3 policy.commands=lsxcatd policy.rule=allow;";
         $chtabcmds .=
 "$::XCATROOT/sbin/chtab priority=2.1 policy.commands=remoteimmsetup policy.rule=allow;";
+        $chtabcmds .=
+"$::XCATROOT/sbin/chtab priority=4.9 policy.commands=getadapter policy.rule=allow;";
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
 
         if ($::RUNCMD_RC != 0)

@@ -79,12 +79,15 @@ function get_nic_cfg_file_content {
 #
 #####################################################################
 boot_install_nic=0
+str_ib_nics=''
+num_iba_ports=
 for arg in "$@"
 do
     if [ "$arg" = "-s" ];then
         boot_install_nic=1
+    elif [ "${arg:0:10}" = "--ibaports" ];then
+        num_iba_ports=${arg#--ibaports=}
     fi
-    #TODO: IB support is TBD
 done
 if [ "$SETINSTALLNIC" = "1" ] || [ "$SETINSTALLNIC" = "yes" ]; then
     bool_install_nic=1
@@ -179,7 +182,7 @@ function find_nic_type {
     if [ ! "$1" ];then
         return
     fi
-    nic=$1
+    nic=$1 
     echo $(hashget "nictypes" $nic)
 }
 
@@ -296,6 +299,7 @@ function sort_nics_device_order {
     eth_slot=""
     bond_slot=""
     vlan_slot=""
+    ib_slots=""
     num=1
     alone_nics=`echo "$all_nics_list"|awk '{if(0<NF&&NF<2) print $0}'`
     nics_list=`echo "$all_nics_list"|awk '{if(NF>1) print $0}'`
@@ -313,21 +317,34 @@ function sort_nics_device_order {
             #pre-check nicips nictype nicnetworks for alone nic
             #nicips nictype and nicnetworks should be configured in nics table for alone nic
             alonenicips=`find_nic_ips $alonenic`
-            alonenictype=`find_nic_type $alonenic`
+            alonenictype=`find_nic_type $alonenic | $utolcmd`
             alonenicnetwork=`query_nicnetworks_net $alonenic`
+            #if alone nic configure nicips, it is valid
             if [ -n "$alonenicips" ] && [ -n "$alonenictype" ] && [ -n "$alonenicnetwork" ]; then
-                #if alone nic configure nicips, it is valid 
-                echo $alonenic
+                #if alone nic is ib type, append all ib nics in ib_slots
+                if [ x"$alonenictype" = "xinfiniband" ]; then
+                    if [ -z $ib_slots ]; then
+                        ib_slots=$alonenic
+                    else
+                        ib_slots=$ib_slots,$alonenic
+                    fi
+                else
+                    echo $alonenic
+                fi
             else
                 errorcode=1
-                echo "Error: nicips,nictype and nicnetwork should be configured in nics table for $alonenic."
+                echo "Error: nicips,nictypes and nicnetworks should be configured in nics table for $alonenic."
                 ((num1+=1)) 
                 continue
             fi
         fi
         ((num1+=1))
     done
-    
+    #get all ib nics, format is ib0,ib1,...
+    if [ -n "$ib_slots" ]; then
+        echo "$ib_slots"
+    fi   
+ 
     if [ -n "$nics_list" ]; then
       if [ $is_redhat -eq 1 ]; then  
         num=1
@@ -426,6 +443,7 @@ function configure_nicdevice {
     base_temp_nic=""
     base_nic_for_bond=""
     line_num=""
+    custom_configured=0
     noip=1
     ((max+=1))
     while [ $num -lt $max ];
@@ -437,26 +455,34 @@ function configure_nicdevice {
             ((num+=1))
             continue
         fi
-        #processing custom scripts for nic
-        customcmd=`find_nic_custom_scripts $nic_dev`
-        customscript=`echo $customcmd|awk '{print $1}'`
-        if [ -n "$customscript" ]; then
-            if [ -f "/install/postscript/$customscript" ]; then
-                #if there is no custom script in /install/postscript,exit this loop
-                log_error "/install/postscript/$customscript does not exist."
-                errorcode=1
-                ((num+=1))
-                continue
-            fi
-            echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            log_info "processing custom scripts:\"$customcmd\"  for interface $nic_dev"
-            $customcmd
-            if [ $? -ne 0 ]; then
-                errorcode=1
+        #All IB devices are in one string format as "ib0,ib1,..." in $nic_dev
+        #Find customcmd and customscript for each sub-nic device
+        for subdev in `echo $nic_dev|sed 's/,/\n/g'`
+        do
+            #processing custom scripts for nic
+            customcmd=`find_nic_custom_scripts $subdev`
+            customscript=`echo $customcmd|awk '{print $1}'`
+            if [ -n "$customscript" ]; then
+                custom_configured=1
+                if [ -f "/install/postscript/$customscript" ]; then
+                    #if there is no custom script in /install/postscript,exit this loop
+                    log_error "/install/postscript/$customscript does not exist."
+                    errorcode=1
+                    continue
+                fi
+                echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+                log_info "processing custom scripts:\"$customcmd\"  for interface $subdev"
+                $customcmd
+                if [ $? -ne 0 ]; then
+                    errorcode=1
+                fi
             fi
 
-            #if custom script is finished, go to configure next nic/nic_pair
+        done
+        #If the $nic_dev is costom configured, go to configure next nic/nic_pair
+        if [ $custom_configured -eq 1 ]; then
             ((num+=1))
+            custom_configured=0
             continue
         fi
         #get base nic and its type
@@ -471,7 +497,9 @@ function configure_nicdevice {
         
             base_nic_type=`find_nic_type "$base_temp_nic" | $utolcmd`
         fi
-        nic_dev_type=`find_nic_type "$nic_dev" | $utolcmd`
+        #if there is ib nics
+        first_nic_dev=`echo "$nic_dev"|awk -F, '{print $1}'`
+        nic_dev_type=`find_nic_type "$first_nic_dev" | $utolcmd`
         echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
         nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
         echo "configure nic and its device : $nic_pair"
@@ -519,9 +547,15 @@ function configure_nicdevice {
         elif [ x"$nic_dev_type" = "xbond" ]; then
             create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
         elif [ x"$nic_dev_type" = "xinfiniband" ]; then
-            log_error "confignetwork does not support configure IB. "
+            log_info "Call configib for IB nics: $nic_dev, ports: $num_iba_ports"
+            log_info "NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib"
+            NIC_IBNICS=$nic_dev NIC_IBAPORTS=$num_iba_ports configib
+            if [ $? -ne 0 ]; then
+                log_error "configib failed."
+                errorcode=1
+            fi
         else
-            log_error "Error : please check nictypes for $nic_pair."
+            log_error "Error : please check nic data in nics table."
             errorcode=1
         fi 
 
@@ -603,7 +637,7 @@ parser_nic_attribute "$NICCUSTOMSCRIPTS" "niccustomscripts"
 #bond0 eth2@eth3
 new_nicdevice=`find_nic_and_device_list $str_all_nics|sort -g -k1 -g -k2|uniq`
 if [ -z "$new_nicdevice" ]; then
-    log_info "There is no nic device to configure."
+    log_info "There is no other nic device to configure."
     exit $errorcode  
 fi
 

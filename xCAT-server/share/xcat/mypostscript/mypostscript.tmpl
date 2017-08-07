@@ -25,6 +25,10 @@ tabdump(networks)
 NODE=$NODE
 export NODE
 
+#get compute node ip address
+IPADDR=#IPADDR#
+export IPADDR
+
 # get GROUP list
 GROUP=#TABLE:nodelist:$NODE:groups#
 export GROUP 
@@ -43,6 +47,8 @@ export PRIMARYNIC
 
 MASTER=#TABLE:noderes:$NODE:xcatmaster#
 export MASTER
+SERVICEGROUP=#TABLE:noderes:$NODE:servicenode#
+export SERVICEGROUP
 
 SYSLOG=#TABLE:noderes:$NODE:syslog#
 export SYSLOG

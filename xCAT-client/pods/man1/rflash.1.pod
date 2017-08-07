@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. B<rflash> is also able to update firmware for NextScale Fan Power Controllers (FPC).
+B<rflash> - Performs Licensed Internal Code (LIC) update or firmware update on supported xCAT managed nodes.
 
 =head1 B<Synopsis>
 
@@ -22,9 +22,13 @@ B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 B<rflash> I<noderange> I<http_directory>
 
-=head2 OpenPOWER BMC specific:
+=head2 OpenPOWER BMC specific (using IPMI):
 
-B<rflash> I<noderange> I<hpm_file_path> [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+B<rflash> I<noderange> [I<hpm_file_path> | B<-d=>I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+
+=head2 OpenPOWER OpenBMC specific :
+
+B<rflash> I<noderange> [I<tar_file_path> | I<image_id>] [B<-c>|B<--check>] [B<-a>|B<--activate>] [B<-l>|B<--list>] [B<-u>|B<--upload>]
 
 =head1 B<Description>
 
@@ -37,6 +41,7 @@ The POWER5  and POWER6 systems contain several components that use Licensed Inte
 The I<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a Frame or Frame list. But CEC (or Lpar) and Frame B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.  If I<noderange> is a Frame or Frame list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
 
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. 
+
 
 =head2 PPC (with HMC) specific:
 
@@ -78,9 +83,15 @@ For more details about the Firmware Update using Direct FSP/BPA Management, refe
 
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http information required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters 
 
-=head2 OpenPOWER specific:
+=head2 OpenPOWER specific (using IPMI):
 
-The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
+B<Note:> When using B<rflash> in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes.
+
+=head2 OpenPOWER OpenBMC specific:
+
+The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER node and either an update .tar file or an uploaded image id.
+B<Note:> When using B<rflash> in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
 =head1 B<Options>
 
@@ -92,7 +103,7 @@ Writes the command's usage statement to standard output.
 
 =item B<-c|--check>
 
-Check the firmware version of BMC and HPM file.
+Check the firmware version of BMC and an update file.
 
 =item B<-p> I<directory>
 
@@ -101,6 +112,10 @@ Specifies the directory where the packages are located.
 =item B<-d> I<data_directory>
 
 Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management. 
+
+=item B<-d=>I<data_directory>
+
+Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
 
 =item B<--activate> {B<concurrent> | B<disruptive>}
 
@@ -117,6 +132,18 @@ Used to recover the flash image in the permanent side of the chip to the tempora
 =item B<--retry=>I<count>
 
 Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
+
+=item B<-a|--activate>
+
+Activate update image. Image id must be specified.
+
+=item B<-l|--list>
+
+List currently uploaded update images. "(*)" indicates currently active image.
+
+=item B<-u|--upload>
+
+Upload update image. Specified file must be in .tar format.
 
 =item B<-v|--version>
 
@@ -166,6 +193,11 @@ To update the firmware on OpenPOWER machine specify the node name and the file p
 Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when updading firmware:
 
  rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
+
+=item 6.
+To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+
+ rflash briggs01 -d=/root/supermicro/OP825
 
 =back
 
