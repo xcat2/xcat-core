@@ -941,7 +941,9 @@ unless ($foreground) {
 }
 
 # Cache the hostname, restart xcatd if hostname is changed after xcatd running
-my $MYXCATSERVER = Sys::Hostname::hostname;
+my $myhostname = Sys::Hostname::hostname;
+my @mynamearray = split(/\./, $myhostname);
+my $MYXCATSERVER = $mynamearray[0];
 
 $dbmaster = xCAT::Table::init_dbworker;
 if ($enable_perf) {
