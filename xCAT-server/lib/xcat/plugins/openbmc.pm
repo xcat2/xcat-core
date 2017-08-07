@@ -156,6 +156,29 @@ my %status_info = (
     RFLASH_FILE_UPLOAD_RESPONSE => {
         process        => \&rflash_response,
     },
+    RFLASH_UPDATE_ACTIVATE_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/software",
+        data           => "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
+    },
+    RFLASH_UPDATE_ACTIVATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
+    RFLASH_UPDATE_CHECK_STATE_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software",
+    },
+    RFLASH_UPDATE_CHECK_STATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
+    RFLASH_SET_PRIORITY_REQUEST  => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/software",
+        data           => "false", # Priority state of 0 sets image to active
+    },
+    RFLASH_SET_PRIORITY_RESPONSE => {
+        process        => \&rflash_response,
+    },
 
     RINV_REQUEST => {
         method         => "GET",
@@ -467,9 +490,6 @@ sub parse_args {
     my $extrargs = shift;
     my $noderange = shift;
     my $check = undef;
-
-    xCAT::SvrUtils::sendmsg("[OpenBMC development support] Using this version of xCAT, ensure firmware level is at v1.99.6-0-r1, or higher.", $callback);
-
     my $subcommand = undef;
     my $verbose    = undef;
     unless (GetOptions(
@@ -563,28 +583,48 @@ sub parse_args {
         }
     } elsif ($command eq "rflash") {
         #
-        # disable function until fully tested
+        # disable function until fully supported by openbmc 
+        # Currently waiting for issue https://github.com/openbmc/openbmc/issues/2074 to be fixed
         #
         $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $filename_passed = 0;
+        my $updateid_passed = 0;
+        my $option_flag;
         foreach my $opt (@$extrargs) {
             # Only files ending on .tar are allowed
             if ($opt =~ /.*\.tar$/i) {
                 $filename_passed = 1;
                 next;
             }
-            if ($filename_passed) {
-                # Filename was passed, check flags allowed with file
-                if ($opt !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
-                    return ([ 1, "Invalid option specified when a file is provided: $opt" ]);
+            # Check if hex number for the updateid is passed
+            if ($opt =~ /^[[:xdigit:]]+$/i) {
+                $updateid_passed = 1;
+                next;
+            }
+            # check if option starting with - was passed
+            if ($opt =~ /^-/) {
+                $option_flag = $opt;
+            }
+        }
+        if ($filename_passed) {
+            # Filename was passed, check flags allowed with file
+            if ($option_flag !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
+                return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
+            }
+        }
+        else {
+            if ($updateid_passed) {
+                # Updateid was passed, check flags allowed with update id
+                if ($option_flag !~ /^^-d$|^--delete$|^-a$|^--activate$/) {
+                    return ([ 1, "Invalid option specified when an update id is provided: $option_flag" ]);
                 }
             }
             else {
-                # Filename was not passed, check flags allowed without file
-                if ($opt !~ /^-c$|^--check$|^-l$|^--list/) {
-                    return ([ 1, "Invalid option specified: $opt" ]);
-                }
-            }
+                # Neither Filename nor updateid was not passed, check flags allowed without file or updateid
+                if ($option_flag !~ /^-c$|^--check$|^-l$|^--list/) {
+                    return ([ 1, "Invalid option specified: $option_flag" ]);
+               }
+            }  
         }
     } else {
         return ([ 1, "Command is not supported." ]);
@@ -778,22 +818,25 @@ sub parse_command_status {
         my $list = 0;
         my $delete = 0;
         my $upload = 0;
+        my $activate = 0;
+        my $update_file;
 
-        if ($$subcommands[-1] =~ /c|check/) {
-            $check_version = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /l|list/) {
-            $list = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /d|delete/) {
-            $delete = 1;
-            pop(@$subcommands);
-        } elsif ($$subcommands[-1] =~ /u|upload/) {
-            $upload = 1;
-            pop(@$subcommands);
+        foreach $subcommand (@$subcommands) {
+            if ($subcommand =~ /-c|--check/) {
+                $check_version = 1;
+            } elsif ($subcommand =~ /-l|--list/) {
+                $list = 1;
+            } elsif ($subcommand =~ /-d|--delete/) {
+                $delete = 1;
+            } elsif ($subcommand =~ /-u|--upload/) {
+                $upload = 1;
+            } elsif ($subcommand =~ /-a|--activate/) {
+                $activate = 1;
+            } else {
+                $update_file = $subcommand;
+            }
         }
 
-        my $update_file = $$subcommands[0]; 
         my $filename = undef;
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
@@ -825,7 +868,13 @@ sub parse_command_status {
                 }
             }
             else {
-                # TODO Process file id passed in
+                # Check if hex number for the updateid is passed
+                if ($update_file =~ /^[[:xdigit:]]+$/i) {
+                    # Update init_url to include the id of the update
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_file/attr/RequestedActivation";
+                    $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_file/attr/Priority";
+                    $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_file";
+                }
             }
         }
         if ($check_version) {
@@ -846,6 +895,19 @@ sub parse_command_status {
             # Upload specified update file to  BMC
             $next_status{LOGIN_RESPONSE} = "RFLASH_FILE_UPLOAD_REQUEST";
             $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
+        }
+        if ($activate) {
+            # Activation of an update was requested.
+            # First we query the update image for its Activation state. If image is in "Ready" we
+            # need to set "RequestedActivation" attribute to "Active". If image is in "Active" we
+            # need to set "Priority" to 0.
+            $next_status{LOGIN_RESPONSE} = "RFLASH_UPDATE_ACTIVATE_REQUEST";
+            $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+            $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+            $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
+
+            $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
+            $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
     }
 
@@ -877,7 +939,7 @@ sub parse_node_info {
             if ($openbmc_hash->{$node}->[0]->{'bmc'}) {
                 $node_info{$node}{bmc} = $openbmc_hash->{$node}->[0]->{'bmc'};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute bmc", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute bmc", $callback, $node);
                 $rst = 1;
                 next;
             }
@@ -887,7 +949,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{username}) {
                 $node_info{$node}{username} = $passwd_hash->{username};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute username", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute username", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -898,7 +960,7 @@ sub parse_node_info {
             } elsif ($passwd_hash and $passwd_hash->{password}) {
                 $node_info{$node}{password} = $passwd_hash->{password};
             } else {
-                xCAT::SvrUtils::sendmsg("Unable to get attribute password", $callback, $node);
+                xCAT::SvrUtils::sendmsg("Error: Unable to get attribute password", $callback, $node);
                 delete $node_info{$node};
                 $rst = 1;
                 next;
@@ -906,7 +968,7 @@ sub parse_node_info {
 
             $node_info{$node}{cur_status} = "LOGIN_REQUEST";
         } else {
-            xCAT::SvrUtils::sendmsg("Unable to get information from openbmc table", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Error: Unable to get information from openbmc table", $callback, $node);
             $rst = 1;
             next;
         }
@@ -1740,10 +1802,11 @@ sub rflash_response {
     my $update_activation;
     my $update_purpose;
     my $update_version;
+    my $update_priority = -1;
 
     if ($node_info{$node}{cur_status} eq "RFLASH_LIST_RESPONSE") {
         # Display "list" option header and data
-        xCAT::SvrUtils::sendmsg("ID       Purpose State    Version", $callback, $node);
+        xCAT::SvrUtils::sendmsg("ID       Purpose State      Version", $callback, $node);
         xCAT::SvrUtils::sendmsg("-" x 55, $callback, $node);
 
         foreach my $key_url (keys %{$response_info->{data}}) {
@@ -1759,7 +1822,15 @@ sub rflash_response {
             if (defined($content{Purpose}) and $content{Purpose}) {
                 $update_purpose = (split(/\./, $content{Purpose}))[ -1 ];
             }
-            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-8s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
+            if (defined($content{Priority}))  {
+                $update_priority = (split(/\./, $content{Priority}))[ -1 ];
+            }
+            # Priority attribute of 0 indicates the "really" active update image
+            if ($update_priority == 0) {
+                $update_activation = $update_activation . "(*)";
+                $update_priority = -1; # Reset update priority for next loop iteration
+            }
+            xCAT::SvrUtils::sendmsg(sprintf("%-8s %-7s %-10s %s", $update_id, $update_purpose, $update_activation, $update_version), $callback, $node);
         }
         xCAT::SvrUtils::sendmsg("", $callback, $node); #Separate output in case more than 1 endpoint
     }
@@ -1798,6 +1869,58 @@ sub rflash_response {
             else {
                 xCAT::SvrUtils::sendmsg("Unable to login :" . $h->{message} . " - " . $h->{data}->{description}, $callback, $node);
             }
+        }
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_ACTIVATE_RESPONSE") {
+        xCAT::SvrUtils::sendmsg("rflash started, please wait...", $callback, $node);
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_SET_PRIORITY_RESPONSE") {
+        print "Update priority has been set";
+    }
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_STATE_RESPONSE") {
+        my $activation_state;
+        my $progress_state;
+        my $priority_state;
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my $content = ${ $response_info->{data} }{$key_url};
+            # Get values of some attributes to determine activation status 
+            if ($key_url eq "Activation") {
+                $activation_state = ${ $response_info->{data} }{$key_url};
+            }
+            if ($key_url eq "Progress") {
+                $progress_state = ${ $response_info->{data} }{$key_url};
+            }
+            if ($key_url eq "Priority") {
+                $priority_state = ${ $response_info->{data} }{$key_url};
+            }
+        }
+
+        if ($activation_state =~ /Software.Activation.Activations.Failed/) {
+            # Activation failed. Report error and exit
+            xCAT::SvrUtils::sendmsg([1,"Activation of firmware failed"], $callback, $node);
+        }
+
+        if ($activation_state =~ /Software.Activation.Activations.Active/) { 
+            if (scalar($priority_state) == 0) {
+                # Activation state of active and priority of 0 indicates the activation has been completed
+                xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
+                $wait_node_num--;
+                return;
+            }
+            else {
+                # Activation state of active and priority of non 0 - need to just set priority to 0 to activate
+                print "Update is already active, just need to set priority to 0";
+                $next_status{ $node_info{$node}{cur_status} } = "RFLASH_SET_PRIORITY_REQUEST";
+            }
+        }
+
+        if ($activation_state =~ /Software.Activation.Activations.Activating/) {
+            # Activation still going, sleep for a bit, then print the progress value
+            sleep(15);
+            xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
+
+            # Set next state to come back here to chect the activation status again.
+            $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
     }
 

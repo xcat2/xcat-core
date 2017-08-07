@@ -110,8 +110,9 @@ site Attributes:
    dhcplease:  The lease time for the dhcp client. The default value is 43200.
   
    disjointdhcps:  If set to '1', the .leases file on a service node only contains
-                   the nodes it manages. The default value is '0'.
-                   '0' value means include all the nodes in the subnet.
+                   the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles
+                   boot loader configuration on a service node only for the nodes it manages.
+                   The default value is '0'. It means include all the nodes in the subnet.
   
    pruneservices:  Whether to enable service pruning when noderm is run (i.e.
                    removing DHCP entries when noderm is executed)

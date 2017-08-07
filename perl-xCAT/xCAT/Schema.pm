@@ -1029,8 +1029,9 @@ passed as argument rather than by table value',
 " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n" .
 " dhcplease:  The lease time for the dhcp client. The default value is 43200.\n\n" .
 " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n" .
-"                 the nodes it manages. The default value is '0'.\n" .
-"                 '0' value means include all the nodes in the subnet.\n\n" .
+"                 the nodes it manages. And when 'sharedtftp' is disabled, nodeset handles\n" .
+"                 boot loader configuration on a service node only for the nodes it manages.\n" .
+"                 The default value is '0'. It means include all the nodes in the subnet.\n\n" .
 " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n" .
 "                 removing DHCP entries when noderm is executed)\n\n" .
 " managedaddressmode: The mode of networking configuration during node provision.\n" .

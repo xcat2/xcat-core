@@ -760,7 +760,7 @@ sub initpgdb
         {
             $insertstr .= "host    all          all        ";
             $insertstr .= $hbaaccess;
-            $insertstr .= "\/32      md5\n "; # add entry line to string
+            $insertstr .= "\/32      md5\\n "; # add entry line to string
         }
       }
     $cmd = "awk '{gsub(\"\IPv4 local connections:\",\"\IPv4 local connections:\\n$insertstr \"); print}'   $hbafile > $hbafile.xcat";
