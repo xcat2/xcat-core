@@ -1243,7 +1243,16 @@ passed as argument rather than by table value',
 "             Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
 " hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
 "                     included hierarchically. Attribute values for all the node's groups\n" .
-"                     will be applied to the node in the groups' order except the repeat one.\n\n" .
+"                     will be applied to the node in the groups' order except the repeat one.\n" .
+" dbtracelevel:  The trace level for the database access log. To activate this setting, please. \n".
+"                restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .\n".
+"                ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print \$2}' | xargs kill -HUP  \n".
+"                Currrent support values: \n" .
+"                0: disable the trace log for db \n" .
+"                1: trace the calls of database subroutines \n" .
+"                2: Besides the log from level 1, trace the event to build the cache for the table \n" .
+"                3: Besides the log from level 2, trace the event with cache hit \n" .
+"                4: Besides the log from level 3, trace the SQL statement for the db access \n\n" .
 " -----------------------\n" .
 "VIRTUALIZATION ATTRIBUTES\n" .
 " -----------------------\n" .
