@@ -28,7 +28,7 @@ B<rflash> I<noderange> [I<hpm_file_path> | B<-d=>I<data_directory>] [B<-c>|B<--c
 
 =head2 OpenPOWER OpenBMC specific :
 
-B<rflash> I<noderange> [I<tar_file_path> | I<image_id>] [B<-c>|B<--check>] [B<-a>|B<--activate>] [B<-l>|B<--list>] [B<-u>|B<--upload>]
+B<rflash> I<noderange> [I<tar_file_path> | I<image_id>] [B<-c>|B<--check>] [B<-a>|B<--activate>] [B<-l>|B<--list>] [B<-u>|B<--upload>] [B<-d>|B<--delete>]
 
 =head1 B<Description>
 
@@ -144,6 +144,10 @@ List currently uploaded update images. "(*)" indicates currently active image.
 =item B<-u|--upload>
 
 Upload update image. Specified file must be in .tar format.
+
+=item B<-d|--delete>
+
+Delete update image from BMC
 
 =item B<-v|--version>
 
