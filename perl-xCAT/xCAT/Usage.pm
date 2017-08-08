@@ -345,7 +345,7 @@ my %usage = (
     PPC64LE (using IPMI Management) specific:
         rflash <noderange> [-c|--check] [--retry=<count>] [-V] [<hpm_file>|-d=<data_directory>]
     PPC64LE (using OpenBMC Management) specific:
-        rflash <noderange> [-c|--check] [-l|--list] [-a|--activate] [-u|--upload] [<tar_file>|<image_id>]",
+        rflash <noderange> [-c|--check] [-l|--list] [-a|--activate] [-u|--upload] [-d|--delete] [<tar_file>|<image_id>]",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

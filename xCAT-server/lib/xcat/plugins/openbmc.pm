@@ -179,6 +179,14 @@ my %status_info = (
     RFLASH_SET_PRIORITY_RESPONSE => {
         process        => \&rflash_response,
     },
+    RFLASH_DELETE_IMAGE_REQUEST  => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/software",
+        data           => "[]",
+    },
+    RFLASH_DELETE_IMAGE_RESPONSE => {
+        process        => \&rflash_response,
+    },
 
     RINV_REQUEST => {
         method         => "GET",
@@ -874,6 +882,7 @@ sub parse_command_status {
                     $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_file/attr/RequestedActivation";
                     $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_file/attr/Priority";
                     $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_file";
+                    $status_info{RFLASH_DELETE_IMAGE_REQUEST}{init_url}       .= "/$update_file/action/Delete";
                 }
             }
         }
@@ -888,11 +897,12 @@ sub parse_command_status {
             $next_status{RFLASH_LIST_REQUEST} = "RFLASH_LIST_RESPONSE";
         }
         if ($delete) {
-            xCAT::SvrUtils::sendmsg("Delete option is not yet supported.", $callback);
-            return 1;
+            # Delete uploaded image from BMC
+            $next_status{LOGIN_RESPONSE} = "RFLASH_DELETE_IMAGE_REQUEST";
+            $next_status{RFLASH_DELETE_IMAGE_REQUEST} = "RFLASH_DELETE_IMAGE_RESPONSE";
         }
         if ($upload) {
-            # Upload specified update file to  BMC
+            # Upload specified update file to BMC
             $next_status{LOGIN_RESPONSE} = "RFLASH_FILE_UPLOAD_REQUEST";
             $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
         }
@@ -1013,6 +1023,9 @@ sub gen_send_request {
         # Handle boolean values by create the json objects without wrapping with quotes
         if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
             $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
+        } elsif ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^\[\]$/) {
+            # Special handling of empty data list
+            $content = '{"data":[]}';
         } else {
             $content = '{"data":"' . $status_info{ $node_info{$node}{cur_status} }{data} . '"}';
         }
@@ -1799,7 +1812,7 @@ sub rflash_response {
     print Dumper(%{$response_info->{data}});
 
     my $update_id;
-    my $update_activation;
+    my $update_activation = "Unknown";
     my $update_purpose;
     my $update_version;
     my $update_priority = -1;
@@ -1898,9 +1911,8 @@ sub rflash_response {
         if ($activation_state =~ /Software.Activation.Activations.Failed/) {
             # Activation failed. Report error and exit
             xCAT::SvrUtils::sendmsg([1,"Activation of firmware failed"], $callback, $node);
-        }
-
-        if ($activation_state =~ /Software.Activation.Activations.Active/) { 
+        } 
+        elsif ($activation_state =~ /Software.Activation.Activations.Active/) { 
             if (scalar($priority_state) == 0) {
                 # Activation state of active and priority of 0 indicates the activation has been completed
                 xCAT::SvrUtils::sendmsg("Firmware update successfully activated", $callback, $node);
@@ -1913,8 +1925,7 @@ sub rflash_response {
                 $next_status{ $node_info{$node}{cur_status} } = "RFLASH_SET_PRIORITY_REQUEST";
             }
         }
-
-        if ($activation_state =~ /Software.Activation.Activations.Activating/) {
+        elsif ($activation_state =~ /Software.Activation.Activations.Activating/) {
             # Activation still going, sleep for a bit, then print the progress value
             sleep(15);
             xCAT::SvrUtils::sendmsg("Activating firmware update. $progress_state\%", $callback, $node);
@@ -1922,6 +1933,11 @@ sub rflash_response {
             # Set next state to come back here to chect the activation status again.
             $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
+       
+    }
+
+    if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") {
+            xCAT::SvrUtils::sendmsg("Firmware update successfully removed", $callback, $node);
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
