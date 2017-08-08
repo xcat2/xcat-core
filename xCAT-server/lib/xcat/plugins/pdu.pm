@@ -177,6 +177,8 @@ sub process_request
         my $subcmd = $exargs[0];
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($noderange, $subcmd, $callback);
+        }elsif ($subcmd =~ /=/) {
+            process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
             $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
         }
@@ -467,6 +469,87 @@ sub connectTopdu {
 
 }
 
+#-------------------------------------------------------
+
+=head3  process_netcfg 
+   
+    Config hostname of PDU
+    Config ip/netmask of PDU via PduManager command 
+      PduManager is a tool for CoralPdu to manager the PDU.
+      * /dev/shm/bin/PduManager -h
+          '-i' set PDU system IP
+          '-n' set system ip netmask. e.g.:PduManager -i xxx.xxx.xxx.xxx -n xxx.xxx.xxx.xxx
+
+    example:  rspconfig coralpdu hostname=coralpdu
+              rspconfig coralpdu ip=1.1.1.1,netmask=255.0.0.0
+
+=cut
+
+#-------------------------------------------------------
+sub process_netcfg {
+    my $request = shift;
+    my $subreq    = shift;
+    my $subcmd    = shift;
+    my $callback = shift;
+    my $hostname;
+    my $ip;
+    my $netmask;
+    my $args;
+
+    my $nodes = $request->{node};
+    my $rsp = {};
+
+    xCAT::MsgUtils->message("I", "set hostname ");
+    my @cmds = split(/,/,$subcmd);
+    foreach my $cmd (@cmds) {
+        my ($key, $value) = split(/=/, $cmd);
+        if ($key =~ /hostname/) {
+            $hostname = $value;
+            $args = "echo $hostname > /etc/hostname;/etc/init.d/hostname.sh";
+            xCAT::Utils->runxcmd({ command => ['xdsh'],
+                                   node => $nodes,
+                                   arg => [ $args ] }, $subreq, 0, 1);
+            if ($::RUNCMD_RC != 0) {
+               xCAT::MsgUtils->message("I", "xdsh command to set hostname failed");
+            }
+        }elsif ($key =~ /ip/) {
+            $ip = $value;
+        } elsif ($key =~ /netmask/) {
+            $netmask = $value;
+        } else {
+            xCAT::MsgUtils->message("I", "rspconfig $cmd is not support yet");
+        }
+    }
+
+    $args = "/dev/shm/bin/PduManager ";
+    my $opt;
+    if ($ip) {
+        $opt = "-i $ip ";
+    }
+    if ($netmask) {
+        $opt = $opt . "-n $netmask";
+    }
+    if ($opt) {
+        my $dshcmd = $args . $opt ;
+        #comment this for now, coralPDU on the lab is not support PduManager yet
+        my $output = xCAT::Utils->runxcmd({ command => ['xdsh'], node => $nodes, arg => [ $dshcmd ] }, $subreq, 0, 1);
+        if ($::RUNCMD_RC != 0) {
+            xCAT::SvrUtils::sendmsg("@$output", $callback);
+        }
+    }
+}
+
+#-------------------------------------------------------
+
+=head3  process_sshcfg 
+   
+    Config passwordless for coralpdu 
+
+    example:  rspconfig coralpdu sshcfg 
+
+=cut
+
+#-------------------------------------------------------
 sub process_sshcfg { 
     my $noderange = shift;
     my $subcmd = shift;
@@ -585,6 +668,18 @@ sub session_exec {
      return($mbmatch);
 }
 
+#-----------------------------------------------------------------
+
+=head3  process_pdudiscover
+   
+    Discover the pdu for a given range of DHCP ip address
+    it will call switchdiscover command with -s snmp --pdu options 
+
+    example: pdudiscover --range iprange -w
+
+=cut
+
+#------------------------------------------------------------------
 sub process_pdudiscover {
     my $request  = shift;
     my $sub_req  = shift;
@@ -615,8 +710,6 @@ sub process_pdudiscover {
     my $rsp = {};
     push @{ $rsp->{data} }, "$result";
     xCAT::MsgUtils->message("I", $rsp, $callback);
-
-
 }
 
 
