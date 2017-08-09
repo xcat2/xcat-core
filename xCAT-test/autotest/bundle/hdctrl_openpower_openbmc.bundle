@@ -27,4 +27,5 @@ rspconfig_netmask
 rspconfig_netmask_invalid
 rspconfig_gateway
 rspconfig_gateway_invalid
-rspconfig_node_invalid
+pspconfig_node_invalid
+rpower_wrongpasswd
