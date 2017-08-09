@@ -91,7 +91,12 @@ if ($ENV{SSHCONSOLEPORT}) {
     $sshport= $ENV{SSHCONSOLEPORT};
 }
 
-print "If the console cannot connect, please verify whether ssh keys has been configured on the bmc for $username user\n";
+#user needs to download sshpass rpm if need to use it
+if (-x '/usr/bin/sshpass') {
+    exec "/usr/bin/sshpass -p $password ssh -p $sshport -l $username $bmcip";
+} else {
+    exec "ssh -p $sshport -l $username $bmcip";
+}
 
-exec "ssh -p $sshport -l $username $bmcip";
+
 
