@@ -9,6 +9,7 @@ makehost_n_r
 chdef_null
 chdef_z
 chdef_t_o_error
+chdef_site_check
 chtab_null
 chtab_d
 chtab_modify_node
