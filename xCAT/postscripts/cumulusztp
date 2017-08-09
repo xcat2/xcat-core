@@ -1,4 +1,7 @@
 #!/bin/bash
+#this script will be invoked by ZTP(zero touch provision) process in the onie switch
+#this script finish the discovery and configuration after the switch is pluged in the cluster and powered on
+
 function error() {
   echo -e "\e[0;33mERROR: The Zero Touch Provisioning script failed while running the command $BASH_COMMAND at line $BASH_LINENO.\e[0m" >&2
   exit 1
@@ -7,28 +10,144 @@ function error() {
 # Log all output from this script
 exec >/var/log/autoprovision 2>&1
  
-trap error ERR
+#trap error ERR
  
 #Add Debian Repositories
-echo "deb http://http.us.debian.org/debian jessie main" >> /etc/apt/sources.list
-echo "deb http://security.debian.org/ jessie/updates main" >> /etc/apt/sources.list
+#since in most cases, the switch has no internet access, skip this step
+#echo "deb http://http.us.debian.org/debian jessie main" >> /etc/apt/sources.list
+#echo "deb http://security.debian.org/ jessie/updates main" >> /etc/apt/sources.list
 
 #get ip address for server node
 server_ip=`grep cumulus-provision-url /var/lib/dhcp/dhclient.eth0.leases | tail -1 | awk -F/ '{print $3}'`
- 
+
+#download /install/postscripts from MN
+max_retries=5
+retry=0
+rc=1  # this is a fail return
+downloaded=0
+while [ 0 -eq 0 ]; do
+
+    if [ -e "/xcatpost" ]; then
+        rm -rf "/xcatpost"
+    fi
+    
+    export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server_ip/install/postscripts/ -P /xcatpost 2> /tmp/wget.log
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      # return from wget was 0 but some OS do not return errors, so we
+      # have additional checks for
+      # failed: Connection httpd not running
+      # 404: Not Found  - if directory does not exist
+      grep -i -E "... failed: Connection refused.$" /tmp/wget.log
+      rc1=$?
+      grep -i -E "ERROR 404: Not Found.$" /tmp/wget.log
+      rc2=$?
+      # check to see no errors at all, grep returns 1
+      if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then
+         logger -s -t "xcat.cumulusztp" -p local4.info  "download_postscripts return successfully "
+         downloaded=1
+         break
+      fi
+    fi
+
+    retry=$(($retry+1))
+    logger -s -t "xcat.cumulusztp" -p local4.info  "download_postscripts retry $retry"
+    if [ $retry -eq $max_retries ]; then
+
+        break
+    fi
+
+    SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*20)}')
+    sleep $SLI
+done
+
+if [ "$downloaded" = "0"  ];then
+    logger -s -t "xcat.cumulusztp" -p local4.err  "download_postscripts failed"
+    ztp -R
+    exit 1
+fi
+
+chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
+
+cd /xcatpost
+rc=0
+
+./documulusdiscovery
+rc=$?
+if [ "$rc" != "0" ];then
+    ztp -R 
+    exit 1
+fi
+
+logger -s -t "xcat.cumulusztp" -p local4.info "switch discovered!"
+
+#restart mgt interface to apply the specified IP address
+ifdown eth0;ifup eth0
+
+retry=0
+while true; do
+    #check whether the network access between MN/CN and the node is ready
+    ping $server_ip -c 1 >/dev/null && break
+    retry=$[ $retry + 1 ]
+    if [ $retry -eq 90 ];then
+       #timeout, complain and exit
+       logger -s -t "xcat.cumulusztp" -p local4.err " the network between the node and $server_ip is not ready, please check[retry=$retry]..." "/var/log/xcat/xcat.log"
+       ztp -R
+       exit 1
+    fi
+
+    #sleep sometime before the next scan
+    sleep 2
+done
+
 #push root ssh keys, config passwordless
-echo "CumulusLinux!" | sudo -S mkdir -p /root/.ssh
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /root/.ssh/authorized_keys http://$server_ip/install/postscripts/_ssh/authorized_keys
- 
+mkdir -p /root/.ssh
+mv _ssh/authorized_keys /root/.ssh/authorized_keys 
+
 #enable and config snmpd
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/enablesnmp http://$server_ip/install/postscripts/enablesnmp
-sudo chmod +x /home/cumulus/enablesnmp
-sudo /home/cumulus/enablesnmp
+./enablesnmp
+rc=$?
+if [ "$rc" != "0" ];then
+    logger -s -t "xcat.cumulusztp" -p local4.err "enablesnmp: failed to enable SNMP"
+    echo "enablesnmp: failed to enable SNMP"
+else
+    logger -s -t "xcat.cumulusztp" -p local4.info "SNMP enabled!"
+fi
 
 #config base interface
-echo "CumulusLinux!" | sudo -S /usr/bin/wget -O /home/cumulus/configinterface http://$server_ip/install/postscripts/configinterface
-sudo chmod +x /home/cumulus/configinterface
-sudo /home/cumulus/configinterface
+./configinterface
+rc=$?
+if [ "$rc" != "0" ];then
+    echo "configinterface: failed to config switch data ports"
+else
+    logger -s -t "xcat.cumulusztp" -p local4.info "data ports enabled!"
+fi
+
+#obtain myposctscript from MN
+./getmypostscript.cumulus $server_ip:3001 
+rc=$?
+if [ "$rc" != "0" ]; then
+   logger -s -t "xcat.cumulusztp" -p local4.info "failed to get mypostscript"
+   echo "failed to get mypostscript"
+   ztp -R
+   exit 1
+fi
+
+#config static ip address for mgt interface
+echo './confignics -s' >> ./mypostscript
+chmod +x ./mypostscript
+./mypostscript
+rc=$?
+if [ "$rc" != "0" ]; then
+   logger -s -t "xcat.cumulusztp" -p local4.info "failed to set static ip address for mgt interface"
+   echo "failed to set static ip address for mgt interface"
+   ztp -R
+   exit 1
+fi
+
+
+#report status
+echo "installstatus configured" | socat STDIN TCP:$server_ip:3002,sourceport=301,reuseaddr,retry=5
 
 # CUMULUS-AUTOPROVISIONING
 exit 0

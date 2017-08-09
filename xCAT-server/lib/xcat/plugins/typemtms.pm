@@ -34,6 +34,16 @@ sub findme {
             push @nodes, $_;
         }
     }
+
+    unless ($bmc_node) {
+        if ($request->{'bmcmac'}->[0]) {
+            my $bmcmac = lc($request->{'bmcmac'}->[0]);
+            $bmcmac =~ s/\://g;
+            my $tmp_node = "node-$bmcmac";
+            $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
+        }
+    }
+
     my $nodenum = $#nodes;
     if ($nodenum < 0) {
         xCAT::MsgUtils->message("S", "xcat.discovery.mtms: ($request->{_xcat_clientmac}->[0]) Warning: Could not find any node for $mtms using mtms-based discovery");

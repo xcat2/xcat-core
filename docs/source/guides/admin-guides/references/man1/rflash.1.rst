@@ -11,7 +11,7 @@ Name
 ****
 
 
-\ **rflash**\  - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. \ **rflash**\  is also able to update firmware for NextScale Fan Power Controllers (FPC).
+\ **rflash**\  - Performs Licensed Internal Code (LIC) update or firmware update on supported xCAT managed nodes.
 
 
 ****************
@@ -46,11 +46,18 @@ NeXtScale FPC specific:
 \ **rflash**\  \ *noderange*\  \ *http_directory*\ 
 
 
-OpenPOWER BMC specific:
-=======================
+OpenPOWER BMC specific (using IPMI):
+====================================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm_file_path*\  [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d=**\ \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+
+
+OpenPOWER OpenBMC specific :
+============================
+
+
+\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ] [\ **-d | -**\ **-delete**\ ]
 
 
 
@@ -118,11 +125,20 @@ NeXtScale FPC specific:
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http information required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details: XCAT_NeXtScale_Clusters
 
 
-OpenPOWER specific:
-===================
+OpenPOWER specific (using IPMI):
+================================
 
 
-The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and either the hpm formatted file path or path to a data directory.
+\ **Note:**\  When using \ **rflash**\  in hierarchical environment, the hpm file or data directory must be accessible from Service Nodes.
+
+
+OpenPOWER OpenBMC specific:
+===========================
+
+
+The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER node and either an update .tar file or an uploaded image id.
+\ **Note:**\  When using \ **rflash**\  in hierarchical environment, the .tar file must be accessible from Service Nodes.
 
 
 
@@ -140,7 +156,7 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 \ **-c|-**\ **-check**\ 
  
- Check the firmware version of BMC and HPM file.
+ Check the firmware version of BMC and an update file.
  
 
 
@@ -153,6 +169,12 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 \ **-d**\  \ *data_directory*\ 
  
  Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management.
+ 
+
+
+\ **-d=**\ \ *data_directory*\ 
+ 
+ Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral.
  
 
 
@@ -177,6 +199,30 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 \ **-**\ **-retry=**\ \ *count*\ 
  
  Specify number of times to retry the update if failure is detected. Default value is 2. Value of 0 can be used to indicate no retries.
+ 
+
+
+\ **-a|-**\ **-activate**\ 
+ 
+ Activate update image. Image id must be specified.
+ 
+
+
+\ **-l|-**\ **-list**\ 
+ 
+ List currently uploaded update images. "(\*)" indicates currently active image.
+ 
+
+
+\ **-u|-**\ **-upload**\ 
+ 
+ Upload update image. Specified file must be in .tar format.
+ 
+
+
+\ **-d|-**\ **-delete**\ 
+ 
+ Delete update image from BMC
  
 
 
@@ -263,6 +309,16 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
  .. code-block:: perl
  
    rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm -V
+ 
+ 
+
+
+6. To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
+ 
+ 
+ .. code-block:: perl
+ 
+   rflash briggs01 -d=/root/supermicro/OP825
  
  
 

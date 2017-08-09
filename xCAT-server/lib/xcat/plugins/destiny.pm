@@ -490,12 +490,27 @@ sub setdestiny {
             my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
             my $master;
             my $kcmdline = "quiet ";
-            if (defined($master_entry)) {
-                $master = $master_entry;
-            }
+
+            #the node.xcatmaster take precedence
             if ($ent and $ent->{xcatmaster}) {
                 $master = $ent->{xcatmaster};
             }
+    
+            #if node.xcatmaster not specified, take the ip address facing the node
+            unless($master){
+                my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($_);
+                unless ($nxtsrvd[0]) { 
+                    $master = $nxtsrvd[1];                 
+                }
+            }
+            
+            #the site.master takes the last precedence
+            unless($master){
+                if (defined($master_entry)) {
+                    $master = $master_entry;
+                }
+            }
+
             $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
             if ($ent and defined($ent->{serialport})) {
                 if ($arch eq "ppc64") {

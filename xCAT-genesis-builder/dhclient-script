@@ -14,7 +14,7 @@ elif [ $reason = "BOUND" ]; then
 	if [ ! -z "$old_ip_address" ]; then
 		ip addr del dev $interface $old_ip_address/$old_subnet_mask
 	fi
-        for oldip in `ip addr show dev $interface|grep 'inet '|awk '{print $2}'`; do
+        for oldip in `ip -o addr show dev $interface|awk '{print $4}'`; do
 		ip addr del dev $interface $oldip
 	done
 	if [ ! -z "$new_ip_address" -a ! -z "$new_subnet_mask" ]; then

@@ -88,7 +88,7 @@ if [ ! -z $HOSTNAMECTL ] && [ ! -z $NODE ]; then
 fi
 
 for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
-    IPADDRMASK=`ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
+    IPADDRMASK=`ip -4 -o a sh dev $nic | awk '/inet/{print $4}' | head -n 1`
     IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
     [ -z $IPADDR ] && continue
     PREFIXMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`

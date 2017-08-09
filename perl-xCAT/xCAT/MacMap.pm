@@ -147,6 +147,12 @@ OID, and have the switch table port value match exactly the format suggested by 
         return 0;
     }
 
+    #HP calls their PortChannel interfaces "trunks"
+    #designated as Trk1, etc. don't match those
+    if ($namepersnmp =~ /Trk/) {
+        return 0;
+    }
+
     #The blacklist approach has been exhausted.  For now, assuming that means good,
     #if something ambiguous happens, the whitelist would have been:
     #'Port','Port #','/' (if namepercfg has no /, then / would be...),
@@ -356,6 +362,8 @@ sub dump_mac_info {
                         }
                     }
                     @{ $ret{$switch}->{$snmpportname}->{MACaddress} } = @{ $self->{macinfo}->{$switch}->{$snmpportname} };
+                    @{ $ret{$switch}->{$snmpportname}->{Vlanid} } = @{ $self->{vlaninfo}->{$switch}->{$snmpportname} };
+                    @{ $ret{$switch}->{$snmpportname}->{Mtu} } = @{ $self->{mtuinfo}->{$switch}->{$snmpportname} }; 
                 }
             }
         }
@@ -720,6 +728,12 @@ sub refresh_switch {
         return;
     }
 
+    # get mtu
+    my $iftomtumap = walkoid($session, '.1.3.6.1.2.1.2.2.1.4', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
+    unless (defined($iftomtumap)) {
+        xCAT::MsgUtils->message("I", "MTU information is not availabe for this switch $switch");
+    }
+
     #Above is valid without community string indexing, on cisco, we need it on the next one and onward
     my $iftovlanmap = walkoid($session, '.1.3.6.1.4.1.9.9.68.1.2.2.1.2', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); #use cisco vlan membership mib to ascertain vlan
     my $trunktovlanmap = walkoid($session, '.1.3.6.1.4.1.9.9.46.1.6.1.1.5', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); #for trunk ports, we are interested in the native vlan, so we need cisco vtp mib too
@@ -783,24 +797,38 @@ sub refresh_switch {
             xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
             return;
         }
+
         if (defined($self->{collect_mac_info})) {
             my %index_to_mac = ();
+            my %index_to_vlan = ();
             foreach (keys %$mactoindexmap) {
                 my $index     = $mactoindexmap->{$_};
                 my @tmp       = split /\./, $_;
+                my $vlan      = @tmp[0];
                 my @mac       = @tmp[ -6 .. -1 ];
                 my $macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", @mac);
                 push @{ $index_to_mac{$index} }, $macstring;
+                push @{ $index_to_vlan{$index} }, $vlan;    
             }
             foreach my $boid (keys %$bridgetoifmap) {
                 my $port_index = $boid;
                 my $port_name  = $namemap->{ $bridgetoifmap->{$port_index} };
+                my $mtu  = $iftomtumap->{ $bridgetoifmap->{$port_index} };
                 if (defined($index_to_mac{$port_index})) {
                     push @{ $self->{macinfo}->{$switch}->{$port_name} }, @{ $index_to_mac{$port_index} };
                 }
                 else {
                     $self->{macinfo}->{$switch}->{$port_name}->[0] = '';
                 }
+
+                if (defined($index_to_vlan{$port_index})) {
+                    push @{ $self->{vlaninfo}->{$switch}->{$port_name} }, @{ $index_to_vlan{$port_index} };
+                }
+                else {
+                    $self->{vlaninfo}->{$switch}->{$port_name}->[0] = '';
+                }
+                push @{ $self->{mtuinfo}->{$switch}->{$port_name} } , $mtu;
+
             }
             return;
         }

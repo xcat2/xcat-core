@@ -5,7 +5,7 @@
 #            this whole dir into it somewhere (like /tmp).
 # Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
 
-# Currently, *Fedora 23* is the only OS supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
+# Currently, *Fedora 26* is the only OS supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
 
 HOSTOS="$1"
 DIR=`dirname $0`
@@ -18,37 +18,9 @@ if [ $BUILDARCH = "ppc64le" ]; then
     BUILDARCH="ppc64"
 fi
 
-# For xcat-genesis-base-ppc64, we need to update mlx4-en driver for Mellanox ethernet nics. 
-# IF you are sure you have installed newer driver on the build server you can use 'buildrpm -y' to skip the nodification
 if [ -z $1 ]; then
-    HOSTOS="fedora23"
+    HOSTOS="fedora26"
 fi
-if [ $BUILDARCH = 'ppc64' -a $HOSTOS != 'mcp' -a $HOSTOS != '-y' ]; then
-    echo "The steps below are used to install mlnx driver 3.2-1 and i40e driver 1.5.16, if you are sure you have these or newer drivers, pls use \"-y\" to skip!"
-    echo "1. Install OS related packages"
-    echo "    yum install rpmbuild"
-    echo "    yum install kernel-devel-`uname -r`"
-    echo "    yum install kernel-headers-`uname -r`"
-    echo "    yum install gcc-c++"
-    echo "2. Download Mellanox EN Driver for Linux from http://www.mellanox.com/downloads/Drivers/mlnx-en-3.2-1.0.1.1.tgz"
-    echo "   Download Intel EN Driver follow this link and download from webpage https://downloadcenter.intel.com/downloads/eula/26370/Intel-Network-Adapter-Driver-for-PCI-E-Intel-40-Gigabit-Ethernet-Network-Connections-under-Linux-?httpDown=https%3A%2F%2Fdownloadmirror.intel.com%2F26370%2Feng%2Fi40e-1.5.16.tar.gz"
-    echo "3. To install Mellanox Driver, extract it and run ./install.sh from the extracted directory"
-    echo "    tar -xvf mlnx-en-3.2-1.0.1.1.tgz"
-    echo "    ./mlnx-en-3.2-1.0.1.1/install.sh"
-    echo "   To install Intel Driver, create rpm and install"
-    echo "    rpmbuild -tb i40e-1.5.16.tar.gz"
-    echo "    rpm -i /<path-to>/i40e-1.5.16-1.ppc64le.rpm"
-    echo "    Additional Intel instructions can be found in README included in i40e-1.5.16.tar.gz"
-    echo "4. Check whether the drivers are updated"
-    echo "    modprobe mlx4-en"
-    echo "    modinfo mlx4-en | grep version"
-    echo "    version:        3.2-1.0.1.1 (31 Jan 2016)"
-    echo "    modinfo i40e | grep version"
-    echo "    version:        1.5.16"
-    echo "5. Once the steps above done, run \"$0 -y\" to build xCAT-genesis-base-ppc64"
-    exit 0
-fi
-
 
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
@@ -133,30 +105,8 @@ if [ "$HOSTOS" = "mcp" ]; then
 # For ppc64 platform, needs to remove some files,
 # # and some files are in different directories
 elif [ $BUILDARCH = "ppc64" ]; then
-        sed -i 's/dracut_install efibootmgr//' $DRACUTMODDIR/install
+        sed -i 's/ efibootmgr//' $DRACUTMODDIR/install
         sed -i 's/ dmidecode//' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libncurses.so.5.7/\/lib64\/libncurses.so.5.7/' $DRACUTMODDIR/install
-        sed -i 's/\/usr\/lib\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.13/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libgcc_s.so.1/\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 20 ppc64
-        # sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 23 ppc64
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.22.so/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libc.so.6/\/lib64\/libc.so.6/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 23 ppc64
-        #sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.22.so/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libdl.so.2/\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libm.so.6/\/lib64\/libm.so.6/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/libpthread.so.0/\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
-        sed -i 's/\/lib64\/libncurses.so.5.7/\/lib64\/libncurses.so.5.9/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 22 ppc64
-        #sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
-        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.21/' $DRACUTMODDIR/install
-        sed -i 's/\/lib64\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.9/' $DRACUTMODDIR/install
-        sed -i 's/\/usr\/lib64\/libsasl2.so.2/\/usr\/lib64\/libsasl2.so.3/' $DRACUTMODDIR/install
-        #sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi
@@ -189,7 +139,8 @@ cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 
 # add the perl library
-PERL_LIB_DIR="/usr/share/perl5 /usr/lib64/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5"
+# add /usr/share/ntp/lib for Fedora26 ppc64, the ntp-perl will installed libraries under it
+PERL_LIB_DIR="/usr/share/perl5 /usr/lib64/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/share/ntp/lib"
 for d in `echo $PERL_LIB_DIR`; do
     if [ -e $d ]; then
         echo Adding perl libary "$d"
@@ -198,6 +149,10 @@ for d in `echo $PERL_LIB_DIR`; do
         cp -a -t $TEMP_DIR $d/.
     fi
 done
+
+# create the predictable naming for nics
+LIB_UDEV_RULES="/lib/udev/rules.d/"
+cp $DRACUTMODDIR/80-net-name-slot.rules /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs/lib/udev/rules.d/ 
 
 if [ $? -ne 0 ]; then
     echo "ERROR - expanding the initramfs, please correct the issues and try again"

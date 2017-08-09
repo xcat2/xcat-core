@@ -502,7 +502,7 @@ sub addnode
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
-        if ($nrent and $nrent->{tftpserver})
+        if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>')
         {
             #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
             #the value of inet_ntoa() will be "undef", which will cause fatal error
@@ -531,9 +531,7 @@ sub addnode
                 my $node_server = undef;
                 if ($nrent->{xcatmaster}) {
                     $node_server = $nrent->{xcatmaster};
-                } elsif ($nrent->{servicenode}) {
-                    $node_server = $nrent->{servicenode};
-                }
+                } 
                 unless ($node_server) {
                     my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
                     unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
@@ -1114,6 +1112,28 @@ sub preprocess_request
     xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: disjointdhcps=$t_entry");
     my @requests     = ();
     my $hasHierarchy = 0;
+    my @snlist = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
+    if (@snlist > 0) { $hasHierarchy = 1; }
+    xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: hasHierarchy=$hasHierarchy");
+
+    my @dhcpsvrs = ();
+    if ($hasHierarchy) {
+        #hierarchy detected, enforce more rigorous sanity
+        my $ntab = xCAT::Table->new('networks');
+        if ($ntab) {
+            foreach (@{ $ntab->getAllEntries() }) {
+                next unless ($_->{dynamicrange});
+                # if dynamicrange specified but dhcpserver was not - issue error message
+                unless ($_->{dhcpserver}) {
+                    $callback->({ error => [ "Hierarchy requested, therefore networks.dhcpserver must be set for net=" . $_->{net} . "" ], errorcode => [1] });
+                    return [];
+                }
+                push @dhcpsvrs, $_->{dhcpserver};
+                xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: dhcp server on $_->{net}: $_->{dhcpserver}");
+            }
+        }
+    }
+
 
     my @nodes = ();
 
@@ -1193,6 +1213,14 @@ sub preprocess_request
     my $str_node = join(" ", @nodes);
     xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: nodes are $str_node");
 
+    my $issn = xCAT::Utils->isServiceNode();
+    #check if this node is the service node for any input node
+    my @hostinfo = xCAT::NetworkUtils->determinehostname();
+    my %iphash   = ();
+
+    # flag the hostnames in iphash
+    foreach (@hostinfo) { $iphash{$_} = 1; }
+
     # If service node and not -n option
     if (($snonly == 1) && (!$opt{n})) {
 
@@ -1205,13 +1233,6 @@ sub preprocess_request
             # if processing only on the local host
             if ($localonly) {
 
-                #check if this node is the service node for any input node
-                my @hostinfo = xCAT::NetworkUtils->determinehostname();
-                my %iphash   = ();
-
-                # flag the hostnames in iphash
-                foreach (@hostinfo) { $iphash{$_} = 1; }
-
                 # compare the service node hash with the iphash - a match adds this service node
                 foreach (keys %$sn_hash) {
                     if (exists($iphash{$_})) {
@@ -1220,21 +1241,47 @@ sub preprocess_request
                         $reqcopy->{'_xcatdest'}            = $_;
                         $reqcopy->{_xcatpreprocessed}->[0] = 1;
                         push @requests, $reqcopy;
+                        last;
                     }
                 }
             } else {
-
-                # check to see if dhcp is running on service nodes
-                my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
-                if (@sn > 0) { $hasHierarchy = 1; }
+                my $handled4me = 0;     # indicate myself is already handled.
+                my %prehandledhash = ();# the servers which is already handled.
+                foreach (@dhcpsvrs) {
+                    # It is required to handle the whole noderange for the dhcp server which serving dynamic range
+                    if (! exists($iphash{$_})) {
+                        my $reqcopy = {%$req};
+                        $reqcopy->{'node'}                 = \@nodes;
+                        $reqcopy->{'_xcatdest'}            = $_;
+                        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                        push @requests, $reqcopy;
+                        $prehandledhash{$_} = 1;
+                    } elsif ($handled4me == 0) {
+                        my $reqcopy = {%$req};
+                        $reqcopy->{'node'}                 = \@nodes;
+                        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                        push @requests, $reqcopy;
+                        $handled4me = 1;
+                    }
+                }
 
                 # create a request for each service node
                 foreach (keys %$sn_hash) {
-                    my $reqcopy = {%$req};
-                    $reqcopy->{'node'}                 = $sn_hash->{$_};
-                    $reqcopy->{'_xcatdest'}            = $_;
-                    $reqcopy->{_xcatpreprocessed}->[0] = 1;
-                    push @requests, $reqcopy;
+                    # to check if the SN already handled
+                    next if (exists($prehandledhash{$_}));
+                    if (! exists($iphash{$_})) {
+                        my $reqcopy = {%$req};
+                        $reqcopy->{'node'}                 = $sn_hash->{$_};
+                        $reqcopy->{'_xcatdest'}            = $_;
+                        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                        push @requests, $reqcopy;
+                    } elsif ($handled4me == 0) {
+                        my $reqcopy = {%$req};
+                        $reqcopy->{'node'} = $sn_hash->{$_};
+                        $reqcopy->{_xcatpreprocessed}->[0] = 1;
+                        push @requests, $reqcopy;
+                        $handled4me = 1;
+                    }
                 }
             }
         }    # list of nodes specified
@@ -1243,42 +1290,32 @@ sub preprocess_request
          # if -n option or nodes were specified
     elsif (@nodes > 0 or $opt{n}) {    #send the request to every dhservers
         $req->{'node'} = \@nodes;
+        $req->{_xcatpreprocessed}->[0] = 1;
         @requests = ({%$req}); #Start with a straight copy to reflect local instance
-             # if not localonly - get list of service nodes and create requests
-        unless ($localonly) {
-            my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
-            if (@sn > 0) { $hasHierarchy = 1; }
+        
+        # if not localonly - get list of service nodes and create requests
+        unless ($localonly || $hasHierarchy == 0) {
 
-            foreach my $s (@sn)
+            # If running on SN, get site.master from DB and dispatch to it as MN will not be in SN list.
+            if ( $issn ) {
+                my @entries = xCAT::TableUtils->get_site_attribute("master");
+                my $reqcopy = {%$req};
+                $reqcopy->{'_xcatdest'} = $entries[0];
+                push @requests, $reqcopy;
+            }
+
+            foreach my $s (@snlist)
             {
                 if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
+                next if ($issn && exists($iphash{$s}));
+
                 my $reqcopy = {%$req};
                 $reqcopy->{'_xcatdest'} = $s;
-                $reqcopy->{_xcatpreprocessed}->[0] = 1;
                 push @requests, $reqcopy;
             }
         }
     }
 
-    xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: hasHierarchy=$hasHierarchy");
-
-    if ($hasHierarchy)
-    {
-        #hierarchy detected, enforce more rigorous sanity
-        my $ntab = xCAT::Table->new('networks');
-        if ($ntab)
-        {
-            foreach (@{ $ntab->getAllEntries() })
-            {
-                # if dynamicrange specified but dhcpserver was not - issue error message
-                if ($_->{dynamicrange} and not $_->{dhcpserver})
-                {
-                    $callback->({ error => [ "Hierarchy requested, therefore networks.dhcpserver must be set for net=" . $_->{net} . "" ], errorcode => [1] });
-                    return [];
-                }
-            }
-        }
-    }
 
     #print Dumper(@requests);
     return \@requests;

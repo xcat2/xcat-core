@@ -72,7 +72,6 @@ sub addnode
     # if this ip was already added then just update the entry
     while ($idx <= $#hosts)
     {
-
         if ($hosts[$idx] =~ /^${ip}\s/
             or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.\r]/)
         {
@@ -661,7 +660,10 @@ sub donics
             if (!$nicip) {
                 next;
             }
-
+            #Only support format for nicips is :<nic1>!<ip1>|<ip2>|... or <nic1>!<one regular expression>
+            if ($nicip =~ /^\|\S*\|$/) {
+                $nicip = xCAT::Table::transRegexAttrs($node, $nicip);
+            }
             if ($nicip =~ /\|/) {
                 my @ips = split(/\|/, $nicip);
                 foreach my $ip (@ips) {

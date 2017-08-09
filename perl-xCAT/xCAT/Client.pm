@@ -33,7 +33,7 @@ if ($inet6support) {
 if ($^O =~ /^linux/i) {
 
     # Is IPv6 enabled on the MN or xcat client node at all?
-    my $ipv6enabled = `ip addr 2> /dev/null | grep inet6`;
+    my $ipv6enabled = `ip -6 -o addr 2> /dev/null`;
     if (!$ipv6enabled) {
         $inet6support = 0;
     }
@@ -1129,6 +1129,13 @@ sub handle_response {
         return;
     }
 
+    my $msgsource;
+    if ($ENV{'XCATSHOWSVR'}) {
+        unless ($rsp->{NoSvrPrefix}) { # some plugins could disable the prefix forcely by seting the flag in response.
+            $msgsource = $rsp->{xcatdsource}->[0] if ($rsp->{xcatdsource});
+        }
+    }
+
     #print "in handle_response\n";
     # Handle errors
     if (defined($rsp->{errorcode})) {
@@ -1141,24 +1148,23 @@ sub handle_response {
             $xCAT::Client::EXITCODE |= $rsp->{errorcode};
         }    # assume it is a non-reference scalar
     }
+
     if ($rsp->{error}) {
 
         #print "printing error\n";
         if (ref($rsp->{error}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{error} }) {
-                if ($rsp->{NoErrorPrefix}) {
-                    print STDERR "$text\n";
-                } else {
-                    print STDERR "Error: $text\n";
-                }
+                my $desc = "$text";
+                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+                print STDERR "$desc\n";
             }
         }
         else {
-            if ($rsp->{NoErrorPrefix}) {
-                print STDERR ($rsp->{error} . "\n");
-            } else {
-                print STDERR ("Error: " . $rsp->{error} . "\n");
-            }
+            my $desc = $rsp->{error};
+            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            $desc = "Error: $desc" unless ($rsp->{NoErrorPrefix});
+            print STDERR "$desc\n";
         }
     }
     if ($rsp->{warning}) {
@@ -1166,19 +1172,17 @@ sub handle_response {
         #print "printing warning\n";
         if (ref($rsp->{warning}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{warning} }) {
-                if ($rsp->{NoWarnPrefix}) {
-                    print STDERR "$text\n";
-                } else {
-                    print STDERR "Warning: $text\n";
-                }
+                my $desc = "$text";
+                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+                print STDERR "$desc\n";
             }
         }
         else {
-            if ($rsp->{NoWarnPrefix}) {
-                print STDERR ($rsp->{warning} . "\n");
-            } else {
-                print STDERR ("Warning: " . $rsp->{warning} . "\n");
-            }
+            my $desc = $rsp->{warning};
+            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            $desc = "Warning: $desc" unless ($rsp->{NoWarnPrefix});
+            print STDERR "$desc\n";
         }
     }
     if ($rsp->{info}) {
@@ -1186,11 +1190,15 @@ sub handle_response {
         #print "printing info\n";
         if (ref($rsp->{info}) eq 'ARRAY') {
             foreach my $text (@{ $rsp->{info} }) {
-                print "$text\n";
+                my $desc = "$text";
+                $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+                print "$desc\n";
             }
         }
         else {
-            print($rsp->{info} . "\n");
+            my $desc = $rsp->{info};
+            $desc = "[$msgsource]: $desc" if ($msgsource && $desc);
+            print "$desc\n";
         }
     }
 
@@ -1223,6 +1231,11 @@ sub handle_response {
                 $desc = $node->{name}->[0];
             } else {
                 $desc = $node->{name};
+            }
+            if ($desc) {
+                $desc = "$desc: [$msgsource]" if ($msgsource);
+            } else {
+                $desc = "[$msgsource]" if ($msgsource);
             }
             if ($node->{errorcode}) {
                 if (ref($node->{errorcode}) eq 'ARRAY') {
@@ -1274,7 +1287,7 @@ sub handle_response {
             if ($node->{base64_data}) {
                 $desc = $desc . ": " . decode_base64($node->{base64_data}->[0]);
             }
-            if ($desc) {
+            if ($desc && $desc ne "[$msgsource]") {
                 if ($errflg == 1) {
                     print STDERR ("$desc\n");
                 } else {
@@ -1306,7 +1319,10 @@ sub handle_response {
                     }
                 }
             }
-            if ($desc) { print "$desc\n"; }
+            if ($desc) {
+                $desc = "[$msgsource]: $desc" if ($msgsource);
+                print "$desc\n"; 
+            }
         }
     }
 }    # end of handle_response

@@ -1,0 +1,8 @@
+description:the cases in this bundle is to used to verify xCAT hardware control funtions on HMC managed servers.
+#INCLUDE:hdctrl_general.bundle#
+rpower_softoff
+rpower_onstandby
+rinv_bus
+rinv_config
+rinv_wrongbmcpasswd
+rvitals_lcds

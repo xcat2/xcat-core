@@ -1,6 +1,13 @@
 #!/bin/bash
 log_label="xcat.genesis.dodiscovery"
 
+#the time when the latest findme request is sent to master
+reqtime=0
+#the timeout value on the waiting for the "processed" response from master
+#when the xcatd on master finished the processing of my findme request, 
+#a "processed" response will be replied
+maxresptime=180
+
 minixcatd.awk &
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
@@ -25,11 +32,11 @@ logger -s -t $log_label -p local4.info "Waiting for nics to get addresses"
 while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	NEWNICSGETTINGADDR=""
 	for nic in $NICSGETTINGADDR; do
-		if ! ip addr show dev $nic |grep -v inet6|grep inet >/dev/null;  then
+		if ! ip -4 -o a show dev $nic |grep -q inet;  then
 			NEWNICSGETTINGADDR="$NEWNICSGETTINGADDR $nic"
 		else
 			echo -n "$nic|"
-			ip addr show dev $nic |grep -v inet6|grep inet|sed -e s/\\/.*//|awk '{print $2}'
+			ip -4 -o addr show dev $nic | awk '{print $4}' | sed -e sX/.*XX
 		fi
 	done
 	sleep 0.1
@@ -56,6 +63,23 @@ done
 	
 #time to make our packet...
 while [ ! -r /restart ]; do
+
+    #record the current time
+    curtime=$(date +%s)       
+
+    #the existence of "/processing" indicates that my  findme request is under processing
+    if [ -f "/processing"  ]; then
+        if [ $curtime -gt $[ $reqtime + $maxresptime ] ]; then
+           #I think my findme request processing is timeout, I will resend the findme request
+           logger -s -t $log_label -p local4.info  "seems the processing of my findme request cost more than $maxresptime, send new findme request"
+           rm -rf /processing
+        else
+           logger -s -t $log_label -p local4.info  "My findme request is still under processing, do not send new request"
+           sleep 5
+        fi
+        continue
+    fi
+
 MTM=unknown
 SERIAL=unknown
 ARCH=unknown
@@ -141,10 +165,12 @@ if [ "$UUID" != "unknown" ]; then
         echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 fi
 
-if [ "$MTM" != "unknown" ]; then
+flag_mtm=`echo '$MTM' | sed 's/0//g'`
+if [ $flag_mtm ] && [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
-if [ "$SERIAL" != "unknown" ]; then
+flag_serial=`echo '$SERIAL' | sed 's/0//g'`
+if [ $flag_serial ] && [ "$SERIAL" != "unknown" ]; then
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 fi
 if [ "$PLATFORM" != "unknown" ]; then
@@ -157,6 +183,11 @@ if [ "$IsStatic" ]; then
     if [ "$BMCIPADDR" ]; then
         echo "<bmc>$BMCIPADDR</bmc>" >> /tmp/discopacket
     fi
+fi
+
+BMCMAC=`ipmitool lan print 1 | grep 'MAC Address' | cut -d ":" -f2-7 | sed 's/ //'`
+if [ "$BMCMAC" ]; then
+    echo "<bmcmac>$BMCMAC</bmcmac>" >> /tmp/discopacket
 fi
 
 # Check whether the hardware support in-band BMC configuration with the IPMI device
@@ -187,8 +218,8 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	ONBOARDINDEX=""
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
-	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
-	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
+	ADDRESS=`ip -4 -o a show dev $dev|awk '/global/{print $4}'`
+        MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
         if [ "$MAC_OF_FIRST_UP_NIC" == "unknown" ]; then
             MAC_OF_FIRST_UP_NIC=`echo $MAC | sed -e s/://g`
         fi
@@ -280,6 +311,9 @@ gzip -9 /tmp/discopacket
 		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
+      
+        #record the time when the "findme request is sent to master"
+        reqtime=$(date +%s) 
 	#cat /tmp/discopacket
 	logger -s -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5

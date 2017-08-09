@@ -99,16 +99,17 @@ if (($::SSH) || ($::ALL))
     config_ssh();
 }
 
-if (($::LICENSE) || ($::ALL))
+if ($::LICENSE)
 {
     install_license();
 }
 
-if (($::SNMP) || ($::ALL))
+if ($::SNMP)
 {
     config_snmp();
 }
-if (($::NTP) || ($::ALL))
+
+if ($::NTP)
 {
     config_ntp();
 }
@@ -171,9 +172,19 @@ sub config_ssh {
     if (@config_switches) {
         #update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=ssh_configed ";
+        $cmd = "chdef $csw status=ssh_configured otherinterfaces=";
         $rc= xCAT::Utils->runcmd($cmd, 0);
         print "ssh configured for $csw\n";
+        if ($::ALL) {
+            $cmd = "updatenode $csw -P hardeths,enablesnmp,configinterface";
+            $rc= xCAT::Utils->runcmd($cmd, 0); 
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");
+            }
+            $cmd = "chdef $csw status=configured";
+            $rc= xCAT::Utils->runcmd($cmd, 0);
+            print "switch: $csw configured\n";
+        }
     }
 }
 
@@ -369,7 +380,7 @@ sub config_ntp {
     if (@config_switches) {
         #update switch status
         my $csw = join(",",@config_switches);
-        $cmd = "chdef $csw status=ntp_configed";
+        $cmd = "chdef $csw status=ntp_configured";
         $rc= xCAT::Utils->runcmd($cmd, 0);
     }
 
@@ -394,7 +405,7 @@ sub usage
     configonie --switches switchnames --snmp
     configonie --switches switchnames --ntp 
 
-    To set ssh, install license(license file: /root/license.txt), config snmp and ntp:
+    To setup ssh passwordless, change ip to static, enable snmp configuration and configure basic interface :
         configonie --switches switchnames --all 
     \n";
 }

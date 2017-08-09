@@ -22,12 +22,12 @@ elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-F
     export PRINIC=`ip -o link|grep -i  "$PRINIC" |awk  '{print $2}'|sed s/://`
 fi
 #IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
-IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
+IP=$(ip -4 -o a sh dev $PRINIC | awk  '/inet/{print $4}' | head -n 1 | awk -F '/' '{print $1}')
 if [ -z $IP ]
 then
 	dhclient $PRINIC
 	#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
-        IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
+        IP=$(ip -4 -o a sh dev $PRINIC | awk  '/inet/{print $4}' | head -n 1 | awk -F '/' '{print $1}')
 fi
 
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then

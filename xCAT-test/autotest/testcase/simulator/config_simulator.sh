@@ -6,6 +6,8 @@ cnhn=$3  # CN hostname
 username=$4  # bmcusername
 password=$5  # bmcpassword
 nodes=$6  # number of IPs want to config
+delay_type=$7 # delay type "constant" or "random"
+delay_time=$8 # delay time
 
 if [ $nodes -gt 10000 ]; then
     echo "Unsupported number of nodes: $nodes"
@@ -42,24 +44,37 @@ if [ $flag = "-s" ]; then
 
     cd /root/ && git clone git@github.com:xuweibj/openbmc_simulator.git
 
-    if [ $nodes ]; then
+    if [ $nodes ] && [ $nodes -gt 0 ]; then
         lsdef $cnhn -z > /tmp/$cnhn.stanza
         rmdef $cnhn
 
-        /root/openbmc_simulator/simulator -n $nic -r $range 
+        if [ $delay_type ] && [ $delay_time ]; then 
+            option_string="-d $delay_type -t $delay_time -n $nic -r $range"
+        else
+            option_string="-n $nic -r $range"
+        fi
+        /root/openbmc_simulator/simulator $option_string 
+        if [ $? != 0 ]; then
+            echo "Start simulator Failed"
+            exit 1
+        fi
 
         node_end=$[nodes-1]
         chdef -t group $cnhn mgt=openbmc bmc="|\D+(\d+)$|10.100.(1+((\$1)/100)).((\$1)%100+1)|" bmcusername=$username bmcpassword=$password
-        chdef simulator_test_[0-$node_end] groups=$cnhn  # use CN hostname as group, so when run command against CN will rpower against all nodes added here
+        chdef simulator_test[0-$node_end] groups=$cnhn  # use CN hostname as group, so when run command against CN will rpower against all nodes added here
     else 
         cnip=`lsdef $cnhn -i bmc -c | awk -F '=' '{print $2}'`
         echo $cnip > "/tmp/simulator"
         mnip=`ping $mnhn -c 1 | grep "64 bytes from" |awk -F'(' '{print $2}'|awk -F')' '{print $1}'`
         chdef $cnhn bmc=$mnip
-        /root/openbmc_simulator/simulator
+        if [ $delay_type ] && [ $delay_time ]; then
+            /root/openbmc_simulator/simulator -d $delay_type -t $delay_time
+        else
+            /root/openbmc_simulator/simulator
+        fi
     fi
 elif [ $flag = "-c" ]; then
-    if [ $nodes ]; then
+    if [ $nodes ] && [ $nodes -gt 0 ]; then
         /root/openbmc_simulator/simulator -c -n $nic -r $range
         rmdef $cnhn
         cat /tmp/$cnhn.stanza | mkdef -z

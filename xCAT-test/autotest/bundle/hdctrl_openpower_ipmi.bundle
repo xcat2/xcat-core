@@ -1,0 +1,14 @@
+description:the cases in this bundle is to verify xCAT hardware control functions on servers which are managed using IPMI. 
+#INCLUDE:hdctrl_general.bundle#
+rinv_uuid
+rinv_vpd
+rinv_wrongbmcpasswd
+rvitals_wattage
+rvitals_fanspeed
+rvitals_power
+rvitals_leds
+rpower_errorcommand_OpenpowerBmc
+rpower_softoff_OpenpowerBmc
+rpower_suspend_OpenpowerBmc
+rpower_wake_OpenpowerBmc
+rpower_wrongpasswd

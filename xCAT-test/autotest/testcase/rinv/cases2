@@ -1,0 +1,29 @@
+start:rinv_mprom
+description:this case is to test mprom option for rinv on x86_64 servers.
+hcp:ipmi
+arch:x86_64
+cmd:rinv $$CN mprom 
+check:rc==0
+check:output=~BMC Firmware:\s*\w+.\w+
+end
+
+start:rinv_guid
+description:this case is to test guid option for rinv on x86_64 servers.
+hcp:ipmi
+arch:x86_64
+cmd:rinv $$CN guid 
+check:rc==0
+check:output=~UUID/GUID:\s*\w+-\w+-\w+-\w+-\w+
+end
+
+start:rinv_dimm
+description:this case is to test dimm option for rinv on x86_64 servers.
+hcp:ipmi
+arch:x86_64
+cmd:rinv $$CN dimm
+check:rc==0
+check:output=~DIMM 1 :\s*\w+
+check:output=~DIMM 1 Manufacture Date:\s*\w+
+check:output=~DIMM 1 Manufacture Location:\s*\d+
+check:output=~DIMM 1 Model:\s*\w+-\w+
+end

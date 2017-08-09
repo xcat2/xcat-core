@@ -1,0 +1,58 @@
+#!/bin/bash
+#this script send getpostscript request to xcatd on MN and generate /xcatpost/mypostscript 
+#which includes the glocal environment variables to run postscripts
+
+if [ -z "$XCATDEST" ]; then
+        XCATDEST=$1
+fi
+
+#compose getpostscript request
+echo "<xcatrequest>
+<command>getpostscript</command>
+</xcatrequest>" > /tmp/req.xml
+
+
+
+if [ -f /tmp/resp.xml ]; then 
+    #remove any existing response file
+    rm /tmp/resp.xml; 
+fi
+
+
+#communicate with xcatd on MN with getpostscript request
+#the response will be saved in /tmp/resp.xml
+while [ ! -f /tmp/resp.xml ] || grep error /tmp/resp.xml; do
+        if [ -f /tmp/resp.xml ]; then
+                timer=60
+                while [ $timer -gt 0 ]; do
+                        echo -en  "Retrying in $timer seconds  \r" >&2
+                        sleep 1
+                        timer=$(($timer-1));
+                done
+        fi
+        #echo "                                                         " >&2
+        if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+                cat /tmp/req.xml | /usr/bin/openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/resp.xml
+        else
+                cat /tmp/req.xml | /usr/bin/openssl s_client -connect $XCATDEST -quiet 2>/dev/null > /tmp/resp.xml
+        fi
+done
+
+if [ -f /tmp/resp.xml ] && grep '<data>' /tmp/resp.xml >/dev/null 2>&1 ;then
+    echo "Success to obtain mypostscript!"
+else
+    echo "Failed to obtain mypostscript!"
+    exit 1 
+fi
+
+#parse the script from the xml-formated  resposne
+cat /tmp/resp.xml | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /xcatpost/mypostscript
+
+#the script specified in the "postscripts" and "postbootscripts" are currently not supported
+#will be supported if there is requrement on this
+sed -i -e "/# postscripts-start-here/,$ d" /xcatpost/mypostscript
+
+rm -f /tmp/req.xml
+rm -f /tmp/resp.xml
+exit 0
+

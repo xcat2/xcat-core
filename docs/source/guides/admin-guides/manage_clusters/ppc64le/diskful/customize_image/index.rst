@@ -11,6 +11,7 @@ Optional means all the subitems in this page are not necessary to finish an OS d
    pre_post_script.rst
    syncfile.rst
    additional_pkg.rst
-   cfg_network_adapter.rst
+   use_kernel_patch.rst
+   network/index.rst
    
    

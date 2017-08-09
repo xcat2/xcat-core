@@ -150,6 +150,14 @@ sub findme {
         }
     }
 
+    unless ($bmc_node) {
+        if ($request->{'bmcmac'}->[0]) {
+            my $bmcmac = lc($request->{'bmcmac'}->[0]);
+            $bmcmac =~ s/\://g;
+            my $tmp_node = "node-$bmcmac";
+            $bmc_node = $tmp_node if ($::XCATMPHASH{$tmp_node});
+        }
+    }
 
     if ($node) {
         my $skiphostip;

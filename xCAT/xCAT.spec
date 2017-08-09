@@ -44,6 +44,7 @@ Requires: xCAT-genesis-scripts-x86_64 = 1:%{version}-%{release}
 Requires: xCAT-genesis-scripts-ppc64  = 1:%{version}-%{release}
 %endif
 
+Requires: rsync
 
 %ifos linux
 Requires: httpd nfs-utils nmap bind perl(CGI)
