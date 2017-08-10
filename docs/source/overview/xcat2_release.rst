@@ -14,6 +14,66 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.13.6                    |- RHEL 7.4     |             |-OpenBMC support(Alpha level code)|
+|| 2017/8/10                      |               |             |                                  |
+||                                |               |             |  rsetboot                        |
+| `2.13.6 Release Notes <https:// |               |             |  rspconfig ip/netmask/gateway    |
+| github.com/xcat2/xcat-core/wiki |               |             |                                  |
+| /XCAT_2.13.6_Release_Notes>`_   |               |             |-WSP EUH support                  |
+|                                 |               |             |                                  |
+|                                 |               |             |  Hardware discovery              |
+|                                 |               |             |  bmcsetup                        |
+|                                 |               |             |-nodeset performance enhancement  |
+|                                 |               |             | (Phase 3)                        |
+|                                 |               |             |                                  |
+|                                 |               |             | Dispatch request to the specified| 
+|                                 |               |             | service nodes                    |  
+|                                 |               |             |-Boston server verification       |
+|                                 |               |             |-CORAL hardware/switch discovery  |
+|                                 |               |             | process                          |
+|                                 |               |             |                                  |
+|                                 |               |             | the DHCP dynamic range           |
+|                                 |               |             | DHCP relay                       |
+|                                 |               |             |-network configuration interface  |
+|                                 |               |             |                                  |
+|                                 |               |             | niccustomscripts                 |
+|                                 |               |             | refine xCAT network scripts      |
+|                                 |               |             | related document                 |
+|                                 |               |             |-xCAT MN migration steps          |
+|                                 |               |             | verification                     |
+|                                 |               |             |-new xCAT prototype               |
+|                                 |               |             |                                  |
+|                                 |               |             | the framework for copycds        |
+|                                 |               |             | the framework for deploying RH on|
+|                                 |               |             | x86 VMs                          |
+|                                 |               |             |-[xcat-deps] xcat-genesis-base    |
+|                                 |               |             | package based on Fedora 26 ppc64 |
++---------------------------------+---------------+-------------+----------------------------------+
+|| xCAT 2.13.5                    |               |             |-OpenBMC support(Alpha level code)|
+|| 2017/6/30                      |               |             |                                  |
+||                                |               |             |  rinv                            |
+| `2.13.5 Release Notes <https:// |               |             |  rinstall                        |
+| github.com/xcat2/xcat-core/wiki |               |             |  bmcdiscover                     |
+| /XCAT_2.13.5_Release_Notes>`_   |               |             |-Enhancements to self testing     |
+|                                 |               |             | tool xcat-test                   |
+|                                 |               |             |-Service node pool support for    |
+|                                 |               |             | rhels7 ppc64le diskless          |
+|                                 |               |             |-Mellanox cumulus switch ZTP based| 
+|                                 |               |             | discovery and auto-configuration |
+|                                 |               |             |-Performance enhancements         |
+|                                 |               |             |                                  |
+|                                 |               |             |  makedhcp, makedns               |
+|                                 |               |             |  nodeset                         |
+|                                 |               |             |-[xcat-deps] ipmitool-xcat package|
+|                                 |               |             | updated to version 1.8.18 for    |
+|                                 |               |             |                                  |
+|                                 |               |             |  RHEL7.x                         |
+|                                 |               |             |  SLES12.x                        |
+|                                 |               |             |  Ubuntu14.04.x                   |
+|                                 |               |             |-[xcat-deps] conserver-xcat       |
+|                                 |               |             | package updated to version 8.2.1 |
+|                                 |               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.4                    |- RHV 4.1      |             |- OpenBMC support(experimental):  |
 || 2017/5/19                      |               |             |                                  |
 ||                                |               |             |  rinv                            |
