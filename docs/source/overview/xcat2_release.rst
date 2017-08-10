@@ -14,38 +14,34 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.13.6                    |- RHEL 7.4     |             |-OpenBMC support(Alpha level code)|
-|| 2017/8/10                      |               |             |                                  |
-||                                |               |             |  rsetboot                        |
-| `2.13.6 Release Notes <https:// |               |             |  rspconfig ip/netmask/gateway    |
-| github.com/xcat2/xcat-core/wiki |               |             |                                  |
-| /XCAT_2.13.6_Release_Notes>`_   |               |             |-WSP EUH support                  |
-|                                 |               |             |                                  |
-|                                 |               |             |  Hardware discovery              |
-|                                 |               |             |  bmcsetup                        |
+|| xCAT 2.13.6                    |- RHEL 7.4     |-Boston      |-OpenBMC support(Alpha level code)|
+|| 2017/8/10                      |               | server      |                                  |
+||                                |               |             |  rsetboot net/hd/def             |
+| `2.13.6 Release Notes <https:// |               |             |  rflash list/upload/activate     |
+| github.com/xcat2/xcat-core/wiki |               |             |         /delete/check            |
+| /XCAT_2.13.6_Release_Notes>`_   |               |             |  rspconfig retrieve OpenBCM ip/  |
+|                                 |               |             |  netmask/gateway information     | 
 |                                 |               |             |-nodeset performance enhancement  |
 |                                 |               |             | (Phase 3)                        |
 |                                 |               |             |                                  |
 |                                 |               |             | Dispatch request to the specified| 
-|                                 |               |             | service nodes                    |  
-|                                 |               |             |-Boston server verification       |
-|                                 |               |             |-CORAL hardware/switch discovery  |
-|                                 |               |             | process                          |
+|                                 |               |             |service nodes with 'disjointdhcps'|  
+|                                 |               |             | Enhance the output of nodeset in |
+|                                 |               |             |hierarchical cluster              |
 |                                 |               |             |                                  |
-|                                 |               |             | the DHCP dynamic range           |
-|                                 |               |             | DHCP relay                       |
-|                                 |               |             |-network configuration interface  |
+|                                 |               |             |-network configuration interface: |
+|                                 |               |             | confignetwork is the only        |
+|                                 |               |             |interface to configure network    |
+|                                 |               |             |on SN/CN                          |
 |                                 |               |             |                                  |
-|                                 |               |             | niccustomscripts                 |
-|                                 |               |             | refine xCAT network scripts      |
-|                                 |               |             | related document                 |
-|                                 |               |             |-xCAT MN migration steps          |
-|                                 |               |             | verification                     |
-|                                 |               |             |-new xCAT prototype               |
+|                                 |               |             |-For hardware discovery           |
+|                                 |               |             | enhance bmcdiscover to use BMC   |
+|                                 |               |             |MAC address to identify BMC with  |
+|                                 |               |             |its host                          |
+|                                 |               |             | enhance "xcatprobe discovery"    |
+|                                 |               |             |tool to do configuration check    |
+|                                 |               |             |before starting hardware discovery|
 |                                 |               |             |                                  |
-|                                 |               |             | the framework for copycds        |
-|                                 |               |             | the framework for deploying RH on|
-|                                 |               |             | x86 VMs                          |
 |                                 |               |             |-[xcat-deps] xcat-genesis-base    |
 |                                 |               |             | package based on Fedora 26 ppc64 |
 +---------------------------------+---------------+-------------+----------------------------------+
