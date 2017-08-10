@@ -91,10 +91,13 @@ if ($ENV{SSHCONSOLEPORT}) {
     $sshport= $ENV{SSHCONSOLEPORT};
 }
 
-#user needs to download sshpass rpm if need to use it
+# To automatically connect to the console without the need to send over the ssh keys, 
+# ensure sshpass is installed on the Management and/or Service Nodes.
 if (-x '/usr/bin/sshpass') {
     exec "/usr/bin/sshpass -p $password ssh -p $sshport -l $username $bmcip";
 } else {
+    # This will prompt the user to enter the password for the BMC 
+    # if ssh keys are not sent and sshpass is not being used
     exec "ssh -p $sshport -l $username $bmcip";
 }
 
