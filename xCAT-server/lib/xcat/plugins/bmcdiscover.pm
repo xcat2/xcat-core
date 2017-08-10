@@ -125,14 +125,6 @@ sub process_request
     my $request_command = shift;
     $::CALLBACK = $callback;
 
-    #$::args     = $request->{arg};
-    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
-    } elsif (ref($request->{environment}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON};
-    } else {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
-    }
     if ($request->{sn}) {
         my $dhcpservers = $request->{dhcpservers};
         if (!defined($dhcpservers) or ref($dhcpservers) ne 'ARRAY') {
@@ -1182,10 +1174,6 @@ sub bmcdiscovery_openbmc{
         if (defined($response->{data})) {
             if (defined($response->{data}->{PartNumber}) and defined($response->{data}->{SerialNumber})) {
                 $mtm = $response->{data}->{PartNumber};
-                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
-                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
-                    $mtm = "";
-                }
                 $serial = $response->{data}->{SerialNumber}; 
             }
  
