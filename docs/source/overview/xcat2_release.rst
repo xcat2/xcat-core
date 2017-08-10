@@ -14,60 +14,66 @@ xCAT 2.13.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
-|| xCAT 2.13.6                    |- RHEL 7.4     |-Boston      |-OpenBMC support(Alpha level code)|
+|| xCAT 2.13.6                    |- RHEL 7.4     |-Boston      |- OpenBMC support                 |
 || 2017/8/10                      |               | server      |                                  |
 ||                                |               |             |  rsetboot net/hd/def             |
 | `2.13.6 Release Notes <https:// |               |             |  rflash list/upload/activate     |
-| github.com/xcat2/xcat-core/wiki |               |             |         /delete/check            |
+| github.com/xcat2/xcat-core/wiki |               |             |  /delete/check                   |
 | /XCAT_2.13.6_Release_Notes>`_   |               |             |  rspconfig retrieve OpenBCM ip/  |
 |                                 |               |             |  netmask/gateway information     | 
-|                                 |               |             |-nodeset performance enhancement  |
-|                                 |               |             | (Phase 3)                        |
+|                                 |               |             |- nodeset performance enhancement |
+|                                 |               |             |  (Phase 3)                       |
 |                                 |               |             |                                  |
-|                                 |               |             | Dispatch request to the specified| 
-|                                 |               |             |service nodes with 'disjointdhcps'|  
-|                                 |               |             | Enhance the output of nodeset in |
-|                                 |               |             |hierarchical cluster              |
+|                                 |               |             |  Dispatch request to the         |
+|                                 |               |             |  specified service nodes with    | 
+|                                 |               |             |  'disjointdhcps'                 |  
+|                                 |               |             |  Enhance the output of nodeset   |
+|                                 |               |             |  in hierarchical cluster         |
 |                                 |               |             |                                  |
-|                                 |               |             |-network configuration interface: |
-|                                 |               |             | confignetwork is the only        |
-|                                 |               |             |interface to configure network    |
-|                                 |               |             |on SN/CN                          |
+|                                 |               |             |- network configuration interface:|
 |                                 |               |             |                                  |
-|                                 |               |             |-For hardware discovery           |
-|                                 |               |             | enhance bmcdiscover to use BMC   |
-|                                 |               |             |MAC address to identify BMC with  |
-|                                 |               |             |its host                          |
-|                                 |               |             | enhance "xcatprobe discovery"    |
-|                                 |               |             |tool to do configuration check    |
-|                                 |               |             |before starting hardware discovery|
+|                                 |               |             |  confignetwork is the only       |
+|                                 |               |             |  interface to configure network  |
+|                                 |               |             |  on SN/CN                        |
 |                                 |               |             |                                  |
-|                                 |               |             |-[xcat-deps] xcat-genesis-base    |
-|                                 |               |             | package based on Fedora 26 ppc64 |
+|                                 |               |             |- For hardware discovery          |
+|                                 |               |             |                                  |
+|                                 |               |             |  enhance bmcdiscover to use BMC  |
+|                                 |               |             |  MAC address to identify BMC with|
+|                                 |               |             |  its host                        |
+|                                 |               |             |  enhance "xcatprobe discovery"   |
+|                                 |               |             |  tool to do configuration check  |
+|                                 |               |             |  before starting hardware        |
+|                                 |               |             |  discovery                       |
+|                                 |               |             |                                  |
+|                                 |               |             |- [xcat-deps] xcat-genesis-base   |
+|                                 |               |             |  package based on Fedora 26 ppc64|
 +---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.13.5                    |               |             |-OpenBMC support(Alpha level code)|
+|| xCAT 2.13.5                    |               |             |- OpenBMC support                 |
 || 2017/6/30                      |               |             |                                  |
 ||                                |               |             |  rinv                            |
 | `2.13.5 Release Notes <https:// |               |             |  rinstall                        |
 | github.com/xcat2/xcat-core/wiki |               |             |  bmcdiscover                     |
-| /XCAT_2.13.5_Release_Notes>`_   |               |             |-Enhancements to self testing     |
-|                                 |               |             | tool xcat-test                   |
-|                                 |               |             |-Service node pool support for    |
-|                                 |               |             | rhels7 ppc64le diskless          |
-|                                 |               |             |-Mellanox cumulus switch ZTP based| 
-|                                 |               |             | discovery and auto-configuration |
-|                                 |               |             |-Performance enhancements         |
+| /XCAT_2.13.5_Release_Notes>`_   |               |             |- Enhancements to self testing    |
+|                                 |               |             |  tool xcat-test                  |
+|                                 |               |             |- Service node pool support for   |
+|                                 |               |             |  rhels7 ppc64le diskless         |
+|                                 |               |             |- Mellanox cumulus switch ZTP     | 
+|                                 |               |             |  based discovery and             |
+|                                 |               |             |  auto-configuration              |
+|                                 |               |             |- Performance enhancements        |
 |                                 |               |             |                                  |
 |                                 |               |             |  makedhcp, makedns               |
 |                                 |               |             |  nodeset                         |
-|                                 |               |             |-[xcat-deps] ipmitool-xcat package|
-|                                 |               |             | updated to version 1.8.18 for    |
+|                                 |               |             |- [xcat-deps] ipmitool-xcat       |
+|                                 |               |             |  package updated to version      |
+|                                 |               |             |  1.8.18 for                      |
 |                                 |               |             |                                  |
 |                                 |               |             |  RHEL7.x                         |
 |                                 |               |             |  SLES12.x                        |
 |                                 |               |             |  Ubuntu14.04.x                   |
-|                                 |               |             |-[xcat-deps] conserver-xcat       |
-|                                 |               |             | package updated to version 8.2.1 |
+|                                 |               |             |- [xcat-deps] conserver-xcat      |
+|                                 |               |             |  package updated to version 8.2.1|
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.13.4                    |- RHV 4.1      |             |- OpenBMC support(experimental):  |
