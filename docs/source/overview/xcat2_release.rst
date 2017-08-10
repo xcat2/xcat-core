@@ -17,9 +17,10 @@ xCAT 2.13.x
 || xCAT 2.13.6                    |- RHEL 7.4     |-Boston      |- OpenBMC support                 |
 || 2017/8/10                      |               | server      |                                  |
 ||                                |               |             |  rsetboot net/hd/def             |
-| `2.13.6 Release Notes <https:// |               |             |  rflash list/upload/activate     |
-| github.com/xcat2/xcat-core/wiki |               |             |  /delete/check                   |
-| /XCAT_2.13.6_Release_Notes>`_   |               |             |  rspconfig retrieve OpenBCM ip/  |
+| `2.13.6 Release Notes <https:// |               |             |                                  |
+| github.com/xcat2/xcat-core/wiki |               |             |  rflash list/upload/activate     |
+| /XCAT_2.13.6_Release_Notes>`_   |               |             |  /delete/check                   |
+|                                 |               |             |  rspconfig retrieve OpenBCM ip/  |
 |                                 |               |             |  netmask/gateway information     | 
 |                                 |               |             |- nodeset performance enhancement |
 |                                 |               |             |  (Phase 3)                       |
