@@ -20,6 +20,7 @@ xCAT 2.13.x
 | `2.13.6 Release Notes <https:// |               |             |                                  |
 | github.com/xcat2/xcat-core/wiki |               |             |  rflash list/upload/activate     |
 | /XCAT_2.13.6_Release_Notes>`_   |               |             |  /delete/check                   |
+|                                 |               |             |                                  |
 |                                 |               |             |  rspconfig retrieve OpenBCM ip/  |
 |                                 |               |             |  netmask/gateway information     | 
 |                                 |               |             |- nodeset performance enhancement |
@@ -27,7 +28,8 @@ xCAT 2.13.x
 |                                 |               |             |                                  |
 |                                 |               |             |  Dispatch request to the         |
 |                                 |               |             |  specified service nodes with    | 
-|                                 |               |             |  'disjointdhcps'                 |  
+|                                 |               |             |  'disjointdhcps'                 |
+|                                 |               |             |                                  |  
 |                                 |               |             |  Enhance the output of nodeset   |
 |                                 |               |             |  in hierarchical cluster         |
 |                                 |               |             |                                  |
@@ -42,6 +44,7 @@ xCAT 2.13.x
 |                                 |               |             |  enhance bmcdiscover to use BMC  |
 |                                 |               |             |  MAC address to identify BMC with|
 |                                 |               |             |  its host                        |
+|                                 |               |             |                                  |
 |                                 |               |             |  enhance "xcatprobe discovery"   |
 |                                 |               |             |  tool to do configuration check  |
 |                                 |               |             |  before starting hardware        |
