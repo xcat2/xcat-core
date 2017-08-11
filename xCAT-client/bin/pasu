@@ -213,6 +213,7 @@ sub processoutput {      #This way, one arbiter handles output, no interrupting
                     $line !~ /Lenovo ASU/i &&
                     $line !~ /^\s*$/i &&
                     $line !~ /Lenovo ToolsCenterSuite CLI/i &&
+                    $line !~ /Lenovo XClarity Essentials OneCLI/i &&
                     $line !~ /Invoking SHOW command .../i &&
                     $line !~ /Connected to BMC by IP address/i &&
                     $line !~ /Succeeded running the command /i &&
