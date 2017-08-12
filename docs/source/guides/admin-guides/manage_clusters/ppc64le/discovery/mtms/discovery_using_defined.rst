@@ -93,6 +93,9 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
           serial=10112CA
           ip=10.1.2.1 
 
+#. Define the compute nodes into xCAT: ::
+
+       cat predefined.stanzas | mkdef -z 
 
 #. Set the chain table to run the ``bmcsetup`` script, this will set the BMC IP to static. ::
 
@@ -110,9 +113,6 @@ The BMC IP address is obtained by the open range dhcp server and the plan in thi
 
        chdef cn01 bmc=172.20.2.1 
 
-#. Define the compute nodes into xCAT: ::
-
-       cat predefined.stanzas | mkdef -z 
 
 #. Add the compute node IP information to ``/etc/hosts``: ::
 
