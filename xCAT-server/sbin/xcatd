@@ -801,10 +801,23 @@ sub do_udp_service {    # This function opens up a UDP port
                 foreach my $pkey (keys %packets) {
                     my $saddr = $packets{$pkey}->[0];
                     $data = $packets{$pkey}->[1];
+                    my ($err, $srcip, $servicename) = Socket::getnameinfo($saddr,Socket::NI_NUMERICHOST,Socket::NIx_NOSERV);
+                    
                     if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
                         store_fd({ data => $data, sockaddr => $saddr }, $discoctl); # for now, punt the gunzip to the worker process
+                        #notify the client that its request is been processing
+                        my $ret=xCAT::Utils->send_tcp_msg($srcip,3001,"processing");
+                        if($ret){
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $srcip that its 'findme' request is been processing");
+                        }
                     } elsif ($data =~ /^<xcat/) {    # xml format
                         store_fd({ data => $data, sockaddr => $saddr }, $discoctl);
+                        #notify the client that its request is been processing
+                        my $ret=xCAT::Utils->send_tcp_msg($srcip,3001,"processing");
+                        if($ret){
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $srcip that its 'findme' request is been processing");
+                        }
+
                     } else {    # for *now*, we'll do a tiny YAML subset
                         if ($data =~ /^resourcerequest: xcatd$/) {
                             $socket->send("ackresourcerequest\n", 0, $packets{$pkey}->[0]);
