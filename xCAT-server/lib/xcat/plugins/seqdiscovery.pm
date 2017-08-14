@@ -882,21 +882,20 @@ Usage:
         # Check the running of sequential discovery
         @SEQDiscover = xCAT::TableUtils->get_site_attribute("__SEQDiscover");
         @ZVMDiscover = xCAT::TableUtils->get_site_attribute("__ZVMDiscover");
+        my @PCMDiscover = xCAT::TableUtils->get_site_attribute("__PCMDiscover");
         if ($SEQDiscover[0]) {
             $type = "seq";
         } elsif ($PCMDiscover[0]) {
-
-                #return directly if profile discovery is running.
+            #return directly if profile discovery is running.
             return;
         } elsif ( $ZVMDiscover[0] ) {
             # zvmdiscovery handles requests for a running z/VM discovery.
                 return;
-            } else {
-
-                # no type, no seq and no profile, then just display all
-                $type = "all";
-            }
+        } else {
+            # no type, no seq and no profile, then just display all
+            $type = "all";
         }
+    }
 
     # If a zvmHost was specified then let zvmdiscovery handle it.
     # Specifying '-u' will keep processing within seqdiscovery.
@@ -905,6 +904,7 @@ Usage:
         return;
     }
     
+    my $DBname = xCAT::Utils->get_DBName;    # support for DB2
     # Go through discoverydata table and display the discovery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
