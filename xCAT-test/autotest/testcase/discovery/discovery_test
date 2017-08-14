@@ -76,8 +76,8 @@ Options:
     bmc_discovery_only: Just test bmc discovery process, not test node discovery process. Can not be used with option 'osimage' or 'discovery_mode' at the same time.
     
 Notes:
-    Up to now, only support one reference test node.
-    When preparing reference test node, below atrributes are required for each test scenario.
+    Up to now, only support one discovery_target_node.
+    When preparing discovery_target_node, below atrributes are required for each test scenario.
     For only bmc discovery: $expected_attrs_for_bmc_discovery_str
     For mtm_based node discovery: $expected_attrs_for_mtms_based_node_discovery_str
     For switch_based node discovery: $expected_attrs_for_switch_based_node_discovery_str
