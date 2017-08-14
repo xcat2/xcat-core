@@ -19,6 +19,7 @@ use JSON;
 use HTTP::Async;
 use HTTP::Cookies;
 use File::Basename;
+use File::Spec;
 use Data::Dumper;
 use Getopt::Long;
 use xCAT::OPENBMC;
@@ -419,6 +420,7 @@ sub process_request {
     my $command   = $request->{command}->[0];
     my $noderange = $request->{node};
     my $extrargs       = $request->{arg};
+    $::cwd = $request->{cwd}->[0];
     my @exargs         = ($request->{arg});
     if (ref($extrargs)) {
         @exargs = @$extrargs;
@@ -841,7 +843,6 @@ sub parse_command_status {
             }
         }
 
-        my $filename = undef;
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
         my $version_tag = '"version=IBM"';
@@ -850,17 +851,22 @@ sub parse_command_status {
             # Filename or file id was specified 
             if ($update_file =~ /.*\.tar$/) {
                 # Filename ending on .tar was specified
-                $filename = $update_file;
-                $::UPLOAD_FILE = $update_file; # Save filename to upload
+                if (File::Spec->file_name_is_absolute($update_file)) {
+                    $::UPLOAD_FILE = $update_file;
+                }
+                else {
+                    # If relative file path was given, convert it to absolute
+                    $::UPLOAD_FILE = xCAT::Utils->full_path($update_file, $::cwd);
+                }
                 # Verify file exists and is readable
-                unless (-r $filename) {
-                    xCAT::SvrUtils::sendmsg([1,"Cannot access $filename"], $callback);
+                unless (-r $::UPLOAD_FILE) {
+                    xCAT::SvrUtils::sendmsg([1,"Cannot access $::UPLOAD_FILE"], $callback);
                     return 1;
                 }
                 if ($check_version) {
                     # Display firmware version of the specified .tar file
-                    my $firmware_version_in_file = `$grep_cmd $version_tag $filename`;
-                    my $purpose_version_in_file = `$grep_cmd $purpose_tag $filename`;
+                    my $firmware_version_in_file = `$grep_cmd $version_tag $::UPLOAD_FILE`;
+                    my $purpose_version_in_file = `$grep_cmd $purpose_tag $::UPLOAD_FILE`;
                     chomp($firmware_version_in_file);
                     chomp($purpose_version_in_file);
                     my ($purpose_string,$purpose_value) = split("=", $purpose_version_in_file); 
@@ -1864,7 +1870,7 @@ sub rflash_response {
             # curl commands
             my $curl_login_cmd  = "curl -c cjar -k -H 'Content-Type: application/json' -X POST $request_url/login -d '" . $content_login . "'";
             my $curl_logout_cmd = "curl -b cjar -k -H 'Content-Type: application/json' -X POST $request_url/logout -d '" . $content_logout . "'";
-            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T $::UPLOAD_FILE $request_url/upload/image/";
+            my $curl_upload_cmd = "curl -b cjar -k -H 'Content-Type: application/octet-stream' -X PUT -T " . $::UPLOAD_FILE . " $request_url/upload/image/";
 
             # Try to login
             my $curl_login_result = `$curl_login_cmd`;
