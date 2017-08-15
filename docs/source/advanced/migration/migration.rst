@@ -4,7 +4,7 @@ xCAT Management Node Migration
 This document describes how to migrate xCAT Management node to a new node. After xCAT management node is migrated, the functions and data in the new xCAT management node will be the same with those in the old xCAT management node. The following example describes a typical scenario, this example is verified on redhat7.3.
 
 #. Initially, the first xcat management node is active, and the second node is passive.
-#. Back up all useful xCAT data from xCAT Management node to back-up server at regular intervals.
+#. Backup all useful xCAT data from xCAT Management node to back-up server at regular intervals.
 #. When the first xCAT management node is broken, use backup to restore original xCAT data to the second node with the same host name and ip.
 
 Backup Old xCAT Management Node
@@ -14,21 +14,21 @@ Backup xCAT management node data to backup server:
 
 1.1 Backup xCAT important files and directories: 
 
-    #. Get ``installdir`` from ``site`` table, back up ``installdir`` directory, 
+    #. Get ``installdir`` from ``site`` table, backup ``installdir`` directory, 
        in this case, back up ``install`` directory: ::
        
         lsdef -t site  clustersite -i installdir
             Object name: clustersite
             installdir=/install
     
-    #. Back up these two xCAT directories: :: 
+    #. Backup these two xCAT directories: :: 
 
         ~/.xcat
         /etc/xcat
 
        **Notes**: backing up ``~/.xcat`` is for all users who have xCAT client certs. 
 
-    #. If there are customized files and directories for ``otherpkgdir``, ``pkgdir``, ``pkglist`` or ``template`` in some `osimage` definitions, back up these files and directories. for example: ::
+    #. If there are customized files and directories for ``otherpkgdir``, ``pkgdir``, ``pkglist`` or ``template`` in some `osimage` definitions, backup these files and directories. for example: ::
         
         lsdef -t osimage customized_rhels7.4-x86_64-install-compute -i otherpkgdir,pkgdir,pkglist,template
             Object name: customized_rhels7.4-x86_64-install-compute
@@ -37,25 +37,25 @@ Backup xCAT management node data to backup server:
                 pkglist=/<customized_pkglist_dir>/compute.rhels7.pkglist
                 template=/<customized_temp_dir>/compute.rhels7.tmpl
 
-1.2 Back up ssh related files: ::
+1.2 Backup ssh related files: ::
 
     /etc/ssh
     ~/.ssh
 
-1.3 Back up host files: ::
+1.3 Backup host files: ::
 
     /etc/resolv.conf
     /etc/hosts
 
-1.4 Back up yum resource files: ::
+1.4 Backup yum resource files: ::
 
     /etc/yum.repos.d
 
-1.5 Back up conserver conf files: ::
+1.5 Backup conserver conf files: ::
 
     /etc/conserver.cf
 
-1.6 Back up DNS related files: ::
+1.6 Backup DNS related files: ::
 
     /etc/named
     /etc/named.conf
@@ -65,23 +65,23 @@ Backup xCAT management node data to backup server:
     /etc/sysconfig/named
     /var/named
 
-1.7 Back up dhcp files: ::
+1.7 Backup dhcp files: ::
 
     /etc/dhcp
     /var/lib/dhcpd
     /etc/sysconfig/dhcpd
     /etc/sysconfig/dhcpd6
 
-1.8 Back up apache: ::
+1.8 Backup apache: ::
 
     /etc/httpd
     /var/www
 
-1.9 Back up tftp files: ::
+1.9 Backup tftp files: ::
 
     /tftpboot
 
-1.10 Back up NFS (optional): ::
+1.10 Backup NFS (optional): ::
 
     /etc/exports
     /var/lib/nfs
@@ -107,7 +107,7 @@ Besides the files mentioned above, there may be some additional customization fi
     /etc/services
     /etc/inittab(andmore)
 
-1.12 Back up the xCAT database tables for the current configuration, using command: ::
+1.12 Backup the xCAT database tables for the current configuration, using command: ::
 
     dumpxCATdb -p <your_backup_dir>
 
@@ -115,7 +115,7 @@ Besides the files mentioned above, there may be some additional customization fi
 
    rpm -qa|grep -i xCAT > xcat_rpm_names
 
-1.14 (Optional) Find customization made to files installed from packages, back up these files. For example ::
+1.14 (Optional) Find customization made to files installed from packages, backup these files. For example ::
 
    rpm -q --verify -a conserver-xcat
    rpm -q --verify -a xCAT-server
