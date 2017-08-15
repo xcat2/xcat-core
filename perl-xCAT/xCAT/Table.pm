@@ -71,6 +71,9 @@ require xCAT::Schema;
 require xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
 require xCAT::NotifHandler;
+use Time::HiRes qw/time/;
+use JSON;
+
 
 #The process id of the database worker
 # -1 db process has not been started, access db in direct access mode.
@@ -82,7 +85,19 @@ my $dbsockpath = "/var/run/xcat/dbworker.sock." . $$;
 my $exitdbthread;
 my $dbobjsforhandle;
 my $intendedpid;
+my $dbtracelevel;
+my %elapsed;
 
+use constant BUILD_CACHE_TYPE => "build_cache";
+use constant CACHE_HIT_TYPE => "cache_hit";
+use constant START_TYPE => "start";
+use constant END_TYPE => "end";
+use constant START_SQL_TYPE => "start_sql";
+use constant END_SQL_TYPE => "end_sql";
+use constant INFO_TYPE => "info";
+
+my %trace_level_mapping = (START_TYPE() => 1, END_TYPE() => 1, BUILD_CACHE_TYPE() => 2,
+    CACHE_HIT_TYPE() => 3, START_SQL_TYPE() => 4, END_SQL_TYPE() => 4, INFO_TYPE() => 5);
 
 sub dbc_call {
     my $self     = shift;
@@ -155,6 +170,99 @@ sub dbc_submit {
     }
 }
 
+
+#--------------------------------------------------------------------------------
+
+=head3 _trace_log
+
+    Private helper function to write log message in json format
+
+    Arguments:
+        $type: the type of the log content.
+        $msg: the message content
+    Returns:
+        none
+
+    Error:
+        none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub _trace_log
+{
+    my ($type, $msg) = @_;
+    if( $type eq START_TYPE || $type eq START_SQL_TYPE) {
+        $elapsed{$trace_level_mapping{$type}} = time();
+    }
+    my %hash = ("type" => $type, "msg" => $msg);
+    if($type eq END_TYPE || $type eq END_SQL_TYPE) {
+        if (!$elapsed{$trace_level_mapping{$type}}) {
+            return;
+        }
+        $hash{"elapsed"} = sprintf("%.5fs", time() - $elapsed{$trace_level_mapping{$type}});
+    }
+    xCAT::MsgUtils->message("S", "[DB Trace]: ".encode_json(\%hash));
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3 trace_db
+
+    Add log entries to trace db acccess
+
+    Arguments:
+        $type: the type of the log content. If it is "start", "start_sq"l, "end", "end_sql",
+               a timer will be used to help calculate the elapsed time. Note, "start" and "end"
+               or "start_sql" and "end_sql" must be used in pairs.
+        $addon: the addon message.
+    Returns:
+        none
+
+    Error:
+        none
+
+    Example:
+        $self->trace_db("start");  # timer started.
+        ......
+        $self->trace_db("end");  # print elapsed time.
+
+        $self->trace_db("start_sql");  # timer started.
+        ...... # statement to run the sql
+        $self->trace_db("end_sql");  # print elapsed time.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub trace_db {
+    my $self = shift;
+    my ($type, $addon) = @_;
+    if (!$dbtracelevel) {
+        return;
+    }
+    if($dbworkerpid > 0) {
+        return;
+    }
+    $type = INFO_TYPE if (!$type);
+    if (!exists($trace_level_mapping{$type})) {
+        xCAT::MsgUtils->message("S", "Unsupported db trace type $type");
+        return;
+    }
+    if (($trace_level_mapping{$type} == 1) && (caller(2))[3] ne "xCAT::Table::handle_dbc_request") {
+        # ignore internal calls
+        return;
+    }
+
+    if ($trace_level_mapping{$type} <= $dbtracelevel) {
+        my $msg;
+        $msg->{"table"} = $self->{tabname};
+        $msg->{"method"} = (caller(1))[3];
+        $msg->{"addon"} = $addon if $addon;
+        _trace_log($type, $msg);
+    }
+}
+
 sub shut_dbworker {
     $dbworkerpid = -1;    #For now, just turn off usage of the db worker
       #This was created as the monitoring framework shutdown code otherwise seems to have a race condition
@@ -188,6 +296,7 @@ sub init_dbworker {
     }
     unless ($dbworkerpid) {
         $intendedpid = $$;
+        $dbtracelevel = xCAT::TableUtils->get_site_attribute("dbtracelevel");
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { } }; #avoid zombies from notification framework
              #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
         $0 = "xcatd: DB Access";
@@ -198,6 +307,13 @@ sub init_dbworker {
             $exitdbthread = 1;
             $SIG{ALRM} = sub { exit 0; };
             alarm(10);
+        };
+        $SIG{HUP} = sub {
+            $dbtracelevel = xCAT::TableUtils->get_site_attribute("dbtracelevel");
+            xCAT::MsgUtils->message("S", "dbtracelevel has been reloaded, current value is $dbtracelevel");
+            foreach my $item ( keys %elapsed) {
+                $elapsed{$item} = undef;
+            }
         };
         unlink($dbsockpath);
         umask(0077);
@@ -1453,8 +1569,10 @@ sub addAttribs
         $qstring = $qstring . "?,";
     }
     $qstring =~ s/,$/)/;
+    $self->trace_db(START_SQL_TYPE, $qstring);
     my $sth = $self->{dbh}->prepare($qstring);
     $sth->execute(@bind);
+    $self->trace_db(END_SQL_TYPE);
 
     #$self->{dbh}->commit;
 
@@ -1604,6 +1722,7 @@ sub setAttribs
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'setAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
     my $pKeypairs = shift;
     my %keypairs  = ();
     if ($pKeypairs != undef) { %keypairs = %{$pKeypairs}; }
@@ -1646,8 +1765,10 @@ sub setAttribs
         $qstring =~ s/ AND \z//;
 
         #print "this is qstring1: $qstring\n";
+        $self->trace_db(START_SQL_TYPE, $qstring);
         $query = $self->{dbh}->prepare($qstring);
         $query->execute(@qargs);
+        $self->trace_db(END_SQL_TYPE);
 
         #get the first row
         $data = $query->fetchrow_arrayref();
@@ -1720,13 +1841,17 @@ sub setAttribs
             }
         }
         $cmd =~ s/ AND \z//;
+        $self->trace_db(START_SQL_TYPE, $qstring);
         my $sth = $self->{dbh}->prepare($cmd);
         unless ($sth) {
+            $self->trace_db(END_TYPE, "LINE ".__LINE__.": Error attempting requested DB operation");
             return (undef, "Error attempting requested DB operation");
         }
         my $err = $sth->execute(@bind);
+        $self->trace_db(END_SQL_TYPE);
         if (not defined($err))
         {
+            $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
             return (undef, $sth->errstr);
         }
         $sth->finish;
@@ -1781,10 +1906,13 @@ sub setAttribs
             $qstring = $qstring . "?,";
         }
         $qstring =~ s/,$/)/;
+        $self->trace_db(START_SQL_TYPE, $qstring);
         my $sth = $self->{dbh}->prepare($qstring);
         my $err = $sth->execute(@bind);
+        $self->trace_db(END_SQL_TYPE, $qstring);
         if (not defined($err))
         {
+            $self->trace_db(END_TYPE, "LINE ".__LINE__.": ". $sth->errstr);
             return (undef, $sth->errstr);
         }
         $sth->finish;
@@ -1803,6 +1931,7 @@ sub setAttribs
         xCAT::NotifHandler->notify($action, $self->{tabname},
             \@notif_data, \%new_notif_data);
     }
+    $self->trace_db(END_TYPE);
     return 0;
 }
 
@@ -1850,6 +1979,7 @@ sub setAttribsWhere
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'setAttribsWhere', @_);
     }
+    $self->trace_db(START_TYPE);
     my $where_clause = shift;
     my $elems        = shift;
     my $cols         = "";
@@ -1864,8 +1994,10 @@ sub setAttribsWhere
     }
     my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE " . $where_clause;
     my @qargs = ();
+    $self->trace_db(START_SQL_TYPE, $qstring);
     my $query = $self->{dbh}->prepare($qstring);
     $query->execute(@qargs);
+    $self->trace_db(END_SQL_TYPE);
 
     #get the first row
     my $data = $query->fetchrow_arrayref();
@@ -1903,10 +2035,13 @@ sub setAttribsWhere
     }
     chop($cols);
     my $cmd = "UPDATE " . $self->{tabname} . " set $cols where " . $where_clause;
+    $self->trace_db(START_SQL_TYPE, $qstring);
     my $sth = $self->{dbh}->prepare($cmd);
     my $err = $sth->execute(@bind);
+    $self->trace_db(END_SQL_TYPE);
     if (not defined($err))
     {
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$sth->errstr);
         return (undef, $sth->errstr);
     }
 
@@ -1923,6 +2058,7 @@ sub setAttribsWhere
             \@notif_data, \%new_notif_data);
     }
     $sth->finish;
+    $self->trace_db(END_TYPE);
     return 0;
 }
 
@@ -1968,6 +2104,7 @@ sub setNodesAttribs {
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'setNodesAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
     my $nodelist    = shift;
     my $keyset      = shift;
     my %cols        = ();
@@ -2025,6 +2162,7 @@ sub setNodesAttribs {
         }
         $self->{dbh}->commit;    #commit pending transactions
         $self->{dbh}->{AutoCommit} = $oldac;    #restore autocommit semantics
+        $self->trace_db(END_TYPE);
         return;
     }
 
@@ -2066,8 +2204,10 @@ sub setNodesAttribs {
         $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $dnodekey in (";
         $qstring .= '?, ' x scalar(@currnodes);
         $qstring =~ s/, $/)/;
+        $self->trace_db(START_SQL_TYPE, $qstring);
         my $query = $self->{dbh}->prepare($qstring);
         $query->execute(@currnodes);
+        $self->trace_db(END_SQL_TYPE);
         my $rec;
         while ($rec = $query->fetchrow_hashref()) {
             $updatenodes{ $rec->{$nodekey} } = 1;
@@ -2093,7 +2233,7 @@ sub setNodesAttribs {
             $bindhooks =~ s/, $//;
             $columns =~ s/, $//;
             my $instring = "INSERT INTO " . $self->{tabname} . " ($columns) VALUES ($bindhooks)";
-
+            $self->trace_db(START_SQL_TYPE, $instring);
             #print $instring;
             $insertsth = $self->{dbh}->prepare($instring);
         }
@@ -2105,7 +2245,9 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) {
                 push @args, $hashrec->{$node}->{$col};
             }
+
             $insertsth->execute(@args);
+            $self->trace_db(END_SQL_TYPE);
         }
         if (not $upsth and keys %updatenodes) { #prepare an insert statement since one will be needed
             my $upstring = "UPDATE " . $self->{tabname} . " set ";
@@ -2127,7 +2269,9 @@ sub setNodesAttribs {
                     push @args, $hashrec->{$node}->{$col};
                 }
                 push @args, $node;
+                $self->trace_db(START_SQL_TYPE, $upstring);
                 $upsth->execute(@args);
+                $self->trace_db(END_SQL_TYPE);
             }
         }
         @currnodes = splice(@$nodelist, 0, $nodesatatime);
@@ -2135,6 +2279,7 @@ sub setNodesAttribs {
     $self->{dbh}->commit;                        #commit pending transactions
     $self->{dbh}->{AutoCommit} = $oldac;         #restore autocommit semantics
     $self->_refresh_cache();                     #cache is invalid, refresh
+    $self->trace_db(END_TYPE);
 }
 
 #--------------------------------------------------------------------------
@@ -2170,6 +2315,7 @@ sub getNodesAttribs {
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getNodesAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
     my $nodelist = shift;
     unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options = ();
@@ -2216,6 +2362,7 @@ sub getNodesAttribs {
     if ($self->{tabname} ne 'nodelist') {
         $self->{nodelist}->{_use_cache} = 0;
     }
+    $self->trace_db(END_TYPE);
     return $rethash;
 }
 
@@ -2293,6 +2440,7 @@ sub _build_cache {    #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     unless (grep /^$nodekey$/, @$attriblist) {
         push @$attriblist, $nodekey;
     }
+    $self->trace_db(BUILD_CACHE_TYPE);
     my @tabcache = $self->getAllAttribs(@$attriblist);
     $self->{_tablecache} = \@tabcache;
     $self->{_nodecache}  = {};
@@ -2443,6 +2591,7 @@ sub getNodeAttribs
          #db worker scope
         return dbc_call($self, 'getNodeAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
 
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
@@ -2521,6 +2670,7 @@ sub getNodeAttribs
             }
         }
     }
+    $self->trace_db(END_TYPE);
     return wantarray ? @data : $data[0];
 }
 
@@ -2862,7 +3012,6 @@ sub getNodeAttribs_nosub_returnany
             }
         }
     }
-
     return @results;
 }
 
@@ -2901,6 +3050,7 @@ sub getAllEntries
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getAllEntries', @_);
     }
+    $self->trace_db(START_TYPE);
 
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
@@ -2915,12 +3065,15 @@ sub getAllEntries
     my $disable = &delimitcol("disable");
     if ($allentries) {    # get all lines
         $query = $self->{dbh}->prepare('SELECT * FROM ' . $self->{tabname});
+        $self->trace_db(START_SQL_TYPE, 'SELECT * FROM ' . $self->{tabname});
     } else {              # get only enabled lines
         my $qstring = 'SELECT * FROM ' . $self->{tabname} . " WHERE " . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO')";
         $query = $self->{dbh}->prepare($qstring);
+        $self->trace_db(START_SQL_TYPE, $qstring);
     }
 
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         foreach (keys %$data)
@@ -2933,6 +3086,7 @@ sub getAllEntries
         push @rets, $data;
     }
     $query->finish();
+    $self->trace_db(END_TYPE);
     return \@rets;
 }
 
@@ -2995,6 +3149,7 @@ sub getAllAttribsWhere
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getAllAttribsWhere', @_);
     }
+    $self->trace_db(START_TYPE);
     my $clause = shift;
     my $whereclause;
     my @attribs = @_;
@@ -3011,8 +3166,10 @@ sub getAllAttribsWhere
     # delimit the disable column based on the DB
     my $disable = &delimitcol("disable");
     $query2 = 'SELECT * FROM ' . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";
+    $self->trace_db(START_SQL_TYPE, $query2);
     $query = $self->{dbh}->prepare($query2);
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         my %newrow = ();
@@ -3040,6 +3197,7 @@ sub getAllAttribsWhere
         }
     }
     $query->finish();
+    $self->trace_db(END_TYPE);
     return @results;
 }
 
@@ -3078,6 +3236,7 @@ sub getAllNodeAttribs
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getAllNodeAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
     my $attribq      = shift;
     my $hashretstyle = shift;
     my %options      = @_;
@@ -3098,8 +3257,10 @@ sub getAllNodeAttribs
     my $qstring  = 'SELECT ' . $dnodekey . ' FROM '
       . $self->{tabname}
       . " WHERE " . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO')";
+    $self->trace_db(START_SQL_TYPE, $qstring);
     $query = $self->{dbh}->prepare($qstring);
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     xCAT::NodeRange::retain_cache(1);
 
     unless ($options{prefetchcache}) {
@@ -3171,6 +3332,7 @@ sub getAllNodeAttribs
     $self->{_use_cache} = 0;
     $self->{nodelist}->{_use_cache} = 0;
     $query->finish();
+    $self->trace_db(END_TYPE);
     if ($hashretstyle) {
         return $rethash;
     } else {
@@ -3212,9 +3374,10 @@ sub getAllAttribs
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getAllAttribs', @_);
     }
-
+    $self->trace_db(START_TYPE);
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S", "xcatd: DBI is missing, Please check the db access process.");
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": DBI is missing");
         return undef;
     }
 
@@ -3244,8 +3407,10 @@ sub getAllAttribs
         }
         if (@results)
         {
+            $self->trace_db(END_TYPE);
             return @results;    #return wantarray ? @results : $results[0];
         }
+        $self->trace_db(END_TYPE);
         return undef;
     }
 
@@ -3254,10 +3419,12 @@ sub getAllAttribs
     my $query;
     my $qstring = "SELECT * FROM " . $self->{tabname}
       . " WHERE " . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO')";
+    $self->trace_db(START_SQL_TYPE, $qstring);
     $query = $self->{dbh}->prepare($qstring);
 
     #print $query;
     $query->execute();
+    $self->trace_db(END_SQL_TYPE, $qstring);
     while (my $data = $query->fetchrow_hashref())
     {
         my %newrow = ();
@@ -3274,6 +3441,7 @@ sub getAllAttribs
         }
     }
     $query->finish();
+    $self->trace_db(END_TYPE);
     return @results;
 }
 
@@ -3317,6 +3485,7 @@ sub delEntries
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'delEntries', @_);
     }
+    $self->trace_db(START_TYPE);
     my $keyref = shift;
     my @all_keyparis;
     my %keypairs;
@@ -3361,10 +3530,10 @@ sub delEntries
             $qstring =~ s/\(\)//;
             $qstring =~ s/ OR \z//;
 
-
+            $self->trace_db(START_SQL_TYPE, $qstring);
             my $query = $self->{dbh}->prepare($qstring);
             $query->execute(@qargs);
-
+            $self->trace_db(END_SQL_TYPE);
             #prepare the notification data
             #put the column names at the very front
             push(@notif_data, $query->{NAME});
@@ -3399,8 +3568,10 @@ sub delEntries
         }
         $delstring =~ s/\(\)//;
         $delstring =~ s/ OR \z//;
+        $self->trace_db(START_SQL_TYPE, $delstring);
         my $stmt = $self->{dbh}->prepare($delstring);
         $stmt->execute(@stargs);
+        $self->trace_db(END_SQL_TYPE);
         $stmt->finish;
 
         $self->_refresh_cache();    #cache is invalid, refresh
@@ -3411,7 +3582,7 @@ sub delEntries
         }
         @pieces = splice(@all_keyparis, 0, $record_num);
     }
-
+    $self->trace_db(END_TYPE);
 }
 
 #--------------------------------------------------------------------------
@@ -3450,6 +3621,7 @@ sub getAttribs
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getAttribs', @_);
     }
+    $self->trace_db(START_TYPE);
 
     #my $key = shift;
     #my $keyval = shift;
@@ -3510,8 +3682,11 @@ sub getAttribs
         }
         if (@results)
         {
+            $self->trace_db(END_TYPE);
+            $self->trace_db(CACHE_HIT_TYPE);
             return wantarray ? @results : $results[0];
         }
+        $self->trace_db(END_TYPE);
         return undef;
     }
 
@@ -3544,11 +3719,14 @@ sub getAttribs
     $statement .= "(" . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO'))";
 
     #print "This is my statement: $statement \n";
+    $self->trace_db(START_SQL_TYPE, $statement);
     my $query = $self->{dbh}->prepare($statement);
     unless (defined $query) {
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": undef");
         return undef;
     }
     $query->execute(@exeargs);
+    $self->trace_db(END_SQL_TYPE);
     my $data;
     while ($data = $query->fetchrow_hashref())
     {
@@ -3569,8 +3747,10 @@ sub getAttribs
     $query->finish();
     if (@return)
     {
+        $self->trace_db(END_TYPE);
         return wantarray ? @return : $return[0];
     }
+    $self->trace_db(END_TYPE);
     return undef;
 }
 
@@ -3610,10 +3790,13 @@ sub getTable
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getTable', @_);
     }
+    $self->trace_db(START_TYPE);
     my @return;
     my $statement = 'SELECT * FROM ' . $self->{tabname};
+    $self->trace_db(START_SQL_TYPE, $statement);
     my $query     = $self->{dbh}->prepare($statement);
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     my $data;
     while ($data = $query->fetchrow_hashref())
     {
@@ -3631,8 +3814,10 @@ sub getTable
     $query->finish();
     if (@return)
     {
+        $self->trace_db(END_TYPE);
         return @return;
     }
+    $self->trace_db(END_TYPE);
     return undef;
 }
 
@@ -4089,6 +4274,7 @@ sub writeAllEntries
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'writeAllEntries', @_);
     }
+    $self->trace_db(START_TYPE);
     my $filename = shift;
     my $fh;
     my $rc = 0;
@@ -4097,6 +4283,7 @@ sub writeAllEntries
     unless (open($fh, " > $filename")) {
         my $msg = "Unable to open $filename for write \n.";
         `logger -p local4.err  -t xcat $msg`;
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$msg);
         return 1;
     }
     my $query;
@@ -4112,9 +4299,11 @@ sub writeAllEntries
 
     # delimit the disable column based on the DB
     my $disable = &delimitcol("disable");
+    $self->trace_db(START_SQL_TYPE, 'SELECT * FROM ' . $self->{tabname});
     $query = $self->{dbh}->prepare('SELECT * FROM ' . $self->{tabname});
 
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         foreach (keys %$data)
@@ -4128,6 +4317,7 @@ sub writeAllEntries
     }
     $query->finish();
     CORE::close($fh);
+    $self->trace_db(END_TYPE);
     return $rc;
 }
 
@@ -4170,6 +4360,7 @@ sub writeAllAttribsWhere
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'writeAllAttribsWhere', @_);
     }
+    $self->trace_db(START_TYPE);
     my $clause   = shift;
     my $filename = shift;
     my $whereclause;
@@ -4184,6 +4375,7 @@ sub writeAllAttribsWhere
     unless (open($fh, " > $filename")) {
         my $msg = "Unable to open $filename for write \n.";
         `logger -p local4.err -t xcat $msg`;
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": ".$msg);
         return 1;
     }
     my $header;
@@ -4201,8 +4393,10 @@ sub writeAllAttribsWhere
     # delimit the disable column based on the DB
     my $disable = &delimitcol("disable");
     $query2 = 'SELECT * FROM ' . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";
+    $self->trace_db(START_SQL_TYPE, $query2);
     $query = $self->{dbh}->prepare($query2);
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         foreach (keys %$data) {
@@ -4216,6 +4410,7 @@ sub writeAllAttribsWhere
     }
     $query->finish();
     CORE::close($fh);
+    $self->trace_db(END_TYPE);
     return $rc;
 }
 
@@ -4291,6 +4486,7 @@ sub getMAXMINEntries
     if ($dbworkerpid > 0) {
         return dbc_call($self, 'getMAXMINEntries', @_);
     }
+    $self->trace_db(START_TYPE);
     my $attr = shift;
     my $rets;
     my $query;
@@ -4304,9 +4500,11 @@ sub getMAXMINEntries
     } else {
         $qstring = "SELECT MAX($attr) FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO')";
     }
+    $self->trace_db(START_SQL_TYPE, $qstring);
     $query = $self->{dbh}->prepare($qstring);
 
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         foreach (keys %$data)
@@ -4328,9 +4526,11 @@ sub getMAXMINEntries
     } else {
         $qstring = "SELECT MIN($attr) FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " . $disable . " in ('0','no','NO','No','nO')";
     }
+    $self->trace_db(START_SQL_TYPE, $qstring);
     $query = $self->{dbh}->prepare($qstring);
 
     $query->execute();
+    $self->trace_db(END_SQL_TYPE);
     while (my $data = $query->fetchrow_hashref())
     {
         foreach (keys %$data)
@@ -4344,6 +4544,7 @@ sub getMAXMINEntries
             last;    # better be only one value for min
         }
     }
+    $self->trace_db(END_TYPE);
     return $rets;
 }
 1;
