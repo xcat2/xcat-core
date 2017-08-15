@@ -1877,11 +1877,12 @@ sub rflash_response {
             my $h = from_json($curl_login_result); # convert command output to hash
             if ($h->{message} eq $::RESPONSE_OK) {
                 # Login successfull, upload the file
+                xCAT::SvrUtils::sendmsg("Uploading $::UPLOAD_FILE ...", $callback, $node);
                 my $curl_upload_result = `$curl_upload_cmd`;
                 $h = from_json($curl_upload_result); # convert command output to hash
                 if ($h->{message} eq $::RESPONSE_OK) {
                     # Upload successfull
-                    xCAT::SvrUtils::sendmsg("Update file $::UPLOAD_FILE successfully uploaded", $callback, $node);
+                    xCAT::SvrUtils::sendmsg("Successful, use -l option to list.", $callback, $node);
                     # Try to logoff, no need to check result, as there is nothing else to do if failure
                     my $curl_logout_result = `$curl_logout_cmd`;
                 }
