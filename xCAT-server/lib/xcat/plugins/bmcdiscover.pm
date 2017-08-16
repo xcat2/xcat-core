@@ -1172,8 +1172,8 @@ sub bmcdiscovery_openbmc{
         my $serial;
 
         if (defined($response->{data})) {
-            if (defined($response->{data}->{PartNumber}) and defined($response->{data}->{SerialNumber})) {
-                $mtm = $response->{data}->{PartNumber};
+            if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
+                $mtm = $response->{data}->{Model};
                 $serial = $response->{data}->{SerialNumber}; 
             }
  
