@@ -6,7 +6,7 @@ masternet=`ifconfig  | awk "BEGIN{RS=\"\"}/\<$masterip\>/{print \$1}"|head -n 1 
 net2=`netstat -i -a|grep -v Kernel|grep -v Iface |grep -v lo|grep -v $masternet|head -n 1|awk '{print $1}'`;echo net2 is  $net2;
 net2ip="";
     if [[ -z $net2 ]];then
-        echo null
+        echo "could not verify the test"
         return 1;
     else
         net2ipstring=`ifconfig $net2 |grep inet|grep -v inet6`;
@@ -19,7 +19,6 @@ net2ip="";
                 net2ip=0.0.0.0;
             fi
         ifconfig $net2 60.3.3.3 ;
-        makenetworks;
         makehosts testnode;
         nodeset testnode  shell;
         ifconfig $net2 "$net2ip";
@@ -35,7 +34,6 @@ net2ip="";
 function clear_env(){
 makehosts -d testnode
 rmdef testnode
-rmdef -t network 60_0_0_0-255_0_0_0
     if [[ $? -eq 0 ]];then 
        return 0;
     else 
@@ -47,7 +45,7 @@ SHELLFOLDER=""
 while [ "$#" -gt "0" ]
 do 
         case $1 in 
-                "-cd"|"--check" )
+                "-check"|"--check" )
                 NETBOOT=$2;
                     if [[ $NETBOOT =~ petitboot ]];then
                         SHELLFOLDER="/tftpboot/petitboot/";
