@@ -33,6 +33,7 @@ use xCAT::SvrUtils;
 use xCAT::NetworkUtils;
 use xCAT::Usage;
 use File::Path;
+use File::Spec;
 
 use Thread qw(yield);
 use LWP 5.64;
@@ -1612,8 +1613,8 @@ sub isopenpower {
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
-    } elsif (($sessdata->{prod_id} == 0 or $sessdata->{prod_id} == 2355) and $sessdata->{mfg_id} == 10876) {
-        # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 for Boston
+    } elsif (($sessdata->{prod_id} =~ /0|2355|2437/) and $sessdata->{mfg_id} == 10876) {
+        # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 or 2437 for Boston
         return 1;
     } else {
         return 0;
@@ -1964,6 +1965,10 @@ sub do_firmware_update {
         if ($opt =~ /-d=/) {
             my ($attribute, $directory_name) = split(/=/, $opt);
             if (defined $directory_name) {
+                unless (File::Spec->file_name_is_absolute($directory_name)) {
+                   # Directory name was passed in as relative path, prepend current working dir
+                   $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
+                }
                 # directory was passed in, verify it is valid
                 if (-d $directory_name) {
                    # Passed in directory name exists
@@ -1981,10 +1986,11 @@ sub do_firmware_update {
         }
     }
 
-    # For IBM Power S822LC for Big Data (Supermicro) machines such as P9 Boston (9006-22C) or P8 Briggs (8001-22C) 
+    # For IBM Power S822LC for Big Data (Supermicro) machines such as 
+    # P9 Boston (9006-22C, 9006-12) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C/) {
+    if ($output =~ /8001-22C|9006-22C|9006-12C/) {
         # Verify valid data directory was specified
         unless ($pUpdate_directory) {
             $exit_with_error_func->($sessdata->{node}, $callback,
