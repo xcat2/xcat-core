@@ -1,7 +1,7 @@
 xCAT Management Node Migration
 ==============================
 
-This document describes how to migrate xCAT Management node to a new node. After xCAT management node is migrated, the functions and data in the new xCAT management node will be the same with those in the old xCAT management node. The following example describes a typical scenario, this example is verified on redhat7.3.
+This document describes how to migrate xCAT Management node to a new node. The following example describes a typical scenario, this example is verified on redhat7.3.
 
 #. Initially, the first xcat management node is active, and the second node is passive.
 #. Backup all useful xCAT data from xCAT Management node to back-up server at regular intervals.
@@ -46,6 +46,8 @@ Backup xCAT management node data to backup server:
 
     /etc/resolv.conf
     /etc/hosts
+    /etc/passwd
+    /etc/group
 
 1.4 Backup yum resource files: ::
 
@@ -81,13 +83,24 @@ Backup xCAT management node data to backup server:
 
     /tftpboot
 
-1.10 Backup NFS (optional): ::
+1.10 Backup NTP configure file: ::
+
+    /etc/ntp.conf
+
+1.11 Backup database configure files (optional): 
+
+    * **[PostgreSQL]** ::
+      
+      /var/lib/pgsql/data/pg_hba.conf
+      /var/lib/pgsql/data/postgresql.conf
+
+1.12 Backup NFS (optional): ::
 
     /etc/exports
     /var/lib/nfs
     /etc/sysconfig/nfs
 
-1.11 (optional)
+1.13 (optional)
 
 Besides the files mentioned above, there may be some additional customization files and production files that need to be backup, depending on your local unique requirements. Here are some example files that can be considered: ::
 
@@ -98,24 +111,21 @@ Besides the files mentioned above, there may be some additional customization fi
     /etc/motd
     /etc/security/limits
     /etc/netscvc.conf
-    /etc/ntp.conf
     /etc/inetd.conf
-    /etc/passwd
     /etc/security/passwd
-    /etc/group
     /etc/security/group
     /etc/services
     /etc/inittab(andmore)
 
-1.12 Backup the xCAT database tables for the current configuration, using command: ::
+1.14 Backup the xCAT database tables for the current configuration, using command: ::
 
     dumpxCATdb -p <your_backup_dir>
 
-1.13 Save all installed xCAT RPM names into a file: ::
+1.15 Save all installed xCAT RPM names into a file: ::
 
    rpm -qa|grep -i xCAT > xcat_rpm_names
 
-1.14 (Optional) Find customization made to files installed from packages, backup these files. For example ::
+1.16 (Optional) Find customization made to files installed from packages, backup these files. For example ::
 
    rpm -q --verify -a conserver-xcat
    rpm -q --verify -a xCAT-server
@@ -129,25 +139,31 @@ Restore xCAT management node
 
 2.1 Power off old xCAT management server before configuring new xCAT management server
 
-2.2 Configure new xCAT management server using the same ip and hostname as old xCAT management server, refer to :doc:`Prepare the Management Node <../../guides/install-guides/yum/prepare_mgmt_node>`
+2.2 Configure new xCAT management server using the same ip and hostname as old xCAT management server. Configure the same additional network for hardware management network if needed, for example, bmc network or hmc network. xCAT management server setup refer to :doc:`Prepare the Management Node <../../guides/install-guides/yum/prepare_mgmt_node>`
     
-2.3 Overwrite files/directories methioned in above 1.2,1.3,1.4 from backup server to new xCAT management server
+2.3 Overwrite files/directories methioned in above 1.2, 1.3, 1.4 from backup server to new xCAT management server
 
 2.4 Download xcat-core and xcat-dep tar ball, then install xCAT in new xCAT management server, refer to :doc:`install xCAT <../../guides/install-guides/yum/install>`
 
-2.5 Use ``rpm -qa|grep -i xCAT`` to list all xCAT RPMs in new xCAT management node, compare these RPMs base name with those in ``xcat_rpm_names`` from above 1.13. If some RPMs are missing, use ``yum install <rpm_package_basename>`` to install missing RPMs. 
+2.5 Use ``rpm -qa|grep -i xCAT`` to list all xCAT RPMs in new xCAT management node, compare these RPMs base name with those in ``xcat_rpm_names`` from above 1.15. If some RPMs are missing, use ``yum install <rpm_package_basename>`` to install missing RPMs. 
 
-2.6 If use ``MySQL``/``MariaDB``/``PostgreSQL``, refer to :doc:`Configure a Database <../hierarchy/databases/index>`
+2.6 If use ``MySQL``/``MariaDB``/``PostgreSQL``, migrate xCAT to use ``MySQL/MariaDB/PostgreSQL`` refer to :doc:`Configure a Database <../hierarchy/databases/index>`
 
-2.7 To restore the xCAT database from the ``/dbbackup/db`` directory, enter: ::
+2.7 To restore the xCAT database
+  
+    a. Restore xCAT database from the ``/dbbackup/db`` directory without ``auditlog`` and ``eventlog``, enter: ::
 
-    restorexCATdb -p /dbbackup/db
+        restorexCATdb -p /dbbackup/db
 
-  Or to restore the xCAT database including ``auditlog`` and ``eventlog`` from the ``/dbbackup/db`` directory, enter: ::
+    b. Restore the xCAT database including ``auditlog`` and ``eventlog`` from the ``/dbbackup/db`` directory, enter: ::
 
-    restorexCATdb -a -p /dbbackup/db
+        restorexCATdb -a -p /dbbackup/db
 
-2.8 Overwrite remaining files/directories methioned in above 1.1,1.5,1.6,1.7,1.8,1.9,1.10,1.11; If needed, check if files exist based on above 1.14.
+    c. (optinal) Overwrite files in above 1.11, restart ``PostgreSQL``: ::
+     
+        service postgresql restart
+
+2.8 Overwrite remaining files/directories methioned in above 1.1, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.12; If needed, check if files exist based on above 1.13 and 1.16.
 
 2.9 Verify xCAT: ::
 
@@ -168,6 +184,6 @@ Restore xCAT management node
     makedhcp -n
     makedhcp -a
 
-2.13 Restart ``httpd`` for REST API, more information refer to :doc:`Rest API<../../../advanced/restapi/index>`: ::
+2.13 Restart ``httpd`` for REST API, for more information refer to :doc:`Rest API<../../../advanced/restapi/index>`: ::
 
     service httpd restart
