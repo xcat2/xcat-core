@@ -45,7 +45,7 @@ SHELLFOLDER=""
 while [ "$#" -gt "0" ]
 do 
         case $1 in 
-                "-check"|"--check" )
+                "--check" )
                 NETBOOT=$2;
                     if [[ $NETBOOT =~ petitboot ]];then
                         SHELLFOLDER="/tftpboot/petitboot/";
