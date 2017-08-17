@@ -945,6 +945,8 @@ cmd:xdsh $$CN "mkdir -p /tmp/backupnet"
 check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/;cp -f /etc/network/interfaces /tmp";else echo "Sorry,this is not supported os"; fi
 check:rc==0
+cmd:xdsh $$CN 'killall dhclient'
+cmd:xdsh $$CN 'killall -KILL dhclient'
 cmd:xdsh $$CN 'rm -f /var/lib/dhcp/dhclient.leases /var/lib/dhclient/dhclient.leases'
 check:rc==0
 cmd:updatenode $$CN 'confignetwork -s'
@@ -955,4 +957,5 @@ check:rc==0
 cmd:test -e /tmp/CN.stanza && rmdef $$CN && mkdef -z </tmp/CN.stanza; rm -rf /tmp/CN.stanza
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/;cp -f /tmp/interfaces /etc/network/";else echo "Sorry,this is not supported os"; fi
 cmd:xdsh $$CN "rm -rf /tmp/backupnet/ /tmp/interfaces"
+cmd:xdsh $$CN "if [ -f /etc/init.d/network ] then ; /etc/init.d/network restart ; elif [ -f /etc/init.d/networking ] then ; /etc/init.d/networking restart ; fi
 end
