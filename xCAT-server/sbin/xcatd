@@ -636,25 +636,9 @@ sub do_discovery_process {
             $vintage = time();
         }    # site table reread every 15 second
         my $data;
-        my $client;
-        my $clientn;
-        my $clientip;
         if (ref $msg eq 'HASH') { $data = $msg->{data}; } else { die "incorrect code to disco"; }
-        my $saddr = $msg->{sockaddr};
-        if ($inet6support) {
-            ($client, $sport) = Socket6::getnameinfo($saddr);
-            ($clientip, $sport) = Socket6::getnameinfo($saddr, Socket6::NI_NUMERICHOST());
-            if ($clientip =~ /::ffff:.*\..*\./) {
-                $clientip =~ s/^::ffff://;
-            }
-            if ($client =~ /::ffff:.*\..*\./) {
-                $client =~ s/^::ffff://;
-            }
-        } else {
-            ($sport, $clientn) = sockaddr_in($saddr);
-            $clientip = inet_ntoa($clientn);
-            $client = gethostbyaddr($clientn, AF_INET);
-        }
+        my $clientip = $msg->{sockaddr};
+        $sport=$msg->{sport};
         if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
                 # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
@@ -663,12 +647,10 @@ sub do_discovery_process {
         }
         my $req = eval { XMLin($data, SuppressEmpty => undef, ForceArray => 1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
-            $req->{'_xcat_clienthost'} = $client;
             $req->{'_xcat_clientip'}   = $clientip;
             $req->{'_xcat_clientport'} = $sport;
             if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { # only discover from ips that appear to be on a managed network
                 xCAT::MsgUtils->message("S", "xcatd: Processing discovery request from " . $req->{'_xcat_clientip'});
-
                 # Using cacheonly will cause the discovery processing running 2 times, cacheonly seems useless for switch.pm, so remove it
                 #$req->{cacheonly}->[0] = 1;
                 #plugin_command($req,undef,\&build_response);
@@ -678,7 +660,7 @@ sub do_discovery_process {
 
                 #}
             } else {
-                xCAT::MsgUtils->message("S", "xcatd: Skipping discovery from " . $client . " because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
+                xCAT::MsgUtils->message("S", "xcatd: Skipping discovery from " . $clientip . " because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
             }
         }
     }
@@ -801,21 +783,31 @@ sub do_udp_service {    # This function opens up a UDP port
                 foreach my $pkey (keys %packets) {
                     my $saddr = $packets{$pkey}->[0];
                     $data = $packets{$pkey}->[1];
-                    my ($err, $srcip, $servicename) = Socket::getnameinfo($saddr,Socket::NI_NUMERICHOST,Socket::NIx_NOSERV);
-                    
+                    my $sport;
+                    my $clientip;
+                    my $clientn;
+                    if ($inet6support) {
+                        ($clientip, $sport) = Socket6::getnameinfo($saddr, Socket6::NI_NUMERICHOST());
+                        if ($clientip =~ /::ffff:.*\..*\./) {
+                            $clientip =~ s/^::ffff://;
+                        }
+                    } else {
+                        ($sport, $clientn) = sockaddr_in($saddr);
+                        $clientip = inet_ntoa($clientn);
+                    }                     
                     if ($data =~ /^\037\213/) { # per rfc 1952, these two bytes are gzip, and they are invalid for
-                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl); # for now, punt the gunzip to the worker process
+                        store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl); # for now, punt the gunzip to the worker process
                         #notify the client that its request is been processing
-                        my $ret=xCAT::Utils->send_tcp_msg($srcip,3001,"processing");
+                        my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
                         if($ret){
-                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $srcip that its 'findme' request is been processing");
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
                         }
                     } elsif ($data =~ /^<xcat/) {    # xml format
-                        store_fd({ data => $data, sockaddr => $saddr }, $discoctl);
+                        store_fd({ data => $data, sockaddr => $clientip, sport => $sport }, $discoctl);
                         #notify the client that its request is been processing
-                        my $ret=xCAT::Utils->send_tcp_msg($srcip,3001,"processing");
+                        my $ret=xCAT::NetworkUtils->send_tcp_msg($clientip,3001,"processing");
                         if($ret){
-                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $srcip that its 'findme' request is been processing");
+                            xCAT::MsgUtils->message("S", "INFO xcatd: fail to notify $clientip that its 'findme' request is been processing");
                         }
 
                     } else {    # for *now*, we'll do a tiny YAML subset

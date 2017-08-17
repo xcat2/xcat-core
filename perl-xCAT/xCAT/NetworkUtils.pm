@@ -2778,4 +2778,35 @@ sub gen_net_boot_params
     return $net_params;
 }
 
+#--------------------------------------------------------------------------------
+=head3  send_tcp_msg
+      establish a tcp socket to the specified IP address and port, then send the specifid message via the socket
+      Arguments:
+         $destip  : the destination IP address
+         $destport: the destination TCP port
+         $msg     : the message to send
+      Returns:
+         0  on success, 1 on fail
+=cut
+#--------------------------------------------------------------------------------
+sub send_tcp_msg {
+    my $self=shift;
+    my $destip=shift;
+    my $destport=shift;
+    my $msg=shift;
+
+    my $sock = new IO::Socket::INET(
+                PeerAddr => $destip,
+                PeerPort => $destport,
+                Timeout  => '1',
+                Proto    => 'tcp'
+            );
+    if ($sock) {
+        print $sock $msg;
+        close($sock);
+        return 0;
+    }else{
+        return 1;
+    }
+}
 1;

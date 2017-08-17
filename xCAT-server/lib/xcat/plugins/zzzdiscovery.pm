@@ -7,7 +7,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
+use xCAT::NetworkUtils;
 
 
 sub handled_commands {
@@ -32,7 +32,7 @@ sub process_request {
             my $client_ip = $req->{'_xcat_clientip'};
             xCAT::MsgUtils->message("S","xcat.discovery.zzzdiscovery: Notify $client_ip that its findme request has been processed");
             #notify the client that its request is been processing
-            my $ret=xCAT::Utils->send_tcp_msg($client_ip,3001,"processed");
+            my $ret=xCAT::NetworkUtils->send_tcp_msg($client_ip,3001,"processed");
             if($ret){
                 xCAT::MsgUtils->message("S", "xcat.discovery.zzzdiscovery: Failed to notify $client_ip that its findme request has been processed"); 
             }
