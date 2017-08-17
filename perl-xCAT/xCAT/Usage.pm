@@ -345,7 +345,9 @@ my %usage = (
     OpenPOWER BMC specific (using IPMI):
         rflash <noderange> [<hpm_file_path>|-d=<data_directory>] [-c|--check] [--retry=<count>] [-V]
     OpenPOWER OpenBMC specific:
-        rflash <noderange> [<tar_file_path>|<image_id>] [-c|--check] [-a|--activate] [-l|--list] [-u|--upload] [-d|--delete]",
+        rflash <noderange> {[-c|--check] | [-l|--list]}
+        rflash <noderange> <tar_file_path> {[-c|--check] | [-u|--upload]}
+        rflash <noderange> <image_id> {[-a|--activate] | [-d|--delete]}",
     "mkhwconn" =>
       "Usage:
     mkhwconn [-h|--help]

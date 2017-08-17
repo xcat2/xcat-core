@@ -28,7 +28,11 @@ B<rflash> I<noderange> [I<hpm_file_path> | B<-d=>I<data_directory>] [B<-c>|B<--c
 
 =head2 OpenPOWER OpenBMC specific :
 
-B<rflash> I<noderange> [I<tar_file_path> | I<image_id>] [B<-c>|B<--check>] [B<-a>|B<--activate>] [B<-l>|B<--list>] [B<-u>|B<--upload>] [B<-d>|B<--delete>]
+B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
+
+B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-u>|B<--upload>]}
+
+B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<-d>|B<--delete>]}
 
 =head1 B<Description>
 
