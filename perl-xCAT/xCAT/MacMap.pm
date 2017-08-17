@@ -734,6 +734,9 @@ sub refresh_switch {
         xCAT::MsgUtils->message("I", "MTU information is not availabe for this switch $switch");
     }
 
+    # get port state
+    my $mactostate = walkoid($session, '.1.3.6.1.2.1.17.7.1.2.2.1.3', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback});
+
     #Above is valid without community string indexing, on cisco, we need it on the next one and onward
     my $iftovlanmap = walkoid($session, '.1.3.6.1.4.1.9.9.68.1.2.2.1.2', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); #use cisco vlan membership mib to ascertain vlan
     my $trunktovlanmap = walkoid($session, '.1.3.6.1.4.1.9.9.46.1.6.1.1.5', silentfail => 1, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); #for trunk ports, we are interested in the native vlan, so we need cisco vtp mib too
@@ -807,8 +810,11 @@ sub refresh_switch {
                 my $vlan      = @tmp[0];
                 my @mac       = @tmp[ -6 .. -1 ];
                 my $macstring = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", @mac);
-                push @{ $index_to_mac{$index} }, $macstring;
-                push @{ $index_to_vlan{$index} }, $vlan;    
+                # Skip "permanent" ports
+                if (!defined($mactostate->{$_}) || $mactostate->{$_} != 4) {
+                    push @{ $index_to_mac{$index} }, $macstring;
+                    push @{ $index_to_vlan{$index} }, $vlan;    
+               }
             }
             foreach my $boid (keys %$bridgetoifmap) {
                 my $port_index = $boid;
