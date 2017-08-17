@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **rsetboot**\  \ *noderange*\  {\ **hd | net | cd | default | stat**\ } [\ **-u**\ ] [\ **-p**\ ]
+\ **rsetboot**\  \ *noderange*\  [\ **hd | net | cd | default | stat**\ ] [\ **-u**\ ] [\ **-p**\ ]
 
 \ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -99,6 +99,14 @@ EXAMPLES
  .. code-block:: perl
  
    rsetboot node[14-56],node[70-203] stat
+ 
+ 
+ Or:
+ 
+ 
+ .. code-block:: perl
+ 
+   rsetboot node[14-56],node[70-203]
  
  
 
