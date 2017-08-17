@@ -138,7 +138,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
         /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
         sleep 36500d
     fi
-    /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+    /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
 
     MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
     RETRY=0
@@ -150,7 +150,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
 
         let SLI=$RANDOM%10+10
         sleep $SLI
-        /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+        /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
 
         MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
     done
