@@ -177,7 +177,7 @@ sub process_request
         my $subcmd = $exargs[0];
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($noderange, $subcmd, $callback);
-        }elsif ($subcmd =~ /=/) {
+        }elsif ($subcmd =~ /ip|netmask|hostname/) {
             process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
             $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
@@ -481,7 +481,7 @@ sub connectTopdu {
           '-n' set system ip netmask. e.g.:PduManager -i xxx.xxx.xxx.xxx -n xxx.xxx.xxx.xxx
 
     example:  rspconfig coralpdu hostname=coralpdu
-              rspconfig coralpdu ip=1.1.1.1,netmask=255.0.0.0
+              rspconfig coralpdu ip=1.1.1.1 netmask=255.0.0.0
 
 =cut
 
@@ -496,12 +496,16 @@ sub process_netcfg {
     my $netmask;
     my $args;
 
+    my $extrargs  = $request->{arg};
+    my @exargs    = ($request->{arg});
+    if (ref($extrargs)) {
+        @exargs = @$extrargs;
+    }
+
     my $nodes = $request->{node};
     my $rsp = {};
 
-    xCAT::MsgUtils->message("I", "set hostname ");
-    my @cmds = split(/,/,$subcmd);
-    foreach my $cmd (@cmds) {
+    foreach my $cmd (@exargs) {
         my ($key, $value) = split(/=/, $cmd);
         if ($key =~ /hostname/) {
             $hostname = $value;
@@ -510,14 +514,14 @@ sub process_netcfg {
                                    node => $nodes,
                                    arg => [ $args ] }, $subreq, 0, 1);
             if ($::RUNCMD_RC != 0) {
-               xCAT::MsgUtils->message("I", "xdsh command to set hostname failed");
+               xCAT::SvrUtils::sendmsg("xdsh command to set hostname failed", $callback);
             }
         }elsif ($key =~ /ip/) {
             $ip = $value;
         } elsif ($key =~ /netmask/) {
             $netmask = $value;
         } else {
-            xCAT::MsgUtils->message("I", "rspconfig $cmd is not support yet");
+            xCAT::SvrUtils::sendmsg("rspconfig $cmd is not support yet, ignored", $callback);
         }
     }
 
@@ -531,6 +535,7 @@ sub process_netcfg {
     }
     if ($opt) {
         my $dshcmd = $args . $opt ;
+        xCAT::SvrUtils::sendmsg($dshcmd, $callback);
         #comment this for now, coralPDU on the lab is not support PduManager yet
         my $output = xCAT::Utils->runxcmd({ command => ['xdsh'], node => $nodes, arg => [ $dshcmd ] }, $subreq, 0, 1);
         if ($::RUNCMD_RC != 0) {

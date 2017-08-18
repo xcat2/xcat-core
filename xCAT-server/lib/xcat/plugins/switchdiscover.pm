@@ -407,7 +407,7 @@ sub process_request {
     }
 
     if (!($result)) {
-        send_msg( \%request, 0, " No switch found ");
+        send_msg( \%request, 0, " No $device found ");
         return;
     }
 
