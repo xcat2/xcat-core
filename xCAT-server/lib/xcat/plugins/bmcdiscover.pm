@@ -558,7 +558,7 @@ sub scan_process {
     my $children;       # The number of child process
     my %sp_children;    # Record the pid of child process
     my $bcmd;
-    my $sub_fds = new IO::Select;  # Record the parent fd for each child process
+
 
     if (!defined($method))
     {
@@ -609,7 +609,7 @@ sub scan_process {
 
     my $live_ip  = split_comma_delim_str($ip_list);
     my $live_mac = split_comma_delim_str($mac_list);
-
+    my %pipe_map;
     if (scalar(@{$live_ip}) > 0) {
 
         foreach (@{$live_ip}) {
@@ -643,6 +643,9 @@ sub scan_process {
                 if ($sp_children{$cpid}) {
                     delete $sp_children{$cpid};
                     $children--;
+                    forward_data($callback, $pipe_map{$cpid});
+                    close($pipe_map{$cpid});
+                    delete $pipe_map{$cpid};
                 }
             }
         };
@@ -672,7 +675,7 @@ sub scan_process {
                 } else {
                     bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                 }
-
+                close($parent_fd);
                 exit 0;
             } else {
 
@@ -680,23 +683,15 @@ sub scan_process {
                 # the main process will check all the parent fd and receive response
                 $sp_children{$child} = 1;
                 close($parent_fd);
-                $sub_fds->add($cfd);
+                $pipe_map{$child} = $cfd;
             }
-
 
             do {
                 sleep(1);
             } until ($children < 32);
-
         }
-
-        #################################################
-        # receive data from child processes
-        ################################################
-        while ($sub_fds->count > 0 or $children > 0) {
-            forward_data($callback, $sub_fds);
-        }
-        while (forward_data($callback, $sub_fds)) {
+        while($children > 0) {
+            sleep(1);
         }
     }
     else
@@ -824,26 +819,14 @@ sub send_rep {
 
 sub forward_data {
     my $callback  = shift;
-    my $fds       = shift;
-    my @ready_fds = $fds->can_read(1);
-    my $rfh;
-    my $rc = @ready_fds;
-    foreach $rfh (@ready_fds) {
-        my $data;
-        my $responses;
-        eval {
-            $responses = fd_retrieve($rfh);
-        };
-        if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
-            $fds->remove($rfh);
-            close($rfh);
-        } else {
-            eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
-            $callback->($responses);
-        }
+    my $cfd       = shift;
+    my $responses;
+    eval {
+            $responses = fd_retrieve($cfd);
+    };
+    if (!($@ and $@ =~ /^Magic number checking on storable file/)) { #this most likely means we ran over the end of available input
+        $callback->($responses);
     }
-    yield;    #Try to avoid useless iterations as much as possible
-    return $rc;
 }
 
 
