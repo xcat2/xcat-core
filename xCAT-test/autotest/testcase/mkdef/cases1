@@ -44,17 +44,17 @@ cmd:chtab node=kvms 'vm.host=|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|'
 check:rc==0
 cmd:mkdef -t node -o c01f02x03v04 groups=kvms mgt=kvm
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmcpus | grep 'vmcpus=2$'
+cmd:lsdef c01f02x03v04 -i vmcpus | grep 'vmcpus=2$'
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmhost | grep 'vmhost=c01f02x03$'
+cmd:lsdef c01f02x03v04 -i vmhost | grep 'vmhost=c01f02x03$'
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmmemory | grep 'vmmemory=3072$'
+cmd:lsdef c01f02x03v04 -i vmmemory | grep 'vmmemory=3072$'
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmnicnicmodel | grep 'vmnicnicmodel=virtio$'
+cmd:lsdef c01f02x03v04 -i vmnicnicmodel | grep 'vmnicnicmodel=virtio$'
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmnics | grep 'vmnics=virbr2$'
+cmd:lsdef c01f02x03v04 -i vmnics | grep 'vmnics=virbr2$'
 check:rc==0
-cmd:chdef c01f02x03v04 -i vmstorage | grep 'vmstorage=dir:///install/vms/vm4$'
+cmd:lsdef c01f02x03v04 -i vmstorage | grep 'vmstorage=dir:///install/vms/vm4$'
 check:rc==0
 cmd:rmdef -t node c01f02x03v04
 check:rc==0
