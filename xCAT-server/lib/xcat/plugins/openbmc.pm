@@ -1669,8 +1669,8 @@ sub rspconfig_response {
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("DHCP", $callback, $node);
-            xCAT::SvrUtils::sendmsg("Will reset BMC...", $callback, $node);
+            my $bmc_node = "$node BMC";
+            xCAT::SvrUtils::sendmsg("Setting IP to DHCP...", $callback, $bmc_node);
         }
     }
 
