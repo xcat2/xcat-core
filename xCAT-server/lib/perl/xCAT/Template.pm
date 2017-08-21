@@ -86,7 +86,6 @@ sub subvars {
     ## 2, the ip address of the mn/sn facing the compute node
     ## 3, the site.master
     my $master;
-    my $sitemaster;
 
     #the "xcatmaster" attribute of the node
     my $noderestab = xCAT::Table->new('noderes');
@@ -112,7 +111,7 @@ sub subvars {
         my @masters = xCAT::TableUtils->get_site_attribute("master");
         my $tmp     = $masters[0];
         if (defined($tmp)) {
-            $sitemaster = $tmp;
+            $master = $tmp;
         }
     }
 
