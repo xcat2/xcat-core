@@ -50,7 +50,7 @@ OpenPOWER BMC specific (using IPMI):
 ====================================
 
 
-\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d=**\ \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
 
 
 OpenPOWER OpenBMC specific :
@@ -172,11 +172,11 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-d**\  \ *data_directory*\ 
  
+ PPC (without HMC, using Direct FSP Management) specific:
+ 
  Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management.
  
-
-
-\ **-d=**\ \ *data_directory*\ 
+ OpenPOWER BMC specific (using IPMI):
  
  Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral.
  

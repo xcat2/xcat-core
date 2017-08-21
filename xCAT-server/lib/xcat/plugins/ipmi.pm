@@ -1930,6 +1930,13 @@ sub do_firmware_update {
         $buffer_size = "15000";
     }
 
+    my $directory_name;
+    if (@{ $sessdata->{extraargs} } > 1) {
+        @ARGV = @{ $sessdata->{extraargs} };
+        use Getopt::Long;
+        GetOptions('d:s' => \$directory_name);
+    }
+    
     # check verbose, buffersize, and retry options
     for my $opt (@{$sessdata->{'extraargs'}}) {
         if ($opt =~ /-V{1,4}/) {
@@ -1962,27 +1969,23 @@ sub do_firmware_update {
                 }
             }
         }
-        if ($opt =~ /-d=/) {
-            my ($attribute, $directory_name) = split(/=/, $opt);
-            if (defined $directory_name) {
-                unless (File::Spec->file_name_is_absolute($directory_name)) {
-                   # Directory name was passed in as relative path, prepend current working dir
-                   $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
-                }
-                # directory was passed in, verify it is valid
-                if (-d $directory_name) {
-                   # Passed in directory name exists
-                   $pUpdate_directory = $directory_name;
-                }
-                else {
-                    $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Can not access data directory $directory_name");
-                }
+
+        if (defined $directory_name) {
+            unless (File::Spec->file_name_is_absolute($directory_name)) {
+               # Directory name was passed in as relative path, prepend current working dir
+               $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
+            }
+            # directory was passed in, verify it is valid
+            if (-d $directory_name) {
+               # Passed in directory name exists
+               $pUpdate_directory = $directory_name;
             }
             else {
-                $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Data directory must be specified.");
+                $exit_with_error_func->($sessdata->{node}, $callback, "Can not access data directory $directory_name");
             }
+        }
+        else {
+            $exit_with_error_func->($sessdata->{node}, $callback, "Data directory must be specified.");
         }
     }
 
@@ -1997,10 +2000,15 @@ sub do_firmware_update {
                 "Directory name is required to update Boston or Briggs machines.");
         }
         
+        # Verify specified directory contains pUpdate utility
+        unless (-e "$pUpdate_directory/pUpdate") {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Can not find pUpdate utility in data directory $pUpdate_directory.");
+        }
         # Verify specified directory contains executable pUpdate utility
         unless (-x "$pUpdate_directory/pUpdate") {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Can not find executable pUpdate utility in data directory $pUpdate_directory.");
+                "Execute permission is not set for pUpdate utility in data directory $pUpdate_directory.");
         }
 
         # Verify there is at least one of update files inside data directory - .bin or .pnor
@@ -2389,6 +2397,7 @@ RETRY_UPGRADE:
 
 sub rflash {
     my $sessdata = shift;
+    my $directory_flag = 0;
     if (isopenpower($sessdata)) {
 
         # Do firmware update for firestone here.
@@ -2397,10 +2406,16 @@ sub rflash {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
-            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=|^-d=/) {
-                $callback->({ error => "The option $opt is not supported or invalid update file specified",
+            } elsif ($opt =~ /^-d$/) {
+                # special handling if -d option which can be followed by a directory name
+                $directory_flag = 1; # set a flag that directory option was given
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
+                # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
+                unless ($directory_flag) {
+                    $callback->({ error => "The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
-                return;
+                    return;
+                }
             }
         }
 

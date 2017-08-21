@@ -24,7 +24,7 @@ B<rflash> I<noderange> I<http_directory>
 
 =head2 OpenPOWER BMC specific (using IPMI):
 
-B<rflash> I<noderange> [I<hpm_file_path> | B<-d=>I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
 
 =head2 OpenPOWER OpenBMC specific :
 
@@ -115,9 +115,11 @@ Specifies the directory where the packages are located.
 
 =item B<-d> I<data_directory>
 
+PPC (without HMC, using Direct FSP Management) specific:
+
 Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management. 
 
-=item B<-d=>I<data_directory>
+OpenPOWER BMC specific (using IPMI):
 
 Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
 
