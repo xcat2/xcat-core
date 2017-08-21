@@ -1,5 +1,5 @@
 start:confignetwork_ib_ipoib
-description: this case is to test confignetwork could configure secondarynic successfully with updatenode.
+description: this case is to test confignetwork could configure the first infiniband interface, ib0, successfully with updatenode.
 cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
 check:rc==0
 cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
