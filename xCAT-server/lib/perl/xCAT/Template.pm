@@ -83,22 +83,27 @@ sub subvars {
 
     #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
     ## 1, the "xcatmaster" attribute of the node
-    #Route A: the node is managed by service node
-    ## A.2, the ip address of the mn facing the compute node
-    ## A.3, the site.master
-    #Route B: the node is not managed by service node
-    ## B.2, the site.master
-    ## B.3, the ip address of the mn facing the compute node
+    ## 2, the ip address of the mn/sn facing the compute node
+    ## 3, the site.master
     my $master;
     my $sitemaster;
-    my $parents;
 
     #the "xcatmaster" attribute of the node
     my $noderestab = xCAT::Table->new('noderes');
-    my $et = $noderestab->getNodeAttribs($node, ['servicenode','xcatmaster']);
-    if ($et) {
+    my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+    if ($et and $et->{'xcatmaster'}) {
         $master = $et->{'xcatmaster'};
-        $parents = $et->{'servicenode'};
+    }
+
+    unless ($master) {
+
+        #the ip address of the mn facing the compute node
+        my $ipfn;
+        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
+        if ($ipfn) {
+            $master = $ipfn;
+        }
     }
 
     unless ($master) {
@@ -108,36 +113,6 @@ sub subvars {
         my $tmp     = $masters[0];
         if (defined($tmp)) {
             $sitemaster = $tmp;
-        }
-    }
-
-    if ($parents) { # the CN is managed by service node
-        unless ($master) {
-
-            #the ip address of the mn facing the compute node
-            my $ipfn;
-            my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
-            unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
-            if ($ipfn) {
-                $master = $ipfn;
-            } else {
-                $master = $sitemaster;
-            }
-        }
-    } else {
-        unless ($master) {
-            $master = $sitemaster;
-        }
-
-        unless ($master) {
-
-            #the ip address of the mn facing the compute node
-            my $ipfn;
-            my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
-            unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
-            if ($ipfn) {
-                $master = $ipfn;
-            }
         }
     }
 
