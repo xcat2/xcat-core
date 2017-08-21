@@ -561,6 +561,7 @@ sub parse_args {
         #
         # disable function until fully tested
         #
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
