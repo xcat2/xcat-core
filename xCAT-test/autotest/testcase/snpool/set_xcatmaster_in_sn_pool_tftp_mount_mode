@@ -32,13 +32,11 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:chdef -t node $$SN,$$CN groups=service,all
 check:rc==0
-cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
+cmd:chdef -t group -o service profile=service  installnic=mac
 check:rc==0
 cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
 check:rc==0
-cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
-check:rc==0
-cmd:chtab node=service postscripts.postscripts="servicenode"
+cmd:chdef -t group -o service nfsserver= tftpserver= xcatmaster= monserver=
 check:rc==0
 
 cmd:copycds $$ISO
@@ -129,6 +127,9 @@ cmd:makehosts compute1
 check:rc==0
 cmd:cat /etc/hosts
 check:output=~compute1
+cmd:cp /etc/resolv.conf /etc/resolv.conf.bak
+cmd:echo "nameserver $$MN" >> /etc/resolv.conf
+check:rc==0
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
@@ -150,6 +151,19 @@ cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$SN cat /tft
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
 cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$CN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$CN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$CN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$CN cat cat /tftpboot/petitboot/compute1;fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+
+#process the speicial case when netboot=petitboot, since we have no physical machine test environment at the moment
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then chdef compute1 netboot=petitboot;fi
+cmd:nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
+
 cmd:noderm compute1
 check:rc==0
+cmd:cp -f /etc/resolv.conf.bak /etc/resolv.conf
 end

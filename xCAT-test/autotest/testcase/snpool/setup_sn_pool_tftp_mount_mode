@@ -32,13 +32,11 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:chdef -t node $$SN,$$CN groups=service,all
 check:rc==0
-cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
+cmd:chdef -t group -o service profile=service installnic=mac
 check:rc==0
 cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1 setupntp=1
 check:rc==0
-cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
-check:rc==0
-cmd:chtab node=service postscripts.postscripts="servicenode"
+cmd:chdef -t group -o service nfsserver= tftpserver= xcatmaster= monserver=
 check:rc==0
 
 cmd:copycds $$ISO
