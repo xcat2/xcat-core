@@ -41,7 +41,7 @@ node Attributes:
 
 \ **addkcmdline**\  (bootparams.addkcmdline)
  
- User specified one or more parameters to be passed to the kernel. For the kernel options need to be persistent after installation, specify them with prefix "R::"
+ User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" ")
  
 
 
@@ -669,7 +669,7 @@ node Attributes:
 \ **nicsadapter**\  (nics.nicsadapter)
  
  Comma-separated list of extra parameters that will be used for each NIC configuration.
-                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
+                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param4=value4 param5=value5>, for example, enP3p3s0f1!mac=98:be:94:59:fa:cd linkstate=DOWN,enP3p3s0f2!mac=98:be:94:59:fa:ce candidatename=enP3p3s0f2/enx98be9459face
  
 
 

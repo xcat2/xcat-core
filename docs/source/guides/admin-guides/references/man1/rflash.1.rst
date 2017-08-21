@@ -57,7 +57,11 @@ OpenPOWER OpenBMC specific :
 ============================
 
 
-\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ] [\ **-d | -**\ **-delete**\ ]
+\ **rflash**\  \ *noderange*\  {[\ **-c | -**\ **-check**\ ] | [\ **-l | -**\ **-list**\ ]}
+
+\ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-u | -**\ **-upload**\ ]}
+
+\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-d | -**\ **-delete**\ ]}
 
 
 
