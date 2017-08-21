@@ -278,6 +278,14 @@ my %status_info = (
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_DHCP_REQUEST => {
+        method         => "POST",
+        init_url       => "$openbmc_project_url/network/action/Reset",
+        data           => "[]",
+    },
+    RSPCONFIG_DHCP_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_SSHCFG_REQUEST => {
         method         => "GET",
         init_url       => "",
@@ -555,7 +563,7 @@ sub parse_args {
         #
         # disable function until fully tested
         #
-        $check = unsupported($callback); # Check later for each subcommand: if (ref($check) eq "ARRAY") { return $check; }
+        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -566,9 +574,12 @@ sub parse_args {
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
-                return ([ 1, "Invalid parameter for option $key: $value" ]) unless (xCAT::NetworkUtils->isIpaddr($value));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if ($key != "ip" and !xCAT::NetworkUtils->isIpaddr($value));
                 if ($key eq "ip") {
                     return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
+                    if ($value != "dhcp" and !xCAT::NetworkUtils->isIpaddr($value)) {
+                        return ([ 1, "Invalid parameter for option $key: $value" ]);
+                    }
                 }
                 $setorget = "set";
                 if (ref($check) eq "ARRAY") { return $check; }
@@ -793,15 +804,23 @@ sub parse_command_status {
             } elsif ($subcommand =~ /^(\w+)=(.+)/) {
                 my $key   = $1;
                 my $value = $2;
-                $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
-                $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
-                $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
-                $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
-                if ($key eq "ip") {
-                    $status_info{RSPCONFIG_SET_RESPONSE}{ip}  = $value;
+                if ($key eq "ip" and $value eq "dhcp") {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_DHCP_REQUEST";
+                    $next_status{RSPCONFIG_DHCP_REQUEST} = "RSPCONFIG_DHCP_RESPONSE";
+                    $next_status{RSPCONFIG_DHCP_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
+                    $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
+                    $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
+                } else {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
+                    $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                    $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+                    if ($key eq "ip") {
+                        $status_info{RSPCONFIG_SET_RESPONSE}{ip}  = $value;
+                    }
+                    $status_info{RSPCONFIG_SET_REQUEST}{data} = ""; # wait for interface, ip/netmask/gateway is $value
+                    push @options, $key;
                 }
-                $status_info{RSPCONFIG_SET_REQUEST}{data} = ""; # wait for interface, ip/netmask/gateway is $value
-                push @options, $key;
             }
         }
         $status_info{RSPCONFIG_GET_RESPONSE}{argv} = join(",", @options);
@@ -1653,6 +1672,13 @@ sub rspconfig_response {
         }
 
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
+    }
+
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            my $bmc_node = "$node BMC";
+            xCAT::SvrUtils::sendmsg("Setting IP to DHCP...", $callback, $bmc_node);
+        }
     }
 
     if ($next_status{ $node_info{$node}{cur_status} }) {
