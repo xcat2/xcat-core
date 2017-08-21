@@ -95,7 +95,7 @@ start:xcatconfig_c
 description:To regenerate cretials
 os:Linux
 #step1:backup: /etc/xcat/ca /etc/xcat/cert
-cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak ;cp -r /etc/xcat/ca /etc/xcat/cabak;cp -r /etc/xcat/cert /etc/xcat/certbak
+cmd:cp -r /etc/xcat/ca /etc/xcat/cabak;cp -r /etc/xcat/cert /etc/xcat/certbak
 
 #step2:run command and check the output
 cmd:xcatconfig  -c >/tmp/xcatconfig.test 2>&1
@@ -104,7 +104,7 @@ cmd:if [[ `cat /tmp/xcatconfig.test |grep FAILED` ]] || [[ `cat /tmp/xcatconfig.
 check:rc==0
 cmd:if [[ `cat /tmp/xcatconfig.test |grep "Created xCAT certificate"` ]] && [[ `cat /tmp/xcatconfig.test |grep "Signature ok"` ]];then exit 0;else exit 1;fi
 check:rc==0
-#step3:make sure the /etc/xcat/hostkeys /etc/xcat/ca /etc/xcat/cert is rewrite
+#step3:make sure the  /etc/xcat/ca /etc/xcat/cert is rewrite
 cmd:diff /etc/xcat/ca /etc/xcat/cabak
 check:rc!=0
 cmd:diff /etc/xcat/cert /etc/xcat/certbak
@@ -112,9 +112,7 @@ check:rc!=0
 #step4:restore test environment
 cmd:rm -rf /tmp/xcatconfig.test
 check:rc==0
-cmd:rm -rf /etc/xcat/hostkeys/*;mv -f /etc/xcat/hostkeysbak/* /etc/xcat/hostkeys;mv -f /etc/xcat/cabak /etc/xcat/ca ;mv -f /etc/xcat/certbak /etc/xcat/cert
-check:rc==0
-cmd:rm -rf /etc/xcat/hostkeysbak
+cmd:mv -f /etc/xcat/cabak /etc/xcat/ca ;mv -f /etc/xcat/certbak /etc/xcat/cert
 check:rc==0
 end
 
