@@ -403,7 +403,16 @@ cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
 check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
+# DHCP dynamic range
+cmd:chdef -t network 20_0_0_0-255_0_0_0 mask=255.0.0.0 tftpserver=$$SN dhcpserver=$$SN
+check:rc==0
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc==0
+cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
+check:rc==0
 # Clean up
+cmd:rmdef -t network 20_0_0_0-255_0_0_0
+check:rc==0
 cmd:chdef -t site sharedtftp=1
 check:rc==0
 cmd:chdef -t site disjointdhcps=0
