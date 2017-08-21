@@ -133,6 +133,11 @@ chdef "${COMPUTE_NODE}" "postscripts=syslog,remoteshell,syncfiles,mlnxofed_ib_in
 rm -rf "${OSIMAGE_OTHERPKGDIR}"
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"
 
+mkdir -p "${OSIMAGE_OTHERPKGDIR}"/dkms
+[ -f "${DKMS_RPM}" ]
+[ "$?" -ne "0" ] && echo "File ${DKMS_RPM} not found." >&2 && exit 1
+cp "${DKMS_RPM}" "${OSIMAGE_OTHERPKGDIR}/dkms"
+
 makedhcp -n
 rinstall "${COMPUTE_NODE}" "osimage=${OSIMAGE_NAME}"
 
@@ -154,7 +159,7 @@ sleep 5
 xdsh "${COMPUTE_NODE}" date
 [ "$?" -ne "0" ] && echo "Failed connect to compute node via SSH." >&2 && exit 1
 
-#xdsh "${COMPUTE_NODE}" 'rpm -q cuda' | grep ': cuda-'
-#[ "$?" -ne "0" ] && echo "CUDA installation checking failed" >&2 && exit 1
+xdsh "${COMPUTE_NODE}" 'rpm -qa'  | grep 'mlnx'
+[ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed" >&2 && exit 1
 
 exit 0
