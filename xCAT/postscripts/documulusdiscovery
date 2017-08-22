@@ -17,7 +17,8 @@ EOF
 
 #listen to the 3001 port for any response from xcatd on MN
 #the message in the response will be written to /tmp/result.socat.out
-socat TCP4-LISTEN:3001,reuseaddr EXEC:"/tmp/helper.socat.sh" &
+socat TCP4-LISTEN:3001,reuseaddr,fork EXEC:"/tmp/helper.socat.sh" &
+LISTENER_PID=$!
 
 #generate key pairs for the SSL connection between switch and xcatd on MN
 mkdir -p /etc/xcat
@@ -86,6 +87,7 @@ gzip -9 /tmp/discopacket
 
 if [ -z "$XCATMASTER" ] || [ -z "$XCATPORT" ]; then
     logger -s -t $log_label -p local4.err "Failed to get xcatd connection information, exit..."
+    kill $LISTENER_PID
     rm -rf /tmp/result.socat.out
     rm -rf /tmp/helper.socat.sh
     exit 1
@@ -119,6 +121,7 @@ while [ $RETRY -lt $MAX_RETRY ]; do
     ((RETRY=RETRY+1))
 done
 
+kill $LISTENER_PID
 rm -rf /tmp/result.socat.out
 rm -rf /tmp/helper.socat.sh
 
