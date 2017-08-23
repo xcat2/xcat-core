@@ -1,7 +1,7 @@
 start:xdcp_nonroot_user
 cmd:useradd -m xyzzy
 check:rc==0
-cmd:( cd ~ && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )
+cmd:bash -c "( cd ~root && tar cf - .xcat .ssh ) | ( cd ~xyzzy && tar xf - )"
 check:rc==0
 cmd:chown -R xyzzy ~xyzzy/.xcat ~xyzzy/.ssh
 check:rc==0
