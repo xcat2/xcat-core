@@ -24,6 +24,9 @@ cmd:updatenode $$CN -P confignetwork
 check:rc==0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-ib0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-ib0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/ib0";else echo "Sorry,this is not supported os"; fi
 check:output=~11.1.0.100
+cmd:xdsh $$CN "ping -c 1 11.1.0.100"
+check:rc==0
+# Clean up
 cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev ib0"
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-ib0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-ib0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/ib0";else echo "Sorry,this is not supported os"; fi

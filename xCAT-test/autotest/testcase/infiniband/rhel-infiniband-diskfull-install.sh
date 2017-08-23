@@ -141,10 +141,12 @@ mkdir -p "${OSIMAGE_OTHERPKGDIR}"/dkms
 [ "$?" -ne "0" ] && echo "File ${DKMS_RPM} not found." >&2 && exit 1
 cp "${DKMS_RPM}" "${OSIMAGE_OTHERPKGDIR}/dkms"
 
+( cd "${OSIMAGE_OTHERPKGDIR}" && createrepo . )
+
 makedhcp -n
 rinstall "${COMPUTE_NODE}" "osimage=${OSIMAGE_NAME}"
 
-NETBOOT_TIMEOUT=600
+INSTALL_TIMEOUT=1800
 declare -i WAIT=0
 
 while sleep 10
@@ -152,8 +154,8 @@ do
 	(( WAIT += 10 ))
 	nodestat "${COMPUTE_NODE}" | grep ': sshd$'
 	[ "$?" -eq "0" ] && break
-	[ "${WAIT}" -le "${NETBOOT_TIMEOUT}" ]
-	[ "$?" -ne "0" ] && echo "Netboot failed" >&2 && exit 1
+	[ "${WAIT}" -le "${INSTALL_TIMEOUT}" ]
+	[ "$?" -ne "0" ] && echo "Operating system installation failed" >&2 && exit 1
 done
 
 # For workaround the GitHub issue #3549
@@ -162,7 +164,7 @@ sleep 5
 xdsh "${COMPUTE_NODE}" date
 [ "$?" -ne "0" ] && echo "Failed connect to compute node via SSH." >&2 && exit 1
 
-xdsh "${COMPUTE_NODE}" 'rpm -qa'  | grep 'mlnx'
-[ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed" >&2 && exit 1
+xdsh "${COMPUTE_NODE}" 'rpm -qa' | grep 'mlnx'
+[ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed." >&2 && exit 1
 
 exit 0

@@ -180,7 +180,7 @@ sleep 5
 xdsh "${COMPUTE_NODE}" date
 [ "$?" -ne "0" ] && echo "Failed connect to compute node via SSH." >&2 && exit 1
 
-xdsh "${COMPUTE_NODE}" 'rpm -qa'  | grep 'mlnx'
-[ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed" >&2 && exit 1
+xdsh "${COMPUTE_NODE}" 'rpm -qa' | grep 'mlnx'
+[ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed." >&2 && exit 1
 
 exit 0
