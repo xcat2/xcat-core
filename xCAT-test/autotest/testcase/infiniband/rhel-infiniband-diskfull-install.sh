@@ -3,9 +3,12 @@
 ########
 # Set all the variables below
 
+[ -n "$LINUX_DISTRO" ] &&
 LINUX_DISTRO="rhels7.4"
+[ -n "$LINUX_ARCH" ] &&
 LINUX_ARCH="ppc64le"
 
+[ -n "$COMPUTE_NODE" ] &&
 COMPUTE_NODE="c910f03c01p10"
 SOURCE_DIR="/media/xcat"
 
