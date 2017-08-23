@@ -36,14 +36,11 @@ cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$CN cat /tft
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
 
 #process the speicial case when netboot=petitboot, since we have no physical machine test environment at the moment
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then chdef compute1 netboot=petitboot;fi
-cmd:nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then cat /tftpboot/petitboot/compute1;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]] && [[ "__GETNODEATTR($$CN,netboot)__" != "petitboot" ]]; then chdef compute1 netboot=petitboot;nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute;cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
 
 cmd:noderm compute1

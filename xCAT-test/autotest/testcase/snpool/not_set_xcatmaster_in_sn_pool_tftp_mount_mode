@@ -145,21 +145,18 @@ cmd:nodeset compute1 osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__
 check:rc==0
 check:output=~compute1: install __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-compute
 cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then cat /tftpboot/petitboot/compute1;fi
-check:output=~http://$$MN|http://$$INSTALLNICIP|http://${next-server}
-cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$SN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$SN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$SN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$SN cat /tftpboot/petitboot/compute1;fi
+check:output=~http://$$MN|http://$$MASTERIP|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$SN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$SN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$SN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$SN  cat /tftpboot/petitboot/compute1;fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
 cmd:if [[ "__GETNODEATTR($$CN,netboot)__" =~ "grub2" ]]; then xdsh $$CN cat /tftpboot/boot/__GETNODEATTR($$CN,netboot)__/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "yaboot" ]];then xdsh $$CN cat /tftpboot/yaboot.conf*;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "xnba" ]];then xdsh $$CN cat /tftpboot/xcat/xnba/nodes/compute1;elif [[ "__GETNODEATTR($$CN,netboot)__" =~ "petitboot" ]];then xdsh $$CN cat /tftpboot/petitboot/compute1;fi
 check:output=~http://$$CN|http://__GETNODEATTR($$CN,ip)__|http://${next-server}
 
 #process the speicial case when netboot=petitboot, since we have no physical machine test environment at the moment
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then chdef compute1 netboot=petitboot;fi
-cmd:nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then cat /tftpboot/petitboot/compute1;fi
-check:output=~http://$$MN|http://$$INSTALLNICIP|http://${next-server}
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]] && [[ "__GETNODEATTR($$CN,netboot)__" != "petitboot" ]]; then chdef compute1 netboot=petitboot;nodeset compute1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute;cat /tftpboot/petitboot/compute1;else echo "http://$$MN";fi
+check:output=~http://$$MN|http://$$MASTERIP|http://${next-server}
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$SN  cat /tftpboot/petitboot/compute1;else echo "http://$$SN";fi
 check:output=~http://$$SN|http://__GETNODEATTR($$SN,ip)__|http://${next-server}
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then xdsh $$CN cat /tftpboot/petitboot/compute1;else echo "http://$$CN";fi
 check:output=~http://$$CN|http://__GETNODEATTR($$CN,ip)__|http://${next-server}
 
 cmd:noderm compute1
