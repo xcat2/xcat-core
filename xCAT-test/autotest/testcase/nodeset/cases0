@@ -377,17 +377,21 @@ cmd:grep "debug" /tftpboot/petitboot/testnode1
 check:rc!=0
 cmd:chdef -t site sharedtftp=0 disjointdhcps=0
 check:rc==0
-cmd:xdsh $$SN 'mount | grep /tftpboot && umount /tftpboot'
+cmd:chdef -t site tftpdir=/tftpboot.1
 check:rc==0
+cmd:mkdir -p /tftpboot.1/boot/grub2
+cmd:touch /tftpboot.1/boot/grub2/grub2.ppc
+cmd:xdsh $$SN 'mkdir -p /tftpboot.1/boot/grub2'
+cmd:xdsh $$SN 'touch /tftpboot.1/boot/grub2/grub2.ppc'
 cmd:chdef -t node testnode1 servicenode=$$SN
 check:rc==0
 cmd:rm -f /tftpboot/petitboot/testnode1
 cmd:xdsh $$SN 'rm -f /tftpboot/petitboot/testnode1'
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 check:rc==0
-cmd:test -f /tftpboot/petitboot/testnode1
+cmd:test -f /tftpboot.1/petitboot/testnode1
 check:rc==0
-cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc==0
 cmd:nodeset testnode1 offline
 check:rc==0
@@ -397,9 +401,9 @@ cmd:chdef -t node testnode1 servicenode=nonexistenode
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 check:rc==0
-cmd:test -f /tftpboot/petitboot/testnode1
+cmd:test -f /tftpboot.1/petitboot/testnode1
 check:rc==0
-cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc!=0
 cmd:nodeset testnode1 offline
 check:rc==0
@@ -408,7 +412,7 @@ cmd:chdef -t network 20_0_0_0-255_0_0_0 mask=255.0.0.0 tftpserver=$$SN dhcpserve
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
 check:rc==0
-cmd:xdsh $$SN 'test -f /tftpboot/petitboot/testnode1'
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc==0
 # Clean up
 cmd:rmdef -t network 20_0_0_0-255_0_0_0
@@ -417,8 +421,10 @@ cmd:chdef -t site sharedtftp=1
 check:rc==0
 cmd:chdef -t site disjointdhcps=0
 check:rc==0
-cmd:xdsh $$SN 'grep /tftpboot /etc/fstab && mount /tftpboot'
+cmd:chdef -t site tftpdir=/tftpboot
 check:rc==0
+cmd:rm -rf /tftpboot.1
+cmd:xdsh $$SN 'rm -rf /tftpboot.1'
 cmd:chdef -t node -o testnode1 ip=
 check:rc==0
 cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
