@@ -30,7 +30,7 @@ B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--c
 
 B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
 
-B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-u>|B<--upload>]}
+B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-a>|B<--activate>] | [B<-u>|B<--upload>]}
 
 B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<-d>|B<--delete>]}
 
@@ -141,7 +141,7 @@ Specify number of times to retry the update if failure is detected. Default valu
 
 =item B<-a|--activate>
 
-Activate update image. Image id must be specified.
+Activate update image. Image id or update file must be specified.
 
 =item B<-l|--list>
 
@@ -207,7 +207,12 @@ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when upd
 =item 6.
 To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
 
- rflash briggs01 -d=/root/supermicro/OP825
+ rflash briggs01 -d /root/supermicro/OP825
+
+=item 7.
+To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate: 
+
+  rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
 
 =back
 

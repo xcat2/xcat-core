@@ -43,6 +43,7 @@ $::POWER_STATE_QUIESCED     = "quiesced";
 $::POWER_STATE_RESET        = "reset";
 $::POWER_STATE_REBOOT       = "reboot";
 $::UPLOAD_FILE              = "";
+$::UPLOAD_FILE_VERSION      = "";
 
 $::NO_ATTRIBUTES_RETURNED   = "No attributes returned from the BMC.";
 
@@ -170,6 +171,13 @@ my %status_info = (
         init_url       => "$openbmc_project_url/software",
     },
     RFLASH_UPDATE_CHECK_STATE_RESPONSE => {
+        process        => \&rflash_response,
+    },
+    RFLASH_UPDATE_CHECK_ID_REQUEST  => {
+        method         => "GET",
+        init_url       => "$openbmc_project_url/software/enumerate",
+    },
+    RFLASH_UPDATE_CHECK_ID_RESPONSE => {
         process        => \&rflash_response,
     },
     RFLASH_SET_PRIORITY_REQUEST  => {
@@ -625,7 +633,7 @@ sub parse_args {
         }
         if ($filename_passed) {
             # Filename was passed, check flags allowed with file
-            if ($option_flag !~ /^-c$|^--check$|^-d$|^--delete$|^-u$|^--upload$/) {
+            if ($option_flag !~ /^-c$|^--check$|^-u$|^--upload$|^-a$|^--activate$/) {
                 return ([ 1, "Invalid option specified when a file is provided: $option_flag" ]);
             }
         }
@@ -845,6 +853,7 @@ sub parse_command_status {
         my $upload = 0;
         my $activate = 0;
         my $update_file;
+        my $upload_and_activate = 0;
 
         foreach $subcommand (@$subcommands) {
             if ($subcommand =~ /-c|--check/) {
@@ -866,6 +875,8 @@ sub parse_command_status {
         my $grep_cmd = "/usr/bin/grep -a";
         my $version_tag = '"version=IBM"';
         my $purpose_tag = '"purpose="';
+        my $purpose_value;
+        my $version_value;
         if (defined $update_file) {
             # Filename or file id was specified 
             if ($update_file =~ /.*\.tar$/) {
@@ -882,17 +893,29 @@ sub parse_command_status {
                     xCAT::SvrUtils::sendmsg([1,"Cannot access $::UPLOAD_FILE"], $callback);
                     return 1;
                 }
-                if ($check_version) {
-                    # Display firmware version of the specified .tar file
+                if ($activate) {
+                    # Activate flag was specified together with a update file. We want to
+                    # upload the file and activate it.
+                    $upload_and_activate = 1;
+                    $activate = 0;
+                }
+
+                if ($check_version | $upload_and_activate) {
+                    # Extract Host version for the update file
                     my $firmware_version_in_file = `$grep_cmd $version_tag $::UPLOAD_FILE`;
                     my $purpose_version_in_file = `$grep_cmd $purpose_tag $::UPLOAD_FILE`;
                     chomp($firmware_version_in_file);
                     chomp($purpose_version_in_file);
-                    my ($purpose_string,$purpose_value) = split("=", $purpose_version_in_file); 
-                    my ($version_string,$version_value) = split("=", $firmware_version_in_file); 
+                    (my $purpose_string,$purpose_value) = split("=", $purpose_version_in_file); 
+                    (my $version_string,$version_value) = split("=", $firmware_version_in_file); 
                     if ($purpose_value =~ /host/) {
                         $purpose_value = "Host";
                     } 
+                    $::UPLOAD_FILE_VERSION = $version_value;
+                }
+
+                if ($check_version) {
+                    # Display firmware version of the specified .tar file
                     xCAT::SvrUtils::sendmsg("TAR $purpose_value Firmware Product Version\: $version_value", $callback);
                 }
             }
@@ -939,6 +962,13 @@ sub parse_command_status {
 
             $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
             $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+        }
+        if ($upload_and_activate) {
+            # Upload specified update file to BMC
+            $next_status{LOGIN_RESPONSE} = "RFLASH_FILE_UPLOAD_REQUEST";
+            $next_status{"RFLASH_FILE_UPLOAD_REQUEST"} = "RFLASH_FILE_UPLOAD_RESPONSE";
+            $next_status{"RFLASH_FILE_UPLOAD_RESPONSE"} = "RFLASH_UPDATE_CHECK_ID_REQUEST";
+            $next_status{"RFLASH_UPDATE_CHECK_ID_REQUEST"} = "RFLASH_UPDATE_CHECK_ID_RESPONSE";
         }
     }
 
@@ -1958,7 +1988,7 @@ sub rflash_response {
             }
             else {
                 # Activation state of active and priority of non 0 - need to just set priority to 0 to activate
-                print "Update is already active, just need to set priority to 0";
+                print "Update is already active, just need to set priority to 0\n";
                 $next_status{ $node_info{$node}{cur_status} } = "RFLASH_SET_PRIORITY_REQUEST";
             }
         }
@@ -1971,6 +2001,42 @@ sub rflash_response {
             $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
         }
        
+    }
+
+    if ($node_info{$node}{cur_status} eq "RFLASH_UPDATE_CHECK_ID_RESPONSE") {
+        my $activation_state;
+        my $progress_state;
+        my $priority_state;
+
+        # Look through all the software entries and find the id of the one that matches
+        # the version of the uploaded file. Once found, set up request/response hash entries
+        # to activate that image.
+        foreach my $key_url (keys %{$response_info->{data}}) {
+            my %content = %{ ${ $response_info->{data} }{$key_url} };
+
+            $update_id = (split(/\//, $key_url))[ -1 ];
+            if (defined($content{Version}) and $content{Version}) {
+                $update_version = $content{Version};
+            }
+            if ($update_version eq $::UPLOAD_FILE_VERSION) {
+                # Found a match of uploaded file version with the image in software/enumerate
+
+                # Set the image id for the activation request
+                $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_id/attr/RequestedActivation";
+                $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_id";
+                $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_id/attr/Priority";
+
+                # Set next steps to activate the image
+                $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
+                $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+                $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
+
+                $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
+                $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                last;
+            }
+        }
     }
 
     if ($node_info{$node}{cur_status} eq "RFLASH_DELETE_IMAGE_RESPONSE") {
