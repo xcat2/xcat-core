@@ -43,6 +43,7 @@ logger -s -t $log_label -p local4.info "Beginning switch discovery process..."
 #grab the switch information
 dmidweinfo=$(/usr/sbin/dmidecode 2>/dev/null)
 PRODUCTNAME=$(echo "$dmidweinfo"|grep "Product Name"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
+VENDOR=$(echo "$dmidweinfo"|grep "Manufacturer"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
 MTM=$PRODUCTNAME
 ARCH=$(uname -m)
 SERIAL=$(echo "$dmidweinfo"|grep "Serial Number"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
@@ -54,7 +55,8 @@ echo "<sequential>1</sequential>" >> /tmp/discopacket
 echo "<nodetype>switch</nodetype>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
 #echo "<switchtype>$MTM</switchtype>" >> /tmp/discopacket
-echo "<vendor>$MTM</vendor>" >> /tmp/discopacket
+echo "<vendor>$VENDOR</vendor>" >> /tmp/discopacket
+echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 
 MAC_OF_FIRST_UP_NIC=$(ip addr show eth0|grep "link/ether"|awk -F' '  '{print $2}')
