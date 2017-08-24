@@ -2262,7 +2262,7 @@ sub rflash {
         }
         return do_firmware_update($sessdata);
     } elsif (isfpc($sessdata)) {
-
+        $callback->({ data => "SMM update is deprecated, please use confluent nodefirmware command, trying anyway" });
         #first, start a fpc firmware transaction
         $sessdata->{firmpath} = $sessdata->{subcommand};
         $sessdata->{firmctx}  = "init";
