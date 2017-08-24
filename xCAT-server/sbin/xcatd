@@ -2441,35 +2441,12 @@ sub convey_response {
     # sanitize the response, to avoid being killed by non-printable bytes
     #$resp =~ tr/\011-\177/?/c;
     # seeing if using utf-8 offloads potential issues to client terminal, it didn't
-    store_fd($resp, $parent_fd);
-    yield; # parent must get timeslice anyway before an ack could possibly return
-    my $parsel = new IO::Select;
-    $parsel->add($parent_fd);
-    my $selbits = $parsel->bits;
-    my $rsp;
-    while ($selbits && ($rsp = select($selbits, undef, undef, 5))) { # block up to five seconds
-
-        if ($quit) {    # Obey quit flag
-            xexit 0;
-        }
-        if ($rsp == 0) {    # This means the filedescriptor was removed
-            last;
-        }
-        if ($rsp < 0) {     # A signal caused select to skip out, do-over
-            next;
-        }
-
-        # At this point, the only possibility is a positive return, meaning parent_fd requires attention of some sort
-        $rsp = <$parent_fd>;
-        if ($rsp) { # If data actually came in, last, otherwise, remove it from the IO::Select, but both should amount to the same thing
-            last;
-        } else {
-            $parsel->remove($parent_fd);
-            last;
-        }
+    eval {
+        store_fd($resp, $parent_fd);
+    };
+    if ($@) {
+        xCAT::MsgUtils->message("S", "Failed to store into socketpair: $@");
     }
-    yield; # If still around, it means a peer process still hasn't gotten to us, so might as well yield
-    $selbits = $parsel->bits;
 }
 
 sub build_response {
@@ -2992,9 +2969,10 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
         if ($@ and $@ =~ /^Magic number checking on storable file/) { # this most likely means we ran over the end of available input
             $fds->remove($rfh);
             close($rfh);
+        } elsif ($@) {
+            xCAT::MsgUtils->message("S", "Failed to retrieve from socketpair: $@");
         } else {
             push @$replyqueue, $resp;
-            print $rfh "nfin\n";
         }
     }
     foreach my $rin ($clientselect->can_read(0)) {
