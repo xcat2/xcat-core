@@ -664,7 +664,7 @@ sub parse_command_status {
     my $subcommands = shift;
     my $subcommand;
 
-    if ($$subcommands[-1] =~ /V|verbose/) {
+    if ($$subcommands[-1] and $$subcommands[-1] =~ /V|verbose/) {
         $::VERBOSE = 1;
         pop(@$subcommands);
     }
@@ -740,7 +740,11 @@ sub parse_command_status {
     }
 
     if ($command eq "rsetboot") {
-        $subcommand = $$subcommands[0];
+        if (defined($$subcommands[0])) {
+            $subcommand = $$subcommands[0];
+        } else {
+            $subcommand = "stat";
+        }
         if ($subcommand =~ /^hd$|^net$|^cd$|^default$|^def$/) {
             $next_status{LOGIN_RESPONSE} = "RSETBOOT_SET_REQUEST";
             $next_status{RSETBOOT_SET_REQUEST} = "RSETBOOT_SET_RESPONSE";
@@ -763,7 +767,7 @@ sub parse_command_status {
 
     if ($command eq "reventlog") {
         my $option_s = 0;
-        if ($$subcommands[-1] eq "-s") {
+        if ($$subcommands[-1] and $$subcommands[-1] eq "-s") {
             $option_s = 1; 
             pop(@$subcommands);
         }
