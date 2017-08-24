@@ -406,12 +406,12 @@ function sort_nics_device_order {
                     vlan_slot=$vlan_slot" "$num
                 fi
             else
-                echo "Error: nicdevices.$nic_dev base nic device cannot be $base_nic_type $base_nic_dev.(nicdevices is only required on vlan/bond/bridge)"
+                echo "Error: nicdevices.$nic_dev base nic device cannot be $base_nic_type $base_nic_dev.(nicdevices is only required on Bond/VLAN/Bridge)"
             fi
             ((num+=1))
         done
       else
-        log_error "only support configure bond/vlan/bridge on redhat."
+        log_error "only support configuration of Bond/VLAN/Bridge on Red Hat."
       fi
     fi
     new_order=$eth_slot" "$bond_slot" "$vlan_slot
@@ -555,7 +555,7 @@ function configure_nicdevice {
                 errorcode=1
             fi
         else
-            log_error "please check nic data in nics table."
+            log_error "Check the NIC data in the 'nics' table."
             errorcode=1
         fi 
 
@@ -647,7 +647,7 @@ sorted_nicdevice_list=`sort_nics_device_order "$new_nicdevice"`
 #If there is invalid nics pair, errorcode is 1
 invalid_nicdevice_pair=`echo "$sorted_nicdevice_list" | grep "Error"`
 if [ $? -eq 0 ]; then
-    echo "$invalid_nicdevice_pair"|log_lines error
+    echo "$invalid_nicdevice_pair"|sed 's/Error://g'|log_lines error
     errorcode=1
 fi
 

@@ -1473,7 +1473,7 @@ function create_bond_interface {
     wait_for_ifstate $ifname UP 200 1
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_error "Interface \"$ifname\" was NOT in \"UP\" state eventually."
+        log_error "Interface \"$ifname\" could not be brought to \"UP\"."
         $ip link show $ifname \
         | $sed -e 's/^/['$ifname' ip out >> /g' \
         | log_lines info
