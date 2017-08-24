@@ -1,7 +1,14 @@
 #!/bin/bash
 
 ########
-# Set all the variables below
+#
+# For manually run this script in a standalone test environment without xCAT-test,
+# do the following steps.
+#
+# * Set all the variables in LINE 11, 13, 16, and 17.
+# * Download all the ISO files, RPMs needed, and put them in ${SOURCE_DIR}
+# * If you intend to specify all the packages explicitly, set variable in LINE 61, 62, 63.
+#
 
 [ -n "$LINUX_DISTRO" ] &&
 LINUX_DISTRO="rhels7.4"
@@ -9,8 +16,8 @@ LINUX_DISTRO="rhels7.4"
 LINUX_ARCH="ppc64le"
 
 [ -n "$COMPUTE_NODE" ] &&
-COMPUTE_NODE="c910f03c01p10"
-SOURCE_DIR="/media/xcat"
+COMPUTE_NODE="nonexistent"
+SOURCE_DIR="/path/to/source"
 
 ########
 
@@ -155,7 +162,7 @@ do
 	nodestat "${COMPUTE_NODE}" | grep ': sshd$'
 	[ "$?" -eq "0" ] && break
 	[ "${WAIT}" -le "${INSTALL_TIMEOUT}" ]
-	[ "$?" -ne "0" ] && echo "Operating system installation failed" >&2 && exit 1
+	[ "$?" -ne "0" ] && echo "Operating system installation failed." >&2 && exit 1
 done
 
 # For workaround the GitHub issue #3549
@@ -166,5 +173,11 @@ xdsh "${COMPUTE_NODE}" date
 
 xdsh "${COMPUTE_NODE}" 'rpm -qa' | grep 'mlnx'
 [ "$?" -ne "0" ] && echo "MLNX OFED installation checking failed." >&2 && exit 1
+
+xdsh "${COMPUTE_NODE}" 'lspci'
+xdsh "${COMPUTE_NODE}" 'lsslot -c pci'
+xdsh "${COMPUTE_NODE}" 'lsslot'
+xdsh "${COMPUTE_NODE}" 'ibv_devinfo'
+xdsh "${COMPUTE_NODE}" 'iblinkinfo'
 
 exit 0

@@ -1,10 +1,10 @@
 start:rhel_infiniband_diskless_install
-cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="$$OS" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskless-install.sh
+cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskless-install.sh
 check:rc==0
 end
 
 start:rhel_infiniband_diskfull_install
-cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="$$OS" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskfull-install.sh
+cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskfull-install.sh
 check:rc==0
 end
 
