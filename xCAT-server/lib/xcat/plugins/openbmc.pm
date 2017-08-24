@@ -1359,8 +1359,8 @@ sub rinv_response {
             }
         } else {
             if (! defined $content{Present}) {
-                # This should never happen, but if we find this, contact firmware team to fix...
-                xCAT::SvrUtils::sendmsg("ERROR: Invalid data for $key_url, contact firmware team!", $callback, $node);
+                # If the Present field is not part of the attribute, then it's most likely a callout
+                # Do not print as part of the inventory response
                 next; 
             }
 
