@@ -26,7 +26,7 @@ function change_ip()
 {
         echo "Prepare to change ip."
         echo "Start to check ip valid ."
-        $NODEIP=$4;
+        NODEIP=$4;
 	test_ip $1;
 	if [[ $? -ne 0 ]];then echo "ip is invalid";return 1;fi
         echo "ip is valid.";
