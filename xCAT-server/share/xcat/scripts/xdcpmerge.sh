@@ -76,6 +76,7 @@ for i in $*; do
     delim="|"
     for u in $removeusers
     do
+      # For special char +/-, need to escape
       [[ "${u:0:1}x" =~ ^\+|\-x ]] && uu="\\$u" || uu="$u"
       userlist=$userlist$uu$delim
     done
