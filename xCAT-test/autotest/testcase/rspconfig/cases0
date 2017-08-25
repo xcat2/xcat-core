@@ -44,7 +44,7 @@ end
 start:rspconfig_ip
 description:rspconfig  change openbmc ip 
 Attribute: $$CN-The operation object of rspconfig command
-cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -i $$CN
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -i $$CN $NODEIP
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -c $$CN ip
 check:rc==0

@@ -16,57 +16,55 @@ function test_ip()
 }
 function net()
 {
-	a=$(echo "$1" | awk -F "." '{print $1" "$2" "$3" "$4}')
-        for num in $a;
-	do
-		while (($num!=0));do
- 			echo -n $(($num%2)) >> /tmp/$$.num;
-			num=$(($num/2));
-		done
-	done
-	rc=$(grep -o "1" /tmp/$$.num | wc -l)
-	rm /tmp/$$.num
-        ip="$2/$rc"
-	A=($(echo "$ip"|sed 's/[./;]/ /g'))
-	B=$(echo $((2**(32-${A[4]})-1)))
-	C=($(echo "obase=256;ibase=10; $B"|bc|awk '{if(NF==4)a=$0;if(NF==3)a="0"$0;if(NF==2)a="0 0"$0;if(NF==1)a="0 0 0"$0;print a}'))
-	D=$(echo ${A[*]} ${C[*]})
-	rc2=echo echo $D|awk 'BEGIN{OFS="."}{print $1,$2,$3,$4"-"$1+$6,$2+$7,$3+$8,$4+$9}' |awk -F '-' '{print $2}'
+	LASTIP=`echo "$1 $2"|awk -F '[ .]+' 'BEGIN{OFS="."} END{print or($1,xor($5,255)),or($2,xor($6,255)),or($3,xor($7,255)),or($4,xor($8,255))}'`
+	FIRSTIP=`echo "$1 $2"|awk -F '[ .]+' 'BEGIN{OFS="."} END{print and($1,$5),and($2,$6),and($3,$7),and($4,$8)}'`
+	echo lastip is $LASTIP
+	echo first ip is $FIRSTIP
+
 }
 function change_ip()
 {
+        echo "Prepare to change ip."
+        echo "Start to check ip valid ."
+        $NODEIP=$4;
 	test_ip $1;
-	if [[ $? -ne 0 ]];then return 1;fi
+	if [[ $? -ne 0 ]];then echo "ip is invalid";return 1;fi
+        echo "ip is valid.";
 	echo $1 > /tmp/BMCIP
+        net $1 $3
 	ip1=`echo $1|awk -F. '{print $1}'`
 	ip2=`echo $1|awk -F. '{print $2}'`
 	ip3=`echo $1|awk -F. '{print $3}'`
-	ip4=`echo $1|awk -F. '{print $4}'`
-	echo ip is $ip1.$ip2.$ip3.$ip4 
-	rc=$(net $3 $1)
-	rc4=`echo $rc |awk -F. '{print $4}'`
-	rc4=`expr "$rc4"`
-	if [[ $rc4 > 255 ]];then rc4=255;fi
-	ip=$ip4
+        ip4=`echo $1|awk -F. '{print $4}'`
+	ipfirst=`echo $FIRSTIP|awk -F. '{print $4}'`
+        ip=`expr "$ipfirst" "+" "1"`
+	iplast=`echo $LASTIP|awk -F. '{print $4}'`
+        ip5=`expr "$iplast" "-" "1"`
+        echo ip is $ip ,ip5 is $ip5
 	while true;
-	do [[ $ip == "$rc4" ]] && return 1;
+	do [[ $ip == "$ip5" ]] && echo "exit for using last ip."&&return 1;
 		ping $ip1.$ip2.$ip3.$ip -c 2 >/dev/null ;
-		if [[ $? != 0 ]]; then
+		if [[ $? != 0 && "$ip" != "$ip4" && "$ip1.$ip2.$ip3.$ip" != "$NODEIP" ]]; then
 			coutip="$ip1.$ip2.$ip3.$ip"
 			BMCNEWIP=$coutip;
 			echo $1,$2,$3
+                        echo "Start to set ip for node."
 			rspconfig $2 ip=$BMCNEWIP
 			if [[ $? -eq 0 ]];then
-				echo right command;
+				echo "Could set ip for node.";
 			else
+                                echo "Could not set ip for node";
 				return 1;
 			fi
 			chdef $2 bmc=$BMCNEWIP
+                        echo "Start to check ip setted successfully or not."
 			check_result $2 ip $BMCNEWIP
 			if [[ $? -ne 0 ]] ;then
+                                echo "Ip could  not be setted.";
 				return 1;
 			else
-				return 0;
+				echo "Ip could be setted.";
+                                return 0;
 			fi
 		fi
 		ip=`expr "$ip" "+" "1"`
@@ -90,21 +88,25 @@ function check_result()
 }
 function clear_env()
 {
+echo "Start to clear test environment.";
 	if [[ -f /tmp/BMCIP ]];then 
         	originip=$(cat /tmp/BMCIP);
         	echo originip is $originip;
         	rspconfig $2 ip=$originip
         	if [[ $? -eq 0 ]];then
-            		echo right command;
+            		echo "Could set the node's bmc ip to originip";
         	else
+            		echo "Could not set the node's bmc ip to originip";
             		return 1;
         	fi
         	rm -rf /tmp/BMCIP
         	chdef $2 bmc=$originip
         	check_result $2 $3 $originip
        		if [[ $? -ne 0 ]] ;then
+            		echo "Could set the node's bmc ip to originip sucessfully.";
       			return 1;
        		else
+            		echo "Could set the node's bmc ip to originip successfully.";
                         return 0; 
        		fi
     	fi
@@ -112,41 +114,56 @@ function clear_env()
 }
 function change_gateway 
 {
- 	test_ip $1;
-	if [[ $? -ne 0 ]];then return 1;fi
+ 	echo "Prepare to change gateway.";
+        echo "Start to check gateway valid or not.";
+        test_ip $1;
+	if [[ $? -ne 0 ]];then echo "Gateway is invalid";return 1;fi
+                echo "Start to change gateway.";
 		rspconfig $2 gateway=$1;
 	if [[ $? -eq 0 ]];then
-		echo set gateway ok;
+		echo "Could set gateway.";
 	else
-		return 1;
+		echo "Could not set gateway.";
+                return 1;
 	fi
+        echo "Start to check gateway setted successfully or not.";
 	check_result $2 $3 $1
 	if [[ $? -ne 0 ]] ;then
+                echo "Could not set gateway successfully.";
 		return 1;
 	else
-		return 0;
+		echo "Could set gateway successfully.";
+                return 0;
 	fi
 }
 function change_netmask 
 {
-	test_ip $1;
-	if [[ $? -ne 0 ]];then return 1;fi
+	echo "Prepare to change netmask";
+        echo "Start to check netmask valid or not.";
+        test_ip $1;
+	if [[ $? -ne 0 ]];then echo "Net mask is invalid.";return 1;fi
 	rspconfig $2 netmask=$1;
 	if [[ $? -eq 0 ]];then
-		echo set netmask ok;
+		echo "Could set netmask.";
 	else
+                echo "Could not set netmask.";
 		return 1;
 	fi
 	check_result $2 $3 $1
 	if [[ $? -ne 0 ]] ;then
+                echo "Could not set netmask successfully.";
 		return 1;
 	else
-		return 0;
+		echo "Could set netmask successfully.";
+                return 0;
 	fi
 }
 BMCIP=""
 BMCGTEWAT=""
 BMCNETMASK=""
+FIRSTIP=""
+LASTIP=""
+NODEIP=""
 while [ "$#" -gt "0" ]
 do
 	case $1 in
@@ -158,7 +175,7 @@ do
 		else
 			exit 1; 
 		fi
-		change_ip $BMCIP $2 $BMCNETMASK  
+		change_ip $BMCIP $2 $BMCNETMASK $3
 		if [[ $? -eq 1 ]];then
 			exit 1
 		else 
