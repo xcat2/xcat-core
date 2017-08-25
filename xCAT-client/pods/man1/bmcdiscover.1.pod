@@ -35,7 +35,7 @@ Specify one or more IP ranges acceptable to nmap.  IP range can be hostnames, IP
 
 =item B<--sn>
 
-Specify one or more service node on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, bmcdiscover will be dispatched to the specified SN and set them as the 'servicenode' attribute of the discovered BMC node.
+Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, bmcdiscover will be dispatched to the specified SNs. Then, the nodename of the service node that 'bmcdiscover' is running on will be set to the 'servicenode' attribute of the discovered BMC node.
 
 =item B<-s>            
 
@@ -98,7 +98,7 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
 
     bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
 
-3. To discovery BMCs through sn01:
+3. To discover BMCs through sn01:
 
     bmcdiscover --sn sn01 -s nmap --range "10.4.22-23.100-254" -z
 
