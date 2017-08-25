@@ -10,12 +10,12 @@
 # * If you intend to specify all the packages explicitly, set variable in LINE 61, 62, 63
 #
 
-[ -n "$LINUX_DISTRO" ] &&
+[ -n "$LINUX_DISTRO" ] ||
 LINUX_DISTRO="rhels7.4"
-[ -n "$LINUX_ARCH" ] &&
+[ -n "$LINUX_ARCH" ] ||
 LINUX_ARCH="ppc64le"
 
-[ -n "$COMPUTE_NODE" ] &&
+[ -n "$COMPUTE_NODE" ] ||
 COMPUTE_NODE="nonexistent"
 SOURCE_DIR="/path/to/source"
 
