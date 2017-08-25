@@ -76,7 +76,8 @@ for i in $*; do
     delim="|"
     for u in $removeusers
     do
-      userlist=$userlist$u$delim
+      [[ "${u:0:1}x" =~ ^\+|\-x ]] && uu="\\$u" || uu="$u"
+      userlist=$userlist$uu$delim
     done
     # remove the last delimiter
     userlisttmp="${userlist%?}"
