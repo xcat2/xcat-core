@@ -686,9 +686,9 @@ sub scan_process {
                 $pipe_map{$child} = $cfd;
             }
 
-            do {
+            while ($children >= 32) {
                 sleep(1);
-            } until ($children < 32);
+            }
         }
         while($children > 0) {
             sleep(1);
