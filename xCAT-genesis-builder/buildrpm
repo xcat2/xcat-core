@@ -42,7 +42,7 @@ if [ $BUILDARCH = "x86_64" ]; then
     sed -i 's/\/lib64\/libpanel.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libmenu.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
-    sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+    sed -i '/\/usr\/sbin\/iprconfig/ d' $DRACUTMODDIR/install
     sed -i '/hwdb.bin/ d' $DRACUTMODDIR/install
     sed -i 's/instmods ipr//' $DRACUTMODDIR/installkernel
 fi
@@ -54,7 +54,7 @@ if [ "$HOSTOS" = "mcp" ]; then
             sed -i 's/dmidecode//' $DRACUTMODDIR/install
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-2.17.so/' $DRACUTMODDIR/install
             sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
-            sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+            sed -i '/\/usr\/sbin\/iprconfig/ d' $DRACUTMODDIR/install
         else
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-linux-x86-64.so.2/' $DRACUTMODDIR/install
         fi
