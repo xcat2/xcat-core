@@ -145,7 +145,7 @@ mkdir -p "${OSIMAGE_OTHERPKGDIR}"
 
 mkdir -p "${OSIMAGE_OTHERPKGDIR}"/dkms
 [ -f "${DKMS_RPM}" ]
-[ "$?" -ne "0" ] && echo "File ${DKMS_RPM} not found." >&2 && exit 1
+[ "$?" -ne "0" ] && echo "File ${DKMS_RPM} not found." >&2
 cp "${DKMS_RPM}" "${OSIMAGE_OTHERPKGDIR}/dkms"
 
 ( cd "${OSIMAGE_OTHERPKGDIR}" && createrepo . )

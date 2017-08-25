@@ -1,9 +1,11 @@
 start:rhel_infiniband_diskless_install
+description:Intigration test of RHEL 7 and MLNX OFED for diskless installation. Need to set MLNX variable in the test configuration file.
 cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskless-install.sh
 check:rc==0
 end
 
 start:rhel_infiniband_diskfull_install
+description:Intigration test of RHEL 7 and MLNX OFED for diskfull installation. Need to set MLNX variable in the test configuration file.
 cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskfull-install.sh
 check:rc==0
 end
