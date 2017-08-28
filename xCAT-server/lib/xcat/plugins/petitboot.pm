@@ -656,7 +656,7 @@ sub process_request {
         }
         if ($do_dhcpsetup) {
             my @parameter;
-            push @parameter, '-l' if ($::request->{'_disparatetftp'}->[0]);
+            push @parameter, '-l' if ($request->{'_disparatetftp'}->[0]);
             xCAT::MsgUtils->trace($verbose_on_off, "d", "petitboot: issue makedhcp request");
 
             $sub_req->({ command => ['makedhcp'],

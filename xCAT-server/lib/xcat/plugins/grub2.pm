@@ -816,7 +816,7 @@ sub process_request {
                 if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
                     $sub_req->({ command => ['makedhcp'],
-                            node => \@{ $osimagenodehash{$osimage} } }, $callback);
+                            node => \@{ $osimagenodehash{$osimage} }, arg => ['-l'] }, $callback);
                 } else {
                     xCAT::MsgUtils->trace($verbose_on_off, "d", "grub2: issue makedhcp request");
                     $sub_req->({ command => ['makedhcp'],
