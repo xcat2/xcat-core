@@ -346,6 +346,9 @@ cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 # xcatws.cgi causes xCAT-server requires perl-JSON, which is not shipped with PCM
 %if %pcm
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
+%endif
+
+%if %nots390x
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/zvmxcatws.cgi
 %endif
 
