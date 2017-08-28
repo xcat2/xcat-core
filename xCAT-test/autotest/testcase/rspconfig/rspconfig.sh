@@ -25,7 +25,7 @@ function net()
 function change_ip()
 {
         echo "Prepare to change ip."
-        echo "Start to check ip valid ."
+        echo "Start to check ip valid."
         NODEIP=$4;
 	test_ip $1;
 	if [[ $? -ne 0 ]];then echo "ip is invalid";return 1;fi
@@ -51,19 +51,19 @@ function change_ip()
                         echo "Start to set ip for node."
 			rspconfig $2 ip=$BMCNEWIP
 			if [[ $? -eq 0 ]];then
-				echo "Could set ip for node.";
+				echo "Could set bmc's ip for node using rspconfig.";
 			else
-                                echo "Could not set ip for node";
+                                echo "Could not set bmc's ip for node using rspconfig.";
 				return 1;
 			fi
 			chdef $2 bmc=$BMCNEWIP
-                        echo "Start to check ip setted successfully or not."
+                        echo "Start to check bmc's ip setted successfully or not."
 			check_result $2 ip $BMCNEWIP
 			if [[ $? -ne 0 ]] ;then
-                                echo "Ip could  not be setted.";
+                                echo "Set bmc's ip failed.";
 				return 1;
 			else
-				echo "Ip could be setted.";
+				echo "Set bmc's ip successfully.";
                                 return 0;
 			fi
 		fi
@@ -88,25 +88,25 @@ function check_result()
 }
 function clear_env()
 {
-echo "Start to clear test environment.";
+	echo "Start to clear test environment.";
 	if [[ -f /tmp/BMCIP ]];then 
         	originip=$(cat /tmp/BMCIP);
         	echo originip is $originip;
         	rspconfig $2 ip=$originip
         	if [[ $? -eq 0 ]];then
-            		echo "Could set the node's bmc ip to originip";
+            		echo "Could set bmc's ip to originip using rspconfig.";
         	else
-            		echo "Could not set the node's bmc ip to originip";
+            		echo "Could not set bmc's ip to originip using rspconfig.";
             		return 1;
         	fi
         	rm -rf /tmp/BMCIP
         	chdef $2 bmc=$originip
         	check_result $2 $3 $originip
        		if [[ $? -ne 0 ]] ;then
-            		echo "Could set the node's bmc ip to originip sucessfully.";
+            		echo "Set bmc's ip to originip failed.";
       			return 1;
        		else
-            		echo "Could set the node's bmc ip to originip successfully.";
+            		echo "Set bmc's ip to originip successfully.";
                         return 0; 
        		fi
     	fi
@@ -114,25 +114,25 @@ echo "Start to clear test environment.";
 }
 function change_gateway 
 {
- 	echo "Prepare to change gateway.";
-        echo "Start to check gateway valid or not.";
+	echo "Prepare to change gateway.";
+	echo "Start to check gateway valid or not.";
         test_ip $1;
 	if [[ $? -ne 0 ]];then echo "Gateway is invalid";return 1;fi
-                echo "Start to change gateway.";
+                echo "Start to change bmc's gateway.";
 		rspconfig $2 gateway=$1;
 	if [[ $? -eq 0 ]];then
-		echo "Could set gateway.";
+		echo "Could set bmc's gateway.";
 	else
-		echo "Could not set gateway.";
+		echo "Could not set bmc's gateway.";
                 return 1;
 	fi
-        echo "Start to check gateway setted successfully or not.";
+        echo "Start to check gateway setting successfully or not.";
 	check_result $2 $3 $1
 	if [[ $? -ne 0 ]] ;then
-                echo "Could not set gateway successfully.";
+                echo "Set bmc's gateway failed.";
 		return 1;
 	else
-		echo "Could set gateway successfully.";
+		echo "Set bmc's gateway successfully.";
                 return 0;
 	fi
 }
@@ -144,17 +144,17 @@ function change_netmask
 	if [[ $? -ne 0 ]];then echo "Net mask is invalid.";return 1;fi
 	rspconfig $2 netmask=$1;
 	if [[ $? -eq 0 ]];then
-		echo "Could set netmask.";
+		echo "Could set bmc's netmask using rspconfig.";
 	else
-                echo "Could not set netmask.";
+                echo "Could not set bmc's netmask using rspconfig.";
 		return 1;
 	fi
 	check_result $2 $3 $1
 	if [[ $? -ne 0 ]] ;then
-                echo "Could not set netmask successfully.";
+                echo "Set bmc's netmask failed.";
 		return 1;
 	else
-		echo "Could set netmask successfully.";
+		echo "Set bmc's netmask successfully.";
                 return 0;
 	fi
 }
