@@ -583,7 +583,7 @@ sub parse_args {
                 }
                 $setorget = "set";
                 if (ref($check) eq "ARRAY") { return $check; }
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
                 if (ref($check) eq "ARRAY") { return $check; }
@@ -794,7 +794,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -1615,6 +1615,7 @@ sub rspconfig_response {
         my $gateway         = "n/a";
         my $prefix          = "n/a";
         my $vlan            = "n/a";
+        my $hostname        = "";
         my $default_gateway = "n/a";
         my $adapter_id      = "n/a";
         my $error;
@@ -1627,6 +1628,9 @@ sub rspconfig_response {
             if ($key_url =~ /network\/config/) {
                 if (defined($content{DefaultGateway}) and $content{DefaultGateway}) {
                     $default_gateway = $content{DefaultGateway};
+                }
+                if (defined($content{HostName}) and $content{HostName}) {
+                    $hostname = $content{HostName};
                 }
             }
 
@@ -1672,6 +1676,9 @@ sub rspconfig_response {
             }  
             if ($grep_string =~ "vlan") {
                 push @output, "BMC VLAN ID enabled: $vlan";
+            }
+            if ($grep_string =~ "hostname") {
+                push @output, "BMC Hostname: $hostname";
             }
         }
 
