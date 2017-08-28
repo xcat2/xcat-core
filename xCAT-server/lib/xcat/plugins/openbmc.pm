@@ -271,9 +271,9 @@ my %status_info = (
         process        => \&rspconfig_response,
     },
     RSPCONFIG_SET_REQUEST => {
-        method         => "POST",
-        init_url       => "",
-        data           => "",
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/network",
+        data           => "[]",
     },
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
@@ -570,7 +570,7 @@ sub parse_args {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^vlan$/);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -814,6 +814,16 @@ sub parse_command_status {
                     $next_status{RSPCONFIG_DHCP_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
                     $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
                     $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
+                } elsif ($key =~ /^hostname$/) {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
+                    $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                    $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+
+                    $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value"; 
+                    $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
+                    push @options, $key;
+                    
                 } else {
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
                     $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
@@ -1685,6 +1695,11 @@ sub rspconfig_response {
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
     }
 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("Setting BMC Hostname (requires bmcreboot to take effect)...", $callback, $node);
+        }
+    }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             my $bmc_node = "$node BMC";
