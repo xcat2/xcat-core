@@ -224,34 +224,32 @@ sub validate {
                 my $args = $request->{arg};
                 my $arglist;
                 foreach my $argument (@$args) {
-
                     $arglist .= " " . $argument;
                 }
-      my $saveArglist = $arglist;
+                my $saveArglist = $arglist;
 
-      # If this is mkvm check for --password or -w
-      if ($request->{command}->[0] eq "mkvm") {
-
-          my $first;
-          my $restcommand;
-          my $passw = index ($saveArglist, '--password');
-          if ($passw > -1) {
-             $passw = $passw + 11;
-             my $first = substr($saveArglist,0,$passw). "******** ";
-             my $restcommand = substr($saveArglist,$passw);
-             $restcommand =~ s/^\S+\s*//;
-             $saveArglist = "$first$restcommand";
-          }
-          # now check for -w with password
-          $passw = index ($saveArglist, '-w');
-          if ($passw > -1) {
-             $passw = $passw + 3;
-             $first = substr($saveArglist,0,$passw). "******** ";
-             $restcommand = substr($saveArglist,$passw);
-             $restcommand =~ s/^\S+\s*//;
-             $saveArglist = "$first$restcommand";
-          }
-      }
+                # If this is mkvm check for --password or -w
+                if ($request->{command}->[0] eq "mkvm") {
+                    my $first;
+                    my $restcommand;
+                    my $passw = index ($saveArglist, '--password');
+                    if ($passw > -1) {
+                        $passw = $passw + 11;
+                        my $first = substr($saveArglist,0,$passw). "******** ";
+                        my $restcommand = substr($saveArglist,$passw);
+                        $restcommand =~ s/^\S+\s*//;
+                        $saveArglist = "$first$restcommand";
+                    }
+                    # now check for -w with password
+                    $passw = index ($saveArglist, '-w');
+                    if ($passw > -1) {
+                        $passw = $passw + 3;
+                        $first = substr($saveArglist,0,$passw). "******** ";
+                        $restcommand = substr($saveArglist,$passw);
+                        $restcommand =~ s/^\S+\s*//;
+                        $saveArglist = "$first$restcommand";
+                   }
+                }
                 if ($arglist)  { $logst .= $saveArglist; }
                 if ($peername) { $logst .= " for " . $request->{username}->[0] }
                 if ($peerhost) { $logst .= " from " . $peerhost }
