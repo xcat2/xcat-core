@@ -411,7 +411,7 @@ function sort_nics_device_order {
             ((num+=1))
         done
       else
-        log_error "only support configuration of Bond/VLAN/Bridge on Red Hat."
+        log_error "Only support configuration of Bond/VLAN/Bridge on Red Hat."
       fi
     fi
     new_order=$eth_slot" "$bond_slot" "$vlan_slot
