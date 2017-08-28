@@ -106,7 +106,7 @@ sub ximport {
         push @{ $rsp{data} }, "imgimport: Takes in an xCAT image bundle and defines it to xCAT so you can use it";
         push @{ $rsp{data} }, "Usage: ";
         push @{ $rsp{data} }, "\timgimport [-h|--help]";
-        push@{ $rsp{data} }, "\timgimport <bundle_file_name> [-p|--postscripts <nodelist>] [-f|--profile <new_profile>] [-R|--remotehost <userid\@host>] [-n|--nozip] [-v]";
+        push @{ $rsp{data} }, "\timgimport <bundle_file_name> [-p|--postscripts <nodelist>] [-f|--profile <new_profile>] [-R|--remotehost <userid\@host>] [-n|--nozip] [-v]";
         if ($ec) { $rsp{errorcode} = $ec; }
         $callback->(\%rsp);
     };
@@ -1192,7 +1192,7 @@ sub extract_bundle {
     $callback->({ data => ["Unbundling image..."] });
     my $rc;
     if ($nozip) {
-    if ($::VERBOSE) {
+        if ($::VERBOSE) {
             $callback->({data=>["tar xvf $bundle -C $tpath"]});
             $rc = system("tar xvf $bundle -C $tpath");
         } else {
