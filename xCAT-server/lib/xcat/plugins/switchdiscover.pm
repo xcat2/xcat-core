@@ -1459,7 +1459,7 @@ sub switchsetup {
                     $mask=$net->{'mask'};
                 }
             }
-            $cmd = "rspconfig $pdu hostname=$pdu,ip=$otherinterfaces,netmask=$mask";
+            $cmd = "rspconfig $pdu hostname=$pdu ip=$otherinterfaces netmask=$mask";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC == 0) {
                 xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
