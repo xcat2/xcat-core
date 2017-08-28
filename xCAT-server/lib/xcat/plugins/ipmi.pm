@@ -2959,7 +2959,7 @@ sub fru_initted {
     my @types  = @{ $sessdata->{invtypes} };
     my $format = "%-20s %s";
 
-    foreach $key (sort { $a <=> $b } keys %{ $sessdata->{fru_hash} }) {
+    foreach $key (sort { $a <=> $b or $a cmp $b } keys %{ $sessdata->{fru_hash} }) {
         my $fru = $sessdata->{fru_hash}->{$key};
         my $type;
         foreach $type (split /,/, $fru->rec_type) {
