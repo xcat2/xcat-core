@@ -63,15 +63,7 @@ sub findme {
         return;
     }
     unless ($SEQdiscover[0]) {
-        if ( $PCMdiscover[0] or $ZVMDiscover[0] ) {
-
-        # profile or z/VM discovery is running, then just return to make the other discovery handle it
-            return;
-    }
-        # update the discoverydata table to have an undefined node
-        $request->{discoverymethod}->[0] = 'undef';
-        xCAT::DiscoveryUtils->update_discovery_data($request);
-        return;
+         return;
     }
 
     # Get the parameters for the sequential discovery
@@ -849,13 +841,13 @@ Usage:
     }
     my ($type, $uuid, $long, $help, $ver, $zvmHost );
     if (!GetOptions(
-            't=s'       => \$type,
-            'u=s'       => \$uuid,
-            'l'         => \$long,
-            'h|help'    => \$help,
-            'V|verbose' => \$::VERBOSE,
-            'v|version' => \$ver,
-        'z|zvmhost=s' => \$zvmHost )) {
+            't=s'         => \$type,
+            'u=s'         => \$uuid,
+            'l'           => \$long,
+            'h|help'      => \$help,
+            'V|verbose'   => \$::VERBOSE,
+            'v|version'   => \$ver,
+            'z|zvmhost=s' => \$zvmHost )) {
         $usage->($callback);
         return;
     }
