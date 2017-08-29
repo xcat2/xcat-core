@@ -560,10 +560,6 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rspconfig") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
@@ -582,10 +578,22 @@ sub parse_args {
                     }
                 }
                 $setorget = "set";
+                #
+                # disable function until fully tested
+                #
+                unless ($key eq "ip" or !($subcommand =~ /^hostname$/)) {
+                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+                }
                 if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
+                #
+                # disable function until fully tested
+                #
+                unless ($subcommand =~ /^hostname$/) {
+                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+                }
                 if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^sshcfg$/) {
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
