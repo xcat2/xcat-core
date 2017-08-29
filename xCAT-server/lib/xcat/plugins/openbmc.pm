@@ -1620,6 +1620,8 @@ sub rspconfig_response {
 
     my $response_info = decode_json $response->content; 
 
+    my $bmc_node = "$node BMC";
+
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
         my $address         = "n/a";
         my $gateway         = "n/a";
@@ -1672,37 +1674,36 @@ sub rspconfig_response {
         }
         else {
             if ($grep_string =~ "ip") {
-                push @output, "BMC IP: $address"; 
+                push @output, "IP: $address"; 
             } 
             if ($grep_string =~ "netmask") {
                 if ($address) {
                     my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
                     my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                    push @output, "BMC Netmask: " . $netmask; 
+                    push @output, "Netmask: " . $netmask; 
                 }
             } 
             if ($grep_string =~ "gateway") {
-                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
+                push @output, "Gateway: $gateway (default: $default_gateway)";
             }  
             if ($grep_string =~ "vlan") {
-                push @output, "BMC VLAN ID enabled: $vlan";
+                push @output, "VLAN ID enabled: $vlan";
             }
             if ($grep_string =~ "hostname") {
-                push @output, "BMC Hostname: $hostname";
+                push @output, "Hostname: $hostname";
             }
         }
 
-        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
+        xCAT::SvrUtils::sendmsg("$_", $callback, $bmc_node) foreach (@output);
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("Setting BMC Hostname (requires bmcreboot to take effect)...", $callback, $node);
+            xCAT::SvrUtils::sendmsg("Setting Hostname (requires bmcreboot to take effect)...", $callback, $bmc_node);
         }
     }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            my $bmc_node = "$node BMC";
             xCAT::SvrUtils::sendmsg("Setting IP to DHCP...", $callback, $bmc_node);
         }
     }
