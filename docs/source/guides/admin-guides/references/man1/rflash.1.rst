@@ -59,7 +59,7 @@ OpenPOWER OpenBMC specific :
 
 \ **rflash**\  \ *noderange*\  {[\ **-c | -**\ **-check**\ ] | [\ **-l | -**\ **-list**\ ]}
 
-\ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-u | -**\ **-upload**\ ]}
+\ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
 
 \ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-d | -**\ **-delete**\ ]}
 
@@ -208,7 +208,7 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-a|-**\ **-activate**\ 
  
- Activate update image. Image id must be specified.
+ Activate update image. Image id or update file must be specified.
  
 
 
@@ -322,7 +322,17 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
  
  .. code-block:: perl
  
-   rflash briggs01 -d=/root/supermicro/OP825
+   rflash briggs01 -d /root/supermicro/OP825
+ 
+ 
+
+
+7. To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate:
+ 
+ 
+ .. code-block:: perl
+ 
+    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
  
  
 
