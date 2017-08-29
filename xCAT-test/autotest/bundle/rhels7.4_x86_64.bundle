@@ -20,11 +20,9 @@ confignetwork_2eth_bridge_br0
 confignetwork_2eth_bridge_br22_br33
 confignetwork_bond_eth2_eth3
 confignetwork_bond_false
-confignetwork__bridge_false
 confignetwork_installnic_2eth_bridge_br22_br33
 confignetwork_vlan_bond
 confignetwork_vlan_eth0
-confignetwork_vlan_false
 chdef_null
 chdef_z
 chdef_t_o_error
@@ -260,6 +258,8 @@ rmimage_diskless
 updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
+confignetwork_vlan_false
+confignetwork__bridge_false
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case
