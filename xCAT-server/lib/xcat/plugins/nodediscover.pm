@@ -312,6 +312,9 @@ sub process_request {
                             $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
                         }
+                        elsif (!inet_aton($node)) {
+                            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node, please makesure \"makehost $node\" and \"makedns $node\" have run before starting hardware discovery.");
+                        }
                     }
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
