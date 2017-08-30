@@ -1762,6 +1762,15 @@ sub rspconfig_sshcfg_response {
         if (@$output[0] == 1) {
             xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip:\n" . @$output[1], $callback, $node);
         }
+        # For unknown reason, "echo" command above can fail (1 in 5), but return code 0 still returned.
+        # There is nothing we can do but to just test if authorized_keys file was not created 
+        # and ask the user to rerun the command
+        my $file_test_output = xCAT::RShellAPI::run_remote_shell_api($bmcip, $userid, $userpw, 0, 0, "[ ! -f ~/.ssh/authorized_keys ] && uptime");
+        if (@$file_test_output[1] =~ "load average") {
+            # If file was not there, we run "uptime" command and then look for "load average" in the output.
+            # If file was there, "uptime" command is not executed
+            xCAT::SvrUtils::sendmsg("Error copying ssh keys to $bmcip Rerun rspconfig command.", $callback, $node);
+        }
         else {
             xCAT::SvrUtils::sendmsg("ssh keys copied to $bmcip", $callback, $node);
         }
