@@ -1791,11 +1791,17 @@ sub updatenodesyncfiles
         if ($request->{SNFileSyncing}->[0] eq "yes") {
             my $rsp = {};
             $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
+            if (@::FAILEDNODES) {
+                $rsp->{errorcode}->[0] = 1;
+            }
             $callback->($rsp);
         }
         if ($request->{FileSyncing}->[0] eq "yes") {
             my $rsp = {};
             $rsp->{data}->[0] = "File synchronization has completed for nodes.";
+            if (@::FAILEDNODES) {
+                $rsp->{errorcode}->[0] = 1;
+            }
             $callback->($rsp);
         }
     }
