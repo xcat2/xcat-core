@@ -76,7 +76,7 @@ function log_lines {
 ######################################################
 function log_error {
     local __msg="$*"
-    $log_print_cmd $log_print_arg "[E]: $__msg" 
+    $log_print_cmd $log_print_arg "[E]:Error: $__msg" 
     return 0
 }
 
@@ -1473,7 +1473,7 @@ function create_bond_interface {
     wait_for_ifstate $ifname UP 200 1
     rc=$?
     if [ $rc -ne 0 ]; then
-        log_error "Error! Interface \"$ifname\" was NOT in \"UP\" state eventually."
+        log_error "Interface \"$ifname\" could not be brought \"UP\"."
         $ip link show $ifname \
         | $sed -e 's/^/['$ifname' ip out >> /g' \
         | log_lines info
