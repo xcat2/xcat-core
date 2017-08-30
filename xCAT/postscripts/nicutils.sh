@@ -511,7 +511,6 @@ function create_persistent_ifcfg {
         fi
 
     fi
-
     query_extra_params $ifname
 
     local attrs=""
@@ -697,17 +696,38 @@ function add_br() {
      BRIDGE=$2
 
      if [[ $BRIDGE == "bridge_ovs" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no ovs-vsctl" >&2 && exit 1)
          log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
-         type brctl >/dev/null 2>/dev/null || (echo "There is no brctl" >&2 && exit 1)
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
          log_info "brctl stp $BNAME on"
          brctl stp $BNAME on
      fi
 }
+
+###############################################################################
+#
+# check brctl
+#
+##############################################################################
+function check_brctl() {
+    BRIDGE=$1
+    if [[ $BRIDGE == "bridge_ovs" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    elif [[ $BRIDGE == "bridge" ]]; then
+         type brctl >/dev/null 2>/dev/null
+         if [ $? -ne 0 ]; then
+             log_error "There is no brctl"
+             return 1
+         fi
+    fi
+}
+
 
 ###############################################################################
 #
@@ -1168,17 +1188,17 @@ function create_vlan_interface {
         ifname=$ifname.$vlanid \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-
-    # bring up interface formally
-    lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/>> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        # bring up interface formally
+        lines=`$ifdown $ifname.$vlanid; $ifup $ifname.$vlanid`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname.$vlanid failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/>> /g' \
+            | log_lines info
+        fi
     fi
-
     return $rc
 }
 
@@ -1272,7 +1292,6 @@ function create_bond_interface {
         log_error "No valid slave_ports defined. Abort!"
         return 1
     fi
-
     # let's query "nicnetworks" table about its target "xcatnet" 
     if [ -n "$ifname" -a -z "$xcatnet" -a -z "$_ipaddr" ]; then
         xcatnet=`query_nicnetworks_net $ifname`
@@ -1421,7 +1440,6 @@ function create_bond_interface {
             # 3.1) Check bond interface status
             wait_for_ifstate $ifname UP 200 1
             rc=$?
-
             # log for debug
             $ip link show $ifname | $sed -e 's/^/[ip.link] >> /g' | log_lines info 
 
@@ -1438,7 +1456,7 @@ function create_bond_interface {
     
     # migrate slave ports ip and route to bond master
     #[ $_g_migrate_ip -eq 1 ] && \
-    #migrate_ip ifname=$ifname sports="$slave_ports"
+    migrate_ip ifname=$ifname sports="$slave_ports"
 
     # define and bring up raw bond interface
     # DHCLIENTARGS is optional, but default to have.
@@ -1461,15 +1479,16 @@ function create_bond_interface {
         ifname=$ifname \
         xcatnet=$xcatnet \
         inattrs="$cfg"
-    lines=`$ifdown $ifname; $ifup $ifname 2>&1`
-    rc=$?
-    if [ $rc -ne 0 ]; then
-        log_warn "ifup $ifname failed with return code equals to $rc"
-        echo "$lines" \
-        | $sed -e 's/^/'$ifname' ifup out >> /g' \
-        | log_lines info
+    if [ x$xcatnet != x ]; then
+        lines=`$ifdown $ifname; $ifup $ifname 2>&1`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            log_warn "ifup $ifname failed with return code equals to $rc"
+            echo "$lines" \
+            | $sed -e 's/^/'$ifname' ifup out >> /g' \
+            | log_lines info
+        fi
     fi
-
     wait_for_ifstate $ifname UP 200 1
     rc=$?
     if [ $rc -ne 0 ]; then
