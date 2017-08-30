@@ -1456,7 +1456,7 @@ function create_bond_interface {
     
     # migrate slave ports ip and route to bond master
     #[ $_g_migrate_ip -eq 1 ] && \
-    migrate_ip ifname=$ifname sports="$slave_ports"
+    #migrate_ip ifname=$ifname sports="$slave_ports"
 
     # define and bring up raw bond interface
     # DHCLIENTARGS is optional, but default to have.

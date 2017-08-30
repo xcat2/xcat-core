@@ -328,7 +328,7 @@ function sort_nics_device_order {
                     else
                         ib_slots=$ib_slots,$alonenic
                     fi
-                elif [ x"$alonenictype" = "xvlan" ] || [ x"$alonenictype" = "bond" ]; then
+                elif [ x"$alonenictype" = "xvlan" ] || [ x"$alonenictype" = "xbond" ]; then
                     echo "Error: should configure nicdevices for $alonenic."
                     errorcode=1
                      
