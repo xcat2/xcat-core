@@ -1284,9 +1284,10 @@ sub rpower_response {
                 if ($host_state =~ /Off$/) {
                     # State is off, but check if it is transitioning
                     if ($host_transition_state =~ /On$/) {
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
-                    }
-                    else {
+                        #xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_ON", $callback, $node);
+                        # ignore transition state until get stable firmware
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
+                    } else {
                         xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
                     }
                 } elsif ($host_state =~ /Quiesced$/) {
@@ -1294,9 +1295,10 @@ sub rpower_response {
                 } elsif ($host_state =~ /Running$/) {
                     # State is on, but check if it is transitioning
                     if ($host_transition_state =~ /Off$/) {
-                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
-                    }
-                    else {
+                        #xCAT::SvrUtils::sendmsg("$::POWER_STATE_POWERING_OFF", $callback, $node);
+                        # ignore transition state until get stable firmware
+                        xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
+                    } else {
                         xCAT::SvrUtils::sendmsg("$::POWER_STATE_ON", $callback, $node);
                     }
                 } else {
