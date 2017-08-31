@@ -135,6 +135,10 @@ rm -f $RPM_BUILD_ROOT/%{prefix}/share/man/man1/getxcatdocs.1
 rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatCopyCloneList.pl
 rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatexport.pl
 rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatimport.pl
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/mkdummyimage
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/verifynode
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zvmMsg
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/zxcatIVP.pl
 %endif
 
 # These links get made in the RPM_BUILD_ROOT/prefix area
