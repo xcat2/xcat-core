@@ -533,8 +533,8 @@ cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicne
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
-check:output=~11.1.0.100
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
+check:output=~11.1.0.100
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= 
 check:rc==0
 cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC mtu=1500
@@ -876,8 +876,12 @@ cmd:mkdef -t network -o 40_5_0_0-255_255_0_0 net=40.5.0.0 mask=255.255.0.0
 check:rc==0
 cmd:chdef $$CN nicdevices.br22=bond0.2 nicdevices.br33=bond0.3 nictypes.br22=bridge nictypes.br33=bridge nicnetworks.br22=30_5_0_0-255_255_0_0 nicnetworks.br33=40_5_0_0-255_255_0_0 nicips.br22=30.5.106.8 nicips.br33=40.5.106.8 nicdevices.bond0.2=bond0 nicdevices.bond0.3=bond0 nictypes.bond0.2=vlan nictypes.bond0.3=vlan nictypes.bond0=bond nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet nicdevices.bond0="$$SECONDNIC|$$THIRDNIC"
 check:rc==0
-cmd:updatenode $$CN -P "confignetwork"
+cmd:updatenode $$CN -P "confignetwork -s"
 check:rc==0
+cmd:installnic=`xdsh $$CN ip addr |grep __GETNODEATTR($$CN,ip)__|awk -F " " '{print $NF}'`; if grep SUSE /etc/*release;then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-$installnic"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-$installnic"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cat /etc/network/interfaces.d/*";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+check:output=~__GETNODEATTR($$CN,ip)__
+check:output!~dhcp
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 30.5.106.8 /etc/sysconfig/network/ifcfg-br22"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 30.5.106.8 /etc/sysconfig/network-scripts/ifcfg-br22"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 30.5.106.8 /etc/network/interfaces.d/br22";else echo "Sorry,this is not supported os"; fi
 check:output=~30.5.106.8
 check:rc==0
