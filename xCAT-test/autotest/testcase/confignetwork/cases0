@@ -531,6 +531,8 @@ cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicne
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
+check:output=~11.1.0.100
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 cmd:chdef $$CN nicips.$$SECONDNIC= nictypes.$$SECONDNIC= nicnetworks.$$SECONDNIC= 
 check:rc==0
 cmd:mkdef -t network -o 60_0_0_0-255_0_0_0 net=60.0.0.0 mask=255.0.0.0 mgtifname=$$SECONDNIC mtu=1500
@@ -643,6 +645,8 @@ cmd:chdef $$CN nicnetworks.bond0=30_5_0_0-255_255_0_0 nictypes.$$SECONDNIC=ether
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc!=0
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-$$SECONDNIC"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/$$SECONDNIC";else echo "Sorry,this is not supported os"; fi
 check:rc==0
@@ -705,6 +709,8 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifc
 check:rc==0
 cmd:rmdef -t network -o 30_5_0_0-255_255_0_0
 cmd:rmdef -t network -o 40_5_0_0-255_255_0_0
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip addr del 30.5.106.9/16 dev bond0.2"
 cmd:xdsh $$CN "ip addr del 40.5.106.9/16 dev bond0.3"
 cmd:xdsh $$CN "ip link del dev bond0"
@@ -763,6 +769,8 @@ cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifc
 check:rc==0
 cmd:rmdef -t network -o 30_5_0_0-255_255_0_0
 cmd:xdsh $$CN "ip addr del 30.5.106.9/16 dev br0"
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip link del dev br0"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-br0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-br0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
@@ -828,6 +836,8 @@ cmd:xdsh $$CN "ip link del dev br33"
 cmd:xdsh $$CN "ip link del dev bond0.2"
 cmd:xdsh $$CN "ip link del dev bond0.3"
 cmd:xdsh $$CN "ip link del dev bond0"
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-bond0 /etc/sysconfig/network/ifcfg-bond0.2 /etc/sysconfig/network/ifcfg-bond0.3 /etc/sysconfig/network/ifcfg-br22 /etc/sysconfig/network/ifcfg-br33"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-bond0 /etc/sysconfig/network-scripts/ifcfg-bond0.2 /etc/sysconfig/network-scripts/ifcfg-bond0.3 /etc/sysconfig/network-scripts/ifcfg-br22 /etc/sysconfig/network-scripts/ifcfg-br33"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/bond0 /etc/network/interfaces.d/bond0.2 /etc/network/interfaces.d/bond0.3 /etc/network/interfaces.d/br22 /etc/network/interfaces.d/br33";else echo "Sorry,this is not supported os"; fi
 check:rc==0
@@ -892,6 +902,8 @@ cmd:xdsh $$CN "ip link del dev br33"
 cmd:xdsh $$CN "ip link del dev bond0.2"
 cmd:xdsh $$CN "ip link del dev bond0.3"
 cmd:xdsh $$CN "ip link del dev bond0"
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-bond0 /etc/sysconfig/network/ifcfg-bond0.2 /etc/sysconfig/network/ifcfg-bond0.3 /etc/sysconfig/network/ifcfg-br22 /etc/sysconfig/network/ifcfg-br33"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-bond0 /etc/sysconfig/network-scripts/ifcfg-bond0.2 /etc/sysconfig/network-scripts/ifcfg-bond0.3 /etc/sysconfig/network-scripts/ifcfg-br22 /etc/sysconfig/network-scripts/ifcfg-br33"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/bond0 /etc/network/interfaces.d/bond0.2 /etc/network/interfaces.d/bond0.3 /etc/network/interfaces.d/br22 /etc/network/interfaces.d/br33";else echo "Sorry,this is not supported os"; fi
 check:rc==0
 cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
@@ -913,10 +925,10 @@ cmd:mkdef -t network -o 30_5_0_0-255_255_0_0 net=30.5.0.0 mask=255.255.0.0
 check:rc==0
 cmd:mkdef -t network -o 40_5_0_0-255_255_0_0 net=40.5.0.0 mask=255.255.0.0
 check:rc==0
-cmd:chdef $$CN nicdevices.br22= nicdevices.br33= nictypes.br22=bridge nictypes.br33=bridge nicnetworks.br22=30_5_0_0-255_255_0_0 nicnetworks.br33=40_5_0_0-255_255_0_0 nicips.br22=30.5.106.8 nicips.br33=40.5.106.8 nicdevices.bond0.2=bond0 nicdevices.bond0.3=bond0 nictypes.bond0.2=vlan nictypes.bond0.3=vlan nictypes.bond0=bond nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet nicdevices.bond0="$$SECONDNIC|$$THIRDNIC"
+cmd:chdef $$CN nicdevices.br22= nicdevices.br33= nictypes.br22=bridge nictypes.br33=bridge nicnetworks.br22=30_5_0_0-255_255_0_0 nicnetworks.br33=40_5_0_0-255_255_0_0 nicips.br22=30.5.106.8 nicips.br33=40.5.106.8 nicdevices.bond0.2=bond0 nicdevices.bond0.3=bond0 nictypes.bond0.2=vlan nictypes.bond0.3=vlan nictypes.bond0=bond nictypes.$$SECONDNIC=ethernet nictypes.$$THIRDNIC=ethernet 
 check:rc==0
-cmd:updatenode $$CN -P confignetwork
-check:rc==0
+cmd:updatenode $$CN -P "confignetwork -s"
+check:rc!=0
 cmd:rmdef -t network -o 30_5_0_0-255_255_0_0
 cmd:rmdef -t network -o 40_5_0_0-255_255_0_0
 cmd:xdsh $$CN "ip addr del 30.5.106.8/16 dev br22"
