@@ -1221,8 +1221,7 @@ sub rpower_response {
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             if (defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
-                my $bmc_node = "$node BMC";
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_REBOOT", $callback, $bmc_node);
+                xCAT::SvrUtils::sendmsg("BMC $::POWER_STATE_REBOOT", $callback, $node);
             } else {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             }
@@ -1262,9 +1261,8 @@ sub rpower_response {
         xCAT::SvrUtils::sendmsg("$flag_debug State RequestedHostTransition=$host_transition_state", $callback, $node) if ($xcatdebugmode);
 
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
-            my $bmc_node = "$node BMC";
             my $bmc_short_state = (split(/\./, $bmc_state))[-1];
-            xCAT::SvrUtils::sendmsg($bmc_short_state, $callback, $bmc_node);
+            xCAT::SvrUtils::sendmsg("BMC $bmc_short_state", $callback, $node);
         } else {
             if ($chassis_state =~ /Off$/) {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
@@ -1628,8 +1626,6 @@ sub rspconfig_response {
 
     my $response_info = decode_json $response->content; 
 
-    my $bmc_node = "$node BMC";
-
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_GET_RESPONSE") {
         my $address         = "n/a";
         my $gateway         = "n/a";
@@ -1682,37 +1678,37 @@ sub rspconfig_response {
         }
         else {
             if ($grep_string =~ "ip") {
-                push @output, "IP: $address"; 
+                push @output, "BMC IP: $address"; 
             } 
             if ($grep_string =~ "netmask") {
                 if ($address) {
                     my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
                     my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                    push @output, "Netmask: " . $netmask; 
+                    push @output, "BMC Netmask: " . $netmask; 
                 }
             } 
             if ($grep_string =~ "gateway") {
-                push @output, "Gateway: $gateway (default: $default_gateway)";
+                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
             }  
             if ($grep_string =~ "vlan") {
-                push @output, "VLAN ID enabled: $vlan";
+                push @output, "BMC VLAN ID enabled: $vlan";
             }
             if ($grep_string =~ "hostname") {
-                push @output, "Hostname: $hostname";
+                push @output, "BMC Hostname: $hostname";
             }
         }
 
-        xCAT::SvrUtils::sendmsg("$_", $callback, $bmc_node) foreach (@output);
+        xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
     }
 
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("Setting Hostname (requires bmcreboot to take effect)...", $callback, $bmc_node);
+            xCAT::SvrUtils::sendmsg("BMC Setting Hostname (requires bmcreboot to take effect)...", $callback, $node);
         }
     }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            xCAT::SvrUtils::sendmsg("Setting IP to DHCP...", $callback, $bmc_node);
+            xCAT::SvrUtils::sendmsg("BMC Setting IP to DHCP...", $callback, $node);
         }
     }
 
