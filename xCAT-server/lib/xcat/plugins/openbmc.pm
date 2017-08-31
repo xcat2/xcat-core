@@ -949,7 +949,6 @@ sub parse_command_status {
         }
     }
 
-    print Dumper(\%next_status) . "\n";
     return;
 }
 
@@ -1239,9 +1238,6 @@ sub rpower_response {
     xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%new_status, 1) if (%new_status);
 
     if ($node_info{$node}{cur_status} eq "RPOWER_STATUS_RESPONSE" and !$next_status{ $node_info{$node}{cur_status} }) { 
-
-        print Dumper(\%{ $response_info->{data} }) . "\n";
-
         my $bmc_state = "";
         my $bmc_transition_state = "";
         my $chassis_state = "";
@@ -1333,8 +1329,6 @@ sub rinv_response {
     my $response = shift;
 
     my $response_info = decode_json $response->content;
-
-    print Dumper(\%{ $response_info->{data} }) . "\n";
 
     my $grep_string;
     if ($node_info{$node}{cur_status} eq "RINV_FIRM_RESPONSE") {
@@ -1570,9 +1564,6 @@ sub reventlog_response {
             xCAT::SvrUtils::sendmsg("clear", $callback, $node);
         }
     } else {
-
-        print Dumper(\%{ $response_info->{data} }) . "\n";
-
         my ($entry_string, $option_s) = split(",", $status_info{REVENTLOG_RESPONSE}{argv});
         my $content_info; 
         my %output = ();
@@ -1790,12 +1781,6 @@ sub rvitals_response {
     my $src;
     my $content_info;
     my @sorted_output;
-    
-    if ($xcatdebugmode) {
-        my $debug_info = "Processing command: rvitals $grep_string";
-        process_debug_info($node, $debug_info);;
-    }
-    print Dumper(%{$response_info->{data}});
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -1876,8 +1861,6 @@ sub rflash_response {
     my $response = shift;
 
     my $response_info = decode_json $response->content;
-
-    print Dumper(%{$response_info->{data}});
 
     my $update_id;
     my $update_activation = "Unknown";
