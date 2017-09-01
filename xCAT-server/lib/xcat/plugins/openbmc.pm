@@ -479,7 +479,10 @@ sub process_request {
             $handle_id = xCAT::OPENBMC->new($async, $login_url, $content); 
             $handle_id_node{$handle_id} = $node;
             $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
-            xCAT::SvrUtils::sendmsg("$flag_debug POST $login_url -d $content", $callback, $node) if ($xcatdebugmode); 
+            if ($xcatdebugmode) {
+                my $debug_info = "curl -k -c cjar -H \"Content-Type: application/json\" -d '{ \"data\": [\"$node_info{$node}{username}\", \"xxxxxx\"] }' $login_url";
+                process_debug_info($node, $debug_info);
+            }
         }
     }  
 
@@ -976,7 +979,6 @@ sub parse_command_status {
         }
     }
 
-    print Dumper(\%next_status) . "\n";
     return;
 }
 
@@ -1039,8 +1041,6 @@ sub parse_node_info {
         }
     }
 
-    print Dumper(\%node_info) ."\n";
-
     return $rst;
 }
 
@@ -1097,19 +1097,20 @@ sub gen_send_request {
     $handle_id_node{$handle_id} = $node;
     $node_info{$node}{cur_status} = $next_status{ $node_info{$node}{cur_status} };
 
-    my $debug_info;
-    if ($method eq "GET") {
-        $debug_info = "$method $request_url";
-    } else {
-        if ($::UPLOAD_FILE) {
-            # Slightly different debug message when doing a file upload
-            $debug_info = "$method $request_url -T " . $::UPLOAD_FILE;
+    if ($xcatdebugmode) {
+        my $debug_info;
+        if ($method eq "GET") {
+            $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" $request_url";
+        } else {
+            if ($::UPLOAD_FILE) {
+                # Slightly different debug message when doing a file upload
+                $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" -T $::UPLOAD_FILE $request_url";
+            } else {
+                $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" -d $content $request_url";
+            }
         }
-        else {
-            $debug_info = "$method $request_url -d $content";
-        }
+        process_debug_info($node, $debug_info);
     }
-    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
 
     return;
 }
@@ -1133,8 +1134,10 @@ sub deal_with_response {
 
     delete $handle_id_node{$handle_id};
 
-    my $debug_info = lc ($node_info{$node}{cur_status}) . " " . $response->status_line;
-    xCAT::SvrUtils::sendmsg("$flag_debug $debug_info", $callback, $node) if ($xcatdebugmode);
+    if ($xcatdebugmode) {
+        my $debug_info = lc ($node_info{$node}{cur_status}) . " " . $response->status_line;
+        process_debug_info($node, $debug_info);
+    }
 
     if ($response->status_line ne $::RESPONSE_OK) {
         my $error;
@@ -1170,6 +1173,26 @@ sub deal_with_response {
     $status_info{ $node_info{$node}{cur_status} }->{process}->($node, $response); 
 
     return;
+}
+
+#-------------------------------------------------------
+
+=head3  process_debug_info
+
+  print debug info and add to log
+  Input:
+        $node: nodename which want to process ingo
+        $debug_msg: Info for debug
+
+=cut
+
+#-------------------------------------------------------
+sub process_debug_info {
+    my $node = shift;
+    my $debug_msg = shift;
+
+    xCAT::SvrUtils::sendmsg("$flag_debug $debug_msg", $callback, $node);
+    xCAT::MsgUtils->trace(0, "D", "$flag_debug $node $debug_msg"); 
 }
 
 #-------------------------------------------------------
@@ -1265,13 +1288,6 @@ sub rpower_response {
                 $host_transition_state = $response_info->{'data'}->{$type}->{RequestedHostTransition};
             }
         }
-       
-        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentBMCState=$bmc_state", $callback, $node) if ($xcatdebugmode);
-        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedBMCTransition=$bmc_transition_state", $callback, $node) if ($xcatdebugmode);
-        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentPowerState=$chassis_state", $callback, $node) if ($xcatdebugmode);
-        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedPowerTransition=$chassis_transition_state", $callback, $node) if ($xcatdebugmode);
-        xCAT::SvrUtils::sendmsg("$flag_debug State CurrentHostState=$host_state", $callback, $node) if ($xcatdebugmode);
-        xCAT::SvrUtils::sendmsg("$flag_debug State RequestedHostTransition=$host_transition_state", $callback, $node) if ($xcatdebugmode);
 
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
             my $bmc_node = "$node BMC";
@@ -1806,9 +1822,6 @@ sub rvitals_response {
     my $src;
     my $content_info;
     my @sorted_output;
-    
-    xCAT::SvrUtils::sendmsg("$flag_debug Processing command: rvitals $grep_string", $callback, $node) if ($xcatdebugmode);
-    print Dumper(%{$response_info->{data}});
 
     foreach my $key_url (keys %{$response_info->{data}}) {
         my %content = %{ ${ $response_info->{data} }{$key_url} };
@@ -1889,8 +1902,6 @@ sub rflash_response {
     my $response = shift;
 
     my $response_info = decode_json $response->content;
-
-    print Dumper(%{$response_info->{data}});
 
     my $update_id;
     my $update_activation = "Unknown";
