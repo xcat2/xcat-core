@@ -52,20 +52,33 @@ fi
 echo "# $xCATSettingsSTART" >> $snmp_conf
 echo "# $xCATSettingsInfo" >> $snmp_conf
 
-if [ $snmpversion ] && [ "$snmpversion" = "3" ]; then
+if [ "$snmpversion" = "3" ]; then
     #set up snmp version 3
-    if [ -n "$snmppriv" ]; then
-        echo "createUser $snmpuser $snmpauth $snmppwd $snmppriv $snmppwd" >> $snmp_conf
-        echo "rwuser $snmpuser" >> $snmp_conf
+    if [ -n "$snmpuser" ] && [ -n "$snmpauth" ] && [ -n "$snmppwd" ]; then
+        len=${#snmppwd}
+        if [ $len -lt 8 ]; then
+            echo "SNMP v3 specification requires password to have a minimum of 8 characters"
+            echo "# $xCATSettingsEND" >> $snmp_conf
+            exit -1
+        fi
+        snmpauth=`echo $snmpauth | tr '[a-z]' '[A-Z]'`
+        if [ -n "$snmppriv" ]; then
+            snmppriv=`echo $snmppriv | tr '[a-z]' '[A-Z]'`
+            echo "createUser $snmpuser $snmpauth $snmppwd $snmppriv $snmppwd" >> $snmp_conf
+            echo "rwuser $snmpuser" >> $snmp_conf
+        else
+            echo "createUser $snmpuser $snmpauth $snmppwd" >> $snmp_conf
+            echo "rouser $snmpuser" >> $snmp_conf
+        fi
     else
-        echo "createUser $snmpuser $snmpauth $snmppwd" >> $snmp_conf
-        echo "rouser $snmpuser" >> $snmp_conf
+        echo "Please define user/password/auth for SNMP v3 specification"
+        echo "# $xCATSettingsEND" >> $snmp_conf
+        exit -1
     fi
-    
-elif [ $snmppwd ]; then
-   community=$snmppwd
-elif [ $snmpc ]; then
-   community=$snmpc
+elif [ -n "$snmppwd" ]; then
+    community=$snmppwd
+elif [ -n "$snmpc" ]; then
+    community=$snmpc
 fi 
 
 echo "rocommunity $community default" >> $snmp_conf
