@@ -1910,6 +1910,10 @@ sub rflash_response {
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
             }
+            else {
+                # Entry has no Version attribute, skip listing it
+                next;
+            }
             if (defined($content{Activation}) and $content{Activation}) {
                 $update_activation = (split(/\./, $content{Activation}))[ -1 ];
             }
