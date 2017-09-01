@@ -182,7 +182,7 @@ sub is_static_ip {
     if ($os =~ /redhat/) {
         my $output1 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i IPADDR`;
         my $output2 = `cat /etc/sysconfig/network-scripts/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
-        $rst = 1 if (($output1 =~ /$ip/) && ($output2 =~ /static/i));
+        $rst = 1 if (($output1 =~ /$ip/) && ($output2 =~ /static|none/i));
     } elsif ($os =~ /sles/) {
         my $output1 = `cat /etc/sysconfig/network/ifcfg-$nic 2>&1 |grep -i IPADDR`;
         my $output2 = `cat /etc/sysconfig/network/ifcfg-$nic 2>&1 |grep -i BOOTPROTO`;
