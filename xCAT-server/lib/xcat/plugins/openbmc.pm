@@ -1124,7 +1124,7 @@ sub gen_send_request {
                 # Slightly different debug message when doing a file upload
                 $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" -T $::UPLOAD_FILE $request_url";
             } else {
-                $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" -d $content $request_url";
+                $debug_info = "curl -k -b cjar -X $method -H \"Content-Type: application/json\" -d '$content' $request_url";
             }
         }
         process_debug_info($node, $debug_info);
