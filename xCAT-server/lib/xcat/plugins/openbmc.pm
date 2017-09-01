@@ -279,9 +279,9 @@ my %status_info = (
         process        => \&rspconfig_response,
     },
     RSPCONFIG_SET_REQUEST => {
-        method         => "POST",
-        init_url       => "",
-        data           => "",
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/network",
+        data           => "[]",
     },
     RSPCONFIG_SET_RESPONSE => {
         process        => \&rspconfig_response,
@@ -571,17 +571,13 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rspconfig") {
-        #
-        # disable function until fully tested
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $setorget;
         foreach $subcommand (@ARGV) {
             if ($subcommand =~ /^(\w+)=(.*)/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^vlan$/);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -593,10 +589,22 @@ sub parse_args {
                     }
                 }
                 $setorget = "set";
+                #
+                # disable function until fully tested
+                #
+                unless ($key eq "ip" or !($subcommand =~ /^hostname$/)) {
+                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+                }
                 if (ref($check) eq "ARRAY") { return $check; }
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
+                #
+                # disable function until fully tested
+                #
+                unless ($subcommand =~ /^hostname$/) {
+                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
+                }
                 if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^sshcfg$/) {
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
@@ -805,7 +813,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^vlan$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -825,6 +833,16 @@ sub parse_command_status {
                     $next_status{RSPCONFIG_DHCP_RESPONSE} = "RPOWER_BMCREBOOT_REQUEST";
                     $next_status{RPOWER_BMCREBOOT_REQUEST} = "RPOWER_RESET_RESPONSE";
                     $status_info{RPOWER_RESET_RESPONSE}{argv} = "bmcreboot";
+                } elsif ($key =~ /^hostname$/) {
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
+                    $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
+                    $next_status{RSPCONFIG_SET_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+
+                    $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value"; 
+                    $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
+                    push @options, $key;
+                    
                 } else {
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
                     $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
@@ -1256,8 +1274,7 @@ sub rpower_response {
     if ($node_info{$node}{cur_status} eq "RPOWER_RESET_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             if (defined $status_info{RPOWER_RESET_RESPONSE}{argv} and $status_info{RPOWER_RESET_RESPONSE}{argv} =~ /bmcreboot$/) {
-                my $bmc_node = "$node BMC";
-                xCAT::SvrUtils::sendmsg("$::POWER_STATE_REBOOT", $callback, $bmc_node);
+                xCAT::SvrUtils::sendmsg("BMC $::POWER_STATE_REBOOT", $callback, $node);
             } else {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_RESET", $callback, $node);
             }
@@ -1290,9 +1307,8 @@ sub rpower_response {
         }
 
         if (defined $status_info{RPOWER_STATUS_RESPONSE}{argv} and $status_info{RPOWER_STATUS_RESPONSE}{argv} =~ /bmcstate$/) { 
-            my $bmc_node = "$node BMC";
             my $bmc_short_state = (split(/\./, $bmc_state))[-1];
-            xCAT::SvrUtils::sendmsg($bmc_short_state, $callback, $bmc_node);
+            xCAT::SvrUtils::sendmsg("BMC $bmc_short_state", $callback, $node);
         } else {
             if ($chassis_state =~ /Off$/) {
                 xCAT::SvrUtils::sendmsg("$::POWER_STATE_OFF", $callback, $node);
@@ -1663,6 +1679,7 @@ sub rspconfig_response {
         my $gateway         = "n/a";
         my $prefix          = "n/a";
         my $vlan            = "n/a";
+        my $hostname        = "";
         my $default_gateway = "n/a";
         my $adapter_id      = "n/a";
         my $error;
@@ -1675,6 +1692,9 @@ sub rspconfig_response {
             if ($key_url =~ /network\/config/) {
                 if (defined($content{DefaultGateway}) and $content{DefaultGateway}) {
                     $default_gateway = $content{DefaultGateway};
+                }
+                if (defined($content{HostName}) and $content{HostName}) {
+                    $hostname = $content{HostName};
                 }
             }
 
@@ -1721,15 +1741,22 @@ sub rspconfig_response {
             if ($grep_string =~ "vlan") {
                 push @output, "BMC VLAN ID enabled: $vlan";
             }
+            if ($grep_string =~ "hostname") {
+                push @output, "BMC Hostname: $hostname";
+            }
         }
 
         xCAT::SvrUtils::sendmsg("$_", $callback, $node) foreach (@output);
     }
 
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_SET_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("BMC Setting Hostname (requires bmcreboot to take effect)...", $callback, $node);
+        }
+    }
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
-            my $bmc_node = "$node BMC";
-            xCAT::SvrUtils::sendmsg("Setting IP to DHCP...", $callback, $bmc_node);
+            xCAT::SvrUtils::sendmsg("BMC Setting IP to DHCP...", $callback, $node);
         }
     }
 
