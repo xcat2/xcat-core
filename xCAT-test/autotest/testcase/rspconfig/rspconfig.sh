@@ -199,7 +199,7 @@ do
 		;;
 		"-lip"|"--list ip" )
                 echo "--------------------To test bmc ip could be listed using rspconfig.--------------------"
-                BMCIP_LSDEF=`lsdef $2 |grep bmc |awk -F "=" '{print $2}'`
+                BMCIP_LSDEF=`lsdef $2 |grep "bmc=" |awk -F "=" '{print $2}'`
                 rspconfig $2 ip
                 if [[ $? -eq 0 ]];then
                         BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
@@ -234,17 +234,18 @@ do
 		fi
 		;;
 		"-lg"|"--list gateway" )
-		output=rpconfig $2 gateway
+		output=`rspconfig $2 gateway`
+echo "output is $output"
 		if [[ $? -eq 0 ]];then
-			if [[ $output =~ "$2 BMC Gateway:" ]];then 
-				echo "-------------------To test bmc gateway could be listed using rspconfig successfully.-----------------"
+			if [[ $output =~ "$2: BMC Gateway:" ]];then 
+				echo "--1-----------------To test bmc gateway could be listed using rspconfig successfully.-----------------"
 				exit 0;
 			else
-				echo "-----------------To test bmc gateway could be listed using rsconfig failed.-------------------"
+				echo "---2--------------To test bmc gateway could be listed using rsconfig failed.-------------------"
 				exit 1;
 			fi
 		else
-			echo "-------------------To test bmc gateway could be listed using rspconfig failed.---------------"
+			echo "------------3-------To test bmc gateway could be listed using rspconfig failed.---------------"
 			exit 1;	
 		fi
 		;;
@@ -266,9 +267,9 @@ do
 		fi
 		;;
                 "-ln"|"--list netmask" )
-                output=rpconfig $2 netmask 
+                output=`rspconfig $2 netmask` 
                 if [[ $? -eq 0 ]];then
-                        if [[ $output =~ "$2 BMC Netmask:" ]];then
+                        if [[ $output =~ "$2: BMC Netmask:" ]];then
                                 echo "-------------------To test bmc Netmask could be listed using rspconfig successfully.-----------------"
                                 exit 0;
                         else
@@ -281,7 +282,7 @@ do
                 fi
                 ;;
                 "-v"|"--vlan" )
-                output=rspconfig  $2 vlan
+                output=`rspconfig  $2 vlan`
                 echo "---------------------To test bmc vlan could be changed using rspconfig.--------------------"
                 if [[ $? -eq 0 ]]&&[[ $output =~ "BMC VLAN ID enabled" ]];then
                         BMCVLAN=`rspconfig  $2 vlan |awk -F":" '{print $3}'`
@@ -299,9 +300,9 @@ do
                 fi
                 ;;
                 "-lv"|"--list vlan" )
-                output=rpconfig $2 vlan
+                output=`rspconfig $2 vlan`
                 if [[ $? -eq 0 ]];then
-                        if [[ $output =~ "$2 BMC VLAN ID:" ]];then
+                        if [[ $output =~ "$2: BMC VLAN ID" ]];then
                                 echo "-------------------To test bmc Vlan could be listed using rspconfig successfully.-----------------"
                                 exit 0;
                         else
@@ -324,11 +325,12 @@ do
                 fi
 		;;
 		"-la"|"--list all" )
-		BMCIP_LSDEF=`lsdef $2 |grep bmc |awk -F "=" '{print $2}'`
+		BMCIP_LSDEF=`lsdef $2 |grep "bmc=" |awk -F "=" '{print $2}'`
 		BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
-		output=rspconfig $2 ip gateway netmask vlan
+		output=`rspconfig $2 ip gateway netmask vlan`
 		if [[ $? -eq 0 ]];then
-			if [[ $output =~ "$2 BMC VLAN ID:" ]]&&[[ $output =~ "$2 BMC Netmask:" ]]&&[[ $output =~ "$2 BMC Gateway:" ]]&&[[ $BMCIP =~ "$BMCIP_LSDEF" ]];then 
+			#if [[ $output =~ "BMC VLAN ID:" ]]&&[[ $output =~ "BMC Netmask:" ]]&&[[ $output =~ "BMC Gateway:" ]]&&[[ $BMCIP =~ "$BMCIP_LSDEF" ]];then 
+			if [[ $output =~ "$2: BMC VLAN ID" ]]&&[[ $output =~ "BMC Netmask:" ]]&&[[ $output =~ "BMC Gateway:" ]]&&[[ $BMCIP =~ "$BMCIP_LSDEF" ]];then 
 				echo "------------------To test bmc's all option could be listed using rspconfig succssfully.-----------------"
 				exit 0
 			else

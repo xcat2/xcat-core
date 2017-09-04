@@ -41,7 +41,7 @@ check:rc==0
 check:output=~__GETNODEATTR($$CN,hcp)__: \w+
 end
 
-start:rspconfig_ip
+start:rspconfig_set_ip
 description:rspconfig  change openbmc ip 
 Attribute: $$CN-The operation object of rspconfig command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -i $$CN $NODEIP
@@ -64,7 +64,7 @@ cmd:rspconfig $$CN ip=
 check:rc!=0
 end
 
-start:rspconfig_netmask
+start:rspconfig_set_netmask
 description:rspconfig change openbmc netmask
 Attribute: $$CN-The operation object of rspconfig command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -n $$CN netmask
@@ -78,10 +78,17 @@ cmd:rspconfig $$CN netmask=ddd
 check:rc!=0
 end
  
-start:rspconfig_gateway
+start:rspconfig_set_gateway
 description:rspconfig change openbmc gateway
 Attribute: $$CN-The operation object of rspconfig command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -g  $$CN gateway
+check:rc==0
+end
+
+start:rspconfig_set_vlan
+description:rspconfig change openbmc gateway
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -v  $$CN vlan
 check:rc==0
 end
  
@@ -101,4 +108,38 @@ check:rc!=0
 cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0
 end
- 
+
+start:rspconfig_list_ip
+despcription:rspconfig list bmc ip
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lip $$CN 
+check:rc==0
+end
+
+start:rspconfig_list_gateway
+description:rspconfig list openbmc gateway
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lg $$CN
+check:rc==0
+end
+
+start:rspconfig_list_netmask
+description:rspconfig list openbmc netmask
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -ln $$CN
+check:rc==0
+end
+
+start:rspconfig_list_vlan
+description:rspconfig list openbmc netmask
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -lv $$CN
+check:rc==0
+end
+
+start:rspconfig_list_all
+description:rspconfig list openbmc netmask
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -la $$CN
+check:rc==0
+end
+
