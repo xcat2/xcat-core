@@ -225,6 +225,7 @@ noderange_XCAT_NODE_PREFIX
 noderange_XCAT_NODE_SUFFIX
 noderange_exclusion
 noderange_group_intersection
+confignetwork_static_installnic
 confignetwork_secondarynic_nicnetworks_updatenode_false
 confignetwork_secondarynic_nicips_updatenode_false
 confignetwork_secondarynic_nictype_updatenode_false
@@ -260,6 +261,7 @@ makentp_v
 makentp_h
 nodeset_check_warninginfo
 xcatconfig_u_check_xcatsslversion_rhels_sles
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version

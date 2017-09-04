@@ -5,6 +5,7 @@ makehosts_help
 makehosts_n
 makehosts_n_noderange
 makehost_n_r
+confignetwork_static_installnic
 confignetwork_s_installnic_secondarynic_updatenode
 confignetwork_secondarynic_updatenode
 confignetwork_secondarynic_nicaliases_updatenode
@@ -130,6 +131,7 @@ noderm_h
 noderm_null
 noderm_err_node
 nodeset_stat
+nodeset_shell_incorrectmasterip
 nodeset_noderange
 nodestat_noderange
 nodestat_err_node
@@ -235,6 +237,7 @@ nodeset_shell
 nodeset_cmdline
 nodeset_runimg
 xcatconfig_u_check_xcatsslversion_rhels_sles
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version
