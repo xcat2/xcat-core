@@ -16,6 +16,7 @@ chtab_modify_node
 chtab_modify_key
 chtab_h
 chtab_v
+confignetwork_static_installnic
 packimage_o_p_a_m
 packimage_imagename
 packimage_h
@@ -112,6 +113,7 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
+nodeset_shell_incorrectmasterip
 nodestat_noderange
 nodestat_err_node
 rmdef_null
@@ -270,6 +272,7 @@ disable_root_permission_in_policy_table_systemd
 assign_certain_command_permission_systemd
 nodeset_check_warninginfo
 xcatconfig_u_check_xcatsslversion_ubuntu
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version

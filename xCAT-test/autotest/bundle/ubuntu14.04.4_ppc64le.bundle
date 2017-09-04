@@ -6,6 +6,7 @@ makehosts_help
 makehosts_n_noderange
 makehosts_n
 makehost_n_r
+confignetwork_static_installnic
 confignetwork_secondarynic_nicnetworks_updatenode_false
 confignetwork_secondarynic_nicips_updatenode_false
 confignetwork_secondarynic_nictype_updatenode_false
@@ -115,6 +116,8 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
+nodeset_disjointdhcps_petitboot
+nodeset_shell_incorrectmasterip
 nodestat_err_node
 rmdef_null
 rmdef_t_err
@@ -264,6 +267,7 @@ run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
 xcatconfig_u_check_xcatsslversion_ubuntu
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version

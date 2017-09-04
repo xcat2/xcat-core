@@ -20,6 +20,7 @@ updatenode_diskful_syncfiles_P_script1
 updatenode_script3
 updatenode_P_script1_script2
 updatenode_without_flag
+confignetwork_static_installnic
 confignetwork_s_installnic_secondarynic_updatenode
 confignetwork_secondarynic_updatenode
 confignetwork_secondarynic_nicaliases_updatenode
@@ -148,6 +149,8 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
+nodeset_disjointdhcps_petitboot
+nodeset_shell_incorrectmasterip
 nodestat_err_node
 rinv_noderange_err
 rmdef_null
@@ -294,6 +297,7 @@ run_command_with_XCATBYPASS
 disable_root_permission_in_policy_table
 assign_certain_command_permission
 xcatconfig_u_check_xcatsslversion_rhels_sles
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version

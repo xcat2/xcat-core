@@ -211,10 +211,12 @@ nodeset_cmdline
 nodeset_runimg
 nodeset_check_warninginfo
 xcatconfig_u_check_xcatsslversion_rhels_sles
+xcatconfig_c
 bmcdiscover_help
 bmcdiscover_q
 bmcdiscover_version
 chdef_nicips
+confignetwork_static_installnic
 confignetwork_2eth_bridge_br0
 confignetwork_2eth_bridge_br22_br33
 confignetwork_bond_eth2_eth3
@@ -234,6 +236,7 @@ mkdef_regex_ip
 mkdef_regex_kvm
 mkdef_regex_nicsip
 nodeset_errorcommand
+nodeset_shell_incorrectmasterip
 nodeset_xnba
 nodestat_usage
 rmimage_diskless
