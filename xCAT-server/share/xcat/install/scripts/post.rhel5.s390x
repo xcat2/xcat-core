@@ -68,7 +68,7 @@ do
             done
 
             # Make executable
-            chmod +x /xcatpost/mypostscript
+            chmod 700 /xcatpost/mypostscript
             GOTIT=1
             break
         fi

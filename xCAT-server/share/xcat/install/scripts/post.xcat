@@ -116,7 +116,7 @@ if [ "$?" = "0" ]; then
         msgutil_r "$MASTER_IP" "debug" "precreated mypostscript downloaded successfully" "/var/log/xcat/xcat.log"
     fi
     mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
-    chmod +x /xcatpost/mypostscript
+    chmod 700 /xcatpost/mypostscript
 fi
 
 USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
@@ -404,7 +404,7 @@ if [ \"\$return_value\" -ne \"0\" ]; then
 fi
 " >> /xcatpost/mypostscript
 
-chmod 755 /xcatpost/mypostscript
+chmod 700 /xcatpost/mypostscript
 
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#
