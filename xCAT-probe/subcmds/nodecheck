@@ -92,10 +92,10 @@ sub check_for_duplicate_mtms_sn {
     chomp($all_nodes_mtm_serial);
     my @all_nodes_mtm_serial_lines = split("[\n\r]", $all_nodes_mtm_serial);
 
-    if ($all_nodes_mtm_serial =~ /Usage:/) {
+    if ($all_nodes_mtm_serial =~ /Usage:|Could not find any object definitions to display/) {
 
-        # lsdef command displayed a Usage message. Must be some noderange formatting problem.
-        # Issue a warning and exit.
+        # lsdef command displayed a Usage message. Must be some noderange formatting problem,
+        # or no nodes defined at all. Issue a warning and exit.
         probe_utils->send_msg("$output", "w", "Can not get a list of nodes from specified noderange.");
         return 1;
     }
