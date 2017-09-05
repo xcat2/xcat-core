@@ -255,7 +255,6 @@ mkdef_regex_nicsip
 nodeset_errorcommand
 nodeset_grub2
 nodeset_petitboot
-nodeset_disjointdhcps_petitboot
 nodeset_shell_incorrectmasterip
 nodestat_usage
 rmimage_diskless
@@ -270,4 +269,5 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+nodeset_disjointdhcps_petitboot
 clean_up_env
