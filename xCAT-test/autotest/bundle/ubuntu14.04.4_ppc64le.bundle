@@ -116,7 +116,6 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
-nodeset_disjointdhcps_petitboot
 nodeset_shell_incorrectmasterip
 nodestat_err_node
 rmdef_null

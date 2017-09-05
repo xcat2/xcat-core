@@ -149,7 +149,6 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
-nodeset_disjointdhcps_petitboot
 nodeset_shell_incorrectmasterip
 nodestat_err_node
 rinv_noderange_err
@@ -343,6 +342,7 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+nodeset_disjointdhcps_petitboot
 redhat_migration1
 redhat_migration2
 clean_up_env
