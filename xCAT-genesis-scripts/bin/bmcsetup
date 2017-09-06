@@ -440,7 +440,7 @@ for user in $BMCUS; do
     if [ "$user" = "" ]; then 
         continue
     fi
-    DISABLEUSERS=$(ipmitool user list $LANCHAN|awk '{print $1}'|grep -v ID)
+    DISABLEUSERS=$(ipmitool user list $LANCHAN|grep -v ^ID|grep -v 'NO ACCESS$'|awk '{print $1}')
     # Get the User Slots
     USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
     if [ -z "$USERSLOT" ]; then
