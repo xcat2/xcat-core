@@ -226,9 +226,6 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 xcatd_start_systemd
 xcatd_stop_systemd
 xcatd_restart_systemd
@@ -261,6 +258,9 @@ rmimage_diskless
 updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 sles_migration1
 sles_migration2
 reg_linux_statelite_installation_flat

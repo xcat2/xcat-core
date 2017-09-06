@@ -211,9 +211,6 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 nodeset_check_warninginfo
 xcatd_start
 xcatd_stop
@@ -253,6 +250,9 @@ packimage_m_tar_c_gzip
 packimage_m_tar_c_xz
 packimage_m_invalid_archive_method
 packimage_m_invalid_compress_method
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy

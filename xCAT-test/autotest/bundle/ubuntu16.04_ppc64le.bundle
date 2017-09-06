@@ -233,12 +233,12 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 xcatd_start_systemd
 xcatd_stop_systemd
 xcatd_restart_systemd
 run_command_with_XCATBYPASS_systemd
 disable_root_permission_in_policy_table_systemd
 assign_certain_command_permission_systemd
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
