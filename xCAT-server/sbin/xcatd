@@ -2813,8 +2813,7 @@ sub service_connection {
                     my $myxcatver=xCAT::Version->Version();
                     if($req->{'_xcatver'}->[0] ne $myxcatver){
                         my $myhostname=Sys::Hostname::hostname;
-                        my $resp = { warning => ["xCAT Version mismatch! \"$myxcatver\" on $myhostname does not match \"$req->{'_xcatver'}->[0]\" on $peerhost!"]};
-                        $resp->{serverdone} = [undef];
+                        my $resp = { warning => ["xCAT Version mismatch! \n         $myhostname: $myxcatver\n         $peerhost: $req->{'_xcatver'}->[0]\n"]};
                         send_response($resp, $sock);
                     }
                 }
