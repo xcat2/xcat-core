@@ -404,18 +404,19 @@ check:rc==0
 cmd:chdef -t node testnode1 servicenode=nonexistenode
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
-check:rc==0
+#Ignore the exit code check as nonexistenode is fake and dispatching always fail
+#check:rc==0
 cmd:test -f /tftpboot.1/petitboot/testnode1
-check:rc==0
+check:rc!=0
 cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc!=0
 cmd:nodeset testnode1 offline
-check:rc==0
+#check:rc==0
 # DHCP dynamic range
-cmd:chdef -t network 20_0_0_0-255_0_0_0 mask=255.0.0.0 tftpserver=$$SN dhcpserver=$$SN
+cmd:chdef -t network 20_0_0_0-255_0_0_0 net=20.0.0.0 mask=255.0.0.0 dynamicrange=20.0.0.1-20.0.0.2 tftpserver=$$SN dhcpserver=$$SN
 check:rc==0
 cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
-check:rc==0
+#check:rc==0
 cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
 check:rc==0
 # Clean up
