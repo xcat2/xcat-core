@@ -176,7 +176,7 @@ sub config_ssh {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         print "ssh configured for $csw\n";
         if ($::ALL) {
-            $cmd = "updatenode $csw -P hardeths,enablesnmp,configinterface";
+            $cmd = "updatenode $csw -P hardeths,syslog,enablesnmp,configinterface";
             $rc= xCAT::Utils->runcmd($cmd, 0); 
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");
