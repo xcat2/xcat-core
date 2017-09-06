@@ -256,9 +256,6 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 xcatd_start
 xcatd_stop
 xcatd_restart
@@ -290,5 +287,8 @@ rmimage_diskless
 updatenode_diskful_syncfiles_failing
 xdcp_nonroot_user
 xdsh_permission_denied
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 ubuntu_migration1_p8le
 ubuntu_migration2_p8le

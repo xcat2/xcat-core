@@ -271,9 +271,6 @@ switchdiscover_range_r
 switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 makentp_v
 makentp_h
 nodeset_check_warninginfo
@@ -336,6 +333,9 @@ packimage_m_invalid_archive_method
 packimage_m_invalid_compress_method
 confignetwork_vlan_false
 confignetwork__bridge_false
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 reg_linux_statelite_installation_flat
 SN_setup_case
 reg_linux_diskfull_installation_hierarchy

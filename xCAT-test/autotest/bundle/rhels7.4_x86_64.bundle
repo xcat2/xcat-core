@@ -233,9 +233,6 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
-nodeset_shell
-nodeset_cmdline
-nodeset_runimg
 xcatconfig_u_check_xcatsslversion_rhels_sles
 xcatconfig_c
 bmcdiscover_help
@@ -263,6 +260,9 @@ xdcp_nonroot_user
 xdsh_permission_denied
 confignetwork_vlan_false
 confignetwork__bridge_false
+nodeset_shell
+nodeset_cmdline
+nodeset_runimg
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case
