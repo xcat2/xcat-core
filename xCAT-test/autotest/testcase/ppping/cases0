@@ -11,48 +11,34 @@ check:output=~Version
 end
 
 start:ppping_node
-cmd:ping -c 3 $$CN > /dev/null 2>&1
-check:rc==0
-cmd:ppping $$CN
-check:rc==0
-check:output=~$$CN: pinged all nodes successfully
+cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "noping" ]];then exit 0;else exit 1;fi;else output=`ppping $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "pinged all nodes successfully" ]];then exit 0;else exit 1;fi;fi
+check:rc==0 
 end
 
 start:ppping_V_node
-cmd:ping -c 3 $$CN > /dev/null 2>&1
+cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -V $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping -V $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: $$CN: ping" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
-cmd:ppping -V $$CN
-check:rc==0
-check:output=~$$CN: $$CN: ping
 end
 
 start:ppping_q_node
-cmd:ping -c 3 $$CN > /dev/null 2>&1
+cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -q $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping -q $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
-cmd:ppping -q $$CN
-check:rc==0
-check:output=~
 end
 
 start:ppping_d_node
-cmd:ppping -d $$CN
+cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping -d $$CN`;if [[ $? -eq 1 ]]&&[[ $output =~ "start" ]]&&[[ $output =~ "stop" ]];then exit 0;else exit 1;fi;else output=`ppping -d $$CN`; if [[ $? -eq 0 ]]&&[[ $output =~ "start" ]]&&[[ $output =~ "stop" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
-check:output=~[start]
-check:output=~[stop]
 end
 
 start:ppping_i_node
-cmd:ping -c 3 $$CN > /dev/null 2>&1
-check:rc==0
 cmd:cp /etc/hosts  /etc/hosts.bak
 check:rc==0
 cmd:a=`cat /etc/hosts |grep ' $$CN.'|awk '{print $1}'`;b=`cat /etc/resolv.conf |grep search|awk '{print $2}'`;echo "$a $$CN-eth0.$b $$CN-eth0" >> /etc/hosts
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:ppping $$CN -i eth0
+cmd:ping -c 3 $$CN > /dev/null 2>&1;if [[ $? -eq 1 ]]; then output=`ppping  $$CN -i eth0`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping $$CN -i eth0`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: pinged all nodes successfully on interface eth0" ]];then exit 0;else exit 1;fi;fi
 check:rc==0
-check:output=~$$CN: pinged all nodes successfully on interface eth0
 cmd:rm -f /etc/hosts
 check:rc==0
 cmd:mv /etc/hosts.bak  /etc/hosts
@@ -60,14 +46,9 @@ check:rc==0
 end
 
 start:ppping_nodes
-cmd:ping -c 3 $$CN > /dev/null 2>&1
+cmd:rc1=`ping -c 3 $$CN > /dev/null 2>&1`;rc2=`ping -c 3 $$SN > /dev/null 2>&1`;if [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 1 ]];then output=`ppping  $$CN,$$SN`;if [[ $? -eq 1 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ $output =~ "$$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 0 ]]&&[[ $rc2 -eq 1 ]]; then output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$SN: noping" ]]&&[[ "$$CN: $$SN: noping" ]];then exit 0;else exit 1;fi;elif [[ $rc1 -eq 1 ]]&&[[ $rc2 -eq 0 ]]; then output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: noping" ]]&&[[ "$$SN: $$CN: noping" ]];then exit 0;else exit 1;fi;else output=`ppping $$CN,$$SN`; if [[ $? -eq 0 ]]&&[[ $output =~ "$$CN: pinged all nodes successfully" ]]&&[[ "$$SN: pinged all nodes successfully" ]];then exit 0;else exit 1;fi;fi
+
 check:rc==0
-cmd:ping -c 3 $$SN > /dev/null 2>&1
-check:rc==0
-cmd:ppping $$SN,$$CN
-check:rc==0
-check:output=~$$SN: pinged all nodes successfully
-check:output=~$$CN: pinged all nodes successfully
 end
 
 start:ppping_V_nodes
