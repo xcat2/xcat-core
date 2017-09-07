@@ -1082,19 +1082,8 @@ sub bmcdiscovery_ipmi {
             xCAT::MsgUtils->message("W", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
             return;
         }
-        if (defined($opz) || defined($opw))
-        {
-            format_stanza($node, $node_data, "ipmi");
-            if (defined($opw))
-            {
-                write_to_xcatdb($node, $node_data, "ipmi", $request_command);
-            }
-        }
-        else {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "$node_data";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        }
+
+        display_output($opz,$opw,$node,$node_data,"ipmi",$request_command);
     }
 }
 
@@ -1205,12 +1194,38 @@ sub bmcdiscovery_openbmc{
         }
         return;
     }
+    display_output($opz,$opw,$node,$node_data,"openbmc",$request_command);
+}
 
-    if (defined($opz) || defined($opw)) {
-        format_stanza($node, $node_data, "openbmc");
-        if (defined($opw)) {
-            write_to_xcatdb($node, $node_data, "openbmc", $request_command);
+
+#-----------------------------------------------------------------------------
+
+=head3  display_output
+
+        Common code to print output of bmcdiscover
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub display_output {
+    my $opz             = shift;
+    my $opw             = shift;
+    my $node            = shift;
+    my $node_data       = shift;
+    my $mgttype         = shift;
+    my $request_command = shift;
+
+    if (defined($opw)) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Writing $node ($node_data) to database...";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        if (defined($opz)) {
+            format_stanza($node, $node_data, $mgttype);
         }
+        write_to_xcatdb($node, $node_data, $mgttype, $request_command);
+    }
+    elsif (defined($opz)) {
+        format_stanza($node, $node_data, $mgttype);
     } else {
         my $rsp = {};
         push @{ $rsp->{data} }, "$node_data";
