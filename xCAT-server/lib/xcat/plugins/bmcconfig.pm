@@ -149,7 +149,7 @@ sub process_request {
     foreach my $sbmc (split /,/, $bmc) {
         (my $ip, my $mask, my $gw) = net_parms($sbmc);
         unless ($ip and $mask and $username and $password) {
-            xCAT::MsgUtils->message('S', "Unable to determine IP, Netmask, Username, or Password for $sbmc. Ensure that hostname resolution is working. [IP=$ip Netmask=$mask Username=$username Password=$password]",);
+            xCAT::MsgUtils->message('S', "Unable to determine IP, Netmask, Username, or Password for $sbmc. Ensure that hostname resolution is working. [IP=$ip Netmask=$mask User=$username Pass=$password]",);
             $callback->({ error => ["Invalid/Missing BMC related attributes in the node defintion (IP=$ip Netmask=$mask User=$username Pass=$password). Unable to configure the BMC, check the node definition."], errorcode => [1] });
             return 1;
         }
