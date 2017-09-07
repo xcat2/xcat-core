@@ -73,7 +73,7 @@ do
             done
          
             # Make executable
-            chmod +x /tmp/mypostscript
+            chmod 700 /tmp/mypostscript
             GOTIT=1
             break
         fi

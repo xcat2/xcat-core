@@ -149,7 +149,7 @@ fi
 
 #config static ip address for mgt interface
 echo './confignics -s' >> ./mypostscript
-chmod +x ./mypostscript
+chmod 700 ./mypostscript
 ./mypostscript
 rc=$?
 if [ "$rc" != "0" ]; then

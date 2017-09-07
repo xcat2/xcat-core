@@ -963,7 +963,7 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
   echo "exit \$return_value" >> /$xcatpost/mypostscript
 fi
 
-chmod +x /$xcatpost/mypostscript
+chmod 700 /$xcatpost/mypostscript
 if [ -x /$xcatpost/mypostscript ];then
    echolog "debug" "running /$xcatpost/mypostscript"   
    /$xcatpost/mypostscript
