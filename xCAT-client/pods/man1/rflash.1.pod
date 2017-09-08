@@ -26,6 +26,8 @@ B<rflash> I<noderange> I<http_directory>
 
 B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
 
+B<rflash> I<noderange> B<--recover> I<bmc_file_path>
+
 =head2 OpenPOWER OpenBMC specific :
 
 B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
@@ -133,7 +135,13 @@ Used to commit the flash image in the temporary side of the chip to the permanen
 
 =item B<--recover>
 
+PPC (with HMC) and PPC (without HMC, using Direct FSP Management) specific:
+
 Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+
+OpenPOWER BMC specific (using IPMI):
+
+Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
 
 =item B<--retry=>I<count>
 

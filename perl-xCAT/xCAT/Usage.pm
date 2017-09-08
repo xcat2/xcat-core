@@ -344,6 +344,7 @@ my %usage = (
         rflash <noderange> [--bpa_acdl]
     OpenPOWER BMC specific (using IPMI):
         rflash <noderange> [<hpm_file_path>|-d <data_directory>] [-c|--check] [--retry=<count>] [-V]
+        rflash <noderange> --recover <bmc_file_path>
     OpenPOWER OpenBMC specific:
         rflash <noderange> {[-c|--check] | [-l|--list]}
         rflash <noderange> <tar_file_path> {[-c|--check] | [-a|--activate] | [-u|--upload]}
