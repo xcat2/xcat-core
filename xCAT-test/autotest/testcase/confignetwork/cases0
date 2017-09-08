@@ -744,7 +744,7 @@ cmd:chdef $$CN nicips.$$SECONDNIC=11.1.0.100 nictypes.$$SECONDNIC=Ethernet nicne
 check:rc==0
 cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
 check:rc==0
-cmd:chdef $$CN nicips.$$THIRDNIC=12.1.0.100 nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=12_1_0_0-255_255_0_0
+cmd:chdef $$CN nicips.$$THIRDNIC=12.1.0.200 nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=12_1_0_0-255_255_0_0
 check:rc==0
 cmd:updatenode $$CN -P confignetwork
 check:rc==0
@@ -772,7 +772,7 @@ check:rc==0
 cmd:rmdef -t network -o 30_5_0_0-255_255_0_0
 cmd:xdsh $$CN "ip addr del 30.5.106.9/16 dev br0"
 cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev $$SECONDNIC"
-cmd:xdsh $$CN "ip addr del 12.1.0.100/16 dev $$THIRDNIC"
+cmd:xdsh $$CN "ip addr del 12.1.0.200/16 dev $$THIRDNIC"
 cmd:xdsh $$CN "ip link del dev br0"
 cmd:xdsh $$CN "echo -bond0 > /sys/class/net/bonding_masters"
 cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-br0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-br0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/br0";else echo "Sorry,this is not supported os"; fi
