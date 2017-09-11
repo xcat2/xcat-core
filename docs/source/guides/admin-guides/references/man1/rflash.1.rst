@@ -52,6 +52,8 @@ OpenPOWER BMC specific (using IPMI):
 
 \ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
 
+\ **rflash**\  \ *noderange*\  \ **-**\ **-recover**\  \ *bmc_file_path*\ 
+
 
 OpenPOWER OpenBMC specific :
 ============================
@@ -196,7 +198,13 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-**\ **-recover**\ 
  
+ PPC (with HMC) and PPC (without HMC, using Direct FSP Management) specific:
+ 
  Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+ 
+ OpenPOWER BMC specific (using IPMI):
+ 
+ Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
  
 
 

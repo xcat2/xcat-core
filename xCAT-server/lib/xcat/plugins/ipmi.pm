@@ -20,6 +20,7 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
 use xCAT::PasswordUtils;
+use File::Basename;
 my %needbladeinv;
 
 use POSIX qw(ceil floor);
@@ -2493,6 +2494,46 @@ sub do_rflash_process {
             xCAT::SvrUtils::sendmsg([ 1, "rflash is running on $node, please retry after a while" ],
                 $callback, $node, %allerrornodes);
             exit(1);
+        }
+        my $recover_image;
+        if (grep(/^(--recover)$/, @{ $extra })) {
+            if (@{ $extra } != 2) {
+                xCAT::SvrUtils::sendmsg([ 1, "The command format for recovery is invalid. Only support 'rflash <noderange> --recover <bmc_file_path>'" ],
+                    $callback, $node);
+                exit(1);
+            }
+            my @argv = @{ $extra };
+            if ($argv[0] eq "--recover") {
+                $recover_image = $argv[1];
+            } elsif ($argv[1] eq "--recover") {
+                $recover_image = $argv[0];
+            }
+        }
+        if (defined($recover_image)) {
+            if ($recover_image !~ /^\//) {
+                $recover_image = xCAT::Utils->full_path($recover_image, $::cwd);
+            }
+            unless(-x "/usr/bin/tftp") {
+                $callback->({ error => "Could not find executable file /usr/bin/tftp, please setup tftp client.",
+                        errorcode => 1 });
+                exit(1);
+            }
+            my $bmcip     = $_[0];
+            my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image ".basename($recover_image);
+            my $output = xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                $callback->({ error => "Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output.",
+                        errorcode => 1 });
+                exit(1);
+            }
+            # Sometimes tftp command retrun error message but without nonzero error code
+            if($output) {
+                $callback->({ error => "Running tftp command \'$cmd\' failed. Output: $output",
+                        errorcode => 1 });
+                exit(1);
+            }
+            $callback->({ data => "$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes."});
+            exit(0);
         }
         donode($node, @_);
         while (xCAT::IPMI->waitforrsp()) { yield }
