@@ -1397,12 +1397,14 @@ sub makedom {
     }
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
-    } else {
-        $graphics->setAttribute("passwd", genpassword(20));
+    if (defined($graphics)) {
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
+        } else {
+            $graphics->setAttribute("passwd", genpassword(20));
+        }
+        $graphics->setAttribute("listen", '0.0.0.0');
     }
-    $graphics->setAttribute("listen", '0.0.0.0');
     $xml = $parseddom->toString();
     eval {
         if ($::XCATSITEVALS{persistkvmguests}) {
