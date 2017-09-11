@@ -1399,7 +1399,10 @@ sub rinv_response {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
                 $purpose_value = "[$sw_id]$purpose_value";
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
-                my $priority_value = $content{Priority};
+                my $priority_value = -1;
+                if (defined($content{Priority})) {
+                    $priority_value = $content{Priority};
+                }
                 #
                 # For 'rinv firm', only print Active software, unless verbose is specified
                 #
