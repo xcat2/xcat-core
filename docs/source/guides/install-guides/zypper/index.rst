@@ -1,3 +1,5 @@
+.. _sles_install_guide:
+
 Installation Guide for SUSE Linux Enterprise Server
 ===================================================
 
