@@ -1399,15 +1399,23 @@ sub rinv_response {
                 my $purpose_value = uc ((split(/\./, $content{Purpose}))[-1]);
                 $purpose_value = "[$sw_id]$purpose_value";
                 my $activation_value = (split(/\./, $content{Activation}))[-1];
+                my $priority_value = -1;
+                if (defined($content{Priority})) {
+                    $priority_value = $content{Priority};
+                }
                 #
                 # For 'rinv firm', only print Active software, unless verbose is specified
                 #
-                if ($activation_value =~ "Active" or $::VERBOSE) {
+                if (($activation_value =~ "Active" and $priority_value == 0) or $::VERBOSE) {
                     #
                     # The space below between "Firmware Product Version:" and $content{Version} is intentional
                     # to cause the sorting of this line before any additional info lines 
                     #
                     $content_info = "$purpose_value Firmware Product:   $content{Version} ($activation_value)";
+                    if ($priority_value == 0) {
+                        # For now, indicate priority 0 software levels with an '*'
+                        $content_info .= "*";
+                    }
                     push (@sorted_output, $content_info); 
     
                     if (defined($content{ExtendedVersion}) and $content{ExtendedVersion} ne "") { 
