@@ -898,7 +898,7 @@ sub parse_command_status {
 
         my $file_id = undef;
         my $grep_cmd = "/usr/bin/grep -a";
-        my $version_tag = '"version=IBM"';
+        my $version_tag = '"^version="';
         my $purpose_tag = '"purpose="';
         my $purpose_value;
         my $version_value;
