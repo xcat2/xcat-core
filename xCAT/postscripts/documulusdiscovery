@@ -96,22 +96,37 @@ if [ -z "$XCATMASTER" ] || [ -z "$XCATPORT" ]; then
 fi
 
 
-#send the find me request ot xcatd on MN
-MAX_RETRY=10
+#send the find me request to xcatd on MN
+MAX_RETRY=1000
 RETRY=0
 DISCOVERED=0
 
 while [ $RETRY -lt $MAX_RETRY ]; do
     logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT) [ RETRY= $RETRY ]  ..."
+    echo >/tmp/result.socat.out
     (cat /tmp/discopacket.gz | socat STDIN UDP:$XCATMASTER:$XCATPORT,sourceport=301 ) &
 
     WAITRETRY=0
-    while [ $WAITRETRY -lt 100 ]; do
-        if [ -f "/tmp/result.socat.out" ] && grep "restart" /tmp/result.socat.out; then
-            DISCOVERED=1
-            break;
+    while [ $WAITRETRY -lt 60 ]; do
+        if [ -f "/tmp/result.socat.out" ];then
+            if grep "restart" /tmp/result.socat.out; then
+                DISCOVERED=1
+                break;
+            elif grep "processing" /tmp/result.socat.out; then 
+                echo "My findme request is still under processing, do not send new request"
+                logger -s -t $log_label -p local4.info  "My findme request is still under processing, do not send new request"
+                sleep 5
+            elif grep "processed" /tmp/result.socat.out; then
+                echo "Fail to discover me, retry to send findme request 10 second later!"
+                logger -s -t $log_label -p local4.info "Fail to discover me, retry to send findme request 10 seconds later"
+                sleep 10 
+                break;
+            else
+                echo "no response from $XCATMASTER, wait for 1 second"
+                logger -s -t $log_label -p local4.info "no response from $XCATMASTER, wait for 1 second"
+                sleep 1
+            fi 
         fi
-        sleep 1
         ((WAITRETRY=WAITRETRY+1))
     done
 
@@ -119,7 +134,6 @@ while [ $RETRY -lt $MAX_RETRY ]; do
         break
     fi
     
-    sleep 2 
     ((RETRY=RETRY+1))
 done
 
