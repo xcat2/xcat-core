@@ -2,7 +2,7 @@ Manage Virtual Machine (VM)
 ============================
 
 
-Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
+Now the PowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
 
 Create Virtual Machine
 ----------------------
