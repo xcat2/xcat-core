@@ -477,8 +477,6 @@ sub process_request {
     print $sock $restartstring;
     close($sock);
 
-    # sleep 2 seconds for genesis to complete the disocvery process
-    sleep(2);
 
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);
