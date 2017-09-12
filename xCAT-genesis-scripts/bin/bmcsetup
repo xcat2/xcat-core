@@ -369,7 +369,6 @@ fi
 
 if [ "$BMCVLAN" = off ]; then
     TRIES=0
-    logger -s -t $log_label -p local4.info "Disabling VLAN configuration in the BMC..."
     while ! ipmitool raw 0xc 1 $LANCHAN 0x14 0 0; do
         snooze
         let TRIES=TRIES+1
