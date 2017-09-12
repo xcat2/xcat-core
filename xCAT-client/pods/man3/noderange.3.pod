@@ -1,6 +1,6 @@
 =head1 Name
 
-B<noderange> - syntax for compactly expressing a list of node names
+B<noderange> - syntax for compactly expressing a list of node names in B<xCAT>
 
 =head1 B<Synopsis>
 
