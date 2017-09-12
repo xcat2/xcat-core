@@ -359,7 +359,7 @@ sub check_pre_defined_node {
                     next;
                 }
 
-                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\d/ or $valid_nodes !~ $node) {
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\d+$/ or $valid_nodes !~ $node) {
                     push @error_attribute, "switchport";
                 }
 
@@ -640,7 +640,7 @@ sub check_genesis_file {
                         $rst = 1;
                     }
 
-                    if ($initrd_path =~ /http:\/\/.+:80\/(.+)/) {
+                    if ($initrd_path =~ /http:\/\/.+:80(\/.+)/) {
                         my $initrd_file = $1;
                         my $initrd_time = `stat $initrd_file | grep Modify | cut -d ' ' -f 2-3`;
                         if ($genesis_time and $initrd_time < $genesis_time) {
