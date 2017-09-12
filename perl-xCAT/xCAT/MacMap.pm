@@ -725,14 +725,14 @@ sub refresh_switch {
                 foreach (@res){
                     if($_ =~ m/^([0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}:[0-9a-z]{2}) dev swp([0-9]+) .*/){
                         $mymac=$1;
-                        $myport=$2;
+                        $myport=$2;         
                         $myport=sprintf("%d",$myport);
-
+                        
                         #try all the possible port number formats
                         #e.g, "5","swp5","05","swp05"
                         unless(exists $self->{switches}->{$switch}->{$myport}){
                             if(exists $self->{switches}->{$switch}->{"swp".$myport}){
-                                $myport="swp".$myport; 
+                                $myport="swp".$myport;
                             }else{
                                 $myport=sprintf("%02d",$myport);
                                 unless(exists $self->{switches}->{$switch}->{$myport}){
@@ -743,7 +743,7 @@ sub refresh_switch {
                                     }
                                 }
                             }
-                        } 
+                        }
 
                         if($myport){
                             if($output){
@@ -834,6 +834,10 @@ sub refresh_switch {
                     $self->{nodeinfo}->{ $self->{switches}->{$switch}->{$portname} }->{vlans}->{$portname} = $trunktovlanmap->{$portid};
                 }
             }
+            #still needs output if there are no switchport defined on the nodes
+            if (not defined $portname) {
+                $vlans_to_check{'NA'} = 1;
+            }
         }
     } else {
         $vlans_to_check{'NA'} = 1;
@@ -856,6 +860,9 @@ sub refresh_switch {
         my $bridgetoifmap = walkoid($session, '.1.3.6.1.2.1.17.1.4.1.2', ciscowarn => $iscisco, verbose => $self->{show_verbose_info}, switch => $switch, callback => $self->{callback}); # Good for all switches
         if (not ref $bridgetoifmap or !keys %{$bridgetoifmap}) {
             xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": failed to get a valid response to BRIDGE-MIB request");
+            if ($self->{collect_mac_info}) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "Failed to get a valid response to BRIDGE-MIB request";
+            }
             return;
         }
         # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2');
@@ -866,6 +873,9 @@ sub refresh_switch {
         }    #Ok, time to process the data
         if (not ref $mactoindexmap or !keys %{$mactoindexmap}) {
             xCAT::MsgUtils->message("S", "Error communicating with " . $session->{DestHost} . ": Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB");
+            if ($self->{collect_mac_info}) {
+                $self->{macinfo}->{$switch}->{ErrorStr} = "Unable to get MAC entries via either BRIDGE or Q-BRIDE MIB";
+            }
             return;
         }
         if (defined($self->{collect_mac_info})) {
