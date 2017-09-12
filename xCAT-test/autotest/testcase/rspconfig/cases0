@@ -91,6 +91,13 @@ Attribute: $$CN-The operation object of rspconfig command
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -v  $$CN vlan
 check:rc==0
 end
+
+start:rspconfig_set_all
+description:rspconfig change openbmc ip/netmask/gateway/vlan
+Attribute: $$CN-The operation object of rspconfig command
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/rspconfig/rspconfig.sh -a  $$CN 
+check:rc==0
+end
  
 start:rspconfig_gateway_invalid
 despcription:rspconfig could not change openbmc gatway using invalid gateway
@@ -99,11 +106,35 @@ cmd:rspconfig $$CN gateway=ddd
 check:rc!=0
 end
 
+start:rspconfig_set_vlan_invalid
+despcription:rspconfig could not change openbmc gatway using invalid vlan
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN vlan=dddsdsdfs
+check:rc!=0
+end
+
+start:rspconfig_set_all_invalid
+despcription:rspconfig could not change openbmc gatway using invalid vlan
+Attribute: $$CN-The operation object of rspconfig command
+cmd:rspconfig $$CN ip=dsd gateway=ooo netmask=asfsf vlan=dddsdsdfs
+check:rc!=0
+end
+
 start:rspconfig_node_invalid
 despcription:rspconfig could not do any action  using invalid node
 cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
 check:rc==0
 cmd:rspconfig testnode ip
+check:rc!=0
+cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
+check:rc==0
+end
+
+start:rspconfig_noderange_invalid
+despcription:rspconfig could not do any action  using invalid node
+cmd:test=$(lsdef testnode);if [[ $? -eq 0 ]]; then lsdef -l testnode -z >/tmp/testnode.stanza ;rmdef testnode;fi
+check:rc==0
+cmd:rspconfig testnode,$$CN ip
 check:rc!=0
 cmd:if [[ -e /tmp/testnode.stanza ]]; then cat /tmp/testnode.stanza | chdef -z;rm -rf /tmp/testnode.stanza;fi
 check:rc==0

@@ -180,19 +180,20 @@ function change_all
 {
 	echo "Prepare to change all for bmc."
 	echo "Start to change all for bmc."
-	rspconfig $2 gateway netmask vlan ip
+	rspconfig $1 gateway netmask vlan ip
 	if [[ $? -eq 0 ]];then
-		BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`;
-		BMCNETMASK=`rspconfig  $2 netmask |awk -F":" '{print $3}'`;
-		BMCGGATEWAY=`rspconfig  $2 gateway |awk -F":" '{print $3}'`;
-		output=`rspconfig  $2 vlan`
+		BMCIP=`rspconfig $1 ip |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
+		BMCNETMASK=`rspconfig  $1 netmask |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
+		BMCGGATEWAY=`rspconfig  $1 gateway |awk -F":" '{print $3}'|sed s/[[:space:]]//g`;
+		output=`rspconfig  $1 vlan`
 		if [[ $output =~ "BMC VLAN ID enabled" ]];then
-			BMCVLAN=`rspconfig  $2 vlan |awk -F":" '{print $3}'`
+			BMCVLAN=`rspconfig  $1 vlan |awk -F":" '{print $3}'|sed s/[[:space:]]//g`
 		else
 			echo "------------------Bmc vlan disabled so could not change vlan id using rspconfig.--------------------"
 			return 1;
 		fi
-	rspconfig $2 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY vlan=$BMCVLAN
+
+		rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY vlan=$BMCVLAN
 		if [[ $? -eq 0 ]];then
 			echo "Could set BMC IP/netmask/gateway/vlan.";
 		else
