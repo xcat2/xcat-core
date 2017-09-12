@@ -2464,7 +2464,153 @@ sub mknum {
     return $number;
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  a2idx
+    Description:
+        Turns a character into a 1-indexed index
+    Arguments:
+        character: The character to convert
+    Returns:
+        The index
+    Example:
+        a2zidx('a') returns 1
+        a2zidx('b') returns 2
+=cut
+
+#--------------------------------------------------------------------------------
+sub a2idx {
+    return ord(lc(shift)) - 96;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  a2zidx
+    Description:
+        Turns a character into a 0-indexed index
+    Arguments:
+        character: The character to convert
+    Returns:
+        The index
+    Example:
+        a2zidx('a') returns 0
+        a2zidx('b') returns 1
+=cut
+
+#--------------------------------------------------------------------------------
+sub a2zidx {
+    return ord(lc(shift)) - 97;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  dim2idx
+    Description:
+        Converts dimensions into an index
+    Arguments:
+        dim_value: the value of the current dimension
+        dim_total: the total number of elements in that dimension
+    Returns:
+        The index
+    Example:
+        A cluster has 4 rows
+        A row has 10 racks
+        A rack has 8 chassis
+        A chassis has 8 nodes
+
+	Row 2, rack 3, chassis 4, node 5
+	dim2idx(2, 10, 3, 8, 4, 8, 5) returns 797
+
+        Note the highest dimension is not needed and all values are 1-indexed
+=cut
+
+#--------------------------------------------------------------------------------
+sub dim2idx {
+    my $val = 0; # value to return
+    my $fn = 0;  # math function to apply, 0 is add, 1 is multiply
+    while (defined(my $element = shift)) {
+            $val += $element - 1 if !$fn;
+            $val *= $element if $fn;
+            $fn = 1 - $fn;
+    }
+    return $val + 1;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  skip
+    Description:
+        Return an index with certain values skipped
+    Arguments:
+        index: The initial index
+        skips: Index values to skip
+               format start[:count][,start[:count]...]
+    Returns:
+        The updated index
+    Example:
+        skip(10, '3')     returns 9
+        skip(10, '3:2')   returns 8
+        skip(10, '3:2,6') returns 7
+=cut
+
+#--------------------------------------------------------------------------------
+sub skip {
+    my $idx = my $val = shift;
+    my $skips = shift;
+    foreach my $element (split /,/, $skips) {
+            my ($start, $count) = split /:/, $element;
+            $count = 1 if ! defined($count);
+            if ($idx >= $start) {
+                    if ($idx < $start + $count) {return -1;}
+                    $val-= $count;
+            } else {
+                    last;
+            }
+    }
+    return $val;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   ipadd
+    Description:
+        Add to an IP address. Useful when you cross octets.
+        Optionally skip addresses at the start and end of octets (like .0 or .255).
+        Technically those are valid IP addresses, but sometimes software makes
+        poor assumptions about which broadcast and gateway addresses.
+    Arguments:
+        b1: Starting IP address first octet
+        b2: Starting IP address second octet
+        b3: Starting IP address third octet
+        b4: Starting IP address fourth octet
+        toadd: Value to add to the starting address
+        skipstart: Number of addresses to skip at the start of the last octet
+        skipend: Number of addresses to skip at the end of the last octet
+    Returns:
+        The new IP address
+    Example:
+        ipadd(10, 10, 10, 10, 0,   0, 0) returns 10.10.10.10
+        ipadd(10, 10, 10, 10, 10,  0, 0) returns 10.10.10.20
+        ipadd(10, 10, 10, 10, 245, 0, 0) returns 10.10.10.255
+        ipadd(10, 10, 10, 10, 246, 0, 0) returns 10.10.11.0
+=cut
+
+#--------------------------------------------------------------------------------
+sub ipadd {
+    use integer;
+    my ($b1, $b2, $b3, $b4, $toadd, $skipstart, $skipend) = @_;
+    my $offset = ($b4 >= $skipstart) ? $b4 - $skipstart : 0;
+    $b3 += ($offset + $toadd) / (256-$skipstart-$skipend);
+    $b4 = ($offset + $toadd) % (256-$skipstart-$skipend) + $skipstart;
+    return join('.', $b1, $b2, $b3, $b4);
+}
+
 $evalcpt->share('&mknum');
+$evalcpt->share('&a2idx');
+$evalcpt->share('&a2zidx');
+$evalcpt->share('&dim2idx');
+$evalcpt->share('&skip');
+$evalcpt->share('&ipadd');
 $evalcpt->permit('require');
 
 #--------------------------------------------------------------------------
