@@ -13,6 +13,8 @@ DIR=`dirname $0`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
 
+rpmdev-setuptree
+
 #For Openpower
 if [ $BUILDARCH = "ppc64le" ]; then
     BUILDARCH="ppc64"
