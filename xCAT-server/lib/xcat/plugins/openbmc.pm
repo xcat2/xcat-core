@@ -294,6 +294,14 @@ my %status_info = (
     RSPCONFIG_DHCP_RESPONSE => {
         process        => \&rspconfig_response,
     },
+    RSPCONFIG_IPSRC_REQUEST => {
+        method         => "PUT",
+        init_url       => "$openbmc_project_url/network/#NICNAME#/attr/DHCPEnabled",
+        data           => "[]",
+    },
+    RSPCONFIG_IPSRC_RESPONSE => {
+        process        => \&rspconfig_response,
+    },
     RSPCONFIG_SSHCFG_REQUEST => {
         method         => "GET",
         init_url       => "",
@@ -577,7 +585,7 @@ sub parse_args {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "get");
                 my $key = $1;
                 my $value = $2;
-                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/);
+                return ([ 1, "Unsupported command: $command $key" ]) unless ($key =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/);
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
@@ -588,6 +596,14 @@ sub parse_args {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                 }
+                elsif ($key eq "ipsrc") {
+                    my ($nic,$state) = split/,/, $value;
+                    unless($nic and $state) {
+                        return ([1, "Both nic and ipsource(static or dhcp) need to be specified"]);
+                    } elsif ($state !~ /dhcp|static/i) {
+                        return ([1, "The parameter $state is not support, only static or dhcp is supportted"]);
+                    }
+                }
                 $setorget = "set";
                 #
                 # disable function until fully tested
@@ -596,7 +612,7 @@ sub parse_args {
                     $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
                 }
                 if (ref($check) eq "ARRAY") { return $check; }
-            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
+            } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
                 #
@@ -813,7 +829,7 @@ sub parse_command_status {
     if ($command eq "rspconfig") {
         my @options = ();
         foreach $subcommand (@$subcommands) {
-            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
+            if ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$|^ipsrc$/) {
                 $next_status{LOGIN_RESPONSE} = "RSPCONFIG_GET_REQUEST";
                 $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
                 push @options, $subcommand;
@@ -842,7 +858,19 @@ sub parse_command_status {
                     $status_info{RSPCONFIG_SET_REQUEST}{data} = "$value"; 
                     $status_info{RSPCONFIG_SET_REQUEST}{init_url} .= "/config/attr/HostName";
                     push @options, $key;
-                    
+                } elsif ($key =~ /^ipsrc$/) {
+                    my ($nic,$state) = split /,/,$value;
+                    $next_status{LOGIN_RESPONSE} = "RSPCONFIG_IPSRC_REQUEST";
+                    $next_status{RSPCONFIG_IPSRC_REQUEST} = "RSPCONFIG_IPSRC_RESPONSE";
+                    $next_status{RSPCONFIG_IPSRC_RESPONSE} = "RSPCONFIG_GET_REQUEST";
+                    $next_status{RSPCONFIG_GET_REQUEST} = "RSPCONFIG_GET_RESPONSE";
+                    if ($state =~ /dhcp/i) {
+                        $status_info{RSPCONFIG_IPSRC_REQUEST}{data} = "1";
+                    } else {
+                        $status_info{RSPCONFIG_IPSRC_REQUEST}{data} = "0";
+                    }
+                    $status_info{RSPCONFIG_IPSRC_REQUEST}{init_url} =~ s/#NICNAME#/$nic/;
+                    push @options, "ipsrc:$nic";
                 } else {
                     $next_status{LOGIN_RESPONSE} = "RSPCONFIG_SET_REQUEST";
                     $next_status{RSPCONFIG_SET_REQUEST} = "RSPCONFIG_SET_RESPONSE";
@@ -1091,8 +1119,7 @@ sub gen_send_request {
     } else {
         $method = $status_info{ $node_info{$node}{cur_status} }{method};
     }
-
-    if ($status_info{ $node_info{$node}{cur_status} }{data}) {
+    if (defined($status_info{ $node_info{$node}{cur_status} }{data})) {
         # Handle boolean values by create the json objects without wrapping with quotes
         if ($status_info{ $node_info{$node}{cur_status} }{data} =~ /^1$|^true$|^True$|^0$|^false$|^False$/) {
             $content = '{"data":' . $status_info{ $node_info{$node}{cur_status} }{data} . '}';
@@ -1690,10 +1717,13 @@ sub rspconfig_response {
         my $hostname        = "";
         my $default_gateway = "n/a";
         my $adapter_id      = "n/a";
+        my %ipsrc_hash      = ();
+        my $nic_name        = undef;
         my $error;
         my $path;
         my @output;
         my $grep_string = $status_info{RSPCONFIG_GET_RESPONSE}{argv};
+
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
 
@@ -1703,6 +1733,14 @@ sub rspconfig_response {
                 }
                 if (defined($content{HostName}) and $content{HostName}) {
                     $hostname = $content{HostName};
+                }
+            }
+            if ($key_url =~ /network\/(\w*)$/ and defined($content{DHCPEnabled})) {
+                my $dhcpenabled = $content{DHCPEnabled}; 
+                if ($dhcpenabled and $dhcpenabled eq '1') {
+                    $ipsrc_hash{$1} = "DHCP";
+                } else {
+                    $ipsrc_hash{$1} = "Static";
                 }
             }
 
@@ -1733,24 +1771,40 @@ sub rspconfig_response {
             push @output, $error;
         }
         else {
-            if ($grep_string =~ "ip") {
-                push @output, "BMC IP: $address"; 
-            } 
-            if ($grep_string =~ "netmask") {
-                if ($address) {
-                    my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
-                    my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
-                    push @output, "BMC Netmask: " . $netmask; 
+            my @option_array = split /,/,$grep_string;
+            foreach (@option_array) {
+                if (/ipsrc/) {
+                    ($grep_string,$nic_name) = split /:/,$grep_string;
+                    if ($nic_name) {
+                        if ($ipsrc_hash{$nic_name}) {
+                            push @output, "BMC $nic_name ip source: $ipsrc_hash{$nic_name}";
+                        } else {
+                            push @output, "BMC $nic_name ip source: n/a";
+                        }
+                    } else {
+                        foreach (keys %ipsrc_hash) {
+                            push @output, "BMC $_ ip source: $ipsrc_hash{$_}";
+                        }
+                    }
+                } elsif (/ip/) {
+                    push @output, "BMC IP: $address"; 
+                } 
+                if (/netmask/) {
+                    if ($address) {
+                        my $decimal_mask = (2 ** $prefix - 1) << (32 - $prefix);
+                        my $netmask = join('.', unpack("C4", pack("N", $decimal_mask)));
+                        push @output, "BMC Netmask: " . $netmask; 
+                    }
+                } 
+                if (/gateway/) {
+                    push @output, "BMC Gateway: $gateway (default: $default_gateway)";
                 }
-            } 
-            if ($grep_string =~ "gateway") {
-                push @output, "BMC Gateway: $gateway (default: $default_gateway)";
-            }  
-            if ($grep_string =~ "vlan") {
-                push @output, "BMC VLAN ID enabled: $vlan";
-            }
-            if ($grep_string =~ "hostname") {
-                push @output, "BMC Hostname: $hostname";
+                if (/vlan/) {
+                    push @output, "BMC VLAN ID enabled: $vlan";
+                }
+                if (/hostname/) {
+                    push @output, "BMC Hostname: $hostname";
+                }
             }
         }
 
@@ -1765,6 +1819,12 @@ sub rspconfig_response {
     if ($node_info{$node}{cur_status} eq "RSPCONFIG_DHCP_RESPONSE") {
         if ($response_info->{'message'} eq $::RESPONSE_OK) {
             xCAT::SvrUtils::sendmsg("BMC Setting IP to DHCP...", $callback, $node);
+        }
+    }
+    if ($node_info{$node}{cur_status} eq "RSPCONFIG_IPSRC_RESPONSE") {
+        if ($response_info->{'message'} eq $::RESPONSE_OK) {
+            xCAT::SvrUtils::sendmsg("BMC Setting BMC NIC ip source...", $callback, $node);
+            sleep 1;
         }
     }
 
