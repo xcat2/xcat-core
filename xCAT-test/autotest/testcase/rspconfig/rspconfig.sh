@@ -40,7 +40,7 @@ function test_ip()
 	VALID_CHECK=$(echo $IP|awk -F. '$1<=255&&$2<=255&&$3<=255&&$4<=255{print "yes"}')
 	if echo $IP|grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$">/dev/null; then
        		if [ ${VALID_CHECK:-no} == "yes" ]; then
-                       	echo $1;
+                       	echo $1 is valid;
 		else
 			return 1;
 		fi
@@ -53,8 +53,6 @@ function net()
 {
 	LASTIP=`echo "$1 $2"|awk -F '[ .]+' 'BEGIN{OFS="."} END{print or($1,xor($5,255)),or($2,xor($6,255)),or($3,xor($7,255)),or($4,xor($8,255))}'`
 	FIRSTIP=`echo "$1 $2"|awk -F '[ .]+' 'BEGIN{OFS="."} END{print and($1,$5),and($2,$6),and($3,$7),and($4,$8)}'`
-	echo lastip is $LASTIP
-	echo first ip is $FIRSTIP
 }
 function change_ip()
 {
