@@ -81,9 +81,9 @@ function change_ip()
 			echo "Start to set node's bmc ip to $BMCNEWIP."
 			rspconfig $2 ip=$BMCNEWIP
 			if [[ $? -eq 0 ]];then
-				echo "Set node's bmc ip for node using rspconfig successfully.";
+				echo "Run  rspconfig $2 ip=$BMCNEWIP and return value is 0.";
 			else
-				echo "Set node's bmc ip for node using rspconfig failed.";
+				echo "Run rspconfig $2 ip=$BMCNEWIP and return value is 1.";
 				return 1;
 			fi
 			chdef $2 bmc=$BMCNEWIP
@@ -121,9 +121,9 @@ function clear_env()
         	originip=$(cat /tmp/BMCIP);
         	rspconfig $2 ip=$originip
         	if [[ $? -eq 0 ]];then
-            		echo "Set node's bmc ip to originip using rspconfig successfully.";
+            		echo "Run rspconfig $2 ip=$originip and return value is 0.";
         	else
-            		echo "Set node's bmc ip to originip using rspconfig failed.";
+            		echo "Run rspconfig $2 ip=$originip and return value is 1.";
             		return 1;
         	fi
         	rm -rf /tmp/BMCIP
@@ -153,9 +153,9 @@ function change_nonip
 	echo "Start to change bmc's $4.";
 	rspconfig $2 $4=$1;
 	if [[ $? -eq 0 ]];then
-		echo "Set node's bmc $4 using rspconfig successfully.";
+		echo "Run rspconfig $2 $4=$1 and return value is 0.";
 	else
-		echo "Set node's bmc $4 using rspconfig failed.";
+		echo "Run rspconfig $2 $4=$1 and return value is 1.";
 		return 1;
 	fi
 	echo "Start to check node's bmc $4 really setted using rspconfig.";
@@ -183,9 +183,9 @@ function change_all
 			BMCVLAN=`rspconfig  $1 vlan |awk -F":" '{print $3}'|sed s/[[:space:]]//g`
 			rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY vlan=$BMCVLAN
 				if [[ $? -eq 0 ]];then
-		               		echo "Node's BMC IP/netmask/gateway/vlan setted successfully using rspconfig.";
+		               		echo "Run rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY vlan=$BMCVLAN and return value is 0.";
 		       		else
-	                      		echo "Node's BMC IP/netmask/gateway/vlan setted failed using rspconfig.";
+	                      		echo "Run rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY vlan=$BMCVLAN and return value is 1.";
 			             	return 1;
 		     		 fi
 				echo "Start to check node's BMC IP/netmask/gateway/vlan really setted using rspconfig.";
@@ -210,9 +210,9 @@ function change_all
 			echo "------------------Bmc vlan disabled so could not change vlan id using rspconfig.--------------------"
 			rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY 
 				if [[ $? -eq 0 ]];then
-		               		echo "Node's BMC IP/netmask/gateway setted successfully using rspconfig.";
+		               		echo "Run rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY and return value is 0.";
 		       		else
-	                      		echo "Node's BMC IP/netmask/gateway setted failed using rspconfig.";
+	                      		echo "Run rspconfig $1 ip=$BMCIP netmask=$BMCNETMASK gateway=$BMCGGATEWAY and return value is 1.";
 			             	return 1;
           			 fi
 				echo "Start to check node's BMC IP/netmask/gateway really setted using rspconfig.";
