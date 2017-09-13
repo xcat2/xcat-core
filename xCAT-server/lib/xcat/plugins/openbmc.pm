@@ -161,6 +161,7 @@ my %status_info = (
     RFLASH_UPDATE_ACTIVATE_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
+        orig_url       => "$openbmc_project_url/software",
         data           => "xyz.openbmc_project.Software.Activation.RequestedActivations.Active",
     },
     RFLASH_UPDATE_ACTIVATE_RESPONSE => {
@@ -169,6 +170,7 @@ my %status_info = (
     RFLASH_UPDATE_CHECK_STATE_REQUEST  => {
         method         => "GET",
         init_url       => "$openbmc_project_url/software",
+        orig_url       => "$openbmc_project_url/software",
     },
     RFLASH_UPDATE_CHECK_STATE_RESPONSE => {
         process        => \&rflash_response,
@@ -183,6 +185,7 @@ my %status_info = (
     RFLASH_SET_PRIORITY_REQUEST  => {
         method         => "PUT",
         init_url       => "$openbmc_project_url/software",
+        orig_url       => "$openbmc_project_url/software",
         data           => "false", # Priority state of 0 sets image to active
     },
     RFLASH_SET_PRIORITY_RESPONSE => {
@@ -2082,24 +2085,27 @@ sub rflash_response {
             $update_id = (split(/\//, $key_url))[ -1 ];
             if (defined($content{Version}) and $content{Version}) {
                 $update_version = $content{Version};
-            }
-            if ($update_version eq $::UPLOAD_FILE_VERSION) {
-                # Found a match of uploaded file version with the image in software/enumerate
+                if ($update_version eq $::UPLOAD_FILE_VERSION) {
+                    # Found a match of uploaded file version with the image in software/enumerate
 
-                # Set the image id for the activation request
-                $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url}    .= "/$update_id/attr/RequestedActivation";
-                $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} .= "/$update_id";
-                $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url}       .= "/$update_id/attr/Priority";
+                    # Set the image id for the activation request
+                    $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{init_url} =
+                       $status_info{RFLASH_UPDATE_ACTIVATE_REQUEST}{orig_url} . "/$update_id/attr/RequestedActivation";
+                    $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{init_url} =
+                       $status_info{RFLASH_UPDATE_CHECK_STATE_REQUEST}{orig_url} . "/$update_id";
+                    $status_info{RFLASH_SET_PRIORITY_REQUEST}{init_url} =
+                       $status_info{RFLASH_SET_PRIORITY_REQUEST}{orig_url} . "/$update_id/attr/Priority";
 
-                # Set next steps to activate the image
-                $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
-                $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
-                $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-                $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
+                    # Set next steps to activate the image
+                    $next_status{ $node_info{$node}{cur_status} } = "RFLASH_UPDATE_ACTIVATE_REQUEST";
+                    $next_status{"RFLASH_UPDATE_ACTIVATE_REQUEST"} = "RFLASH_UPDATE_ACTIVATE_RESPONSE";
+                    $next_status{"RFLASH_UPDATE_ACTIVATE_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    $next_status{"RFLASH_UPDATE_CHECK_STATE_REQUEST"} = "RFLASH_UPDATE_CHECK_STATE_RESPONSE";
 
-                $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
-                $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
-                last;
+                    $next_status{"RFLASH_SET_PRIORITY_REQUEST"} = "RFLASH_SET_PRIORITY_RESPONSE";
+                    $next_status{"RFLASH_SET_PRIORITY_RESPONSE"} = "RFLASH_UPDATE_CHECK_STATE_REQUEST";
+                    last;
+                }
             }
         }
     }
