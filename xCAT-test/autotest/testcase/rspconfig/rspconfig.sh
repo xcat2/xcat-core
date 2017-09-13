@@ -252,6 +252,7 @@ do
 			BMCIP=`rspconfig $2 ip |awk -F":" '{print $3}'`
 			BMCNETMASK=`rspconfig  $2 netmask |awk -F":" '{print $3}'`
 		else
+			echo "Run rspconfig $2 ip and return value is 1. "
 			exit 1; 
 		fi
 		change_ip $BMCIP $2 $BMCNETMASK $3
@@ -288,6 +289,7 @@ do
 		if [[ $? -eq 0 ]];then
 			BMCGATEWAYE=`rspconfig  $2 gateway |awk -F":" '{print $3}'`
 		else
+			echo "Run rspconfig  $2 gateway and return value is 1."
 			exit 1;
 		fi
 		change_nonip $BMCGATEWAYE $2 $3 gateway
@@ -320,6 +322,7 @@ do
 		if [[ $? -eq 0 ]];then
 			BMCNETMASK=`rspconfig  $2 netmask |awk -F":" '{print $3}'`
 		else
+			echo "Run rspconfig  $2 netmask and return value is 1."
 			exit 1;
 		fi
 		change_nonip $BMCNETMASK $2 $3 netmask
