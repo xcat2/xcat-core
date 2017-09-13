@@ -1629,27 +1629,28 @@ sub reventlog_response {
 
         foreach my $key_url (keys %{$response_info->{data}}) {
             my %content = %{ ${ $response_info->{data} }{$key_url} };
+            my $timestamp = $content{Timestamp};
             my $id_num = 0 + $content{Id} if ($content{Id});
             if ($content{Message}) {
                 my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime($content{Timestamp}/1000);
                 $mon += 1;
                 $year += 1900;
                 my $UTC_time = sprintf ("%02d/%02d/%04d %02d:%02d:%02d", $mon, $mday, $year, $hour, $min, $sec); 
-                my $content_info = "Entry $content{Id}:" . $UTC_time . " " . $content{Message}; 
-                $output{$id_num} = $content_info;
+                my $content_info = $UTC_time . " [$content{Id}] " . $content{Message};
+                $output{$timestamp} = $content_info;
             }
         }
 
         my $count = 0;
         if ($option_s) {
             foreach my $key ( sort { $b <=> $a } keys %output) {
-                xCAT::SvrUtils::sendmsg($output{$key}, $callback, $node);
+                xCAT::MsgUtils->message("I", { data => [$output{$key}] }, $callback, $node) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num); 
             }
         } else {
-            foreach my $key (keys %output) {
-                xCAT::SvrUtils::sendmsg("$output{$key}", $callback, $node) if ($output{$key});
+            foreach my $key (sort keys %output) {
+                xCAT::MsgUtils->message("I", { data => [$output{$key}] }, $callback, $node) if ($output{$key});
                 $count++;
                 last if ($entry_string ne "all" and $count >= $entry_num);
             }
