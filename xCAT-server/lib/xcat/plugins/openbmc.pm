@@ -581,10 +581,10 @@ sub parse_args {
 
                 my $nodes_num = @$noderange;
                 return ([ 1, "Invalid parameter for option $key" ]) unless ($value);
-                return ([ 1, "Invalid parameter for option $key: $value" ]) if ($key != "ip" and !xCAT::NetworkUtils->isIpaddr($value));
+                return ([ 1, "Invalid parameter for option $key: $value" ]) if ($key =~ /^netmask$|^gateway$/ and !xCAT::NetworkUtils->isIpaddr($value));
                 if ($key eq "ip") {
-                    return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2);
-                    if ($value != "dhcp" and !xCAT::NetworkUtils->isIpaddr($value)) {
+                    return ([ 1, "Can not configure more than 1 nodes' ip at the same time" ]) if ($nodes_num >= 2 and $value ne "dhcp");
+                    if ($value ne "dhcp" and !xCAT::NetworkUtils->isIpaddr($value)) {
                         return ([ 1, "Invalid parameter for option $key: $value" ]);
                     }
                 }
@@ -592,20 +592,12 @@ sub parse_args {
                 #
                 # disable function until fully tested
                 #
-                unless ($key eq "ip" or !($subcommand =~ /^hostname$/)) {
+                unless (($key eq "ip" and $value eq "dhcp") or $key eq "hostname") {
                     $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
                 }
-                if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^ip$|^netmask$|^gateway$|^hostname$|^vlan$/) {
                 return ([ 1, "Can not configure and display nodes' value at the same time" ]) if ($setorget and $setorget eq "set");
                 $setorget = "get";
-                #
-                # disable function until fully tested
-                #
-                unless ($subcommand =~ /^hostname$/) {
-                    $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
-                }
-                if (ref($check) eq "ARRAY") { return $check; }
             } elsif ($subcommand =~ /^sshcfg$/) {
                 $setorget = ""; # SSH Keys are copied using a RShellAPI, not REST API
             } else {
@@ -618,11 +610,6 @@ sub parse_args {
             return ([ 1, "Unsupported command: $command $subcommand" ]);
         }
     } elsif ($command eq "rflash") {
-        #
-        # disable function until fully supported by openbmc 
-        # Currently waiting for issue https://github.com/openbmc/openbmc/issues/2074 to be fixed
-        #
-        $check = unsupported($callback); if (ref($check) eq "ARRAY") { return $check; }
         my $filename_passed = 0;
         my $updateid_passed = 0;
         my $option_flag;
