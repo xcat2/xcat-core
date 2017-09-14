@@ -4,7 +4,7 @@ Version: %{?version:%{version}}%{!?version:%(cat Version)}
 Release: %{?release:%{release}}%{!?release:%(cat Release)}
 Epoch: 1
 AutoReq: false
-Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33 mstflint xfsprogs nc reiserfs-utils
+Requires: ipmitool screen btrfs-progs lldpad rpm-build mstflint xfsprogs nc rpmdevtools libstdc++-devel pciutils bridge-utils ntp ntp-perl iprutils psmisc mdadm bind-utils dosfstools usbutils libusbx
 Prefix: /opt/xcat
 AutoProv: false
 
