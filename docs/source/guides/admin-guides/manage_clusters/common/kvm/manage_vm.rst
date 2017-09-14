@@ -90,14 +90,17 @@ After the VM object is created, several key attributes need to be specified with
 
      chtab node=vm1 vm.othersettings="devpassthrough:pci_0000_01_00_2"
 
-    Take assigning SR-IOV VFs to the VM as an example, using ``lspci`` to get VFs PCI and setting the VFs PCI into ``vm`` table: ::
+    Take assigning SR-IOV VFs to the VM as an example: 
 
-     lspci|grep -i mel
-       0000:01:00.0 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4]
-       0000:01:00.1 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
-       0000:01:00.2 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+    * Use ``lspci`` to get VFs PCI from hypervisor: ::
+
+        lspci|grep -i "Virtual Function"
+          0000:01:00.1 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+          0000:01:00.2 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+
+    * Set the VFs PCI into ``vm`` table on MN: ::
      
-     chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.1,0000:01:00.2"
+        chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.1,0000:01:00.2"
 
 11. Set **netboot** attribute
 
