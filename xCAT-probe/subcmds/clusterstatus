@@ -19,7 +19,7 @@ my $test;
 my $output  = "stdout";
 my $verbose = 0;
 my $rst     = 0;
-my $interval = 1;
+my $interval = 5;
 my $terminal = 0;
 my $timeout = 0;
 my $start_time;
@@ -75,9 +75,9 @@ Description:
 Options:
     -h : Get usage information of $program_name
     -n : Range of nodes to check. All node objects will be used if not specified.
-    -i : The interval for screen refreshing.
+    -i : The interval for screen refreshing, unit is second(s), 5 seconds by default. 
     -V : To print additional debug information.
-    --timeout: The wait time before every node changed to final state. 
+    --timeout: The timout if not all nodes finish, unit is second(s), no timeout by default.
 ";
 
 #-------------------------------------
@@ -128,15 +128,16 @@ if (!$DISCOVERY and !$GROUPCOUNT) {
     if (!defined($noderange)) {
         $noderange = "compute";
     }
+    check_for_discovered_nodes() if ($DISCOVERY);
+    groupcount_nodes() if ($GROUPCOUNT);
+    exit 0;
 }
 
 $SIG{TERM} = $SIG{INT} = sub {
     $terminal = 1;
 };
-check_for_discovered_nodes() if ($DISCOVERY);
-groupcount_nodes() if ($GROUPCOUNT);
 unless ($interval) {
-    $interval = 1;
+    $interval = 5;
 }
 
 &check_nodes_attributes();
