@@ -787,7 +787,9 @@ sub build_xmldesc {
         #Change vfio format 0000:01:00.2 to pci_0000_01_00_2
         if ( $devname =~ m/(\w:)+(\w)+.(\w)/ ){
             $devname =~ s/[:|.]/_/g;
-            $devname ="pci_".$devname
+            if ( $devname !~ /^pci_/ ) {
+                $devname ="pci_".$devname
+            }
         }
 
         my $devobj = $hypconn->get_node_device_by_name($devname);
