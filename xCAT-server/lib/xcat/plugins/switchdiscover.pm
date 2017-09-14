@@ -1452,14 +1452,14 @@ sub switchsetup {
         foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
             my $cmd = "rspconfig $pdu sshcfg"; 
             xCAT::Utils->runcmd($cmd, 0);
-            my $ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
+            my $ip = $nodehash->{$pdu}->[0]->{ip};
             my $mask;
             foreach my $net (@nets) {
                 if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
                     $mask=$net->{'mask'};
                 }
             }
-            $cmd = "rspconfig $pdu hostname=$pdu ip=$otherinterfaces netmask=$mask";
+            $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC == 0) {
                 xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);

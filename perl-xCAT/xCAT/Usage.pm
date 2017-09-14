@@ -85,7 +85,9 @@ my %usage = (
   OpenPOWER (OpenBMC) specific:
       rvitals noderange [temp|voltage|wattage|fanspeed|power|altitude|all]
   MIC specific:
-      rvitals noderange {thermal|all}",
+      rvitals noderange {thermal|all}"
+  pdu specific:
+      rvitals noderange ",
     "reventlog" =>
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
