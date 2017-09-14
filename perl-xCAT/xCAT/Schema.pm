@@ -1252,7 +1252,10 @@ passed as argument rather than by table value',
 "                1: trace the calls of database subroutines \n" .
 "                2: Besides the log from level 1, trace the event to build the cache for the table \n" .
 "                3: Besides the log from level 2, trace the event with cache hit \n" .
-"                4: Besides the log from level 3, trace the SQL statement for the db access \n\n" .
+"                4: Besides the log from level 3, trace the SQL statement for the db access \n" .
+"                With this configuration, xcat will send the log to syslog very frequently, some of the \n".
+"                log may be lost if imjournal is enabled by rsyslog. \n".
+"                Please see https://github.com/xcat2/xcat-core/issues/3910 for the detail.\n\n" .
 " -----------------------\n" .
 "VIRTUALIZATION ATTRIBUTES\n" .
 " -----------------------\n" .
