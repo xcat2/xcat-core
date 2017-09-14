@@ -82,7 +82,24 @@ After the VM object is created, several key attributes need to be specified with
 
      chtab node=vm1 vm.vidpassword=abc123
 
-10. Set **netboot** attribute
+10. (optional)For assigning PCI devices to the VM, set **othersettings** value: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.2" 
+
+    Or: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:pci_0000_01_00_2"
+
+    Take assigning SR-IOV VFs to the VM as an example, using ``lspci`` to get VFs PCI and setting the VFs PCI into ``vm`` table: ::
+
+     lspci|grep -i mel
+       0000:01:00.0 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4]
+       0000:01:00.1 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+       0000:01:00.2 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+     
+     chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.1,0000:01:00.2"
+
+11. Set **netboot** attribute
 
     * **[x86_64]** ::
  
