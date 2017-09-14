@@ -783,6 +783,15 @@ sub build_xmldesc {
     #prepare the xml hash for pci passthrough
     my @prdevarray;
     foreach my $devname (@passthrudevices) {
+        #This is for SR-IOV vfio
+        #Change vfio format 0000:01:00.2 to pci_0000_01_00_2
+        if ( $devname =~ m/(\w:)+(\w)+.(\w)/ ){
+            $devname =~ s/[:|.]/_/g;
+            if ( $devname !~ /^pci_/ ) {
+                $devname ="pci_".$devname
+            }
+        }
+
         my $devobj = $hypconn->get_node_device_by_name($devname);
         unless ($devobj) {
             return -1;
