@@ -524,7 +524,6 @@ sub check_genesis_file {
     my $rst = 0;
     my @warn_msg;
 
-    my $genesis_v;
     my $os = probe_utils->get_os();
     if ($os =~ "unknown") {
         probe_utils->send_msg("stdout", "f", $msg);
@@ -540,7 +539,6 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
         }
-        $genesis_v = `dpkg -s xcat-genesis-base-ppc64`;
     } else {
         my $genesis_output = `rpm -qa | grep -i "xcat-genesis"`;
         unless (($genesis_output =~ /base/ and $genesis_output =~ /ppc64/) and
@@ -551,15 +549,6 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
         }
-        $genesis_v = `rpm -qi xCAT-genesis-base-ppc64`;
-    }
-
-    if ($genesis_v =~ /Built in environment .+fc(\d*).+ on (.+)\./) {
-        my $ver  = $1;
-        my $arch = $2;
-        push @warn_msg, "xcat-genesis-base-ppc64 is not built in environment fedora 26 or higher version on $arch." if ($ver < 26);
-    } else {
-        push @warn_msg, "xcat-genesis-base-ppc64 is not built in environment fedora.";
     }
 
     my $genesis_update_flag_p;
