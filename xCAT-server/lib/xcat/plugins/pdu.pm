@@ -182,7 +182,6 @@ sub process_request
         if ($subcmd eq 'sshcfg') {
             process_sshcfg($noderange, $subcmd, $callback);
         }elsif ($subcmd =~ /ip|netmask|hostname/) {
-            print "prcess_netcfg\n"; 
             process_netcfg($request, $subreq, $subcmd, $callback);
         } else {
             $callback->({ errorcode => [1],error => "The input $command $subcmd is not support for pdu"});
@@ -500,8 +499,8 @@ sub process_netcfg {
     my $ip;
     my $netmask;
     my $args;
-    my $ret;
-    my $err;
+    my $exp;
+    my $errstr;
 
     my $extrargs  = $request->{arg};
     my @exargs    = ($request->{arg});
@@ -510,7 +509,13 @@ sub process_netcfg {
     }
 
     my $nodes = $request->{node};
-    my $pdu = @$nodes;
+    my $node_number = @$nodes;
+    if ($node_number gt "1") {
+        xCAT::SvrUtils::sendmsg("Can not configure more than 1 nodes", $callback);
+        return;
+    }
+
+    my $pdu = @$nodes[0];
     my $rsp = {};
 
     my $nodetab = xCAT::Table->new('hosts');
@@ -519,13 +524,17 @@ sub process_netcfg {
     # connect to PDU
     my $static_ip = $nodehash->{$pdu}->[0]->{ip};
     my $discover_ip = $nodehash->{$pdu}->[0]->{otherinterfaces};
-    my ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+    ($exp, $errstr) = session_connect($static_ip, $discover_ip);
+    if (defined $errstr) {
+        xCAT::SvrUtils::sendmsg("Failed to connect", $callback);
+        return;
+    }
 
     foreach my $cmd (@exargs) {
         my ($key, $value) = split(/=/, $cmd);
         if ($key =~ /hostname/) {
             $hostname = $value;
-            ($ret, $err) = session_exec($exp, "echo $hostname > /etc/hostname;/etc/init.d/hostname.sh");
+            my ($ret, $err) = session_exec($exp, "echo $hostname > /etc/hostname;/etc/init.d/hostname.sh");
             if (defined $err) {
                xCAT::SvrUtils::sendmsg("Failed to set hostname", $callback);
             }
@@ -548,14 +557,24 @@ sub process_netcfg {
     }
     if ($opt) {
         my $dshcmd = $args . $opt ;
-        xCAT::SvrUtils::sendmsg($dshcmd, $callback);
-        #comment this for now, coralPDU on the lab is not support PduManager yet
-        ($ret, $err) = session_exec($exp, $dshcmd);
+        my ($ret, $err) = session_exec($exp, $dshcmd);
         if (defined $err) {
-            xCAT::SvrUtils::sendmsg("Failed to run $dshcmd", $callback);
-        }
+            #session will be hung if ip address changed
+            my $p = Net::Ping->new();
+            if  ( ($p->ping($ip)) && ($err =~ /TIMEOUT/) ) {
+               xCAT::SvrUtils::sendmsg("$ip is reachable", $callback);
+            } else {
+                xCAT::SvrUtils::sendmsg("Failed to run $dshcmd, error=$err", $callback);
+                return;
+            }
+        } 
+        xCAT::SvrUtils::sendmsg("$dshcmd ran successfully", $callback);
+        xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $subreq, 0, 1);
+        xCAT::Utils->runxcmd({ command => ['makehosts'], node => [$pdu] },  $subreq, 0, 1);
     }
-    $exp->hard_close();
+    if (defined $exp) {
+        $exp->hard_close();
+    }
 }
 
 #-------------------------------------------------------
@@ -577,7 +596,7 @@ sub process_sshcfg {
     #this is default password for CoralPDU
     my $password = "password8";
     my $userid = "root";
-    my $timeout = 10;
+    my $timeout = 30;
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
@@ -623,7 +642,7 @@ sub session_connect {
     #default password for coral pdu
     my $password = "password8";
     my $userid = "root";
-    my $timeout = 10;
+    my $timeout = 30;
 
     my $ssh_ip;
     my $p = Net::Ping->new();
@@ -670,7 +689,7 @@ sub session_exec {
      my $timeout    = shift;
      my $prompt =  shift;
 
-     $timeout = 10 unless defined $timeout;
+     $timeout = 30 unless defined $timeout;
      $prompt = qr/.*#/ unless defined $prompt;
 
 
