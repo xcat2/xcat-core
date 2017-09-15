@@ -808,7 +808,7 @@ sub nodediscoverls {
 Usage: 
     nodediscoverls
     nodediscoverls [-h|--help|-v|--version] 
-    nodediscoverls [-t seq|profile|switch|blade|manual|undef|all] [-l] 
+    nodediscoverls [-t seq|profile|switch|blade|manual|mtms|undef|all] [-l] 
     nodediscoverls [-u uuid] [-l]
     ";
         $rsp = ();
@@ -843,7 +843,7 @@ Usage:
     # If the type is specified, display the corresponding type of nodes
     my @SEQDiscover;
     if ($type) {
-        if ($type !~ /^(seq|profile|switch|blade|manual|undef|all)$/) {
+        if ($type !~ /^(seq|profile|switch|blade|manual|mtms|undef|all)$/) {
             $usage->($callback, "The discovery type \'$type\' is not supported.");
             return;
         }
