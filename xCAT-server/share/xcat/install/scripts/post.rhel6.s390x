@@ -47,7 +47,7 @@ do
             chmod +x /xcatpost/*
 
             # Get postscript to run on this node from xcat server
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+            /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
             MYCONT=`grep MASTER /xcatpost/mypostscript`
             MAX_RETRIES=10
             RETRY=0
@@ -63,12 +63,12 @@ do
                 sleep $SLI
             
                 # Get postscript to run on this node from xcat server
-                /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
+                /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /xcatpost/mypostscript
                 MYCONT=`grep MASTER /xcatpost/mypostscript`
             done
 
             # Make executable
-            chmod +x /xcatpost/mypostscript
+            chmod 700 /xcatpost/mypostscript
             GOTIT=1
             break
         fi

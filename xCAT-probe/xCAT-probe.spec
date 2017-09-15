@@ -44,6 +44,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/probe/
 cp xcatprobe $RPM_BUILD_ROOT/%{prefix}/bin
 cp -r subcmds  $RPM_BUILD_ROOT/%{prefix}/probe/
 cp -r lib $RPM_BUILD_ROOT/%{prefix}/probe/
+cp -r scripts $RPM_BUILD_ROOT/%{prefix}/probe/
 
 %clean
 # This step does not happen until *after* the %files packaging below

@@ -242,12 +242,19 @@ sub check_pre_defined_node {
             $vpd_line =~ s/"//g;
             my @split_vpd = split(",", $vpd_line);
             if (($split_vpd[1] ne "") and ($split_vpd[2] ne "")) {
-                my $mtmsvpd = "$split_vpd[2]*$split_vpd[1]";
-                push @{ $mtms_node{$mtmsvpd} }, $split_vpd[0];
+                my $mtms = uc ("$split_vpd[2]*$split_vpd[1]");
+                my $tmp_node = $split_vpd[0];
+                my $tmp_type = `lsdef $tmp_node -i hwtype,nodetype -c`;
+                if ($tmp_type =~ /hwtype=bmc/ and $tmp_type =~ /nodetype=mp/) {
+                    push @{ $mtms_node{$mtms}{bmc} }, $tmp_node;
+                } else {
+                    push @{ $mtms_node{$mtms}{node} }, $tmp_node;
+                }
             }
         }
 
         my @error_mtms;
+        my @error_mtms_bmc;
         foreach my $node (keys %nodecheckrst) {
 
             # check pre-define node whether has mtm and serial 
@@ -259,26 +266,13 @@ sub check_pre_defined_node {
 
                 # check if there is one or more node has the same mtms with current node
                 my $mtms = "$nodecheckrst{$node}{\"mtm\"}*$nodecheckrst{$node}{\"serial\"}";
-                my $mtms_num = @{$mtms_node{$mtms}};
-                if ($mtms_num > 2) {
+                my $mtms_node_num = @{ $mtms_node{$mtms}{node} };
+                my $mtms_bmc_num = @{ $mtms_node{$mtms}{bmc} };
+                if ($mtms_node_num >= 2) {
                     push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
-                } elsif ($mtms_num == 2) {
-                    foreach my $mtmsnode (@{$mtms_node{$mtms}}) {
-                        next if ($mtmsnode eq $node);      
-                        if (exists($nodecheckrst{$mtmsnode})) {
-                            if (($nodecheckrst{$mtmsnode}{"nodetype"} eq $nodecheckrst{$node}{"nodetype"}) and ($nodecheckrst{$mtmsnode}{"hwtype"} eq $nodecheckrst{$node}{"hwtype"})) {
-                                push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
-                            }
-                        } else {
-                            my $nodetype = `lsdef $mtmsnode -i nodetype -c |awk -F"=" '{print \$2}'`;
-                            my $hwtype = `lsdef $mtmsnode -i hwtype -c |awk -F"=" '{print \$2}'`;
-                            chomp($nodetype);
-                            chomp($hwtype);
-                            if (($nodetype eq $nodecheckrst{$node}{"nodetype"}) and ($hwtype eq $nodecheckrst{$node}{"hwtype"})) {
-                                push @error_mtms, $mtms if (!grep {$_ eq $mtms} @error_mtms);
-                            }
-                        }
-                    }
+                }
+                if ($mtms_bmc_num >= 2) {
+                    push @error_mtms_bmc, $mtms if (!grep {$_ eq $mtms} @error_mtms_bmc);
                 }
             }
         }
@@ -291,8 +285,17 @@ sub check_pre_defined_node {
 
         if (@error_mtms) {
             foreach (@error_mtms) {
-                my $errornode = join(",", @{$mtms_node{$_}});
+                my $errornode = join(",", @{$mtms_node{$_}{node}});
                 probe_utils->send_msg("stdout", "f", "[$errornode] : Duplicate node definition found for the same mtms $_.");
+                $rst = 1;
+            }
+        }
+
+        if (@error_mtms_bmc) {
+            foreach (@error_mtms_bmc) {
+                my $errorbmcnode = join(",", @{$mtms_node{$_}{bmc}});
+                my $errornode = join(",", @{$mtms_node{$_}{node}});
+                probe_utils->send_msg("stdout", "f", "[$errornode] : Duplicate BMC node ($errorbmcnode) definition found for the same mtms $_.");
                 $rst = 1;
             }
         }
@@ -356,7 +359,7 @@ sub check_pre_defined_node {
                     next;
                 }
 
-                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\w/ or $valid_nodes !~ $node) {
+                if (!(exists($nodecheckrst{$node}{"switchport"})) or $nodecheckrst{$node}{"switchport"} !~ /^\d+$/ or $valid_nodes !~ $node) {
                     push @error_attribute, "switchport";
                 }
 
@@ -376,18 +379,6 @@ sub check_pre_defined_node {
                 my $tmpoutput = `lsdef $nodecheckrst{$node}{"switch"} 2>&1`;
                 if ($?) {
                     $keystring = "Missing definition for related switch $nodecheckrst{$node}{\"switch\"}";
-                    last;
-                }
-                if ($tmpoutput !~ /snmpversion=/) {
-                    $keystring = "Missing attribute 'snmpversion' definition for related switch $nodecheckrst{$node}{\"switch\"}";
-                    last;
-                }
-                if ($tmpoutput !~ /username=/) {
-                    $keystring = "Missing attribute 'username' definition for related switch $nodecheckrst{$node}{\"switch\"}";
-                    last;
-                }
-                if ($tmpoutput !~ /password=/) {
-                    $keystring = "Missing attribute 'password' definition for related switch $nodecheckrst{$node}{\"switch\"}";
                     last;
                 }
             }
@@ -533,7 +524,6 @@ sub check_genesis_file {
     my $rst = 0;
     my @warn_msg;
 
-    my $genesis_v;
     my $os = probe_utils->get_os();
     if ($os =~ "unknown") {
         probe_utils->send_msg("stdout", "f", $msg);
@@ -549,7 +539,6 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
         }
-        $genesis_v = `dpkg -s xcat-genesis-base-ppc64`;
     } else {
         my $genesis_output = `rpm -qa | grep -i "xcat-genesis"`;
         unless (($genesis_output =~ /base/ and $genesis_output =~ /ppc64/) and
@@ -560,15 +549,6 @@ sub check_genesis_file {
             probe_utils->send_msg("stdout", "d", "xCAT-genesis is not installed.");
             return 1;
         }
-        $genesis_v = `rpm -qi xCAT-genesis-base-ppc64`;
-    }
-
-    if ($genesis_v =~ /Built in environment .+fc(\d*).+ on (.+)\./) {
-        my $ver  = $1;
-        my $arch = $2;
-        push @warn_msg, "xcat-genesis-base-ppc64 is not built in environment fedora 26 or higher version on $arch." if ($ver < 26);
-    } else {
-        push @warn_msg, "xcat-genesis-base-ppc64 is not built in environment fedora.";
     }
 
     my $genesis_update_flag_p;
@@ -649,14 +629,13 @@ sub check_genesis_file {
                         $rst = 1;
                     }
 
-                    if ($initrd_path =~ /http.+($tftpdir\/.+)/) {
+                    if ($initrd_path =~ /http:\/\/.+:80(\/.+)/) {
                         my $initrd_file = $1;
                         my $initrd_time = `stat $initrd_file | grep Modify | cut -d ' ' -f 2-3`;
                         if ($genesis_time and $initrd_time < $genesis_time) {
                             $genesis_update_flag_p = 1;
                         }
                     }
-
                 }
 
                 if ($genesis_line =~ /^kernel/) {

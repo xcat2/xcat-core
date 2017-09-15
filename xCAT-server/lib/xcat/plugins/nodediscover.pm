@@ -312,6 +312,9 @@ sub process_request {
                             $hosttag = "$node-$ifinfo[1]";
                             push @hostnames_to_update, $hosttag;
                         }
+                        elsif (!inet_aton($node)) {
+                            xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
+                        }
                     }
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
@@ -474,8 +477,6 @@ sub process_request {
     print $sock $restartstring;
     close($sock);
 
-    # sleep 2 seconds for genesis to complete the disocvery process
-    sleep(2);
 
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);

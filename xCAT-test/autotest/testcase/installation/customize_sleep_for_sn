@@ -1,13 +1,18 @@
 #!/usr/bin/env perl
 
+use File::Basename;
+my $program_name             = basename($0);
+
 my $os   = $ARGV[0];
 my $arch = $ARGV[1];
-my $log  = "/tmp/pre_deploy_sn.log";
+#my $log  = "/tmp/pre_deploy_sn.log";
 
+print ">>>Enter $program_name\n";
 my $orgclusterconffile = "/opt/xcat/share/xcat/tools/autotest/default.conf";
 my $snnodename = `cat $orgclusterconffile |grep -E '^SN\s*='|awk -F'=' '{print \$2}'`;
 chomp($snnodename);
-`echo "SN=$snnodename" >> $log`;
+#`echo "SN=$snnodename" >> $log`;
+print "The target SN = $snnodename\n";
 sleep 300;
 
 my $timecnt = 0;
@@ -18,11 +23,13 @@ while ($timecnt < 120) {
     if ($os =~ /rhel/i && $arch =~ /^ppc64$/i) {
         my $booting = system("lsdef -l $snnodename|grep status|grep booting > /dev/null 2>&1");
         system("xdsh $snnodename \"echo 1\"") if ($booting == 0);
-        `echo "send signal to $snnodename for the $timecnt times" >> $log`;
+        print "send signal to $snnodename for the $timecnt times\n";
+        #`echo "send signal to $snnodename for the $timecnt times" >> $log`;
     }
 
     sleep 30;
     $timecnt++;
 }
 
+print ">>>Leave $program_name\n"; 
 exit 0;

@@ -293,9 +293,6 @@ logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
         
 let idev=NUMBMCS
 if [ $IPCFGMETHOD="static" ]; then
-    if [ ! -z "$ISOPENBMC" ]; then
-        let idev=0
-    fi
     while [ $idev -gt 0 ]; do
         let idev=idev-1
         TRIES=0
@@ -370,45 +367,43 @@ else
     done
 fi
 
-let idev=0
-for b in $BMCVLAN; do
+if [ "$BMCVLAN" = off ]; then
     TRIES=0
-    # Set VLAN for the current channel 
-    while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+    while ! ipmitool raw 0xc 1 $LANCHAN 0x14 0 0; do
         snooze
         let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then 
+        if [ $TRIES -gt $TIMEOUT ]; then
             break;
         fi
     done
-    let idev=idev+1
-done
-
+else
+    let idev=0
+    for b in $BMCVLAN; do
+        TRIES=0
+        # Set VLAN for the current channel 
+        while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+            snooze
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then 
+                break;
+            fi
+        done
+        let idev=idev+1
+    done
+fi
 
 
 # update the node status to 'bmcready' for openbmc, no more configuration is needed.
 if [ ! -z "$ISOPENBMC" ]; then
     # To enable network configuration for openbmc
-    TRIES=0
-    bmc_config_rc=0
-    # Set Channel Access to apply network setting 
-    #while ! ipmitool -d 0 lan set $LANCHAN access on; do
-    while ! ipmitool -d 0 raw 0x06 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
-        snooze
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then 
-            bmc_config_rc=1
-            break;
-        fi
-    done
-
+    ipmitool -d 0 lan set $LANCHAN access on
     # update the node status to 'bmcready'
     if [ ! -z "$XCATMASTER" ]; then
-        if [ "$bmc_config_rc" = "0" ]; then
-            # Wait for some time for the new network setting is ready 
-            snooze
+        # Wait for some time for the new network setting is ready 
+        snooze
+        if ipmitool lan print 1 | grep $BMCIP >/dev/null; then
             updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
-        else 
+        else
             updateflag.awk $XCATMASTER 3002 "installstatus failed"
         fi
     fi 

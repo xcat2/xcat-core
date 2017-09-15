@@ -226,7 +226,7 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
 'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
 'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
 'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0',the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
+'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware or KVM. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'. For KVM cpu pinning, this option is used to specify the physical cpu set on the host, the value is like:\"vcpupin:'0-15,^8'\",Its syntax is a comma separated list and a special markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed, the '-' denotes the range and the '^' denotes exclusive. For KVM memory binding, the value is like:'membind:0', restrict a guest to allocate memory from the specified set of NUMA nodes. For PCI passthrough, the value is like:'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0', the value for PCI device format also can be like:'devpassthrough:0001:01:00.1', the PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively, the devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.",
 'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
 'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
@@ -1243,7 +1243,19 @@ passed as argument rather than by table value',
 "             Qualified Domain Name). Otherwise, the original behavior will be performed.\n\n" .
 " hierarchicalattrs:  Table attributes(e.g. postscripts, postbootscripts) that will be\n" .
 "                     included hierarchically. Attribute values for all the node's groups\n" .
-"                     will be applied to the node in the groups' order except the repeat one.\n\n" .
+"                     will be applied to the node in the groups' order except the repeat one.\n" .
+" dbtracelevel:  The trace level for the database access log. To activate this setting, please. \n".
+"                restart xcatd or send HUP signal to the 'xcatd: DB Access' process, Like: .\n".
+"                ps -ef | grep 'xcatd: DB Access' | grep -v grep | awk '{print \$2}' | xargs kill -HUP  \n".
+"                Currrent support values: \n" .
+"                0: disable the trace log for db \n" .
+"                1: trace the calls of database subroutines \n" .
+"                2: Besides the log from level 1, trace the event to build the cache for the table \n" .
+"                3: Besides the log from level 2, trace the event with cache hit \n" .
+"                4: Besides the log from level 3, trace the SQL statement for the db access \n" .
+"                With this configuration, xcat will send the log to syslog very frequently, some of the \n".
+"                log may be lost if imjournal is enabled by rsyslog. \n".
+"                Please see https://github.com/xcat2/xcat-core/issues/3910 for the detail.\n\n" .
 " -----------------------\n" .
 "VIRTUALIZATION ATTRIBUTES\n" .
 " -----------------------\n" .

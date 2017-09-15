@@ -148,6 +148,25 @@ export CFGMGR
 CFGSERVER=#TABLE:cfgmgt:$NODE:cfgserver#
 export CFGSERVER
 
+## Switch relate attributes for this node
+SWITCHNAME=#TABLE:switches:$NODE:switch#
+export SWITCHNAME
+
+SNMPVERSION=#TABLE:switches:$NODE:snmpversion#
+export SNMPVERSION 
+
+SNMPUSER=#TABLE:switches:$NODE:username#
+export SNMPUSER 
+
+SNMPPASSWD=#TABLE:switches:$NODE:password#
+export SNMPPASSWD 
+
+SNMPPRIV=#TABLE:switches:$NODE:privacy#
+export SNMPPRIV 
+
+SNMPAUTH=#TABLE:switches:$NODE:auth#
+export SNMPAUTH 
+
 #CFGMGTINFO_EXPORT#
 
 #INCLUDE:/opt/xcat/share/xcat/mypostscript/mypostscript_cloud.tmpl#

@@ -41,7 +41,7 @@ osimage Attributes:
 
 \ **addkcmdline**\  (linuximage.addkcmdline)
  
- User specified arguments to be passed to the kernel.  The user arguments are appended to xCAT.s default kernel arguments. For the kernel options need to be persistent after installation, specify them with prefix "R::".  This attribute is ignored if linuximage.boottarget is set.
+ User specified kernel options for os provision process(no prefix) or the provisioned os(with prefix "R::"). The options should be delimited with spaces(" "). This attribute is ignored if linuximage.boottarget is set.
  
 
 

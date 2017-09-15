@@ -6,6 +6,7 @@ Advanced Topics
 
    chain/index.rst
    cluster_maintenance/index.rst
+   migration/index.rst
    confluent/index.rst
    docker/index.rst
    domain_name_resolution/index.rst

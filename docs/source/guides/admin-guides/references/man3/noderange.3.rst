@@ -59,7 +59,11 @@ Name
 conveniently specify a list of nodes.  The result is that the  command  will
 be applied to a range of nodes, often in parallel.
 
-To avoid shell expansion, \ **noderange**\  should better be quoted with single quotes('') or double quotes("").
+If you invoke xCAT \ **noderange**\  from a shell you may need to quote the
+\ **noderange**\  if the shell would otherwise treat the punctuation marks in
+the \ **noderange**\  as control operators. The affected punctuation marks may
+include Asterisk (\`*'), Left Square Bracket (\`[') , Right Square Bracket
+(\`]'), Circumflex Accent (\`^'), and Overline (\`~').
 
 \ **noderange**\  is a comma-separated list.  Each token (text between commas)
 in the list can be any of the forms listed below:
@@ -358,6 +362,14 @@ Example of \ **xCAT Node Name Format**\  node/group names:
  
 
 
+
+************
+\ **Bugs**\ 
+************
+
+The special characters used by xCAT \ **noderange**\  are also special characters
+to many shell programs.  In particular, the characters \`*', \`[', \`]', \`^',
+and \`~' may have to be escaped from the shell.
 
 ****************
 \ **SEE ALSO**\ 

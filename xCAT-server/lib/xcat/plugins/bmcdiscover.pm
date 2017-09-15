@@ -125,14 +125,6 @@ sub process_request
     my $request_command = shift;
     $::CALLBACK = $callback;
 
-    #$::args     = $request->{arg};
-    if (ref($request->{environment}) eq 'ARRAY' and ref($request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON}->[0];
-    } elsif (ref($request->{environment}) eq 'ARRAY') {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->[0]->{XCAT_DEV_WITHERSPOON};
-    } else {
-        $::XCAT_DEV_WITHERSPOON = $request->{environment}->{XCAT_DEV_WITHERSPOON};
-    }
     if ($request->{sn}) {
         my $dhcpservers = $request->{dhcpservers};
         if (!defined($dhcpservers) or ref($dhcpservers) ne 'ARRAY') {
@@ -191,7 +183,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
+    push @{ $rsp->{data} }, "\tbmcdiscover [--sn <SN_nodename>] [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] --range ip_range\n";
 
     push @{ $rsp->{data} }, "\tCheck BMC administrator User/Password:\n";
     push @{ $rsp->{data} }, "\t\tbmcdiscover -u bmc_user -p bmc_password -i bmc_ip --check\n";
@@ -566,7 +558,7 @@ sub scan_process {
     my $children;       # The number of child process
     my %sp_children;    # Record the pid of child process
     my $bcmd;
-    my $sub_fds = new IO::Select;  # Record the parent fd for each child process
+
 
     if (!defined($method))
     {
@@ -617,7 +609,7 @@ sub scan_process {
 
     my $live_ip  = split_comma_delim_str($ip_list);
     my $live_mac = split_comma_delim_str($mac_list);
-
+    my %pipe_map;
     if (scalar(@{$live_ip}) > 0) {
 
         foreach (@{$live_ip}) {
@@ -651,6 +643,9 @@ sub scan_process {
                 if ($sp_children{$cpid}) {
                     delete $sp_children{$cpid};
                     $children--;
+                    forward_data($callback, $pipe_map{$cpid});
+                    close($pipe_map{$cpid});
+                    delete $pipe_map{$cpid};
                 }
             }
         };
@@ -680,7 +675,7 @@ sub scan_process {
                 } else {
                     bmcdiscovery_ipmi(${$live_ip}[$i], $opz, $opw, $request_command);
                 }
-
+                close($parent_fd);
                 exit 0;
             } else {
 
@@ -688,23 +683,15 @@ sub scan_process {
                 # the main process will check all the parent fd and receive response
                 $sp_children{$child} = 1;
                 close($parent_fd);
-                $sub_fds->add($cfd);
+                $pipe_map{$child} = $cfd;
             }
 
-
-            do {
+            while ($children >= 32) {
                 sleep(1);
-            } until ($children < 32);
-
+            }
         }
-
-        #################################################
-        # receive data from child processes
-        ################################################
-        while ($sub_fds->count > 0 or $children > 0) {
-            forward_data($callback, $sub_fds);
-        }
-        while (forward_data($callback, $sub_fds)) {
+        while($children > 0) {
+            sleep(1);
         }
     }
     else
@@ -832,26 +819,14 @@ sub send_rep {
 
 sub forward_data {
     my $callback  = shift;
-    my $fds       = shift;
-    my @ready_fds = $fds->can_read(1);
-    my $rfh;
-    my $rc = @ready_fds;
-    foreach $rfh (@ready_fds) {
-        my $data;
-        my $responses;
-        eval {
-            $responses = fd_retrieve($rfh);
-        };
-        if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
-            $fds->remove($rfh);
-            close($rfh);
-        } else {
-            eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
-            $callback->($responses);
-        }
+    my $cfd       = shift;
+    my $responses;
+    eval {
+            $responses = fd_retrieve($cfd);
+    };
+    if (!($@ and $@ =~ /^Magic number checking on storable file/)) { #this most likely means we ran over the end of available input
+        $callback->($responses);
     }
-    yield;    #Try to avoid useless iterations as much as possible
-    return $rc;
 }
 
 
@@ -1107,19 +1082,8 @@ sub bmcdiscovery_ipmi {
             xCAT::MsgUtils->message("W", { data => ["BMC password is incorrect for $ip"] }, $::CALLBACK);
             return;
         }
-        if (defined($opz) || defined($opw))
-        {
-            format_stanza($node, $node_data, "ipmi");
-            if (defined($opw))
-            {
-                write_to_xcatdb($node, $node_data, "ipmi", $request_command);
-            }
-        }
-        else {
-            my $rsp = {};
-            push @{ $rsp->{data} }, "$node_data";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        }
+
+        display_output($opz,$opw,$node,$node_data,"ipmi",$request_command);
     }
 }
 
@@ -1180,12 +1144,8 @@ sub bmcdiscovery_openbmc{
         my $serial;
 
         if (defined($response->{data})) {
-            if (defined($response->{data}->{PartNumber}) and defined($response->{data}->{SerialNumber})) {
-                $mtm = $response->{data}->{PartNumber};
-                if (defined($::XCAT_DEV_WITHERSPOON) && ($::XCAT_DEV_WITHERSPOON eq "TRUE")) {
-                    xCAT::MsgUtils->message("I", { data => ["XCAT_DEV_WITHERSPOON=TRUE, forcing MTM to empty string for $ip (Original MTM=$mtm)"] }, $::CALLBACK);
-                    $mtm = "";
-                }
+            if (defined($response->{data}->{Model}) and defined($response->{data}->{SerialNumber})) {
+                $mtm = $response->{data}->{Model};
                 $serial = $response->{data}->{SerialNumber}; 
             }
  
@@ -1234,12 +1194,38 @@ sub bmcdiscovery_openbmc{
         }
         return;
     }
+    display_output($opz,$opw,$node,$node_data,"openbmc",$request_command);
+}
 
-    if (defined($opz) || defined($opw)) {
-        format_stanza($node, $node_data, "openbmc");
-        if (defined($opw)) {
-            write_to_xcatdb($node, $node_data, "openbmc", $request_command);
+
+#-----------------------------------------------------------------------------
+
+=head3  display_output
+
+        Common code to print output of bmcdiscover
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub display_output {
+    my $opz             = shift;
+    my $opw             = shift;
+    my $node            = shift;
+    my $node_data       = shift;
+    my $mgttype         = shift;
+    my $request_command = shift;
+
+    if (defined($opw)) {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "Writing $node ($node_data) to database...";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        if (defined($opz)) {
+            format_stanza($node, $node_data, $mgttype);
         }
+        write_to_xcatdb($node, $node_data, $mgttype, $request_command);
+    }
+    elsif (defined($opz)) {
+        format_stanza($node, $node_data, $mgttype);
     } else {
         my $rsp = {};
         push @{ $rsp->{data} }, "$node_data";

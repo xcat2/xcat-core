@@ -17,7 +17,8 @@ EOF
 
 #listen to the 3001 port for any response from xcatd on MN
 #the message in the response will be written to /tmp/result.socat.out
-socat TCP4-LISTEN:3001,reuseaddr EXEC:"/tmp/helper.socat.sh" &
+socat TCP4-LISTEN:3001,reuseaddr,fork EXEC:"/tmp/helper.socat.sh" &
+LISTENER_PID=$!
 
 #generate key pairs for the SSL connection between switch and xcatd on MN
 mkdir -p /etc/xcat
@@ -42,6 +43,7 @@ logger -s -t $log_label -p local4.info "Beginning switch discovery process..."
 #grab the switch information
 dmidweinfo=$(/usr/sbin/dmidecode 2>/dev/null)
 PRODUCTNAME=$(echo "$dmidweinfo"|grep "Product Name"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
+VENDOR=$(echo "$dmidweinfo"|grep "Manufacturer"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
 MTM=$PRODUCTNAME
 ARCH=$(uname -m)
 SERIAL=$(echo "$dmidweinfo"|grep "Serial Number"|cut -d: -f2|sed -e 's/^\s*//'  -e 's/\s*$//')
@@ -53,7 +55,8 @@ echo "<sequential>1</sequential>" >> /tmp/discopacket
 echo "<nodetype>switch</nodetype>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
 #echo "<switchtype>$MTM</switchtype>" >> /tmp/discopacket
-echo "<vendor>$MTM</vendor>" >> /tmp/discopacket
+echo "<vendor>$VENDOR</vendor>" >> /tmp/discopacket
+echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
 
 MAC_OF_FIRST_UP_NIC=$(ip addr show eth0|grep "link/ether"|awk -F' '  '{print $2}')
@@ -86,28 +89,44 @@ gzip -9 /tmp/discopacket
 
 if [ -z "$XCATMASTER" ] || [ -z "$XCATPORT" ]; then
     logger -s -t $log_label -p local4.err "Failed to get xcatd connection information, exit..."
+    kill $LISTENER_PID
     rm -rf /tmp/result.socat.out
     rm -rf /tmp/helper.socat.sh
     exit 1
 fi
 
 
-#send the find me request ot xcatd on MN
-MAX_RETRY=10
+#send the find me request to xcatd on MN
+MAX_RETRY=1000
 RETRY=0
 DISCOVERED=0
 
 while [ $RETRY -lt $MAX_RETRY ]; do
     logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT) [ RETRY= $RETRY ]  ..."
+    echo >/tmp/result.socat.out
     (cat /tmp/discopacket.gz | socat STDIN UDP:$XCATMASTER:$XCATPORT,sourceport=301 ) &
 
     WAITRETRY=0
-    while [ $WAITRETRY -lt 100 ]; do
-        if [ -f "/tmp/result.socat.out" ] && grep "restart" /tmp/result.socat.out; then
-            DISCOVERED=1
-            break;
+    while [ $WAITRETRY -lt 60 ]; do
+        if [ -f "/tmp/result.socat.out" ];then
+            if grep "restart" /tmp/result.socat.out; then
+                DISCOVERED=1
+                break;
+            elif grep "processing" /tmp/result.socat.out; then 
+                echo "My findme request is still under processing, do not send new request"
+                logger -s -t $log_label -p local4.info  "My findme request is still under processing, do not send new request"
+                sleep 5
+            elif grep "processed" /tmp/result.socat.out; then
+                echo "Fail to discover me, retry to send findme request 10 second later!"
+                logger -s -t $log_label -p local4.info "Fail to discover me, retry to send findme request 10 seconds later"
+                sleep 10 
+                break;
+            else
+                echo "no response from $XCATMASTER, wait for 1 second"
+                logger -s -t $log_label -p local4.info "no response from $XCATMASTER, wait for 1 second"
+                sleep 1
+            fi 
         fi
-        sleep 1
         ((WAITRETRY=WAITRETRY+1))
     done
 
@@ -115,10 +134,10 @@ while [ $RETRY -lt $MAX_RETRY ]; do
         break
     fi
     
-    sleep 2 
     ((RETRY=RETRY+1))
 done
 
+kill $LISTENER_PID
 rm -rf /tmp/result.socat.out
 rm -rf /tmp/helper.socat.sh
 

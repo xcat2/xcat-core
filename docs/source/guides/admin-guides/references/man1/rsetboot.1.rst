@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **rsetboot**\  \ *noderange*\  {\ **hd | net | cd | default | stat**\ } [\ **-u**\ ] [\ **-p**\ ]
+\ **rsetboot**\  \ *noderange*\  [\ **hd | net | cd | default | stat**\ ] [\ **-u**\ ] [\ **-p**\ ]
 
 \ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -21,7 +21,7 @@ DESCRIPTION
 ***********
 
 
-\ **rsetboot**\  sets the boot media and boot mode that should be used on the next boot of the specified nodes.  After the nodes are booted with the specified device and boot mode (e.g. via rpower(1)|rpower.1), the nodes will return to using the default boot device specified in the BIOS.  Currently this command is only supported for IPMI nodes.
+\ **rsetboot**\  sets the boot media and boot mode that should be used on the next boot of the specified nodes.  After the nodes are booted with the specified device and boot mode (e.g. via rpower(1)|rpower.1), the nodes will return to using the default boot device specified in the BIOS.
 
 
 *******
@@ -99,6 +99,14 @@ EXAMPLES
  .. code-block:: perl
  
    rsetboot node[14-56],node[70-203] stat
+ 
+ 
+ Or:
+ 
+ 
+ .. code-block:: perl
+ 
+   rsetboot node[14-56],node[70-203]
  
  
 
