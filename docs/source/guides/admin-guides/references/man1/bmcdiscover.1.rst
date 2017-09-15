@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
+\ **bmcdiscover**\  [\ **-**\ **-sn**\  \ *SN_nodename*\ ] [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
 
 \ **bmcdiscover**\  \ **-u**\  \ *bmc_user*\  \ **-p**\  \ *bmc_passwd*\  \ **-i**\  \ *bmc_ip*\  \ **-**\ **-check**\ 
 
@@ -53,6 +53,12 @@ OPTIONS
 \ **-**\ **-range**\ 
  
  Specify one or more IP ranges acceptable to nmap.  IP range can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the \ **bmcdiscover**\  command may take a long time to return.
+ 
+
+
+\ **-**\ **-sn**\ 
+ 
+ Specify one or more service nodes on which bmcdiscover will run. In hierarchical cluster, the MN may not be able to access the BMC of CN directly, but SN can. With this option, bmcdiscover will be dispatched to the specified SNs. Then, the nodename of the service node that 'bmcdiscover' is running on will be set to the 'servicenode' attribute of the discovered BMC node.
  
 
 
@@ -142,7 +148,7 @@ EXAMPLES
 
 Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
 
-2. To get all BMSs in IP range "10.4.22-23.100-254", displayed in xCAT stanza format:
+2. To get all BMCs in IP range "10.4.22-23.100-254", displayed in xCAT stanza format:
 
 
 .. code-block:: perl
@@ -150,7 +156,30 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
      bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
 
 
-3. Discover the BMCs and write the discovered-node definitions into the xCAT database and write out the stanza foramt to the console:
+3. To discover BMCs through sn01:
+
+
+.. code-block:: perl
+
+     bmcdiscover --sn sn01 -s nmap --range "10.4.22-23.100-254" -z
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
+     node-70e28414291b:
+         objtype=node
+         groups=all
+         bmc=10.4.22.101
+         cons=openbmc
+         mgt=openbmc
+         servicenode=sn01
+         conserver=sn01
+
+
+4. Discover the BMCs and write the discovered-node definitions into the xCAT database and write out the stanza foramt to the console:
 
 
 .. code-block:: perl
@@ -158,7 +187,7 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
      bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
 
 
-4. To check if the username or password is correct against the BMC:
+5. To check if the username or password is correct against the BMC:
 
 
 .. code-block:: perl
@@ -166,7 +195,7 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
      bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --check
 
 
-5. Get BMC IP Address source, DHCP Address or static Address
+6. Get BMC IP Address source, DHCP Address or static Address
 
 
 .. code-block:: perl

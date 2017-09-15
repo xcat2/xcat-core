@@ -534,8 +534,7 @@ elif [ "$1" = "-s" ];then
 		parse_nic_extra_params "$str_extra_params"
 	fi 
 
-    # Bring the interface down before cofniguring the interface
-    ifdown $str_inst_nic
+    # cofniguring the interface
 
     if [ -f "/etc/debian_version" ];then
         str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
@@ -641,7 +640,7 @@ elif [ "$1" = "-s" ];then
         fi
     fi
 
-    ifup $str_inst_nic
+    ifdown $str_inst_nic;ifup $str_inst_nic
     if [ $? -ne 0 ]; then
         log_error "ifup $str_inst_nic failed."
         error_code=1

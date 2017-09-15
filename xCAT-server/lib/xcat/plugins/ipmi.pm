@@ -20,6 +20,7 @@ use xCAT_monitoring::monitorctrl;
 use xCAT::SPD qw/decode_spd/;
 use xCAT::IPMI;
 use xCAT::PasswordUtils;
+use File::Basename;
 my %needbladeinv;
 
 use POSIX qw(ceil floor);
@@ -33,6 +34,7 @@ use xCAT::SvrUtils;
 use xCAT::NetworkUtils;
 use xCAT::Usage;
 use File::Path;
+use File::Spec;
 
 use Thread qw(yield);
 use LWP 5.64;
@@ -1612,8 +1614,8 @@ sub isopenpower {
     if ($sessdata->{prod_id} == 43707 and $sessdata->{mfg_id} == 0) {
         # mft_id 0 and prod_id 43707 is for Firestone,Minsky
         return 1;
-    } elsif (($sessdata->{prod_id} == 0 or $sessdata->{prod_id} == 2355) and $sessdata->{mfg_id} == 10876) {
-        # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 for Boston
+    } elsif (($sessdata->{prod_id} =~ /0|2355|2437/) and $sessdata->{mfg_id} == 10876) {
+        # mfg_id 10876 is for IBM Power S822LC for Big Data (Supermicro), prod_id 2355 for B&S, and 0 or 2437 for Boston
         return 1;
     } else {
         return 0;
@@ -1929,6 +1931,13 @@ sub do_firmware_update {
         $buffer_size = "15000";
     }
 
+    my $directory_name;
+    if (@{ $sessdata->{extraargs} } > 1) {
+        @ARGV = @{ $sessdata->{extraargs} };
+        use Getopt::Long;
+        GetOptions('d:s' => \$directory_name);
+    }
+    
     # check verbose, buffersize, and retry options
     for my $opt (@{$sessdata->{'extraargs'}}) {
         if ($opt =~ /-V{1,4}/) {
@@ -1961,40 +1970,46 @@ sub do_firmware_update {
                 }
             }
         }
-        if ($opt =~ /-d=/) {
-            my ($attribute, $directory_name) = split(/=/, $opt);
-            if (defined $directory_name) {
-                # directory was passed in, verify it is valid
-                if (-d $directory_name) {
-                   # Passed in directory name exists
-                   $pUpdate_directory = $directory_name;
-                }
-                else {
-                    $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Can not access data directory $directory_name");
-                }
+
+        if (defined $directory_name) {
+            unless (File::Spec->file_name_is_absolute($directory_name)) {
+               # Directory name was passed in as relative path, prepend current working dir
+               $directory_name = xCAT::Utils->full_path($directory_name, $::cwd);
+            }
+            # directory was passed in, verify it is valid
+            if (-d $directory_name) {
+               # Passed in directory name exists
+               $pUpdate_directory = $directory_name;
             }
             else {
-                $exit_with_error_func->($sessdata->{node}, $callback,
-                    "Data directory must be specified.");
+                $exit_with_error_func->($sessdata->{node}, $callback, "Can not access data directory $directory_name");
             }
+        }
+        else {
+            $exit_with_error_func->($sessdata->{node}, $callback, "Data directory must be specified.");
         }
     }
 
-    # For IBM Power S822LC for Big Data (Supermicro) machines such as P9 Boston (9006-22C) or P8 Briggs (8001-22C) 
+    # For IBM Power S822LC for Big Data (Supermicro) machines such as 
+    # P9 Boston (9006-22C, 9006-12) or P8 Briggs (8001-22C) 
     # firmware update is done using pUpdate utility expected to be in the 
     # specified data directory along with the update files .bin for BMC or .pnor for Host
-    if ($output =~ /8001-22C|9006-22C/) {
+    if ($output =~ /8001-22C|9006-22C|9006-12C/) {
         # Verify valid data directory was specified
         unless ($pUpdate_directory) {
             $exit_with_error_func->($sessdata->{node}, $callback,
                 "Directory name is required to update Boston or Briggs machines.");
         }
         
+        # Verify specified directory contains pUpdate utility
+        unless (-e "$pUpdate_directory/pUpdate") {
+            $exit_with_error_func->($sessdata->{node}, $callback,
+                "Can not find pUpdate utility in data directory $pUpdate_directory.");
+        }
         # Verify specified directory contains executable pUpdate utility
         unless (-x "$pUpdate_directory/pUpdate") {
             $exit_with_error_func->($sessdata->{node}, $callback,
-                "Can not find executable pUpdate utility in data directory $pUpdate_directory.");
+                "Execute permission is not set for pUpdate utility in data directory $pUpdate_directory.");
         }
 
         # Verify there is at least one of update files inside data directory - .bin or .pnor
@@ -2383,6 +2398,7 @@ RETRY_UPGRADE:
 
 sub rflash {
     my $sessdata = shift;
+    my $directory_flag = 0;
     if (isopenpower($sessdata)) {
 
         # Do firmware update for firestone here.
@@ -2391,10 +2407,16 @@ sub rflash {
             if ($opt =~ /^(-c|--check)$/i) {
                 $sessdata->{subcommand} = "check";
                 # support verbose options for ipmitool command
-            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=|^-d=/) {
-                $callback->({ error => "The option $opt is not supported or invalid update file specified",
+            } elsif ($opt =~ /^-d$/) {
+                # special handling if -d option which can be followed by a directory name
+                $directory_flag = 1; # set a flag that directory option was given
+            } elsif ($opt !~ /.*\.hpm$/i && $opt !~ /^-V{1,4}$|^--buffersize=|^--retry=/) {
+                # An unexpected flag was passed, but it could be a directory name. Display error only if not -d option
+                unless ($directory_flag) {
+                    $callback->({ error => "The option $opt is not supported or invalid update file specified",
                         errorcode => 1 });
-                return;
+                    return;
+                }
             }
         }
 
@@ -2472,6 +2494,46 @@ sub do_rflash_process {
             xCAT::SvrUtils::sendmsg([ 1, "rflash is running on $node, please retry after a while" ],
                 $callback, $node, %allerrornodes);
             exit(1);
+        }
+        my $recover_image;
+        if (grep(/^(--recover)$/, @{ $extra })) {
+            if (@{ $extra } != 2) {
+                xCAT::SvrUtils::sendmsg([ 1, "The command format for recovery is invalid. Only support 'rflash <noderange> --recover <bmc_file_path>'" ],
+                    $callback, $node);
+                exit(1);
+            }
+            my @argv = @{ $extra };
+            if ($argv[0] eq "--recover") {
+                $recover_image = $argv[1];
+            } elsif ($argv[1] eq "--recover") {
+                $recover_image = $argv[0];
+            }
+        }
+        if (defined($recover_image)) {
+            if ($recover_image !~ /^\//) {
+                $recover_image = xCAT::Utils->full_path($recover_image, $::cwd);
+            }
+            unless(-x "/usr/bin/tftp") {
+                $callback->({ error => "Could not find executable file /usr/bin/tftp, please setup tftp client.",
+                        errorcode => 1 });
+                exit(1);
+            }
+            my $bmcip     = $_[0];
+            my $cmd = "/usr/bin/tftp $bmcip -m binary -c put $recover_image ".basename($recover_image);
+            my $output = xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                $callback->({ error => "Running tftp command \'$cmd\' failed. Error Code: $::RUNCMD_RC. Output: $output.",
+                        errorcode => 1 });
+                exit(1);
+            }
+            # Sometimes tftp command retrun error message but without nonzero error code
+            if($output) {
+                $callback->({ error => "Running tftp command \'$cmd\' failed. Output: $output",
+                        errorcode => 1 });
+                exit(1);
+            }
+            $callback->({ data => "$node: Successfully updated recovery image. BMC is restarting and will not be reachable for 5-10 minutes."});
+            exit(0);
         }
         donode($node, @_);
         while (xCAT::IPMI->waitforrsp()) { yield }

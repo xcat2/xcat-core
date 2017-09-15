@@ -11,3 +11,4 @@ rpower_errorcommand_OpenpowerBmc
 rpower_softoff_OpenpowerBmc
 rpower_suspend_OpenpowerBmc
 rpower_wake_OpenpowerBmc
+rpower_wrongpasswd

@@ -1,18 +1,26 @@
 #!/usr/bin/env perl
+use Time::Local;
 
 $ENV{TERM} = "xterm-256color";
 
 my $os   = $ARGV[0];
 my $arch = $ARGV[1];
-my $log  = "/tmp/pre_deploy_sn.log";
 
 sub runcmd {
     my $cmd = shift;
-    `$cmd >> $log 2>&1`;
-    if ($?) {
 
-        #print "run $cmd ....[error]\n";
+    my $case_start_time     = timelocal(localtime());
+    my $case_start_time_str = scalar(localtime());
+    print ">>>To run: $cmd  [$case_start_time_str]\n";
+
+    my @output = `$cmd 2>&1`;
+    chomp(@output);
+    print "$_\n" foreach (@output);
+    if ($?) {
+        print ">>>Run $cmd ....[error]\n";
         exit 1;
+    }else{
+        print ">>>Run: $cmd ....[ok]\n";
     }
 }
 

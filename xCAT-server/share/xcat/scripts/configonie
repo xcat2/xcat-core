@@ -120,12 +120,19 @@ if ($::VLAN)
 sub config_ssh {
     my $password = "CumulusLinux!";
     my $userid = "cumulus";
-    my $timeout = 10;
+    my $timeout = 30;
     my $keyfile = "/root/.ssh/id_rsa.pub";
     my $rootkey = `cat /root/.ssh/id_rsa.pub`;
     my $cmd;
     my @config_switches;
 
+    # get netmask from network table
+    my $nettab = xCAT::Table->new("networks");
+    my @nets;
+    if ($nettab) {
+        @nets = $nettab->getAllAttribs('net','mask');
+    }
+    
     my $nodetab = xCAT::Table->new('hosts');
     my $nodehash = $nodetab->getNodesAttribs(\@nodes,['ip','otherinterfaces']);
 
@@ -160,9 +167,18 @@ sub config_ssh {
         ($ret, $err) = cumulus_exec($exp, "chmod 700 /root/.ssh");
         ($ret, $err) = cumulus_exec($exp, "echo \"$rootkey\" >/root/.ssh/authorized_keys");
         ($ret, $err) = cumulus_exec($exp, "chmod 644 /root/.ssh/authorized_keys");
+
         #config dhcp ip address to static
         if ($ssh_ip eq $discover_ip) {
-            ($ret, $err) = cumulus_exec($exp, "ifconfig eth0 $static_ip");
+            #get netmask
+            my $mask;
+            foreach my $net (@nets) {
+                if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $static_ip, $net->{'mask'}, 0)) {
+                    $mask=$net->{'mask'};
+                    last;
+                }
+            }
+            ($ret, $err) = cumulus_exec($exp, "ifconfig eth0 $static_ip netmask $mask");
         }
 
         $exp->hard_close();
@@ -176,7 +192,7 @@ sub config_ssh {
         $rc= xCAT::Utils->runcmd($cmd, 0);
         print "ssh configured for $csw\n";
         if ($::ALL) {
-            $cmd = "updatenode $csw -P hardeths,enablesnmp,configinterface";
+            $cmd = "updatenode $csw -P hardeths,syslog,enablesnmp,configinterface";
             $rc= xCAT::Utils->runcmd($cmd, 0); 
             if ($::RUNCMD_RC != 0) {
                 xCAT::MsgUtils->message("E","Failed to run updatenode, please check the switch");

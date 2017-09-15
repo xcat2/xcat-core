@@ -82,9 +82,9 @@ sub subvars {
     close($inh);
 
     #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
-    #the "xcatmaster" attribute of the node
-    #the site.master
-    #the ip address of the mn facing the compute node
+    ## 1, the "xcatmaster" attribute of the node
+    ## 2, the ip address of the mn/sn facing the compute node
+    ## 3, the site.master
     my $master;
 
     #the "xcatmaster" attribute of the node
@@ -92,16 +92,6 @@ sub subvars {
     my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
     if ($et and $et->{'xcatmaster'}) {
         $master = $et->{'xcatmaster'};
-    }
-
-    unless ($master) {
-
-        #the site.master
-        my @masters = xCAT::TableUtils->get_site_attribute("master");
-        my $tmp     = $masters[0];
-        if (defined($tmp)) {
-            $master = $tmp;
-        }
     }
 
     unless ($master) {
@@ -116,13 +106,22 @@ sub subvars {
     }
 
     unless ($master) {
+
+        #the site.master
+        my @masters = xCAT::TableUtils->get_site_attribute("master");
+        my $tmp     = $masters[0];
+        if (defined($tmp)) {
+            $master = $tmp;
+        }
+    }
+
+    unless ($master) {
         $tmplerr = "Unable to identify master for $node";
         return;
     }
 
     $ENV{XCATMASTER} = $master;
-
-    my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
+    my $ipaddr = xCAT::NetworkUtils->getipaddr($master);
     if ($ipaddr) {
         $ENV{MASTER_IP} = "$ipaddr";
     }
