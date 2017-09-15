@@ -637,7 +637,7 @@ if [ ! -x /$xcatpost/mypostscript ]; then
         useflowcontrol=0
       fi 
     fi
-    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
+    /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
@@ -963,7 +963,7 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
   echo "exit \$return_value" >> /$xcatpost/mypostscript
 fi
 
-chmod +x /$xcatpost/mypostscript
+chmod 700 /$xcatpost/mypostscript
 if [ -x /$xcatpost/mypostscript ];then
    echolog "debug" "running /$xcatpost/mypostscript"   
    /$xcatpost/mypostscript

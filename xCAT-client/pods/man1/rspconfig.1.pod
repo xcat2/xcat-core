@@ -24,7 +24,7 @@ B<rspconfig> I<noderange> B<garp>=I<time>
 
 =head2 OpenBMC specific:
 
-B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<vlan>|B<sshcfg>}
+B<rspconfig> I<noderange> {B<ip>|B<netmask>|B<gateway>|B<hostname>|B<vlan>|B<sshcfg>}
 
 =head2 MPA specific:
 
@@ -299,6 +299,10 @@ Set CEC/BPA system names to the names in xCAT DB or the input name.
 =item B<iocap>={B<enable> | B<disable>}
 
 Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
+
+=item B<hostname>
+
+Get or set hostname on the service processor.   
 
 =item B<vlan>
 

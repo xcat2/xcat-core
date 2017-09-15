@@ -4,6 +4,7 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=md5
 check:rc==0
+cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:grep '\$1\$' /install/autoinst/$$CN
@@ -76,6 +77,7 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha256
 check:rc==0
+cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:grep '\$5\$' /install/autoinst/$$CN
@@ -148,6 +150,7 @@ cmd:gettab key=system passwd.cryptmethod > /tmp/tmpcryptmethod
 check:rc==0
 cmd:chtab key=system passwd.cryptmethod=sha512
 check:rc==0
+cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:grep '\$6\$' /install/autoinst/$$CN
@@ -225,9 +228,11 @@ cmd:chtab key=system passwd.username=root passwd.password=`openssl passwd -1 abc
 check:rc==0
 cmd:gettab key=system passwd.password > /tmp/tmpcryptedpasswd 
 check:rc==0
+cmd:if grep Ubuntu /etc/*release;then if [ ! -e /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz ]; then copycds $$ISO;mkdir -p /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/;touch /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot/initrd.gz;fi;fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd
+cmd:if grep SUSE /etc/*release;then grep '\$1\$' /install/autoinst/$$CN | awk 'gsub(/^ *| *$/,"")'| awk -v head="<user_password>" -v tail="</user_password>" '{print substr($0, index($0,head)+length(head),index($0,tail)-index($0,head)-length(head))}' > /tmp/instcryptedpasswd; elif grep "Red Hat" /etc/*release;then grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd; elif grep Ubuntu /etc/*release;then grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $4}' > /tmp/instcryptedpasswd;else echo "Sorry,this is not supported os"; fi
+#cmd:grep '\$1\$' /install/autoinst/$$CN |awk -F " " '{print $3}' > /tmp/instcryptedpasswd
 check:rc==0
 cmd:diff /tmp/tmpcryptedpasswd /tmp/instcryptedpasswd
 check:rc==0

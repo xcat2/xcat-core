@@ -13,13 +13,16 @@ DIR=`dirname $0`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
 
-#For Openpower
-if [ $BUILDARCH = "ppc64le" ]; then
-    BUILDARCH="ppc64"
-fi
+rpmdev-setuptree
 
+#For Openpower
 if [ -z $1 ]; then
-    HOSTOS="fedora26"
+    if [ $BUILDARCH = "ppc64le" ]; then
+        HOSTOS="Pegas1.0"
+        BUILDARCH="ppc64"
+    else
+        HOSTOS="fedora26"
+    fi
 fi
 
 # get the input files for dracut in the right place
@@ -42,7 +45,7 @@ if [ $BUILDARCH = "x86_64" ]; then
     sed -i 's/\/lib64\/libpanel.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libmenu.so.5//' $DRACUTMODDIR/install
     sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
-    sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+    sed -i '/\/usr\/sbin\/iprconfig/ d' $DRACUTMODDIR/install
     sed -i '/hwdb.bin/ d' $DRACUTMODDIR/install
     sed -i 's/instmods ipr//' $DRACUTMODDIR/installkernel
 fi
@@ -54,7 +57,7 @@ if [ "$HOSTOS" = "mcp" ]; then
             sed -i 's/dmidecode//' $DRACUTMODDIR/install
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-2.17.so/' $DRACUTMODDIR/install
             sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
-            sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+            sed -i '/\/usr\/sbin\/iprconfig/ d' $DRACUTMODDIR/install
         else
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-linux-x86-64.so.2/' $DRACUTMODDIR/install
         fi
@@ -105,6 +108,12 @@ if [ "$HOSTOS" = "mcp" ]; then
 # For ppc64 platform, needs to remove some files,
 # # and some files are in different directories
 elif [ $BUILDARCH = "ppc64" ]; then
+        if [ "$HOSTOS" = "Pegas1.0" ]; then
+	    sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
+	    sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
+	    sed -i 's/ vconfig//' $DRACUTMODDIR/install
+	    sed -i 's/ ntp-wait//' $DRACUTMODDIR/install
+        fi
         sed -i 's/ efibootmgr//' $DRACUTMODDIR/install
         sed -i 's/ dmidecode//' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install

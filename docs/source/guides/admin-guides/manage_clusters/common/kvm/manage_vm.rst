@@ -2,7 +2,7 @@ Manage Virtual Machine (VM)
 ============================
 
 
-Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
+Now the PowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create, remove and clone VMs.
 
 Create Virtual Machine
 ----------------------
@@ -82,7 +82,27 @@ After the VM object is created, several key attributes need to be specified with
 
      chtab node=vm1 vm.vidpassword=abc123
 
-10. Set **netboot** attribute
+10. (optional)For assigning PCI devices to the VM, set **othersettings** value: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.2" 
+
+    Or: ::
+
+     chtab node=vm1 vm.othersettings="devpassthrough:pci_0000_01_00_2"
+
+    Take assigning SR-IOV VFs to the VM as an example: 
+
+    * Use ``lspci`` to get VFs PCI from hypervisor: ::
+
+        lspci|grep -i "Virtual Function"
+          0000:01:00.1 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+          0000:01:00.2 Infiniband controller: Mellanox Technologies MT27700 Family [ConnectX-4 Virtual Function]
+
+    * Set the VFs PCI into ``vm`` table on MN: ::
+     
+        chtab node=vm1 vm.othersettings="devpassthrough:0000:01:00.1,0000:01:00.2"
+
+11. Set **netboot** attribute
 
     * **[x86_64]** ::
  

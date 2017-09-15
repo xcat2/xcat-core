@@ -166,6 +166,14 @@ sub rinstall {
         return 1;
     }
 
+    if($command eq "rinstall" and scalar(@nodes) > 1 and $CONSOLE){
+       my $rsp;
+       $rsp->{errorcode}->[0]=1;
+       $rsp->{error}->[0]="rinstall -c/--console can only be run against one node! Please use winstall -c/--console for multiple nodes.";
+       xCAT::MsgUtils->message("E",$rsp,$callback);
+       return 1;
+    }
+
     my $rc = 0;
     my @parameter;
 

@@ -91,7 +91,15 @@ if ($ENV{SSHCONSOLEPORT}) {
     $sshport= $ENV{SSHCONSOLEPORT};
 }
 
-print "If the console cannot connect, please verify whether ssh keys has been configured on the bmc for $username user\n";
+# To automatically connect to the console without the need to send over the ssh keys, 
+# ensure sshpass is installed on the Management and/or Service Nodes.
+if (-x '/usr/bin/sshpass') {
+    exec "/usr/bin/sshpass -p $password ssh -p $sshport -l $username $bmcip";
+} else {
+    # This will prompt the user to enter the password for the BMC 
+    # if ssh keys are not sent and sshpass is not being used
+    exec "ssh -p $sshport -l $username $bmcip";
+}
 
-exec "ssh -p $sshport -l $username $bmcip";
+
 

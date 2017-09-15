@@ -407,7 +407,7 @@ sub process_request {
     }
 
     if (!($result)) {
-        send_msg( \%request, 0, " No switch found ");
+        send_msg( \%request, 0, " No $device found ");
         return;
     }
 
@@ -1404,15 +1404,18 @@ sub matchPredefineSwitch {
         }
 
         my $stype = get_switchtype($vendor);
+        if (exists($globalopt{pdu})) {
+            $stype="pdu";
+        }
 
         send_msg($request, 0, "$device discovered and matched: $dswitch to $node" );
 
         # only write to xcatdb if -w or --setup option specified
         if ( (exists($globalopt{w})) || (exists($globalopt{setup})) ) {
             if (exists($globalopt{pdu})) {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","usercomment=$vendor"] }, $sub_req, 0, 1);
             } else {
-                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"otherinterfaces=$ip",'status=Matched',"mac=$mac","switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
             }
         }
 
@@ -1436,6 +1439,35 @@ sub switchsetup {
     my $request = shift;
     my $sub_req = shift;
     if (exists($globalopt{pdu})) {
+        my $mytype = "pdu";
+        my $nodetab = xCAT::Table->new('hosts');
+        my $nodehash = $nodetab->getNodesAttribs(\@{${nodes_to_config}->{$mytype}},['ip','otherinterfaces']);
+        # get netmask from network table
+        my $nettab = xCAT::Table->new("networks");
+        my @nets;
+        if ($nettab) {
+            @nets = $nettab->getAllAttribs('net','mask');
+        }
+
+        foreach my $pdu(@{${nodes_to_config}->{$mytype}}) {
+            my $cmd = "rspconfig $pdu sshcfg"; 
+            xCAT::Utils->runcmd($cmd, 0);
+            my $ip = $nodehash->{$pdu}->[0]->{ip};
+            my $mask;
+            foreach my $net (@nets) {
+                if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                    $mask=$net->{'mask'};
+                }
+            }
+            $cmd = "rspconfig $pdu hostname=$pdu ip=$ip netmask=$mask";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC == 0) {
+                xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$pdu,"ip=$ip","otherinterfaces="] }, $sub_req, 0, 1);
+            } else {
+                send_msg($request, 0, "Failed to run rspconfig command to set ip/netmask\n");
+            }
+
+        }
         return;
     }
 

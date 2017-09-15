@@ -1,0 +1,6 @@
+start:switch_based_node_discovery
+description: test the whole process of switch_based node discovery
+Attribute: $$NODE_DISCOVERY_TARGET:The machine plan to be discovered. $$NODE_DISCOVERY_BMC_DYNAMIC_IP_RANGE :The valid dymanic ip range which has been configured in DHCP server and can offer service.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/discovery/discovery_test --discovery_mode switch --discovery_target_node $$NODE_DISCOVERY_TARGET --bmc_dynamic_ip_range $$NODE_DISCOVERY_BMC_DYNAMIC_IP_RANGE --osimage  __GETNODEATTR($$NODE_DISCOVERY_TARGET,os)__-__GETNODEATTR($$NODE_DISCOVERY_TARGET,arch)__-install-compute
+check:rc==0
+end

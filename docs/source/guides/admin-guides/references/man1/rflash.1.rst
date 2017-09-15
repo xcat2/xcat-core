@@ -50,14 +50,20 @@ OpenPOWER BMC specific (using IPMI):
 ====================================
 
 
-\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d=**\ \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+\ **rflash**\  \ *noderange*\  [\ *hpm_file_path*\  | \ **-d**\  \ *data_directory*\ ] [\ **-c | -**\ **-check**\ ] [\ **-**\ **-retry=**\ \ *count*\ ] [\ **-V**\ ]
+
+\ **rflash**\  \ *noderange*\  \ **-**\ **-recover**\  \ *bmc_file_path*\ 
 
 
 OpenPOWER OpenBMC specific :
 ============================
 
 
-\ **rflash**\  \ *noderange*\  [\ *tar_file_path*\  | \ *image_id*\ ] [\ **-c | -**\ **-check**\ ] [\ **-a | -**\ **-activate**\ ] [\ **-l | -**\ **-list**\ ] [\ **-u | -**\ **-upload**\ ] [\ **-d | -**\ **-delete**\ ]
+\ **rflash**\  \ *noderange*\  {[\ **-c | -**\ **-check**\ ] | [\ **-l | -**\ **-list**\ ]}
+
+\ **rflash**\  \ *noderange*\  \ *tar_file_path*\  {[\ **-c | -**\ **-check**\ ] | [\ **-a | -**\ **-activate**\ ] | [\ **-u | -**\ **-upload**\ ]}
+
+\ **rflash**\  \ *noderange*\  \ *image_id*\  {[\ **-a | -**\ **-activate**\ ] | [\ **-d | -**\ **-delete**\ ]}
 
 
 
@@ -168,11 +174,11 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-d**\  \ *data_directory*\ 
  
+ PPC (without HMC, using Direct FSP Management) specific:
+ 
  Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management.
  
-
-
-\ **-d=**\ \ *data_directory*\ 
+ OpenPOWER BMC specific (using IPMI):
  
  Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the \ **pUpdate**\  utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral.
  
@@ -192,7 +198,13 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-**\ **-recover**\ 
  
+ PPC (with HMC) and PPC (without HMC, using Direct FSP Management) specific:
+ 
  Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+ 
+ OpenPOWER BMC specific (using IPMI):
+ 
+ Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
  
 
 
@@ -204,7 +216,7 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
 
 \ **-a|-**\ **-activate**\ 
  
- Activate update image. Image id must be specified.
+ Activate update image. Image id or update file must be specified.
  
 
 
@@ -318,7 +330,17 @@ The command will update firmware for OpenPOWER OpenBMC when given an OpenPOWER n
  
  .. code-block:: perl
  
-   rflash briggs01 -d=/root/supermicro/OP825
+   rflash briggs01 -d /root/supermicro/OP825
+ 
+ 
+
+
+7. To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate:
+ 
+ 
+ .. code-block:: perl
+ 
+    rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
  
  
 

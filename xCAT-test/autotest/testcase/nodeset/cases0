@@ -351,3 +351,98 @@ check:rc==1
 check:output=~Error: Invalid argument:
 check:output=~Usage: nodeset <noderange>
 end
+
+start:nodeset_disjointdhcps_petitboot
+description: Verify the disjointdhcps feature when petitboot is used for OS loader.
+cmd:rmdef testnode1
+cmd:rm -f /tftpboot/petitboot/testnode1
+cmd:mkdef -t node -o testnode1 arch=ppc64le cons=bmc groups=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=ipmi profile=compute os=rhels7.99
+check:rc==0
+cmd:cp -f /etc/hosts /etc/hosts.xcattestbak
+cmd:echo "10.1.1.200 testnode1" >> /etc/hosts
+cmd:makedns -n
+check:rc==0
+cmd:chdef testnode1 netboot=petitboot addkcmdline=debug
+check:rc==0
+cmd:mkdef "rhels7.99-ppc64le-install-compute" -u profile=compute provmethod=install osvers=rhels7.99 osarch=ppc64le
+cmd:xdsh $$SN 'mkdir -p /install/rhels7.99/ppc64le'
+cmd:xdsh $$SN 'mkdir -p /install/rhels7.99/ppc64le/ppc/ppc64le'
+cmd:xdsh $$SN 'echo blah >/install/rhels7.99/ppc64le/ppc/ppc64le/vmlinuz'
+cmd:xdsh $$SN 'echo blah >/install/rhels7.99/ppc64le/ppc/ppc64le/initrd.img'
+cmd:mkdir -p /install/rhels7.99/ppc64le
+cmd:mkdir -p /install/rhels7.99/ppc64le/ppc/ppc64le
+cmd:echo blah >/install/rhels7.99/ppc64le/ppc/ppc64le/vmlinuz
+cmd:echo blah >/install/rhels7.99/ppc64le/ppc/ppc64le/initrd.img
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc==0
+cmd:grep "debug" /tftpboot/petitboot/testnode1
+check:rc==0
+#cmd:makedhcp -q testnode1 | grep ^testnode1:
+#check:rc==0
+cmd:nodeset testnode1 offline
+check:rc==0
+cmd:grep "debug" /tftpboot/petitboot/testnode1
+check:rc!=0
+cmd:chdef -t site sharedtftp=0 disjointdhcps=0
+check:rc==0
+cmd:chdef -t site tftpdir=/tftpboot.1
+check:rc==0
+cmd:mkdir -p /tftpboot.1/boot/grub2
+cmd:touch /tftpboot.1/boot/grub2/grub2.ppc
+cmd:xdsh $$SN 'mkdir -p /tftpboot.1/boot/grub2'
+cmd:xdsh $$SN 'touch /tftpboot.1/boot/grub2/grub2.ppc'
+cmd:chdef -t node testnode1 servicenode=$$SN
+check:rc==0
+cmd:rm -f /tftpboot/petitboot/testnode1
+cmd:xdsh $$SN 'rm -f /tftpboot/petitboot/testnode1'
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc==0
+cmd:test -f /tftpboot.1/petitboot/testnode1
+check:rc==0
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
+check:rc==0
+cmd:nodeset testnode1 offline
+check:rc==0
+cmd:chdef -t site disjointdhcps=1
+check:rc==0
+cmd:chdef -t node testnode1 servicenode=nonexistenode
+check:rc==0
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+#Ignore the exit code check as nonexistenode is fake and dispatching always fail
+#check:rc==0
+cmd:test -f /tftpboot.1/petitboot/testnode1
+check:rc!=0
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
+check:rc!=0
+cmd:nodeset testnode1 offline
+#check:rc==0
+# DHCP dynamic range
+cmd:chdef -t network 20_0_0_0-255_0_0_0 net=20.0.0.0 mask=255.0.0.0 dynamicrange=20.0.0.1-20.0.0.2 tftpserver=$$SN dhcpserver=$$SN
+check:rc==0
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+#check:rc==0
+cmd:xdsh $$SN 'test -f /tftpboot.1/petitboot/testnode1'
+check:rc==0
+# Clean up
+cmd:rmdef -t network 20_0_0_0-255_0_0_0
+check:rc==0
+cmd:chdef -t site sharedtftp=1
+check:rc==0
+cmd:chdef -t site disjointdhcps=0
+check:rc==0
+cmd:chdef -t site tftpdir=/tftpboot
+check:rc==0
+cmd:rm -rf /tftpboot.1
+cmd:xdsh $$SN 'rm -rf /tftpboot.1'
+cmd:chdef -t node -o testnode1 ip=
+check:rc==0
+cmd:cp -f /etc/hosts.xcattestbak /etc/hosts
+cmd:getent hosts testnode1 | grep testnode1
+check:rc!=0
+cmd:nodeset testnode1 osimage=rhels7.99-ppc64le-install-compute
+check:rc!=0
+cmd:noderm testnode1
+cmd:rmdef -t osimage -o "rhels7.99-ppc64le-install-compute"
+cmd:rm -rf /install/rhels7.99
+cmd:xdsh $$SN 'rm -rf /install/rhels7.99'
+end

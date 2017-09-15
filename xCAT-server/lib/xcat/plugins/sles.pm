@@ -100,6 +100,8 @@ sub mknetboot
         $nodestatus = $t_entry;
     }
 
+    my @myself     = xCAT::NetworkUtils->determinehostname();
+    my $myname     = $myself[ (scalar @myself) - 1 ];
     #}
 
     my $ntents = $ostab->getNodesAttribs($req->{node}, [ 'os', 'arch', 'profile', 'provmethod' ]);
@@ -333,7 +335,7 @@ sub mknetboot
         if ($statelite) {
             unless (-r "$rootimgdir/kernel") {
                 $callback->({
-                        error => [qq{Did you run "genimage" before running "liteimg"? kernel cannot be found}],
+                        error => [qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}],
                         errorcode => [1]
                 });
                 next;
@@ -362,7 +364,7 @@ sub mknetboot
         } else {
             unless (-r "$rootimgdir/kernel") {
                 $callback->({
-                        error => [qq{Did you run "genimage" before running "packimage"? kernel cannot be found}],
+                        error => [qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}],
                         errorcode => [1]
                 });
                 next;

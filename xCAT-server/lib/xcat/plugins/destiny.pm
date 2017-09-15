@@ -655,8 +655,8 @@ sub setdestiny {
         if ($reststates) {
             $updates->{$_}->{'currchain'} = $reststates;
         }
-        $chaintab->setNodesAttribs($updates);
     }
+    $chaintab->setNodesAttribs($updates);
     return getdestiny($flag + 1);
 }
 
@@ -784,6 +784,7 @@ sub getdestiny {
         @nodes = ($node);
     }
     my $node;
+    xCAT::MsgUtils->trace(0, "d", "destiny->process_request: getdestiny...");
     $restab = xCAT::Table->new('noderes');
     my $chaintab = xCAT::Table->new('chain');
     my $chainents = $chaintab->getNodesAttribs(\@nodes, [qw(currstate chain)]);

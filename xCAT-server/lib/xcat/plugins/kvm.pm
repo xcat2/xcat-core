@@ -783,6 +783,15 @@ sub build_xmldesc {
     #prepare the xml hash for pci passthrough
     my @prdevarray;
     foreach my $devname (@passthrudevices) {
+        #This is for SR-IOV vfio
+        #Change vfio format 0000:01:00.2 to pci_0000_01_00_2
+        if ( $devname =~ m/(\w:)+(\w)+.(\w)/ ){
+            $devname =~ s/[:|.]/_/g;
+            if ( $devname !~ /^pci_/ ) {
+                $devname ="pci_".$devname
+            }
+        }
+
         my $devobj = $hypconn->get_node_device_by_name($devname);
         unless ($devobj) {
             return -1;
@@ -1397,12 +1406,14 @@ sub makedom {
     }
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
-    } else {
-        $graphics->setAttribute("passwd", genpassword(20));
+    if (defined($graphics)) {
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $graphics->setAttribute("passwd", $confdata->{vm}->{$node}->[0]->{vidpassword});
+        } else {
+            $graphics->setAttribute("passwd", genpassword(20));
+        }
+        $graphics->setAttribute("listen", '0.0.0.0');
     }
-    $graphics->setAttribute("listen", '0.0.0.0');
     $xml = $parseddom->toString();
     eval {
         if ($::XCATSITEVALS{persistkvmguests}) {

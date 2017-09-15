@@ -99,6 +99,13 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
         NETWORK=`network_ipv4calc $IPADDR $NETMASK`
         #BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
         BROADCAST=`ip -4 -oneline addr show $nic|grep brd| awk -F ' ' '{print $6}'`
+
+        if [ ! -z "$BROADCAST" ]; then
+            broadcast_line="broadcast $BROADCAST"
+        else
+            broadcast_line=""
+        fi
+
         
         if [ ! -z "$defgw" ]; then
             gateway_line="gateway $defgw"
@@ -114,7 +121,7 @@ auto $nic
 iface $nic inet static
     address $IPADDR
     netmask $NETMASK
-    broadcast $BROADCAST
+    $broadcast_line
     $gateway_line
 
 
@@ -126,7 +133,7 @@ iface $nic inet static
     address $IPADDR
     network $NETWORK
     netmask $NETMASK
-    broadcast $BROADCAST
+    $broadcast_line
     $gateway_line
 
 

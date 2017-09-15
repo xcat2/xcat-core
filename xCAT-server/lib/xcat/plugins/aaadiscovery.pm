@@ -28,21 +28,6 @@ sub process_request {
         }
         my $client_ip = $req->{'_xcat_clientip'};
 
-        #now, notify the node that its findme request is under processing
-        xCAT::MsgUtils->message("S", "Notify $client_ip that its findme request is processing\n");
-        my $sock = new IO::Socket::INET(
-            PeerAddr => $client_ip,
-            PeerPort => '3001',
-            Timeout  => '1',
-            Proto    => 'tcp'
-        );
-        if ($sock) { 
-            print $sock "processing";
-            close($sock);
-        }else{ 
-            xCAT::MsgUtils->message("S", "Failed to notify $client_ip that its findme request is processing."); 
-        }
-
         my $arptable;
         if (-x "/usr/sbin/arp") {
             $arptable = `/usr/sbin/arp -n`;

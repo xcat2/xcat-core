@@ -116,7 +116,7 @@ if [ "$?" = "0" ]; then
         msgutil_r "$MASTER_IP" "debug" "precreated mypostscript downloaded successfully" "/var/log/xcat/xcat.log"
     fi
     mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
-    chmod +x /xcatpost/mypostscript
+    chmod 700 /xcatpost/mypostscript
 fi
 
 USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
@@ -138,7 +138,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
         /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
         sleep 36500d
     fi
-    /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+    /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
 
     MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
     RETRY=0
@@ -150,7 +150,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
 
         let SLI=$RANDOM%10+10
         sleep $SLI
-        /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+        /xcatpost/getpostscript.awk |egrep '<data>'|sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
 
         MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
     done
@@ -404,7 +404,7 @@ if [ \"\$return_value\" -ne \"0\" ]; then
 fi
 " >> /xcatpost/mypostscript
 
-chmod 755 /xcatpost/mypostscript
+chmod 700 /xcatpost/mypostscript
 
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#

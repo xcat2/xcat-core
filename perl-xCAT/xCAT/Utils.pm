@@ -19,6 +19,7 @@ use lib "$::XCATROOT/lib/perl";
 # needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call
 use POSIX qw(ceil);
 use File::Path;
+#use Data::Dumper;
 use Socket;
 use strict;
 use Symbol;
@@ -42,7 +43,6 @@ require xCAT::InstUtils;
 #require xCAT::NetworkUtils;
 require xCAT::Schema;
 
-#require Data::Dumper;
 require xCAT::NodeRange;
 require xCAT::Version;
 require DBI;
@@ -575,6 +575,13 @@ sub isLinux
 sub Version
 {
     my $version = shift;
+    
+    #force reload the xCAT::Version in case the perl-xcat is upgraded but xcatd is not restarted
+    if($INC{'xCAT/Version.pm'}){
+        delete $INC{'xCAT/Version.pm'};
+    }
+
+    require xCAT::Version;
     $version = xCAT::Version->Version();
     return $version;
 }
@@ -4902,5 +4909,6 @@ sub acquire_lock_imageop {
     }
     return (0,$lock);
 }
+
 
 1;

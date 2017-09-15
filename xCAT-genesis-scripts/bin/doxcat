@@ -8,8 +8,6 @@ log_label="xcat.genesis.doxcat"
 # Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
 # Later, once xCAT MN is known, dhclient-script will change 
 # rsyslog.conf file to send log entries to xCAT MN
-logger -s -t $log_label -p local4.info "Starting syslog..."
-ls /var/run/
 RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
 
 # if syslog is running and there's a pid file, kill it before restarting syslogd
@@ -356,6 +354,10 @@ while :; do
 		logger -s -t $log_label -p local4.info "Exited shell."
 		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
 		/bin/nextdestiny $XCATMASTER:$XCATPORT      
+		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
+        elif [ "$dest" = osimage ]; then
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
+		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 	elif [ "$dest" = runcmd ]; then
 		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."

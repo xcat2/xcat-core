@@ -1,0 +1,40 @@
+start:rhel_infiniband_diskless_install
+description:Integration test of RHEL 7 and MLNX OFED for diskless installation. Following variables need to be set in the test configuration file, ISO, CN, MLNX, DKMS. Read comments in rhel-infiniband-diskless-install.sh for details.
+cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskless-install.sh
+check:rc==0
+end
+
+start:rhel_infiniband_diskfull_install
+description:Integration test of RHEL 7 and MLNX OFED for diskfull installation. Following variables need to be set in the test configuration file, ISO, CN, MLNX, DKMS. Read comments in rhel-infiniband-diskfull-install.sh for details.
+cmd:RHEL_ISO="$$ISO" LINUX_DISTRO="GETNODEATTR($$CN, os)" COMPUTE_NODE="$$CN" MLNX_ISO="$$MLNX" DKMS_RPM="$$DKMS" /opt/xcat/share/xcat/tools/autotest/testcase/infiniband/rhel-infiniband-diskfull-install.sh
+check:rc==0
+end
+
+start:confignetwork_ib_ipoib
+description: this case is to test confignetwork could configure the first infiniband interface, ib0, successfully with updatenode.
+cmd:lsdef $$CN;if [ $? -eq 0 ]; then lsdef -l $$CN -z >/tmp/CN.standa ;fi
+check:rc==0
+cmd:xdsh $$CN "mkdir -p /tmp/backupnet/"
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network/ifcfg-* /tmp/backupnet/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /etc/sysconfig/network-scripts/ifcfg-* /tmp/backupnet/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /etc/network/interfaces.d/* /tmp/backupnet/";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=ib0
+check:rc==0
+cmd:chdef $$CN nicips.ib0=11.1.0.100 nictypes.ib0=infiniband nicnetworks.ib0=11_1_0_0-255_255_0_0
+check:rc==0
+cmd:updatenode $$CN -P confignetwork
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/sysconfig/network/ifcfg-ib0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN  "grep 11.1.0.100 /etc/sysconfig/network-scripts/ifcfg-ib0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "grep 11.1.0.100 /etc/network/interfaces.d/ib0";else echo "Sorry,this is not supported os"; fi
+check:output=~11.1.0.100
+cmd:xdsh $$CN "ping -c 1 11.1.0.100"
+check:rc==0
+# Clean up
+cmd:xdsh $$CN "ip addr del 11.1.0.100/16 dev ib0"
+cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network/ifcfg-ib0"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "rm -rf /etc/sysconfig/network-scripts/ifcfg-ib0"; elif grep Ubuntu /etc/*release;then xdsh $$CN "rm -rf /etc/network/interfaces.d/ib0";else echo "Sorry,this is not supported os"; fi
+check:rc==0
+cmd:if [ -e /tmp/CN.standa ]; then rmdef $$CN; cat /tmp/CN.standa | mkdef -z; rm -rf /tmp/CN.standa; fi
+check:rc==0
+cmd:if grep SUSE /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network/"; elif grep "Red Hat" /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/sysconfig/network-scripts/"; elif grep Ubuntu /etc/*release;then xdsh $$CN "cp -f /tmp/backupnet/* /etc/network/interfaces.d/";else echo "Sorry,this is not supported os"; fi
+cmd:xdsh $$CN "rm -rf /tmp/backupnet/"
+end

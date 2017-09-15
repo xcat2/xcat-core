@@ -24,11 +24,17 @@ B<rflash> I<noderange> I<http_directory>
 
 =head2 OpenPOWER BMC specific (using IPMI):
 
-B<rflash> I<noderange> [I<hpm_file_path> | B<-d=>I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+B<rflash> I<noderange> [I<hpm_file_path> | B<-d> I<data_directory>] [B<-c>|B<--check>] [B<--retry=>I<count>] [B<-V>]
+
+B<rflash> I<noderange> B<--recover> I<bmc_file_path>
 
 =head2 OpenPOWER OpenBMC specific :
 
-B<rflash> I<noderange> [I<tar_file_path> | I<image_id>] [B<-c>|B<--check>] [B<-a>|B<--activate>] [B<-l>|B<--list>] [B<-u>|B<--upload>] [B<-d>|B<--delete>]
+B<rflash> I<noderange> {[B<-c>|B<--check>] | [B<-l>|B<--list>]}
+
+B<rflash> I<noderange> I<tar_file_path> {[B<-c>|B<--check>] | [B<-a>|B<--activate>] | [B<-u>|B<--upload>]}
+
+B<rflash> I<noderange> I<image_id> {[B<-a>|B<--activate>] | [B<-d>|B<--delete>]}
 
 =head1 B<Description>
 
@@ -111,9 +117,11 @@ Specifies the directory where the packages are located.
 
 =item B<-d> I<data_directory>
 
+PPC (without HMC, using Direct FSP Management) specific:
+
 Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management. 
 
-=item B<-d=>I<data_directory>
+OpenPOWER BMC specific (using IPMI):
 
 Used for IBM Power S822LC for Big Data systems only. Specifies the directory where the B<pUpdate> utility and at least one of BMC or PNOR update files are located. The utility and update files can be downloaded from FixCentral. 
 
@@ -127,7 +135,13 @@ Used to commit the flash image in the temporary side of the chip to the permanen
 
 =item B<--recover>
 
+PPC (with HMC) and PPC (without HMC, using Direct FSP Management) specific:
+
 Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
+
+OpenPOWER BMC specific (using IPMI):
+
+Used for IBM Power S822LC for Big Data systems only. Used to recover the BMC with a BMC image downloaded from FixCentral.
 
 =item B<--retry=>I<count>
 
@@ -135,7 +149,7 @@ Specify number of times to retry the update if failure is detected. Default valu
 
 =item B<-a|--activate>
 
-Activate update image. Image id must be specified.
+Activate update image. Image id or update file must be specified.
 
 =item B<-l|--list>
 
@@ -201,7 +215,12 @@ Print verbose message to rflash log file (/var/log/xcat/rflash/fs3.log) when upd
 =item 6.
 To update the firmware on IBM Power S822LC for Big Data machine specify the node name and the file path of the data directory containing pUpdate utility and BMC and/or PNOR update files:
 
- rflash briggs01 -d=/root/supermicro/OP825
+ rflash briggs01 -d /root/supermicro/OP825
+
+=item 7.
+To update the firmware on the OpenBMC machine, specify the firmare update file to upload and activate: 
+
+  rflash p9euh02 -a /tmp/witherspoon.pnor.squashfs.tar
 
 =back
 

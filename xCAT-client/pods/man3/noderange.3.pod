@@ -36,7 +36,11 @@ B<noderange> is a syntax that can be used in most xCAT commands to
 conveniently specify a list of nodes.  The result is that the  command  will
 be applied to a range of nodes, often in parallel.
 
-To avoid shell expansion, B<noderange> should better be quoted with single quotes('') or double quotes(""). 
+If you invoke xCAT B<noderange> from a shell you may need to quote the
+B<noderange> if the shell would otherwise treat the punctuation marks in
+the B<noderange> as control operators. The affected punctuation marks may
+include Asterisk (`*'), Left Square Bracket (`[') , Right Square Bracket
+(`]'), Circumflex Accent (`^'), and Overline (`~').
 
 B<noderange> is a comma-separated list.  Each token (text between commas)
 in the list can be any of the forms listed below:
@@ -233,6 +237,11 @@ Generate a list of nodes in the 1st two frames:
 
 =back
 
+=head1 B<Bugs>
+
+The special characters used by xCAT B<noderange> are also special characters
+to many shell programs.  In particular, the characters `*', `[', `]', `^',
+and `~' may have to be escaped from the shell.
 
 =head1 B<SEE ALSO>
 
