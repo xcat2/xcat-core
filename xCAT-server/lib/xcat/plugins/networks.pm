@@ -551,7 +551,7 @@ sub donets
                     # if this net entry exists, go to next line in networks table
                     if ($netnamematch) {
                         $callback->({ warning => "The network entry \'$netname\' already exists in xCAT networks table. Cannot create a definition for \'$netname\'" });
-                        last;
+                        next;
                     }
                     if (!$foundmatch) {
                         $nettab->setAttribs({ 'net' => $net, 'mask' => $mask }, { 'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw, 'mtu' => $mtu });
