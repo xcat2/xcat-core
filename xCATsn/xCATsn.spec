@@ -93,6 +93,8 @@ tar -xf license.tar
 %install
 %ifos linux
 mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
+mkdir -p $RPM_BUILD_ROOT/etc/xcat/rsyslog.conf
+mkdir -p $RPM_BUILD_ROOT/etc/xcat/logrotate.conf
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
@@ -102,6 +104,8 @@ cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
+cp -a  etc/rsyslog.d/* $RPM_BUILD_ROOT/etc/xcat/rsyslog.conf/
+cp -a  etc/logrotate.d/* $RPM_BUILD_ROOT/etc/xcat/logrotate.conf/
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -249,6 +253,8 @@ fi
 /etc/xcat/conf.orig/xcat.conf.apach22
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
+/etc/xcat/logrotate.conf/
+/etc/xcat/rsyslog.conf/
 %endif
 /etc/xCATSN
 %defattr(-,root,root)
